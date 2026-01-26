@@ -25,7 +25,6 @@ import {
   applyCustomPropertyFilter,
   clearAdvancedSearchFilters,
   CPASTestData,
-  selectEntityReferenceValue,
   setupCustomPropertyAdvancedSearchTest,
   verifySearchResults,
 } from '../../../utils/customPropertyAdvancedSearchUtils';
@@ -616,12 +615,13 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       )}.*${topic1.entityResponseData.displayName.substring(5, 7)}.*`;
 
       await showAdvancedSearchDialog(page);
-      const ruleLocator = page.locator('.rule').nth(0);
-      await applyCustomPropertyFilter(page, propertyName, 'select_equals', '');
-      await selectEntityReferenceValue(
+      await applyCustomPropertyFilter(
         page,
-        ruleLocator,
-        topic1.entityResponseData.name
+        propertyName,
+        'select_equals',
+        topic1.entityResponseData.displayName,
+        'Dashboard',
+        'entityReference'
       );
       await verifySearchResults(
         page,
@@ -631,17 +631,13 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
-      const ruleLocator2 = page.locator('.rule').nth(0);
       await applyCustomPropertyFilter(
         page,
         propertyName,
         'select_not_equals',
-        ''
-      );
-      await selectEntityReferenceValue(
-        page,
-        ruleLocator2,
-        topic1.entityResponseData.name
+        topic1.entityResponseData.displayName,
+        'Dashboard',
+        'entityReference'
       );
       await verifySearchResults(
         page,
@@ -717,12 +713,13 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       )}.*${topic1.entityResponseData.displayName.substring(5, 7)}.*`;
 
       await showAdvancedSearchDialog(page);
-      const ruleLocator = page.locator('.rule').nth(0);
-      await applyCustomPropertyFilter(page, propertyName, 'select_equals', '');
-      await selectEntityReferenceValue(
+      await applyCustomPropertyFilter(
         page,
-        ruleLocator,
-        topic1.entityResponseData.name
+        propertyName,
+        'select_equals',
+        topic1.entityResponseData.displayName,
+        'Dashboard',
+        'entityReferenceList'
       );
       await verifySearchResults(
         page,
@@ -732,12 +729,13 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
-      const ruleLocator2 = page.locator('.rule').nth(0);
-      await applyCustomPropertyFilter(page, propertyName, 'select_equals', '');
-      await selectEntityReferenceValue(
+      await applyCustomPropertyFilter(
         page,
-        ruleLocator2,
-        topic2.entityResponseData.name
+        propertyName,
+        'select_equals',
+        topic2.entityResponseData.displayName,
+        'Dashboard',
+        'entityReferenceList'
       );
       await verifySearchResults(
         page,
@@ -747,17 +745,13 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
-      const ruleLocator3 = page.locator('.rule').nth(0);
       await applyCustomPropertyFilter(
         page,
         propertyName,
         'select_not_equals',
-        ''
-      );
-      await selectEntityReferenceValue(
-        page,
-        ruleLocator3,
-        topic2.entityResponseData.name
+        topic2.entityResponseData.displayName,
+        'Dashboard',
+        'entityReferenceList'
       );
       await verifySearchResults(
         page,

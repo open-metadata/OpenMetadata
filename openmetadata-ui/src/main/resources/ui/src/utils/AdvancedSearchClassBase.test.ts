@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Config, ConfigContext } from '@react-awesome-query-builder/core';
+import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   MULTISELECT_FIELD_OPERATORS,
   NUMBER_FIELD_OPERATORS,
@@ -346,7 +347,8 @@ describe('getCustomPropertiesSubFields', () => {
     );
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
-      mockField as CustomPropertySummary
+      mockField as CustomPropertySummary,
+      SearchOutputType.ElasticSearch
     );
 
     expect(mockGetEntityName).toHaveBeenCalledWith(mockField);
@@ -381,7 +383,8 @@ describe('getCustomPropertiesSubFields', () => {
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
-      mockField as CustomPropertySummary
+      mockField as CustomPropertySummary,
+      SearchOutputType.ElasticSearch
     );
 
     expect(result).toEqual({
@@ -407,7 +410,8 @@ describe('getCustomPropertiesSubFields', () => {
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
-      mockField as CustomPropertySummary
+      mockField as CustomPropertySummary,
+      SearchOutputType.ElasticSearch
     );
 
     expect(result).toEqual({
@@ -433,7 +437,8 @@ describe('getCustomPropertiesSubFields', () => {
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
-      mockField as CustomPropertySummary
+      mockField as CustomPropertySummary,
+      SearchOutputType.ElasticSearch
     );
 
     expect(result).toEqual({
@@ -463,7 +468,8 @@ describe('getCustomPropertiesSubFields', () => {
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
-      mockField as CustomPropertySummary
+      mockField as CustomPropertySummary,
+      SearchOutputType.ElasticSearch
     );
 
     expect(result).toEqual({
@@ -559,7 +565,8 @@ describe('getCustomPropertiesSubFields', () => {
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
-      mockField as CustomPropertySummary
+      mockField as CustomPropertySummary,
+      SearchOutputType.ElasticSearch
     );
 
     expect(result).toEqual({
@@ -679,5 +686,483 @@ describe('getCustomPropertiesSubFields', () => {
 
     expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(0);
+  });
+
+  describe('with searchOutputType parameter', () => {
+    describe('EntityReference types', () => {
+      it('should use .displayName.keyword for entityReference with ElasticSearch output', () => {
+        const mockField = {
+          name: 'ownerField',
+          type: 'entityReference',
+        };
+        const mockLabel = 'Owner Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.ElasticSearch
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'ownerField.displayName.keyword',
+          dataObject: {
+            type: 'select',
+            label: mockLabel,
+            fieldSettings: {
+              asyncFetch: expect.any(Function),
+              useAsyncSearch: true,
+            },
+          },
+        });
+      });
+
+      it('should use .displayName for entityReference with JSONLogic output', () => {
+        const mockField = {
+          name: 'ownerField',
+          type: 'entityReference',
+        };
+        const mockLabel = 'Owner Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.JSONLogic
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'ownerField.displayName',
+          dataObject: {
+            type: 'select',
+            label: mockLabel,
+            fieldSettings: {
+              asyncFetch: expect.any(Function),
+              useAsyncSearch: true,
+            },
+          },
+        });
+      });
+
+      it('should use .displayName.keyword for array<entityReference> with ElasticSearch output', () => {
+        const mockField = {
+          name: 'ownersField',
+          type: 'array<entityReference>',
+        };
+        const mockLabel = 'Owners Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.ElasticSearch
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'ownersField.displayName.keyword',
+          dataObject: {
+            type: 'select',
+            label: mockLabel,
+            fieldSettings: {
+              asyncFetch: expect.any(Function),
+              useAsyncSearch: true,
+            },
+          },
+        });
+      });
+
+      it('should use .displayName for array<entityReference> with JSONLogic output', () => {
+        const mockField = {
+          name: 'ownersField',
+          type: 'array<entityReference>',
+        };
+        const mockLabel = 'Owners Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.JSONLogic
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'ownersField.displayName',
+          dataObject: {
+            type: 'select',
+            label: mockLabel,
+            fieldSettings: {
+              asyncFetch: expect.any(Function),
+              useAsyncSearch: true,
+            },
+          },
+        });
+      });
+    });
+
+    describe('String and Enum types', () => {
+      it('should use .keyword suffix for string type with ElasticSearch output', () => {
+        const mockField = {
+          name: 'textField',
+          type: 'string',
+        };
+        const mockLabel = 'Text Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.ElasticSearch
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'textField.keyword',
+          dataObject: {
+            type: 'text',
+            label: mockLabel,
+            valueSources: ['value'],
+            operators: TEXT_FIELD_OPERATORS,
+          },
+        });
+      });
+
+      it('should use base field name for string type with JSONLogic output', () => {
+        const mockField = {
+          name: 'textField',
+          type: 'string',
+        };
+        const mockLabel = 'Text Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.JSONLogic
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'textField',
+          dataObject: {
+            type: 'text',
+            label: mockLabel,
+            valueSources: ['value'],
+            operators: TEXT_FIELD_OPERATORS,
+          },
+        });
+      });
+
+      it('should use .keyword suffix for enum type with ElasticSearch output', () => {
+        const mockField = {
+          name: 'statusField',
+          type: 'enum',
+          customPropertyConfig: {
+            config: {
+              values: ['ACTIVE', 'INACTIVE'],
+            },
+          },
+        };
+        const mockLabel = 'Status Field';
+        const mockEnumOptions = { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' };
+        mockGetEntityName.mockReturnValue(mockLabel);
+        mockGetCustomPropertyAdvanceSearchEnumOptions.mockReturnValue(
+          mockEnumOptions
+        );
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.ElasticSearch
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'statusField.keyword',
+          dataObject: {
+            type: 'multiselect',
+            label: mockLabel,
+            operators: MULTISELECT_FIELD_OPERATORS,
+            fieldSettings: {
+              listValues: mockEnumOptions,
+              showSearch: true,
+              useAsyncSearch: false,
+            },
+          },
+        });
+      });
+
+      it('should use base field name for enum type with JSONLogic output', () => {
+        const mockField = {
+          name: 'statusField',
+          type: 'enum',
+          customPropertyConfig: {
+            config: {
+              values: ['ACTIVE', 'INACTIVE'],
+            },
+          },
+        };
+        const mockLabel = 'Status Field';
+        const mockEnumOptions = { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' };
+        mockGetEntityName.mockReturnValue(mockLabel);
+        mockGetCustomPropertyAdvanceSearchEnumOptions.mockReturnValue(
+          mockEnumOptions
+        );
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.JSONLogic
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'statusField',
+          dataObject: {
+            type: 'multiselect',
+            label: mockLabel,
+            operators: MULTISELECT_FIELD_OPERATORS,
+            fieldSettings: {
+              listValues: mockEnumOptions,
+              showSearch: true,
+              useAsyncSearch: false,
+            },
+          },
+        });
+      });
+    });
+
+    describe('Numeric types (CP_TYPE_WITHOUT_KEYWORD_FIELD)', () => {
+      it('should NOT use .keyword for number type with ElasticSearch output', () => {
+        const mockField = {
+          name: 'numberField',
+          type: 'number',
+        };
+        const mockLabel = 'Number Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.ElasticSearch
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'numberField',
+          dataObject: {
+            type: 'number',
+            label: mockLabel,
+            operators: NUMBER_FIELD_OPERATORS,
+          },
+        });
+      });
+
+      it('should use base field name for number type with JSONLogic output', () => {
+        const mockField = {
+          name: 'numberField',
+          type: 'number',
+        };
+        const mockLabel = 'Number Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.JSONLogic
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'numberField',
+          dataObject: {
+            type: 'number',
+            label: mockLabel,
+            operators: NUMBER_FIELD_OPERATORS,
+          },
+        });
+      });
+
+      it('should NOT use .keyword for integer type with ElasticSearch output', () => {
+        const mockField = {
+          name: 'integerField',
+          type: 'integer',
+        };
+        const mockLabel = 'Integer Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.ElasticSearch
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'integerField',
+          dataObject: {
+            type: 'number',
+            label: mockLabel,
+            operators: NUMBER_FIELD_OPERATORS,
+          },
+        });
+      });
+
+      it('should use base field name for integer type with JSONLogic output', () => {
+        const mockField = {
+          name: 'integerField',
+          type: 'integer',
+        };
+        const mockLabel = 'Integer Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.JSONLogic
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'integerField',
+          dataObject: {
+            type: 'number',
+            label: mockLabel,
+            operators: NUMBER_FIELD_OPERATORS,
+          },
+        });
+      });
+
+      it('should NOT use .keyword for timestamp type with ElasticSearch output', () => {
+        const mockField = {
+          name: 'timestampField',
+          type: 'timestamp',
+        };
+        const mockLabel = 'Timestamp Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.ElasticSearch
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'timestampField',
+          dataObject: {
+            type: 'number',
+            label: mockLabel,
+            operators: NUMBER_FIELD_OPERATORS,
+          },
+        });
+      });
+
+      it('should use base field name for timestamp type with JSONLogic output', () => {
+        const mockField = {
+          name: 'timestampField',
+          type: 'timestamp',
+        };
+        const mockLabel = 'Timestamp Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.JSONLogic
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'timestampField',
+          dataObject: {
+            type: 'number',
+            label: mockLabel,
+            operators: NUMBER_FIELD_OPERATORS,
+          },
+        });
+      });
+    });
+
+    describe('Date types', () => {
+      it('should use .keyword for date-cp type with ElasticSearch output', () => {
+        const mockField = {
+          name: 'dateField',
+          type: 'date-cp',
+        };
+        const mockLabel = 'Date Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.ElasticSearch
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'dateField.keyword',
+          dataObject: {
+            type: 'date',
+            label: mockLabel,
+            operators: expect.any(Array),
+            fieldSettings: {
+              valueFormat: expect.any(String),
+              dateFormat: expect.any(String),
+            },
+          },
+        });
+      });
+
+      it('should use base field name for date-cp type with JSONLogic output', () => {
+        const mockField = {
+          name: 'dateField',
+          type: 'date-cp',
+        };
+        const mockLabel = 'Date Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary,
+          SearchOutputType.JSONLogic
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'dateField',
+          dataObject: {
+            type: 'date',
+            label: mockLabel,
+            operators: expect.any(Array),
+            fieldSettings: {
+              valueFormat: expect.any(String),
+              dateFormat: expect.any(String),
+            },
+          },
+        });
+      });
+    });
+
+    describe('Backward compatibility - defaults to ElasticSearch', () => {
+      it('should default to ElasticSearch behavior (.displayName.keyword) for entityReference when searchOutputType is not provided', () => {
+        const mockField = {
+          name: 'ownerField',
+          type: 'entityReference',
+        };
+        const mockLabel = 'Owner Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'ownerField.displayName.keyword',
+          dataObject: {
+            type: 'select',
+            label: mockLabel,
+            fieldSettings: {
+              asyncFetch: expect.any(Function),
+              useAsyncSearch: true,
+            },
+          },
+        });
+      });
+
+      it('should default to ElasticSearch behavior (.keyword) for string when searchOutputType is not provided', () => {
+        const mockField = {
+          name: 'textField',
+          type: 'string',
+        };
+        const mockLabel = 'Text Field';
+        mockGetEntityName.mockReturnValue(mockLabel);
+
+        const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+          mockField as CustomPropertySummary
+        );
+
+        expect(result).toEqual({
+          subfieldsKey: 'textField.keyword',
+          dataObject: {
+            type: 'text',
+            label: mockLabel,
+            valueSources: ['value'],
+            operators: TEXT_FIELD_OPERATORS,
+          },
+        });
+      });
+    });
   });
 });
