@@ -24,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.util.DIContainer;
@@ -47,24 +48,6 @@ class AlertPublisherTest {
   static class TestAlertPublisher extends AlertPublisher {
     public TestAlertPublisher(DIContainer di) {
       super(di);
-    }
-
-    @Override
-    public boolean sendAlert(UUID receiverId, ChangeEvent event) {
-      if (destinationMap.containsKey(receiverId)) {
-        Destination<ChangeEvent> destination = destinationMap.get(receiverId);
-        if (Boolean.TRUE.equals(destination.getEnabled())) {
-          try {
-            destination.sendMessage(event);
-            return true;
-          } catch (EventPublisherException ex) {
-            // Override to avoid Entity.getCollectionDAO() static call in tests
-            // In real scenario, this would call handleFailedEvent(ex, true)
-            return false;
-          }
-        }
-      }
-      return false;
     }
 
     @Override
@@ -93,13 +76,15 @@ class AlertPublisherTest {
 
   @Test
   void testSendAlertSuccessfully() throws EventPublisherException {
+    SubscriptionDestination subDest = createMockSubscriptionDestination();
     lenient().when(destination.getEnabled()).thenReturn(true);
+    lenient().when(destination.getSubscriptionDestination()).thenReturn(subDest);
     alertPublisher.destinationMap.put(receiverId, destination);
 
     boolean result = alertPublisher.sendAlert(receiverId, changeEvent);
 
     assertTrue(result);
-    verify(destination).sendMessage(changeEvent);
+    verify(destination).sendMessage(eq(changeEvent), any());
   }
 
   @Test
@@ -110,7 +95,7 @@ class AlertPublisherTest {
     boolean result = alertPublisher.sendAlert(receiverId, changeEvent);
 
     assertFalse(result);
-    verify(destination, never()).sendMessage(any());
+    verify(destination, never()).sendMessage(any(), any());
   }
 
   @Test
@@ -121,7 +106,7 @@ class AlertPublisherTest {
     boolean result = alertPublisher.sendAlert(receiverId, changeEvent);
 
     assertFalse(result);
-    verify(destination, never()).sendMessage(any());
+    verify(destination, never()).sendMessage(any(), any());
   }
 
   @Test
@@ -129,7 +114,7 @@ class AlertPublisherTest {
     boolean result = alertPublisher.sendAlert(receiverId, changeEvent);
 
     assertFalse(result);
-    verify(destination, never()).sendMessage(any());
+    verify(destination, never()).sendMessage(any(), any());
   }
 
   @Test
@@ -140,15 +125,17 @@ class AlertPublisherTest {
     testPublisher.eventSubscription = eventSubscription;
     testPublisher.destinationMap = new HashMap<>();
 
+    SubscriptionDestination subDest = createMockSubscriptionDestination();
     lenient().when(destination.getEnabled()).thenReturn(true);
+    lenient().when(destination.getSubscriptionDestination()).thenReturn(subDest);
     EventPublisherException exception = new EventPublisherException("Test error");
-    doThrow(exception).when(destination).sendMessage(changeEvent);
+    doThrow(exception).when(destination).sendMessage(any(), any());
     testPublisher.destinationMap.put(receiverId, destination);
 
     boolean result = testPublisher.sendAlert(receiverId, changeEvent);
 
     assertFalse(result);
-    verify(destination).sendMessage(changeEvent);
+    verify(destination).sendMessage(eq(changeEvent), any());
   }
 
   @Test
@@ -204,7 +191,9 @@ class AlertPublisherTest {
     Destination<ChangeEvent> destination1 = mock(Destination.class);
     Destination<ChangeEvent> destination2 = mock(Destination.class);
 
+    SubscriptionDestination subDest = createMockSubscriptionDestination();
     lenient().when(destination1.getEnabled()).thenReturn(true);
+    lenient().when(destination1.getSubscriptionDestination()).thenReturn(subDest);
     lenient().when(destination2.getEnabled()).thenReturn(false);
 
     alertPublisher.destinationMap.put(receiverId1, destination1);
@@ -215,8 +204,8 @@ class AlertPublisherTest {
 
     assertTrue(result1);
     assertFalse(result2);
-    verify(destination1).sendMessage(changeEvent);
-    verify(destination2, never()).sendMessage(any());
+    verify(destination1).sendMessage(eq(changeEvent), any());
+    verify(destination2, never()).sendMessage(any(), any());
   }
 
   private ChangeEvent createMockChangeEvent() {
@@ -224,5 +213,13 @@ class AlertPublisherTest {
     lenient().when(event.getId()).thenReturn(UUID.randomUUID());
     lenient().when(event.getEntityType()).thenReturn("table");
     return event;
+  }
+
+  private SubscriptionDestination createMockSubscriptionDestination() {
+    SubscriptionDestination subDest = new SubscriptionDestination();
+    subDest.setId(UUID.randomUUID());
+    subDest.setType(SubscriptionDestination.SubscriptionType.EMAIL);
+    subDest.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    return subDest;
   }
 }

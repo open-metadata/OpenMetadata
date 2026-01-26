@@ -15,4 +15,10 @@ import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { Column } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
 
-export type TableFieldsInfoCommonEntities = SearchIndexField | Column | Field;
+export type TableFieldsInfoCommonEntities = (
+  | SearchIndexField
+  | Column
+  | Field
+) & {
+  extension?: Record<string, unknown>;
+};

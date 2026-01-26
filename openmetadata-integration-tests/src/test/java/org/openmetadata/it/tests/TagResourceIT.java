@@ -2,7 +2,6 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -50,7 +49,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
-    request.setName(ns.prefix("tag"));
+    request.setName(ns.shortPrefix("tag"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Test tag created by integration test");
 
@@ -74,7 +73,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     // Add unique suffix to avoid collisions when multiple tests create classifications
     String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
     CreateClassification classificationRequest = new CreateClassification();
-    classificationRequest.setName(ns.prefix("classification") + "_" + uniqueSuffix);
+    classificationRequest.setName(ns.uniqueShortId() + "_" + "classification" + "_" + uniqueSuffix);
     classificationRequest.setDescription("Test classification for tags");
     return SdkClients.adminClient().classifications().create(classificationRequest);
   }
@@ -174,7 +173,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     // Classification is required field
     CreateTag request = new CreateTag();
-    request.setName(ns.prefix("tag_no_classification"));
+    request.setName(ns.shortPrefix("tag_no_classification"));
 
     assertThrows(
         Exception.class,
@@ -188,7 +187,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
-    request.setName(ns.prefix("tag_with_style"));
+    request.setName(ns.shortPrefix("tag_with_style"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Tag with style");
 
@@ -203,7 +202,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     // Create parent tag
     CreateTag parentRequest = new CreateTag();
-    parentRequest.setName(ns.prefix("parent_tag"));
+    parentRequest.setName(ns.shortPrefix("parent_tag"));
     parentRequest.setClassification(classification.getFullyQualifiedName());
     parentRequest.setDescription("Parent tag");
 
@@ -212,7 +211,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     // Create child tag
     CreateTag childRequest = new CreateTag();
-    childRequest.setName(ns.prefix("child_tag"));
+    childRequest.setName(ns.shortPrefix("child_tag"));
     childRequest.setClassification(classification.getFullyQualifiedName());
     childRequest.setParent(parentTag.getFullyQualifiedName());
     childRequest.setDescription("Child tag");
@@ -229,7 +228,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
-    request.setName(ns.prefix("tag_update_desc"));
+    request.setName(ns.shortPrefix("tag_update_desc"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Initial description");
 
@@ -248,7 +247,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     Classification classification = createClassification(ns);
 
     // Create first tag
-    String tagName = ns.prefix("unique_tag");
+    String tagName = ns.shortPrefix("unique_tag");
     CreateTag request1 = new CreateTag();
     request1.setName(tagName);
     request1.setClassification(classification.getFullyQualifiedName());
@@ -276,7 +275,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     // Attempt to create tag with non-existent parent
     CreateTag request = new CreateTag();
-    request.setName(ns.prefix("orphan_tag"));
+    request.setName(ns.shortPrefix("orphan_tag"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setParent(classification.getFullyQualifiedName() + ".non_existent_parent");
 
@@ -292,7 +291,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
-    request.setName(ns.prefix("tag_version"));
+    request.setName(ns.shortPrefix("tag_version"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Initial description");
 
@@ -316,7 +315,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
-    request.setName(ns.prefix("tag_delete"));
+    request.setName(ns.shortPrefix("tag_delete"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Tag for soft delete test");
 
@@ -344,7 +343,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
-    request.setName(ns.prefix("tag_hard_delete"));
+    request.setName(ns.shortPrefix("tag_hard_delete"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Tag for hard delete test");
 
@@ -365,7 +364,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
-    request.setName(ns.prefix("tag_by_name"));
+    request.setName(ns.shortPrefix("tag_by_name"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Tag for getByName test");
 
@@ -384,7 +383,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
-    request.setName(ns.prefix("tag_display"));
+    request.setName(ns.shortPrefix("tag_display"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDisplayName("My Display Tag");
     request.setDescription("Tag for display name test");
@@ -404,7 +403,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
-    String tagName = ns.prefix("tag_fqn");
+    String tagName = ns.shortPrefix("tag_fqn");
     request.setName(tagName);
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Tag for FQN format test");
@@ -424,7 +423,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     // Create multiple tags
     for (int i = 0; i < 5; i++) {
       CreateTag request = new CreateTag();
-      request.setName(ns.prefix("pagination_tag_" + i));
+      request.setName(ns.shortPrefix("pagination_tag_" + i));
       request.setClassification(classification.getFullyQualifiedName());
       request.setDescription("Pagination tag " + i);
       createEntity(request);
@@ -445,14 +444,14 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     // Create parent tag
     CreateTag parentRequest = new CreateTag();
-    parentRequest.setName(ns.prefix("parent_fqn"));
+    parentRequest.setName(ns.shortPrefix("parent_fqn"));
     parentRequest.setClassification(classification.getFullyQualifiedName());
     parentRequest.setDescription("Parent tag for FQN test");
     Tag parentTag = createEntity(parentRequest);
 
     // Create child tag
     CreateTag childRequest = new CreateTag();
-    String childName = ns.prefix("child_fqn");
+    String childName = ns.shortPrefix("child_fqn");
     childRequest.setName(childName);
     childRequest.setClassification(classification.getFullyQualifiedName());
     childRequest.setParent(parentTag.getFullyQualifiedName());
@@ -471,14 +470,14 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     // Create a mutually exclusive classification
     String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
     CreateClassification classificationRequest = new CreateClassification();
-    classificationRequest.setName(ns.prefix("mutualExclusive") + "_" + uniqueSuffix);
+    classificationRequest.setName(ns.shortPrefix("mutualExclusive") + "_" + uniqueSuffix);
     classificationRequest.setDescription("Mutually exclusive classification");
     classificationRequest.setMutuallyExclusive(true);
     Classification classification = client.classifications().create(classificationRequest);
 
     // Create a tag under this classification
     CreateTag request = new CreateTag();
-    request.setName(ns.prefix("exclusive_tag"));
+    request.setName(ns.shortPrefix("exclusive_tag"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Tag in mutually exclusive classification");
 
@@ -493,7 +492,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
-    request.setName(ns.prefix("tag_with_owner"));
+    request.setName(ns.shortPrefix("tag_with_owner"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Tag for owner test");
 
@@ -517,7 +516,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     // Create classification with owner
     String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
     CreateClassification classificationRequest = new CreateClassification();
-    classificationRequest.setName(ns.prefix("owner_inherit") + "_" + uniqueSuffix);
+    classificationRequest.setName(ns.shortPrefix("owner_inherit") + "_" + uniqueSuffix);
     classificationRequest.setDescription("Classification for owner inheritance test");
     classificationRequest.setOwners(java.util.List.of(testUser1().getEntityReference()));
     Classification classification = client.classifications().create(classificationRequest);
@@ -528,7 +527,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     // Create tag under classification (without explicit owner)
     CreateTag tagRequest = new CreateTag();
-    tagRequest.setName(ns.prefix("inherited_owner_tag"));
+    tagRequest.setName(ns.shortPrefix("inherited_owner_tag"));
     tagRequest.setClassification(classification.getFullyQualifiedName());
     tagRequest.setDescription("Tag for owner inheritance test");
 
@@ -549,7 +548,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     // Create a domain for testing
     org.openmetadata.schema.api.domains.CreateDomain createDomain =
         new org.openmetadata.schema.api.domains.CreateDomain()
-            .withName(ns.prefix("domain_inherit"))
+            .withName(ns.shortPrefix("domain_inherit"))
             .withDomainType(org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
             .withDescription("Test domain for inheritance");
     org.openmetadata.schema.entity.domains.Domain domain = client.domains().create(createDomain);
@@ -557,7 +556,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     // Create classification with domain
     String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
     CreateClassification classificationRequest = new CreateClassification();
-    classificationRequest.setName(ns.prefix("domain_inherit") + "_" + uniqueSuffix);
+    classificationRequest.setName(ns.shortPrefix("domain_inherit") + "_" + uniqueSuffix);
     classificationRequest.setDescription("Classification for domain inheritance test");
     classificationRequest.setDomains(java.util.List.of(domain.getFullyQualifiedName()));
     Classification classification = client.classifications().create(classificationRequest);
@@ -570,7 +569,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     // Create tag under classification (without explicit domain)
     CreateTag tagRequest = new CreateTag();
-    tagRequest.setName(ns.prefix("inherited_domain_tag"));
+    tagRequest.setName(ns.shortPrefix("inherited_domain_tag"));
     tagRequest.setClassification(classification.getFullyQualifiedName());
     tagRequest.setDescription("Tag for domain inheritance test");
 
@@ -592,19 +591,19 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     // Create classification
     String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
     CreateClassification classificationRequest = new CreateClassification();
-    classificationRequest.setName(ns.prefix("disable_test") + "_" + uniqueSuffix);
+    classificationRequest.setName(ns.shortPrefix("disable_test") + "_" + uniqueSuffix);
     classificationRequest.setDescription("Classification for disable test");
     Classification classification = client.classifications().create(classificationRequest);
 
     // Create two tags under this classification
     CreateTag tagRequest1 = new CreateTag();
-    tagRequest1.setName(ns.prefix("tag_disable_1"));
+    tagRequest1.setName(ns.shortPrefix("tag_disable_1"));
     tagRequest1.setClassification(classification.getFullyQualifiedName());
     tagRequest1.setDescription("First tag for disable test");
     Tag tag1 = createEntity(tagRequest1);
 
     CreateTag tagRequest2 = new CreateTag();
-    tagRequest2.setName(ns.prefix("tag_disable_2"));
+    tagRequest2.setName(ns.shortPrefix("tag_disable_2"));
     tagRequest2.setClassification(classification.getFullyQualifiedName());
     tagRequest2.setDescription("Second tag for disable test");
     Tag tag2 = createEntity(tagRequest2);
@@ -638,186 +637,341 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         fetchedTag2.getDisabled(), "Tag2 should not be disabled after classification is enabled");
   }
 
-  // ===================================================================
-  // RENAME CONSOLIDATION TESTS
-  // These tests verify that child entities (nested tags) are preserved
-  // when a tag is renamed and then other fields are updated within the
-  // same session (which triggers change consolidation).
-  // ===================================================================
-
-  /**
-   * Test that child tags are preserved when a parent tag is renamed and then the description is
-   * updated. This tests the consolidation logic to ensure it doesn't revert to a previous version
-   * with the old FQN.
-   */
   @Test
-  void test_renameAndUpdateDescriptionPreservesChildren(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
+  void test_recognizerFeedback_withRecognizerMetadata_targetsSpecificRecognizer(TestNamespace ns) {
     Classification classification = createClassification(ns);
 
-    // Create parent tag
-    CreateTag parentRequest = new CreateTag();
-    parentRequest.setName(ns.prefix("parent_rename_consolidate"));
-    parentRequest.setClassification(classification.getFullyQualifiedName());
-    parentRequest.setDescription("Initial description");
-    Tag parentTag = createEntity(parentRequest);
+    UUID emailRecognizerId = UUID.randomUUID();
 
-    // Create child tag
-    CreateTag childRequest = new CreateTag();
-    childRequest.setName(ns.prefix("child_for_rename"));
-    childRequest.setClassification(classification.getFullyQualifiedName());
-    childRequest.setParent(parentTag.getFullyQualifiedName());
-    childRequest.setDescription("Child tag");
-    Tag childTag = createEntity(childRequest);
+    CreateTag createEmailTag = new CreateTag();
+    createEmailTag.setName(ns.shortPrefix("email_tag"));
+    createEmailTag.setClassification(classification.getFullyQualifiedName());
+    createEmailTag.setDescription("Email address tag");
+    createEmailTag.setRecognizers(
+        java.util.List.of(
+            new org.openmetadata.schema.type.Recognizer()
+                .withId(emailRecognizerId)
+                .withName("email_pattern_recognizer")
+                .withEnabled(true)
+                .withRecognizerConfig(
+                    new org.openmetadata.schema.type.PredefinedRecognizer()
+                        .withName(
+                            org.openmetadata.schema.type.PredefinedRecognizer.Name
+                                .EMAIL_RECOGNIZER))));
 
-    // Verify child exists
-    Tag fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-    assertNotNull(fetchedChild.getParent());
-    assertEquals(parentTag.getId(), fetchedChild.getParent().getId());
+    Tag emailTag = createEntity(createEmailTag);
 
-    // Rename the parent tag
-    String newName = "renamed-" + parentTag.getName();
-    parentTag.setName(newName);
-    Tag renamed = patchEntity(parentTag.getId().toString(), parentTag);
-    assertEquals(newName, renamed.getName());
+    org.openmetadata.schema.entity.services.DatabaseService dbService =
+        createDatabaseService(ns, "mysql_service");
+    org.openmetadata.schema.entity.data.Database database =
+        createDatabase(ns, dbService.getFullyQualifiedName());
+    org.openmetadata.schema.entity.data.DatabaseSchema schema =
+        createDatabaseSchema(ns, database.getFullyQualifiedName());
 
-    // Verify child after rename
-    fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-    assertNotNull(fetchedChild.getParent(), "Child should have parent after rename");
+    org.openmetadata.schema.type.TagLabelRecognizerMetadata recognizerMetadata =
+        new org.openmetadata.schema.type.TagLabelRecognizerMetadata()
+            .withRecognizerId(emailRecognizerId)
+            .withRecognizerName("email_pattern_recognizer")
+            .withScore(0.85);
 
-    // Update description (triggers consolidation logic)
-    renamed.setDescription("Updated description after rename");
-    Tag afterDescUpdate = patchEntity(renamed.getId().toString(), renamed);
-    assertEquals("Updated description after rename", afterDescUpdate.getDescription());
+    org.openmetadata.schema.type.TagLabelMetadata metadata =
+        new org.openmetadata.schema.type.TagLabelMetadata().withRecognizer(recognizerMetadata);
 
-    // Verify child is preserved after consolidation
-    fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-    assertNotNull(
-        fetchedChild.getParent(),
-        "CRITICAL: Child should have parent after rename + description update consolidation");
+    org.openmetadata.schema.type.TagLabel tagLabel =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN(emailTag.getFullyQualifiedName())
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.GENERATED)
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withMetadata(metadata);
 
-    // Verify the child's parent reference has the updated FQN
+    org.openmetadata.schema.type.Column emailColumn =
+        new org.openmetadata.schema.type.Column()
+            .withName("email_column")
+            .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING)
+            .withTags(java.util.List.of(tagLabel));
+
+    org.openmetadata.schema.api.data.CreateTable createTable =
+        new org.openmetadata.schema.api.data.CreateTable();
+    createTable.setName(ns.shortPrefix("test_table"));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(java.util.List.of(emailColumn));
+
+    org.openmetadata.schema.entity.data.Table testTable =
+        SdkClients.adminClient().tables().create(createTable);
+
+    String entityLink =
+        String.format("<#E::table::%s::columns::email_column>", testTable.getFullyQualifiedName());
+
+    org.openmetadata.schema.type.RecognizerFeedback feedback =
+        new org.openmetadata.schema.type.RecognizerFeedback()
+            .withEntityLink(entityLink)
+            .withTagFQN(emailTag.getFullyQualifiedName())
+            .withFeedbackType(
+                org.openmetadata.schema.type.RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
+            .withUserReason(
+                org.openmetadata.schema.type.RecognizerFeedback.UserReason.NOT_SENSITIVE_DATA)
+            .withUserComments("This is actually an internal identifier, not an email");
+
+    org.openmetadata.service.jdbi3.RecognizerFeedbackRepository feedbackRepo =
+        new org.openmetadata.service.jdbi3.RecognizerFeedbackRepository(
+            org.openmetadata.service.Entity.getCollectionDAO());
+    org.openmetadata.schema.type.RecognizerFeedback created =
+        feedbackRepo.processFeedback(feedback, "admin");
+
     assertEquals(
-        afterDescUpdate.getFullyQualifiedName(),
-        fetchedChild.getParent().getFullyQualifiedName(),
-        "Child's parent reference should have updated FQN after consolidation");
-  }
+        org.openmetadata.schema.type.RecognizerFeedback.Status.PENDING, created.getStatus());
+    assertNotNull(created.getId());
 
-  /**
-   * Test multiple renames followed by updates within the same session. This is a more complex
-   * scenario that tests the robustness of the consolidation fix.
-   */
-  @Test
-  void test_multipleRenamesWithUpdatesPreservesChildren(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(ns);
+    org.openmetadata.schema.type.RecognizerFeedback applied =
+        feedbackRepo.applyFeedback(created, "admin");
 
-    // Create parent tag
-    CreateTag parentRequest = new CreateTag();
-    parentRequest.setName(ns.prefix("parent_multi_rename"));
-    parentRequest.setClassification(classification.getFullyQualifiedName());
-    parentRequest.setDescription("Initial description");
-    Tag parentTag = createEntity(parentRequest);
+    assertEquals(
+        org.openmetadata.schema.type.RecognizerFeedback.Status.APPLIED, applied.getStatus());
+    assertNotNull(applied.getResolution());
 
-    // Create child tag
-    CreateTag childRequest = new CreateTag();
-    childRequest.setName(ns.prefix("child_multi_rename"));
-    childRequest.setClassification(classification.getFullyQualifiedName());
-    childRequest.setParent(parentTag.getFullyQualifiedName());
-    childRequest.setDescription("Child tag");
-    Tag childTag = createEntity(childRequest);
+    org.openmetadata.service.jdbi3.TagRepository tagRepo =
+        (org.openmetadata.service.jdbi3.TagRepository)
+            org.openmetadata.service.Entity.getEntityRepository(
+                org.openmetadata.service.Entity.TAG);
+    Tag updatedTag =
+        tagRepo.getByName(null, emailTag.getFullyQualifiedName(), tagRepo.getFields("recognizers"));
 
-    Tag fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-    assertNotNull(fetchedChild.getParent());
-
-    String[] names = {"renamed-first", "renamed-second", "renamed-third"};
-
-    for (int i = 0; i < names.length; i++) {
-      String newName = names[i] + "-" + UUID.randomUUID().toString().substring(0, 8);
-
-      parentTag.setName(newName);
-      parentTag = patchEntity(parentTag.getId().toString(), parentTag);
-      assertEquals(newName, parentTag.getName());
-
-      fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-      assertNotNull(fetchedChild.getParent(), "Child should have parent after rename " + (i + 1));
-
-      parentTag.setDescription("Description after rename " + (i + 1));
-      parentTag = patchEntity(parentTag.getId().toString(), parentTag);
-
-      fetchedChild = client.tags().get(childTag.getId().toString(), "parent");
-      assertNotNull(
-          fetchedChild.getParent(),
-          "Child should have parent after rename + update iteration " + (i + 1));
+    assertNotNull(updatedTag.getRecognizers());
+    org.openmetadata.schema.type.Recognizer emailRecognizer = null;
+    for (org.openmetadata.schema.type.Recognizer r : updatedTag.getRecognizers()) {
+      if (r.getId().equals(emailRecognizerId)) {
+        emailRecognizer = r;
+        break;
+      }
     }
 
-    // Verify the child's parent reference has the final updated FQN
+    assertNotNull(emailRecognizer);
+    assertNotNull(emailRecognizer.getExceptionList());
+    assertEquals(1, emailRecognizer.getExceptionList().size());
+
+    org.openmetadata.schema.type.RecognizerException exception =
+        emailRecognizer.getExceptionList().get(0);
+    assertEquals(entityLink, exception.getEntityLink());
+    assertEquals(created.getId(), exception.getFeedbackId());
+    assertTrue(exception.getReason().contains("NOT_SENSITIVE_DATA"));
+  }
+
+  @Test
+  void test_recognizerFeedback_withoutRecognizerMetadata_fallsBackToAllRecognizers(
+      TestNamespace ns) {
+    Classification classification = createClassification(ns);
+
+    CreateTag createEmailTag = new CreateTag();
+    createEmailTag.setName(ns.shortPrefix("email_tag_2"));
+    createEmailTag.setClassification(classification.getFullyQualifiedName());
+    createEmailTag.setDescription("Email address tag");
+    createEmailTag.setRecognizers(
+        java.util.List.of(
+            new org.openmetadata.schema.type.Recognizer()
+                .withName("email_recognizer")
+                .withEnabled(true)
+                .withRecognizerConfig(
+                    new org.openmetadata.schema.type.PredefinedRecognizer()
+                        .withName(
+                            org.openmetadata.schema.type.PredefinedRecognizer.Name
+                                .EMAIL_RECOGNIZER))));
+
+    Tag emailTag = createEntity(createEmailTag);
+
+    org.openmetadata.schema.entity.services.DatabaseService dbService =
+        createDatabaseService(ns, "mysql_service_2");
+    org.openmetadata.schema.entity.data.Database database =
+        createDatabase(ns, dbService.getFullyQualifiedName());
+    org.openmetadata.schema.entity.data.DatabaseSchema schema =
+        createDatabaseSchema(ns, database.getFullyQualifiedName());
+
+    org.openmetadata.schema.type.TagLabel tagLabel =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN(emailTag.getFullyQualifiedName())
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.GENERATED)
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withMetadata(null);
+
+    org.openmetadata.schema.type.Column column =
+        new org.openmetadata.schema.type.Column()
+            .withName("email_column_2")
+            .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING)
+            .withTags(java.util.List.of(tagLabel));
+
+    org.openmetadata.schema.api.data.CreateTable createTable2 =
+        new org.openmetadata.schema.api.data.CreateTable();
+    createTable2.setName(ns.shortPrefix("test_table_2"));
+    createTable2.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable2.setColumns(java.util.List.of(column));
+
+    org.openmetadata.schema.entity.data.Table table2 =
+        SdkClients.adminClient().tables().create(createTable2);
+
+    String entityLink =
+        String.format("<#E::table::%s::columns::email_column_2>", table2.getFullyQualifiedName());
+
+    org.openmetadata.schema.type.RecognizerFeedback feedback =
+        new org.openmetadata.schema.type.RecognizerFeedback()
+            .withEntityLink(entityLink)
+            .withTagFQN(emailTag.getFullyQualifiedName())
+            .withFeedbackType(
+                org.openmetadata.schema.type.RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
+            .withUserReason(org.openmetadata.schema.type.RecognizerFeedback.UserReason.TEST_DATA);
+
+    org.openmetadata.service.jdbi3.RecognizerFeedbackRepository feedbackRepo =
+        new org.openmetadata.service.jdbi3.RecognizerFeedbackRepository(
+            org.openmetadata.service.Entity.getCollectionDAO());
+    org.openmetadata.schema.type.RecognizerFeedback created =
+        feedbackRepo.processFeedback(feedback, "admin");
+    org.openmetadata.schema.type.RecognizerFeedback applied =
+        feedbackRepo.applyFeedback(created, "admin");
+
     assertEquals(
-        parentTag.getFullyQualifiedName(),
-        fetchedChild.getParent().getFullyQualifiedName(),
-        "Child's parent reference should have final updated FQN");
+        org.openmetadata.schema.type.RecognizerFeedback.Status.APPLIED, applied.getStatus());
+
+    org.openmetadata.service.jdbi3.TagRepository tagRepo =
+        (org.openmetadata.service.jdbi3.TagRepository)
+            org.openmetadata.service.Entity.getEntityRepository(
+                org.openmetadata.service.Entity.TAG);
+    Tag updatedTag =
+        tagRepo.getByName(null, emailTag.getFullyQualifiedName(), tagRepo.getFields("recognizers"));
+
+    for (org.openmetadata.schema.type.Recognizer r : updatedTag.getRecognizers()) {
+      assertNotNull(r.getExceptionList());
+      boolean hasException =
+          r.getExceptionList().stream().anyMatch(e -> e.getEntityLink().equals(entityLink));
+      assertTrue(hasException);
+    }
   }
 
   @Test
-  void test_tagRename_activityFeedsPreserved(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
+  void test_recognizerFeedback_withInvalidRecognizerId_fallsBackToAllRecognizers(TestNamespace ns) {
     Classification classification = createClassification(ns);
 
-    CreateTag request = new CreateTag();
-    request.setName(ns.prefix("tag_rename_feeds"));
-    request.setClassification(classification.getFullyQualifiedName());
-    request.setDescription("Tag for testing rename with activity feeds");
+    UUID emailRecognizerId = UUID.randomUUID();
 
-    Tag tag = createEntity(request);
-    String originalFqn = tag.getFullyQualifiedName();
+    CreateTag createEmailTag = new CreateTag();
+    createEmailTag.setName(ns.shortPrefix("email_tag_3"));
+    createEmailTag.setClassification(classification.getFullyQualifiedName());
+    createEmailTag.setDescription("Email address tag");
+    createEmailTag.setRecognizers(
+        java.util.List.of(
+            new org.openmetadata.schema.type.Recognizer()
+                .withId(emailRecognizerId)
+                .withName("email_pattern_recognizer")
+                .withEnabled(true)
+                .withRecognizerConfig(
+                    new org.openmetadata.schema.type.PredefinedRecognizer()
+                        .withName(
+                            org.openmetadata.schema.type.PredefinedRecognizer.Name
+                                .EMAIL_RECOGNIZER))));
 
-    Thread.sleep(1000);
+    Tag emailTag = createEntity(createEmailTag);
 
-    String newName = ns.prefix("tag_renamed_feeds");
-    tag.setName(newName);
-    Tag renamedTag = patchEntity(tag.getId().toString(), tag);
+    org.openmetadata.schema.entity.services.DatabaseService dbService =
+        createDatabaseService(ns, "mysql_service_3");
+    org.openmetadata.schema.entity.data.Database database =
+        createDatabase(ns, dbService.getFullyQualifiedName());
+    org.openmetadata.schema.entity.data.DatabaseSchema schema =
+        createDatabaseSchema(ns, database.getFullyQualifiedName());
 
-    assertNotEquals(originalFqn, renamedTag.getFullyQualifiedName());
-    assertTrue(renamedTag.getFullyQualifiedName().contains(newName));
+    UUID nonExistentRecognizerId = UUID.randomUUID();
 
-    Thread.sleep(2000);
+    org.openmetadata.schema.type.TagLabelRecognizerMetadata invalidRecognizerMetadata =
+        new org.openmetadata.schema.type.TagLabelRecognizerMetadata()
+            .withRecognizerId(nonExistentRecognizerId)
+            .withRecognizerName("nonexistent_recognizer")
+            .withScore(0.85);
 
-    Tag fetchedTag = getEntity(renamedTag.getId().toString());
-    assertEquals(renamedTag.getFullyQualifiedName(), fetchedTag.getFullyQualifiedName());
-    assertEquals(newName, fetchedTag.getName());
+    org.openmetadata.schema.type.TagLabelMetadata invalidMetadata =
+        new org.openmetadata.schema.type.TagLabelMetadata()
+            .withRecognizer(invalidRecognizerMetadata);
+
+    org.openmetadata.schema.type.TagLabel tagLabel =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN(emailTag.getFullyQualifiedName())
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.GENERATED)
+            .withSource(org.openmetadata.schema.type.TagLabel.TagSource.CLASSIFICATION)
+            .withMetadata(invalidMetadata);
+
+    org.openmetadata.schema.type.Column column =
+        new org.openmetadata.schema.type.Column()
+            .withName("email_column_3")
+            .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING)
+            .withTags(java.util.List.of(tagLabel));
+
+    org.openmetadata.schema.api.data.CreateTable createTable3 =
+        new org.openmetadata.schema.api.data.CreateTable();
+    createTable3.setName(ns.shortPrefix("test_table_3"));
+    createTable3.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable3.setColumns(java.util.List.of(column));
+
+    org.openmetadata.schema.entity.data.Table table3 =
+        SdkClients.adminClient().tables().create(createTable3);
+
+    String entityLink =
+        String.format("<#E::table::%s::columns::email_column_3>", table3.getFullyQualifiedName());
+
+    org.openmetadata.schema.type.RecognizerFeedback feedback =
+        new org.openmetadata.schema.type.RecognizerFeedback()
+            .withEntityLink(entityLink)
+            .withTagFQN(emailTag.getFullyQualifiedName())
+            .withFeedbackType(
+                org.openmetadata.schema.type.RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
+            .withUserReason(
+                org.openmetadata.schema.type.RecognizerFeedback.UserReason.WRONG_DATA_TYPE);
+
+    org.openmetadata.service.jdbi3.RecognizerFeedbackRepository feedbackRepo =
+        new org.openmetadata.service.jdbi3.RecognizerFeedbackRepository(
+            org.openmetadata.service.Entity.getCollectionDAO());
+    org.openmetadata.schema.type.RecognizerFeedback created =
+        feedbackRepo.processFeedback(feedback, "admin");
+    org.openmetadata.schema.type.RecognizerFeedback applied =
+        feedbackRepo.applyFeedback(created, "admin");
+
+    assertEquals(
+        org.openmetadata.schema.type.RecognizerFeedback.Status.APPLIED, applied.getStatus());
+
+    org.openmetadata.service.jdbi3.TagRepository tagRepo =
+        (org.openmetadata.service.jdbi3.TagRepository)
+            org.openmetadata.service.Entity.getEntityRepository(
+                org.openmetadata.service.Entity.TAG);
+    Tag updatedTag =
+        tagRepo.getByName(null, emailTag.getFullyQualifiedName(), tagRepo.getFields("recognizers"));
+
+    for (org.openmetadata.schema.type.Recognizer r : updatedTag.getRecognizers()) {
+      boolean hasException =
+          r.getExceptionList() != null
+              && r.getExceptionList().stream().anyMatch(e -> e.getEntityLink().equals(entityLink));
+      assertTrue(hasException);
+    }
   }
 
-  @Test
-  void test_tagRename_childTagsUpdated(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(ns);
+  private org.openmetadata.schema.entity.services.DatabaseService createDatabaseService(
+      TestNamespace ns, String serviceName) {
+    org.openmetadata.schema.api.services.CreateDatabaseService createService =
+        new org.openmetadata.schema.api.services.CreateDatabaseService();
+    createService.setName(ns.shortPrefix(serviceName));
+    createService.setServiceType(
+        org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql);
+    return SdkClients.adminClient().databaseServices().create(createService);
+  }
 
-    CreateTag parentRequest = new CreateTag();
-    parentRequest.setName(ns.prefix("parent_rename"));
-    parentRequest.setClassification(classification.getFullyQualifiedName());
-    parentRequest.setDescription("Parent tag for rename test");
+  private org.openmetadata.schema.entity.data.Database createDatabase(
+      TestNamespace ns, String serviceFqn) {
+    org.openmetadata.schema.api.data.CreateDatabase createDatabase =
+        new org.openmetadata.schema.api.data.CreateDatabase();
+    createDatabase.setName(ns.shortPrefix("test_database"));
+    createDatabase.setService(serviceFqn);
+    return SdkClients.adminClient().databases().create(createDatabase);
+  }
 
-    Tag parentTag = createEntity(parentRequest);
-
-    CreateTag childRequest = new CreateTag();
-    childRequest.setName(ns.prefix("child_tag"));
-    childRequest.setClassification(classification.getFullyQualifiedName());
-    childRequest.setParent(parentTag.getFullyQualifiedName());
-    childRequest.setDescription("Child tag");
-
-    Tag childTag = createEntity(childRequest);
-    String originalChildFqn = childTag.getFullyQualifiedName();
-
-    Thread.sleep(1000);
-
-    String newParentName = ns.prefix("parent_renamed");
-    parentTag.setName(newParentName);
-    Tag renamedParent = patchEntity(parentTag.getId().toString(), parentTag);
-
-    Thread.sleep(2000);
-
-    Tag fetchedChild = getEntity(childTag.getId().toString());
-    assertNotEquals(originalChildFqn, fetchedChild.getFullyQualifiedName());
-    assertTrue(fetchedChild.getFullyQualifiedName().contains(newParentName));
+  private org.openmetadata.schema.entity.data.DatabaseSchema createDatabaseSchema(
+      TestNamespace ns, String databaseFqn) {
+    org.openmetadata.schema.api.data.CreateDatabaseSchema createSchema =
+        new org.openmetadata.schema.api.data.CreateDatabaseSchema();
+    createSchema.setName(ns.shortPrefix("test_schema"));
+    createSchema.setDatabase(databaseFqn);
+    return SdkClients.adminClient().databaseSchemas().create(createSchema);
   }
 }

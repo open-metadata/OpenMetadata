@@ -648,3 +648,40 @@ class SnowflakeUnitTest(TestCase):
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
+
+    def test_empty_tag_value_skipped_with_warning(self):
+        """Test that empty TAG_VALUE tags are skipped with a warning.
+
+        In Snowflake, tags can have key-only semantics where TAG_VALUE is empty.
+        When this happens, we should skip the tag and log a warning rather than
+        fail with a validation error.
+        """
+        for source in self.sources.values():
+            mock_schema_tags = [
+                Mock(
+                    SCHEMA_NAME="TEST_SCHEMA",
+                    TAG_NAME="SELECT_STAR_STATUS_PII",
+                    TAG_VALUE="",
+                ),
+                Mock(
+                    SCHEMA_NAME="TEST_SCHEMA",
+                    TAG_NAME="ANOTHER_EMPTY_TAG",
+                    TAG_VALUE=None,
+                ),
+                Mock(
+                    SCHEMA_NAME="TEST_SCHEMA",
+                    TAG_NAME="TEST_TAG",
+                    TAG_VALUE="123",
+                ),
+            ]
+            mock_execute = Mock()
+            mock_execute.all.return_value = mock_schema_tags
+            source.engine.execute = Mock(return_value=mock_execute)
+
+            source.set_schema_tags_map("TEST_DATABASE")
+            # Only the tag with a value should be stored
+            self.assertEqual(len(source.schema_tags_map["TEST_SCHEMA"]), 1)
+            self.assertEqual(
+                source.schema_tags_map["TEST_SCHEMA"][0],
+                {"tag_name": "TEST_TAG", "tag_value": "123"},
+            )
