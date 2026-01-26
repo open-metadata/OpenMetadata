@@ -64,7 +64,8 @@ const insertPluginItem = (
 
 export const mergePluginSidebarItems = (
   baseItems: LeftSidebarItem[],
-  pluginItems: Array<LeftSidebarItemExample>
+  pluginItems: Array<LeftSidebarItemExample>,
+  navigationItems?: NavigationItem[]
 ): LeftSidebarItem[] => {
   if (isEmpty(pluginItems)) {
     return baseItems;
@@ -73,28 +74,19 @@ export const mergePluginSidebarItems = (
   const sortedPluginItems = sortPluginItemsByIndex(pluginItems);
   const mergedItems = [...baseItems];
 
-  sortedPluginItems.forEach((item) => insertPluginItem(mergedItems, item));
+  sortedPluginItems.forEach((item) => {
+    const navData = navigationItems?.find((i) => i.id === item.key);
+
+    !navData?.isHidden && insertPluginItem(mergedItems, item);
+  });
 
   return mergedItems;
 };
 
 const extractPluginSidebarItems = (
-  plugins: AppPlugin[],
-  navigationItems?: NavigationItem[]
-): Array<LeftSidebarItemExample> => {
-  const pluginItems = plugins.flatMap(
-    (plugin) => plugin.getSidebarActions?.() ?? []
-  );
-
-  if (navigationItems) {
-    return pluginItems.filter(
-      (item) =>
-        !navigationItems.find((navItem) => navItem.id === item.key)?.isHidden
-    );
-  }
-
-  return pluginItems;
-};
+  plugins: AppPlugin[]
+): Array<LeftSidebarItemExample> =>
+  plugins.flatMap((plugin) => plugin.getSidebarActions?.() ?? []);
 
 export const getSidebarItemsWithPlugins = (
   plugins?: AppPlugin[]
@@ -260,9 +252,9 @@ export const filterHiddenNavigationItems = (
     .filter((item): item is LeftSidebarItem => item !== null);
 
   if (plugins?.length) {
-    const pluginItems = extractPluginSidebarItems(plugins, navigationItems);
+    const pluginItems = extractPluginSidebarItems(plugins);
 
-    return mergePluginSidebarItems(filteredItems, pluginItems);
+    return mergePluginSidebarItems(filteredItems, pluginItems, navigationItems);
   }
 
   return filteredItems;
