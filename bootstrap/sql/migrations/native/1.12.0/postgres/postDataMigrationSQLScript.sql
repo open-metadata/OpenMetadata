@@ -91,3 +91,9 @@ SET json = jsonb_set(
     )
 )
 WHERE name = 'tableRowInsertedCountToBeBetween';
+
+-- Add validatorClass to all system test definitions (set to PascalCase name + 'Validator' if not present)
+UPDATE test_definition
+SET json = jsonb_set(json::jsonb, '{validatorClass}', to_jsonb(INITCAP(SUBSTRING(json->>'name', 1, 1)) || SUBSTRING(json->>'name', 2) || 'Validator'))
+WHERE json->>'validatorClass' IS NULL
+  AND json->>'provider' = 'system';
