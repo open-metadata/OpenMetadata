@@ -235,6 +235,106 @@ class JwtFilterTest {
         exception.getMessage().toLowerCase(Locale.ROOT).contains("token verification failed"));
   }
 
+  @Test
+  void testEmailFirstFlowSuccess() {
+    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of());
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("email", "john.doe@company.com")
+            .withClaim("name", "John Doe")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    emailFirstFilter.filter(context);
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
+
+    assertEquals("john.doe", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
+  @Test
+  void testEmailFirstFlowWithDomainValidation() {
+    JwtFilter emailFirstFilter =
+        new JwtFilter(jwkProvider, "email", "name", List.of("company.com", "corp.com"));
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("email", "john.doe@company.com")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    emailFirstFilter.filter(context);
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
+
+    assertEquals("john.doe", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
+  @Test
+  void testEmailFirstFlowWithInvalidDomain() {
+    JwtFilter emailFirstFilter =
+        new JwtFilter(jwkProvider, "email", "name", List.of("company.com"));
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("email", "john.doe@gmail.com")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> emailFirstFilter.filter(context));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("domain"));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("not in allowed list"));
+  }
+
+  @Test
+  void testEmailFirstFlowMissingEmailClaim() {
+    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "email", "name", List.of());
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "john")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> emailFirstFilter.filter(context));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("email claim"));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("not found"));
+  }
+
+  @Test
+  void testEmailFirstFlowWithCustomEmailClaim() {
+    JwtFilter emailFirstFilter = new JwtFilter(jwkProvider, "userEmail", "displayName", List.of());
+
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("userEmail", "jane@example.org")
+            .withClaim("displayName", "Jane Smith")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    emailFirstFilter.filter(context);
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
+
+    assertEquals("jane", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
   /**
    * Creates the ContainerRequestsContext that is passed to the filter. This object can be quite complex, but the
    * JwtFilter cares only about the Authorization header and request URI.
