@@ -1434,8 +1434,6 @@ export const renameDomain = async (page: Page, newName: string) => {
   const domainRes = page.waitForResponse('/api/v1/domains/name/*');
   await page.reload();
   await domainRes;
-
-  await waitForAllLoadersToDisappear(page);
 };
 
 /**
