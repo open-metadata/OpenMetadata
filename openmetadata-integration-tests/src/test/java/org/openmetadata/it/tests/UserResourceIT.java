@@ -117,6 +117,30 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     return sanitized + "@test.openmetadata.org";
   }
 
+  /**
+   * Helper to find a user in paginated results with a given filter.
+   * Paginates through all pages until the user is found or no more pages exist.
+   */
+  private boolean findUserInPaginatedResults(UUID userId, String filterKey, String filterValue) {
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    params.addFilter(filterKey, filterValue);
+
+    ListResponse<User> page = listEntities(params);
+    while (page != null && page.getData() != null) {
+      if (page.getData().stream().anyMatch(u -> u.getId().equals(userId))) {
+        return true;
+      }
+      String afterCursor = page.getPaging() != null ? page.getPaging().getAfter() : null;
+      if (afterCursor == null) {
+        break;
+      }
+      params.setAfter(afterCursor);
+      page = listEntities(params);
+    }
+    return false;
+  }
+
   @Override
   protected CreateUser createMinimalRequest(TestNamespace ns) {
     String name = ns.prefix("user");
@@ -827,15 +851,9 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
         botUsers.getData().stream().anyMatch(u -> u.getId().equals(botUser.getId())),
         "Bot user should be in filtered list");
 
-    // List with isBot=false filter
-    ListParams nonBotParams = new ListParams();
-    nonBotParams.setLimit(100);
-    nonBotParams.addFilter("isBot", "false");
-    ListResponse<User> nonBotUsers = listEntities(nonBotParams);
-
-    assertNotNull(nonBotUsers.getData());
+    // List with isBot=false filter using paginated search
     assertTrue(
-        nonBotUsers.getData().stream().anyMatch(u -> u.getId().equals(regularUser.getId())),
+        findUserInPaginatedResults(regularUser.getId(), "isBot", "false"),
         "Regular user should be in filtered list");
   }
 
@@ -862,17 +880,10 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withName(userName2)
             .withEmail(toValidEmail(userName2))
             .withDescription("User not in team for filter test");
-    User user2 = createEntity(request2);
+    createEntity(request2);
 
-    // List with team filter
-    ListParams teamParams = new ListParams();
-    teamParams.setLimit(100);
-    teamParams.addFilter("team", testTeam1().getName());
-    ListResponse<User> teamUsers = listEntities(teamParams);
-
-    assertNotNull(teamUsers.getData());
     assertTrue(
-        teamUsers.getData().stream().anyMatch(u -> u.getId().equals(user1.getId())),
+        findUserInPaginatedResults(user1.getId(), "team", testTeam1().getName()),
         "User in team should be in filtered list");
   }
 
@@ -2023,14 +2034,8 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withDescription("User not in domain");
     createEntity(request2);
 
-    ListParams params = new ListParams();
-    params.setLimit(100);
-    params.addFilter("domain", testDomain().getName());
-    ListResponse<User> domainUsers = listEntities(params);
-
-    assertNotNull(domainUsers.getData());
     assertTrue(
-        domainUsers.getData().stream().anyMatch(u -> u.getId().equals(user1.getId())),
+        findUserInPaginatedResults(user1.getId(), "domain", testDomain().getName()),
         "User in domain should be in filtered list");
   }
 
