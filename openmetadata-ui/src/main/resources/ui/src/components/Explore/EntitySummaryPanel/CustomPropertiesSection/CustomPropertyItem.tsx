@@ -25,9 +25,9 @@ import { CustomProperty } from '../../../../generated/entity/type';
 import { CustomPropertyValueRenderer } from '../../../../utils/CustomPropertyRenderers';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { PropertyValueType } from '../../../common/CustomPropertyTable/CustomPropertyTable.interface';
+import { ExtensionDataProps } from '../../../Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
 import './CustomPropertiesSection.less';
 import CustomPropertyInput from './CustomPropertyInput';
-import { ExtensionDataProps } from '../../../Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
 
 const CustomPropertyItem: FC<{
   property: CustomProperty;

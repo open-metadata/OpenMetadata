@@ -60,6 +60,7 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getTagPath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
+import tagClassBase from '../../utils/TagClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ClassificationFormDrawer from './ClassificationFormDrawer';
 import TagFormDrawer from './TagFormDrawer';
@@ -81,6 +82,8 @@ const TagsPage = () => {
   const [editTag, setEditTag] = useState<Tag>();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isClassificationLoading, setIsClassificationLoading] =
+    useState<boolean>(false);
   const [isTagFormLoading, setIsTagFormLoading] = useState<boolean>(false);
   const [isClassificationFormLoading, setIsClassificationFormLoading] =
     useState<boolean>(false);
@@ -163,49 +166,41 @@ const TagsPage = () => {
     }
   };
 
-  const fetchCurrentClassification = async (fqn: string, update?: boolean) => {
-    if (currentClassification?.fullyQualifiedName !== fqn || update) {
-      setIsLoading(true);
-      try {
-        const currentClassification = await getClassificationByName(fqn, {
-          fields: [
-            TabSpecificField.OWNERS,
-            TabSpecificField.USAGE_COUNT,
-            TabSpecificField.TERM_COUNT,
-            TabSpecificField.DOMAINS,
-          ],
-        });
-        if (currentClassification) {
-          setClassifications((prevClassifications) =>
-            prevClassifications.map((data) => {
-              if (data.fullyQualifiedName === fqn) {
-                return {
-                  ...data,
-                  termCount: currentClassification.termCount,
-                };
-              }
+  const fetchCurrentClassification = async (fqn: string) => {
+    setIsClassificationLoading(true);
+    try {
+      const currentClassification = await getClassificationByName(fqn, {
+        fields: tagClassBase.getClassificationFields(),
+      });
+      if (currentClassification) {
+        setClassifications((prevClassifications) =>
+          prevClassifications.map((data) => {
+            if (data.fullyQualifiedName === fqn) {
+              return {
+                ...data,
+                termCount: currentClassification.termCount,
+              };
+            }
 
-              return data;
-            })
-          );
-          setCurrentClassification(currentClassification);
-
-          setIsLoading(false);
-        } else {
-          showErrorToast(t('server.unexpected-response'));
-        }
-      } catch (err) {
-        const errMsg = getErrorText(
-          err as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.tag-category-lowercase'),
+            return data;
           })
         );
-        showErrorToast(errMsg);
-        setError(errMsg);
-        setCurrentClassification(undefined);
-        setIsLoading(false);
+        setCurrentClassification(currentClassification);
+      } else {
+        showErrorToast(t('server.unexpected-response'));
       }
+    } catch (err) {
+      const errMsg = getErrorText(
+        err as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.tag-category-lowercase'),
+        })
+      );
+      showErrorToast(errMsg);
+      setError(errMsg);
+      setCurrentClassification(undefined);
+    } finally {
+      setIsClassificationLoading(false);
     }
   };
 
@@ -503,8 +498,6 @@ const TagsPage = () => {
   }, []);
 
   const onClickClassifications = (category: Classification) => {
-    setCurrentClassification(category);
-
     navigate(getTagPath(category.fullyQualifiedName));
   };
 
@@ -710,10 +703,10 @@ const TagsPage = () => {
                 onClick={() => onClickClassifications(category)}>
                 <Typography
                   noWrap
-                  className="ant-typography-ellipsis-custom self-center m-b-0 tag-category"
-                  component="p"
+                  className="self-center m-b-0 tag-category"
                   data-testid="tag-name"
-                  title={getEntityName(category)}>
+                  title={getEntityName(category)}
+                  variant="body2">
                   {getEntityName(category)}
                   {category.disabled && (
                     <Badge
@@ -799,6 +792,7 @@ const TagsPage = () => {
                 handleToggleDisable={handleToggleDisable}
                 handleUpdateClassification={handleUpdateClassification}
                 isAddingTag={false}
+                isClassificationLoading={isClassificationLoading}
                 ref={classificationDetailsRef}
               />
 

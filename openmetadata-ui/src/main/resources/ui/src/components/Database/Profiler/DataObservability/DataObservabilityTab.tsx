@@ -86,7 +86,10 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
           EntityTabs.PROFILER,
           newValue as ProfilerTabPath
         ),
-        search: Qs.stringify(searchData),
+        search:
+          newValue === ProfilerTabPath.INCIDENTS
+            ? undefined
+            : Qs.stringify(searchData),
       },
       {
         replace: true,

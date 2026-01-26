@@ -323,6 +323,14 @@ jest.mock('../../../../utils/formUtils', () => ({
   createScrollToErrorHandler: jest.fn(() => jest.fn()),
 }));
 
+// Mock DataQualityUtils
+jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => ({
+  ...jest.requireActual('../../../../utils/DataQuality/DataQualityUtils'),
+  getServiceTypeForTestDefinition: jest
+    .fn()
+    .mockImplementation(() => 'BigQuery'),
+}));
+
 describe('TestCaseFormV1 Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -420,6 +428,7 @@ describe('TestCaseFormV1 Component', () => {
           limit: 50,
           testPlatform: 'OpenMetadata',
           supportedDataType: undefined,
+          supportedService: 'BigQuery',
         });
         expect(document.querySelector('.ant-select')).toBeInTheDocument();
       });

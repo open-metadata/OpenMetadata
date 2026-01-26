@@ -173,9 +173,12 @@ function WorksheetColumnsTable() {
                   columnConstraint: record.constraint,
                 })}
                 <Typography.Text
-                  className={classNames('m-b-0 d-block break-word text-link-color', {
-                    'text-grey-600': !isEmpty(displayName),
-                  })}
+                  className={classNames(
+                    'm-b-0 d-block break-word text-link-color',
+                    {
+                      'text-grey-600': !isEmpty(displayName),
+                    }
+                  )}
                   data-testid="column-name">
                   {name}
                 </Typography.Text>

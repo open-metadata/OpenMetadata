@@ -32,6 +32,8 @@ import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
 import { ReactComponent as FileIcon } from '../assets/svg/file-colored-new.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-term-colored-new.svg';
 import { ReactComponent as HealthIcon } from '../assets/svg/health-check.svg';
+import { ReactComponent as IconImport } from '../assets/svg/ic-import.svg';
+import { ReactComponent as LearningIcon } from '../assets/svg/learning-colored.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/lineage-colored.svg';
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored-new.svg';
@@ -652,6 +654,20 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.DATA_ASSET_RULES}`,
             icon: DataAssetRulesIcon,
             isBeta: true,
+          },
+          {
+            label: t('label.learning-resources'),
+            description: t('message.learning-resources-management-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LEARNING_RESOURCES}`,
+            icon: LearningIcon,
+          },
+          {
+            label: t('label.column-bulk-operations'),
+            description: t('message.column-bulk-operations-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.COLUMN_BULK_OPERATIONS}`,
+            icon: IconImport,
           },
         ],
       },

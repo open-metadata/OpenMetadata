@@ -1,0 +1,114 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/userTask/userApprovalTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateRecognizerFeedbackApprovalTask",
+  "description": "Defines a Task to approve recognizer feedback on a Tag.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.userTask.CreateRecognizerFeedbackApprovalTaskDefinition",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "userTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "createRecognizerFeedbackApprovalTask"
+    },
+    "name": {
+      "title": "Name",
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "title": "Node Configuration",
+      "type": "object",
+      "properties": {
+        "assignees": {
+          "title": "Assignees",
+          "description": "People/Teams assigned to the Task.",
+          "type": "object",
+          "properties": {
+            "addReviewers": {
+              "description": "Add the Reviewers to the assignees List.",
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "approvalThreshold": {
+          "title": "Approval Threshold",
+          "description": "Number of reviewers that must approve for the task to be completed. Default is 1 (any single reviewer can approve).",
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "rejectionThreshold": {
+          "title": "Rejection Threshold",
+          "description": "Number of reviewers that must reject for the task to be rejected. Default is 1 (any single reviewer can reject). This allows for scenarios where you want multiple approvals but a single rejection can veto.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        }
+      },
+      "required": ["assignees"],
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["relatedEntity", "updatedBy", "triggeringObjectId"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 3
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        },
+        "updatedBy": {
+          "type": "string",
+          "default": "global"
+        },
+        "triggeringObjectId": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity", "updatedBy", "triggeringObjectId"]
+    },
+    "output": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["updatedBy"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "branches": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["true", "false"],
+      "additionalItems": false,
+      "minItems": 2,
+      "maxItems": 2
+    }
+  }
+}
