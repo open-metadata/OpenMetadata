@@ -435,7 +435,7 @@ export const applyCustomPropertyFilter = async (
 
       await page.keyboard.press('Enter');
     } else {
-      handlePropertyValueInput(
+      await handlePropertyValueInput(
         page,
         ruleLocator,
         operator,
