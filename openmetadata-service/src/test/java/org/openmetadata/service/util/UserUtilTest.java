@@ -14,9 +14,11 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
@@ -97,5 +99,53 @@ class UserUtilTest {
     assertTrue(exception.getMessage().contains("Unable to generate unique username"));
     assertTrue(exception.getMessage().contains("john@company.com"));
     assertTrue(exception.getMessage().contains("100 attempts"));
+  }
+
+  @Test
+  void testIsAdminEmail_inList() {
+    List<String> adminEmails = List.of("admin@company.com", "super@company.com");
+
+    assertTrue(UserUtil.isAdminEmail("admin@company.com", adminEmails));
+    assertTrue(UserUtil.isAdminEmail("super@company.com", adminEmails));
+  }
+
+  @Test
+  void testIsAdminEmail_notInList() {
+    List<String> adminEmails = List.of("admin@company.com");
+
+    assertFalse(UserUtil.isAdminEmail("user@company.com", adminEmails));
+  }
+
+  @Test
+  void testIsAdminEmail_caseInsensitive() {
+    List<String> adminEmails = List.of("Admin@Company.COM");
+
+    assertTrue(UserUtil.isAdminEmail("admin@company.com", adminEmails));
+  }
+
+  @Test
+  void testIsAdminEmail_emptyList() {
+    List<String> adminEmails = List.of();
+
+    assertFalse(UserUtil.isAdminEmail("admin@company.com", adminEmails));
+  }
+
+  @Test
+  void testIsAdminEmail_nullList() {
+    assertFalse(UserUtil.isAdminEmail("admin@company.com", null));
+  }
+
+  @Test
+  void testIsAdminEmail_nullEmail() {
+    List<String> adminEmails = List.of("admin@company.com");
+
+    assertFalse(UserUtil.isAdminEmail(null, adminEmails));
+  }
+
+  @Test
+  void testIsAdminEmail_emptyEmail() {
+    List<String> adminEmails = List.of("admin@company.com");
+
+    assertFalse(UserUtil.isAdminEmail("", adminEmails));
   }
 }

@@ -555,6 +555,26 @@ public final class UserUtil {
         .withScimUserName(create.getScimUserName());
   }
 
+  /**
+   * Check if email is in the admin emails list.
+   *
+   * @param email user's email address
+   * @param adminEmails list of admin email addresses
+   * @return true if email is an admin email
+   */
+  public static boolean isAdminEmail(String email, List<String> adminEmails) {
+    if (nullOrEmpty(email)) {
+      return false;
+    }
+    if (adminEmails == null || adminEmails.isEmpty()) {
+      return false;
+    }
+
+    String normalizedEmail = email.toLowerCase();
+    return adminEmails.stream()
+        .anyMatch(adminEmail -> adminEmail.toLowerCase().equals(normalizedEmail));
+  }
+
   public static void validateUserPersonaPreferencesImage(LandingPageSettings settings) {
     if (settings.getHeaderImage() != null && !settings.getHeaderImage().isEmpty()) {
       try {
