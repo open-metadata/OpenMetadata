@@ -1,0 +1,14 @@
+{
+  "name": "MicrosoftFabricPipeline",
+  "displayName": "Microsoft Fabric Pipeline Test Connection",
+  "description": "This Test Connection validates the access against the Microsoft Fabric workspace and basic metadata extraction of pipelines.",
+  "steps": [
+    {
+      "name": "GetPipelines",
+      "description": "Validate that the API can fetch pipelines from the Microsoft Fabric workspace using the Service Principal credentials.",
+      "errorMessage": "Failed to fetch pipelines. Please validate the Service Principal credentials (clientId, clientSecret, tenantId) and ensure the workspaceId is correct and the Service Principal has Admin/Contributor role in the workspace.",
+      "shortCircuit": true,
+      "mandatory": true
+    }
+  ]
+}

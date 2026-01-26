@@ -299,7 +299,7 @@ class TestSftpSource(TestCase):
 
         subdir1 = self.sftp_source._directories_cache["/data/subdir1"]
         self.assertEqual(subdir1.name, "subdir1")
-        self.assertEqual(subdir1.path, ["data", "subdir1"])
+        self.assertEqual(subdir1.full_path, "/data/subdir1")
 
     def test_fetch_all_files(self):
         """Test file fetching"""

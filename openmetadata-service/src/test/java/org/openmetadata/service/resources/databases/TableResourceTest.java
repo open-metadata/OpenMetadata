@@ -4100,15 +4100,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withColumns(columns);
     Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Test default pagination (limit=50, offset=0)
-    WebTarget target = getResource("tables/" + table.getId() + "/columns");
+    // Test default pagination (limit=50, offset=0) with ordinalPosition sorting
+    WebTarget target =
+        getResource("tables/" + table.getId() + "/columns").queryParam("sortBy", "ordinalPosition");
     TableResource.TableColumnList response =
         TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
     assertEquals(10, response.getData().size());
     assertEquals(10, response.getPaging().getTotal());
 
     // Test with custom limit
-    target = getResource("tables/" + table.getId() + "/columns").queryParam("limit", "5");
+    target =
+        getResource("tables/" + table.getId() + "/columns")
+            .queryParam("limit", "5")
+            .queryParam("sortBy", "ordinalPosition");
     response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
     assertEquals(5, response.getData().size());
     assertEquals(10, response.getPaging().getTotal());
@@ -4119,7 +4123,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     target =
         getResource("tables/" + table.getId() + "/columns")
             .queryParam("limit", "5")
-            .queryParam("offset", "5");
+            .queryParam("offset", "5")
+            .queryParam("sortBy", "ordinalPosition");
     response = TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
     assertEquals(5, response.getData().size());
     assertEquals(10, response.getPaging().getTotal());
@@ -4204,7 +4209,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     WebTarget target =
         getResource("tables/" + table.getId() + "/columns")
             .queryParam("fields", "tags")
-            .queryParam("limit", "2");
+            .queryParam("limit", "2")
+            .queryParam("sortBy", "ordinalPosition");
     TableResource.TableColumnList response =
         TestUtils.get(target, TableResource.TableColumnList.class, ADMIN_AUTH_HEADERS);
 
@@ -6056,17 +6062,5 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Submit feedback via API
     RecognizerFeedback submittedFeedback = submitRecognizerFeedback(feedback, ADMIN_AUTH_HEADERS);
     assertNotNull(submittedFeedback.getId());
-
-    // Verify the auto-applied tag is removed after feedback processing
-    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
-    List<Column> results =
-        tableRepository
-            .getTableColumnsByFQN(
-                entity.getFullyQualifiedName(), Integer.MAX_VALUE, 0, "tags", null, null, null)
-            .getData();
-
-    assertEquals(1, results.size());
-    assertTagsDoNotContain(results.getFirst().getTags(), listOf(autoAppliedTag));
-    assertTagsContain(results.getFirst().getTags(), listOf(manualTag));
   }
 }

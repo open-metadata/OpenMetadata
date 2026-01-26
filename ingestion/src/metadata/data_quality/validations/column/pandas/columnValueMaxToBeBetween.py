@@ -87,7 +87,7 @@ class ColumnValueMaxToBeBetweenValidator(
         dimension_results = []
 
         try:
-            dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            dfs = self.runner
             max_impl = Metrics.MAX(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(

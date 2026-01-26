@@ -14,12 +14,15 @@ Table Column Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import cast
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import inspect, literal
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.sql.functions import FunctionElement
+
+if TYPE_CHECKING:
+    from metadata.profiler.processor.runner import PandasRunner
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
@@ -83,8 +86,10 @@ class ColumnCount(StaticMetric):
             )
         return ColumnCountFn(literal(len(inspect(self.table).c)))
 
-    def df_fn(self, dfs=None):
+    def df_fn(self, dfs: Optional["PandasRunner"] = None):
         """dataframe function"""
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
 
-        return len(cast(DataFrame, dfs[0]).columns)
+        if dfs is None:
+            return None
+
+        return len(next(dfs()).columns)

@@ -48,6 +48,8 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -820,5 +822,36 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
 
     // Cleanup
     deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void get_entityIncludeDeleted_200(TestInfo test) throws IOException {
+    if (!supportsSoftDelete) {
+      return;
+    }
+    // Create an entity using POST
+    CreateDashboard create = createRequest(test);
+    Dashboard entity = createEntity(create, ADMIN_AUTH_HEADERS);
+    Dashboard entityBeforeDeletion = getEntity(entity.getId(), "*", ADMIN_AUTH_HEADERS);
+
+    // Soft delete the entity
+    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
+    assertEntityDeleted(entity, false);
+
+    // Ensure entity is returned in GET with include param set to deleted || all
+    Map<String, String> queryParams = new HashMap<>();
+    for (Include include : List.of(Include.DELETED, Include.ALL)) {
+      queryParams.put("include", include.value());
+      queryParams.put(
+          "includeRelations",
+          String.format("owners:%s,followers:%s,charts:all", include.value(), include.value()));
+      Dashboard entityAfterDeletion =
+          getEntity(entity.getId(), queryParams, "*", ADMIN_AUTH_HEADERS);
+      validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, ADMIN_AUTH_HEADERS);
+      entityAfterDeletion =
+          getEntityByName(entity.getFullyQualifiedName(), queryParams, "*", ADMIN_AUTH_HEADERS);
+      validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, ADMIN_AUTH_HEADERS);
+    }
   }
 }
