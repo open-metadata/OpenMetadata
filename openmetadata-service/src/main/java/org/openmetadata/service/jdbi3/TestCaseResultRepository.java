@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
@@ -33,6 +34,7 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
+@Slf4j
 public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCaseResult> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseResults";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
@@ -231,6 +233,13 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
       }
       updated.setTestCaseResult(testCaseResult);
     } else {
+      LOG.warn(
+          "[RACE-CONDITION-MONITOR] Skipping older test result | testCaseFQN={} | "
+              + "incomingTimestamp={} | storedTimestamp={} | threadId={}",
+          testCaseResult.getTestCaseFQN(),
+          testCaseResult.getTimestamp(),
+          original.getTestCaseResult().getTimestamp(),
+          Thread.currentThread().getId());
       return;
     }
     updated.setTestCaseStatus(testCaseResult.getTestCaseStatus());
@@ -251,6 +260,19 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
       for (String fqn : fqns) {
         TestSuite testSuite = Entity.getEntityByName(TEST_SUITE, fqn, "*", Include.ALL);
         if (testSuite != null) {
+          // LOG 1: LOAD
+          int resultCountBefore =
+              testSuite.getTestCaseResultSummary() != null
+                  ? testSuite.getTestCaseResultSummary().size()
+                  : 0;
+          LOG.info(
+              "[RACE-CONDITION-MONITOR] updateTestSuiteSummary LOAD | suiteId={} | "
+                  + "version={} | resultCount={} | threadId={}",
+              testSuite.getId(),
+              testSuite.getVersion(),
+              resultCountBefore,
+              Thread.currentThread().getId());
+
           TestSuite original = JsonUtils.deepCopy(testSuite, TestSuite.class);
           List<ResultSummary> resultSummaries = testSuite.getTestCaseResultSummary();
 
@@ -277,10 +299,35 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
                         .withStatus(testCase.getTestCaseStatus())
                         .withTimestamp(testCase.getTestCaseResult().getTimestamp())));
           }
+
+          int resultCountAfter =
+              testSuite.getTestCaseResultSummary() != null
+                  ? testSuite.getTestCaseResultSummary().size()
+                  : 0;
+
           EntityRepository.EntityUpdater entityUpdater =
               testSuiteRepository.getUpdater(
                   original, testSuite, EntityRepository.Operation.PATCH, null);
+
+          // LOG 2: SAVE START
+          LOG.info(
+              "[RACE-CONDITION-MONITOR] updateTestSuiteSummary SAVE START | suiteId={} | "
+                  + "version={} | resultCountBefore={} | resultCountAfter={} | threadId={}",
+              testSuite.getId(),
+              testSuite.getVersion(),
+              resultCountBefore,
+              resultCountAfter,
+              Thread.currentThread().getId());
+
           entityUpdater.update();
+
+          // LOG 3: SAVE COMPLETE
+          LOG.info(
+              "[RACE-CONDITION-MONITOR] updateTestSuiteSummary SAVE COMPLETE | suiteId={} | "
+                  + "resultCount={} | threadId={}",
+              testSuite.getId(),
+              resultCountAfter,
+              Thread.currentThread().getId());
         }
       }
     }
