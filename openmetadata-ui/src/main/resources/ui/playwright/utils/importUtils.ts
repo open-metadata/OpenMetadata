@@ -11,25 +11,28 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import {
-    BULK_IMPORT_EXPORT_SQL_QUERY,
-    RDG_ACTIVE_CELL_SELECTOR,
+  BULK_IMPORT_EXPORT_SQL_QUERY,
+  RDG_ACTIVE_CELL_SELECTOR,
 } from '../constant/bulkImportExport';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../constant/customProperty';
 import {
-    CUSTOM_PROPERTIES_TYPES,
-    FIELD_VALUES_CUSTOM_PROPERTIES,
+  CUSTOM_PROPERTIES_TYPES,
+  FIELD_VALUES_CUSTOM_PROPERTIES,
 } from '../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
-    clickOutside,
-    descriptionBox,
-    descriptionBoxReadOnly,
-    uuid,
+  clickOutside,
+  descriptionBox,
+  descriptionBoxReadOnly,
+  uuid,
 } from './common';
 import {
-    addCustomPropertiesForEntity,
-    fillTableColumnInputDetails,
+  addCustomPropertiesForEntity,
+  fillTableColumnInputDetails,
 } from './customProperty';
 import { settingClick, SettingOptionsType } from './sidebar';
 
@@ -524,30 +527,43 @@ export const validateImportStatus = async (
   status: { passed: string; failed: string; processed: string }
 ) => {
   await page.waitForSelector('[data-testid="processed-row"]');
-  const processedRow = await page.$eval(
-    '[data-testid="processed-row"]',
-    (el) => el.textContent
-  );
-
-  expect(processedRow).toBe(status.processed);
-
-  const passedRow = await page.$eval(
-    '[data-testid="passed-row"]',
-    (el) => el.textContent
-  );
-
-  expect(passedRow).toBe(status.passed);
-
-  const failedRow = await page.$eval(
-    '[data-testid="failed-row"]',
-    (el) => el.textContent
-  );
-
-  expect(failedRow).toBe(status.failed);
+  await expect(page.getByTestId('processed-row')).toHaveText(status.processed);
+  await expect(page.getByTestId('passed-row')).toHaveText(status.passed);
+  await expect(page.getByTestId('failed-row')).toHaveText(status.failed);
 
   await page.waitForSelector('.rdg-header-row', {
     state: 'visible',
   });
+};
+
+export const uploadCSVAndWaitForGrid = async (
+  page: Page,
+  filePath: string,
+  options?: {
+    isContentString?: boolean;
+    tempFileName?: string;
+  }
+): Promise<{ rowCount: number; tempFilePath?: string }> => {
+  await page.waitForSelector('[type="file"]', { state: 'attached' });
+  let actualFilePath = filePath;
+  let tempFilePath: string | undefined;
+
+  if (options?.isContentString) {
+    const tempDir = os.tmpdir();
+    const tempFileName = options?.tempFileName || `temp-${Date.now()}.csv`;
+    tempFilePath = path.join(tempDir, tempFileName);
+    fs.writeFileSync(tempFilePath, filePath);
+    actualFilePath = tempFilePath;
+  }
+
+  await page.setInputFiles('[type="file"]', actualFilePath);
+  await page.waitForSelector('[data-testid="upload-file-widget"]', {
+    state: 'hidden',
+  });
+
+  await page.waitForTimeout(500);
+  const rowCount = await page.locator('.rdg-row').count();
+  return { rowCount, tempFilePath };
 };
 
 export const createDatabaseRowDetails = () => {
@@ -617,7 +633,7 @@ export const createColumnRowDetails = () => {
 export const createColumnRowDetailsWithEncloseDot = () => {
   return {
     ...createColumnRowDetails(),
-    name: "playwright.column ${uuid()",
+    name: 'playwright.column ${uuid()',
   };
 };
 
