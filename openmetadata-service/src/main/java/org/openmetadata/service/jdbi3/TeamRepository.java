@@ -56,7 +56,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -524,22 +523,13 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public void setInheritedFields(Team team, Fields fields) {
     if (fields.contains(FIELD_DOMAINS)) {
-      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
       List<EntityReference> parents =
           !fields.contains(PARENTS_FIELD) ? getParents(team) : team.getParents();
-      if (!nullOrEmpty(parents)) {
-        Map<UUID, List<EntityReference>> parentDomainsMap =
-            batchLoadDomainsForEntityRefs(parents, TEAM, ALL);
-        for (EntityReference parentRef : parents) {
-          List<EntityReference> domains = parentDomainsMap.get(parentRef.getId());
-          if (domains != null) {
-            combinedParent.addAll(domains);
-          }
-        }
-      }
+      // Batch load domains from all parent teams and their ancestors
+      Set<EntityReference> inheritedDomains = batchLoadDomainsWithHierarchy(parents, ALL);
       team.setDomains(
           EntityUtil.mergedInheritedEntityRefs(
-              team.getDomains(), combinedParent.stream().toList()));
+              team.getDomains(), inheritedDomains.stream().toList()));
     }
   }
 

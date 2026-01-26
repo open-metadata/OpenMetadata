@@ -41,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
@@ -337,22 +336,13 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public void setInheritedFields(User user, Fields fields) {
     if (fields.contains(FIELD_DOMAINS)) {
-      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
       List<EntityReference> teams =
           !fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams();
-      if (!nullOrEmpty(teams)) {
-        Map<UUID, List<EntityReference>> teamDomainsMap =
-            batchLoadDomainsForEntityRefs(teams, TEAM, ALL);
-        for (EntityReference team : teams) {
-          List<EntityReference> domains = teamDomainsMap.get(team.getId());
-          if (domains != null) {
-            combinedParent.addAll(domains);
-          }
-        }
-      }
+      // Batch load domains from all teams and their parent hierarchy
+      Set<EntityReference> inheritedDomains = batchLoadDomainsWithHierarchy(teams, ALL);
       user.setDomains(
           EntityUtil.mergedInheritedEntityRefs(
-              user.getDomains(), combinedParent.stream().toList()));
+              user.getDomains(), inheritedDomains.stream().toList()));
     }
   }
 

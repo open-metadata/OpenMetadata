@@ -962,6 +962,154 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   // ===================================================================
+  // DOMAIN INHERITANCE HIERARCHY TESTS
+  // ===================================================================
+
+  @Test
+  void test_inheritDomainFromDeepHierarchy(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String domainFqn = testDomain().getFullyQualifiedName();
+    Team orgTeam = client.teams().getByName("Organization");
+
+    CreateTeam createDiv =
+        new CreateTeam()
+            .withName(ns.prefix("divWithDomain"))
+            .withTeamType(TeamType.DIVISION)
+            .withParents(List.of(orgTeam.getId()))
+            .withDomains(List.of(domainFqn))
+            .withDescription("Division with domain");
+    Team division = createEntity(createDiv);
+
+    CreateTeam createDept =
+        new CreateTeam()
+            .withName(ns.prefix("deptUnderDiv"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withParents(List.of(division.getId()))
+            .withDescription("Department under division - no direct domain");
+    Team department = createEntity(createDept);
+
+    CreateTeam createGroup =
+        new CreateTeam()
+            .withName(ns.prefix("groupUnderDept"))
+            .withTeamType(TeamType.GROUP)
+            .withParents(List.of(department.getId()))
+            .withDescription("Group under department - should inherit domain from division");
+    Team group = createEntity(createGroup);
+
+    Team fetchedGroup = client.teams().get(group.getId().toString(), "domains");
+    assertNotNull(fetchedGroup.getDomains());
+    assertFalse(fetchedGroup.getDomains().isEmpty());
+    assertTrue(
+        fetchedGroup.getDomains().stream()
+            .anyMatch(d -> d.getFullyQualifiedName().equals(domainFqn)));
+  }
+
+  @Test
+  void test_inheritDomainFromMultipleParents(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String domain1Fqn = testDomain().getFullyQualifiedName();
+
+    org.openmetadata.schema.api.domains.CreateDomain createDomain2 =
+        new org.openmetadata.schema.api.domains.CreateDomain()
+            .withName(ns.prefix("secondDomain"))
+            .withDescription("Second domain for multi-parent test")
+            .withDomainType(org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE);
+    org.openmetadata.schema.entity.domains.Domain domain2 = client.domains().create(createDomain2);
+    String domain2Fqn = domain2.getFullyQualifiedName();
+
+    Team orgTeam = client.teams().getByName("Organization");
+
+    CreateTeam createDiv1 =
+        new CreateTeam()
+            .withName(ns.prefix("div1Domain"))
+            .withTeamType(TeamType.DIVISION)
+            .withParents(List.of(orgTeam.getId()))
+            .withDomains(List.of(domain1Fqn))
+            .withDescription("Division 1 with first domain");
+    Team division1 = createEntity(createDiv1);
+
+    CreateTeam createDiv2 =
+        new CreateTeam()
+            .withName(ns.prefix("div2Domain"))
+            .withTeamType(TeamType.DIVISION)
+            .withParents(List.of(orgTeam.getId()))
+            .withDomains(List.of(domain2Fqn))
+            .withDescription("Division 2 with second domain");
+    Team division2 = createEntity(createDiv2);
+
+    CreateTeam createDept =
+        new CreateTeam()
+            .withName(ns.prefix("deptMultiDomain"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withParents(List.of(division1.getId(), division2.getId()))
+            .withDescription("Department with multiple parents - should inherit both domains");
+    Team department = createEntity(createDept);
+
+    Team fetchedDept = client.teams().get(department.getId().toString(), "domains");
+    assertNotNull(fetchedDept.getDomains());
+    assertTrue(fetchedDept.getDomains().size() >= 2);
+    assertTrue(
+        fetchedDept.getDomains().stream()
+            .anyMatch(d -> d.getFullyQualifiedName().equals(domain1Fqn)));
+    assertTrue(
+        fetchedDept.getDomains().stream()
+            .anyMatch(d -> d.getFullyQualifiedName().equals(domain2Fqn)));
+  }
+
+  @Test
+  void test_teamWith100ChildGroupsPerformance(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String domainFqn = testDomain().getFullyQualifiedName();
+    Team orgTeam = client.teams().getByName("Organization");
+
+    CreateTeam createDiv =
+        new CreateTeam()
+            .withName(ns.prefix("perfDiv"))
+            .withTeamType(TeamType.DIVISION)
+            .withParents(List.of(orgTeam.getId()))
+            .withDomains(List.of(domainFqn))
+            .withDescription("Division with domain for performance test");
+    Team division = createEntity(createDiv);
+
+    CreateTeam createDept =
+        new CreateTeam()
+            .withName(ns.prefix("perfDept"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withParents(List.of(division.getId()))
+            .withDescription("Department under division");
+    Team department = createEntity(createDept);
+
+    for (int i = 0; i < 100; i++) {
+      CreateTeam createGroup =
+          new CreateTeam()
+              .withName(ns.prefix("perfGroup" + i))
+              .withTeamType(TeamType.GROUP)
+              .withParents(List.of(department.getId()))
+              .withDescription("Group " + i + " for performance test");
+      createEntity(createGroup);
+    }
+
+    long startTime = System.currentTimeMillis();
+    Team fetchedDept = client.teams().get(department.getId().toString(), "domains,children");
+    long duration = System.currentTimeMillis() - startTime;
+
+    assertNotNull(fetchedDept.getDomains());
+    assertFalse(fetchedDept.getDomains().isEmpty());
+    assertTrue(
+        fetchedDept.getDomains().stream()
+            .anyMatch(d -> d.getFullyQualifiedName().equals(domainFqn)));
+
+    assertTrue(
+        duration < 5000,
+        "Fetching team with 100 child groups and domains should complete in under 5 seconds, took "
+            + duration
+            + "ms");
+  }
+
+  // ===================================================================
   // VERSION HISTORY SUPPORT
   // ===================================================================
 
