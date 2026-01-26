@@ -1,8 +1,10 @@
 package org.openmetadata.service.security.auth;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.SecurityUtil.validateEmailDomain;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
+import static org.openmetadata.service.util.UserUtil.isAdminEmail;
 
 import com.onelogin.saml2.Auth;
 import com.onelogin.saml2.exception.SAMLException;
@@ -33,9 +35,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
 
@@ -130,15 +134,49 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       }
 
       // Extract user information from SAML response
-      String nameId = auth.getNameId();
-      String email = nameId;
-      String username;
+      String email;
+      String displayName;
 
-      if (nameId.contains("@")) {
-        username = nameId.split("@")[0];
+      String emailClaimConfig = authConfig.getEmailClaim();
+      if (!nullOrEmpty(emailClaimConfig) && !shouldUseLegacyFlow()) {
+        email = extractAttributeFromAssertion(auth, emailClaimConfig);
+        if (nullOrEmpty(email)) {
+          throw new AuthenticationException(
+              String.format(
+                  "Authentication failed: email attribute '%s' not found in SAML assertion",
+                  emailClaimConfig));
+        }
+        email = email.toLowerCase();
+
+        List<String> allowedDomains =
+            authorizerConfig.getAllowedEmailDomains() != null
+                ? new ArrayList<>(authorizerConfig.getAllowedEmailDomains())
+                : new ArrayList<>();
+        validateEmailDomain(email, allowedDomains);
+
+        String displayNameClaimConfig = authConfig.getDisplayNameClaim();
+        displayName = extractAttributeFromAssertion(auth, displayNameClaimConfig);
+        if (nullOrEmpty(displayName)) {
+          displayName = email.split("@")[0];
+        }
+
+        LOG.debug("SAML email-first flow: email={}, displayName={}", email, displayName);
       } else {
-        username = nameId;
-        email = String.format("%s@%s", username, SamlSettingsHolder.getInstance().getDomain());
+        String nameId = auth.getNameId();
+        if (nullOrEmpty(nameId)) {
+          throw new AuthenticationException(
+              "SAML authentication failed: NameID not found in assertion");
+        }
+        email = nameId;
+        displayName = null;
+
+        if (nameId.contains("@")) {
+          email = nameId.toLowerCase();
+        } else {
+          email =
+              String.format("%s@%s", nameId, SamlSettingsHolder.getInstance().getDomain())
+                  .toLowerCase();
+        }
       }
 
       // Extract team/group attributes from SAML response (supports multi-valued attributes)
@@ -161,13 +199,13 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       }
 
       // Get or create user
-      User user = getOrCreateUser(username, email, teamsFromClaim);
+      User user = getOrCreateSamlUser(email, displayName, teamsFromClaim);
 
       // Generate JWT tokens
       JWTAuthMechanism jwtAuthMechanism =
           JWTTokenGenerator.getInstance()
               .generateJWTToken(
-                  username,
+                  user.getName(),
                   getRoleListFromUser(user),
                   !nullOrEmpty(user.getIsAdmin()) && user.getIsAdmin(),
                   user.getEmail(),
@@ -183,7 +221,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       HttpSession session = req.getSession(true);
       session.setAttribute(SESSION_REFRESH_TOKEN, refreshToken.getToken().toString());
       session.setAttribute(SESSION_USER_ID, user.getId().toString());
-      session.setAttribute(SESSION_USERNAME, username);
+      session.setAttribute(SESSION_USERNAME, user.getName());
 
       // Update last login time
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
@@ -310,62 +348,122 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     }
   }
 
-  private User getOrCreateUser(String username, String email, List<String> teamsFromClaim) {
+  private User getOrCreateSamlUser(String email, String displayName, List<String> teamsFromClaim) {
     try {
-      // Fetch user with teams relationship loaded to preserve existing team memberships
-      User existingUser =
-          Entity.getEntityByName(
-              Entity.USER, username, "id,roles,teams,isAdmin,email", Include.NON_DELETED);
+      User user =
+          Entity.getUserRepository()
+              .getByEmail(null, email, new Fields(Set.of("id", "roles", "teams", "displayName")));
 
-      boolean shouldBeAdmin = getAdminPrincipals().contains(username);
       boolean needsUpdate = false;
 
+      boolean shouldBeAdmin = isUserAdmin(email, user.getName());
       LOG.info(
-          "SAML login - Username: {}, Email: {}, Should be admin: {}, Current admin status: {}",
-          username,
+          "SAML login - Email: {}, Username: {}, Should be admin: {}, Current admin status: {}",
           email,
+          user.getName(),
           shouldBeAdmin,
-          existingUser.getIsAdmin());
-      LOG.info("Admin principals list: {}", getAdminPrincipals());
+          user.getIsAdmin());
 
-      if (shouldBeAdmin && !Boolean.TRUE.equals(existingUser.getIsAdmin())) {
-        LOG.info("Updating user {} to admin based on adminPrincipals", username);
-        existingUser.setIsAdmin(true);
+      if (shouldBeAdmin && !Boolean.TRUE.equals(user.getIsAdmin())) {
+        LOG.info("Updating user {} to admin based on adminEmails/adminPrincipals", user.getName());
+        user.setIsAdmin(true);
         needsUpdate = true;
       }
 
-      // Assign teams from claims if provided (this only adds, doesn't remove existing teams)
-      boolean teamsAssigned = UserUtil.assignTeamsFromClaim(existingUser, teamsFromClaim);
+      if (displayName != null && !displayName.equals(user.getDisplayName())) {
+        LOG.info(
+            "Updating displayName for user {} from '{}' to '{}'",
+            user.getName(),
+            user.getDisplayName(),
+            displayName);
+        user.setDisplayName(displayName);
+        needsUpdate = true;
+      }
+
+      boolean teamsAssigned = UserUtil.assignTeamsFromClaim(user, teamsFromClaim);
       needsUpdate = needsUpdate || teamsAssigned;
 
       if (needsUpdate) {
-        return UserUtil.addOrUpdateUser(existingUser);
+        return UserUtil.addOrUpdateUser(user);
       }
 
-      return existingUser;
+      return user;
+    } catch (EntityNotFoundException e) {
+      LOG.debug("User not found by email {}, will create new user", email);
+    }
+
+    if (!Boolean.TRUE.equals(authConfig.getEnableSelfSignup())) {
+      throw new AuthenticationException(
+          "User not registered. Contact administrator to create an account.");
+    }
+
+    String userName = UserUtil.generateUsernameFromEmail(email, this::usernameExists);
+    boolean isAdmin = isUserAdmin(email, userName);
+    LOG.info(
+        "Creating new SAML user - Email: {}, Generated username: {}, Is admin: {}",
+        email,
+        userName,
+        isAdmin);
+
+    String domain = email.split("@")[1];
+    User newUser =
+        UserUtil.user(userName, domain, userName)
+            .withEmail(email)
+            .withDisplayName(displayName != null ? displayName : userName)
+            .withIsAdmin(isAdmin)
+            .withIsEmailVerified(true);
+
+    UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
+
+    return UserUtil.addOrUpdateUser(newUser);
+  }
+
+  private boolean shouldUseLegacyFlow() {
+    List<String> claimsMapping = authConfig.getJwtPrincipalClaimsMapping();
+    return claimsMapping != null && !claimsMapping.isEmpty();
+  }
+
+  private String extractAttributeFromAssertion(Auth auth, String attributeName) {
+    if (nullOrEmpty(attributeName)) {
+      return null;
+    }
+    try {
+      Collection<String> values = auth.getAttribute(attributeName);
+      if (values != null && !values.isEmpty()) {
+        return values.iterator().next();
+      }
     } catch (Exception e) {
-      LOG.info("User not found, creating new user: {}", username);
-      if (authConfig.getEnableSelfSignup()) {
-        boolean isAdmin = getAdminPrincipals().contains(username);
-        LOG.info("Creating new user - Username: {}, Should be admin: {}", username, isAdmin);
-        LOG.info("Admin principals list: {}", getAdminPrincipals());
-        User newUser =
-            UserUtil.user(username, email.split("@")[1], username)
-                .withIsAdmin(isAdmin)
-                .withIsEmailVerified(true);
+      LOG.debug(
+          "Could not extract attribute '{}' from SAML assertion: {}",
+          attributeName,
+          e.getMessage());
+    }
+    return null;
+  }
 
-        // Assign teams from claims if provided
-        UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
+  private boolean isUserAdmin(String email, String username) {
+    List<String> adminEmails =
+        authorizerConfig.getAdminEmails() != null
+            ? new ArrayList<>(authorizerConfig.getAdminEmails())
+            : new ArrayList<>();
+    if (isAdminEmail(email, adminEmails)) {
+      return true;
+    }
+    return getAdminPrincipals().contains(username);
+  }
 
-        return UserUtil.addOrUpdateUser(newUser);
-      }
-      throw new AuthenticationException("User not found and self-signup is disabled");
+  private boolean usernameExists(String username) {
+    try {
+      Entity.getEntityByName(Entity.USER, username, "id", Include.NON_DELETED);
+      return true;
+    } catch (EntityNotFoundException e) {
+      return false;
     }
   }
 
   private Set<String> getAdminPrincipals() {
-    AuthorizerConfiguration authorizerConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
-    return new HashSet<>(authorizerConfig.getAdminPrincipals());
+    Set<String> principals = authorizerConfig.getAdminPrincipals();
+    return principals != null ? new HashSet<>(principals) : new HashSet<>();
   }
 
   private void sendError(HttpServletResponse resp, int status, String message) {
