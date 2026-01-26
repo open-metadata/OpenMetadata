@@ -60,6 +60,7 @@ import {
   openColumnDetailPanel,
   removeOwner,
   removeOwnersFromList,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 
@@ -469,9 +470,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               .locator('[data-testid="tag-select-search-bar"]')
               .fill('PersonalData.SpecialCategory');
             await searchTag;
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(page);
 
             const tagOption = page.getByTitle('SpecialCategory');
             await tagOption.click();
@@ -483,6 +482,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             );
             await page.getByRole('button', { name: 'Update' }).click();
             await updateResponse;
+            await waitForAllLoadersToDisappear(page);
 
             await expect(
               page
@@ -500,6 +500,46 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
                 )
                 .getByTestId('tag-PersonalData.SpecialCategory')
             ).toBeVisible();
+
+            // Cleanup: remove tag via panel
+            await openColumnDetailPanel({
+              page,
+              rowSelector,
+              columnId: entity.childrenSelectorId ?? '',
+              columnNameTestId,
+              entityType: entity.type as EntityType,
+            });
+            await panelContainer.getByTestId('edit-icon-tags').click();
+
+            // Wait for selectable list to be visible and ready
+            await page
+              .locator('[data-testid="selectable-list"]')
+              .waitFor({ state: 'visible' });
+
+            const searchTagCleanup = page.waitForResponse(
+              '/api/v1/search/query?q=*index=tag_search_index*'
+            );
+            await page
+              .locator('[data-testid="tag-select-search-bar"]')
+              .fill('PersonalData.SpecialCategory');
+            await searchTagCleanup;
+            await waitForAllLoadersToDisappear(page);
+
+            await page.getByTitle('SpecialCategory', { exact: true }).click();
+            const removeResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/columns/name/') ||
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
+            );
+            await page.getByRole('button', { name: 'Update' }).click();
+            await removeResponse;
+            await waitForAllLoadersToDisappear(page);
+
+            await expect(
+              panelContainer.getByTestId('tag-PersonalData.SpecialCategory')
+            ).toBeHidden();
+
+            await closeColumnDetailPanel(page);
           }
         );
       });
@@ -551,9 +591,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             );
 
             // Wait for loader to disappear after search
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(page);
 
             // Wait for term option to be visible before clicking
             const termOption = page.locator('.ant-list-item').filter({
@@ -575,9 +613,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await glossaryUpdateResponse;
 
             // CRITICAL: Wait for UI to update after API response
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(page);
 
             // Verify glossary term is added
             await expect(
@@ -604,16 +640,14 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             const searchTag = page.waitForResponse(
               '/api/v1/search/query?q=*index=tag_search_index*'
             );
-            await tagSearchBar.fill('PersonalData.SpecialCategory');
+            await tagSearchBar.fill('PII.Sensitive');
             await searchTag;
 
             // Wait for loader to disappear after search
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
+            await waitForAllLoadersToDisappear(page);
 
             // Wait for tag option to be visible before clicking
-            const tagOption = page.getByTitle('SpecialCategory');
+            const tagOption = page.getByTitle('Sensitive', { exact: true });
             await expect(tagOption).toBeVisible();
             await tagOption.click();
 
@@ -631,19 +665,10 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await tagUpdateButton.click();
             await tagUpdateResponse;
 
-            // CRITICAL: Wait for UI to update after API response
-            await page.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
-
-            // Wait for the tags container to be visible first (ensures panel is fully loaded)
-            const tagsContainer = panelContainer.locator('.tags-list');
-            await expect(tagsContainer).toBeVisible();
-
             // Verify both tag and glossary term are still present in the panel
-            // Use panelContainer scope to avoid ambiguity with multiple .tags-list elements
+            // Use panelContainer scope to avoid ambiguity with multiple tags-list elements across table rows
             await expect(
-              tagsContainer.getByTestId('tag-PersonalData.SpecialCategory')
+              panelContainer.getByTestId('tag-PII.Sensitive')
             ).toBeVisible();
             await expect(
               panelContainer.getByTestId(
@@ -658,13 +683,79 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               `[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`
             );
             await expect(
-              rowLocator.getByTestId('tag-PersonalData.SpecialCategory')
+              rowLocator.getByTestId('tag-PII.Sensitive')
             ).toBeVisible();
             await expect(
               rowLocator.getByTestId(
                 `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
               )
             ).toBeVisible();
+
+            // Cleanup: remove both tag and glossary term from column detail panel
+            const cleanupPanel = await openColumnDetailPanel({
+              page,
+              rowSelector,
+              columnId: entity.childrenSelectorId ?? '',
+              columnNameTestId,
+              entityType: entity.type as EntityType,
+            });
+
+            // Remove glossary term
+            await cleanupPanel.getByTestId('edit-glossary-terms').click();
+            await page
+              .locator('[data-testid="selectable-list"]')
+              .waitFor({ state: 'visible' });
+
+            const searchGlossaryCleanup = page.waitForResponse(
+              '/api/v1/search/query?q=*index=glossary_term_search_index*'
+            );
+            await page
+              .locator('[data-testid="glossary-term-select-search-bar"]')
+              .fill(EntityDataClass.glossaryTerm1.responseData.displayName);
+            await searchGlossaryCleanup;
+            await waitForAllLoadersToDisappear(page);
+
+            await page
+              .getByTitle(
+                EntityDataClass.glossaryTerm1.responseData.displayName,
+                { exact: true }
+              )
+              .click();
+            const glossaryCleanupResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/columns/name/') ||
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
+            );
+            await page.getByRole('button', { name: 'Update' }).click();
+            await glossaryCleanupResponse;
+            await waitForAllLoadersToDisappear(page);
+
+            // Remove tag
+            await cleanupPanel.getByTestId('edit-icon-tags').click();
+            await page
+              .locator('[data-testid="selectable-list"]')
+              .waitFor({ state: 'visible' });
+
+            const searchTagCleanup2 = page.waitForResponse(
+              '/api/v1/search/query?q=*index=tag_search_index*'
+            );
+            await page
+              .locator('[data-testid="tag-select-search-bar"]')
+              .fill('PII.Sensitive');
+            await searchTagCleanup2;
+            await waitForAllLoadersToDisappear(page);
+
+            await page.getByTitle('Sensitive', { exact: true }).click();
+            const tagCleanupResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/columns/name/') ||
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
+            );
+            await page.getByRole('button', { name: 'Update' }).click();
+            await tagCleanupResponse;
+            await waitForAllLoadersToDisappear(page);
+
+            await closeColumnDetailPanel(page);
           }
         );
       });
