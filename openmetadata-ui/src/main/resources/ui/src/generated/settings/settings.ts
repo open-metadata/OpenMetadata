@@ -188,6 +188,16 @@ export interface PipelineServiceClientConfiguration {
      */
     clientType?: ClientType;
     /**
+     * JWT claim name containing the user's display name. Defaults based on provider: 'name' for
+     * OIDC/SAML, 'displayName' for LDAP.
+     */
+    displayNameClaim?: string;
+    /**
+     * JWT claim name containing the user's email address. Defaults based on provider: 'email'
+     * for OIDC/SAML, 'mail' for LDAP.
+     */
+    emailClaim?: string;
+    /**
      * Enable automatic redirect from the sign-in page to the configured SSO provider.
      */
     enableAutoRedirect?: boolean;
@@ -201,12 +211,15 @@ export interface PipelineServiceClientConfiguration {
      */
     forceSecureSessionCookie?: boolean;
     /**
-     * Jwt Principal Claim
+     * [DEPRECATED: Use 'emailClaim' instead] Use this claim from the JWT to identify the
+     * principal/subject of the token. Defaults are sub, email, preferred_username, name, upn,
+     * email_verified
      */
     jwtPrincipalClaims?: string[];
     /**
-     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
-     * 'email'. Both username and email mappings are required.
+     * [DEPRECATED: Use 'emailClaim' and 'displayNameClaim' instead] Use these claims from the
+     * JWT to identify the principal/subject and extract email. Format:
+     * 'username:claim_name,email:claim_name'
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -246,7 +259,12 @@ export interface PipelineServiceClientConfiguration {
      */
     tokenValidationAlgorithm?: TokenValidationAlgorithm;
     /**
-     * List of unique admin principals.
+     * List of email addresses that should be granted admin privileges. Preferred over
+     * adminPrincipals.
+     */
+    adminEmails?: string[];
+    /**
+     * [DEPRECATED: Use 'adminEmails' instead] List of unique admin principals.
      */
     adminPrincipals?: string[];
     /**
@@ -254,9 +272,17 @@ export interface PipelineServiceClientConfiguration {
      */
     allowedDomains?: string[];
     /**
+     * List of email domains allowed to authenticate. If empty, all domains are allowed.
+     */
+    allowedEmailDomains?: string[];
+    /**
      * List of unique email domains that are allowed to signup on the platforms
      */
     allowedEmailRegistrationDomains?: string[];
+    /**
+     * Email domain used for system-created bots (e.g., ingestion-bot@{botDomain}).
+     */
+    botDomain?: string;
     /**
      * **@Deprecated** List of unique bot principals
      */
@@ -274,7 +300,8 @@ export interface PipelineServiceClientConfiguration {
      */
     enforcePrincipalDomain?: boolean;
     /**
-     * Principal Domain
+     * [DEPRECATED: Use 'botDomain' for bots, 'allowedEmailDomains' for domain restrictions]
+     * Domain to use for constructing email addresses.
      */
     principalDomain?: string;
     /**
@@ -1009,6 +1036,16 @@ export interface AuthenticationConfiguration {
      */
     clientType?: ClientType;
     /**
+     * JWT claim name containing the user's display name. Defaults based on provider: 'name' for
+     * OIDC/SAML, 'displayName' for LDAP.
+     */
+    displayNameClaim?: string;
+    /**
+     * JWT claim name containing the user's email address. Defaults based on provider: 'email'
+     * for OIDC/SAML, 'mail' for LDAP.
+     */
+    emailClaim?: string;
+    /**
      * Enable automatic redirect from the sign-in page to the configured SSO provider.
      */
     enableAutoRedirect?: boolean;
@@ -1022,12 +1059,15 @@ export interface AuthenticationConfiguration {
      */
     forceSecureSessionCookie?: boolean;
     /**
-     * Jwt Principal Claim
+     * [DEPRECATED: Use 'emailClaim' instead] Use this claim from the JWT to identify the
+     * principal/subject of the token. Defaults are sub, email, preferred_username, name, upn,
+     * email_verified
      */
     jwtPrincipalClaims: string[];
     /**
-     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
-     * 'email'. Both username and email mappings are required.
+     * [DEPRECATED: Use 'emailClaim' and 'displayNameClaim' instead] Use these claims from the
+     * JWT to identify the principal/subject and extract email. Format:
+     * 'username:claim_name,email:claim_name'
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -1504,7 +1544,12 @@ export enum TokenValidationAlgorithm {
  */
 export interface AuthorizerConfiguration {
     /**
-     * List of unique admin principals.
+     * List of email addresses that should be granted admin privileges. Preferred over
+     * adminPrincipals.
+     */
+    adminEmails?: string[];
+    /**
+     * [DEPRECATED: Use 'adminEmails' instead] List of unique admin principals.
      */
     adminPrincipals: string[];
     /**
@@ -1512,9 +1557,17 @@ export interface AuthorizerConfiguration {
      */
     allowedDomains?: string[];
     /**
+     * List of email domains allowed to authenticate. If empty, all domains are allowed.
+     */
+    allowedEmailDomains?: string[];
+    /**
      * List of unique email domains that are allowed to signup on the platforms
      */
     allowedEmailRegistrationDomains?: string[];
+    /**
+     * Email domain used for system-created bots (e.g., ingestion-bot@{botDomain}).
+     */
+    botDomain?: string;
     /**
      * **@Deprecated** List of unique bot principals
      */
@@ -1536,7 +1589,8 @@ export interface AuthorizerConfiguration {
      */
     enforcePrincipalDomain: boolean;
     /**
-     * Principal Domain
+     * [DEPRECATED: Use 'botDomain' for bots, 'allowedEmailDomains' for domain restrictions]
+     * Domain to use for constructing email addresses.
      */
     principalDomain: string;
     /**
