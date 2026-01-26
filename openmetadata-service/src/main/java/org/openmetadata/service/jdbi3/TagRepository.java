@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
@@ -67,6 +68,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadCursorException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -1029,5 +1031,115 @@ public class TagRepository extends EntityRepository<Tag> {
         throw new AuthorizationException(notReviewer(updatedBy));
       }
     }
+  }
+
+  private String getRecognizerCursorValue(Recognizer recognizer) {
+    Map<String, String> map =
+        Map.of("id", recognizer.getId().toString(), "name", recognizer.getName());
+    return JsonUtils.pojoToJson(map);
+  }
+
+  public ResultList<Recognizer> getRecognizersOfTagById(
+      UUID tagId, String before, String after, int limit) {
+    Tag tag = get(null, tagId, getFields("recognizers"));
+    return getRecognizersOfTag(tag, before, after, limit);
+  }
+
+  public ResultList<Recognizer> getRecognizersOfTagByFQN(
+      String tagFqn, String before, String after, int limit) {
+    Tag tag = getByName(null, tagFqn, getFields("recognizers"));
+    return getRecognizersOfTag(tag, before, after, limit);
+  }
+
+  public ResultList<Recognizer> getRecognizersOfTag(
+      Tag tag, String before, String after, int limit) {
+    ResultList<Recognizer> result;
+
+    if (tag.getRecognizers() == null || tag.getRecognizers().isEmpty()) {
+      return new ResultList<>(Collections.emptyList(), null, null, 0);
+    }
+
+    if (before != null) {
+      result = listRecognizersBefore(tag.getRecognizers(), before, limit);
+    } else {
+      result = listRecognizersAfter(tag.getRecognizers(), after, limit);
+    }
+
+    return result;
+  }
+
+  private ResultList<Recognizer> listRecognizersAfter(
+      List<Recognizer> recognizers, String after, int limit) {
+    int total = recognizers.size();
+    String afterId = null;
+
+    if (after != null) {
+      try {
+        Map<String, String> map = parseCursorMap(RestUtil.decodeCursor(after));
+        afterId = map.get("id");
+
+        if (afterId == null) {
+          throw new BadCursorException("Invalid `after` cursor");
+        }
+      } catch (Exception e) {
+        throw new BadCursorException("Invalid `after` cursor");
+      }
+    }
+
+    boolean append = afterId == null;
+    limit = limit > 0 ? Math.min(total, limit) : total;
+
+    List<Recognizer> result = new ArrayList<>(limit);
+    int startIndex = 0;
+    int endIndex = -1;
+
+    for (int i = 0; i < recognizers.size(); i++) {
+      Recognizer recognizer = recognizers.get(i);
+
+      if (result.size() >= limit) {
+        break;
+      }
+
+      if (!append) {
+        append = afterId.equals(String.valueOf(recognizer.getId()));
+        continue;
+      }
+
+      if (result.isEmpty()) {
+        startIndex = i;
+      }
+      endIndex = i;
+      result.add(recognizer);
+    }
+
+    if (result.isEmpty()) {
+      return new ResultList<>(result, null, null, total);
+    }
+
+    String newBefore = (startIndex == 0) ? null : getRecognizerCursorValue(result.getFirst());
+    String newAfter =
+        (endIndex == recognizers.size() - 1) ? null : getRecognizerCursorValue(result.getLast());
+
+    return new ResultList<>(result, newBefore, newAfter, total);
+  }
+
+  private ResultList<Recognizer> listRecognizersBefore(
+      List<Recognizer> recognizers, String before, int limit) {
+    String beforeId;
+
+    if (before != null) {
+      try {
+        Map<String, String> map = parseCursorMap(RestUtil.decodeCursor(before));
+        beforeId = map.get("id");
+
+        if (beforeId == null) {
+          throw new BadCursorException("Invalid `before` cursor");
+        }
+      } catch (Exception e) {
+        throw new BadCursorException("Invalid `before` cursor");
+      }
+    }
+
+    return listRecognizersAfter(recognizers.reversed(), before, limit);
   }
 }
