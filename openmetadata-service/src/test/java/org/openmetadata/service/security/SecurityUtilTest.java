@@ -152,4 +152,72 @@ class SecurityUtilTest {
 
     assertTrue(teams.isEmpty());
   }
+
+  @Test
+  void testExtractEmailFromClaim_withValidEmail() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("email", "john.doe@company.com");
+
+    String email = SecurityUtil.extractEmailFromClaim(claims, "email");
+
+    assertEquals("john.doe@company.com", email);
+  }
+
+  @Test
+  void testExtractEmailFromClaim_lowercasesEmail() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("email", "John.Doe@Company.COM");
+
+    String email = SecurityUtil.extractEmailFromClaim(claims, "email");
+
+    assertEquals("john.doe@company.com", email);
+  }
+
+  @Test
+  void testExtractEmailFromClaim_missingClaim() {
+    Map<String, Object> claims = new HashMap<>();
+
+    AuthenticationException ex =
+        assertThrows(
+            AuthenticationException.class,
+            () -> SecurityUtil.extractEmailFromClaim(claims, "email"));
+
+    assertTrue(ex.getMessage().contains("email claim 'email' not found"));
+  }
+
+  @Test
+  void testExtractEmailFromClaim_invalidEmailFormat() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("email", "not-an-email");
+
+    AuthenticationException ex =
+        assertThrows(
+            AuthenticationException.class,
+            () -> SecurityUtil.extractEmailFromClaim(claims, "email"));
+
+    assertTrue(ex.getMessage().contains("invalid email format"));
+  }
+
+  @Test
+  void testExtractEmailFromClaim_withEmptyString() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("email", "");
+
+    AuthenticationException ex =
+        assertThrows(
+            AuthenticationException.class,
+            () -> SecurityUtil.extractEmailFromClaim(claims, "email"));
+
+    assertTrue(ex.getMessage().contains("email claim 'email' not found"));
+  }
+
+  @Test
+  void testExtractEmailFromClaim_withCustomClaimName() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("preferred_email", "user@domain.org");
+
+    String email = SecurityUtil.extractEmailFromClaim(claims, "preferred_email");
+
+    assertEquals("user@domain.org", email);
+  }
 }

@@ -161,6 +161,29 @@ public final class SecurityUtil {
     return email.toLowerCase();
   }
 
+  public static String extractEmailFromClaim(Map<String, ?> claims, String emailClaim) {
+    Object claimValue = claims.get(emailClaim);
+    String claimString = getClaimOrObject(claimValue);
+
+    if (claimValue == null || claimString.isEmpty()) {
+      throw new AuthenticationException(
+          String.format("Authentication failed: email claim '%s' not found in token", emailClaim));
+    }
+
+    String email = claimString.toLowerCase();
+
+    if (!email.contains("@") || !isValidEmail(email)) {
+      throw new AuthenticationException(
+          String.format("Authentication failed: invalid email format in claim '%s'", emailClaim));
+    }
+
+    return email;
+  }
+
+  private static boolean isValidEmail(String email) {
+    return email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+  }
+
   public static String getClaimOrObject(Object obj) {
     if (obj == null) {
       return "";
