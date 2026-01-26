@@ -110,14 +110,13 @@ public class AWSSecretsManagerTest extends AWSBasedSecretsManagerTest {
   }
 
   /**
-   * Tests the Hybrid SaaS scenario where customers provide external secret references.
+   * Tests external secret references provided by users.
    *
-   * <p>In Hybrid SaaS deployments:
+   * <p>When a user provides a "secret:" prefixed value pointing to their own secrets manager:
    *
    * <ul>
-   *   <li>Customers provide secret references like "secret:/customer/path/to/secret"
-   *   <li>These references point to secrets in the CUSTOMER's AWS account, not Collate's
-   *   <li>The ingestion runs on the customer's cloud and resolves secrets there
+   *   <li>The reference points to secrets in an external AWS account
+   *   <li>The ingestion framework resolves these secrets at runtime
    *   <li>OpenMetadata server should NOT try to fetch these secrets during decrypt
    * </ul>
    *
@@ -127,13 +126,10 @@ public class AWSSecretsManagerTest extends AWSBasedSecretsManagerTest {
    *   <li>Encryption: keeps the reference (Fernet-wrapped for DB storage), no new secret created
    *   <li>Decryption: returns the reference as-is WITHOUT trying to fetch from SM
    * </ol>
-   *
-   * <p>REGRESSION: PR #25236 (Query Runner integration) changed decryptPasswordFields() to always
-   * call getSecretValue() for "secret:" prefixed values, breaking this scenario.
    */
   @Test
-  void testHybridSaasExternalSecretReferenceShouldNotBeFetchedDuringDecrypt() {
-    String externalSecretReference = "secret:/customer/aws/account/database/password";
+  void testExternalSecretReferenceShouldNotBeFetchedDuringDecrypt() {
+    String externalSecretReference = "secret:/external/aws/path/database/password";
 
     Map<String, Map<String, String>> mysqlConnection =
         Map.of("authType", Map.of("password", externalSecretReference));
@@ -141,7 +137,7 @@ public class AWSSecretsManagerTest extends AWSBasedSecretsManagerTest {
     MysqlConnection encryptedConnection =
         (MysqlConnection)
             secretsManager.encryptServiceConnectionConfig(
-                mysqlConnection, Mysql.value(), "hybrid-customer-service", ServiceType.DATABASE);
+                mysqlConnection, Mysql.value(), "external-secrets-service", ServiceType.DATABASE);
 
     verify(secretsManagerClient, never()).createSecret(any(CreateSecretRequest.class));
 
