@@ -38,6 +38,7 @@ import {
   submitForm,
   validateForm,
   verifyCertificationTagPageUI,
+  verifyEntityTypeFilterInTagAssets,
   verifyTagPageUI,
 } from '../../utils/tag';
 import { visitUserProfilePage } from '../../utils/user';
@@ -236,6 +237,10 @@ test.describe('Tag Page with Admin Roles', () => {
       await addAssetsToTag(adminPage, assets, tag1);
     });
 
+    await test.step('Verify EntityType Filter', async () => {
+      await verifyEntityTypeFilterInTagAssets(adminPage, assets);
+    });
+
     await test.step('Delete Asset', async () => {
       await removeAssetsFromTag(adminPage, assets, tag1);
       await assetCleanup();
@@ -318,9 +323,9 @@ test.describe('Tag Page with Admin Roles', () => {
     await classification1.visitPage(adminPage);
 
     // Verify toggle is visible and enabled (tag is enabled by default)
-    const tagToggle = adminPage.getByTestId(
-      `tag-disable-toggle-${tag1.data.name}`
-    ).getByRole('switch');
+    const tagToggle = adminPage
+      .getByTestId(`tag-disable-toggle-${tag1.data.name}`)
+      .getByRole('switch');
 
     await expect(tagToggle).toBeVisible();
     await expect(tagToggle).toBeChecked();
@@ -355,9 +360,9 @@ test.describe('Tag Page with Admin Roles', () => {
   }) => {
     await classification.visitPage(adminPage);
 
-    const tagToggle = adminPage.getByTestId(
-      `tag-disable-toggle-${tag.data.name}`
-    ).getByRole('switch');
+    const tagToggle = adminPage
+      .getByTestId(`tag-disable-toggle-${tag.data.name}`)
+      .getByRole('switch');
 
     // Verify toggle is enabled when classification is enabled
     await expect(tagToggle).toBeEnabled();
@@ -438,6 +443,10 @@ test.describe('Tag Page with Data Consumer Roles', () => {
       await addAssetsToTag(dataConsumerPage, assets, tag);
     });
 
+    await test.step('Verify EntityType Filter', async () => {
+      await verifyEntityTypeFilterInTagAssets(dataConsumerPage, assets);
+    });
+
     await test.step('Delete Asset', async () => {
       await removeAssetsFromTag(dataConsumerPage, assets, tag);
       await assetCleanup();
@@ -450,9 +459,9 @@ test.describe('Tag Page with Data Consumer Roles', () => {
     await classification.visitPage(dataConsumerPage);
 
     // Verify toggle is visible but disabled for data consumer user (no EditAll permission)
-    const tagToggle = dataConsumerPage.getByTestId(
-      `tag-disable-toggle-${tag.data.name}`
-    ).getByRole('switch');
+    const tagToggle = dataConsumerPage
+      .getByTestId(`tag-disable-toggle-${tag.data.name}`)
+      .getByRole('switch');
 
     await expect(tagToggle).toBeVisible();
     await expect(tagToggle).toBeDisabled();
@@ -500,6 +509,10 @@ test.describe('Tag Page with Data Steward Roles', () => {
 
     await test.step('Add Asset ', async () => {
       await addAssetsToTag(dataStewardPage, assets, tag);
+    });
+
+    await test.step('Verify EntityType Filter', async () => {
+      await verifyEntityTypeFilterInTagAssets(dataStewardPage, assets);
     });
 
     await test.step('Delete Asset', async () => {

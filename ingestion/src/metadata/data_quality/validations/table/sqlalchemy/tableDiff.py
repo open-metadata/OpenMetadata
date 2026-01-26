@@ -586,12 +586,28 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 ]
             )
 
+        has_column_diff = column_diff is not None and (
+            column_diff.removed or column_diff.added or column_diff.changed
+        )
+
+        if has_column_diff:
+            result_message = (
+                f"Schema mismatch detected: "
+                f"{len(column_diff.removed)} removed, "
+                f"{len(column_diff.added)} added, "
+                f"{len(column_diff.changed)} changed columns. "
+                f"Found {total_diffs} different rows."
+            )
+        else:
+            result_message = f"Found {total_diffs} different rows which is more than the threshold of {threshold}"
+
         return TestCaseResult(
             timestamp=self.execution_date,  # type: ignore
             testCaseStatus=self.get_test_case_status(
-                (threshold or total_diffs) == 0 or total_diffs < threshold
+                not has_column_diff
+                and ((threshold or total_diffs) == 0 or total_diffs < threshold)
             ),
-            result=f"Found {total_diffs} different rows which is more than the threshold of {threshold}",
+            result=result_message,
             failedRows=total_diffs,
             validateColumns=False,
             testResultValue=test_case_results,
