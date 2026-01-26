@@ -130,7 +130,7 @@ class SearchIndexFailureScenarioTest {
       Stats stats = executor.initializeTotalRecords(entities);
       executor.getStats().set(stats);
 
-      executor.updateReaderStats(0, 10);
+      executor.updateReaderStats(0, 10, 0);
 
       Stats updatedStats = executor.getStats().get();
       assertNotNull(updatedStats);
@@ -151,8 +151,8 @@ class SearchIndexFailureScenarioTest {
       Stats stats = executor.initializeTotalRecords(entities);
       executor.getStats().set(stats);
 
-      executor.updateReaderStats(90, 10);
-      executor.updateReaderStats(85, 15);
+      executor.updateReaderStats(90, 10, 0);
+      executor.updateReaderStats(85, 15, 0);
 
       Stats updatedStats = executor.getStats().get();
       assertEquals(175, updatedStats.getReaderStats().getSuccessRecords());
@@ -329,7 +329,7 @@ class SearchIndexFailureScenarioTest {
       executor.updateStats("table", new StepStats().withSuccessRecords(90).withFailedRecords(10));
       executor.updateStats(
           "dashboard", new StepStats().withSuccessRecords(45).withFailedRecords(5));
-      executor.updateReaderStats(135, 15);
+      executor.updateReaderStats(135, 15, 0);
 
       Stats finalStats = executor.getStats().get();
 
@@ -491,7 +491,7 @@ class SearchIndexFailureScenarioTest {
 
       for (int i = 0; i < 10; i++) {
         executor.updateStats("table", new StepStats().withSuccessRecords(9).withFailedRecords(1));
-        executor.updateReaderStats(10, 0);
+        executor.updateReaderStats(10, 0, 0);
         executor.updateSinkTotalSubmitted(10);
       }
 
