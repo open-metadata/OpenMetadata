@@ -26,6 +26,7 @@ import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -33,6 +34,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -66,8 +68,62 @@ import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
 public final class UserUtil {
+  private static final SecureRandom RANDOM = new SecureRandom();
+  private static final String SUFFIX_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
+  private static final int SUFFIX_LENGTH = 4;
+  private static final int MAX_USERNAME_GENERATION_ATTEMPTS = 100;
+
   private UserUtil() {
     // Private constructor for util class
+  }
+
+  /**
+   * Generate a unique username from email address. Uses email prefix, adds random suffix on
+   * collision.
+   *
+   * @param email user's email address
+   * @param existsChecker predicate to check if username already exists
+   * @return unique username
+   * @throws IllegalArgumentException if email is null/empty or existsChecker is null
+   * @throws IllegalStateException if unable to generate unique username after max attempts
+   */
+  public static String generateUsernameFromEmail(String email, Predicate<String> existsChecker) {
+    if (nullOrEmpty(email)) {
+      throw new IllegalArgumentException("Email cannot be null or empty");
+    }
+    if (existsChecker == null) {
+      throw new IllegalArgumentException("ExistsChecker predicate cannot be null");
+    }
+
+    String baseUsername = email.toLowerCase().split("@")[0];
+
+    if (!existsChecker.test(baseUsername)) {
+      return baseUsername;
+    }
+
+    int attempts = 0;
+    String username;
+    do {
+      if (attempts >= MAX_USERNAME_GENERATION_ATTEMPTS) {
+        throw new IllegalStateException(
+            String.format(
+                "Unable to generate unique username for email '%s' after %d attempts",
+                email, MAX_USERNAME_GENERATION_ATTEMPTS));
+      }
+      String suffix = generateRandomSuffix();
+      username = baseUsername + "_" + suffix;
+      attempts++;
+    } while (existsChecker.test(username));
+
+    return username;
+  }
+
+  private static String generateRandomSuffix() {
+    StringBuilder sb = new StringBuilder(SUFFIX_LENGTH);
+    for (int i = 0; i < SUFFIX_LENGTH; i++) {
+      sb.append(SUFFIX_CHARS.charAt(RANDOM.nextInt(SUFFIX_CHARS.length())));
+    }
+    return sb.toString();
   }
 
   public static void addUsers(
