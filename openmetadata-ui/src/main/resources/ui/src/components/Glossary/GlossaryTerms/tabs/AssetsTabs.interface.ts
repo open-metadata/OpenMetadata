@@ -12,8 +12,8 @@
  */
 
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.interface';
+import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
 export enum AssetsOfEntity {
   GLOSSARY = 'GLOSSARY',
@@ -27,6 +27,7 @@ export enum AssetsOfEntity {
   ACCESS_TOKEN = 'ACCESS_TOKEN',
   LINEAGE = 'LINEAGE',
   TAG = 'TAG',
+  COLUMN = 'COLUMN',
 }
 
 export interface AssetsTabsProps {

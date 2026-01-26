@@ -217,34 +217,6 @@ class PowerBiApiClient:
 
         return None
 
-    def fetch_report_details(
-        self, group_id: str, report_id: str
-    ) -> Optional[PowerBIReport]:
-        """Method to fetch details of an individual report within a group
-        API: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-report-in-group
-        Returns:
-            PowerBIReport
-        """
-        try:
-            logger.debug(
-                f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/reports/{report_id})"  # pylint: disable=protected-access
-                " to get report details"
-            )
-            response_data = self.client.get(
-                f"/myorg/groups/{group_id}/reports/{report_id}"
-            )
-            if not response_data:
-                logger.debug(
-                    f"report details could not be fetched from api for report_id = {report_id}"
-                )
-                return None
-            return PowerBIReport(**response_data)
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error fetching report details: {exc}")
-
-        return None
-
     def fetch_all_org_datasets(self, group_id: str) -> Optional[List[Dataset]]:
         """Method to fetch all powerbi datasets within the group
         Returns:

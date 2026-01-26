@@ -12,11 +12,15 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Card, Typography } from 'antd';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { EntityType } from '../../../enums/entity.enum';
-import { DataContract } from '../../../generated/entity/data/dataContract';
+import {
+  DataContract,
+  TermsOfUse,
+} from '../../../generated/entity/data/dataContract';
 import { useFqn } from '../../../hooks/useFqn';
 import BlockEditor from '../../BlockEditor/BlockEditor';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -35,8 +39,20 @@ export const ContractTermsOfService: React.FC<{
   const { fqn } = useFqn();
   const { t } = useTranslation();
 
+  // Extract content from termsOfUse object
+  const termsOfUseContent = useMemo(() => {
+    const termsOfUse = initialValues?.termsOfUse;
+    if (!termsOfUse) {
+      return undefined;
+    }
+    const content = termsOfUse.content;
+
+    return !content || content === '<p></p>' ? undefined : content;
+  }, [initialValues?.termsOfUse]);
+
   const handleContentOnChange = (value: string) => {
-    onChange({ termsOfUse: value });
+    const termsOfUse: TermsOfUse = { content: value };
+    onChange({ termsOfUse });
   };
 
   return (
@@ -59,11 +75,7 @@ export const ContractTermsOfService: React.FC<{
               entityType={EntityType.TABLE}>
               <BlockEditor
                 editable
-                content={
-                  initialValues?.termsOfUse === '<p></p>'
-                    ? undefined
-                    : initialValues?.termsOfUse
-                }
+                content={termsOfUseContent}
                 showInlineAlert={false}
                 onChange={handleContentOnChange}
               />

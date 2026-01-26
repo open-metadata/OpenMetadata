@@ -205,6 +205,19 @@
     "slackChannel": {
       "description": "Slack channel ID or name (required when using bot token, e.g., 'C1234567890' or '#general')",
       "type": "string"
+    },
+    "useDistributedIndexing": {
+      "description": "Enable distributed indexing across multiple servers. When enabled, reindexing work is partitioned and can be processed by multiple servers concurrently with crash recovery support.",
+      "type": "boolean",
+      "default": true
+    },
+    "partitionSize": {
+      "title": "Partition Size",
+      "description": "Number of entities per partition for distributed indexing. Smaller values create more partitions for better distribution across servers. Range: 1000-50000.",
+      "type": "integer",
+      "default": 10000,
+      "minimum": 1000,
+      "maximum": 50000
     }
   },
   "additionalProperties": false

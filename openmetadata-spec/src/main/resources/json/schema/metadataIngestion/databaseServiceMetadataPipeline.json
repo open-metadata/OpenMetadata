@@ -167,6 +167,20 @@
       "title": "Incremental Metadata Extraction Configuration",
       "description": "Use incremental Metadata extraction after the first execution. This is commonly done by getting the changes from Audit tables on the supporting databases.",
       "$ref": "#/definitions/incremental"
+    },
+    "extractJsonSchema": {
+      "title": "Extract JSON Schema",
+      "description": "Extract JSON schema from JSON columns by sampling data. This requires SELECT permission on the tables. If disabled or if SELECT fails, JSON columns will be ingested without schema information.",
+      "type": "boolean",
+      "default": false
+    },
+    "jsonSchemaSampleSize": {
+      "title": "JSON Schema Sample Size",
+      "description": "Number of rows to sample for inferring JSON schema. A larger sample size provides more accurate schema inference but increases query time.",
+      "type": "integer",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 1000
     }
   },
   "additionalProperties": false
