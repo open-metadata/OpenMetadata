@@ -12,23 +12,33 @@
  */
 package org.openmetadata.service.secrets;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
+import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.utils.JsonUtils;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.CreateSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.CreateSecretResponse;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
+import software.amazon.awssdk.services.secretsmanager.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretResponse;
 
@@ -97,5 +107,63 @@ public class AWSSecretsManagerTest extends AWSBasedSecretsManagerTest {
   @Override
   protected SecretsManagerProvider expectedSecretManagerProvider() {
     return SecretsManagerProvider.MANAGED_AWS;
+  }
+
+  /**
+   * Tests the Hybrid SaaS scenario where customers provide external secret references.
+   *
+   * <p>In Hybrid SaaS deployments:
+   *
+   * <ul>
+   *   <li>Customers provide secret references like "secret:/customer/path/to/secret"
+   *   <li>These references point to secrets in the CUSTOMER's AWS account, not Collate's
+   *   <li>The ingestion runs on the customer's cloud and resolves secrets there
+   *   <li>OpenMetadata server should NOT try to fetch these secrets during decrypt
+   * </ul>
+   *
+   * <p>This test verifies that when a user provides a "secret:" prefixed value:
+   *
+   * <ol>
+   *   <li>Encryption: keeps the reference (Fernet-wrapped for DB storage), no new secret created
+   *   <li>Decryption: returns the reference as-is WITHOUT trying to fetch from SM
+   * </ol>
+   *
+   * <p>REGRESSION: PR #25236 (Query Runner integration) changed decryptPasswordFields() to always
+   * call getSecretValue() for "secret:" prefixed values, breaking this scenario.
+   */
+  @Test
+  void testHybridSaasExternalSecretReferenceShouldNotBeFetchedDuringDecrypt() {
+    String externalSecretReference = "secret:/customer/aws/account/database/password";
+
+    Map<String, Map<String, String>> mysqlConnection =
+        Map.of("authType", Map.of("password", externalSecretReference));
+
+    MysqlConnection encryptedConnection =
+        (MysqlConnection)
+            secretsManager.encryptServiceConnectionConfig(
+                mysqlConnection, Mysql.value(), "hybrid-customer-service", ServiceType.DATABASE);
+
+    verify(secretsManagerClient, never()).createSecret(any(CreateSecretRequest.class));
+
+    reset(secretsManagerClient);
+    lenient()
+        .when(secretsManagerClient.getSecretValue(any(GetSecretValueRequest.class)))
+        .thenThrow(
+            ResourceNotFoundException.builder()
+                .message("Secrets Manager can't find the specified secret.")
+                .build());
+
+    MysqlConnection decryptedConnection =
+        (MysqlConnection)
+            secretsManager.decryptServiceConnectionConfig(
+                encryptedConnection, Mysql.value(), ServiceType.DATABASE);
+
+    String decryptedPassword =
+        JsonUtils.convertValue(decryptedConnection.getAuthType(), basicAuth.class).getPassword();
+    assertEquals(
+        externalSecretReference,
+        decryptedPassword,
+        "External secret reference should be returned as-is during decryption, "
+            + "not fetched from the server's secrets manager");
   }
 }
