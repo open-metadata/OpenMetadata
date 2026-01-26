@@ -362,4 +362,24 @@ public final class SecurityUtil {
     Claim isBotClaim = (Claim) claims.get("isBot");
     return isBotClaim != null && Boolean.TRUE.equals(isBotClaim.asBoolean());
   }
+
+  public static void validateEmailDomain(String email, List<String> allowedEmailDomains) {
+    if (allowedEmailDomains == null || allowedEmailDomains.isEmpty()) {
+      return;
+    }
+
+    if (email == null || !email.contains("@")) {
+      throw new IllegalArgumentException(
+          "Invalid email: email must be non-null and contain '@' symbol");
+    }
+
+    String domain = email.substring(email.indexOf("@") + 1).toLowerCase();
+
+    boolean allowed = allowedEmailDomains.stream().anyMatch(d -> d.toLowerCase().equals(domain));
+
+    if (!allowed) {
+      throw new AuthenticationException(
+          String.format("Authentication failed: domain '%s' not in allowed list", domain));
+    }
+  }
 }
