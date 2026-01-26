@@ -22,7 +22,10 @@ import {
   SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
 import { debounce, isEmpty, sortBy, toLower } from 'lodash';
-import { CustomPropertyEnumConfig } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import {
+  CustomPropertyEnumConfig,
+  SearchOutputType,
+} from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   CP_TYPE_WITHOUT_KEYWORD_FIELD,
   LIST_VALUE_OPERATORS,
@@ -1234,22 +1237,29 @@ class AdvancedSearchClassBase {
   };
 
   public getCustomPropertiesSubFields(
-    field: CustomPropertySummary
+    field: CustomPropertySummary,
+    searchOutputType: SearchOutputType = SearchOutputType.ElasticSearch
   ):
     | { subfieldsKey: string; dataObject: Field }
     | Array<{ subfieldsKey: string; dataObject: Field }> {
     const label = getEntityName(field);
 
     let subfieldsKey: string;
-    if (
+    const isEntityReferenceType =
       field.type === 'array<entityReference>' ||
-      field.type === 'entityReference'
-    ) {
-      subfieldsKey = field.name + '.displayName.keyword';
-    } else if (CP_TYPE_WITHOUT_KEYWORD_FIELD.includes(field.type)) {
-      subfieldsKey = field.name;
+      field.type === 'entityReference';
+
+    if (isEntityReferenceType) {
+      subfieldsKey =
+        searchOutputType === SearchOutputType.ElasticSearch
+          ? field.name + '.displayName.keyword'
+          : field.name + '.displayName';
+    } else if (searchOutputType === SearchOutputType.ElasticSearch) {
+      subfieldsKey = CP_TYPE_WITHOUT_KEYWORD_FIELD.includes(field.type)
+        ? field.name
+        : field.name + '.keyword';
     } else {
-      subfieldsKey = field.name + '.keyword';
+      subfieldsKey = field.name;
     }
 
     switch (field.type) {

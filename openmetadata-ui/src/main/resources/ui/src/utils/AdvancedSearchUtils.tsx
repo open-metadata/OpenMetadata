@@ -511,13 +511,17 @@ export const processCustomPropertyField = (
   field: CustomPropertySummary,
   resEntityType: string,
   subfields: Record<string, FieldOrGroup>,
-  entityType?: string
+  entityType?: string,
+  searchOutputType?: SearchOutputType
 ) => {
   if (!field.name || !field.type) {
     return;
   }
 
-  const result = advancedSearchClassBase.getCustomPropertiesSubFields(field);
+  const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+    field,
+    searchOutputType
+  );
   const subfieldsArray = Array.isArray(result) ? result : [result];
 
   subfieldsArray.forEach(({ subfieldsKey, dataObject }) => {
@@ -563,7 +567,8 @@ export const processEntityTypeFields = (
   resEntityType: string,
   fields: CustomPropertySummary[],
   subfields: Record<string, FieldOrGroup>,
-  entityType?: string
+  entityType?: string,
+  searchOutputType?: SearchOutputType
 ) => {
   // If entityType is specified, only include custom properties for that entity type
   if (
@@ -576,7 +581,13 @@ export const processEntityTypeFields = (
 
   if (Array.isArray(fields) && fields.length > 0) {
     fields.forEach((field) => {
-      processCustomPropertyField(field, resEntityType, subfields, entityType);
+      processCustomPropertyField(
+        field,
+        resEntityType,
+        subfields,
+        entityType,
+        searchOutputType
+      );
     });
   }
 };
