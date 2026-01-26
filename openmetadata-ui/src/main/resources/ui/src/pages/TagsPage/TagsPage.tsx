@@ -83,6 +83,8 @@ const TagsPage = () => {
   const [editTag, setEditTag] = useState<Tag>();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isClassificationLoading, setIsClassificationLoading] =
+    useState<boolean>(false);
   const classificationDetailsRef = useRef<ClassificationDetailsRef>(null);
 
   const [deleteTags, setDeleteTags] = useState<DeleteTagsType>({
@@ -163,7 +165,7 @@ const TagsPage = () => {
 
   const fetchCurrentClassification = async (fqn: string, update?: boolean) => {
     if (currentClassification?.fullyQualifiedName !== fqn || update) {
-      setIsLoading(true);
+      setIsClassificationLoading(true);
       try {
         const currentClassification = await getClassificationByName(fqn, {
           fields: [
@@ -187,8 +189,6 @@ const TagsPage = () => {
             })
           );
           setCurrentClassification(currentClassification);
-
-          setIsLoading(false);
         } else {
           showErrorToast(t('server.unexpected-response'));
         }
@@ -202,7 +202,8 @@ const TagsPage = () => {
         showErrorToast(errMsg);
         setError(errMsg);
         setCurrentClassification(undefined);
-        setIsLoading(false);
+      } finally {
+        setIsClassificationLoading(false);
       }
     }
   };
@@ -743,6 +744,7 @@ const TagsPage = () => {
                 handleToggleDisable={handleToggleDisable}
                 handleUpdateClassification={handleUpdateClassification}
                 isAddingTag={isAddingTag}
+                isClassificationLoading={isClassificationLoading}
                 ref={classificationDetailsRef}
               />
 

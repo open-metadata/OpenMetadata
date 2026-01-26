@@ -83,6 +83,7 @@ const ClassificationDetails = forwardRef(
       handleAddNewTagClick,
       disableEditButton,
       isVersionView = false,
+      isClassificationLoading = false,
       handleToggleDisable,
     }: Readonly<ClassificationDetailsProps>,
     ref
@@ -94,6 +95,7 @@ const ClassificationDetails = forwardRef(
     const navigate = useNavigate();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(true);
+    const isLoading = isTagsLoading || isClassificationLoading;
     const previousClassificationRef = useRef<string | undefined>();
     const isClassificationChangingRef = useRef(false);
     const {
@@ -499,7 +501,7 @@ const ClassificationDetails = forwardRef(
                   columns={tableColumn}
                   customPaginationProps={{
                     currentPage,
-                    isLoading: isTagsLoading,
+                    isLoading,
                     pageSize,
                     paging,
                     showPagination,
@@ -508,7 +510,7 @@ const ClassificationDetails = forwardRef(
                   }}
                   data-testid="table"
                   dataSource={tags}
-                  loading={isTagsLoading}
+                  loading={isLoading}
                   locale={{
                     emptyText: (
                       <ErrorPlaceHolder
