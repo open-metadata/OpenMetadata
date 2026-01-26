@@ -37,6 +37,7 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
@@ -373,6 +374,40 @@ public final class UserUtil {
   }
 
   /**
+   * Create or update a bot user using the botDomain from AuthorizerConfiguration.
+   *
+   * @param botName name of the bot
+   * @param authConfig authorizer configuration containing botDomain
+   * @return created or updated bot user
+   */
+  public static User addOrUpdateBotUser(String botName, AuthorizerConfiguration authConfig) {
+    if (nullOrEmpty(botName)) {
+      throw new IllegalArgumentException("Bot name cannot be null or empty");
+    }
+    if (authConfig == null) {
+      throw new IllegalArgumentException("AuthorizerConfiguration cannot be null");
+    }
+    String botDomain = authConfig.getBotDomain();
+    if (nullOrEmpty(botDomain)) {
+      botDomain = "openmetadata.org";
+    }
+
+    String botEmail = createBotEmail(botName, botDomain);
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName(botName.toLowerCase())
+            .withFullyQualifiedName(EntityInterfaceUtil.quoteName(botName.toLowerCase()))
+            .withEmail(botEmail)
+            .withIsBot(true)
+            .withIsAdmin(false)
+            .withUpdatedBy(botName.toLowerCase())
+            .withUpdatedAt(System.currentTimeMillis());
+
+    return addOrUpdateBotUser(user);
+  }
+
+  /**
    * This method add auth mechanism in the following way:
    *
    * <ul>
@@ -573,6 +608,23 @@ public final class UserUtil {
     String normalizedEmail = email.toLowerCase();
     return adminEmails.stream()
         .anyMatch(adminEmail -> adminEmail.toLowerCase().equals(normalizedEmail));
+  }
+
+  /**
+   * Create email address for a system bot.
+   *
+   * @param botName name of the bot
+   * @param botDomain domain for bot emails
+   * @return bot email address
+   */
+  public static String createBotEmail(String botName, String botDomain) {
+    if (nullOrEmpty(botName)) {
+      throw new IllegalArgumentException("Bot name cannot be null or empty");
+    }
+    if (nullOrEmpty(botDomain)) {
+      throw new IllegalArgumentException("Bot domain cannot be null or empty");
+    }
+    return String.format("%s@%s", botName.toLowerCase(), botDomain.toLowerCase());
   }
 
   public static void validateUserPersonaPreferencesImage(LandingPageSettings settings) {

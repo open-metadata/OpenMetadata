@@ -148,4 +148,39 @@ class UserUtilTest {
 
     assertFalse(UserUtil.isAdminEmail("", adminEmails));
   }
+
+  @Test
+  void testCreateBotEmail_withBotDomain() {
+    String botEmail = UserUtil.createBotEmail("ingestion-bot", "bot.company.com");
+
+    assertEquals("ingestion-bot@bot.company.com", botEmail);
+  }
+
+  @Test
+  void testCreateBotEmail_lowercases() {
+    String botEmail = UserUtil.createBotEmail("Ingestion-Bot", "Bot.Company.COM");
+
+    assertEquals("ingestion-bot@bot.company.com", botEmail);
+  }
+
+  @Test
+  void testCreateBotEmail_nullBotName() {
+    assertThrows(IllegalArgumentException.class, () -> UserUtil.createBotEmail(null, "domain.com"));
+  }
+
+  @Test
+  void testCreateBotEmail_emptyBotName() {
+    assertThrows(
+        IllegalArgumentException.class, () -> UserUtil.createBotEmail("", "domain.com"));
+  }
+
+  @Test
+  void testCreateBotEmail_nullDomain() {
+    assertThrows(IllegalArgumentException.class, () -> UserUtil.createBotEmail("bot", null));
+  }
+
+  @Test
+  void testCreateBotEmail_emptyDomain() {
+    assertThrows(IllegalArgumentException.class, () -> UserUtil.createBotEmail("bot", ""));
+  }
 }
