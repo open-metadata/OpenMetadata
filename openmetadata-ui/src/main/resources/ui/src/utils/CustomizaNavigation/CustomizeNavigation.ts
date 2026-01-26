@@ -169,7 +169,7 @@ export const getTreeDataForNavigationItems = (
 ): TreeDataNode[] => {
   const sidebarItemsWithPlugins = getSidebarItemsWithPlugins(plugins);
 
-  if (navigationItems === null) {
+  if (navigationItems === null || isEmpty(navigationItems)) {
     return sidebarItemsWithPlugins.map(convertSidebarItemToTreeNode);
   }
 
@@ -204,9 +204,10 @@ export const getHiddenKeysFromNavigationItems = (
   plugins?: AppPlugin[]
 ): string[] => {
   const sidebarItemsWithPlugins = getSidebarItemsWithPlugins(plugins);
-  const navigationMap = navigationItems
-    ? createNavigationMap(navigationItems)
-    : null;
+  const navigationMap =
+    navigationItems && !isEmpty(navigationItems)
+      ? createNavigationMap(navigationItems)
+      : null;
 
   return sidebarItemsWithPlugins.flatMap((item) =>
     collectHiddenKeys(item, navigationMap)
