@@ -183,9 +183,9 @@ export const verifyTotalDataAssetsFilters = async (
   ).toBeVisible();
 
   await page
-  .getByTestId(widgetKey)
-  .getByTestId('widget-sort-by-dropdown')
-  .click();
+    .getByTestId(widgetKey)
+    .getByTestId('widget-sort-by-dropdown')
+    .click();
   const last14DaysFilter = page.waitForResponse(
     (response) =>
       response
@@ -205,11 +205,10 @@ export const verifyTotalDataAssetsFilters = async (
     }
   );
 
-  
   await page
-  .getByTestId(widgetKey)
-  .getByTestId('widget-sort-by-dropdown')
-  .click();
+    .getByTestId(widgetKey)
+    .getByTestId('widget-sort-by-dropdown')
+    .click();
   const last7DaysFilter = page.waitForResponse(
     (response) =>
       response
@@ -241,7 +240,9 @@ export const verifyDataProductsFilters = async (
     }
   );
 
-  const sortDropdown = page.getByTestId(widgetKey).getByTestId('widget-sort-by-dropdown');
+  const sortDropdown = page
+    .getByTestId(widgetKey)
+    .getByTestId('widget-sort-by-dropdown');
 
   await expect(sortDropdown).toBeVisible();
 
@@ -310,9 +311,9 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   ).toBeVisible();
 
   await page
-  .getByTestId(widgetKey)
-  .getByTestId('widget-sort-by-dropdown')
-  .click();
+    .getByTestId(widgetKey)
+    .getByTestId('widget-sort-by-dropdown')
+    .click();
   const aToZFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
@@ -330,9 +331,9 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   );
 
   await page
-  .getByTestId(widgetKey)
-  .getByTestId('widget-sort-by-dropdown')
-  .click();
+    .getByTestId(widgetKey)
+    .getByTestId('widget-sort-by-dropdown')
+    .click();
   const zToAFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
@@ -350,9 +351,9 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   );
 
   await page
-  .getByTestId(widgetKey)
-  .getByTestId('widget-sort-by-dropdown')
-  .click();
+    .getByTestId(widgetKey)
+    .getByTestId('widget-sort-by-dropdown')
+    .click();
   const latestFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
@@ -383,9 +384,9 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   ).toBeVisible();
 
   await page
-  .getByTestId(widgetKey)
-  .getByTestId('widget-sort-by-dropdown')
-  .click();
+    .getByTestId(widgetKey)
+    .getByTestId('widget-sort-by-dropdown')
+    .click();
   const mentionsTaskFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/feed') &&
@@ -402,9 +403,9 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   );
 
   await page
-  .getByTestId(widgetKey)
-  .getByTestId('widget-sort-by-dropdown')
-  .click();
+    .getByTestId(widgetKey)
+    .getByTestId('widget-sort-by-dropdown')
+    .click();
   const assignedTasksFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/feed') &&
@@ -421,9 +422,9 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   );
 
   await page
-  .getByTestId(widgetKey)
-  .getByTestId('widget-sort-by-dropdown')
-  .click();
+    .getByTestId(widgetKey)
+    .getByTestId('widget-sort-by-dropdown')
+    .click();
   const allTasksFilter = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/feed') &&
@@ -451,7 +452,9 @@ export const verifyDataAssetsFilters = async (
     }
   );
 
-  const sortDropdown = page.getByTestId(widgetKey).getByTestId('widget-sort-by-dropdown');
+  const sortDropdown = page
+    .getByTestId(widgetKey)
+    .getByTestId('widget-sort-by-dropdown');
 
   await expect(sortDropdown).toBeVisible();
 
