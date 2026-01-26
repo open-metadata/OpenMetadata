@@ -180,6 +180,20 @@ public final class SecurityUtil {
     return email;
   }
 
+  public static String extractDisplayNameFromClaim(
+      Map<String, ?> claims, String displayNameClaim, String email) {
+    Object claimValue = claims.get(displayNameClaim);
+    if (claimValue != null) {
+      claimValue = getClaimOrObject(claimValue);
+    }
+
+    if (claimValue != null && !claimValue.toString().trim().isEmpty()) {
+      return claimValue.toString().trim();
+    }
+
+    return email.split("@")[0];
+  }
+
   private static boolean isValidEmail(String email) {
     return email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
   }

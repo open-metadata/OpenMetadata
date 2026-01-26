@@ -220,4 +220,36 @@ class SecurityUtilTest {
 
     assertEquals("user@domain.org", email);
   }
+
+  @Test
+  void testExtractDisplayNameFromClaim_withValidName() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("name", "John Doe");
+
+    String displayName =
+        SecurityUtil.extractDisplayNameFromClaim(claims, "name", "john.doe@company.com");
+
+    assertEquals("John Doe", displayName);
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaim_fallsBackToEmailPrefix() {
+    Map<String, Object> claims = new HashMap<>();
+
+    String displayName =
+        SecurityUtil.extractDisplayNameFromClaim(claims, "name", "john.doe@company.com");
+
+    assertEquals("john.doe", displayName);
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaim_emptyClaim_fallsBack() {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("name", "");
+
+    String displayName =
+        SecurityUtil.extractDisplayNameFromClaim(claims, "name", "john.doe@company.com");
+
+    assertEquals("john.doe", displayName);
+  }
 }
