@@ -14,6 +14,7 @@
 import { Box, Chip, Typography, useTheme } from '@mui/material';
 import {
   Clock,
+  CpuChip02,
   Database01,
   Flag04,
   MessageTextSquare01,
@@ -23,6 +24,7 @@ import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   FeedbackType,
@@ -41,6 +43,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const feedback: RecognizerFeedback | undefined = task?.feedback;
+  const recognizerName = task?.recognizer?.recognizerName || '';
 
   const feedbackTypeLabel = useMemo(() => {
     if (!feedback?.feedbackType) {
@@ -90,48 +93,81 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
     color: theme.palette.grey[700],
   };
 
-  const valueStyle = {
-    color: theme.palette.grey[900],
-  };
-
   return (
     <Box
       className="feedback-approval-task"
       data-testid="feedback-approval-task"
       sx={{ display: 'flex', rowGap: 4, flexDirection: 'column', mt: -1.5 }}>
+      {recognizerName && (
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
+          <Typography sx={labelStyle} variant="body2">
+            <CpuChip02 className="text-grey-muted" size={16} />
+            {t('label.recognizer')}
+          </Typography>
+          <Typography color={theme.palette.grey[700]} variant="body2">
+            {recognizerName}
+          </Typography>
+        </Box>
+      )}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
         <Typography sx={labelStyle} variant="body2">
           <Flag04 className="text-grey-muted" size={16} />
           {t('label.feedback-type')}
         </Typography>
         <Chip
+          icon={
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                backgroundColor: theme.palette.error.main,
+              }}
+            />
+          }
           label={feedbackTypeLabel}
           size="small"
           sx={{
-            background: theme.palette.background.paper,
+            display: 'inline-flex',
+            padding: '2px 6px',
+            alignItems: 'center',
+            gap: '6px',
             borderRadius: '6px',
-            border: `1px solid ${theme.palette.grey[300]}`,
+            color: theme.palette.grey[700],
+            border: `0.5px solid ${theme.palette.grey[300]}`,
+            background: theme.palette.background.paper,
+            boxShadow: '0 1px 2px 0 @grey-27',
+            '& .MuiChip-icon': {
+              marginLeft: 0,
+              marginRight: 0,
+            },
           }}
         />
       </Box>
 
       {feedback.userComments && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
           <Typography sx={labelStyle} variant="body2">
             <MessageTextSquare01 className="text-grey-muted" size={16} />
             {t('label.comment-plural')}
           </Typography>
-          <Typography
-            color={theme.palette.grey[700]}
-            fontSize={theme.typography.caption.fontSize}
-            variant="body2">
-            {feedback.userComments}
-          </Typography>
+          <Box
+            sx={{
+              '& .ProseMirror p, button': {
+                fontSize: theme.typography.caption.fontSize,
+              },
+            }}>
+            <RichTextEditorPreviewerNew
+              className="text-grey-700"
+              markdown={feedback.userComments}
+              maxLength={100}
+            />
+          </Box>
         </Box>
       )}
 
       {feedback.createdBy && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
           <Typography sx={labelStyle} variant="body2">
             <UsersRight className="text-grey-muted" size={16} />
             {t('label.submitted-by')}
@@ -147,12 +183,15 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
       )}
 
       {feedback.createdAt && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
           <Typography sx={labelStyle} variant="body2">
             <Clock className="text-grey-muted" size={16} />
             {t('label.submitted-on')}
           </Typography>
-          <Typography sx={valueStyle} variant="body2">
+          <Typography
+            color={theme.palette.grey[700]}
+            fontSize={theme.typography.caption.fontSize}
+            variant="body2">
             {formatDateTime(feedback.createdAt)}
           </Typography>
         </Box>

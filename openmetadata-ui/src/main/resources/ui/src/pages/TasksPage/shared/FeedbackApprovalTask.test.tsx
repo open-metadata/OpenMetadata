@@ -19,29 +19,42 @@ import { FeedbackType } from '../../../generated/entity/feed/thread';
 import { MOCK_TASK_RECOGNIZER_FEEDBACK } from '../../../mocks/Task.mock';
 import FeedbackApprovalTask from './FeedbackApprovalTask';
 
+jest.mock(
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewNew',
+  () => {
+    return function MockRichTextEditorPreviewerNew({
+      markdown,
+    }: {
+      markdown: string;
+    }) {
+      return <div data-testid="rich-text-preview">{markdown}</div>;
+    };
+  }
+);
+
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
   formatDateTime: jest.fn().mockReturnValue('2023-12-04 10:15:27'),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../../utils/EntityUtils'),
-  getEntityLinkFromType: jest
-    .fn()
-    .mockReturnValue('/table/sample_data.ecommerce_db.shopify.dim.shop'),
-}));
-
-jest.mock('../../../utils/FeedUtils', () => ({
-  ...jest.requireActual('../../../utils/FeedUtils'),
-  getEntityType: jest.fn().mockReturnValue('table'),
-  getEntityFQN: jest
-    .fn()
-    .mockReturnValue('sample_data.ecommerce_db.shopify.dim.shop'),
+jest.mock('../../../utils/EntityLink', () => ({
+  __esModule: true,
+  default: {
+    getEntityType: jest.fn().mockReturnValue('table'),
+    getEntityFqn: jest
+      .fn()
+      .mockReturnValue('sample_data.ecommerce_db.shopify."dim.shop"'),
+    getEntityColumnFqn: jest
+      .fn()
+      .mockReturnValue('sample_data.ecommerce_db.shopify."dim.shop".email'),
+  },
 }));
 
 jest.mock('../../../utils/RouterUtils', () => ({
   ...jest.requireActual('../../../utils/RouterUtils'),
-  getUserPath: jest.fn().mockReturnValue('/users/admin'),
+  getEntityDetailsPath: jest
+    .fn()
+    .mockReturnValue('/table/sample_data.ecommerce_db.shopify.dim.shop'),
 }));
 
 const theme = createMuiTheme();
@@ -212,16 +225,31 @@ describe('FeedbackApprovalTask', () => {
     expect(screen.queryByText('label.submitted-by')).not.toBeInTheDocument();
   });
 
-  it('should display entity link as plain text when entityLinkUrl is null', () => {
-    jest
-      .spyOn(require('../../../utils/FeedUtils'), 'getEntityType')
-      .mockReturnValueOnce(null);
+  it('should not display entity link when entityType is null', () => {
+    const EntityLink = require('../../../utils/EntityLink').default;
+    EntityLink.getEntityType.mockReturnValueOnce(null);
 
     render(<FeedbackApprovalTask {...mockProps} />, {
       wrapper: Wrapper,
     });
 
-    expect(screen.getByText('label.entity-link')).toBeInTheDocument();
+    expect(screen.queryByText('label.entity-link')).not.toBeInTheDocument();
+  });
+
+  it('should not display submitted on date when createdAt is not available', () => {
+    const taskWithoutCreatedAt = {
+      ...mockProps.task,
+      feedback: {
+        ...mockProps.task.feedback!,
+        createdAt: undefined,
+      },
+    };
+
+    render(<FeedbackApprovalTask task={taskWithoutCreatedAt} />, {
+      wrapper: Wrapper,
+    });
+
+    expect(screen.queryByText('label.submitted-on')).not.toBeInTheDocument();
   });
 
   it('should use createdBy name when displayName is not available', () => {

@@ -109,18 +109,18 @@ class ServiceBaseClass {
     if (await runnerSelector.isVisible()) {
       await runnerSelector.click();
       await page.waitForSelector(
-        '.ant-select-dropdown:visible [data-testid="select-option-Collate SaaS Agent"]',
+        '.ant-select-dropdown:visible [data-testid="select-option-Collate SaaS Runner"]',
         { state: 'visible' }
       );
       await page
         .locator(
-          '.ant-select-dropdown:visible [data-testid="select-option-Collate SaaS Agent"]'
+          '.ant-select-dropdown:visible [data-testid="select-option-Collate SaaS Runner"]'
         )
         .click();
 
       await expect(
         page.getByTestId('select-widget-root/ingestionRunner')
-      ).toContainText('Collate SaaS Agent');
+      ).toContainText('Collate SaaS Runner');
     }
 
     if (this.shouldTestConnection) {

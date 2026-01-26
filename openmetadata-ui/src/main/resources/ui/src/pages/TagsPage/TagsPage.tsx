@@ -703,10 +703,10 @@ const TagsPage = () => {
                 onClick={() => onClickClassifications(category)}>
                 <Typography
                   noWrap
-                  className="ant-typography-ellipsis-custom self-center m-b-0 tag-category"
-                  component="p"
+                  className="self-center m-b-0 tag-category"
                   data-testid="tag-name"
-                  title={getEntityName(category)}>
+                  title={getEntityName(category)}
+                  variant="body2">
                   {getEntityName(category)}
                   {category.disabled && (
                     <Badge
