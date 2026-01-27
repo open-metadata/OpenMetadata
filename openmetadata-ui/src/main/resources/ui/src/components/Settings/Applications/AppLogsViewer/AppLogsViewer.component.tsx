@@ -477,6 +477,25 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         </div>
       )}
 
+      {successContext?.stats?.processStats && (
+        <div className="m-t-md">
+          {statsRender(
+            successContext.stats.processStats,
+            t('label.process-stat-plural'),
+            false
+          )}
+        </div>
+      )}
+      {failureContext?.stats?.processStats && (
+        <div className="m-t-md">
+          {statsRender(
+            failureContext.stats.processStats,
+            t('label.process-stat-plural'),
+            false
+          )}
+        </div>
+      )}
+
       {successContext?.stats?.sinkStats && (
         <div className="m-t-md">
           {statsRender(
@@ -491,6 +510,25 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
           {statsRender(
             failureContext.stats.sinkStats,
             t('label.sink-stat-plural'),
+            false
+          )}
+        </div>
+      )}
+
+      {successContext?.stats?.vectorStats && (
+        <div className="m-t-md">
+          {statsRender(
+            successContext.stats.vectorStats,
+            t('label.vector-stat-plural'),
+            false
+          )}
+        </div>
+      )}
+      {failureContext?.stats?.vectorStats && (
+        <div className="m-t-md">
+          {statsRender(
+            failureContext.stats.vectorStats,
+            t('label.vector-stat-plural'),
             false
           )}
         </div>
