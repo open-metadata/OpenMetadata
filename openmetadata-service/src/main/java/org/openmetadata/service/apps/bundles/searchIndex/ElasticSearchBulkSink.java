@@ -143,8 +143,15 @@ public class ElasticSearchBulkSink implements BulkSink {
         }
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
+
+        // Add entities to search index
         for (EntityInterface entity : entityInterfaces) {
-          addEntity(entity, indexName, recreateIndex, embeddingsEnabled);
+          addEntity(entity, indexName, recreateIndex);
+        }
+
+        // Process vector embeddings in batch (no-op in base class)
+        if (embeddingsEnabled) {
+          addEntitiesToVectorIndexBatch(bulkProcessor, entityInterfaces, recreateIndex);
         }
       }
     } catch (Exception e) {
@@ -163,8 +170,7 @@ public class ElasticSearchBulkSink implements BulkSink {
     }
   }
 
-  private void addEntity(
-      EntityInterface entity, String indexName, boolean recreateIndex, boolean embeddingsEnabled) {
+  private void addEntity(EntityInterface entity, String indexName, boolean recreateIndex) {
     try {
 
       String entityType = Entity.getEntityTypeFromObject(entity);
@@ -190,11 +196,6 @@ public class ElasticSearchBulkSink implements BulkSink {
                                 .action(a -> a.doc(EsUtils.toJsonData(json)).docAsUpsert(true))));
       }
       bulkProcessor.add(operation, docId, entityType);
-
-      if (embeddingsEnabled) {
-        addEntityToVectorIndex(bulkProcessor, entity, recreateIndex);
-      }
-
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
       entityBuildFailures.incrementAndGet();
@@ -398,6 +399,19 @@ public class ElasticSearchBulkSink implements BulkSink {
    */
   protected void addEntityToVectorIndex(
       CustomBulkProcessor bulkProcessor, EntityInterface entity, boolean recreateIndex) {}
+
+  /**
+   * Process vector embeddings for a batch of entities.
+   * Override this method to implement batch vector indexing with optimizations.
+   *
+   * @param bulkProcessor The bulk processor for indexing
+   * @param entities The list of entities to process
+   * @param recreateIndex Whether indexes are being recreated
+   */
+  protected void addEntitiesToVectorIndexBatch(
+      CustomBulkProcessor bulkProcessor, List<EntityInterface> entities, boolean recreateIndex) {
+    // Default: no-op, subclasses can override for batch processing
+  }
 
   public static class CustomBulkProcessor {
     private final ElasticsearchAsyncClient asyncClient;

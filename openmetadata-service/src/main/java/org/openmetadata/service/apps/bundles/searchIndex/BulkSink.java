@@ -57,4 +57,17 @@ public interface BulkSink {
   default void setFailureCallback(FailureCallback callback) {
     // Default implementation does nothing - subclasses should override
   }
+
+  /**
+   * Returns the vector indexing statistics. This is used for tracking vector embedding
+   * indexing separately from the main search index stats.
+   *
+   * @return StepStats with vector indexing success/failed counts, or null if not supported
+   */
+  default StepStats getVectorStats() {
+    return null;
+  }
+
+  /** Key for passing StageStatsTracker through context data to the sink. */
+  String STATS_TRACKER_CONTEXT_KEY = "stageStatsTracker";
 }

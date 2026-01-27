@@ -156,15 +156,20 @@ public class OpenSearchBulkSink implements BulkSink {
         }
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
+        ReindexContext reindexContext =
+            contextData.containsKey(RECREATE_CONTEXT)
+                ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
+                : null;
+
+        // Add entities to search index
         for (EntityInterface entity : entityInterfaces) {
-          addEntity(
-              entity,
-              indexName,
-              recreateIndex,
-              (contextData.containsKey(RECREATE_CONTEXT)
-                  ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
-                  : null),
-              embeddingsEnabled);
+          addEntity(entity, indexName, recreateIndex, reindexContext);
+        }
+
+        // Process vector embeddings in batch (no-op in base class)
+        if (embeddingsEnabled) {
+          addEntitiesToVectorIndexBatch(
+              bulkProcessor, entityInterfaces, recreateIndex, reindexContext);
         }
       }
     } catch (Exception e) {
@@ -187,8 +192,7 @@ public class OpenSearchBulkSink implements BulkSink {
       EntityInterface entity,
       String indexName,
       boolean recreateIndex,
-      ReindexContext reindexContext,
-      boolean embeddingsEnabled) {
+      ReindexContext reindexContext) {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
@@ -214,10 +218,6 @@ public class OpenSearchBulkSink implements BulkSink {
                                 .docAsUpsert(true)));
       }
       bulkProcessor.add(operation, docId, entityType);
-
-      if (embeddingsEnabled) {
-        addEntityToVectorIndex(bulkProcessor, entity, recreateIndex, reindexContext);
-      }
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
       entityBuildFailures.incrementAndGet();
@@ -408,6 +408,26 @@ public class OpenSearchBulkSink implements BulkSink {
       EntityInterface entity,
       boolean recreateIndex,
       ReindexContext reindexContext) {}
+
+  /**
+   * Process vector embeddings for a batch of entities.
+   * Override this method to implement batch vector indexing with optimizations like:
+   * - Batch fingerprint lookups
+   * - Batch embedding computation
+   * - Bulk vector document indexing
+   *
+   * @param bulkProcessor The bulk processor for indexing
+   * @param entities The list of entities to process
+   * @param recreateIndex Whether indexes are being recreated
+   * @param reindexContext Context for reindexing operations
+   */
+  protected void addEntitiesToVectorIndexBatch(
+      CustomBulkProcessor bulkProcessor,
+      List<EntityInterface> entities,
+      boolean recreateIndex,
+      ReindexContext reindexContext) {
+    // Default: no-op, subclasses can override for batch processing
+  }
 
   public static class CustomBulkProcessor {
     private final OpenSearchAsyncClient asyncClient;

@@ -31,6 +31,7 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
+import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.util.RestUtil;
@@ -130,6 +131,14 @@ public class PartitionWorker {
     AtomicLong processedCount = new AtomicLong(0);
     long currentOffset = rangeStart;
 
+    // Create stats tracker for this partition
+    StageStatsTracker statsTracker =
+        new StageStatsTracker(
+            partition.getJobId().toString(),
+            ServerIdentityResolver.getInstance().getServerId(),
+            entityType,
+            coordinator.getCollectionDAO().searchIndexServerStatsDAO());
+
     try {
       // Mark partition as started
       SearchIndexPartition processing =
@@ -144,7 +153,8 @@ public class PartitionWorker {
         int currentBatchSize = (int) Math.min(batchSize, rangeEnd - currentOffset);
 
         try {
-          BatchResult batchResult = processBatch(entityType, currentOffset, currentBatchSize);
+          BatchResult batchResult =
+              processBatch(entityType, currentOffset, currentBatchSize, statsTracker);
           successCount.addAndGet(batchResult.successCount());
           failedCount.addAndGet(batchResult.failedCount());
           warningsCount.addAndGet(batchResult.warningsCount());
@@ -200,6 +210,7 @@ public class PartitionWorker {
 
       if (stopped.get()) {
         LOG.info("Partition {} stopped by request", partition.getId());
+        statsTracker.flush();
         return new PartitionResult(
             successCount.get(),
             failedCount.get(),
@@ -210,6 +221,9 @@ public class PartitionWorker {
 
       // Mark partition as completed
       coordinator.completePartition(partition.getId(), successCount.get(), failedCount.get());
+
+      // Flush stats tracker to persist vector stats
+      statsTracker.flush();
 
       LOG.info(
           "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, warnings: {})",
@@ -230,6 +244,7 @@ public class PartitionWorker {
     } catch (Exception e) {
       LOG.error("Fatal error processing partition {}", partition.getId(), e);
       coordinator.failPartition(partition.getId(), e.getMessage());
+      statsTracker.flush();
       return new PartitionResult(
           successCount.get(),
           failedCount.get(),
@@ -245,9 +260,11 @@ public class PartitionWorker {
    * @param entityType The entity type
    * @param offset Starting offset
    * @param batchSize Number of entities to process
+   * @param statsTracker Optional stats tracker for vector stats
    * @return Batch processing result
    */
-  private BatchResult processBatch(String entityType, long offset, int batchSize)
+  private BatchResult processBatch(
+      String entityType, long offset, int batchSize, StageStatsTracker statsTracker)
       throws SearchIndexException {
 
     String cursor = RestUtil.encodeCursor(String.valueOf(offset));
@@ -257,7 +274,7 @@ public class PartitionWorker {
       return new BatchResult(0, 0, 0);
     }
 
-    Map<String, Object> contextData = createContextData(entityType);
+    Map<String, Object> contextData = createContextData(entityType, statsTracker);
 
     try {
       writeToSink(entityType, resultList, contextData);
@@ -322,12 +339,17 @@ public class PartitionWorker {
    * Create context data for the sink operation.
    *
    * @param entityType The entity type
+   * @param statsTracker Optional stats tracker for vector stats
    * @return Context data map
    */
-  private Map<String, Object> createContextData(String entityType) {
+  private Map<String, Object> createContextData(String entityType, StageStatsTracker statsTracker) {
     Map<String, Object> contextData = new java.util.HashMap<>();
     contextData.put(ENTITY_TYPE_KEY, entityType);
     contextData.put(RECREATE_INDEX, recreateIndex);
+
+    if (statsTracker != null) {
+      contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, statsTracker);
+    }
 
     if (recreateContext != null) {
       contextData.put(RECREATE_CONTEXT, recreateContext);

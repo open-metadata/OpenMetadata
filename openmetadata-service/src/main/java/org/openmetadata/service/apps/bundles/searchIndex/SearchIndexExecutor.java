@@ -592,6 +592,7 @@ public class SearchIndexExecutor implements AutoCloseable {
     contextData.put(ENTITY_TYPE_KEY, entityType);
     contextData.put(RECREATE_INDEX, config.recreateIndex());
     contextData.put(RECREATE_CONTEXT, recreateContext);
+    contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, getTracker(entityType));
     getTargetIndexForEntity(entityType)
         .ifPresent(index -> contextData.put(TARGET_INDEX_KEY, index));
     return contextData;
@@ -1226,6 +1227,13 @@ public class SearchIndexExecutor implements AutoCloseable {
         bulkSinkStats.getSuccessRecords() != null ? bulkSinkStats.getSuccessRecords() : 0);
     sinkStats.setFailedRecords(
         bulkSinkStats.getFailedRecords() != null ? bulkSinkStats.getFailedRecords() : 0);
+
+    // Sync vector stats if available
+    StepStats vectorStats = searchIndexSink.getVectorStats();
+    if (vectorStats != null
+        && (vectorStats.getTotalRecords() != null && vectorStats.getTotalRecords() > 0)) {
+      jobDataStats.setVectorStats(vectorStats);
+    }
 
     stats.set(jobDataStats);
   }
