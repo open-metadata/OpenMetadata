@@ -813,7 +813,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @GET
   @Path("{id}/recognizers")
   @Operation(
-      operationId = "listATagsRecognizers",
+      operationId = "listATagsRecognizersById",
       summary = "Lists a tag's recognizers",
       description = "Paginated endpoint to return a tag's recognizer list",
       responses = {
@@ -861,7 +861,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @GET
   @Path("name/{fqn}/recognizers")
   @Operation(
-      operationId = "listATagsRecognizers",
+      operationId = "listATagsRecognizersByFQN",
       summary = "Lists a tag's recognizers",
       description = "Paginated endpoint to return a tag's recognizer list",
       responses = {

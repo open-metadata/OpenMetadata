@@ -21,9 +21,10 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.BadCursorException;
 
 public class TagRepositoryUnitTest {
-  private static TagRepository tagRepository;
+  private static final TagRepository tagRepository;
 
   static {
+    // Mock class instantiation to avoid anything that might be coupled to DB
     tagRepository = Mockito.mock(TagRepository.class);
     when(tagRepository.getRecognizersOfTag(
             Mockito.isA(Tag.class),

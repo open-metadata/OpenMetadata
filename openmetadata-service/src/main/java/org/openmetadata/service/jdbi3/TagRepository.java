@@ -1060,33 +1060,65 @@ public class TagRepository extends EntityRepository<Tag> {
     }
 
     if (before != null) {
-      result = listRecognizersBefore(tag.getRecognizers(), before, limit);
+      result = listRecognizersBeforeCursor(tag.getRecognizers(), before, limit);
     } else {
-      result = listRecognizersAfter(tag.getRecognizers(), after, limit);
+      result = listRecognizersAfterCursor(tag.getRecognizers(), after, limit);
     }
 
     return result;
   }
 
-  private ResultList<Recognizer> listRecognizersAfter(
-      List<Recognizer> recognizers, String after, int limit) {
-    int total = recognizers.size();
-    String afterId = null;
-
-    if (after != null) {
+  private UUID extractIdFromCursor(String cursor) {
+    UUID id = null;
+    if (cursor != null) {
       try {
-        Map<String, String> map = parseCursorMap(RestUtil.decodeCursor(after));
-        afterId = map.get("id");
+        Map<String, String> map = parseCursorMap(RestUtil.decodeCursor(cursor));
+        String idString = map.get("id");
 
-        if (afterId == null) {
-          throw new BadCursorException("Invalid `after` cursor");
+        if (idString == null) {
+          throw new BadCursorException();
         }
+
+        id = UUID.fromString(idString);
+
       } catch (Exception e) {
-        throw new BadCursorException("Invalid `after` cursor");
+        throw new BadCursorException();
       }
     }
+    return id;
+  }
 
-    boolean append = afterId == null;
+  private ResultList<Recognizer> listRecognizersAfterCursor(
+      List<Recognizer> recognizers, String after, int limit) {
+    UUID afterId;
+
+    try {
+      afterId = extractIdFromCursor(after);
+    } catch (BadCursorException ignored) {
+      throw new BadCursorException("Invalid `after` cursor");
+    }
+
+    return listRecognizersAfter(recognizers, afterId, limit);
+  }
+
+  private ResultList<Recognizer> listRecognizersBeforeCursor(
+      List<Recognizer> recognizers, String before, int limit) {
+    UUID beforeId;
+
+    try {
+      beforeId = extractIdFromCursor(before);
+    } catch (BadCursorException ignored) {
+      throw new BadCursorException("Invalid `before` cursor");
+    }
+
+    return listRecognizersAfter(recognizers.reversed(), beforeId, limit);
+  }
+
+  private ResultList<Recognizer> listRecognizersAfter(
+      List<Recognizer> recognizers, UUID startId, int limit) {
+    int total = recognizers.size();
+
+    boolean append = startId == null;
     limit = limit > 0 ? Math.min(total, limit) : total;
 
     List<Recognizer> result = new ArrayList<>(limit);
@@ -1101,7 +1133,7 @@ public class TagRepository extends EntityRepository<Tag> {
       }
 
       if (!append) {
-        append = afterId.equals(String.valueOf(recognizer.getId()));
+        append = startId.equals(recognizer.getId());
         continue;
       }
 
@@ -1121,25 +1153,5 @@ public class TagRepository extends EntityRepository<Tag> {
         (endIndex == recognizers.size() - 1) ? null : getRecognizerCursorValue(result.getLast());
 
     return new ResultList<>(result, newBefore, newAfter, total);
-  }
-
-  private ResultList<Recognizer> listRecognizersBefore(
-      List<Recognizer> recognizers, String before, int limit) {
-    String beforeId;
-
-    if (before != null) {
-      try {
-        Map<String, String> map = parseCursorMap(RestUtil.decodeCursor(before));
-        beforeId = map.get("id");
-
-        if (beforeId == null) {
-          throw new BadCursorException("Invalid `before` cursor");
-        }
-      } catch (Exception e) {
-        throw new BadCursorException("Invalid `before` cursor");
-      }
-    }
-
-    return listRecognizersAfter(recognizers.reversed(), before, limit);
   }
 }
