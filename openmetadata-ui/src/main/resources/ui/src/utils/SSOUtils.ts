@@ -341,7 +341,7 @@ export const getDefaultsForProvider = (
           publicKeyUrls: [],
           clientId: '',
           tokenValidationAlgorithm: 'RS256',
-          jwtPrincipalClaims: [],
+          jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
           jwtPrincipalClaimsMapping: [],
           samlConfiguration: {
             debugMode: false,

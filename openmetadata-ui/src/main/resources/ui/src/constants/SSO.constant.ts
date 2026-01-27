@@ -38,6 +38,8 @@ export const GOOGLE_SSO_DEFAULTS = {
 // SAML-specific default values
 export const SAML_SSO_DEFAULTS = {
   authority: getAuthorityUrl(),
+  clientType: 'public',
+  jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
   idp: {},
   sp: {
     entityId: getServerUrl(),
@@ -281,9 +283,19 @@ export const SAML_UI_SCHEMA = {
     },
     sp: {
       'ui:title': 'Service Provider (SP)',
-      entityId: { 'ui:title': 'SP Entity ID' },
-      acs: { 'ui:title': 'Assertion Consumer Service URL' },
-      callback: { 'ui:title': 'Callback URL' },
+      entityId: {
+        'ui:title': 'SP Entity ID',
+        'ui:readonly': true,
+        'ui:help':
+          'Auto-generated Service Provider Entity ID. Copy this value and paste it as Entity ID in your SAML Identity Provider configuration.',
+      },
+      acs: {
+        'ui:title': 'Assertion Consumer Service URL',
+        'ui:readonly': true,
+        'ui:help':
+          'Auto-generated Assertion Consumer Service URL. Copy this value and paste it as ACS URL (or Reply URL) in your SAML Identity Provider configuration.',
+      },
+      callback: { 'ui:widget': 'hidden', 'ui:hideError': true },
       spX509Certificate: {
         'ui:title': 'SP X.509 Certificate',
         'ui:widget': 'textarea',
@@ -314,7 +326,12 @@ export const SAML_UI_SCHEMA = {
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  jwtPrincipalClaims: { 'ui:title': 'JWT Principal Claims' },
+  // Hide jwtPrincipalClaims for SAML - default value auto-filled to prevent lockouts
+  jwtPrincipalClaims: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide jwtPrincipalClaimsMapping for SAML - not used in SAML flow
+  jwtPrincipalClaimsMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide jwtTeamClaimMapping for SAML - not used in SAML flow
+  jwtTeamClaimMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
   // Hide clientType for SAML as it defaults to public
   clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
