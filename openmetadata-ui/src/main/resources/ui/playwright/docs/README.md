@@ -7,36 +7,36 @@
 | Metric | Count |
 |--------|-------|
 | **Components** | 31 |
-| **Test Files** | 170 |
-| **Test Cases** | 2639 |
-| **Total Scenarios** | 3739 🚀 |
+| **Test Files** | 184 |
+| **Test Cases** | 2930 |
+| **Total Scenarios** | 3762 🚀 |
 
 ---
 
 ## Governance
 
-> **6 Components** | **757 Tests** | **1233 Scenarios**
+> **6 Components** | **814 Tests** | **1014 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
-| [Custom Properties](./Governance.md#custom-properties) | 5 | 293 | 304 | 0 |
-| [Glossary](./Governance.md#glossary) | 20 | 213 | 251 | 0 |
-| [Domains & Data Products](./Governance.md#domains-data-products) | 14 | 122 | 184 | 0 |
-| [Data Contracts](./Governance.md#data-contracts) | 2 | 86 | 429 | 0 |
-| [Tags](./Governance.md#tags) | 7 | 34 | 49 | 0 |
+| [Custom Properties](./Governance.md#custom-properties) | 6 | 327 | 335 | 0 |
+| [Glossary](./Governance.md#glossary) | 20 | 213 | 228 | 0 |
+| [Domains & Data Products](./Governance.md#domains-data-products) | 14 | 135 | 197 | 0 |
+| [Data Contracts](./Governance.md#data-contracts) | 3 | 96 | 194 | 0 |
+| [Tags](./Governance.md#tags) | 7 | 34 | 44 | 0 |
 | [Metrics](./Governance.md#metrics) | 3 | 9 | 16 | 0 |
 
 ## Platform
 
-> **12 Components** | **1381 Tests** | **1867 Scenarios**
+> **12 Components** | **1574 Tests** | **2099 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
-| [Entities](./Platform.md#entities) | 17 | 986 | 1221 | 0 |
-| [Other](./Platform.md#other) | 19 | 96 | 142 | 0 |
-| [Users & Teams](./Platform.md#users-teams) | 9 | 81 | 101 | 0 |
+| [Entities](./Platform.md#entities) | 18 | 1064 | 1294 | 0 |
+| [Other](./Platform.md#other) | 24 | 203 | 293 | 0 |
+| [Users & Teams](./Platform.md#users-teams) | 9 | 82 | 102 | 0 |
 | [Navigation](./Platform.md#navigation) | 4 | 59 | 59 | 0 |
-| [Lineage (UI)](./Platform.md#lineage-ui-) | 3 | 52 | 111 | 0 |
+| [Lineage (UI)](./Platform.md#lineage-ui-) | 3 | 59 | 118 | 0 |
 | [Personas & Customizations](./Platform.md#personas-customizations) | 5 | 46 | 147 | 0 |
 | [RBAC](./Platform.md#rbac) | 4 | 19 | 34 | 0 |
 | [Settings](./Platform.md#settings) | 5 | 17 | 21 | 0 |
@@ -47,12 +47,12 @@
 
 ## Discovery
 
-> **7 Components** | **368 Tests** | **380 Scenarios**
+> **7 Components** | **369 Tests** | **384 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
 | [Search](./Discovery.md#search) | 5 | 131 | 131 | 0 |
-| [Data Assets](./Discovery.md#data-assets) | 12 | 113 | 117 | 0 |
+| [Data Assets](./Discovery.md#data-assets) | 13 | 114 | 121 | 0 |
 | [Explore](./Discovery.md#explore) | 4 | 60 | 66 | 0 |
 | [Curated Assets](./Discovery.md#curated-assets) | 1 | 23 | 23 | 0 |
 | [Home Page](./Discovery.md#home-page) | 2 | 22 | 22 | 0 |
@@ -61,23 +61,23 @@
 
 ## Observability
 
-> **5 Components** | **80 Tests** | **202 Scenarios**
+> **5 Components** | **114 Tests** | **202 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
-| [Data Quality](./Observability.md#data-quality) | 8 | 35 | 100 | 0 |
+| [Data Quality](./Observability.md#data-quality) | 11 | 66 | 122 | 0 |
 | [Rules Library](./Observability.md#rules-library) | 2 | 19 | 22 | 0 |
 | [Alerts & Notifications](./Observability.md#alerts-notifications) | 2 | 12 | 38 | 0 |
-| [Profiler](./Observability.md#profiler) | 2 | 9 | 24 | 0 |
-| [Incident Manager](./Observability.md#incident-manager) | 1 | 5 | 18 | 0 |
+| [Incident Manager](./Observability.md#incident-manager) | 2 | 11 | 11 | 0 |
+| [Profiler](./Observability.md#profiler) | 2 | 6 | 9 | 0 |
 
 ## Integration
 
-> **1 Components** | **53 Tests** | **57 Scenarios**
+> **1 Components** | **59 Tests** | **63 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
-| [Connectors](./Integration.md#connectors) | 6 | 53 | 57 | 0 |
+| [Connectors](./Integration.md#connectors) | 7 | 59 | 63 | 0 |
 
 
-*Last updated: 2026-01-15*
+*Last updated: 2026-01-27*
