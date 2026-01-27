@@ -920,16 +920,19 @@ test.describe('Column Bulk Operations - Multi-select', () => {
   test('should select multiple columns and bulk edit', async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
 
-    // Wait for grid data to load
-
-    // Get row checkboxes
-    const checkboxes = page.locator('tbody tr input[type="checkbox"]');
-    const checkboxCount = await checkboxes.count();
+    // Get checkboxes only from non-collapsible rows (rows without an expand button)
+    const nonCollapsibleRows = page.locator(
+      'tbody tr:not(:has(button.expand-button))'
+    );
+    const nonCollapsibleCheckboxes = nonCollapsibleRows.locator(
+      'input[type="checkbox"]'
+    );
+    const checkboxCount = await nonCollapsibleCheckboxes.count();
 
     if (checkboxCount >= 2) {
-      // Select first two columns
-      await checkboxes.nth(0).click();
-      await checkboxes.nth(1).click();
+      // Select first two non-collapsible columns
+      await nonCollapsibleCheckboxes.nth(0).click();
+      await nonCollapsibleCheckboxes.nth(1).click();
 
       // Verify "View Selected" shows correct count
       const viewSelectedText = page.getByText(/View Selected \(2\)/);
