@@ -1039,8 +1039,33 @@ public class SearchIndexExecutor implements AutoCloseable {
     }
 
     updateEntityStats(jobDataStats, entityType, currentEntityStats);
+
+    // When processing tables, also update column stats from the sink
+    if (Entity.TABLE.equals(entityType) && searchIndexSink != null) {
+      updateColumnStatsFromSink(jobDataStats);
+    }
+
     updateJobStats(jobDataStats);
     stats.set(jobDataStats);
+  }
+
+  private void updateColumnStatsFromSink(Stats jobDataStats) {
+    StepStats columnStats = null;
+    if (searchIndexSink instanceof OpenSearchBulkSink opensearchBulkSink) {
+      columnStats = opensearchBulkSink.getColumnStats();
+    } else if (searchIndexSink instanceof ElasticSearchBulkSink elasticSearchBulkSink) {
+      columnStats = elasticSearchBulkSink.getColumnStats();
+    }
+
+    if (columnStats != null && columnStats.getTotalRecords() > 0) {
+      StepStats existingColumnStats =
+          jobDataStats.getEntityStats().getAdditionalProperties().get(Entity.TABLE_COLUMN);
+      if (existingColumnStats != null) {
+        existingColumnStats.setTotalRecords(columnStats.getTotalRecords());
+        existingColumnStats.setSuccessRecords(columnStats.getSuccessRecords());
+        existingColumnStats.setFailedRecords(columnStats.getFailedRecords());
+      }
+    }
   }
 
   synchronized void updateReaderStats(int successCount, int failedCount, int warningsCount) {

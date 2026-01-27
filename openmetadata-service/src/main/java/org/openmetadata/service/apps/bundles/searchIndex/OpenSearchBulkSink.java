@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -25,8 +26,10 @@ import java.util.concurrent.locks.ReentrantLock;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
@@ -34,6 +37,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
@@ -62,6 +66,10 @@ public class OpenSearchBulkSink implements BulkSink {
   private final AtomicLong totalSuccess = new AtomicLong(0);
   private final AtomicLong totalFailed = new AtomicLong(0);
   private final AtomicLong entityBuildFailures = new AtomicLong(0);
+
+  // Track column-specific metrics (columns indexed during table processing)
+  private final AtomicLong columnIndexed = new AtomicLong(0);
+  private final AtomicLong columnFailed = new AtomicLong(0);
 
   // Configuration
   private volatile int batchSize;
@@ -146,15 +154,17 @@ public class OpenSearchBulkSink implements BulkSink {
         }
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
+        ReindexContext reindexContext =
+            contextData.containsKey(RECREATE_CONTEXT)
+                ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
+                : null;
         for (EntityInterface entity : entityInterfaces) {
-          addEntity(
-              entity,
-              indexName,
-              recreateIndex,
-              (contextData.containsKey(RECREATE_CONTEXT)
-                  ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
-                  : null),
-              embeddingsEnabled);
+          addEntity(entity, indexName, recreateIndex, reindexContext, embeddingsEnabled);
+        }
+
+        // Index columns separately when processing table entities
+        if (Entity.TABLE.equals(entityType)) {
+          indexTableColumns(entityInterfaces, recreateIndex, reindexContext);
         }
       }
     } catch (Exception e) {
@@ -278,6 +288,80 @@ public class OpenSearchBulkSink implements BulkSink {
             e.getMessage());
       }
     }
+  }
+
+  private void indexTableColumns(
+      List<EntityInterface> entities, boolean recreateIndex, ReindexContext reindexContext) {
+    IndexMapping columnIndexMapping = searchRepository.getIndexMapping(Entity.TABLE_COLUMN);
+    if (columnIndexMapping == null) {
+      LOG.debug("No index mapping found for tableColumn. Skipping column indexing.");
+      return;
+    }
+
+    String columnIndexName;
+    if (reindexContext != null) {
+      Optional<String> stagedIndex = reindexContext.getStagedIndex(Entity.TABLE_COLUMN);
+      columnIndexName =
+          stagedIndex.orElse(columnIndexMapping.getIndexName(searchRepository.getClusterAlias()));
+    } else {
+      columnIndexName = columnIndexMapping.getIndexName(searchRepository.getClusterAlias());
+    }
+
+    for (EntityInterface entity : entities) {
+      if (entity instanceof Table table) {
+        List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+        for (Column column : flattenedColumns) {
+          try {
+            ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
+            Object searchIndexDoc = columnIndex.buildSearchIndexDoc();
+            String json = JsonUtils.pojoToJson(searchIndexDoc);
+            String docId = columnIndex.buildSearchIndexDoc().get("id").toString();
+
+            BulkOperation operation;
+            if (recreateIndex) {
+              operation =
+                  BulkOperation.of(
+                      op ->
+                          op.index(
+                              idx ->
+                                  idx.index(columnIndexName)
+                                      .id(docId)
+                                      .document(OsUtils.toJsonData(json))));
+            } else {
+              operation =
+                  BulkOperation.of(
+                      op ->
+                          op.update(
+                              upd ->
+                                  upd.index(columnIndexName)
+                                      .id(docId)
+                                      .document(OsUtils.toJsonData(json))
+                                      .docAsUpsert(true)));
+            }
+            bulkProcessor.add(operation, docId, Entity.TABLE_COLUMN);
+            columnIndexed.incrementAndGet();
+          } catch (Exception e) {
+            columnFailed.incrementAndGet();
+            LOG.error(
+                "Failed to index column {} for table {}",
+                column.getFullyQualifiedName(),
+                table.getFullyQualifiedName(),
+                e);
+          }
+        }
+      }
+    }
+  }
+
+  /** Get stats for column indexing (columns indexed during table processing) */
+  public StepStats getColumnStats() {
+    StepStats columnStats = new StepStats();
+    long indexed = columnIndexed.get();
+    long failed = columnFailed.get();
+    columnStats.setTotalRecords((int) (indexed + failed));
+    columnStats.setSuccessRecords((int) indexed);
+    columnStats.setFailedRecords((int) failed);
+    return columnStats;
   }
 
   private void updateStats() {

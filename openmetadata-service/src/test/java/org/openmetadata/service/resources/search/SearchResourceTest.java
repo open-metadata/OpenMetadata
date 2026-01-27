@@ -1069,8 +1069,9 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
       JsonNode dbFilterBuckets = dbFilterEntityTypeAgg.path("buckets");
 
       // Verify only database-related entity types are in the aggregation
+      // tableColumn is also part of database hierarchy (columns belong to tables)
       Set<String> allowedEntityTypes =
-          Set.of("database", "databaseSchema", "table", "storedProcedure");
+          Set.of("database", "databaseSchema", "table", "storedProcedure", "tableColumn");
       Set<String> foundEntityTypes = new HashSet<>();
 
       for (JsonNode bucket : dbFilterBuckets) {

@@ -616,6 +616,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
       stats.getEntityStats().getAdditionalProperties().put(entityType, entityStats);
     }
 
+    // Initialize tableColumn stats when table is being reindexed
+    // Columns are indexed as part of table indexing, stats tracked separately
+    if (entities.contains(Entity.TABLE)
+        && searchRepository.getEntityIndexMap().containsKey(Entity.TABLE_COLUMN)) {
+      StepStats columnStats = new StepStats();
+      columnStats.setTotalRecords(0); // Column count unknown upfront, tracked during indexing
+      columnStats.setSuccessRecords(0);
+      columnStats.setFailedRecords(0);
+      stats.getEntityStats().getAdditionalProperties().put(Entity.TABLE_COLUMN, columnStats);
+    }
+
     stats.getJobStats().setTotalRecords(total);
     stats.getJobStats().setSuccessRecords(0);
     stats.getJobStats().setFailedRecords(0);
