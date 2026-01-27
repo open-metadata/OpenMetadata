@@ -15,13 +15,13 @@ import { InfoCircleOutlined } from '@ant-design/icons';
 import { Config, Utils as QbUtils } from '@react-awesome-query-builder/antd';
 import { Alert } from 'antd';
 import { isEmpty } from 'lodash';
+import { Bucket } from 'Models';
 import Qs from 'qs';
 import { useTranslation } from 'react-i18next';
 import '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsModal/curated-assets-modal.less';
 import { CURATED_ASSETS_LIST } from '../constants/AdvancedSearch.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Bucket } from '../interface/search.interface';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../rest/searchAPI';
 import {

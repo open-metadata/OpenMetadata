@@ -1,4 +1,4 @@
-from typing import Optional, Sequence, final
+from typing import List, Optional, Sequence, final
 
 from presidio_analyzer import (
     AnalyzerEngine,
@@ -11,10 +11,11 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.type import recognizer, tagLabelRecognizerMetadata
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
-from metadata.generated.schema.type.recognizer import RecognizerException, Target
+from metadata.generated.schema.type.recognizer import RecognizerException
 from metadata.pii.algorithms.feature_extraction import split_column_name
 from metadata.pii.algorithms.presidio_recognizer_factory import (
     PresidioRecognizerFactory,
@@ -25,11 +26,22 @@ from metadata.utils.entity_link import (
 )
 from metadata.utils.fqn import FQN_SEPARATOR
 
+TARGET_MAP = {
+    recognizer.Target.content: tagLabelRecognizerMetadata.Target.content,
+    recognizer.Target.column_name: tagLabelRecognizerMetadata.Target.column_name,
+}
+
 
 class TagAnalysis(BaseModel):
     tag: Tag
     score: float
     explanation: Optional[str]
+    recognizer_results: List[RecognizerResult] = []
+    target: Optional[recognizer.Target] = None
+
+    @final
+    class Config:
+        arbitrary_types_allowed = True
 
 
 @final
@@ -66,7 +78,7 @@ class TagAnalyzer:
             in blacklisted_entities
         )
 
-    def get_recognizers_by(self, target: Target) -> list[EntityRecognizer]:
+    def get_recognizers_by(self, target: recognizer.Target) -> list[EntityRecognizer]:
         if self.tag.autoClassificationEnabled is False:
             return []
 
@@ -90,11 +102,11 @@ class TagAnalyzer:
 
     @property
     def content_recognizers(self) -> list[EntityRecognizer]:
-        return self.get_recognizers_by(Target.content)
+        return self.get_recognizers_by(recognizer.Target.content)
 
     @property
     def column_recognizers(self) -> list[EntityRecognizer]:
-        return self.get_recognizers_by(Target.column_name)
+        return self.get_recognizers_by(recognizer.Target.column_name)
 
     @property
     def _column_name(self) -> str:
@@ -117,7 +129,7 @@ class TagAnalyzer:
         recognizers = self.content_recognizers
 
         if not recognizers:
-            return self._build_tag_analysis([], 1)
+            return self._build_tag_analysis([], 1, recognizer.Target.content)
 
         context = split_column_name(self._column_name)
         analyzer = self.build_analyzer_with(recognizers)
@@ -133,13 +145,13 @@ class TagAnalyzer:
                 )
             )
 
-        return self._build_tag_analysis(results, len(values))
+        return self._build_tag_analysis(results, len(values), recognizer.Target.content)
 
     def analyze_column(self) -> TagAnalysis:
         recognizers = self.column_recognizers
 
         if not recognizers:
-            return self._build_tag_analysis([], 1)
+            return self._build_tag_analysis([], 1, recognizer.Target.column_name)
 
         analyzer = self.build_analyzer_with(recognizers)
         results = analyzer.analyze(
@@ -148,15 +160,20 @@ class TagAnalyzer:
             return_decision_process=True,
         )
 
-        return self._build_tag_analysis(results, 1)
+        return self._build_tag_analysis(results, 1, recognizer.Target.column_name)
 
     def _build_tag_analysis(
-        self, results: list[RecognizerResult], analysis_count: int
+        self,
+        results: list[RecognizerResult],
+        analysis_count: int,
+        target: recognizer.Target,
     ) -> TagAnalysis:
         return TagAnalysis(
             tag=self.tag,
             score=sum(r.score for r in results) / analysis_count,
             explanation=explain_recognition_results(results) if results else None,
+            recognizer_results=results,
+            target=target,
         )
 
     def __repr__(self) -> str:

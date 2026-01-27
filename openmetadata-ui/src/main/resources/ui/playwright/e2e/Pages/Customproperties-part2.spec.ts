@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test } from '../../support/fixtures/userPages';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { TableClass } from '../../support/entity/TableClass';
+import { test } from '../../support/fixtures/userPages';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
@@ -37,25 +37,15 @@ test.describe('Custom properties with custom property config', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await adminTestEntity.delete(apiContext);
-    await afterAction();
-  });
-
   test.beforeEach('Visit Home Page', async ({ page }) => {
     await redirectToHomePage(page);
   });
 
   test.describe('Add update and delete Enum custom properties', () => {
-    test.slow(true);
-
     Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
       const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
 
       test(`Add Enum custom property for ${entity.name}`, async ({ page }) => {
-        test.slow(true);
-
         await settingClick(
           page,
           entity.entityApiType as SettingOptionsType,
@@ -113,8 +103,6 @@ test.describe('Custom properties with custom property config', () => {
       const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
 
       test(`Add Table custom property for ${entity.name}`, async ({ page }) => {
-        test.slow(true);
-
         await settingClick(
           page,
           entity.entityApiType as SettingOptionsType,
@@ -134,7 +122,9 @@ test.describe('Custom properties with custom property config', () => {
         await verifyCustomPropertyInAdvancedSearch(
           page,
           propertyName.toUpperCase(), // displayName is in uppercase
-          entity.name.charAt(0).toUpperCase() + entity.name.slice(1)
+          entity.name.charAt(0).toUpperCase() + entity.name.slice(1),
+          'Table',
+          entity.tableConfig.columns
         );
 
         if (entity.name === TABLE_COLUMN_ENTITY_NAME) {
@@ -176,8 +166,6 @@ test.describe('Custom properties with custom property config', () => {
         test(`Add Entity Reference custom property for ${entity.name}`, async ({
           page,
         }) => {
-          test.slow(true);
-
           await settingClick(
             page,
             entity.entityApiType as SettingOptionsType,
@@ -240,8 +228,6 @@ test.describe('Custom properties with custom property config', () => {
         test(`Add Entity Reference list custom property for ${entity.name}`, async ({
           page,
         }) => {
-          test.slow(true);
-
           await settingClick(
             page,
             entity.entityApiType as SettingOptionsType,
@@ -304,8 +290,6 @@ test.describe('Custom properties with custom property config', () => {
       const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
 
       test(`Add Date custom property for ${entity.name}`, async ({ page }) => {
-        test.slow(true);
-
         await settingClick(
           page,
           entity.entityApiType as SettingOptionsType,
@@ -357,8 +341,6 @@ test.describe('Custom properties with custom property config', () => {
       const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
 
       test(`Add Time custom property for ${entity.name}`, async ({ page }) => {
-        test.slow(true);
-
         await settingClick(
           page,
           entity.entityApiType as SettingOptionsType,
@@ -418,8 +400,6 @@ test.describe('Custom properties with custom property config', () => {
       test(`Add DateTime custom property for ${entity.name}`, async ({
         page,
       }) => {
-        test.slow(true);
-
         await settingClick(
           page,
           entity.entityApiType as SettingOptionsType,

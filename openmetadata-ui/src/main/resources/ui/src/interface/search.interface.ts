@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Bucket } from 'Models';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { DataInsightIndex } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -407,19 +408,10 @@ export type DataInsightSearchResponse = {
   aggregations: Aggregations;
 };
 
-export type AggregationEntry = [string, { buckets: Bucket[] }];
-
 export type AggregationType = {
   title: string;
   buckets: Bucket[];
 };
-
-export interface Bucket {
-  key: string;
-  doc_count: number;
-  label?: string;
-}
-
 export interface SuggestOption<SI extends SearchIndex, T> {
   text: string;
   _index: SI;
