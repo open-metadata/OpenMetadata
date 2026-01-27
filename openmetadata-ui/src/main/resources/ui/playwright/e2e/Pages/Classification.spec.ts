@@ -214,7 +214,7 @@ test.describe('Classification Page Tests', () => {
         await pageSizeDropdown.click();
 
         const tenPerPageOption = page.getByRole('menuitem', {
-          name: '10 / Page',
+          name: '15 / Page',
         });
         await expect(tenPerPageOption).toBeVisible();
 
@@ -231,11 +231,11 @@ test.describe('Classification Page Tests', () => {
 
           // Verify 10 rows are displayed (data rows only, excluding header)
           const rowCountAfter10 = await table.locator('tbody tr').count();
-          expect(rowCountAfter10).toBe(10);
+          expect(rowCountAfter10).toBe(15);
 
           // Verify page size indicator shows 10
           await expect(page.locator('.ant-pagination-options')).toContainText(
-            '10 / page'
+            '15 / page'
           );
         }
 
@@ -726,12 +726,18 @@ test.describe('Classification Page Tests', () => {
 
       // Assign the Tag to a Data Asset (Table Column)
       await table.visitEntityPage(page);
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+      
+      const firstColumnIndex = 0;
+      
+      const rowName = await page.getByTestId('column-name').first().textContent() ?? '';
       await addTagToTableColumn(page, {
         tagName: tag.data.name,
         tagFqn: tag.responseData.fullyQualifiedName,
         tagDisplayName: tag.responseData.displayName,
-        columnNumber: 0,
-        rowName: `${table.entity?.columns[0].name} numeric`,
+        columnNumber: firstColumnIndex,
+        rowName: rowName,
       });
 
       // Refresh the Classification/Tag page
@@ -760,8 +766,7 @@ test.describe('Classification Page Tests', () => {
       // Find and remove the tag from the column
       const columnRow = page
         .getByRole('row')
-        .filter({ hasText: `${table.entity?.columns[0].name}` })
-        .first();
+        .filter({ hasText: rowName })
 
       const tagContainer = columnRow.getByTestId('tags-container').first();
 
