@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import {
   ECustomizedDataAssets,
@@ -761,7 +761,7 @@ test.describe('Persona customization', () => {
         });
 
         // Change language to French
-        await userPage.getByRole('button', { name: 'EN' }).click();
+        await userPage.getByRole('button', { name: 'EN', exact: true }).click();
         await userPage.getByRole('menuitem', { name: 'Français - FR' }).click();
         await userPage.waitForLoadState('networkidle');
         await userPage.waitForSelector('[data-testid="loader"]', {

@@ -41,7 +41,6 @@ import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
 import org.openmetadata.service.notifications.channels.gchat.GChatMessageV2;
-import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 
@@ -72,9 +71,10 @@ public class GChatPublisher implements Destination<ChangeEvent> {
   }
 
   @Override
-  public void sendMessage(ChangeEvent event) throws EventPublisherException {
+  public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
+      throws EventPublisherException {
     try {
-      // Generate message using new Handlebars pipeline
+      // Generate message using Handlebars
       NotificationMessage message =
           messageEngine.generateMessage(event, eventSubscription, subscriptionDestination);
       GChatMessageV2 gchatMessage = (GChatMessageV2) message;
@@ -82,16 +82,12 @@ public class GChatPublisher implements Destination<ChangeEvent> {
       // Convert to JSON
       String json = JsonUtils.pojoToJsonIgnoreNull(gchatMessage);
 
-      // Resolve recipients using new RecipientResolver framework
-      RecipientResolver recipientResolver = new RecipientResolver();
-      Set<Recipient> recipients =
-          recipientResolver.resolveRecipients(event, subscriptionDestination, webhook);
-
       // Convert type-agnostic Recipient objects to configured webhook requests
       List<Invocation.Builder> targets =
           recipients.stream()
-              .filter(r -> r instanceof WebhookRecipient)
-              .map(r -> ((WebhookRecipient) r).getConfiguredRequest(client, json))
+              .filter(WebhookRecipient.class::isInstance)
+              .map(WebhookRecipient.class::cast)
+              .map(r -> r.getConfiguredRequest(client, json))
               .filter(Objects::nonNull)
               .toList();
 

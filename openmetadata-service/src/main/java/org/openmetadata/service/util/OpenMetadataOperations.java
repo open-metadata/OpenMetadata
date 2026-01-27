@@ -94,6 +94,7 @@ import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -646,6 +647,44 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } catch (Exception e) {
       LOG.error("Failed to db migration due to ", e);
       return 1;
+    }
+  }
+
+  @Command(
+      name = "recover",
+      description =
+          "Recover data lost due to Flyway migration issue (roles, policies, bot relationships). "
+              + "Use this if you ran migrations with --force after upgrading from pre-1.11.0 and lost data.")
+  public Integer recover() {
+    try {
+      LOG.info("Running data recovery for Flyway migration issue...");
+      parseConfig();
+      runDataRecovery();
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to recover data due to ", e);
+      return 1;
+    }
+  }
+
+  private void runDataRecovery() {
+    try (Handle handle = jdbi.open()) {
+      ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+
+      org.openmetadata.service.migration.utils.v1114.MigrationUtil.checkAndLogDataLossSymptoms(
+          handle);
+      org.openmetadata.service.migration.utils.v1114.MigrationUtil.reseedRolesAndPoliciesIfMissing(
+          handle, connType);
+      org.openmetadata.service.migration.utils.v1114.MigrationUtil
+          .restoreRolePolicyRelationshipsIfMissing(handle, connType);
+      org.openmetadata.service.migration.utils.v1114.MigrationUtil.restoreBotRelationshipsIfMissing(
+          handle, connType);
+      org.openmetadata.service.migration.utils.v1114.MigrationUtil.restoreBotUserRolesIfMissing(
+          handle, connType);
+
+      LOG.info("Data recovery completed.");
+    } catch (Exception e) {
+      LOG.error("Error during data recovery: {}", e.getMessage(), e);
     }
   }
 
@@ -2030,6 +2069,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Entity.setSearchRepository(searchRepository);
     Entity.setJdbi(jdbi);
     Entity.setCollectionDAO(collectionDAO);
+    Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(collectionDAO));
     Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);
     ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());

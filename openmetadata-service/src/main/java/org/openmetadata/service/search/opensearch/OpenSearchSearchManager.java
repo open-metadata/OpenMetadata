@@ -170,7 +170,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                                                     t.field("sourceUrl")
                                                         .value(FieldValue.of(sourceUrl)))))));
 
-    SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    SearchResponse<JsonData> response;
+    try {
+      response = client.search(searchRequest, JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
     return Response.status(OK).entity(response.toJsonString()).build();
   }
 
@@ -200,7 +208,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                                                         t.field("deleted")
                                                             .value(FieldValue.of(deleted)))))));
 
-    SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    SearchResponse<JsonData> response;
+    try {
+      response = client.search(searchRequest, JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
     return Response.status(OK).entity(response.toJsonString()).build();
   }
 
@@ -279,7 +295,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     try {
       SearchRequest searchRequest = requestBuilder.build(index);
-      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> response;
+      try {
+        response = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       List<Map<String, Object>> results = new ArrayList<>();
       if (response.hits().hits() != null) {
@@ -449,7 +473,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     try {
       SearchRequest searchRequest = requestBuilder.build(index);
-      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> response;
+      try {
+        response = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       List<Map<String, Object>> results = new ArrayList<>();
       Object[] lastHitSortValues = null;
@@ -607,7 +639,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
       // Build and execute search request
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> response;
+      try {
+        response = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       String responseJson = response.toJsonString();
       LOG.debug("Direct query search completed successfully");
@@ -799,7 +839,14 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     Query boolQuery = Query.of(q -> q.bool(b -> b.must(mustQueries).filter(filterQueries)));
 
-    return client.search(s -> s.index(indexName).query(boolQuery).size(1000), JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    try {
+      return client.search(s -> s.index(indexName).query(boolQuery).size(1000), JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
   }
 
   /**
@@ -1252,7 +1299,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     // Execute search to get aggregations for parent terms
     SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    SearchResponse<JsonData> searchResponse;
+    try {
+      searchResponse = client.search(searchRequest, JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
 
     if (searchResponse.aggregations() != null
         && searchResponse.aggregations().containsKey("fqnParts_agg")) {
@@ -1441,7 +1496,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       addAggregationsToNLQQuery(requestBuilder, request.getIndex());
 
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> searchResponse;
+      try {
+        searchResponse = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
 
       return Response.status(Response.Status.OK).entity(searchResponse.toJsonString()).build();
     } catch (Exception e) {
@@ -1469,7 +1532,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                     .query(query)
                     .size(1000));
 
-    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    SearchResponse<JsonData> searchResponse;
+    try {
+      searchResponse = client.search(searchRequest, JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
 
     for (var hit : searchResponse.hits().hits()) {
       if (hit.source() != null) {
@@ -1516,7 +1587,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                     .query(query)
                     .size(1000));
 
-    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    SearchResponse<JsonData> searchResponse;
+    try {
+      searchResponse = client.search(searchRequest, JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
 
     for (var hit : searchResponse.hits().hits()) {
       if (hit.source() != null) {
@@ -1618,7 +1697,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                     .query(finalBaseQuery)
                     .size(1000));
 
-    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    SearchResponse<JsonData> searchResponse;
+    try {
+      searchResponse = client.search(searchRequest, JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
 
     for (var hit : searchResponse.hits().hits()) {
       if (hit.source() != null) {

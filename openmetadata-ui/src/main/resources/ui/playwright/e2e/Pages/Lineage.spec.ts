@@ -14,12 +14,20 @@ import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { ChartClass } from '../../support/entity/ChartClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
+import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import {
@@ -29,6 +37,7 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   activateColumnLayer,
   addColumnLineage,
@@ -793,6 +802,375 @@ test('Verify there is no traced nodes and columns on exiting edit mode', async (
     await table.delete(apiContext);
     await afterAction();
   }
+});
+
+test('Verify node full path is present as breadcrumb in lineage node', async ({
+  page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+
+  await table.create(apiContext);
+
+  try {
+    await table.visitEntityPage(page);
+    await visitLineageTab(page);
+
+    const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
+    const tableNode = page.locator(`[data-testid="lineage-node-${tableFqn}"]`);
+
+    await expect(tableNode).toBeVisible();
+
+    const breadcrumbContainer = tableNode.locator(
+      '[data-testid="lineage-breadcrumbs"]'
+    );
+    await expect(breadcrumbContainer).toBeVisible();
+
+    const breadcrumbItems = breadcrumbContainer.locator(
+      '.lineage-breadcrumb-item'
+    );
+    const breadcrumbCount = await breadcrumbItems.count();
+
+    expect(breadcrumbCount).toBeGreaterThan(0);
+
+    const fqnParts: Array<string> = tableFqn.split('.');
+    fqnParts.pop();
+
+    expect(breadcrumbCount).toBe(fqnParts.length);
+
+    for (let i = 0; i < breadcrumbCount; i++) {
+      const breadcrumbText = await breadcrumbItems.nth(i).textContent();
+      expect(breadcrumbText).toBe(fqnParts[i]);
+    }
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Edges are not getting hidden when column is selected and column layer is removed', async ({
+  page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table1 = new TableClass();
+  const table2 = new TableClass();
+
+  try {
+    await Promise.all([table1.create(apiContext), table2.create(apiContext)]);
+
+    const table1Fqn = get(table1, 'entityResponseData.fullyQualifiedName');
+    const table2Fqn = get(table2, 'entityResponseData.fullyQualifiedName');
+
+    const sourceCol = `${table1Fqn}.${get(
+      table1,
+      'entityResponseData.columns[0].name'
+    )}`;
+    const targetCol = `${table2Fqn}.${get(
+      table2,
+      'entityResponseData.columns[0].name'
+    )}`;
+
+    await test.step(
+      '1. Create 2 tables and create column level lineage between them.',
+      async () => {
+        await connectEdgeBetweenNodesViaAPI(
+          apiContext,
+          {
+            id: table1.entityResponseData.id,
+            type: 'table',
+          },
+          {
+            id: table2.entityResponseData.id,
+            type: 'table',
+          },
+          [
+            {
+              fromColumns: [sourceCol],
+              toColumn: targetCol,
+            },
+          ]
+        );
+
+        await table1.visitEntityPage(page);
+        await visitLineageTab(page);
+      }
+    );
+
+    await test.step('2. Verify edge between 2 tables is visible', async () => {
+      const tableEdge = page.getByTestId(
+        `rf__edge-edge-${table1.entityResponseData.id}-${table2.entityResponseData.id}`
+      );
+      await expect(tableEdge).toBeVisible();
+    });
+
+    await test.step(
+      '3. Activate column layer and select a column - table edge should be hidden',
+      async () => {
+        await activateColumnLayer(page);
+
+        const firstColumn = page.locator(`[data-testid="column-${sourceCol}"]`);
+        await firstColumn.click();
+
+        const tableEdge = page.getByTestId(
+          `rf__edge-edge-${table1.entityResponseData.id}-${table2.entityResponseData.id}`
+        );
+        await expect(tableEdge).not.toBeVisible();
+      }
+    );
+
+    await test.step(
+      '4. Remove column layer - table edge should be visible again',
+      async () => {
+        const columnLayerBtn = page.locator(
+          '[data-testid="lineage-layer-column-btn"]'
+        );
+
+        await page.click('[data-testid="lineage-layer-btn"]');
+        await columnLayerBtn.click();
+        await clickOutside(page);
+
+        const tableEdge = page.getByTestId(
+          `rf__edge-edge-${table1.entityResponseData.id}-${table2.entityResponseData.id}`
+        );
+        await expect(tableEdge).toBeVisible();
+      }
+    );
+  } finally {
+    await Promise.all([table1.delete(apiContext), table2.delete(apiContext)]);
+    await afterAction();
+  }
+});
+
+test.describe('node selection edge behavior', () => {
+  /**
+   * Test setup:
+   * - table1 -> table2 -> table3
+   *          -> table4
+   *
+   * This creates a lineage graph where:
+   * - table1 is upstream of table2
+   * - table2 is upstream of table3 and table4
+   * - When table3 is selected, the traced path is: table1 -> table2 -> table3
+   * - The edge table2 -> table4 should be dimmed (not in traced path)
+   */
+  const table1 = new TableClass();
+  const table2 = new TableClass();
+  const table3 = new TableClass();
+  const table4 = new TableClass();
+
+  let table1Fqn: string;
+  let table2Fqn: string;
+  let table3Fqn: string;
+  let table4Fqn: string;
+
+  let table1Col: string;
+  let table2Col: string;
+  let table3Col: string;
+  let table4Col: string;
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await Promise.all([
+      table1.create(apiContext),
+      table2.create(apiContext),
+      table3.create(apiContext),
+      table4.create(apiContext),
+    ]);
+
+    table1Fqn = get(table1, 'entityResponseData.fullyQualifiedName');
+    table2Fqn = get(table2, 'entityResponseData.fullyQualifiedName');
+    table3Fqn = get(table3, 'entityResponseData.fullyQualifiedName');
+    table4Fqn = get(table4, 'entityResponseData.fullyQualifiedName');
+
+    table1Col = `${table1Fqn}.${get(
+      table1,
+      'entityResponseData.columns[0].name'
+    )}`;
+    table2Col = `${table2Fqn}.${get(
+      table2,
+      'entityResponseData.columns[0].name'
+    )}`;
+    table3Col = `${table3Fqn}.${get(
+      table3,
+      'entityResponseData.columns[0].name'
+    )}`;
+    table4Col = `${table4Fqn}.${get(
+      table4,
+      'entityResponseData.columns[0].name'
+    )}`;
+
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      { id: table1.entityResponseData.id, type: 'table' },
+      { id: table2.entityResponseData.id, type: 'table' },
+      [{ fromColumns: [table1Col], toColumn: table2Col }]
+    );
+
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      { id: table2.entityResponseData.id, type: 'table' },
+      { id: table3.entityResponseData.id, type: 'table' },
+      [{ fromColumns: [table2Col], toColumn: table3Col }]
+    );
+
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      { id: table2.entityResponseData.id, type: 'table' },
+      { id: table4.entityResponseData.id, type: 'table' },
+      [{ fromColumns: [table2Col], toColumn: table4Col }]
+    );
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await Promise.all([
+      table1.delete(apiContext),
+      table2.delete(apiContext),
+      table3.delete(apiContext),
+      table4.delete(apiContext),
+    ]);
+    await afterAction();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test('highlights traced node-to-node edges when a node is selected', async ({
+    page,
+  }) => {
+    await table2.visitEntityPage(page);
+    await visitLineageTab(page);
+    await performZoomOut(page);
+
+    await clickLineageNode(page, table3Fqn);
+
+    await page.keyboard.press('Escape');
+
+    const tracedEdge1 = page.locator(
+      `[data-testid="edge-${table1Fqn}-${table2Fqn}"]`
+    );
+    const tracedEdge2 = page.locator(
+      `[data-testid="edge-${table2Fqn}-${table3Fqn}"]`
+    );
+
+    await expect(tracedEdge1).toBeVisible();
+    await expect(tracedEdge2).toBeVisible();
+
+    const tracedEdge1Style = await tracedEdge1.getAttribute('style');
+    const tracedEdge2Style = await tracedEdge2.getAttribute('style');
+
+    expect(tracedEdge1Style).toContain('opacity: 1');
+    expect(tracedEdge2Style).toContain('opacity: 1');
+  });
+
+  test('hides column-to-column edges when a node is selected', async ({
+    page,
+  }) => {
+    await table2.visitEntityPage(page);
+    await visitLineageTab(page);
+    await activateColumnLayer(page);
+    await performZoomOut(page);
+
+    const columnEdge = page.locator(
+      `[data-testid="column-edge-${btoa(table1Col)}-${btoa(table2Col)}"]`
+    );
+    await expect(columnEdge).toBeVisible();
+
+    await clickLineageNode(page, table3Fqn);
+
+    const columnEdgeStyle = await columnEdge.getAttribute('style');
+
+    expect(columnEdgeStyle).toContain('display: none');
+  });
+
+  test('grays out non-traced node-to-node edges when a node is selected', async ({
+    page,
+  }) => {
+    await table2.visitEntityPage(page);
+    await visitLineageTab(page);
+    await performZoomOut(page);
+
+    await clickLineageNode(page, table3Fqn);
+
+    const nonTracedEdge = page.locator(
+      `[data-testid="edge-${table2Fqn}-${table4Fqn}"]`
+    );
+
+    await expect(nonTracedEdge).toBeVisible();
+
+    const nonTracedEdgeStyle = await nonTracedEdge.getAttribute('style');
+
+    expect(nonTracedEdgeStyle).toContain('opacity: 0.3');
+  });
+
+  test('highlights traced column-to-column edges when a column is selected', async ({
+    page,
+  }) => {
+    await table2.visitEntityPage(page);
+    await visitLineageTab(page);
+    await activateColumnLayer(page);
+    await performZoomOut(page);
+
+    const table1Column = page.locator(`[data-testid="column-${table1Col}"]`);
+    await table1Column.click();
+
+    const tracedColumnEdge = page.locator(
+      `[data-testid="column-edge-${btoa(table1Col)}-${btoa(table2Col)}"]`
+    );
+
+    await expect(tracedColumnEdge).toBeVisible();
+
+    const tracedEdgeStyle = await tracedColumnEdge.getAttribute('style');
+
+    expect(tracedEdgeStyle).toContain('opacity: 1');
+    expect(tracedEdgeStyle).not.toContain('display: none');
+  });
+
+  test('hides non-traced column-to-column edges when a column is selected', async ({
+    page,
+  }) => {
+    await table2.visitEntityPage(page);
+    await visitLineageTab(page);
+    await activateColumnLayer(page);
+    await performZoomOut(page);
+
+    const table3Column = page.locator(`[data-testid="column-${table3Col}"]`);
+    await table3Column.click();
+
+    const nonTracedColumnEdge = page.locator(
+      `[data-testid="column-edge-${btoa(table2Col)}-${btoa(table4Col)}"]`
+    );
+
+    const edgeStyle = await nonTracedColumnEdge.getAttribute('style');
+
+    expect(edgeStyle).toContain('display: none');
+  });
+
+  test('grays out node-to-node edges when a column is selected', async ({
+    page,
+  }) => {
+    await table2.visitEntityPage(page);
+    await visitLineageTab(page);
+    await activateColumnLayer(page);
+    await performZoomOut(page);
+
+    const table3Column = page.locator(`[data-testid="column-${table3Col}"]`);
+    await table3Column.click();
+
+    const nodeEdge = page.locator(
+      `[data-testid="edge-${table2Fqn}-${table3Fqn}"]`
+    );
+
+    await expect(nodeEdge).toBeVisible();
+
+    const nodeEdgeStyle = await nodeEdge.getAttribute('style');
+
+    expect(nodeEdgeStyle).toContain('opacity: 0.3');
+  });
 });
 
 test.describe.serial('Test pagination in column level lineage', () => {
@@ -1582,3 +1960,249 @@ test.describe.serial('Test pagination in column level lineage', () => {
     }
   });
 });
+
+test('Verify custom properties tab visibility in lineage sidebar', async ({
+  page,
+}) => {
+  const { apiContext } = await getApiContext(page);
+  const currentTable = new TableClass();
+  const upstreamTable = new TableClass();
+  const downstreamTable = new TableClass();
+
+  // Create test entities
+  await Promise.all([
+    currentTable.create(apiContext),
+    upstreamTable.create(apiContext),
+    downstreamTable.create(apiContext),
+  ]);
+
+  await test.step('Create lineage connections', async () => {
+    const currentTableId = currentTable.entityResponseData?.id;
+    const upstreamTableId = upstreamTable.entityResponseData?.id;
+    const downstreamTableId = downstreamTable.entityResponseData?.id;
+
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      {
+        id: upstreamTableId,
+        type: 'table',
+      },
+      {
+        id: currentTableId,
+        type: 'table',
+      },
+      []
+    );
+    await connectEdgeBetweenNodesViaAPI(
+      apiContext,
+      {
+        id: currentTableId,
+        type: 'table',
+      },
+      {
+        id: downstreamTableId,
+        type: 'table',
+      },
+      []
+    );
+  });
+
+  await test.step(
+    'Navigate to lineage tab and verify custom properties tab in sidebar',
+    async () => {
+      // Navigate to the entity detail page first (required for visitLineageTab)
+      const searchTerm =
+        currentTable.entityResponseData?.['fullyQualifiedName'] ||
+        currentTable.entity.name;
+
+      await currentTable.visitEntityPage(page, searchTerm);
+
+      // Navigate to lineage tab (this navigates to the full lineage page)
+      await visitLineageTab(page);
+
+      // Click on the current entity node to open the sidebar drawer
+      const nodeFqn = currentTable.entityResponseData?.['fullyQualifiedName'];
+
+      await clickLineageNode(page, nodeFqn);
+
+      // Wait for the lineage entity panel (sidebar drawer) to open
+      const lineagePanel = page.getByTestId('lineage-entity-panel');
+      await expect(lineagePanel).toBeVisible();
+
+      // Wait for the panel content to load
+      await waitForAllLoadersToDisappear(page);
+
+      // Try to find custom properties tab in the lineage sidebar - use data-testid first (priority 1)
+      const customPropertiesTab = lineagePanel.getByTestId(
+        'custom-properties-tab'
+      );
+
+      await expect(customPropertiesTab).toBeVisible();
+
+      await customPropertiesTab.click();
+      await waitForAllLoadersToDisappear(page);
+    }
+  );
+});
+
+test.describe(
+  'Verify custom properties tab visibility logic for supported entity types',
+  () => {
+    const supportedEntities = [
+      { entity: new TableClass(), type: 'table' },
+      { entity: new TopicClass(), type: 'topic' },
+      { entity: new DashboardClass(), type: 'dashboard' },
+      { entity: new PipelineClass(), type: 'pipeline' },
+      { entity: new MlModelClass(), type: 'mlmodel' },
+      { entity: new ContainerClass(), type: 'container' },
+      { entity: new SearchIndexClass(), type: 'searchIndex' },
+      { entity: new ApiEndpointClass(), type: 'apiEndpoint' },
+      { entity: new MetricClass(), type: 'metric' },
+      { entity: new ChartClass(), type: 'chart' },
+    ];
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext } = await createNewPage(browser);
+
+      for (const { entity } of supportedEntities) {
+        await entity.create(apiContext);
+      }
+    });
+
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+    });
+
+    for (const { entity, type } of supportedEntities) {
+      test(`Verify custom properties tab IS visible for supported type: ${type}`, async ({
+        page,
+      }) => {
+        test.slow();
+
+        const searchTerm =
+          entity.entityResponseData?.['fullyQualifiedName'] ||
+          entity.entity.name;
+
+        await entity.visitEntityPage(page, searchTerm);
+        await visitLineageTab(page);
+
+        const nodeFqn = entity.entityResponseData?.['fullyQualifiedName'];
+
+        await clickLineageNode(page, nodeFqn);
+
+        const lineagePanel = page.getByTestId('lineage-entity-panel');
+        await expect(lineagePanel).toBeVisible();
+        await waitForAllLoadersToDisappear(page);
+
+        const customPropertiesTab = lineagePanel.getByTestId(
+          'custom-properties-tab'
+        );
+        await expect(customPropertiesTab).toBeVisible();
+
+        const closeButton = lineagePanel.getByTestId('drawer-close-icon');
+        if (await closeButton.isVisible()) {
+          await closeButton.click();
+          await expect(lineagePanel).not.toBeVisible();
+        }
+      });
+    }
+  }
+);
+
+test.describe(
+  'Verify custom properties tab is NOT visible for unsupported entity types in platform lineage',
+  () => {
+    const unsupportedServices = [
+      { service: new DatabaseServiceClass(), type: 'databaseService' },
+      { service: new MessagingServiceClass(), type: 'messagingService' },
+      { service: new DashboardServiceClass(), type: 'dashboardService' },
+      { service: new PipelineServiceClass(), type: 'pipelineService' },
+      { service: new MlmodelServiceClass(), type: 'mlmodelService' },
+      { service: new StorageServiceClass(), type: 'storageService' },
+      { service: new ApiServiceClass(), type: 'apiService' },
+    ];
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext } = await createNewPage(browser);
+
+      for (const { service } of unsupportedServices) {
+        await service.create(apiContext);
+      }
+    });
+
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+    });
+
+    for (const { service, type } of unsupportedServices) {
+      test(`Verify custom properties tab is NOT visible for ${type} in platform lineage`, async ({
+        page,
+      }) => {
+        test.slow();
+
+        const serviceFqn = get(
+          service,
+          'entityResponseData.fullyQualifiedName'
+        );
+
+        await sidebarClick(page, SidebarItem.LINEAGE);
+
+        const searchEntitySelect = page.getByTestId('search-entity-select');
+        await expect(searchEntitySelect).toBeVisible();
+        await searchEntitySelect.click();
+
+        const searchInput = page
+          .getByTestId('search-entity-select')
+          .locator('.ant-select-selection-search-input');
+
+        const searchResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/search/query')
+        );
+        await searchInput.fill(service.entity.name);
+
+        const searchResponseResult = await searchResponse;
+        expect(searchResponseResult.status()).toBe(200);
+
+        const nodeSuggestion = page.getByTestId(
+          `node-suggestion-${serviceFqn}`
+        );
+        await expect(nodeSuggestion).toBeVisible();
+
+        const lineageResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/lineage/getLineage')
+        );
+
+        await nodeSuggestion.click();
+
+        const lineageResponseResult = await lineageResponse;
+        expect(lineageResponseResult.status()).toBe(200);
+
+        await expect(
+          page.getByTestId(`lineage-node-${serviceFqn}`)
+        ).toBeVisible();
+
+        await clickLineageNode(page, serviceFqn);
+
+        const lineagePanel = page.getByTestId('lineage-entity-panel');
+        await expect(lineagePanel).toBeVisible();
+        await waitForAllLoadersToDisappear(page);
+
+        const customPropertiesTab = lineagePanel.getByTestId(
+          'custom-properties-tab'
+        );
+        const customPropertiesTabByRole = lineagePanel.getByRole('menuitem', {
+          name: /custom propert/i,
+        });
+
+        await expect(customPropertiesTab).not.toBeVisible();
+        await expect(customPropertiesTabByRole).not.toBeVisible();
+
+        const closeButton = lineagePanel.getByTestId('drawer-close-icon');
+        if (await closeButton.isVisible()) {
+          await closeButton.click();
+          await expect(lineagePanel).not.toBeVisible();
+        }
+      });
+    }
+  }
+);

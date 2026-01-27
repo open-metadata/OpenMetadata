@@ -51,6 +51,8 @@ export const TABLE_CARD_PAGE_SIZE = 9;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
+export const PAGE_SIZE_EXTRA_LARGE = 100;
+export const AGGREGATE_PAGE_SIZE_LARGE = 1000;
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
@@ -58,6 +60,7 @@ export const LINEAGE_CHILD_ITEMS_PER_PAGE = 5;
 export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const MAX_NAME_LENGTH = 256;
+export const CUSTOM_PROPERTY_NAME_REGEX = /^[a-zA-Z0-9_]+$/;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
 export const DEPLOYED_PROGRESS_VAL = 100;
@@ -137,7 +140,6 @@ export const CHART_WIDGET_DAYS_DURATION = 14;
 export const ROUTES = {
   HOME: '/',
   CALLBACK: '/callback',
-  SAML_CALLBACK: '/saml/callback',
   SILENT_CALLBACK: '/silent-callback',
   NOT_FOUND: '/404',
   FORBIDDEN: '/403',
@@ -160,6 +162,7 @@ export const ROUTES = {
   SETTINGS_WITH_TAB_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}`,
   SETTINGS_WITH_TAB_FQN_ACTION: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ACTION}`,
   SETTINGS_EDIT_EMAIL_CONFIG: `/settings/OpenMetadata/email/edit-email-configuration`,
+  COLUMN_BULK_OPERATIONS: `/column-bulk-operations`,
   STORE: '/store',
   FEEDS: '/feeds',
   DUMMY: '/dummy',
@@ -192,7 +195,6 @@ export const ROUTES = {
   ENTITY_DETAILS: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
   ENTITY_DETAILS_WITH_TAB: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ENTITY_DETAILS_WITH_SUB_TAB: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
-
   ENTITY_VERSION_DETAILS: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   ENTITY_VERSION_DETAILS_WITH_TAB: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
 
@@ -257,6 +259,7 @@ export const ROUTES = {
   ADD_POLICY: '/settings/access/policies/add-policy',
   ADD_POLICY_RULE: `/settings/access/policies/${PLACEHOLDER_ROUTE_FQN}/add-rule`,
   EDIT_POLICY_RULE: `/settings/access/policies/${PLACEHOLDER_ROUTE_FQN}/edit-rule/${PLACEHOLDER_RULE_NAME}`,
+  AUDIT_LOGS: '/settings/access/audit-logs',
 
   // test suites
   TEST_SUITES_WITH_FQN: `/test-suites/${PLACEHOLDER_ROUTE_FQN}`,
@@ -302,6 +305,7 @@ export const ROUTES = {
   OBSERVABILITY_ALERT_DETAILS_WITH_TAB: `/observability/alert/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_OBSERVABILITY_ALERTS: '/observability/alerts/add',
   EDIT_OBSERVABILITY_ALERTS: `/observability/alerts/edit/${PLACEHOLDER_ROUTE_FQN}`,
+  RULES_LIBRARY: '/rules-library',
 
   // Notification Alerts
   NOTIFICATIONS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
@@ -377,7 +381,62 @@ export const ENTITY_PATH = {
   spreadsheets: 'spreadsheet',
   worksheets: 'worksheet',
   dataProductsTab: 'dataProductsTab',
+  column: 'tableColumn',
 };
+
+export const CUSTOM_PROPERTIES_DOCS =
+  'https://docs.open-metadata.org/how-to-guides/admin-guide/custom-properties';
+
+export const SUPPORTED_FORMAT_MAP = {
+  date: ['yyyy-MM-dd', 'dd-MM-yyyy', 'MM-dd-yyyy', 'yyyy/MM/dd', 'dd/MM/yyyy'],
+  dateTime: [
+    'yyyy-MM-dd HH:mm:ss',
+    'dd-MM-yyyy HH:mm:ss',
+    'MM-dd-yyyy HH:mm:ss',
+    'yyyy/MM/dd HH:mm:ss',
+    'dd/MM/yyyy HH:mm:ss',
+  ],
+  time: ['HH:mm:ss', 'HH:mm', 'mm:ss'],
+};
+
+export const ENTITY_REFERENCE_OPTIONS = [
+  {
+    label: i18n.t('label.table'),
+    value: 'table',
+  },
+  {
+    label: i18n.t('label.topic'),
+    value: 'topic',
+  },
+  {
+    label: i18n.t('label.dashboard'),
+    value: 'dashboard',
+  },
+  {
+    label: i18n.t('label.pipeline'),
+    value: 'pipeline',
+  },
+  {
+    label: i18n.t('label.ml-model'),
+    value: 'mlmodel',
+  },
+  {
+    label: i18n.t('label.container'),
+    value: 'container',
+  },
+  {
+    label: i18n.t('label.search-index'),
+    value: 'searchIndex',
+  },
+  {
+    label: i18n.t('label.stored-procedure'),
+    value: 'storedProcedure',
+  },
+  {
+    label: i18n.t('label.glossary-term'),
+    value: 'glossaryTerm',
+  },
+];
 
 export const VALIDATION_MESSAGES = {
   required: i18n.t('message.field-text-is-required', {

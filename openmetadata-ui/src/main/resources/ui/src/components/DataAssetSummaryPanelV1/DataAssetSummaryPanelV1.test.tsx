@@ -105,6 +105,23 @@ jest.mock('../../utils/EntityUtils', () => {
       explore: 'explore',
     },
     getEntityOverview: mockGetEntityOverview,
+    hasLineageTab: jest.fn((entityType) => {
+      const LINEAGE_TABS_SET = new Set([
+        'apiEndpoint',
+        'chart',
+        'container',
+        'dashboard',
+        'dashboardDataModel',
+        'directory',
+        'mlmodel',
+        'pipeline',
+        'searchIndex',
+        'table',
+        'topic',
+      ]);
+
+      return LINEAGE_TABS_SET.has(entityType);
+    }),
   };
 });
 

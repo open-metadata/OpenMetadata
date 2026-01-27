@@ -2,7 +2,7 @@
 
 # Discovery
 
-> **7 Components** | **26 Files** | **355 Tests** | **367 Scenarios** 🚀
+> **7 Components** | **26 Files** | **368 Tests** | **380 Scenarios** 🚀
 
 ## Table of Contents
 - [Feed](#feed)
@@ -20,7 +20,7 @@
 ## Feed
 
 <details open>
-<summary>📄 <b>ActivityFeed.spec.ts</b> (9 tests, 11 scenarios)</summary>
+<summary>📄 <b>ActivityFeed.spec.ts</b> (11 tests, 13 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/ActivityFeed.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ActivityFeed.spec.ts)
 
@@ -46,6 +46,13 @@
 | | ↳ *User1 mentions admin user in a reply* | |
 | | ↳ *Admin user checks notification for correct user and timestamp* | |
 
+### Mentions: Chinese character encoding in activity feed
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Mentions: Chinese character encoding in activity feed** - Should allow mentioning a user with Chinese characters in the activity feed | Allow mentioning a user with Chinese characters in the activity feed |
+| 2 | **Mentions: Chinese character encoding in activity feed** - Should encode the chinese character while mentioning api endpoint | Encode the chinese character while mentioning api endpoint |
+
 </details>
 
 
@@ -56,7 +63,7 @@
 ## Search
 
 <details open>
-<summary>📄 <b>AdvancedSearch.spec.ts</b> (116 tests, 116 scenarios)</summary>
+<summary>📄 <b>AdvancedSearch.spec.ts</b> (111 tests, 111 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/AdvancedSearch.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/AdvancedSearch.spec.ts)
 
@@ -82,104 +89,99 @@
 | 16 | **Advanced Search** - Verify All conditions for Name field | All conditions for Name field |
 | 17 | **Advanced Search** - Verify All conditions for Project field | All conditions for Project field |
 | 18 | **Advanced Search** - Verify All conditions for Status field | All conditions for Status field |
-| 19 | **Advanced Search** - Verify All conditions for Table Type field | All conditions for Table Type field |
-| 20 | **Advanced Search** - Verify All conditions for Chart field | All conditions for Chart field |
-| 21 | **Advanced Search** - Verify All conditions for Response Schema Field field | All conditions for Response Schema Field field |
-| 22 | **Advanced Search** - Verify All conditions for Request Schema Field field | All conditions for Request Schema Field field |
-| 23 | **Advanced Search** - Verify All conditions for Data Product field | All conditions for Data Product field |
-| 24 | **Advanced Search** - Verify Rule functionality for field Owners with AND operator | Rule functionality for field Owners with AND operator |
-| 25 | **Advanced Search** - Verify Group functionality for field Owners with AND operator | Group functionality for field Owners with AND operator |
-| 26 | **Advanced Search** - Verify Rule functionality for field Tags with AND operator | Rule functionality for field Tags with AND operator |
-| 27 | **Advanced Search** - Verify Group functionality for field Tags with AND operator | Group functionality for field Tags with AND operator |
-| 28 | **Advanced Search** - Verify Rule functionality for field Tier with AND operator | Rule functionality for field Tier with AND operator |
-| 29 | **Advanced Search** - Verify Group functionality for field Tier with AND operator | Group functionality for field Tier with AND operator |
-| 30 | **Advanced Search** - Verify Rule functionality for field Service with AND operator | Rule functionality for field Service with AND operator |
-| 31 | **Advanced Search** - Verify Group functionality for field Service with AND operator | Group functionality for field Service with AND operator |
-| 32 | **Advanced Search** - Verify Rule functionality for field Database with AND operator | Rule functionality for field Database with AND operator |
-| 33 | **Advanced Search** - Verify Group functionality for field Database with AND operator | Group functionality for field Database with AND operator |
-| 34 | **Advanced Search** - Verify Rule functionality for field Database Schema with AND operator | Rule functionality for field Database Schema with AND operator |
-| 35 | **Advanced Search** - Verify Group functionality for field Database Schema with AND operator | Group functionality for field Database Schema with AND operator |
-| 36 | **Advanced Search** - Verify Rule functionality for field Column with AND operator | Rule functionality for field Column with AND operator |
-| 37 | **Advanced Search** - Verify Group functionality for field Column with AND operator | Group functionality for field Column with AND operator |
-| 38 | **Advanced Search** - Verify Rule functionality for field Display Name with AND operator | Rule functionality for field Display Name with AND operator |
-| 39 | **Advanced Search** - Verify Group functionality for field Display Name with AND operator | Group functionality for field Display Name with AND operator |
-| 40 | **Advanced Search** - Verify Rule functionality for field Service Type with AND operator | Rule functionality for field Service Type with AND operator |
-| 41 | **Advanced Search** - Verify Group functionality for field Service Type with AND operator | Group functionality for field Service Type with AND operator |
-| 42 | **Advanced Search** - Verify Rule functionality for field Schema Field with AND operator | Rule functionality for field Schema Field with AND operator |
-| 43 | **Advanced Search** - Verify Group functionality for field Schema Field with AND operator | Group functionality for field Schema Field with AND operator |
-| 44 | **Advanced Search** - Verify Rule functionality for field Container Column with AND operator | Rule functionality for field Container Column with AND operator |
-| 45 | **Advanced Search** - Verify Group functionality for field Container Column with AND operator | Group functionality for field Container Column with AND operator |
-| 46 | **Advanced Search** - Verify Rule functionality for field Data Model Type with AND operator | Rule functionality for field Data Model Type with AND operator |
-| 47 | **Advanced Search** - Verify Group functionality for field Data Model Type with AND operator | Group functionality for field Data Model Type with AND operator |
-| 48 | **Advanced Search** - Verify Rule functionality for field Field with AND operator | Rule functionality for field Field with AND operator |
-| 49 | **Advanced Search** - Verify Group functionality for field Field with AND operator | Group functionality for field Field with AND operator |
-| 50 | **Advanced Search** - Verify Rule functionality for field Task with AND operator | Rule functionality for field Task with AND operator |
-| 51 | **Advanced Search** - Verify Group functionality for field Task with AND operator | Group functionality for field Task with AND operator |
-| 52 | **Advanced Search** - Verify Rule functionality for field Domains with AND operator | Rule functionality for field Domains with AND operator |
-| 53 | **Advanced Search** - Verify Group functionality for field Domains with AND operator | Group functionality for field Domains with AND operator |
-| 54 | **Advanced Search** - Verify Rule functionality for field Name with AND operator | Rule functionality for field Name with AND operator |
-| 55 | **Advanced Search** - Verify Group functionality for field Name with AND operator | Group functionality for field Name with AND operator |
-| 56 | **Advanced Search** - Verify Rule functionality for field Project with AND operator | Rule functionality for field Project with AND operator |
-| 57 | **Advanced Search** - Verify Group functionality for field Project with AND operator | Group functionality for field Project with AND operator |
-| 58 | **Advanced Search** - Verify Rule functionality for field Status with AND operator | Rule functionality for field Status with AND operator |
-| 59 | **Advanced Search** - Verify Group functionality for field Status with AND operator | Group functionality for field Status with AND operator |
-| 60 | **Advanced Search** - Verify Rule functionality for field Table Type with AND operator | Rule functionality for field Table Type with AND operator |
-| 61 | **Advanced Search** - Verify Group functionality for field Table Type with AND operator | Group functionality for field Table Type with AND operator |
-| 62 | **Advanced Search** - Verify Rule functionality for field Chart with AND operator | Rule functionality for field Chart with AND operator |
-| 63 | **Advanced Search** - Verify Group functionality for field Chart with AND operator | Group functionality for field Chart with AND operator |
-| 64 | **Advanced Search** - Verify Rule functionality for field Response Schema Field with AND operator | Rule functionality for field Response Schema Field with AND operator |
-| 65 | **Advanced Search** - Verify Group functionality for field Response Schema Field with AND operator | Group functionality for field Response Schema Field with AND operator |
-| 66 | **Advanced Search** - Verify Rule functionality for field Request Schema Field with AND operator | Rule functionality for field Request Schema Field with AND operator |
-| 67 | **Advanced Search** - Verify Group functionality for field Request Schema Field with AND operator | Group functionality for field Request Schema Field with AND operator |
-| 68 | **Advanced Search** - Verify Rule functionality for field Data Product with AND operator | Rule functionality for field Data Product with AND operator |
-| 69 | **Advanced Search** - Verify Group functionality for field Data Product with AND operator | Group functionality for field Data Product with AND operator |
-| 70 | **Advanced Search** - Verify Rule functionality for field Owners with OR operator | Rule functionality for field Owners with OR operator |
-| 71 | **Advanced Search** - Verify Group functionality for field Owners with OR operator | Group functionality for field Owners with OR operator |
-| 72 | **Advanced Search** - Verify Rule functionality for field Tags with OR operator | Rule functionality for field Tags with OR operator |
-| 73 | **Advanced Search** - Verify Group functionality for field Tags with OR operator | Group functionality for field Tags with OR operator |
-| 74 | **Advanced Search** - Verify Rule functionality for field Tier with OR operator | Rule functionality for field Tier with OR operator |
-| 75 | **Advanced Search** - Verify Group functionality for field Tier with OR operator | Group functionality for field Tier with OR operator |
-| 76 | **Advanced Search** - Verify Rule functionality for field Service with OR operator | Rule functionality for field Service with OR operator |
-| 77 | **Advanced Search** - Verify Group functionality for field Service with OR operator | Group functionality for field Service with OR operator |
-| 78 | **Advanced Search** - Verify Rule functionality for field Database with OR operator | Rule functionality for field Database with OR operator |
-| 79 | **Advanced Search** - Verify Group functionality for field Database with OR operator | Group functionality for field Database with OR operator |
-| 80 | **Advanced Search** - Verify Rule functionality for field Database Schema with OR operator | Rule functionality for field Database Schema with OR operator |
-| 81 | **Advanced Search** - Verify Group functionality for field Database Schema with OR operator | Group functionality for field Database Schema with OR operator |
-| 82 | **Advanced Search** - Verify Rule functionality for field Column with OR operator | Rule functionality for field Column with OR operator |
-| 83 | **Advanced Search** - Verify Group functionality for field Column with OR operator | Group functionality for field Column with OR operator |
-| 84 | **Advanced Search** - Verify Rule functionality for field Display Name with OR operator | Rule functionality for field Display Name with OR operator |
-| 85 | **Advanced Search** - Verify Group functionality for field Display Name with OR operator | Group functionality for field Display Name with OR operator |
-| 86 | **Advanced Search** - Verify Rule functionality for field Service Type with OR operator | Rule functionality for field Service Type with OR operator |
-| 87 | **Advanced Search** - Verify Group functionality for field Service Type with OR operator | Group functionality for field Service Type with OR operator |
-| 88 | **Advanced Search** - Verify Rule functionality for field Schema Field with OR operator | Rule functionality for field Schema Field with OR operator |
-| 89 | **Advanced Search** - Verify Group functionality for field Schema Field with OR operator | Group functionality for field Schema Field with OR operator |
-| 90 | **Advanced Search** - Verify Rule functionality for field Container Column with OR operator | Rule functionality for field Container Column with OR operator |
-| 91 | **Advanced Search** - Verify Group functionality for field Container Column with OR operator | Group functionality for field Container Column with OR operator |
-| 92 | **Advanced Search** - Verify Rule functionality for field Data Model Type with OR operator | Rule functionality for field Data Model Type with OR operator |
-| 93 | **Advanced Search** - Verify Group functionality for field Data Model Type with OR operator | Group functionality for field Data Model Type with OR operator |
-| 94 | **Advanced Search** - Verify Rule functionality for field Field with OR operator | Rule functionality for field Field with OR operator |
-| 95 | **Advanced Search** - Verify Group functionality for field Field with OR operator | Group functionality for field Field with OR operator |
-| 96 | **Advanced Search** - Verify Rule functionality for field Task with OR operator | Rule functionality for field Task with OR operator |
-| 97 | **Advanced Search** - Verify Group functionality for field Task with OR operator | Group functionality for field Task with OR operator |
-| 98 | **Advanced Search** - Verify Rule functionality for field Domains with OR operator | Rule functionality for field Domains with OR operator |
-| 99 | **Advanced Search** - Verify Group functionality for field Domains with OR operator | Group functionality for field Domains with OR operator |
-| 100 | **Advanced Search** - Verify Rule functionality for field Name with OR operator | Rule functionality for field Name with OR operator |
-| 101 | **Advanced Search** - Verify Group functionality for field Name with OR operator | Group functionality for field Name with OR operator |
-| 102 | **Advanced Search** - Verify Rule functionality for field Project with OR operator | Rule functionality for field Project with OR operator |
-| 103 | **Advanced Search** - Verify Group functionality for field Project with OR operator | Group functionality for field Project with OR operator |
-| 104 | **Advanced Search** - Verify Rule functionality for field Status with OR operator | Rule functionality for field Status with OR operator |
-| 105 | **Advanced Search** - Verify Group functionality for field Status with OR operator | Group functionality for field Status with OR operator |
-| 106 | **Advanced Search** - Verify Rule functionality for field Table Type with OR operator | Rule functionality for field Table Type with OR operator |
-| 107 | **Advanced Search** - Verify Group functionality for field Table Type with OR operator | Group functionality for field Table Type with OR operator |
-| 108 | **Advanced Search** - Verify Rule functionality for field Chart with OR operator | Rule functionality for field Chart with OR operator |
-| 109 | **Advanced Search** - Verify Group functionality for field Chart with OR operator | Group functionality for field Chart with OR operator |
-| 110 | **Advanced Search** - Verify Rule functionality for field Response Schema Field with OR operator | Rule functionality for field Response Schema Field with OR operator |
-| 111 | **Advanced Search** - Verify Group functionality for field Response Schema Field with OR operator | Group functionality for field Response Schema Field with OR operator |
-| 112 | **Advanced Search** - Verify Rule functionality for field Request Schema Field with OR operator | Rule functionality for field Request Schema Field with OR operator |
-| 113 | **Advanced Search** - Verify Group functionality for field Request Schema Field with OR operator | Group functionality for field Request Schema Field with OR operator |
-| 114 | **Advanced Search** - Verify Rule functionality for field Data Product with OR operator | Rule functionality for field Data Product with OR operator |
-| 115 | **Advanced Search** - Verify Group functionality for field Data Product with OR operator | Group functionality for field Data Product with OR operator |
-| 116 | **Advanced Search** - Verify search with non existing value do not result in infinite search | Search with non existing value do not result in infinite search |
+| 19 | **Advanced Search** - Verify All conditions for Chart field | All conditions for Chart field |
+| 20 | **Advanced Search** - Verify All conditions for Response Schema Field field | All conditions for Response Schema Field field |
+| 21 | **Advanced Search** - Verify All conditions for Request Schema Field field | All conditions for Request Schema Field field |
+| 22 | **Advanced Search** - Verify All conditions for Data Product field | All conditions for Data Product field |
+| 23 | **Advanced Search** - Verify Rule functionality for field Owners with AND operator | Rule functionality for field Owners with AND operator |
+| 24 | **Advanced Search** - Verify Group functionality for field Owners with AND operator | Group functionality for field Owners with AND operator |
+| 25 | **Advanced Search** - Verify Rule functionality for field Tags with AND operator | Rule functionality for field Tags with AND operator |
+| 26 | **Advanced Search** - Verify Group functionality for field Tags with AND operator | Group functionality for field Tags with AND operator |
+| 27 | **Advanced Search** - Verify Rule functionality for field Tier with AND operator | Rule functionality for field Tier with AND operator |
+| 28 | **Advanced Search** - Verify Group functionality for field Tier with AND operator | Group functionality for field Tier with AND operator |
+| 29 | **Advanced Search** - Verify Rule functionality for field Service with AND operator | Rule functionality for field Service with AND operator |
+| 30 | **Advanced Search** - Verify Group functionality for field Service with AND operator | Group functionality for field Service with AND operator |
+| 31 | **Advanced Search** - Verify Rule functionality for field Database with AND operator | Rule functionality for field Database with AND operator |
+| 32 | **Advanced Search** - Verify Group functionality for field Database with AND operator | Group functionality for field Database with AND operator |
+| 33 | **Advanced Search** - Verify Rule functionality for field Database Schema with AND operator | Rule functionality for field Database Schema with AND operator |
+| 34 | **Advanced Search** - Verify Group functionality for field Database Schema with AND operator | Group functionality for field Database Schema with AND operator |
+| 35 | **Advanced Search** - Verify Rule functionality for field Column with AND operator | Rule functionality for field Column with AND operator |
+| 36 | **Advanced Search** - Verify Group functionality for field Column with AND operator | Group functionality for field Column with AND operator |
+| 37 | **Advanced Search** - Verify Rule functionality for field Display Name with AND operator | Rule functionality for field Display Name with AND operator |
+| 38 | **Advanced Search** - Verify Group functionality for field Display Name with AND operator | Group functionality for field Display Name with AND operator |
+| 39 | **Advanced Search** - Verify Rule functionality for field Service Type with AND operator | Rule functionality for field Service Type with AND operator |
+| 40 | **Advanced Search** - Verify Group functionality for field Service Type with AND operator | Group functionality for field Service Type with AND operator |
+| 41 | **Advanced Search** - Verify Rule functionality for field Schema Field with AND operator | Rule functionality for field Schema Field with AND operator |
+| 42 | **Advanced Search** - Verify Group functionality for field Schema Field with AND operator | Group functionality for field Schema Field with AND operator |
+| 43 | **Advanced Search** - Verify Rule functionality for field Container Column with AND operator | Rule functionality for field Container Column with AND operator |
+| 44 | **Advanced Search** - Verify Group functionality for field Container Column with AND operator | Group functionality for field Container Column with AND operator |
+| 45 | **Advanced Search** - Verify Rule functionality for field Data Model Type with AND operator | Rule functionality for field Data Model Type with AND operator |
+| 46 | **Advanced Search** - Verify Group functionality for field Data Model Type with AND operator | Group functionality for field Data Model Type with AND operator |
+| 47 | **Advanced Search** - Verify Rule functionality for field Field with AND operator | Rule functionality for field Field with AND operator |
+| 48 | **Advanced Search** - Verify Group functionality for field Field with AND operator | Group functionality for field Field with AND operator |
+| 49 | **Advanced Search** - Verify Rule functionality for field Task with AND operator | Rule functionality for field Task with AND operator |
+| 50 | **Advanced Search** - Verify Group functionality for field Task with AND operator | Group functionality for field Task with AND operator |
+| 51 | **Advanced Search** - Verify Rule functionality for field Domains with AND operator | Rule functionality for field Domains with AND operator |
+| 52 | **Advanced Search** - Verify Group functionality for field Domains with AND operator | Group functionality for field Domains with AND operator |
+| 53 | **Advanced Search** - Verify Rule functionality for field Name with AND operator | Rule functionality for field Name with AND operator |
+| 54 | **Advanced Search** - Verify Group functionality for field Name with AND operator | Group functionality for field Name with AND operator |
+| 55 | **Advanced Search** - Verify Rule functionality for field Project with AND operator | Rule functionality for field Project with AND operator |
+| 56 | **Advanced Search** - Verify Group functionality for field Project with AND operator | Group functionality for field Project with AND operator |
+| 57 | **Advanced Search** - Verify Rule functionality for field Status with AND operator | Rule functionality for field Status with AND operator |
+| 58 | **Advanced Search** - Verify Group functionality for field Status with AND operator | Group functionality for field Status with AND operator |
+| 59 | **Advanced Search** - Verify Rule functionality for field Chart with AND operator | Rule functionality for field Chart with AND operator |
+| 60 | **Advanced Search** - Verify Group functionality for field Chart with AND operator | Group functionality for field Chart with AND operator |
+| 61 | **Advanced Search** - Verify Rule functionality for field Response Schema Field with AND operator | Rule functionality for field Response Schema Field with AND operator |
+| 62 | **Advanced Search** - Verify Group functionality for field Response Schema Field with AND operator | Group functionality for field Response Schema Field with AND operator |
+| 63 | **Advanced Search** - Verify Rule functionality for field Request Schema Field with AND operator | Rule functionality for field Request Schema Field with AND operator |
+| 64 | **Advanced Search** - Verify Group functionality for field Request Schema Field with AND operator | Group functionality for field Request Schema Field with AND operator |
+| 65 | **Advanced Search** - Verify Rule functionality for field Data Product with AND operator | Rule functionality for field Data Product with AND operator |
+| 66 | **Advanced Search** - Verify Group functionality for field Data Product with AND operator | Group functionality for field Data Product with AND operator |
+| 67 | **Advanced Search** - Verify Rule functionality for field Owners with OR operator | Rule functionality for field Owners with OR operator |
+| 68 | **Advanced Search** - Verify Group functionality for field Owners with OR operator | Group functionality for field Owners with OR operator |
+| 69 | **Advanced Search** - Verify Rule functionality for field Tags with OR operator | Rule functionality for field Tags with OR operator |
+| 70 | **Advanced Search** - Verify Group functionality for field Tags with OR operator | Group functionality for field Tags with OR operator |
+| 71 | **Advanced Search** - Verify Rule functionality for field Tier with OR operator | Rule functionality for field Tier with OR operator |
+| 72 | **Advanced Search** - Verify Group functionality for field Tier with OR operator | Group functionality for field Tier with OR operator |
+| 73 | **Advanced Search** - Verify Rule functionality for field Service with OR operator | Rule functionality for field Service with OR operator |
+| 74 | **Advanced Search** - Verify Group functionality for field Service with OR operator | Group functionality for field Service with OR operator |
+| 75 | **Advanced Search** - Verify Rule functionality for field Database with OR operator | Rule functionality for field Database with OR operator |
+| 76 | **Advanced Search** - Verify Group functionality for field Database with OR operator | Group functionality for field Database with OR operator |
+| 77 | **Advanced Search** - Verify Rule functionality for field Database Schema with OR operator | Rule functionality for field Database Schema with OR operator |
+| 78 | **Advanced Search** - Verify Group functionality for field Database Schema with OR operator | Group functionality for field Database Schema with OR operator |
+| 79 | **Advanced Search** - Verify Rule functionality for field Column with OR operator | Rule functionality for field Column with OR operator |
+| 80 | **Advanced Search** - Verify Group functionality for field Column with OR operator | Group functionality for field Column with OR operator |
+| 81 | **Advanced Search** - Verify Rule functionality for field Display Name with OR operator | Rule functionality for field Display Name with OR operator |
+| 82 | **Advanced Search** - Verify Group functionality for field Display Name with OR operator | Group functionality for field Display Name with OR operator |
+| 83 | **Advanced Search** - Verify Rule functionality for field Service Type with OR operator | Rule functionality for field Service Type with OR operator |
+| 84 | **Advanced Search** - Verify Group functionality for field Service Type with OR operator | Group functionality for field Service Type with OR operator |
+| 85 | **Advanced Search** - Verify Rule functionality for field Schema Field with OR operator | Rule functionality for field Schema Field with OR operator |
+| 86 | **Advanced Search** - Verify Group functionality for field Schema Field with OR operator | Group functionality for field Schema Field with OR operator |
+| 87 | **Advanced Search** - Verify Rule functionality for field Container Column with OR operator | Rule functionality for field Container Column with OR operator |
+| 88 | **Advanced Search** - Verify Group functionality for field Container Column with OR operator | Group functionality for field Container Column with OR operator |
+| 89 | **Advanced Search** - Verify Rule functionality for field Data Model Type with OR operator | Rule functionality for field Data Model Type with OR operator |
+| 90 | **Advanced Search** - Verify Group functionality for field Data Model Type with OR operator | Group functionality for field Data Model Type with OR operator |
+| 91 | **Advanced Search** - Verify Rule functionality for field Field with OR operator | Rule functionality for field Field with OR operator |
+| 92 | **Advanced Search** - Verify Group functionality for field Field with OR operator | Group functionality for field Field with OR operator |
+| 93 | **Advanced Search** - Verify Rule functionality for field Task with OR operator | Rule functionality for field Task with OR operator |
+| 94 | **Advanced Search** - Verify Group functionality for field Task with OR operator | Group functionality for field Task with OR operator |
+| 95 | **Advanced Search** - Verify Rule functionality for field Domains with OR operator | Rule functionality for field Domains with OR operator |
+| 96 | **Advanced Search** - Verify Group functionality for field Domains with OR operator | Group functionality for field Domains with OR operator |
+| 97 | **Advanced Search** - Verify Rule functionality for field Name with OR operator | Rule functionality for field Name with OR operator |
+| 98 | **Advanced Search** - Verify Group functionality for field Name with OR operator | Group functionality for field Name with OR operator |
+| 99 | **Advanced Search** - Verify Rule functionality for field Project with OR operator | Rule functionality for field Project with OR operator |
+| 100 | **Advanced Search** - Verify Group functionality for field Project with OR operator | Group functionality for field Project with OR operator |
+| 101 | **Advanced Search** - Verify Rule functionality for field Status with OR operator | Rule functionality for field Status with OR operator |
+| 102 | **Advanced Search** - Verify Group functionality for field Status with OR operator | Group functionality for field Status with OR operator |
+| 103 | **Advanced Search** - Verify Rule functionality for field Chart with OR operator | Rule functionality for field Chart with OR operator |
+| 104 | **Advanced Search** - Verify Group functionality for field Chart with OR operator | Group functionality for field Chart with OR operator |
+| 105 | **Advanced Search** - Verify Rule functionality for field Response Schema Field with OR operator | Rule functionality for field Response Schema Field with OR operator |
+| 106 | **Advanced Search** - Verify Group functionality for field Response Schema Field with OR operator | Group functionality for field Response Schema Field with OR operator |
+| 107 | **Advanced Search** - Verify Rule functionality for field Request Schema Field with OR operator | Rule functionality for field Request Schema Field with OR operator |
+| 108 | **Advanced Search** - Verify Group functionality for field Request Schema Field with OR operator | Group functionality for field Request Schema Field with OR operator |
+| 109 | **Advanced Search** - Verify Rule functionality for field Data Product with OR operator | Rule functionality for field Data Product with OR operator |
+| 110 | **Advanced Search** - Verify Group functionality for field Data Product with OR operator | Group functionality for field Data Product with OR operator |
+| 111 | **Advanced Search** - Verify search with non existing value do not result in infinite search | Search with non existing value do not result in infinite search |
 
 </details>
 
@@ -259,7 +261,7 @@
 ## Data Assets
 
 <details open>
-<summary>📄 <b>DataAssetRulesDisabled.spec.ts</b> (31 tests, 31 scenarios)</summary>
+<summary>📄 <b>DataAssetRulesDisabled.spec.ts</b> (32 tests, 32 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/DataAssetRulesDisabled.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataAssetRulesDisabled.spec.ts)
 
@@ -307,10 +309,16 @@
 | 3 | **Data Asset Rules Disabled Bulk Edit Actions** - Database Schema | Database Schema |
 | | ↳ *Perform bulk edit action* | |
 
+### GlossaryTerm Domain Entity Rules Disabled
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **GlossaryTerm Domain Entity Rules Disabled** - should allow multiple domain selection for glossary term when entity rules are disabled | Allow multiple domain selection for glossary term when entity rules are disabled |
+
 </details>
 
 <details open>
-<summary>📄 <b>DataAssetRulesEnabled.spec.ts</b> (28 tests, 28 scenarios)</summary>
+<summary>📄 <b>DataAssetRulesEnabled.spec.ts</b> (29 tests, 29 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/DataAssetRulesEnabled.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataAssetRulesEnabled.spec.ts)
 
@@ -347,10 +355,16 @@
 | 27 | **Data Asset Rules Enabled** - Verify the Database Schema Entity Action items after rules is Enabled | The Database Schema Entity Action items after rules is Enabled |
 | 28 | **Data Asset Rules Enabled** - Verify the Drive Service Entity Action items after rules is Enabled | The Drive Service Entity Action items after rules is Enabled |
 
+### GlossaryTerm Domain Entity Rules Enabled
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **GlossaryTerm Domain Entity Rules Enabled** - should enforce single domain selection for glossary term when entity rules are enabled | Enforce single domain selection for glossary term when entity rules are enabled |
+
 </details>
 
 <details open>
-<summary>📄 <b>Table.spec.ts</b> (12 tests, 12 scenarios)</summary>
+<summary>📄 <b>Table.spec.ts</b> (13 tests, 13 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Table.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Table.spec.ts)
 
@@ -359,8 +373,8 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Table pagination sorting search scenarios ** - Table pagination with sorting should works | Table pagination with sorting should works |
-| 2 | **Table pagination sorting search scenarios ** - Table search with sorting should works | Table search with sorting should works |
-| 3 | **Table pagination sorting search scenarios ** - Table filter with sorting should works | Table filter with sorting should works |
+| 2 | **Table pagination sorting search scenarios ** - Table search with sorting should work | Table search with sorting should work |
+| 3 | **Table pagination sorting search scenarios ** - Table filter with sorting should work | Table filter with sorting should work |
 | 4 | **Table pagination sorting search scenarios ** - Table page should show schema tab with count | Table page should show schema tab with count |
 | 5 | **Table pagination sorting search scenarios ** - should persist current page | Persist current page |
 | 6 | **Table pagination sorting search scenarios ** - should persist page size | Persist page size |
@@ -380,6 +394,12 @@
 |---|-----------|-------------|
 | 1 | **Tags and glossary terms should be consistent for search ** - Glossary term should be consistent for search | Glossary term should be consistent for search |
 | 2 | **Tags and glossary terms should be consistent for search ** - Tags term should be consistent for search | Tags term should be consistent for search |
+
+### Large Table Column Search & Copy Link
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Large Table Column Search & Copy Link** - Search for column, copy link, and verify side panel behavior | Search for column, copy link, and verify side panel behavior |
 
 </details>
 
@@ -456,7 +476,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>Container.spec.ts</b> (3 tests, 3 scenarios)</summary>
+<summary>📄 <b>Container.spec.ts</b> (5 tests, 5 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Container.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Container.spec.ts)
 
@@ -467,11 +487,32 @@
 | 1 | **Container entity specific tests ** - Container page should show Schema and Children count | Container page should show Schema and Children count |
 | 2 | **Container entity specific tests ** - Container page children pagination | Container page children pagination |
 | 3 | **Container entity specific tests ** - expand / collapse should not appear after updating nested fields for container | Expand / collapse should not appear after updating nested fields for container |
+| 4 | **Container entity specific tests ** - Copy column link button should copy the column URL to clipboard | Copy column link button should copy the column URL to clipboard |
+| 5 | **Container entity specific tests ** - Copy column link should have valid URL format | Copy column link should have valid URL format |
 
 </details>
 
 <details open>
-<summary>📄 <b>Dashboards.spec.ts</b> (3 tests, 3 scenarios)</summary>
+<summary>📄 <b>SchemaTable.spec.ts</b> (5 tests, 6 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/SchemaTable.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/SchemaTable.spec.ts)
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | schema table test | Schema table test |
+| | ↳ *set owner* | |
+| | ↳ *set the description* | |
+| 2 | Schema Table Pagination should work Properly | Schema Table Pagination should work Properly |
+| 3 | Copy column link button should copy the column URL to clipboard | Copy column link button should copy the column URL to clipboard |
+| 4 | Copy column link should have valid URL format | Copy column link should have valid URL format |
+| 5 | Copy nested column link should include full hierarchical path | Copy nested column link should include full hierarchical path |
+
+</details>
+
+<details open>
+<summary>📄 <b>Dashboards.spec.ts</b> (4 tests, 4 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Dashboards.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Dashboards.spec.ts)
 
@@ -493,21 +534,27 @@
 |---|-----------|-------------|
 | 1 | **Data Model** - expand / collapse should not appear after updating nested fields for dashboardDataModels | Expand / collapse should not appear after updating nested fields for dashboardDataModels |
 
-</details>
-
-<details open>
-<summary>📄 <b>SchemaTable.spec.ts</b> (2 tests, 3 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/SchemaTable.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/SchemaTable.spec.ts)
-
-### Standalone Tests
+### Data Model with special characters in name
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | schema table test | Schema table test |
-| | ↳ *set owner* | |
-| | ↳ *set the description* | |
-| 2 | Schema Table Pagination should work Properly | Schema Table Pagination should work Properly |
+| 1 | **Data Model with special characters in name** - should display data model when service name contains dots | Display data model when service name contains dots |
+
+</details>
+
+<details open>
+<summary>📄 <b>Topic.spec.ts</b> (4 tests, 4 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Topic.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Topic.spec.ts)
+
+### Topic entity specific tests 
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Topic entity specific tests ** - Topic page should show schema tab with count | Topic page should show schema tab with count |
+| 2 | **Topic entity specific tests ** - Copy field link button should copy the field URL to clipboard | Copy field link button should copy the field URL to clipboard |
+| 3 | **Topic entity specific tests ** - Copy field link should have valid URL format | Copy field link should have valid URL format |
+| 4 | **Topic entity specific tests ** - Copy nested field link should include full hierarchical path | Copy nested field link should include full hierarchical path |
 
 </details>
 
@@ -537,19 +584,6 @@
 | | ↳ *Add Constraints* | |
 | | ↳ *Verify Constraints Data* | |
 | | ↳ *Remove Constraints* | |
-
-</details>
-
-<details open>
-<summary>📄 <b>Topic.spec.ts</b> (1 tests, 1 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/Topic.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Topic.spec.ts)
-
-### Topic entity specific tests 
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Topic entity specific tests ** - Topic page should show schema tab with count | Topic page should show schema tab with count |
 
 </details>
 
@@ -618,7 +652,7 @@
 ## Explore
 
 <details open>
-<summary>📄 <b>ExploreTree.spec.ts</b> (26 tests, 32 scenarios)</summary>
+<summary>📄 <b>ExploreTree.spec.ts</b> (30 tests, 36 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts)
 
@@ -666,6 +700,10 @@
 | 21 | **Explore page** - Check listing of file when sort is descending | Listing of file when sort is descending |
 | 22 | **Explore page** - Check listing of spreadsheet when sort is descending | Listing of spreadsheet when sort is descending |
 | 23 | **Explore page** - Check listing of worksheet when sort is descending | Listing of worksheet when sort is descending |
+| 24 | **Explore page** - Copy field link button should copy the field URL to clipboard for SearchIndex | Copy field link button should copy the field URL to clipboard for SearchIndex |
+| 25 | **Explore page** - Copy field link button should copy the field URL to clipboard for APIEndpoint | Copy field link button should copy the field URL to clipboard for APIEndpoint |
+| 26 | **Explore page** - Copy field link should have valid URL format for SearchIndex | Copy field link should have valid URL format for SearchIndex |
+| 27 | **Explore page** - Copy field link should have valid URL format for APIEndpoint | Copy field link should have valid URL format for APIEndpoint |
 
 </details>
 

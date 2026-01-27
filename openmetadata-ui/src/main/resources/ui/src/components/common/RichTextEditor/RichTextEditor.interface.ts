@@ -37,6 +37,7 @@ export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
   autofocus?: boolean;
   initialValue?: string;
   readonly?: boolean;
+  onFocus?: () => void;
   onTextChange?: (value: string) => void;
   placeHolder?: string;
   extensionOptions?: ExtensionOptions;

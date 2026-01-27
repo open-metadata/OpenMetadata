@@ -22,7 +22,7 @@ POSTGRES_SQL_STATEMENT = textwrap.dedent(
         s.query query_text,
         s.{time_column_name} duration
       FROM
-        pg_stat_statements s
+        {query_statement_source} s
         JOIN pg_catalog.pg_database d ON s.dbid = d.oid
         JOIN pg_catalog.pg_user u ON s.userid = u.usesysid
       WHERE
@@ -140,7 +140,7 @@ POSTGRES_TEST_GET_QUERIES = """
         s.query query_text,
         s.{time_column_name} duration
       FROM
-        pg_stat_statements s
+        {query_statement_source} s
         JOIN pg_catalog.pg_database d ON s.dbid = d.oid
         JOIN pg_catalog.pg_user u ON s.userid = u.usesysid
         LIMIT 1

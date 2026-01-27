@@ -94,7 +94,7 @@ describe('searchAPI tests', () => {
           Promise.resolve({ data: mockTableSearchResponse })
         ),
     }));
-     
+
     const { searchQuery } = require('./searchAPI');
     const res = await searchQuery({ searchIndex: SearchIndex.TABLE });
 
@@ -114,7 +114,7 @@ describe('searchAPI tests', () => {
           Promise.resolve({ data: mockTableSearchResponse })
         ),
     }));
-     
+
     const { searchQuery } = require('./searchAPI');
     const res = await searchQuery({ searchIndex: SearchIndex.TABLE });
 

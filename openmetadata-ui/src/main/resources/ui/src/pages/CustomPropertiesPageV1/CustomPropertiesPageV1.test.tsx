@@ -61,6 +61,11 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn(({ children }) => <div>{children}</div>)
 );
 
+jest.mock(
+  '../../components/Settings/CustomProperty/AddCustomProperty/AddCustomProperty',
+  () => jest.fn().mockReturnValue(<div>AddCustomProperty</div>)
+);
+
 const mockGetEntityPermission = jest.fn().mockResolvedValue({
   EditAll: true,
 });
@@ -89,6 +94,7 @@ jest.mock('../../rest/metadataTypeAPI', () => ({
 
 jest.mock('../../utils/GlobalSettingsUtils', () => ({
   getSettingPageEntityBreadCrumb: jest.fn(),
+  getSettingOptionByEntityType: jest.fn().mockReturnValue('table'),
 }));
 
 const mockShowErrorToast = jest.fn();
@@ -129,18 +135,6 @@ describe('CustomPropertiesPageV1 component', () => {
     );
 
     await waitFor(() => expect(mockUpdateType).toHaveBeenCalled());
-  });
-
-  it('add entity should call mockPush', async () => {
-    render(<CustomEntityDetailV1 />);
-
-    userEvent.click(
-      await screen.findByRole('button', {
-        name: 'label.add-entity',
-      })
-    );
-
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
   });
 
   it('failed in fetch entityType should not fetch permission', async () => {

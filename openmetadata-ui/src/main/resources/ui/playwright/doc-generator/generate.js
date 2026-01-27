@@ -17,8 +17,8 @@ const { execSync } = require('child_process');
 const { generateDomainMarkdown, generateIndexMarkdown } = require('./markdown.js');
 const { loadTestsFromPlaywright } = require('./playwright-loader.js');
 
-// Constants
-// Script is in: openmetadata-ui/src/main/resources/ui/playwright/doc-generator/
+// Constants for Default Run
+const DEFAULT_REPO_BASE_URL = 'https://github.com/open-metadata/OpenMetadata';
 const PLAYWRIGHT_DIR = path.resolve(__dirname, '../e2e');
 const OUTPUT_DIR = path.resolve(__dirname, '../docs');
 
@@ -114,37 +114,83 @@ const DOMAIN_MAPPING = {
   'Service': { domain: 'Integration', name: 'Connectors' },
   'Ingestion': { domain: 'Integration', name: 'Connectors' },
   'Query': { domain: 'Integration', name: 'Connectors' }, // QueryEntity
+  'ApiCollection': { domain: 'Integration', name: 'Connectors' },
 };
 
-function getComponentInfo(fileName) {
-  for (const [key, def] of Object.entries(DOMAIN_MAPPING)) {
-    if (fileName.includes(key)) return def;
+const VALID_DOMAIN_TAGS = ['Governance', 'Discovery', 'Platform', 'Observability', 'Integration'];
+
+function getComponentInfo(fileName, domainMapping, tags = []) {
+  // Helper to resolve via filename
+  const getFromFilename = () => {
+    for (const [key, def] of Object.entries(domainMapping)) {
+      if (fileName.includes(key)) return def; // Case-sensitive check from original logic
+    }
+    return null;
+  };
+
+  // 1. Check Tags (Priority, with Strict Validation)
+  for (const tag of tags) {
+    const cleanTag = tag.startsWith('@') ? tag.substring(1) : tag;
+    const cleanTagLower = cleanTag.toLowerCase();
+
+    // A. Domain:Component Format
+    // We assume explicit 'Domain:Component' intent is always valid if provided
+    if (cleanTag.includes(':')) {
+      const [d, c] = cleanTag.split(':');
+      return { domain: d, name: c.replace(/_/g, ' ') };
+    }
+
+    // B. Domain Name Match (Strict Validation against VALID_DOMAIN_TAGS)
+    const matchingDomain = VALID_DOMAIN_TAGS.find(d => d.toLowerCase() === cleanTagLower);
+    if (matchingDomain) {
+      // User specified a valid Domain (e.g. @Observability).
+      // This overrides filename logic unless the filename provides a MORE SPECIFIC component *within that same domain*.
+      const fileMatch = getFromFilename();
+      if (fileMatch && fileMatch.domain === matchingDomain) {
+        return fileMatch;
+      }
+      // Otherwise, force move to this domain with 'General' name
+      return { domain: matchingDomain, name: 'General' };
+    }
   }
-  return { domain: 'Platform', name: 'Other' };
+
+  // 2. Fallback to Filename matching if no valid tags found, OR if tags were present but ignored (e.g. @ingestion)
+  // This was previously returning before checking filename if tags loop finished without match? No, it returns below.
+  // BUT the issue might be that we need to ensure we DO check filename even if tags exist but are unused.
+  return getFromFilename() || { domain: 'Platform', name: 'Other' };
 }
 
-function main() {
+/**
+ * Main Generation Logic
+ * @param {Object} options - Configuration options
+ * @param {string} options.playwrightDir - Path to Playwright tests
+ * @param {string} options.outputDir - Output path for docs
+ * @param {string} options.repoBaseUrl - Base URL for Git links (e.g. GitHub blob)
+ * @param {Object} options.domainMapping - Mapping of files to components
+ */
+function generateDocs({ playwrightDir, outputDir, repoBaseUrl, domainMapping }) {
   console.log(`🚀 Starting Documentation Generation (Node.js)`);
-  console.log(`   Input: ${PLAYWRIGHT_DIR}`);
-  console.log(`   Output: ${OUTPUT_DIR}`);
+  console.log(`   Input: ${playwrightDir}`);
+  console.log(`   Output: ${outputDir}`);
+  console.log(`   Repo Base: ${repoBaseUrl}`);
 
-  if (!fs.existsSync(PLAYWRIGHT_DIR)) {
+  if (!fs.existsSync(playwrightDir)) {
     console.error(`❌ Playwright directory not found!`);
     process.exit(1);
   }
 
   // 1. Find and Parse Files using Native Playwright Loader
   console.log(`📝 asking Playwright to list tests...`);
-  const parsedFiles = loadTestsFromPlaywright(PLAYWRIGHT_DIR);
+  const parsedFiles = loadTestsFromPlaywright(playwrightDir);
   console.log(`   Received ${parsedFiles.length} file suites from Playwright.`);
 
   // 2. Group by Domain + Component
   const groupings = new Map();
-  
+
   parsedFiles.forEach(file => {
-    const { domain, name } = getComponentInfo(file.fileName);
+    const { domain, name } = getComponentInfo(file.fileName, domainMapping, file.tags);
     const key = `${domain}:${name}`;
-    
+
     if (!groupings.has(key)) {
       groupings.set(key, { domain, name, files: [] });
     }
@@ -164,19 +210,19 @@ function main() {
 
   // 4. Generate Content
   console.log(`⚙️  Generating Markdown for ${components.length} components...`);
-  
+
   // Clean output directory
-  if (fs.existsSync(OUTPUT_DIR)) {
-    fs.rmSync(OUTPUT_DIR, { recursive: true, force: true }); 
+  if (fs.existsSync(outputDir)) {
+    fs.rmSync(outputDir, { recursive: true, force: true });
   }
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  fs.mkdirSync(outputDir, { recursive: true });
 
   // Stats
   const stats = {
     components: components.length,
     files: parsedFiles.length,
-    tests: components.reduce((s,c) => s + c.totalTests, 0),
-    steps: components.reduce((s,c) => s + c.totalSteps, 0)
+    tests: components.reduce((s, c) => s + c.totalTests, 0),
+    steps: components.reduce((s, c) => s + c.totalSteps, 0)
   };
 
   // Group Components by Domain for Generation
@@ -188,27 +234,41 @@ function main() {
 
   // Generate Consolidated Domain Pages
   Object.entries(componentsByDomain).forEach(([domain, comps]) => {
-    const content = generateDomainMarkdown(domain, comps);
-    fs.writeFileSync(path.join(OUTPUT_DIR, `${domain}.md`), content);
+    const content = generateDomainMarkdown(domain, comps, { repoBaseUrl });
+    fs.writeFileSync(path.join(outputDir, `${domain}.md`), content);
     console.log(`   ✓ ${domain}.md`);
   });
 
   // Generate Main Index (README.md)
-  fs.writeFileSync(path.join(OUTPUT_DIR, 'README.md'), generateIndexMarkdown(components, stats));
+  fs.writeFileSync(path.join(outputDir, 'README.md'), generateIndexMarkdown(components, stats));
   console.log(`   ✓ README.md`);
 
   // 5. Stage files in Git
   try {
     console.log(`\n📦 Staging generated docs...`);
-    execSync('git add .', { cwd: OUTPUT_DIR, stdio: 'inherit' });
-    console.log(`   ✓ git add completed for ${OUTPUT_DIR}`);
+    execSync('git add .', { cwd: outputDir, stdio: 'inherit' });
+    console.log(`   ✓ git add completed for ${outputDir}`);
   } catch (error) {
     console.error(`   ⚠️  Warning: Failed to stage files with git.`);
     console.error(error.message);
   }
 
   console.log(`\n✅ Success! Documentation generated in:`);
-  console.log(`   ${OUTPUT_DIR}`);
+  console.log(`   ${outputDir}`);
 }
 
-main();
+
+// Check if run directly
+if (require.main === module) {
+  generateDocs({
+    playwrightDir: PLAYWRIGHT_DIR,
+    outputDir: OUTPUT_DIR,
+    repoBaseUrl: DEFAULT_REPO_BASE_URL,
+    domainMapping: DOMAIN_MAPPING
+  });
+}
+
+module.exports = {
+  generateDocs,
+  DOMAIN_MAPPING
+};

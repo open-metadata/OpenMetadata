@@ -5,13 +5,18 @@ from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.classificationLanguages import (
+    ClassificationLanguage,
+)
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
     TagLabel,
     TagSource,
 )
+from metadata.generated.schema.type.tagLabelMetadata import TagLabelMetadata
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.pii.algorithms.presidio_utils import load_nlp_engine
 from metadata.pii.algorithms.tag_scoring import ScoreTagsForColumnService
 from metadata.pii.base_processor import AutoClassificationProcessor
 from metadata.pii.classification_manager import (
@@ -48,6 +53,11 @@ class TagProcessor(AutoClassificationProcessor):
         self.confidence_threshold = self.source_config.confidence / 100
         self.classification_filter = classification_filter
         self.max_tags_per_column = max_tags_per_column
+        self.classification_language: ClassificationLanguage = (
+            self.source_config.classificationLanguage
+            if self.source_config.classificationLanguage
+            else ClassificationLanguage.en
+        )
 
         # Initialize new components
         if classification_manager is None:
@@ -68,23 +78,34 @@ class TagProcessor(AutoClassificationProcessor):
 
         # Service that runs analyzers
         if score_tags_for_column is None:
-            score_tags_for_column = ScoreTagsForColumnService()
+            score_tags_for_column = ScoreTagsForColumnService(
+                nlp_engine=load_nlp_engine(
+                    classification_language=self.classification_language
+                ),
+                language=self.classification_language,
+            )
         self.score_tags_for_column = score_tags_for_column
 
         logger.info(
             f"TagProcessor initialized with {len(self.enabled_classifications)} "
-            f"classifications and {len(self.candidate_tags)} candidate tags"
+            f"classifications and {len(self.candidate_tags)} candidate tags "
+            f"using language '{self.classification_language.value}'"
         )
 
     @staticmethod
     def build_tag_label(scored_tag: ScoredTag) -> TagLabel:
         """Build a TagLabel from a ScoredTag."""
+        metadata = None
+        if scored_tag.recognizer_metadata:
+            metadata = TagLabelMetadata(recognizer=scored_tag.recognizer_metadata)
+
         tag_label = TagLabel(
             tagFQN=scored_tag.tag.fullyQualifiedName,
             source=TagSource.Classification,
             state=State.Suggested,
             labelType=LabelType.Generated,
             reason=scored_tag.reason,
+            metadata=metadata,
         )
 
         return tag_label

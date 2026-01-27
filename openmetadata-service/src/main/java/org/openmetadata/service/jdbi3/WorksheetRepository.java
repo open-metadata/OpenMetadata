@@ -59,6 +59,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.WorksheetResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -172,7 +173,8 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
   }
 
   @Override
-  public void setFields(Worksheet worksheet, EntityUtil.Fields fields) {
+  public void setFields(
+      Worksheet worksheet, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(worksheet);
     setInheritedFields(worksheet, fields);
     if (fields.contains(COLUMN_FIELD) && worksheet.getColumns() != null) {

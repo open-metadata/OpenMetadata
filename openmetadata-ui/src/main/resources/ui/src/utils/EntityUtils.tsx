@@ -34,6 +34,11 @@ import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanel/
 import { ProfilerTabPath } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import {
+  CUSTOM_PROPERTIES_TABS_SET,
+  LINEAGE_TABS_SET,
+  SCHEMA_TABS_SET,
+} from '../components/Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
+import {
   EntityServiceUnion,
   EntityWithServices,
 } from '../components/Explore/ExplorePage.interface';
@@ -2914,4 +2919,14 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.FILE]: t('label.file'),
   [EntityType.SPREADSHEET]: t('label.spreadsheet'),
   [EntityType.WORKSHEET]: t('label.worksheet'),
+  [EntityType.NOTIFICATION_TEMPLATE]: t('label.notification-template'),
 };
+
+export const hasSchemaTab = (entityType: EntityType): boolean =>
+  SCHEMA_TABS_SET.has(entityType);
+
+export const hasLineageTab = (entityType: EntityType): boolean =>
+  LINEAGE_TABS_SET.has(entityType);
+
+export const hasCustomPropertiesTab = (entityType: EntityType): boolean =>
+  CUSTOM_PROPERTIES_TABS_SET.has(entityType);

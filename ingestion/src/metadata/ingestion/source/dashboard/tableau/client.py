@@ -118,7 +118,7 @@ class TableauClient:
             if owner_id in self.owner_cache:
                 return self.owner_cache[owner_id]
             owner = self.tableau_server.users.get_by_id(owner_id) if owner_id else None
-            if owner and owner.email:
+            if owner:
                 owner_obj = TableauOwner(
                     id=str(owner.id), name=owner.name, email=owner.email
                 )
@@ -267,9 +267,7 @@ class TableauClient:
             "Please check if the user has permissions to access the Charts information"
         )
 
-    def test_get_owners(
-        self, include_owners: bool = True
-    ) -> Optional[List[TableauOwner]]:
+    def test_get_owners(self, include_owners: bool = True) -> Optional[TableauOwner]:
         workbook = self.test_get_workbooks()
         owners = self.get_tableau_owner(workbook.owner_id, include_owners)
         if owners is not None:

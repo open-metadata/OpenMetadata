@@ -119,12 +119,6 @@
       "type": "boolean",
       "default": false
     },
-    "overrideLineage":{
-      "title": "Override Lineage",
-      "description": "Set the 'Override Lineage' toggle to control whether to override the existing lineage.",
-      "type": "boolean",
-      "default": false
-    },
     "queryLogDuration": {
       "description": "Configuration to tune how far we want to look back in query logs to process Stored Procedures results.",
       "type": "integer",
@@ -158,6 +152,11 @@
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Database Filter Pattern"
     },
+    "storedProcedureFilterPattern": {
+      "description": "Regex to only include/exclude stored procedures that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Stored Procedure Filter Pattern"
+    },
     "threads": {
       "description": "Number of Threads to use in order to parallelize Table ingestion.",
       "type": "integer",
@@ -168,6 +167,20 @@
       "title": "Incremental Metadata Extraction Configuration",
       "description": "Use incremental Metadata extraction after the first execution. This is commonly done by getting the changes from Audit tables on the supporting databases.",
       "$ref": "#/definitions/incremental"
+    },
+    "extractJsonSchema": {
+      "title": "Extract JSON Schema",
+      "description": "Extract JSON schema from JSON columns by sampling data. This requires SELECT permission on the tables. If disabled or if SELECT fails, JSON columns will be ingested without schema information.",
+      "type": "boolean",
+      "default": false
+    },
+    "jsonSchemaSampleSize": {
+      "title": "JSON Schema Sample Size",
+      "description": "Number of rows to sample for inferring JSON schema. A larger sample size provides more accurate schema inference but increases query time.",
+      "type": "integer",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 1000
     }
   },
   "additionalProperties": false

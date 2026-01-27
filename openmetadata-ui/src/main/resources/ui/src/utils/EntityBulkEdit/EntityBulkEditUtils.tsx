@@ -13,16 +13,25 @@
 import Icon from '@ant-design/icons';
 import { Button } from 'antd';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
+import { ProfilerTabPath } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
 import {
   exportDatabaseDetailsInCSV,
   exportDatabaseSchemaDetailsInCSV,
 } from '../../rest/databaseAPI';
-import { exportGlossaryInCSVFormat, exportGlossaryTermsInCSVFormat } from '../../rest/glossaryAPI';
+import {
+  exportGlossaryInCSVFormat,
+  exportGlossaryTermsInCSVFormat,
+} from '../../rest/glossaryAPI';
 import { exportDatabaseServiceDetailsInCSV } from '../../rest/serviceAPI';
 import { exportTableDetailsInCSV } from '../../rest/tableAPI';
+import { exportTestCasesInCSV } from '../../rest/testAPI';
+import entityUtilClassBase from '../EntityUtilClassBase';
 import { t } from '../i18next/LocalUtil';
+import { getDataQualityPagePath } from '../RouterUtils';
 
 export const isBulkEditRoute = (pathname: string) => {
   return pathname.includes(ROUTES.BULK_EDIT_ENTITY);
@@ -41,12 +50,15 @@ export const getBulkEditCSVExportEntityApi = (entityType: EntityType) => {
 
     case EntityType.GLOSSARY_TERM:
       return exportGlossaryTermsInCSVFormat;
-    
+
     case EntityType.GLOSSARY:
       return exportGlossaryInCSVFormat;
 
     case EntityType.TABLE:
       return exportTableDetailsInCSV;
+
+    case EntityType.TEST_CASE:
+      return exportTestCasesInCSV;
 
     default:
       return exportTableDetailsInCSV;
@@ -67,4 +79,29 @@ export const getBulkEditButton = (
       {t('label.edit')}
     </Button>
   ) : null;
+};
+
+export const getBulkEntityNavigationPath = (
+  entityType: EntityType,
+  fqn: string,
+  sourceEntityType?: EntityType
+): string => {
+  if (entityType === EntityType.TEST_CASE) {
+    if (fqn === WILD_CARD_CHAR) {
+      return getDataQualityPagePath(DataQualityPageTabs.TEST_CASES);
+    } else if (sourceEntityType === EntityType.TABLE) {
+      return entityUtilClassBase.getEntityLink(
+        EntityType.TABLE,
+        fqn,
+        EntityTabs.PROFILER,
+        ProfilerTabPath.DATA_QUALITY
+      );
+    } else if (sourceEntityType === EntityType.TEST_SUITE) {
+      return entityUtilClassBase.getEntityLink(EntityType.TEST_SUITE, fqn);
+    } else {
+      return getDataQualityPagePath(DataQualityPageTabs.TEST_CASES);
+    }
+  }
+
+  return entityUtilClassBase.getEntityLink(entityType, fqn);
 };

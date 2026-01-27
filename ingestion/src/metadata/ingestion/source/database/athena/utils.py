@@ -201,7 +201,13 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         except Exception as e:
             # If we can't get Glue metadata, fall back to the original method
             # This ensures backward compatibility
-            logger.warning(f"Error getting Glue metadata for table {table_name}: {e}")
+            logger.warning(
+                "Unable to fetch metadata for table '%s' from AWS Glue. "
+                "Falling back to standard column detection. "
+                "Error: %s",
+                table_name,
+                e,
+            )
 
     # For non-Iceberg tables or if Glue access fails, use the original method
     columns += [

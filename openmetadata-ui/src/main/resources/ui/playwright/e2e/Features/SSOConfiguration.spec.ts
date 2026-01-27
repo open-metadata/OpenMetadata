@@ -193,7 +193,6 @@ test.describe('SSO Configuration Tests', () => {
 
       const commonFields = [
         'Provider Name',
-        'Authority',
         'Client ID',
         'Callback URL',
         'Public Key URLs',

@@ -24,6 +24,9 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlType,
 )
+from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
+    PinotDBType,
+)
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
 
 
@@ -83,6 +86,15 @@ class ProfilerSourceFactory:
         return DataBricksProfilerSource
 
     @staticmethod
+    def pinotdb() -> Type[ProfilerSourceInterface]:
+        """Lazy loading of the PinotDB source"""
+        from metadata.profiler.source.database.pinotdb.profiler_source import (
+            PinotProfilerSource,
+        )
+
+        return PinotProfilerSource
+
+    @staticmethod
     def mssql() -> Type[ProfilerSourceInterface]:
         """Lazy loading of the MSSQL source"""
         from metadata.profiler.source.database.mssql.profiler_source import (
@@ -96,6 +108,7 @@ source = {
     BigqueryType.BigQuery.value.lower(): ProfilerSourceFactory.bigquery,
     DatabricksType.Databricks.value.lower(): ProfilerSourceFactory.databricks,
     MssqlType.Mssql.value.lower(): ProfilerSourceFactory.mssql,
+    PinotDBType.PinotDB.value.lower(): ProfilerSourceFactory.pinotdb,
 }
 
 profiler_source_factory = ProfilerSourceFactory()

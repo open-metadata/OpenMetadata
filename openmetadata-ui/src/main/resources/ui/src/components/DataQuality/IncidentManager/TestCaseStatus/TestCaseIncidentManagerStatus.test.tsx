@@ -95,7 +95,7 @@ describe('TestCaseIncidentManagerStatus', () => {
   it('Should render component', async () => {
     render(<TestCaseIncidentManagerStatus {...mockProps} />);
 
-    expect(await screen.findByText('New')).toBeInTheDocument();
+    expect(await screen.findByText('label.new')).toBeInTheDocument();
     expect(
       await screen.findByTestId('edit-resolution-icon')
     ).toBeInTheDocument();

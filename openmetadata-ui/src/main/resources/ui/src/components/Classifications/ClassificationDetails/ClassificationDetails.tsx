@@ -22,6 +22,7 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +32,7 @@ import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
@@ -54,6 +56,7 @@ import {
   getClassificationVersionsPath,
 } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
+import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -65,6 +68,7 @@ import { GenericProvider } from '../../Customization/GenericProvider/GenericProv
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
 
@@ -82,6 +86,7 @@ const ClassificationDetails = forwardRef(
       handleAddNewTagClick,
       disableEditButton,
       isVersionView = false,
+      isClassificationLoading = false,
       handleToggleDisable,
     }: Readonly<ClassificationDetailsProps>,
     ref
@@ -93,6 +98,9 @@ const ClassificationDetails = forwardRef(
     const navigate = useNavigate();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(true);
+    const isLoading = isTagsLoading || isClassificationLoading;
+    const previousClassificationRef = useRef<string | undefined>();
+    const isClassificationChangingRef = useRef(false);
     const {
       currentPage,
       paging,
@@ -112,7 +120,7 @@ const ClassificationDetails = forwardRef(
       setTags([]);
       try {
         const { data, paging: tagPaging } = await getTags({
-          fields: TabSpecificField.USAGE_COUNT,
+          fields: `${TabSpecificField.USAGE_COUNT},${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS}`,
           parent: currentClassificationName,
           after: paging?.after,
           before: paging?.before,
@@ -334,6 +342,28 @@ const ClassificationDetails = forwardRef(
 
     useEffect(() => {
       if (currentClassification?.fullyQualifiedName && !isAddingTag) {
+        const classificationChanged =
+          previousClassificationRef.current !== undefined &&
+          previousClassificationRef.current !==
+            currentClassification.fullyQualifiedName;
+
+        previousClassificationRef.current =
+          currentClassification.fullyQualifiedName;
+
+        if (classificationChanged) {
+          isClassificationChangingRef.current = true;
+          handlePageChange(1, { cursorType: null, cursorValue: undefined });
+          fetchClassificationChildren(currentClassification.fullyQualifiedName);
+
+          return;
+        }
+
+        if (isClassificationChangingRef.current) {
+          isClassificationChangingRef.current = false;
+
+          return;
+        }
+
         const { cursorType, cursorValue } = pagingCursor ?? {};
 
         if (cursorType && cursorValue) {
@@ -385,6 +415,12 @@ const ClassificationDetails = forwardRef(
                 isDisabled={isClassificationDisabled}
                 name={name ?? currentClassification.name}
                 serviceName="classification"
+                suffix={
+                  <LearningIcon
+                    className="m-t-xss"
+                    pageId={LEARNING_PAGE_IDS.CLASSIFICATION}
+                  />
+                }
               />
             </Col>
 
@@ -432,7 +468,7 @@ const ClassificationDetails = forwardRef(
                       editDisplayNamePermission={
                         editDisplayNamePermission && !isClassificationDisabled
                       }
-                      entityFQN={currentClassification.fullyQualifiedName}
+                      entityFQN={currentClassification?.fullyQualifiedName}
                       entityId={currentClassification.id}
                       entityName={currentClassification.name}
                       entityType={EntityType.CLASSIFICATION}
@@ -447,7 +483,7 @@ const ClassificationDetails = forwardRef(
         )}
 
         <GenericProvider<Classification>
-          data={currentClassification as Classification}
+          data={(currentClassification as Classification) ?? {}}
           isVersionView={isVersionView}
           permissions={classificationPermissions}
           type={EntityType.CLASSIFICATION as CustomizeEntityType}
@@ -474,7 +510,7 @@ const ClassificationDetails = forwardRef(
                   columns={tableColumn}
                   customPaginationProps={{
                     currentPage,
-                    isLoading: isTagsLoading,
+                    isLoading,
                     pageSize,
                     paging,
                     showPagination,
@@ -483,7 +519,7 @@ const ClassificationDetails = forwardRef(
                   }}
                   data-testid="table"
                   dataSource={tags}
-                  loading={isTagsLoading}
+                  loading={isLoading}
                   locale={{
                     emptyText: (
                       <ErrorPlaceHolder
@@ -510,6 +546,7 @@ const ClassificationDetails = forwardRef(
                   dataTestId="classification-owner-name"
                   hasPermission={editOwnerPermission}
                 />
+                {tagClassBase.getClassificationReviewerWidget()}
               </div>
             </Col>
           </Row>

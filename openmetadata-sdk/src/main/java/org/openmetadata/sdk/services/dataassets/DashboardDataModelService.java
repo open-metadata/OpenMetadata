@@ -9,7 +9,7 @@ import org.openmetadata.sdk.services.EntityServiceBase;
 
 public class DashboardDataModelService extends EntityServiceBase<DashboardDataModel> {
   public DashboardDataModelService(HttpClient httpClient) {
-    super(httpClient, "/v1/dashboardDataModels");
+    super(httpClient, "/v1/dashboard/datamodels");
   }
 
   @Override

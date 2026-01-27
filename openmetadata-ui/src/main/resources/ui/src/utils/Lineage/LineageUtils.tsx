@@ -94,7 +94,8 @@ export const prepareColumnLevelNodesFromEdges = (
         for (const fromCol of col.fromColumns || []) {
           acc.push({
             ...omit(node, 'columns'),
-            column: { ...col, fromColumns: [fromCol] },
+            fromColumn: fromCol,
+            toColumn: col.toColumn,
             docId: fromCol + '->' + col.toColumn,
             nodeDepth,
             ...picked,
@@ -137,14 +138,14 @@ export const getSearchNameEsQuery = (
       should: [
         {
           wildcard: {
-            'name.keyword': {
+            ['name.keyword']: {
               value: `*${searchText}*`,
             },
           },
         },
         {
           wildcard: {
-            'displayName.keyword': {
+            ['displayName.keyword']: {
               value: `*${searchText}*`,
             },
           },

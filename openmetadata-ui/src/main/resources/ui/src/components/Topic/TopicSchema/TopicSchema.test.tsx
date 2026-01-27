@@ -22,6 +22,8 @@ import {
   screen,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import { Column } from '../../../generated/entity/data/container';
 import { Topic } from '../../../generated/entity/data/topic';
 import { MESSAGE_SCHEMA } from '../TopicDetails/TopicDetails.mock';
 import TopicSchema from './TopicSchema';
@@ -42,24 +44,45 @@ jest.mock('../../Database/TableDescription/TableDescription.component', () =>
   ))
 );
 
-jest.mock('../../../utils/TableUtils', () => ({
-  ...jest.requireActual('../../../utils/TableUtils'),
-  getTableExpandableConfig: jest.fn().mockImplementation(() => ({
-    expandIcon: jest.fn(({ onExpand, expandable, record }) =>
-      expandable ? (
-        <button data-testid="expand-icon" onClick={(e) => onExpand(record, e)}>
-          ExpandIcon
-        </button>
-      ) : null
-    ),
-  })),
-  getTableColumnConfigSelections: jest
-    .fn()
-    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
-  handleUpdateTableColumnSelections: jest
-    .fn()
-    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
-}));
+jest.mock('../../../utils/TableUtils', () => {
+  const actual = jest.requireActual('../../../utils/TableUtils');
+  const flattenColumnsMock = (items: Column[]): Column[] => {
+    if (!items || items.length === 0) {
+      return [];
+    }
+    const result: Column[] = [];
+    items.forEach((item) => {
+      result.push(item);
+      if (item.children && item.children.length > 0) {
+        result.push(...flattenColumnsMock(item.children));
+      }
+    });
+
+    return result;
+  };
+
+  return {
+    ...actual,
+    flattenColumns: jest.fn().mockImplementation(flattenColumnsMock),
+    getTableExpandableConfig: jest.fn().mockImplementation(() => ({
+      expandIcon: jest.fn(({ onExpand, expandable, record }) =>
+        expandable ? (
+          <button
+            data-testid="expand-icon"
+            onClick={(e) => onExpand(record, e)}>
+            ExpandIcon
+          </button>
+        ) : null
+      ),
+    })),
+    getTableColumnConfigSelections: jest
+      .fn()
+      .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+    handleUpdateTableColumnSelections: jest
+      .fn()
+      .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+  };
+});
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
@@ -78,14 +101,6 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
   getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
-
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
-  jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="description-preview">Description Preview</div>
-    )
-);
 
 jest.mock(
   '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
@@ -148,16 +163,28 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
     },
     onUpdate: mockOnUpdate,
     type: 'topic',
+    currentVersionData: undefined,
+    openColumnDetailPanel: jest.fn(),
   })),
 }));
 
 jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue('test-fqn'),
+  useFqn: jest.fn().mockReturnValue({ fqn: 'test-fqn' }),
+}));
+
+jest.mock('../../../utils/RouterUtils', () => ({
+  getEntityDetailsPath: jest
+    .fn()
+    .mockImplementation((_entityType, fqn) => `/topic/${fqn}`),
 }));
 
 describe('Topic Schema', () => {
   it('Should render the schema component', async () => {
-    render(<TopicSchema {...mockProps} />);
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
 
     const schemaFields = await screen.findByTestId('topic-schema-fields-table');
     const rows = await screen.findAllByRole('row');
@@ -181,7 +208,11 @@ describe('Topic Schema', () => {
   });
 
   it('Should render the children on click of expand icon', async () => {
-    render(<TopicSchema {...mockProps} />);
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
 
     const rows = await screen.findAllByRole('row');
 
@@ -206,7 +237,11 @@ describe('Topic Schema', () => {
   });
 
   it('On edit description button click modal editor should render', async () => {
-    render(<TopicSchema {...mockProps} />);
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
 
     const rows = await screen.findAllByRole('row');
 
@@ -225,7 +260,11 @@ describe('Topic Schema', () => {
 
   it('Should not render the edit action if isReadOnly', async () => {
     mockTopicDetails.deleted = true;
-    render(<TopicSchema {...mockProps} />);
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
 
     const rows = await screen.findAllByRole('row');
 
@@ -234,5 +273,46 @@ describe('Topic Schema', () => {
     const editDescriptionButton = queryByTestId(row1, 'edit-button');
 
     expect(editDescriptionButton).toBeNull();
+  });
+
+  it('Should render copy field link button for each field', async () => {
+    mockTopicDetails.deleted = false;
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
+
+    const copyButtons = await screen.findAllByTestId('copy-field-link-button');
+
+    expect(copyButtons.length).toBeGreaterThan(0);
+  });
+
+  it('Should copy field link to clipboard when copy button is clicked', async () => {
+    mockTopicDetails.deleted = false;
+    const mockWriteText = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mockWriteText,
+      },
+    });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+    });
+
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
+
+    const copyButtons = await screen.findAllByTestId('copy-field-link-button');
+
+    await act(async () => {
+      fireEvent.click(copyButtons[0]);
+    });
+
+    expect(mockWriteText).toHaveBeenCalled();
   });
 });

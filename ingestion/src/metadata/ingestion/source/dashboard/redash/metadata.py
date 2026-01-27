@@ -234,7 +234,10 @@ class RedashSource(DashboardServiceSource):
                 if not visualization:
                     continue
                 if visualization.get("query", {}).get("query"):
-                    lineage_parser = LineageParser(visualization["query"]["query"])
+                    lineage_parser = LineageParser(
+                        visualization["query"]["query"],
+                        parser_type=self.get_query_parser_type(),
+                    )
                     query_hash = lineage_parser.query_hash
                     for table in lineage_parser.source_tables:
                         table_name = str(table)

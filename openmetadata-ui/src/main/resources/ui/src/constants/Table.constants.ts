@@ -25,6 +25,8 @@ import {
 
 export const TABLE_SCROLL_VALUE = { x: 1200 };
 
+export const HIGHLIGHTED_ROW_SELECTOR = '.highlighted-row';
+
 export const TABLE_CONSTRAINTS_TYPE_OPTIONS = [
   {
     label: 'label.entity-key',

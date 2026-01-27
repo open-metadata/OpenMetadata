@@ -606,28 +606,31 @@ def _explode_formula(
     Returns:
         Parsed Lineage from the formula
     """
-    column_ds = {}
+    # Group datasources with their actual source column names
+    # Map: datasource -> list of source column names (from base_lineage mappings)
+    ds_columns = defaultdict(list)
+
     for match in FORMULA_PATTERN.finditer(formula):
-        col_name = match.group(1)
+        col_name = match.group(
+            1
+        )  # This is the column reference in the formula (e.g., "EMAIL_1")
         mapping = base_lineage.find_target(col_name)
         if mapping:
-            column_ds[col_name] = mapping.data_source
+            # Use the actual source column names from the mapping, not the formula reference
+            # For example, if formula has "EMAIL_1" but mapping.sources is ["EMAIL"],
+            # we should use ["EMAIL"] as the source columns
+            ds_columns[mapping.data_source].extend(mapping.sources)
 
     # If no columns found in base_lineage, it might be a constant formula
-    if not column_ds:
+    if not ds_columns:
         return ParsedLineage()
-
-    # Group every datasource (key) with a list of the involved columns (values)
-    ds_columns = defaultdict(list)
-    for column, ds in column_ds.items():
-        ds_columns[ds].append(column)
 
     return ParsedLineage(
         mappings=[
             ColumnMapping(
                 # We get the source once we find the mapping of the target
                 data_source=data_source,
-                sources=columns,
+                sources=list(set(columns)),  # Remove duplicates if any
                 target=target,
                 formula=formula,
             )

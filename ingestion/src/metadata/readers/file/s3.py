@@ -13,12 +13,44 @@
 Read files as string from S3
 """
 import traceback
-from typing import List
+from typing import Any, Dict, List
 
+from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
+    S3Config,
+)
 from metadata.readers.file.base import Reader, ReadException
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+
+def return_s3_storage_options(config_source: S3Config) -> Dict[str, Any]:
+    """
+    Build the S3 storage options to pass to pandas/fsspec readers.
+    Returns a dictionary with AWS credentials and client configuration.
+    """
+    connection_args = config_source.securityConfig
+    storage_options = {}
+
+    if connection_args.awsAccessKeyId:
+        storage_options["key"] = connection_args.awsAccessKeyId
+    if connection_args.awsSecretAccessKey:
+        storage_options[
+            "secret"
+        ] = connection_args.awsSecretAccessKey.get_secret_value()
+    if connection_args.awsSessionToken:
+        storage_options["token"] = connection_args.awsSessionToken
+
+    client_kwargs = {}
+    if connection_args.endPointURL:
+        client_kwargs["endpoint_url"] = str(connection_args.endPointURL)
+    if connection_args.awsRegion:
+        client_kwargs["region_name"] = connection_args.awsRegion
+
+    if client_kwargs:
+        storage_options["client_kwargs"] = client_kwargs
+
+    return storage_options
 
 
 class S3Reader(Reader):

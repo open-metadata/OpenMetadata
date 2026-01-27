@@ -13,6 +13,7 @@
 
 import { Button, Tag, Typography } from 'antd';
 import { TFunction } from 'i18next';
+import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
@@ -207,8 +208,13 @@ export const CustomPropertyValueRenderer: React.FC<CustomPropertyValueRendererPr
   ({ value: val, property }) => {
     const { t } = useTranslation();
     const propertyTypeName = property.propertyType?.name;
+    const isEmptyValue =
+      val === null ||
+      val === undefined ||
+      val === '' ||
+      (typeof val === 'object' && isEmpty(val));
 
-    if (!val) {
+    if (isEmptyValue) {
       return (
         <Typography.Text className="no-data-text">
           {t('label.not-set')}

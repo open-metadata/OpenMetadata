@@ -447,10 +447,19 @@ class ESMixin(Generic[T]):
         """Get the Elasticsearch response"""
         try:
             response = self.client.get(query_string)
+            if response is None:
+                logger.warning(
+                    f"Received null response from Elasticsearch for query: {query_string}"
+                )
+                return None
             return ESResponse.model_validate(response)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Error while getting ES response: {exc}")
+            logger.error(
+                f"Elasticsearch query failed: {exc}. Query: {query_string}. "
+                "This may indicate issues with the Elasticsearch cluster, broken indexes, "
+                "or connectivity problems. Please check Elasticsearch cluster health and logs."
+            )
         return None
 
     def _yield_hits_from_api(

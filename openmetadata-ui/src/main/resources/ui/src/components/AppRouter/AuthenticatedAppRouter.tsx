@@ -242,6 +242,10 @@ const IncidentManagerPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/IncidentManager/IncidentManagerPage'))
 );
 
+const RulesLibraryPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/RulesLibrary/RulesLibraryPage'))
+);
+
 const IncidentManagerDetailPage = withSuspenseFallback(
   React.lazy(
     () =>
@@ -282,6 +286,13 @@ const MetricListPage = withSuspenseFallback(
 const AddMetricPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/MetricsPage/AddMetricPage/AddMetricPage')
+  )
+);
+
+const ColumnBulkOperationsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/ColumnBulkOperations/ColumnBulkOperations.component')
   )
 );
 
@@ -586,6 +597,18 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         }
         path={ROUTES.INCIDENT_MANAGER}
       />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.TEST_DEFINITION,
+              permissions
+            )}>
+            <RulesLibraryPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.RULES_LIBRARY}
+      />
 
       {[
         ROUTES.TEST_CASE_DETAILS,
@@ -741,6 +764,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           />
         }
         path={ROUTES.ADD_METRIC}
+      />
+      <Route
+        element={<ColumnBulkOperationsPage />}
+        path={ROUTES.COLUMN_BULK_OPERATIONS}
       />
 
       <Route

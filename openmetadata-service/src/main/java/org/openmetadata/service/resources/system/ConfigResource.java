@@ -107,9 +107,7 @@ public class ConfigResource {
           && yamlConfig.getSamlConfiguration() != null) {
         // Remove Saml Fields
         SamlSSOClientConfig ssoClientConfig = new SamlSSOClientConfig();
-        ssoClientConfig.setIdp(
-            new IdentityProviderConfig()
-                .withAuthorityUrl(yamlConfig.getSamlConfiguration().getIdp().getAuthorityUrl()));
+        ssoClientConfig.setIdp(new IdentityProviderConfig());
         responseAuthConfig.setSamlConfiguration(ssoClientConfig);
       } else {
         responseAuthConfig.setSamlConfiguration(null);

@@ -31,5 +31,7 @@
   "supportsRowLevelPassedFailed": true,
   "supportsDynamicAssertion": true,
   "provider": "system",
-  "dataQualityDimension": "Accuracy"
+  "enabled": true,
+  "dataQualityDimension": "Accuracy",
+  "validatorClass": "ColumnValuesToBeBetweenValidator"
 }

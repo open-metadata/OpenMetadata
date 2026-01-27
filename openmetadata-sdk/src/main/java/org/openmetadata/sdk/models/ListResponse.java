@@ -3,6 +3,7 @@ package org.openmetadata.sdk.models;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
+import org.openmetadata.schema.utils.ResultList;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -19,6 +20,17 @@ public class ListResponse<T> {
   public ListResponse(List<T> data, AllModels.Paging paging) {
     this.data = data;
     this.paging = paging;
+  }
+
+  public ListResponse(ResultList<T> resultList) {
+    this.data = resultList.getData();
+    if (resultList.getPaging() != null) {
+      this.paging =
+          new AllModels.Paging()
+              .withTotal(resultList.getPaging().getTotal())
+              .withBefore(resultList.getPaging().getBefore())
+              .withAfter(resultList.getPaging().getAfter());
+    }
   }
 
   public List<T> getData() {

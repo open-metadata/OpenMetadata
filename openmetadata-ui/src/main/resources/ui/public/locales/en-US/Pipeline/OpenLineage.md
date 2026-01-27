@@ -59,33 +59,31 @@ $$section
 ### Kafka securityProtocol $(id="securityProtocol")
 Kafka Security protocol config.
 
-This should be specified as `PLAINTEXT`, `SSL`, or `SASL_SSL` .
+This should be specified as `PLAINTEXT`, `SASL_PLAINTEXT`, `SSL`, or `SASL_SSL` .
 $$
 
 $$section
 ### Kafka SASL mechanism $(id="saslMechanism")
-When Kafka security protocol is set to `SASL_SSL` then the SASL mechanism is needed.
-
-This should be specified as `PLAIN` .
+When Kafka security protocol is set to `SASL_PLAINTEXT` or `SASL_SSL` then the SASL mechanism is needed.
 $$
 
 $$section
 ### Kafka SASL username $(id="saslUsername")
-When Kafka security protocol is set to `SASL_SSL` then the SASL username is needed.
+When Kafka security protocol is set to `SASL_PLAINTEXT` or `SASL_SSL` then the SASL username is needed.
 
 This should be specified as a username or API key string .
 $$
 
 $$section
 ### Kafka SASL password $(id="saslPassword")
-When Kafka security protocol is set to `SASL_SSL` then the SASL password is needed.
+When Kafka security protocol is set to `SASL_PLAINTEXT` or `SASL_SSL` then the SASL password is needed.
 
 This should be specified as a password or API secret string .
 $$
 
 $$section
 ### Kafka SSL certificate location $(id="SSLCertificateLocation")
-When Kafka security protocol is set to `SSL` then path to SSL certificate is needed.
+When Kafka security protocol is set to `SSL` or `SASL_SSL` then path to SSL certificate is needed.
 Certificate have to be in PEM format  
 
 This should be specified path to pem file . E.g., `/path/to/kafka/certificate.pem` .
@@ -93,7 +91,7 @@ $$
 
 $$section
 ### Kafka SSL key location $(id="SSLKeyLocation")
-When Kafka security protocol is set to `SSL` then path to SSL key is needed.
+When Kafka security protocol is set to `SSL` or `SASL_SSL` then path to SSL key is needed.
 Key have to be in PEM format  
 
 This should be specified path to pem file . E.g., `/path/to/kafka/key.pem` .
@@ -101,7 +99,7 @@ $$
 
 $$section
 ### Kafka SSL CA location $(id="SSLCALocation")
-When Kafka security protocol is set to `SSL` then path to SSL CA is needed.
+When Kafka security protocol is set to `SSL` or `SASL_SSL` then path to SSL CA is needed.
 CA have to be in PEM format  
 
 This should be specified path to pem file . E.g., `/path/to/kafka/CA.pem` .

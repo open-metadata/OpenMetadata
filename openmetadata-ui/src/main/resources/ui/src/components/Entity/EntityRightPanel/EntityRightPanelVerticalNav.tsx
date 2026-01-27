@@ -21,9 +21,10 @@ import { ReactComponent as SchemaIcon } from '../../../assets/svg/explore-vertic
 import { ReactComponent as DataQualityIcon } from '../../../assets/svg/ic-data-contract.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-  ENTITY_RIGHT_PANEL_LINEAGE_TABS,
-  ENTITY_RIGHT_PANEL_SCHEMA_TABS,
-} from './EntityRightPanelVerticalNav.constants';
+  hasCustomPropertiesTab,
+  hasLineageTab,
+  hasSchemaTab,
+} from '../../../utils/EntityUtils';
 import {
   EntityRightPanelTab,
   EntityRightPanelVerticalNavProps,
@@ -31,33 +32,40 @@ import {
 import './EntityRightPanelVerticalNav.less';
 
 const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
-  ({ isSideDrawer = false, activeTab, entityType, onTabChange }) => {
+  ({
+    activeTab,
+    entityType,
+    onTabChange,
+    verticalNavConatinerclassName,
+    isSideDrawer = false,
+    isColumnDetailPanel = false,
+  }) => {
     const { t } = useTranslation();
 
     const getTabItems = () => {
       const items = [
         {
           key: EntityRightPanelTab.OVERVIEW,
-          icon: <ExploreIcon height={16} width={16} />,
+          icon: <ExploreIcon />,
           label: t('label.overview'),
           'data-testid': 'overview-tab',
         },
       ];
 
       // Add schema tab for entities that have schema
-      if (ENTITY_RIGHT_PANEL_SCHEMA_TABS.includes(entityType)) {
+      if (hasSchemaTab(entityType) && !isColumnDetailPanel) {
         items.push({
           key: EntityRightPanelTab.SCHEMA,
-          icon: <SchemaIcon height={16} width={16} />,
+          icon: <SchemaIcon />,
           label: t('label.schema'),
           'data-testid': 'schema-tab',
         });
       }
       // Add lineage tab for most entities
-      if (ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType)) {
+      if (hasLineageTab(entityType) && !isColumnDetailPanel) {
         items.push({
           key: EntityRightPanelTab.LINEAGE,
-          icon: <PlatformLineageIcon height={16} width={16} />,
+          icon: <PlatformLineageIcon />,
           label: t('label.lineage'),
           'data-testid': 'lineage-tab',
         });
@@ -67,17 +75,20 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       if (entityType === EntityType.TABLE) {
         items.push({
           key: EntityRightPanelTab.DATA_QUALITY,
-          icon: <DataQualityIcon height={16} width={16} />,
+          icon: <DataQualityIcon />,
           label: t('label.data-quality'),
           'data-testid': 'data-quality-tab',
         });
       }
 
       // Add custom properties tab
-      if (entityType !== EntityType.KNOWLEDGE_PAGE) {
+      if (
+        (!isColumnDetailPanel && hasCustomPropertiesTab(entityType)) ||
+        (isColumnDetailPanel && entityType === EntityType.TABLE)
+      ) {
         items.push({
           key: EntityRightPanelTab.CUSTOM_PROPERTIES,
-          icon: <CustomPropertiesIcon height={16} width={16} />,
+          icon: <CustomPropertiesIcon />,
           label: t('label.custom-property'),
           'data-testid': 'custom-properties-tab',
         });
@@ -88,9 +99,11 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
 
     return (
       <div
-        className={classNames('entity-right-panel-vertical-nav', {
-          'drawer-entity-right-panel-vertical-nav': isSideDrawer,
-        })}>
+        className={classNames(
+          'entity-right-panel-vertical-nav',
+          verticalNavConatinerclassName,
+          { 'drawer-entity-right-panel-vertical-nav': isSideDrawer }
+        )}>
         <Menu
           className="vertical-nav-menu"
           items={getTabItems()}

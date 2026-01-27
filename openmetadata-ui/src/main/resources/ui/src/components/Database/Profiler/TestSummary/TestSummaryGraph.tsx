@@ -150,14 +150,14 @@ function TestSummaryGraph({
     }));
 
     legendPayload.push({
-      value: 'Incident',
+      value: t('label.incident'),
       dataKey: 'Incident',
       type: 'rect',
       color: RED_3,
     } as Payload);
 
     return legendPayload;
-  }, [chartData?.information, activeKeys]);
+  }, [chartData?.information, activeKeys, t]);
 
   const handleLegendClick: LegendProps['onClick'] = (event) => {
     if (event.dataKey === 'Incident') {

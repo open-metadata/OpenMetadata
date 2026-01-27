@@ -18,6 +18,7 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { EntityType } from '../../../enums/entity.enum';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
 import { mockDashboardEntityDetails } from './mocks/DashboardSummary.mock';
+import { mockDomainEntityDetails } from './mocks/DomainSummary.mock';
 import { mockMlModelEntityDetails } from './mocks/MlModelSummary.mock';
 import { mockPipelineEntityDetails } from './mocks/PipelineSummary.mock';
 import { mockTableEntityDetails } from './mocks/TableSummary.mock';
@@ -56,11 +57,69 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider theme={theme}>{children}</ThemeProvider>
 );
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityLinkFromType: jest.fn().mockImplementation(() => 'link'),
-  getEntityName: jest.fn().mockImplementation(() => 'displayName'),
-  getEntityOverview: jest.fn().mockImplementation(() => []),
-}));
+jest.mock('../../../utils/EntityUtils', () => {
+  const LINEAGE_TABS_SET = new Set([
+    'apiEndpoint',
+    'chart',
+    'container',
+    'dashboard',
+    'dashboardDataModel',
+    'directory',
+    'mlmodel',
+    'pipeline',
+    'searchIndex',
+    'table',
+    'topic',
+  ]);
+  const SCHEMA_TABS_SET = new Set([
+    'apiCollection',
+    'apiEndpoint',
+    'container',
+    'dashboard',
+    'dashboardDataModel',
+    'database',
+    'databaseSchema',
+    'pipeline',
+    'searchIndex',
+    'table',
+    'topic',
+  ]);
+  const CUSTOM_PROPERTIES_TABS_SET = new Set([
+    'apiCollection',
+    'apiEndpoint',
+    'chart',
+    'container',
+    'dashboard',
+    'dashboardDataModel',
+    'database',
+    'databaseSchema',
+    'dataProduct',
+    'directory',
+    'domain',
+    'file',
+    'glossaryTerm',
+    'metric',
+    'mlmodel',
+    'pipeline',
+    'searchIndex',
+    'spreadsheet',
+    'storedProcedure',
+    'table',
+    'topic',
+    'worksheet',
+  ]);
+
+  return {
+    getEntityLinkFromType: jest.fn().mockImplementation(() => 'link'),
+    getEntityName: jest.fn().mockImplementation(() => 'displayName'),
+    getEntityOverview: jest.fn().mockImplementation(() => []),
+    hasLineageTab: jest.fn((entityType) => LINEAGE_TABS_SET.has(entityType)),
+    hasSchemaTab: jest.fn((entityType) => SCHEMA_TABS_SET.has(entityType)),
+    hasCustomPropertiesTab: jest.fn((entityType) =>
+      CUSTOM_PROPERTIES_TABS_SET.has(entityType)
+    ),
+  };
+});
 jest.mock('../../../utils/StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   stringToHTML: jest.fn(),
@@ -254,6 +313,27 @@ describe('EntitySummaryPanel component tests', () => {
     const chartSummary = screen.getByTestId('ChartSummary');
 
     expect(chartSummary).toBeInTheDocument();
+  });
+
+  it('should render for domain data without requesting invalid domains field', async () => {
+    const { container } = await act(async () => {
+      return render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockDomainEntityDetails,
+              entityType: EntityType.DOMAIN,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+    });
+
+    expect(
+      container.querySelector('.entity-summary-panel-container')
+    ).toBeInTheDocument();
   });
 
   it('should render drawer header when isSideDrawer is true', async () => {

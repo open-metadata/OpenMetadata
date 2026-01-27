@@ -43,8 +43,8 @@ describe('DateTimeUtils tests', () => {
     Settings.defaultZone = systemZoneName;
   });
 
-  it(`formatDateTime should formate date and time both`, () => {
-    expect(formatDateTime(0)).toBe(`Jan 1, 1970, 12:00 AM`);
+  it(`formatDateTime should format date and time with UTC offset by default`, () => {
+    expect(formatDateTime(0)).toBe(`Jan 01, 1970, 12:00 AM (UTC+00:00)`);
   });
 
   it(`formatDate should formate date and time both`, () => {
@@ -468,7 +468,6 @@ describe('convertSecondsToHumanReadableFormat', () => {
           if (dayMatch) {
             const days = parseInt(dayMatch[1]);
 
-            // eslint-disable-next-line jest/no-conditional-expect
             expect(days).toBeLessThanOrEqual(30);
           }
         });
@@ -501,7 +500,6 @@ describe('convertSecondsToHumanReadableFormat', () => {
         if (monthMatch) {
           const months = parseInt(monthMatch[1]);
 
-          // eslint-disable-next-line jest/no-conditional-expect
           expect(months).toBeLessThan(12);
         }
 
@@ -510,7 +508,6 @@ describe('convertSecondsToHumanReadableFormat', () => {
         if (dayMatch) {
           const daysValue = parseInt(dayMatch[1]);
 
-          // eslint-disable-next-line jest/no-conditional-expect
           expect(daysValue).toBeLessThanOrEqual(30);
         }
 

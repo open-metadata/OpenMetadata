@@ -11,8 +11,27 @@
  *  limitations under the License.
  */
 
+import { NAME_LENGTH_REGEX, TAG_NAME_REGEX } from './regex.constants';
+
 export const DEFAULT_FORM_VALUE = {
   name: '',
   displayName: '',
   description: '',
 };
+
+export const TAG_NAME_VALIDATION_RULES = [
+  {
+    required: true,
+    message: 'label.field-required',
+    messageData: { field: 'label.name' },
+  },
+  {
+    pattern: NAME_LENGTH_REGEX,
+    message: 'message.entity-size-in-between',
+    messageData: { entity: 'label.name', min: 2, max: 64 },
+  },
+  {
+    pattern: TAG_NAME_REGEX,
+    message: 'message.entity-name-validation',
+  },
+];

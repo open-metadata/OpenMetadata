@@ -21,6 +21,7 @@ import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrev
 import { TabsLabelProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { TestConnectionProps } from '../../components/common/TestConnection/TestConnection.interface';
 import { DataAssetsHeaderProps } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ServiceInsightsTabProps } from '../../components/ServiceInsights/ServiceInsightsTab.interface';
 import { ROUTES } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
@@ -585,6 +586,17 @@ describe('ServiceDetailsPage', () => {
       );
 
       expect(screen.getByTestId('loader')).toBeInTheDocument();
+    });
+
+    it('should pass service name as pageTitle to PageLayoutV1', async () => {
+      await renderComponent();
+
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: 'Test Service',
+        }),
+        expect.anything()
+      );
     });
 
     it('should render service details when loaded', async () => {

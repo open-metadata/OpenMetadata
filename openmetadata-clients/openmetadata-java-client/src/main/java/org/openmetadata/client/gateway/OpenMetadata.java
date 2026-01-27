@@ -15,11 +15,13 @@ package org.openmetadata.client.gateway;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import feign.Feign;
+import feign.RequestTemplate;
 import feign.form.FormEncoder;
 import feign.jackson.JacksonDecoder;
 import feign.jackson.JacksonEncoder;
 import feign.okhttp.OkHttpClient;
 import feign.slf4j.Slf4jLogger;
+import java.util.Map;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.client.ApiClient;
@@ -66,6 +68,15 @@ public class OpenMetadata {
       apiClient = new ApiClient();
     }
 
+    if (config.getExtraHeaders() != null
+        && config.getExtraHeaders().getAdditionalProperties() != null
+        && !config.getExtraHeaders().getAdditionalProperties().isEmpty()) {
+      builder.requestInterceptor(
+          requestTemplate ->
+              applyExtraHeaders(
+                  requestTemplate, config.getExtraHeaders().getAdditionalProperties()));
+    }
+
     apiClient.setFeignBuilder(builder);
     AuthenticationProviderFactory factory = new AuthenticationProviderFactory();
     apiClient.addAuthorization("oauth", factory.getAuthProvider(config));
@@ -100,5 +111,13 @@ public class OpenMetadata {
 
   public String[] getClientVersion() {
     return VersionUtils.getVersionFromString(OPENMETADATA_VERSION_CLIENT.getVersion());
+  }
+
+  private void applyExtraHeaders(RequestTemplate template, Map<String, String> extraHeaders) {
+    for (Map.Entry<String, String> entry : extraHeaders.entrySet()) {
+      String headerValue = entry.getValue() != null ? entry.getValue() : "";
+      template.header(entry.getKey(), headerValue);
+      LOG.debug("Applied extra header: {} = {}", entry.getKey(), headerValue);
+    }
   }
 }

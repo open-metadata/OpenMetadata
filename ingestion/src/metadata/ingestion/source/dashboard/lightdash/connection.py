@@ -60,7 +60,7 @@ def test_connection(
     """
 
     def custom_executor():
-        return client.get_dashboards_list()
+        return client.test_get_dashboards_list()
 
     test_fn = {"GetDashboards": custom_executor}
 

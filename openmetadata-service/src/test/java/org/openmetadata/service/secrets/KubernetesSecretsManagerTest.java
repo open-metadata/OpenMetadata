@@ -260,7 +260,7 @@ class KubernetesSecretsManagerTest {
   }
 
   @Test
-  void testNullSecretHandling() throws ApiException {
+  void testEmptySecretValueShouldBeStoredAsNullString() throws ApiException {
     ArgumentCaptor<V1Secret> secretCaptor = ArgumentCaptor.forClass(V1Secret.class);
     when(mockApiClient.readNamespacedSecret(anyString(), eq(NAMESPACE))).thenReturn(readRequest);
     when(readRequest.execute()).thenThrow(new ApiException(404, "Not Found"));
@@ -277,7 +277,10 @@ class KubernetesSecretsManagerTest {
     V1Secret createdSecret = secretCaptor.getValue();
     Map<String, byte[]> data = createdSecret.getData();
     assert data != null;
-    assertEquals("", new String(data.get("value"), StandardCharsets.UTF_8));
+    assertEquals(
+        ExternalSecretsManager.NULL_SECRET_STRING,
+        new String(data.get("value"), StandardCharsets.UTF_8),
+        "Empty string should be stored as 'null' to prevent secrets manager rejection");
   }
 
   // New tests for configurable prefix functionality

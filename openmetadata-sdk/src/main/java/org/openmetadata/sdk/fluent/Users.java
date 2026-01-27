@@ -69,6 +69,57 @@ public final class Users {
     return getClient().users().create(request);
   }
 
+  // ==================== Direct Access Methods ====================
+
+  public static User get(String id) {
+    return getClient().users().get(id);
+  }
+
+  public static User get(String id, String fields) {
+    return getClient().users().get(id, fields);
+  }
+
+  public static User get(String id, String fields, String include) {
+    return getClient().users().get(id, fields, include);
+  }
+
+  public static User getByName(String fqn) {
+    return getClient().users().getByName(fqn);
+  }
+
+  public static User getByName(String fqn, String fields) {
+    return getClient().users().getByName(fqn, fields);
+  }
+
+  public static User update(String id, User entity) {
+    return getClient().users().update(id, entity);
+  }
+
+  public static void delete(String id) {
+    getClient().users().delete(id);
+  }
+
+  public static void delete(String id, java.util.Map<String, String> params) {
+    getClient().users().delete(id, params);
+  }
+
+  public static void restore(String id) {
+    getClient().users().restore(id);
+  }
+
+  public static org.openmetadata.sdk.models.ListResponse<User> list(
+      org.openmetadata.sdk.models.ListParams params) {
+    return getClient().users().list(params);
+  }
+
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(java.util.UUID id) {
+    return getClient().users().getVersionList(id);
+  }
+
+  public static User getVersion(String id, Double version) {
+    return getClient().users().getVersion(id, version);
+  }
+
   // ==================== Finding/Retrieval ====================
 
   public static UserFinder find(String id) {

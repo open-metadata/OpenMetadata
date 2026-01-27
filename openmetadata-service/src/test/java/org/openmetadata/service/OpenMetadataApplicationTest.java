@@ -47,12 +47,8 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.eclipse.jetty.client.HttpClient;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
-import org.glassfish.jersey.jetty.connector.JettyClientProperties;
-import org.glassfish.jersey.jetty.connector.JettyConnectorProvider;
-import org.glassfish.jersey.jetty.connector.JettyHttpClientSupplier;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
@@ -83,6 +79,7 @@ import org.openmetadata.service.resources.events.WebhookCallbackResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.util.JdkHttpClientConnector;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
@@ -362,16 +359,13 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   private static void createClient() {
-    HttpClient httpClient = new HttpClient();
-    httpClient.setIdleTimeout(0);
+    // Use custom JDK HttpClient connector - supports PATCH, handles empty PUT bodies, no Jetty deps
     ClientConfig config = new ClientConfig();
-    config.connectorProvider(new JettyConnectorProvider());
-    config.register(new JettyHttpClientSupplier(httpClient));
+    config.connectorProvider(new JdkHttpClientConnector.Provider());
     config.register(new JacksonFeature(APP.getObjectMapper()));
-    config.property(ClientProperties.CONNECT_TIMEOUT, 0);
-    config.property(ClientProperties.READ_TIMEOUT, 0);
-    config.property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
-    config.property(JettyClientProperties.SYNC_LISTENER_RESPONSE_MAX_SIZE, 10 * 1024 * 1024);
+    // Set reasonable timeouts to prevent indefinite hangs
+    config.property(ClientProperties.CONNECT_TIMEOUT, 30_000); // 30 seconds
+    config.property(ClientProperties.READ_TIMEOUT, 120_000); // 2 minutes
     client = ClientBuilder.newClient(config);
   }
 

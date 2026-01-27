@@ -437,7 +437,11 @@ class TableauSource(DashboardServiceSource):
                     datamodel_entity = self.metadata.get_by_name(
                         entity=DashboardDataModel, fqn=datamodel_fqn
                     )
-
+                    if not datamodel_entity:
+                        logger.debug(
+                            f"Datamodel entity not found for lineage: {str(datamodel)}"
+                        )
+                        continue
                     # TableauPublishedDatasource will be skipped here and their lineage will be processed later
                     if (
                         datamodel_entity.dataModelType
@@ -635,6 +639,7 @@ class TableauSource(DashboardServiceSource):
                                     if db_service_entity
                                     else Dialect.ANSI
                                 ),
+                                parser_type=self.get_query_parser_type(),
                             )
                             query_hash = lineage_parser.query_hash
                             for source_table in lineage_parser.source_tables or []:
@@ -863,11 +868,20 @@ class TableauSource(DashboardServiceSource):
                 db_service_entity = self.metadata.get_by_name(
                     entity=DatabaseService, fqn=db_service_name
                 )
-                if isinstance(db_service_entity.connection.config, BigQueryConnection):
-                    database_name = None
-                database_name = get_database_name_for_lineage(
-                    db_service_entity, database_name
-                )
+                if db_service_entity:
+                    if isinstance(
+                        db_service_entity.connection.config, BigQueryConnection
+                    ):
+                        database_name = None
+                    database_name = get_database_name_for_lineage(
+                        db_service_entity, database_name
+                    )
+                else:
+                    logger.warning(
+                        f"Database service '{db_service_name}' not found for table '{table.name}'. "
+                        f"Please ensure the database service exists in OpenMetadata."
+                    )
+
             schema_name = (
                 table.schema_
                 if table.schema_
@@ -979,6 +993,7 @@ class TableauSource(DashboardServiceSource):
                         if db_service_entity
                         else Dialect.ANSI
                     ),
+                    parser_type=self.get_query_parser_type(),
                 )
                 query_hash = lineage_parser.query_hash
                 for source_table in lineage_parser.source_tables or []:

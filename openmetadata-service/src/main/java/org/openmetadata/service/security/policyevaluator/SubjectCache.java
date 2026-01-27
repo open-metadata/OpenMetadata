@@ -61,6 +61,14 @@ public class SubjectCache {
           .recordStats()
           .build(new UserPoliciesLoader());
 
+  // Cache for user context to avoid expensive database lookups on every authorization
+  private static final LoadingCache<String, User> USER_CONTEXT_CACHE =
+      CacheBuilder.newBuilder()
+          .maximumSize(10000)
+          .expireAfterWrite(15, TimeUnit.MINUTES)
+          .recordStats()
+          .build(new UserContextLoader());
+
   private SubjectCache() {}
 
   public static List<PolicyContext> getPolicies(String userName) {
@@ -84,17 +92,42 @@ public class SubjectCache {
   public static void invalidateUser(String userName) {
     LOG.debug("Invalidating policy cache for user: {}", userName);
     USER_POLICIES_CACHE.invalidate(userName);
+    USER_CONTEXT_CACHE.invalidate(userName);
   }
 
   public static void invalidateAll() {
     LOG.info("Invalidating all user policy caches");
     USER_POLICIES_CACHE.invalidateAll();
+    USER_CONTEXT_CACHE.invalidateAll();
+  }
+
+  public static User getUserContext(String userName) {
+    try {
+      return USER_CONTEXT_CACHE.get(userName);
+    } catch (Exception e) {
+      LOG.warn("Failed to load user context from cache for user {}", userName, e);
+      return Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
+    }
+  }
+
+  public static String getCacheStats() {
+    return String.format(
+        "PolicyCache: %s, UserContextCache: %s",
+        USER_POLICIES_CACHE.stats(), USER_CONTEXT_CACHE.stats());
   }
 
   static class UserPoliciesLoader extends CacheLoader<String, UserPoliciesContext> {
     @Override
     public @NonNull UserPoliciesContext load(@CheckForNull String userName) {
       return loadPoliciesForUser(userName);
+    }
+  }
+
+  static class UserContextLoader extends CacheLoader<String, User> {
+    @Override
+    public @NonNull User load(@CheckForNull String userName) {
+      LOG.debug("Loading user context from database for user: {}", userName);
+      return Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
     }
   }
 

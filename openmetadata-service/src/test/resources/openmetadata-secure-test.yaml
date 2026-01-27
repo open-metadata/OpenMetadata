@@ -19,6 +19,7 @@ server:
   applicationConnectors:
     - type: http
       port: 0
+      uriCompliance: UNSAFE
   adminConnectors:
     - type: http
       port: 0
@@ -189,7 +190,6 @@ authenticationConfiguration:
       entityId: ""
       ssoLoginUrl: ""
       idpX509Certificate: ""
-      authorityUrl: ""
       nameId: ""
     sp:
       entityId: ""

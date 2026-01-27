@@ -270,7 +270,7 @@ export const performExpand = async (
     .getByTestId('plus-icon');
 
   if (newNode) {
-    const expandRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+    const expandRes = page.waitForResponse('/api/v1/lineage/getLineage/*?*');
     await expandBtn.click();
     await expandRes;
     await verifyNodePresent(page, newNode);
@@ -299,6 +299,35 @@ export const performCollapse = async (
     );
 
     await expect(hiddenNode).not.toBeVisible();
+  }
+};
+
+export const verifyExpandHandleHover = async (
+  page: Page,
+  node: EntityClass,
+  upstream: boolean
+) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const handleDirection = upstream ? 'left' : 'right';
+  const handle = page
+    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(
+      `.react-flow__handle-${handleDirection}.lineage-node-handle-expand-all`
+    );
+
+  await handle.hover();
+
+  const expandBtn = handle.getByTestId('lineage-expand-all-btn');
+  await expect(expandBtn).toBeVisible();
+
+  const plusIcon = handle.getByTestId('plus-icon');
+  const plusBox = await plusIcon.boundingBox();
+  const expandBox = await expandBtn.boundingBox();
+
+  if (upstream) {
+    expect(expandBox?.x).toBeLessThan(plusBox?.x ?? Number.MAX_VALUE);
+  } else {
+    expect(expandBox?.x).toBeGreaterThan(plusBox?.x ?? 0);
   }
 };
 
@@ -829,4 +858,26 @@ export const clickLineageNode = async (page: Page, nodeFqn: string) => {
     .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
     .locator(`[data-testid="entity-header-display-name"]`)
     .click();
+};
+
+export const updateLineageConfigFromModal = async (
+  page: Page,
+  config: { upstreamDepth: number; downstreamDepth: number }
+) => {
+  await page.getByTestId('lineage-config').click();
+
+  await page.waitForSelector('.ant-modal-content', {
+    state: 'visible',
+  });
+
+  await page
+    .getByTestId('field-upstream')
+    .fill(config.upstreamDepth.toString());
+  await page
+    .getByTestId('field-downstream')
+    .fill(config.downstreamDepth.toString());
+
+  const saveRes = page.waitForResponse('/api/v1/lineage/getLineage?**');
+  await page.getByText('OK').click();
+  await saveRes;
 };

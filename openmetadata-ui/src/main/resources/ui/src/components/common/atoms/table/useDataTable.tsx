@@ -49,7 +49,7 @@ export const useDataTable = <T extends { id: string }>(
 
   const dataTable = useMemo(
     () => (
-      <Table>
+      <Table data-testid="table-view-container">
         <TableHead>
           <TableRow>
             {enableSelection && (

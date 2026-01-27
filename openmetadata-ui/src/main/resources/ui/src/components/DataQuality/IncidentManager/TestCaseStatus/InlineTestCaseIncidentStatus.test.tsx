@@ -104,7 +104,7 @@ describe('InlineTestCaseIncidentStatus Component', () => {
       />
     );
 
-    expect(screen.getByText('New')).toBeInTheDocument();
+    expect(screen.getByText('label.new')).toBeInTheDocument();
   });
 
   it('should render with hasEditPermission true', () => {
@@ -116,7 +116,7 @@ describe('InlineTestCaseIncidentStatus Component', () => {
       />
     );
 
-    expect(screen.getByText('New')).toBeInTheDocument();
+    expect(screen.getByText('label.new')).toBeInTheDocument();
   });
 
   it('should render with hasEditPermission false', () => {
@@ -128,7 +128,7 @@ describe('InlineTestCaseIncidentStatus Component', () => {
       />
     );
 
-    expect(screen.getByText('New')).toBeInTheDocument();
+    expect(screen.getByText('label.new')).toBeInTheDocument();
   });
 
   it('should render New status', () => {
@@ -143,7 +143,7 @@ describe('InlineTestCaseIncidentStatus Component', () => {
       />
     );
 
-    expect(screen.getByText('New')).toBeInTheDocument();
+    expect(screen.getByText('label.new')).toBeInTheDocument();
   });
 
   it('should render ACK status', () => {
@@ -158,7 +158,7 @@ describe('InlineTestCaseIncidentStatus Component', () => {
       />
     );
 
-    expect(screen.getByText('Ack')).toBeInTheDocument();
+    expect(screen.getByText('label.ack')).toBeInTheDocument();
   });
 
   it('should render Assigned status', () => {
@@ -173,7 +173,7 @@ describe('InlineTestCaseIncidentStatus Component', () => {
       />
     );
 
-    expect(screen.getByText('Assigned')).toBeInTheDocument();
+    expect(screen.getByText('label.assigned')).toBeInTheDocument();
   });
 
   it('should render Resolved status', () => {
@@ -188,7 +188,7 @@ describe('InlineTestCaseIncidentStatus Component', () => {
       />
     );
 
-    expect(screen.getByText('Resolved')).toBeInTheDocument();
+    expect(screen.getByText('label.resolved')).toBeInTheDocument();
   });
 
   it('should open menu when clicking on chip with edit permission', async () => {
@@ -200,7 +200,7 @@ describe('InlineTestCaseIncidentStatus Component', () => {
       />
     );
 
-    const chip = screen.getByText('New');
+    const chip = screen.getByText('label.new');
     await act(async () => {
       fireEvent.click(chip);
     });
@@ -232,7 +232,7 @@ describe('InlineTestCaseIncidentStatus Component', () => {
       />
     );
 
-    expect(screen.getByText('Assigned')).toBeInTheDocument();
+    expect(screen.getByText('label.assigned')).toBeInTheDocument();
   });
 
   it('should render with Resolved status', () => {
@@ -253,7 +253,7 @@ describe('InlineTestCaseIncidentStatus Component', () => {
       />
     );
 
-    expect(screen.getByText('Resolved')).toBeInTheDocument();
+    expect(screen.getByText('label.resolved')).toBeInTheDocument();
   });
 
   it('should handle status changes when rerendering', () => {
@@ -265,7 +265,7 @@ describe('InlineTestCaseIncidentStatus Component', () => {
       />
     );
 
-    expect(screen.getByText('New')).toBeInTheDocument();
+    expect(screen.getByText('label.new')).toBeInTheDocument();
 
     rerender(
       <InlineTestCaseIncidentStatus
@@ -292,7 +292,7 @@ describe('InlineTestCaseIncidentStatus Component', () => {
       />
     );
 
-    const chip = screen.getByText('New');
+    const chip = screen.getByText('label.new');
     await act(async () => {
       fireEvent.click(chip);
     });
@@ -341,7 +341,7 @@ describe('InlineTestCaseIncidentStatus Component', () => {
       />
     );
 
-    expect(screen.getByText('New')).toBeInTheDocument();
+    expect(screen.getByText('label.new')).toBeInTheDocument();
   });
 
   it('should call getUserAndTeamSearch when needed', () => {
@@ -366,7 +366,7 @@ describe('InlineTestCaseIncidentStatus Component', () => {
       />
     );
 
-    const chip = screen.getByText('Resolved');
+    const chip = screen.getByText('label.resolved');
     await act(async () => {
       fireEvent.click(chip);
     });

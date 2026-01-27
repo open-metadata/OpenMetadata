@@ -17,9 +17,7 @@ from metadata.utils.constants import CHUNKSIZE
 
 def dataframe_to_chunks(df: "DataFrame"):
     """
-    Reads the Dataframe and returns list of dataframes broken down in chunks
+    Reads the Dataframe and returns an iterator of dataframes broken down in chunks
     """
-    return [
-        df[range_iter : range_iter + CHUNKSIZE]
-        for range_iter in range(0, len(df), CHUNKSIZE)
-    ]
+    for range_iter in range(0, len(df), CHUNKSIZE):
+        yield df[range_iter : range_iter + CHUNKSIZE]

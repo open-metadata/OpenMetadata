@@ -72,7 +72,7 @@ const TestCaseResultTab = () => {
   const { version } = useParams<{ version: string }>();
   const isVersionPage = !isUndefined(version);
   const additionalComponent =
-    testCaseResultTabClassBase.getAdditionalComponents();
+    testCaseResultTabClassBase.getAdditionalComponents(testCaseData);
   const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
   const [testDefinition, setTestDefinition] = useState<TestDefinition>();
 
