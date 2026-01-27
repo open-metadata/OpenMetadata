@@ -61,8 +61,6 @@ test.describe('Custom properties without custom property config', () => {
         test(`Add ${property} custom property for ${entity.name}`, async ({
           page,
         }) => {
-          test.slow(true);
-
           await settingClick(
             page,
             entity.entityApiType as SettingOptionsType,

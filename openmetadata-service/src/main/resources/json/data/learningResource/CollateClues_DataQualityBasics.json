@@ -1,0 +1,16 @@
+{
+  "name": "CollateClues_DataQualityBasics",
+  "displayName": "Collate Clues: Data Quality Basics",
+  "description": "Get started with Data Quality in Collate - learn the fundamentals of setting up quality tests and monitoring.",
+  "resourceType": "Video",
+  "categories": ["DataQuality", "Observability"],
+  "source": {
+    "url": "https://www.youtube.com/watch?v=HypaInv79PQ",
+    "provider": "YouTube"
+  },
+  "contexts": [
+    {"pageId": "dataObservability"},
+    {"pageId": "dataQuality"}
+  ],
+  "status": "Active"
+}
