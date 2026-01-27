@@ -118,7 +118,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     adminTestEntity = new TableClass();
     const { apiContext, afterAction } = await getApiContext(adminPage);
     const { entity } = await adminTestEntity.create(apiContext);
-    await adminPage.waitForTimeout(1000);
     await navigateToExploreAndSelectTable(adminPage, entity.name);
 
     await afterAction();
