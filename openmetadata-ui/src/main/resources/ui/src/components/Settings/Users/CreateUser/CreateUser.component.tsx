@@ -29,7 +29,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { ReactComponent as IconSync } from '../../../../assets/svg/ic-sync.svg';
-import { PAGE_SIZE_LARGE, VALIDATION_MESSAGES } from '../../../../constants/constants';
+import {
+  AGGREGATE_PAGE_SIZE_LARGE,
+  VALIDATION_MESSAGES,
+} from '../../../../constants/constants';
 import {
   EMAIL_REG_EX,
   passwordRegex,
@@ -54,7 +57,10 @@ import { generateRandomPwd } from '../../../../rest/auth-API';
 import { getAllPersonas } from '../../../../rest/PersonaAPI';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
 import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
-import { getEntityName, getEntityReferenceListFromEntities } from '../../../../utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityReferenceListFromEntities,
+} from '../../../../utils/EntityUtils';
 import { getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
@@ -139,19 +145,19 @@ const CreateUser = ({
   const fetchPersonaOptions = async (searchText: string, page?: number) => {
     try {
       const params: Record<string, unknown> = {
-        limit: PAGE_SIZE_LARGE,
+        limit: AGGREGATE_PAGE_SIZE_LARGE,
       };
-      
+
       if (page && page > 1) {
-        params.after = String((page - 1) * PAGE_SIZE_LARGE);
+        params.after = String((page - 1) * AGGREGATE_PAGE_SIZE_LARGE);
       }
-      
+
       const response = await getAllPersonas(params);
       const personaRefs = getEntityReferenceListFromEntities(
         response.data,
         EntityType.PERSONA
       );
-      
+
       return {
         data: personaRefs.map((persona) => ({
           label: getEntityName(persona),
@@ -165,6 +171,7 @@ const CreateUser = ({
         error as AxiosError,
         t('server.entity-fetch-error', { entity: t('label.persona-plural') })
       );
+
       return { data: [], paging: {} };
     }
   };
@@ -190,29 +197,32 @@ const CreateUser = ({
   /**
    * Form submit handler
    */
-    const handleSave: FormProps['onFinish'] = (values) => {
-      const isPasswordGenerated =
-        passwordGenerator === CreatePasswordGenerator.AutomaticGenerate;
-      const validTeam = compact(selectedTeams).map((team) => team.id);
-      const validPersonas = selectedPersonas?.map((personaId: string) => ({
-        id: personaId,
-        type: EntityType.PERSONA,
-      } as EntityReference));
+  const handleSave: FormProps['onFinish'] = (values) => {
+    const isPasswordGenerated =
+      passwordGenerator === CreatePasswordGenerator.AutomaticGenerate;
+    const validTeam = compact(selectedTeams).map((team) => team.id);
+    const validPersonas = selectedPersonas?.map(
+      (personaId: string) =>
+        ({
+          id: personaId,
+          type: EntityType.PERSONA,
+        } as EntityReference)
+    );
 
-      const { email, displayName, tokenExpiry, confirmPassword, description } =
-        values;
+    const { email, displayName, tokenExpiry, confirmPassword, description } =
+      values;
 
-      const userProfile: CreateUserSchema = {
-        description,
-        name: email.split('@')[0],
-        displayName: trim(displayName),
-        roles: selectedRoles,
-        teams: validTeam.length ? validTeam : undefined,
-        personas: validPersonas,
-        email: email,
-        isAdmin: isAdmin,
-        domains: selectedDomain.map((domain) => domain.fullyQualifiedName ?? ''),
-        isBot: isBot,
+    const userProfile: CreateUserSchema = {
+      description,
+      name: email.split('@')[0],
+      displayName: trim(displayName),
+      roles: selectedRoles,
+      teams: validTeam.length ? validTeam : undefined,
+      personas: validPersonas,
+      email: email,
+      isAdmin: isAdmin,
+      domains: selectedDomain.map((domain) => domain.fullyQualifiedName ?? ''),
+      isBot: isBot,
       ...(forceBot
         ? {
             authenticationMechanism: {
@@ -444,14 +454,14 @@ const CreateUser = ({
               </Form.Item>
               <Form.Item label={t('label.persona-plural')} name="personas">
                 <AsyncSelect
+                  enableInfiniteScroll
+                  showSearch
                   api={fetchPersonaOptions}
                   data-testid="personas-dropdown"
-                  enableInfiniteScroll
                   mode="multiple"
                   placeholder={t('label.please-select-entity', {
                     entity: t('label.persona-plural'),
                   })}
-                  showSearch
                 />
               </Form.Item>
             </>
