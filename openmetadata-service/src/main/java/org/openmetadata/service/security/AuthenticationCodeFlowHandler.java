@@ -220,31 +220,6 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
     this.promptType = authenticationConfiguration.getOidcConfiguration().getPrompt();
     this.clientAuthentication = getClientAuthentication(client.getConfiguration());
-
-    configureHttpTimeouts();
-  }
-
-  private void configureHttpTimeouts() {
-    try {
-      org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
-          org.openmetadata.service.security.auth.SecurityConfigurationManager.getCurrentMcpConfig();
-      if (mcpConfig != null) {
-        Integer connectTimeout = mcpConfig.getConnectTimeout();
-        Integer readTimeout = mcpConfig.getReadTimeout();
-
-        if (connectTimeout != null) {
-          System.setProperty(
-              "sun.net.client.defaultConnectTimeout", String.valueOf(connectTimeout));
-          LOG.info("Set HTTP connection timeout to {}ms from MCP configuration", connectTimeout);
-        }
-        if (readTimeout != null) {
-          System.setProperty("sun.net.client.defaultReadTimeout", String.valueOf(readTimeout));
-          LOG.info("Set HTTP read timeout to {}ms from MCP configuration", readTimeout);
-        }
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to configure HTTP timeouts from MCP config: {}", e.getMessage());
-    }
   }
 
   private OidcClient buildOidcClient(OidcClientConfig clientConfig) {
@@ -300,6 +275,30 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
       // Disable PKCE
       configuration.setDisablePkce(clientConfig.getDisablePkce());
+
+      // Configure HTTP timeouts from MCP configuration
+      try {
+        org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
+            org.openmetadata.service.security.auth.SecurityConfigurationManager
+                .getCurrentMcpConfig();
+        if (mcpConfig != null) {
+          if (mcpConfig.getConnectTimeout() != null) {
+            configuration.setConnectTimeout(mcpConfig.getConnectTimeout());
+            LOG.info(
+                "Set OIDC client connection timeout to {}ms from MCP configuration",
+                mcpConfig.getConnectTimeout());
+          }
+          if (mcpConfig.getReadTimeout() != null) {
+            configuration.setReadTimeout(mcpConfig.getReadTimeout());
+            LOG.info(
+                "Set OIDC client read timeout to {}ms from MCP configuration",
+                mcpConfig.getReadTimeout());
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to configure OIDC client HTTP timeouts from MCP config: {}", e.getMessage());
+      }
 
       // Add Custom Params
       if (clientConfig.getCustomParams() != null) {

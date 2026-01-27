@@ -706,6 +706,10 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
     regenerateSession(session);
 
+    // Get fresh session reference after regeneration (may be different if invalidate/recreate
+    // fallback was used)
+    HttpSession newSession = currentRequest.get().getSession(false);
+
     List<String> scopes =
         scopesStr != null && !scopesStr.isEmpty()
             ? List.of(scopesStr.split(" "))
@@ -724,13 +728,15 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
             + URLEncoder.encode(authCode, StandardCharsets.UTF_8)
             + (state != null ? "&state=" + URLEncoder.encode(state, StandardCharsets.UTF_8) : "");
 
-    session.removeAttribute(SESSION_MCP_PKCE_CHALLENGE);
-    session.removeAttribute(SESSION_MCP_PKCE_METHOD);
-    session.removeAttribute(SESSION_MCP_CLIENT_ID);
-    session.removeAttribute(SESSION_MCP_REDIRECT_URI);
-    session.removeAttribute(SESSION_MCP_STATE);
-    session.removeAttribute(SESSION_MCP_SCOPES);
-    session.removeAttribute(SESSION_MCP_AUTH_METHOD);
+    if (newSession != null) {
+      newSession.removeAttribute(SESSION_MCP_PKCE_CHALLENGE);
+      newSession.removeAttribute(SESSION_MCP_PKCE_METHOD);
+      newSession.removeAttribute(SESSION_MCP_CLIENT_ID);
+      newSession.removeAttribute(SESSION_MCP_REDIRECT_URI);
+      newSession.removeAttribute(SESSION_MCP_STATE);
+      newSession.removeAttribute(SESSION_MCP_SCOPES);
+      newSession.removeAttribute(SESSION_MCP_AUTH_METHOD);
+    }
 
     LOG.info("Redirecting to client with authorization code: {}", redirectUri);
     response.sendRedirect(redirectUrl);
