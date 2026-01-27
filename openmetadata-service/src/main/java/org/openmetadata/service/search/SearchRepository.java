@@ -649,6 +649,48 @@ public class SearchRepository {
   }
 
   /**
+   * Bulk update multiple entities in the search index. This is much more efficient than calling
+   * updateEntity() for each entity individually.
+   *
+   * @param entities List of entities to update in the search index
+   */
+  public void updateEntitiesBulk(List<EntityInterface> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    int batchSize = 100;
+    int maxConcurrentRequests = 5;
+    long maxPayloadSizeBytes = 10 * 1024 * 1024; // 10MB
+
+    BulkSink bulkSink = null;
+    try {
+      bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+      Map<String, Object> contextData = new HashMap<>();
+      bulkSink.write(entities, contextData);
+      bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
+    } catch (Exception e) {
+      LOG.error("Error during bulk entity update in search index", e);
+      // Fall back to individual updates
+      for (EntityInterface entity : entities) {
+        try {
+          updateEntityIndex(entity);
+        } catch (Exception ex) {
+          LOG.error("Error updating entity {} in search index", entity.getFullyQualifiedName(), ex);
+        }
+      }
+    } finally {
+      if (bulkSink != null) {
+        try {
+          bulkSink.close();
+        } catch (Exception e) {
+          LOG.warn("Error closing bulk sink", e);
+        }
+      }
+    }
+  }
+
+  /**
    * Bulk updates domain references for assets when a data product's domain changes. This is more
    * efficient than updating each entity individually as it uses a single update-by-query operation.
    *

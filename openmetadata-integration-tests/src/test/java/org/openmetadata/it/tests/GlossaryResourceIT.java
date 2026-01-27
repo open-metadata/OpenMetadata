@@ -910,8 +910,11 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
       importResult = JsonUtils.readValue(result, CsvImportResult.class);
       assertNotNull(importResult, "Should parse CsvImportResult from response");
       assertEquals(ApiStatus.SUCCESS, importResult.getStatus(), "Import should succeed");
-      assertEquals(3, importResult.getNumberOfRowsProcessed(), "Should process 3 rows");
-      assertEquals(3, importResult.getNumberOfRowsPassed(), "All 3 rows should pass");
+      // numberOfRowsProcessed = header row (1) + 3 data rows = 4
+      assertEquals(
+          4, importResult.getNumberOfRowsProcessed(), "Should process 4 rows (header + 3 data)");
+      assertEquals(
+          4, importResult.getNumberOfRowsPassed(), "All 4 rows should pass (header + 3 data)");
       assertEquals(0, importResult.getNumberOfRowsFailed(), "No rows should fail");
       assertFalse(importResult.getDryRun(), "Should not be a dry run");
     } catch (Exception e) {

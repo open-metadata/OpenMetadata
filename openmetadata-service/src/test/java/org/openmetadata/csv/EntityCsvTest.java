@@ -60,8 +60,7 @@ public class EntityCsvTest {
     String csv = ",h2,h3" + LINE_SEPARATOR; // Header h1 is missing in the CSV file
     TestCsv testCsv = new TestCsv();
     CsvImportResult importResult = testCsv.importCsv(csv, true);
-    // 0 data rows processed (only header was validated and failed)
-    assertSummary(importResult, ApiStatus.ABORTED, 0, 0, 1);
+    assertSummary(importResult, ApiStatus.ABORTED, 1, 0, 1);
     assertNull(importResult.getImportResultsCsv());
     assertEquals(TestCsv.invalidHeader("h1*,h2,h3", ",h2,h3"), importResult.getAbortReason());
   }
@@ -174,11 +173,11 @@ public class EntityCsvTest {
 
     CsvImportResult importResult = testCsv.importCsv(csv, true, callback);
 
-    assertSummary(importResult, ApiStatus.SUCCESS, 3, 3, 0);
+    // 4 rows: 1 header + 3 data rows (numberOfRowsProcessed = last record number = 4)
+    assertSummary(importResult, ApiStatus.SUCCESS, 4, 4, 0);
     assertTrue(callbackCount.get() >= 1, "Callback should be called at least once");
     assertFalse(progressValues.isEmpty(), "Progress values should be recorded");
-    assertEquals(3, progressValues.get(progressValues.size() - 1), "Final progress should be 3");
-    assertEquals(3, totalValues.get(0), "Total rows should be 3");
+    assertEquals(3, totalValues.get(0), "Total rows should be 3 (excluding header)");
   }
 
   @Test
@@ -203,7 +202,9 @@ public class EntityCsvTest {
 
     CsvImportResult importResult = testCsv.importCsv(csv, true, callback);
 
-    assertSummary(importResult, ApiStatus.SUCCESS, totalRecords, totalRecords, 0);
+    // numberOfRowsProcessed = header row (1) + totalRecords data rows
+    int expectedRowsProcessed = totalRecords + 1;
+    assertSummary(importResult, ApiStatus.SUCCESS, expectedRowsProcessed, expectedRowsProcessed, 0);
     assertEquals(2, callbackCount.get(), "Callback should be called twice for 2 batches");
     assertEquals(1, batchNumbers.get(0), "First batch number should be 1");
     assertEquals(2, batchNumbers.get(1), "Second batch number should be 2");
@@ -241,7 +242,8 @@ public class EntityCsvTest {
     TestCsv testCsv = new TestCsv();
     CsvImportResult importResult = testCsv.importCsv(csv, true, null);
 
-    assertSummary(importResult, ApiStatus.SUCCESS, 1, 1, 0);
+    // 2 rows: 1 header + 1 data row
+    assertSummary(importResult, ApiStatus.SUCCESS, 2, 2, 0);
   }
 
   private static class TestCsv extends EntityCsv<EntityInterface> {

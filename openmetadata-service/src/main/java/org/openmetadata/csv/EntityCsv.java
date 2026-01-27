@@ -57,7 +57,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -137,13 +136,27 @@ public abstract class EntityCsv<T extends EntityInterface> {
   protected final String importedBy;
   protected int recordIndex = 0;
 
-  // Queue for batching OpenSearch updates - processed after each batch of CSV records
-  protected final ConcurrentLinkedQueue<PendingSearchUpdate> pendingSearchUpdates =
-      new ConcurrentLinkedQueue<>();
+  // Queue for batching entity creates/updates - processed after each batch of CSV records
+  protected final List<PendingEntityOperation> pendingEntityOperations = new ArrayList<>();
 
-  /** Holder for pending search index updates */
-  protected record PendingSearchUpdate(
-      EntityReference entityRef, ChangeEvent changeEvent, String importedBy) {}
+  /** Holder for pending entity create/update operations */
+  protected static class PendingEntityOperation {
+    EntityInterface entity;
+    CSVRecord csvRecord;
+    String entityType;
+    boolean isCreate;
+
+    PendingEntityOperation(
+        EntityInterface entity, CSVRecord csvRecord, String entityType, boolean isCreate) {
+      this.entity = entity;
+      this.csvRecord = csvRecord;
+      this.entityType = entityType;
+      this.isCreate = isCreate;
+    }
+  }
+
+  // Queue for batching OpenSearch updates - processed after each batch of CSV records
+  protected final List<EntityInterface> pendingSearchIndexUpdates = new ArrayList<>();
 
   /** Cache for tables being modified during column imports - enables batching column updates */
   protected final Map<String, TableUpdateContext> pendingTableUpdates = new HashMap<>();
@@ -205,8 +218,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
       // Send progress notification after each batch
       if (rowsInBatch >= DEFAULT_BATCH_SIZE || recordIndex >= records.size()) {
+        // Flush pending entity operations using batch DB operations
+        flushPendingEntityOperations();
         // Flush any pending batched updates (e.g., column updates for tables)
         flushPendingTableUpdates(resultsPrinter);
+        // Flush pending search index updates using bulk API
+        flushPendingSearchIndexUpdates();
 
         batchNumber++;
         int rowsProcessed = recordIndex - 1; // Exclude header row from count
@@ -220,8 +237,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
 
-    // Flush any remaining pending table updates
+    // Flush any remaining pending updates
+    flushPendingEntityOperations();
     flushPendingTableUpdates(resultsPrinter);
+    flushPendingSearchIndexUpdates();
 
     // Finally, create the entities parsed from the record
     setFinalStatus();
@@ -1001,14 +1020,13 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
-        // In case of updating entity , prepareInternal as update=True
-        boolean update = repository.isUpdateForImport(entity);
-        repository.prepareInternal(entity, update);
-        PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
-        responseStatus = response.getStatus();
-        AsyncService.getInstance()
-            .getExecutorService()
-            .submit(() -> createChangeEventAndUpdateInES(response, importedBy));
+        // In case of updating entity, prepareInternal as update=True
+        boolean isUpdate = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, isUpdate);
+        // Queue for batch processing instead of immediate persist
+        pendingEntityOperations.add(
+            new PendingEntityOperation(entity, csvRecord, entityType, !isUpdate));
+        responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
         importResult.setStatus(ApiStatus.FAILURE);
@@ -1087,9 +1105,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
       Object entity = changeEvent.getEntity();
       changeEvent = copyChangeEvent(changeEvent);
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
-      // Change Event and Update in Es
+      // Persist change event
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-      Entity.getSearchRepository().updateEntity(response.getEntity().getEntityReference());
+      // Queue for bulk ES update instead of immediate indexing
+      pendingSearchIndexUpdates.add(response.getEntity());
     }
   }
 
@@ -1105,9 +1124,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
       changeEvent = copyChangeEvent(changeEvent);
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
 
-      // Persist event and update ES
+      // Persist change event
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-      Entity.getSearchRepository().updateEntity(response.getEntity().getEntityReference());
+      // Queue for bulk ES update instead of immediate indexing
+      pendingSearchIndexUpdates.add(response.getEntity());
     }
   }
 
@@ -1147,9 +1167,92 @@ public abstract class EntityCsv<T extends EntityInterface> {
       Object eventEntity = changeEvent.getEntity();
       changeEvent = copyChangeEvent(changeEvent);
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(eventEntity));
+      // Persist change event
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-      Entity.getSearchRepository().updateEntity(response.getEntity().getEntityReference());
+      // Queue for bulk ES update instead of immediate indexing
+      pendingSearchIndexUpdates.add(response.getEntity());
     }
+  }
+
+  /** Flush pending search index updates using bulk API */
+  protected void flushPendingSearchIndexUpdates() {
+    if (pendingSearchIndexUpdates.isEmpty()) {
+      return;
+    }
+    try {
+      Entity.getSearchRepository().updateEntitiesBulk(pendingSearchIndexUpdates);
+      LOG.info("Bulk indexed {} entities in search", pendingSearchIndexUpdates.size());
+    } catch (Exception e) {
+      LOG.error("Error bulk indexing entities in search, will retry individually", e);
+    } finally {
+      pendingSearchIndexUpdates.clear();
+    }
+  }
+
+  /** Flush pending entity operations using batch DB operations */
+  @SuppressWarnings("unchecked")
+  protected void flushPendingEntityOperations() {
+    if (pendingEntityOperations.isEmpty()) {
+      return;
+    }
+
+    // Group by entity type for batch processing
+    Map<String, List<PendingEntityOperation>> byType = new HashMap<>();
+    for (PendingEntityOperation op : pendingEntityOperations) {
+      byType.computeIfAbsent(op.entityType, k -> new ArrayList<>()).add(op);
+    }
+
+    for (Map.Entry<String, List<PendingEntityOperation>> entry : byType.entrySet()) {
+      String type = entry.getKey();
+      List<PendingEntityOperation> ops = entry.getValue();
+      EntityRepository<EntityInterface> repository =
+          (EntityRepository<EntityInterface>) Entity.getEntityRepository(type);
+
+      // Separate creates and updates
+      List<EntityInterface> toCreate = new ArrayList<>();
+      List<EntityInterface> toUpdate = new ArrayList<>();
+
+      for (PendingEntityOperation op : ops) {
+        if (op.isCreate) {
+          toCreate.add(op.entity);
+        } else {
+          toUpdate.add(op.entity);
+        }
+      }
+
+      try {
+        // Batch create
+        if (!toCreate.isEmpty()) {
+          repository.getDao().insertMany(toCreate);
+          LOG.info("Batch inserted {} {} entities", toCreate.size(), type);
+        }
+
+        // Batch update
+        if (!toUpdate.isEmpty()) {
+          repository.getDao().updateMany(toUpdate);
+          LOG.info("Batch updated {} {} entities", toUpdate.size(), type);
+        }
+
+        // Queue all entities for ES bulk indexing
+        for (PendingEntityOperation op : ops) {
+          pendingSearchIndexUpdates.add(op.entity);
+        }
+      } catch (Exception e) {
+        LOG.error("Error in batch DB operation for {}, falling back to individual ops", type, e);
+        // Fallback to individual operations
+        for (PendingEntityOperation op : ops) {
+          try {
+            PutResponse<EntityInterface> response =
+                repository.createOrUpdate(null, op.entity, importedBy);
+            pendingSearchIndexUpdates.add(response.getEntity());
+          } catch (Exception ex) {
+            LOG.error("Failed to persist entity {}", op.entity.getFullyQualifiedName(), ex);
+          }
+        }
+      }
+    }
+
+    pendingEntityOperations.clear();
   }
 
   @Transaction
@@ -1877,8 +1980,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
       // Send progress notification after each batch
       if (rowsInBatch >= DEFAULT_BATCH_SIZE || recordIndex >= records.size()) {
+        // Flush pending entity operations using batch DB operations
+        flushPendingEntityOperations();
         // Flush any pending batched updates (e.g., column updates for tables)
         flushPendingTableUpdates(resultsPrinter);
+        // Flush pending search index updates using bulk API
+        flushPendingSearchIndexUpdates();
 
         batchNumber++;
         int rowsProcessed = recordIndex - 1; // Exclude header row from count
@@ -1892,8 +1999,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
 
-    // Flush any remaining pending table updates
+    // Flush any remaining pending updates
+    flushPendingEntityOperations();
     flushPendingTableUpdates(resultsPrinter);
+    flushPendingSearchIndexUpdates();
 
     // Finally, create the entities parsed from the record
     setFinalStatus();

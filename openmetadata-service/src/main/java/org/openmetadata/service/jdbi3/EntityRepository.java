@@ -1523,6 +1523,84 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return updateForImport(uriInfo, original, updated, updatedBy, impersonatedBy);
   }
 
+  /**
+   * Batch create or update entities for CSV import. Separates entities into creates and updates,
+   * then performs batch DB operations for performance.
+   *
+   * @param entities List of entities to create or update
+   * @param updatedBy User performing the import
+   * @return List of PutResponse with status (CREATED or OK) for each entity
+   */
+  @Transaction
+  public List<PutResponse<T>> createOrUpdateBatchForImport(List<T> entities, String updatedBy) {
+    List<T> toCreate = new ArrayList<>();
+    List<T> toUpdate = new ArrayList<>();
+    List<T> originals = new ArrayList<>();
+    List<PutResponse<T>> responses = new ArrayList<>();
+
+    // Separate entities into creates vs updates
+    for (T entity : entities) {
+      T original = findByNameOrNull(entity.getFullyQualifiedName(), ALL);
+      if (original == null) {
+        toCreate.add(entity);
+      } else {
+        toUpdate.add(entity);
+        originals.add(original);
+      }
+    }
+
+    // Batch create new entities
+    if (!toCreate.isEmpty()) {
+      List<T> created = createManyEntitiesForImport(toCreate);
+      for (T entity : created) {
+        responses.add(new PutResponse<>(Status.CREATED, entity, ENTITY_CREATED));
+      }
+    }
+
+    // Batch update existing entities
+    if (!toUpdate.isEmpty()) {
+      List<T> updated = updateManyEntitiesForImport(originals, toUpdate, updatedBy);
+      for (T entity : updated) {
+        responses.add(new PutResponse<>(Status.OK, entity, ENTITY_UPDATED));
+      }
+    }
+
+    return responses;
+  }
+
+  @Transaction
+  private List<T> createManyEntitiesForImport(List<T> entities) {
+    storeEntities(entities);
+    storeExtensions(entities);
+    storeRelationshipsInternal(entities);
+    setInheritedFields(entities, new Fields(allowedFields));
+    postCreate(entities);
+    return entities;
+  }
+
+  @Transaction
+  private List<T> updateManyEntitiesForImport(
+      List<T> originals, List<T> updates, String updatedBy) {
+    List<T> updatedEntities = new ArrayList<>();
+    for (int i = 0; i < originals.size(); i++) {
+      T original = originals.get(i);
+      T updated = updates.get(i);
+      // Copy ID and version from original
+      updated.setId(original.getId());
+      updated.setVersion(original.getVersion());
+      updated.setUpdatedBy(updatedBy);
+      updated.setUpdatedAt(System.currentTimeMillis());
+      updatedEntities.add(updated);
+    }
+    // Batch update in DB
+    updateMany(updatedEntities);
+    // Update relationships
+    for (T entity : updatedEntities) {
+      storeRelationships(entity);
+    }
+    return updatedEntities;
+  }
+
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
     EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
@@ -2554,6 +2632,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     dao.insertMany(nullifiedEntities);
+  }
+
+  protected void updateMany(List<T> entities) {
+    List<EntityInterface> nullifiedEntities = new ArrayList<>();
+    Gson gson = new Gson();
+    for (T entity : entities) {
+      List<EntityReference> owners = entity.getOwners();
+      List<EntityReference> children = entity.getChildren();
+      List<TagLabel> tags = entity.getTags();
+      List<EntityReference> domains = entity.getDomains();
+      List<EntityReference> dataProducts = entity.getDataProducts();
+      List<EntityReference> followers = entity.getFollowers();
+      List<EntityReference> experts = entity.getExperts();
+      nullifyEntityFields(entity);
+
+      String jsonCopy = gson.toJson(entity);
+      nullifiedEntities.add(gson.fromJson(jsonCopy, entityClass));
+
+      // Restore the relationships
+      entity.setOwners(owners);
+      entity.setChildren(children);
+      entity.setTags(tags);
+      entity.setDomains(domains);
+      entity.setDataProducts(dataProducts);
+      entity.setFollowers(followers);
+      entity.setExperts(experts);
+    }
+
+    dao.updateMany(nullifiedEntities);
   }
 
   @Transaction
