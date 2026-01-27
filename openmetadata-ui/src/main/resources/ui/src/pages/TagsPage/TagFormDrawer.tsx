@@ -107,10 +107,9 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
             px: theme.spacing(4),
             py: theme.spacing(2.5),
             fontSize: theme.typography.body2.fontSize,
-            color: theme.palette.allShades.blue[600],
+            color: theme.palette.grey[700],
             '&:hover': {
               backgroundColor: 'transparent',
-              color: theme.palette.allShades.blue[700],
             },
           }}
           variant="text"
