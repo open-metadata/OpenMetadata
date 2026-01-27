@@ -126,6 +126,7 @@ public class PartitionWorker {
     AtomicLong successCount = new AtomicLong(0);
     AtomicLong failedCount = new AtomicLong(0);
     AtomicLong readerFailedCount = new AtomicLong(0);
+    AtomicLong warningsCount = new AtomicLong(0);
     AtomicLong processedCount = new AtomicLong(0);
     long currentOffset = rangeStart;
 
@@ -146,6 +147,7 @@ public class PartitionWorker {
           BatchResult batchResult = processBatch(entityType, currentOffset, currentBatchSize);
           successCount.addAndGet(batchResult.successCount());
           failedCount.addAndGet(batchResult.failedCount());
+          warningsCount.addAndGet(batchResult.warningsCount());
           processedCount.addAndGet(batchResult.successCount() + batchResult.failedCount());
 
           currentOffset += currentBatchSize;
@@ -199,28 +201,41 @@ public class PartitionWorker {
       if (stopped.get()) {
         LOG.info("Partition {} stopped by request", partition.getId());
         return new PartitionResult(
-            successCount.get(), failedCount.get(), true, readerFailedCount.get());
+            successCount.get(),
+            failedCount.get(),
+            true,
+            readerFailedCount.get(),
+            warningsCount.get());
       }
 
       // Mark partition as completed
       coordinator.completePartition(partition.getId(), successCount.get(), failedCount.get());
 
       LOG.info(
-          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {})",
+          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, warnings: {})",
           partition.getId(),
           entityType,
           successCount.get(),
           failedCount.get(),
-          readerFailedCount.get());
+          readerFailedCount.get(),
+          warningsCount.get());
 
       return new PartitionResult(
-          successCount.get(), failedCount.get(), false, readerFailedCount.get());
+          successCount.get(),
+          failedCount.get(),
+          false,
+          readerFailedCount.get(),
+          warningsCount.get());
 
     } catch (Exception e) {
       LOG.error("Fatal error processing partition {}", partition.getId(), e);
       coordinator.failPartition(partition.getId(), e.getMessage());
       return new PartitionResult(
-          successCount.get(), failedCount.get(), false, readerFailedCount.get());
+          successCount.get(),
+          failedCount.get(),
+          false,
+          readerFailedCount.get(),
+          warningsCount.get());
     }
   }
 
@@ -239,7 +254,7 @@ public class PartitionWorker {
     ResultList<?> resultList = readEntities(entityType, cursor, batchSize);
 
     if (resultList == null || resultList.getData() == null || resultList.getData().isEmpty()) {
-      return new BatchResult(0, 0);
+      return new BatchResult(0, 0, 0);
     }
 
     Map<String, Object> contextData = createContextData(entityType);
@@ -248,7 +263,8 @@ public class PartitionWorker {
       writeToSink(entityType, resultList, contextData);
       int successCount = listOrEmpty(resultList.getData()).size();
       int failedCount = listOrEmpty(resultList.getErrors()).size();
-      return new BatchResult(successCount, failedCount);
+      int warningsCount = resultList.getWarningsCount() != null ? resultList.getWarningsCount() : 0;
+      return new BatchResult(successCount, failedCount, warningsCount);
     } catch (Exception e) {
       throw new SearchIndexException(
           new org.openmetadata.schema.system.IndexingError()
@@ -369,7 +385,7 @@ public class PartitionWorker {
    * @param successCount Number of successfully indexed entities
    * @param failedCount Number of failed entities
    */
-  public record BatchResult(int successCount, int failedCount) {}
+  public record BatchResult(int successCount, int failedCount, int warningsCount) {}
 
   /**
    * Result of processing a partition.
@@ -378,12 +394,23 @@ public class PartitionWorker {
    * @param failedCount Total failed entities (for backward compatibility, = readerFailed + sinkFailed)
    * @param wasStopped Whether processing was stopped before completion
    * @param readerFailed Number of entities that failed during reading
+   * @param readerWarnings Number of warnings from reading (e.g., stale references)
    */
   public record PartitionResult(
-      long successCount, long failedCount, boolean wasStopped, long readerFailed) {
+      long successCount,
+      long failedCount,
+      boolean wasStopped,
+      long readerFailed,
+      long readerWarnings) {
     /** Backward-compatible constructor for existing code */
     public PartitionResult(long successCount, long failedCount, boolean wasStopped) {
-      this(successCount, failedCount, wasStopped, 0);
+      this(successCount, failedCount, wasStopped, 0, 0);
+    }
+
+    /** Constructor with readerFailed but no warnings (backward-compatible) */
+    public PartitionResult(
+        long successCount, long failedCount, boolean wasStopped, long readerFailed) {
+      this(successCount, failedCount, wasStopped, readerFailed, 0);
     }
   }
 }

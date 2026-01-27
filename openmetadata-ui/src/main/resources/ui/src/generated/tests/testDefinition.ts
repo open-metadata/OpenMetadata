@@ -102,6 +102,11 @@ export interface TestDefinition {
      */
     updatedBy?: string;
     /**
+     * Class name of the validator to use for this test definition. This field is used to map
+     * the test definition to its corresponding validation logic in the data quality framework.
+     */
+    validatorClass?: string;
+    /**
      * Metadata version of the entity.
      */
     version?: number;

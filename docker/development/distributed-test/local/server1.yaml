@@ -370,6 +370,7 @@ elasticsearch:
   # IAM auth is automatically enabled when AWS_DEFAULT_REGION is set
   # Credentials: Use AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or rely on AWS SDK default credential provider chain
   aws:
+    enabled: ${SEARCH_AWS_IAM_AUTH_ENABLED:-false}
     region: ${AWS_DEFAULT_REGION:-""}
     accessKeyId: ${AWS_ACCESS_KEY_ID:-""}
     secretAccessKey: ${AWS_SECRET_ACCESS_KEY:-""}
@@ -381,6 +382,7 @@ elasticsearch:
     providerClass: ${NATURAL_LANGUAGE_SEARCH_PROVIDER_CLASS:-org.openmetadata.service.search.nlq.NoOpNLQService}
     bedrock:
       awsConfig:
+        enabled: false
         region: ${AWS_BEDROCK_REGION:-""}
         accessKeyId: ${AWS_BEDROCK_ACCESS_KEY:-""}
         secretAccessKey: ${AWS_BEDROCK_SECRET_KEY:-""}
@@ -431,6 +433,7 @@ pipelineServiceClientConfiguration:
     sseAlgorithm: ${PIPELINE_SERVICE_CLIENT_LOG_SSE_ALGORITHM:-"AES256"} # Allowed values: "AES256" or "aws:kms"
     kmsKeyId: ${PIPELINE_SERVICE_CLIENT_LOG_KMS_KEY_ID:-""} # Required only if sseAlgorithm is "aws:kms"
     awsConfig:
+      enabled: ${PIPELINE_SERVICE_CLIENT_AWS_IAM_AUTH_ENABLED:-false}
       awsAccessKeyId: ${PIPELINE_SERVICE_CLIENT_LOG_AWS_ACCESS_KEY_ID:-""}
       awsSecretAccessKey: ${PIPELINE_SERVICE_CLIENT_LOG_AWS_SECRET_ACCESS_KEY:-""}
       awsRegion: ${PIPELINE_SERVICE_CLIENT_LOG_REGION:-""}
@@ -610,10 +613,11 @@ cache:
     connectTimeoutMs: ${CACHE_REDIS_CONNECT_TIMEOUT:-2000}
 
     # AWS ElastiCache IAM Authentication (only if using ElastiCache)
-    useIamAuth: ${CACHE_REDIS_USE_IAM:-false}
-    awsRegion: ${CACHE_REDIS_AWS_REGION:-}
-    awsUseInstanceProfile: ${CACHE_REDIS_AWS_INSTANCE_PROFILE:-true}
-    # If not using instance profile, provide credentials:
-    awsAccessKey: ${AWS_ACCESS_KEY_ID:-}
-    awsSecretKey: ${AWS_SECRET_ACCESS_KEY:-}
-    tokenRefreshIntervalSeconds: ${CACHE_REDIS_TOKEN_REFRESH:-900}  # 15 minutes
+    aws:
+      enabled: ${CACHE_REDIS_AWS_IAM_AUTH_ENABLED:-false}
+      region: ${CACHE_REDIS_AWS_REGION:-""}
+      useInstanceProfile: ${CACHE_REDIS_AWS_INSTANCE_PROFILE:-true}
+      # If not using instance profile, provide credentials:
+      accessKeyId: ${AWS_ACCESS_KEY_ID:-""}
+      secretAccessKey: ${AWS_SECRET_ACCESS_KEY:-""}
+      tokenRefreshIntervalSeconds: ${CACHE_REDIS_TOKEN_REFRESH:-900}  # 15 minutes

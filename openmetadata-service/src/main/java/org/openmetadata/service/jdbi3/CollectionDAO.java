@@ -122,6 +122,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
+import org.openmetadata.schema.entity.learning.LearningResource;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -154,6 +155,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagLabelMetadata;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.schema.util.EntitiesCount;
@@ -418,6 +420,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   DocStoreDAO docStoreDAO();
+
+  @CreateSqlObject
+  LearningResourceDAO learningResourceDAO();
 
   @CreateSqlObject
   SuggestionDAO suggestionDAO();
@@ -4694,11 +4699,11 @@ public interface CollectionDAO {
   interface TagUsageDAO {
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy)",
+            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata :: jsonb) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
         connectionType = POSTGRES)
     void applyTag(
         @Bind("source") int source,
@@ -4708,7 +4713,51 @@ public interface CollectionDAO {
         @Bind("labelType") int labelType,
         @Bind("state") int state,
         @Bind("reason") String reason,
-        @Bind("appliedBy") String appliedBy);
+        @Bind("appliedBy") String appliedBy,
+        @Bind("metadata") String metadata);
+
+    default void applyTag(
+        int source,
+        String tagFQN,
+        String tagFQNHash,
+        String targetFQNHash,
+        int labelType,
+        int state,
+        String reason,
+        String appliedBy,
+        TagLabelMetadata metadata) {
+      this.applyTag(
+          source,
+          tagFQN,
+          tagFQNHash,
+          targetFQNHash,
+          labelType,
+          state,
+          reason,
+          appliedBy,
+          JsonUtils.pojoToJson(metadata));
+    }
+
+    default void applyTag(
+        int source,
+        String tagFQN,
+        String tagFQNHash,
+        String targetFQNHash,
+        int labelType,
+        int state,
+        String reason,
+        String appliedBy) {
+      this.applyTag(
+          source,
+          tagFQN,
+          tagFQNHash,
+          targetFQNHash,
+          labelType,
+          state,
+          reason,
+          appliedBy,
+          (String) null);
+    }
 
     default List<TagLabel> getTags(String targetFQN) {
       List<TagLabel> tags = getTagsInternal(targetFQN);
@@ -4740,11 +4789,11 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
-        "SELECT source, tagFQN,  labelType, state, reason, appliedAt, appliedBy FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
+        "SELECT source, tagFQN,  labelType, state, reason, appliedAt, appliedBy, metadata FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@BindFQN("targetFQNHash") String targetFQNHash);
 
     @SqlQuery(
-        "SELECT targetFQNHash, source, tagFQN, labelType, state, reason, appliedAt, appliedBy "
+        "SELECT targetFQNHash, source, tagFQN, labelType, state, reason, appliedAt, appliedBy, metadata "
             + "FROM tag_usage "
             + "WHERE targetFQNHash IN (<targetFQNHashes>) "
             + "ORDER BY targetFQNHash, tagFQN")
@@ -4784,7 +4833,7 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, tu.appliedBy, "
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, tu.appliedBy, tu.metadata, "
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
@@ -4796,7 +4845,7 @@ public interface CollectionDAO {
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, tu.appliedBy, "
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, tu.appliedBy, tu.metadata, "
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
@@ -5031,7 +5080,8 @@ public interface CollectionDAO {
             .withTagFQN(r.getString("tagFQN"))
             .withReason(r.getString("reason"))
             .withAppliedAt(r.getTimestamp("appliedAt"))
-            .withAppliedBy(r.getString("appliedBy"));
+            .withAppliedBy(r.getString("appliedBy"))
+            .withMetadata(JsonUtils.readValue(r.getString("metadata"), TagLabelMetadata.class));
       }
     }
 
@@ -5055,7 +5105,8 @@ public interface CollectionDAO {
                 .withTagFQN(r.getString("tagFQN"))
                 .withReason(r.getString("reason"))
                 .withAppliedAt(r.getTimestamp("appliedAt"))
-                .withAppliedBy(r.getString("appliedBy"));
+                .withAppliedBy(r.getString("appliedBy"))
+                .withMetadata(JsonUtils.readValue(r.getString("metadata"), TagLabelMetadata.class));
         TagLabel.TagSource source = TagLabel.TagSource.values()[r.getInt("source")];
         if (source == TagLabel.TagSource.CLASSIFICATION) {
           Tag tag = JsonUtils.readValue(r.getString("json"), Tag.class);
@@ -5088,6 +5139,7 @@ public interface CollectionDAO {
         tag.setReason(rs.getString("reason"));
         tag.setAppliedAt(rs.getTimestamp("appliedAt"));
         tag.setAppliedBy(rs.getString("appliedBy"));
+        tag.setMetadata(JsonUtils.readValue(rs.getString("metadata"), TagLabelMetadata.class));
         return tag;
       }
     }
@@ -5103,8 +5155,7 @@ public interface CollectionDAO {
       private String reason;
       private Date appliedAt;
       private String appliedBy;
-
-      // Getters and Setters
+      private TagLabelMetadata metadata;
 
       public TagLabel toTagLabel() {
         TagLabel tagLabel = new TagLabel();
@@ -5115,6 +5166,7 @@ public interface CollectionDAO {
         tagLabel.setReason(this.reason);
         tagLabel.setAppliedAt(this.appliedAt);
         tagLabel.setAppliedBy(this.appliedBy);
+        tagLabel.setMetadata(this.metadata);
         return tagLabel;
       }
     }
@@ -5180,6 +5232,7 @@ public interface CollectionDAO {
       List<Integer> states = new ArrayList<>();
       List<String> reasons = new ArrayList<>();
       List<String> appliedBys = new ArrayList<>();
+      List<String> metadataList = new ArrayList<>();
 
       for (TagLabel tagLabel : tagLabels) {
         sources.add(tagLabel.getSource().ordinal());
@@ -5190,24 +5243,34 @@ public interface CollectionDAO {
         states.add(tagLabel.getState().ordinal());
         reasons.add(tagLabel.getReason());
         appliedBys.add(tagLabel.getAppliedBy());
+        metadataList.add(JsonUtils.pojoToJson(tagLabel.getMetadata()));
       }
 
       applyTagsBatchInternal(
-          sources, tagFQNs, tagFQNHashes, targetFQNHashes, labelTypes, states, reasons, appliedBys);
+          sources,
+          tagFQNs,
+          tagFQNHashes,
+          targetFQNHashes,
+          labelTypes,
+          states,
+          reasons,
+          appliedBys,
+          metadataList);
     }
 
     @Transaction
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) "
-                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy) "
-                + "ON DUPLICATE KEY UPDATE labelType = VALUES(labelType), state = VALUES(state), reason = VALUES(reason)",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata) "
+                + "ON DUPLICATE KEY UPDATE labelType = VALUES(labelType), state = VALUES(state), reason = VALUES(reason), metadata = VALUES(metadata)",
         connectionType = MYSQL)
     @ConnectionAwareSqlBatch(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy) "
-                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy) "
-                + "ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata :: jsonb) "
+                + "ON CONFLICT (source, tagFQNHash, targetFQNHash) DO UPDATE SET labelType = EXCLUDED.labelType, "
+                + "state = EXCLUDED.state, reason = EXCLUDED.reason, metadata = EXCLUDED.metadata",
         connectionType = POSTGRES)
     void applyTagsBatchInternal(
         @Bind("source") List<Integer> sources,
@@ -5217,7 +5280,8 @@ public interface CollectionDAO {
         @Bind("labelType") List<Integer> labelTypes,
         @Bind("state") List<Integer> states,
         @Bind("reason") List<String> reasons,
-        @Bind("appliedBy") List<String> appliedBys);
+        @Bind("appliedBy") List<String> appliedBys,
+        @Bind("metadata") List<String> metadataList);
 
     /**
      * Delete multiple tags in batch to improve performance
@@ -5259,7 +5323,7 @@ public interface CollectionDAO {
     long getTotalTagUsageCount();
 
     @SqlQuery(
-        "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedAt, appliedBy FROM tag_usage ORDER BY source, tagFQNHash LIMIT :limit OFFSET :offset")
+        "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedAt, appliedBy, metadata FROM tag_usage ORDER BY source, tagFQNHash LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(TagUsageObjectMapper.class)
     List<TagUsageObject> getAllTagUsagesPaginated(
         @Bind("offset") long offset, @Bind("limit") int limit);
@@ -5284,6 +5348,7 @@ public interface CollectionDAO {
     private String reason;
     private Date appliedAt;
     private String appliedBy;
+    private TagLabelMetadata metadata;
   }
 
   class TagUsageObjectMapper implements RowMapper<TagUsageObject> {
@@ -5299,6 +5364,7 @@ public interface CollectionDAO {
           .reason(r.getString("reason"))
           .appliedAt(r.getTimestamp("appliedAt"))
           .appliedBy(r.getString("appliedBy"))
+          .metadata(JsonUtils.readValue(r.getString("metadata"), TagLabelMetadata.class))
           .build();
     }
   }
@@ -8496,6 +8562,23 @@ public interface CollectionDAO {
     void deleteEmailTemplates();
   }
 
+  interface LearningResourceDAO extends EntityDAO<LearningResource> {
+    @Override
+    default String getTableName() {
+      return "learning_resource_entity";
+    }
+
+    @Override
+    default Class<LearningResource> getEntityClass() {
+      return LearningResource.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
   interface SuggestionDAO {
     default String getTableName() {
       return "suggestions";
@@ -9987,6 +10070,29 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM search_index_failures WHERE jobId = :jobId")
     int deleteByJobId(@Bind("jobId") String jobId);
 
+    @SqlUpdate("DELETE FROM search_index_failures")
+    int deleteAll();
+
+    @SqlQuery("SELECT COUNT(*) FROM search_index_failures")
+    int countAll();
+
+    @SqlQuery(
+        "SELECT * FROM search_index_failures ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(SearchIndexFailureMapper.class)
+    List<SearchIndexFailureRecord> findAll(@Bind("limit") int limit, @Bind("offset") int offset);
+
+    @SqlQuery("SELECT COUNT(*) FROM search_index_failures WHERE entityType = :entityType")
+    int countByEntityType(@Bind("entityType") String entityType);
+
+    @SqlQuery(
+        "SELECT * FROM search_index_failures WHERE entityType = :entityType "
+            + "ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(SearchIndexFailureMapper.class)
+    List<SearchIndexFailureRecord> findByEntityType(
+        @Bind("entityType") String entityType,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
     class SearchIndexFailureMapper implements RowMapper<SearchIndexFailureRecord> {
       @Override
       public SearchIndexFailureRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
@@ -10014,9 +10120,11 @@ public interface CollectionDAO {
         String serverId,
         long readerSuccess,
         long readerFailed,
+        long readerWarnings,
         long sinkTotal,
         long sinkSuccess,
         long sinkFailed,
+        long sinkWarnings,
         long entityBuildFailures,
         int partitionsCompleted,
         int partitionsFailed,
@@ -10025,9 +10133,11 @@ public interface CollectionDAO {
     record AggregatedServerStats(
         long readerSuccess,
         long readerFailed,
+        long readerWarnings,
         long sinkTotal,
         long sinkSuccess,
         long sinkFailed,
+        long sinkWarnings,
         long entityBuildFailures,
         int partitionsCompleted,
         int partitionsFailed) {}
@@ -10035,27 +10145,29 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_server_stats (id, jobId, serverId, readerSuccess, readerFailed, "
-                + "sinkTotal, sinkSuccess, sinkFailed, entityBuildFailures, partitionsCompleted, "
-                + "partitionsFailed, lastUpdatedAt) "
-                + "VALUES (:id, :jobId, :serverId, :readerSuccess, :readerFailed, :sinkTotal, "
-                + ":sinkSuccess, :sinkFailed, :entityBuildFailures, :partitionsCompleted, "
-                + ":partitionsFailed, :lastUpdatedAt) "
+                + "readerWarnings, sinkTotal, sinkSuccess, sinkFailed, sinkWarnings, entityBuildFailures, "
+                + "partitionsCompleted, partitionsFailed, lastUpdatedAt) "
+                + "VALUES (:id, :jobId, :serverId, :readerSuccess, :readerFailed, :readerWarnings, "
+                + ":sinkTotal, :sinkSuccess, :sinkFailed, :sinkWarnings, :entityBuildFailures, "
+                + ":partitionsCompleted, :partitionsFailed, :lastUpdatedAt) "
                 + "ON DUPLICATE KEY UPDATE readerSuccess = :readerSuccess, readerFailed = :readerFailed, "
-                + "sinkTotal = :sinkTotal, sinkSuccess = :sinkSuccess, sinkFailed = :sinkFailed, "
+                + "readerWarnings = :readerWarnings, sinkTotal = :sinkTotal, sinkSuccess = :sinkSuccess, "
+                + "sinkFailed = :sinkFailed, sinkWarnings = :sinkWarnings, "
                 + "entityBuildFailures = :entityBuildFailures, partitionsCompleted = :partitionsCompleted, "
                 + "partitionsFailed = :partitionsFailed, lastUpdatedAt = :lastUpdatedAt",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_server_stats (id, jobId, serverId, readerSuccess, readerFailed, "
-                + "sinkTotal, sinkSuccess, sinkFailed, entityBuildFailures, partitionsCompleted, "
-                + "partitionsFailed, lastUpdatedAt) "
-                + "VALUES (:id, :jobId, :serverId, :readerSuccess, :readerFailed, :sinkTotal, "
-                + ":sinkSuccess, :sinkFailed, :entityBuildFailures, :partitionsCompleted, "
-                + ":partitionsFailed, :lastUpdatedAt) "
+                + "readerWarnings, sinkTotal, sinkSuccess, sinkFailed, sinkWarnings, entityBuildFailures, "
+                + "partitionsCompleted, partitionsFailed, lastUpdatedAt) "
+                + "VALUES (:id, :jobId, :serverId, :readerSuccess, :readerFailed, :readerWarnings, "
+                + ":sinkTotal, :sinkSuccess, :sinkFailed, :sinkWarnings, :entityBuildFailures, "
+                + ":partitionsCompleted, :partitionsFailed, :lastUpdatedAt) "
                 + "ON CONFLICT (jobId, serverId) DO UPDATE SET readerSuccess = :readerSuccess, "
-                + "readerFailed = :readerFailed, sinkTotal = :sinkTotal, sinkSuccess = :sinkSuccess, "
-                + "sinkFailed = :sinkFailed, entityBuildFailures = :entityBuildFailures, "
+                + "readerFailed = :readerFailed, readerWarnings = :readerWarnings, "
+                + "sinkTotal = :sinkTotal, sinkSuccess = :sinkSuccess, sinkFailed = :sinkFailed, "
+                + "sinkWarnings = :sinkWarnings, entityBuildFailures = :entityBuildFailures, "
                 + "partitionsCompleted = :partitionsCompleted, partitionsFailed = :partitionsFailed, "
                 + "lastUpdatedAt = :lastUpdatedAt",
         connectionType = POSTGRES)
@@ -10065,9 +10177,11 @@ public interface CollectionDAO {
         @Bind("serverId") String serverId,
         @Bind("readerSuccess") long readerSuccess,
         @Bind("readerFailed") long readerFailed,
+        @Bind("readerWarnings") long readerWarnings,
         @Bind("sinkTotal") long sinkTotal,
         @Bind("sinkSuccess") long sinkSuccess,
         @Bind("sinkFailed") long sinkFailed,
+        @Bind("sinkWarnings") long sinkWarnings,
         @Bind("entityBuildFailures") long entityBuildFailures,
         @Bind("partitionsCompleted") int partitionsCompleted,
         @Bind("partitionsFailed") int partitionsFailed,
@@ -10087,9 +10201,11 @@ public interface CollectionDAO {
         "SELECT "
             + "COALESCE(SUM(readerSuccess), 0) as readerSuccess, "
             + "COALESCE(SUM(readerFailed), 0) as readerFailed, "
+            + "COALESCE(SUM(readerWarnings), 0) as readerWarnings, "
             + "COALESCE(SUM(sinkTotal), 0) as sinkTotal, "
             + "COALESCE(SUM(sinkSuccess), 0) as sinkSuccess, "
             + "COALESCE(SUM(sinkFailed), 0) as sinkFailed, "
+            + "COALESCE(SUM(sinkWarnings), 0) as sinkWarnings, "
             + "COALESCE(SUM(entityBuildFailures), 0) as entityBuildFailures, "
             + "COALESCE(SUM(partitionsCompleted), 0) as partitionsCompleted, "
             + "COALESCE(SUM(partitionsFailed), 0) as partitionsFailed "
@@ -10109,9 +10225,11 @@ public interface CollectionDAO {
             rs.getString("serverId"),
             rs.getLong("readerSuccess"),
             rs.getLong("readerFailed"),
+            rs.getLong("readerWarnings"),
             rs.getLong("sinkTotal"),
             rs.getLong("sinkSuccess"),
             rs.getLong("sinkFailed"),
+            rs.getLong("sinkWarnings"),
             rs.getLong("entityBuildFailures"),
             rs.getInt("partitionsCompleted"),
             rs.getInt("partitionsFailed"),
@@ -10125,9 +10243,11 @@ public interface CollectionDAO {
         return new AggregatedServerStats(
             rs.getLong("readerSuccess"),
             rs.getLong("readerFailed"),
+            rs.getLong("readerWarnings"),
             rs.getLong("sinkTotal"),
             rs.getLong("sinkSuccess"),
             rs.getLong("sinkFailed"),
+            rs.getLong("sinkWarnings"),
             rs.getLong("entityBuildFailures"),
             rs.getInt("partitionsCompleted"),
             rs.getInt("partitionsFailed"));

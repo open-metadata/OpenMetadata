@@ -63,3 +63,9 @@ UPDATE database_service
 SET json = JSON_SET(json, '$.connection.config.authType', 'basic')
 WHERE serviceType = 'Snowflake'
   AND JSON_EXTRACT(json, '$.connection.config.authType') IS NULL;
+
+-- Add validatorClass to all system test definitions (set to PascalCase name + 'Validator' if not present)
+UPDATE test_definition
+SET json = JSON_SET(json, '$.validatorClass', CONCAT(UPPER(SUBSTRING(JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')), 1, 1)), SUBSTRING(JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')), 2), 'Validator'))
+WHERE JSON_EXTRACT(json, '$.validatorClass') IS NULL
+  AND JSON_EXTRACT(json, '$.provider') = 'system';

@@ -124,6 +124,10 @@ CREATE INDEX IF NOT EXISTS idx_test_case_updated_at_id ON test_case(updatedAt DE
 CREATE INDEX IF NOT EXISTS idx_api_collection_entity_updated_at_id ON api_collection_entity(updatedAt DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_api_endpoint_entity_updated_at_id ON api_endpoint_entity(updatedAt DESC, id DESC);
 
+
+-- Add metadata column to tag_usage table
+ALTER TABLE tag_usage ADD COLUMN IF NOT EXISTS metadata JSON;
+
 -- Distributed Search Indexing Tables
 
 -- Table to track reindex jobs across distributed servers
@@ -230,9 +234,11 @@ CREATE TABLE IF NOT EXISTS search_index_server_stats (
     serverId VARCHAR(256) NOT NULL,
     readerSuccess BIGINT DEFAULT 0,
     readerFailed BIGINT DEFAULT 0,
+    readerWarnings BIGINT DEFAULT 0,
     sinkTotal BIGINT DEFAULT 0,
     sinkSuccess BIGINT DEFAULT 0,
     sinkFailed BIGINT DEFAULT 0,
+    sinkWarnings BIGINT DEFAULT 0,
     entityBuildFailures BIGINT DEFAULT 0,
     partitionsCompleted INT DEFAULT 0,
     partitionsFailed INT DEFAULT 0,
@@ -487,3 +493,16 @@ CREATE TABLE IF NOT EXISTS mcp_pending_auth_requests (
 CREATE INDEX IF NOT EXISTS idx_mcp_pending_auth_request_id ON mcp_pending_auth_requests(auth_request_id);
 CREATE INDEX IF NOT EXISTS idx_mcp_pending_auth_expires ON mcp_pending_auth_requests(expires_at);
 CREATE INDEX IF NOT EXISTS idx_mcp_pending_auth_pac4j_state ON mcp_pending_auth_requests(pac4j_state);
+
+-- Create Learning Resource Entity Table
+CREATE TABLE IF NOT EXISTS learning_resource_entity (
+    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    name character varying(3072) GENERATED ALWAYS AS ((json ->> 'fullyQualifiedName'::text)) STORED,
+    fqnhash character varying(256) NOT NULL,
+    json jsonb NOT NULL,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    updatedby character varying(256) GENERATED ALWAYS AS ((json ->> 'updatedBy'::text)) STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnhash)
+);

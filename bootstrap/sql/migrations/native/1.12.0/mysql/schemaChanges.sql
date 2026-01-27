@@ -108,6 +108,9 @@ CREATE INDEX idx_test_case_updated_at_id ON test_case(updatedAt DESC, id DESC);
 CREATE INDEX idx_api_collection_entity_updated_at_id ON api_collection_entity(updatedAt DESC, id DESC);
 CREATE INDEX idx_api_endpoint_entity_updated_at_id ON api_endpoint_entity(updatedAt DESC, id DESC);
 
+-- Add metadata column to tag_usage table
+ALTER TABLE tag_usage ADD metadata JSON NULL;
+
 -- Distributed Search Indexing Tables
 
 -- Table to track reindex jobs across distributed servers
@@ -211,9 +214,11 @@ CREATE TABLE IF NOT EXISTS search_index_server_stats (
     serverId VARCHAR(256) NOT NULL,
     readerSuccess BIGINT DEFAULT 0,
     readerFailed BIGINT DEFAULT 0,
+    readerWarnings BIGINT DEFAULT 0,
     sinkTotal BIGINT DEFAULT 0,
     sinkSuccess BIGINT DEFAULT 0,
     sinkFailed BIGINT DEFAULT 0,
+    sinkWarnings BIGINT DEFAULT 0,
     entityBuildFailures BIGINT DEFAULT 0,
     partitionsCompleted INT DEFAULT 0,
     partitionsFailed INT DEFAULT 0,
@@ -385,3 +390,16 @@ CREATE TABLE IF NOT EXISTS mcp_pending_auth_requests (
     INDEX idx_mcp_pending_auth_expires (expires_at),
     INDEX idx_mcp_pending_auth_pac4j_state (pac4j_state)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create Learning Resource Entity Table
+CREATE TABLE IF NOT EXISTS learning_resource_entity (
+  id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,'$.id'))) STORED NOT NULL,
+  name varchar(3072) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,'$.fullyQualifiedName'))) VIRTUAL,
+  fqnHash varchar(256) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  json json NOT NULL,
+  updatedAt bigint UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(`json`,'$.updatedAt'))) VIRTUAL NOT NULL,
+  updatedBy varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,'$.updatedBy'))) VIRTUAL NOT NULL,
+  deleted TINYINT(1) GENERATED ALWAYS AS (IF(json_extract(json,'$.deleted') = TRUE, 1, 0)) VIRTUAL,
+  PRIMARY KEY (id),
+  UNIQUE KEY fqnHash (fqnHash)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
