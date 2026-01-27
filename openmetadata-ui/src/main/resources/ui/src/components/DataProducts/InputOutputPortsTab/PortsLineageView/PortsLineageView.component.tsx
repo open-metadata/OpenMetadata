@@ -280,16 +280,16 @@ const PortsLineageView = ({
               sx={{
                 backgroundColor: 'white',
                 border: '1px solid',
-                borderColor: 'grey.300',
+                borderColor: '#414651',
                 '&:hover': {
                   backgroundColor: 'grey.100',
                 },
               }}
               onClick={handleToggleFullScreen}>
               {isFullScreen ? (
-                <Minimize01 height={18} width={18} />
+                <Minimize01 fill='#414651' height={18} width={18} />
               ) : (
-                <Maximize01 height={18} width={18} />
+                <Maximize01 fill='#414651' height={18} width={18} />
               )}
             </IconButton>
           </Tooltip>
