@@ -121,6 +121,14 @@ jobs:
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled \
               --project=ingestion
+          
+          else if [ "${{ matrix.shardIndex }}" -eq "1" ]; then
+            echo "🔹 Running ingestion tests on chromium shard ${CHROMIUM_SHARD}/5"
+            
+            # run ingestion framework tests
+            npx playwright test \
+              --project=ingestion \
+              --shard=${CHROMIUM_SHARD}/5
 
           else
             # Shards 2-6 handle chromium tests (5 workers total)

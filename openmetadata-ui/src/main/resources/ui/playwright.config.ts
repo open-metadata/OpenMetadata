@@ -123,7 +123,7 @@ export default defineConfig({
       name: 'ingestion',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup', 'entity-data-setup'],
-      grep: /@ingestion/,
+      grep: /@ingestion|@sample-data/,
       teardown: 'entity-data-teardown',
       testIgnore: [
         '**/nightly/**',

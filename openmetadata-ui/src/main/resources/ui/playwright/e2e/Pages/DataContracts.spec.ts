@@ -85,6 +85,7 @@ import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 import { merge } from 'lodash';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // Define entities that support Data Contracts
 const entitiesWithDataContracts = [
@@ -120,7 +121,7 @@ const entitySupportsQuality = (entityType: string): boolean => {
   return entityType === 'Table';
 };
 
-test.describe('Data Contracts', () => {
+test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   const user = new UserClass();
   test.slow(true)
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -356,7 +357,7 @@ test.describe('Data Contracts', () => {
 
         await page.reload();
 
-        
+
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -460,7 +461,7 @@ test.describe('Data Contracts', () => {
 
             await expect(page.getByRole('dialog')).not.toBeVisible();
 
-            
+
             await page.waitForSelector('[data-testid="loader"]', {
               state: 'detached',
             });
@@ -708,7 +709,7 @@ test.describe('Data Contracts', () => {
         await redirectToHomePage(page);
         await page.goto(`/table/${entityFQN}`);
 
-        
+
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -923,7 +924,7 @@ test.describe('Data Contracts', () => {
         await redirectToHomePage(page);
         await page.goto(`/table/${entityFQN}`);
 
-        
+
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -1103,7 +1104,7 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    
+
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1276,7 +1277,7 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    
+
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1441,7 +1442,7 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    
+
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1828,10 +1829,10 @@ test.describe('Data Contracts', () => {
 
       await page.getByTestId('add-contract-button').click();
 
-    await expect(page.getByTestId('add-contract-menu')).toBeVisible();
-    await page.getByTestId('create-contract-button').click();
+      await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+      await page.getByTestId('create-contract-button').click();
 
-    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+      await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
       await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
 
@@ -2006,7 +2007,7 @@ test.describe('Data Contracts', () => {
       await page.getByTestId('save-contract-btn').click();
       await saveContractResponse;
 
-      
+
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -2193,7 +2194,7 @@ description:
 
           await toastNotification(page, 'ODCS Contract imported successfully');
 
-          
+
           await page.waitForSelector('[data-testid="loader"]', {
             state: 'detached',
           });
@@ -2421,7 +2422,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
             async () => {
               await redirectToHomePage(page);
               await entity.visitEntityPage(page);
-              
+
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',
               });
@@ -2454,7 +2455,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 'Store Procedure': 'Stored Procedure',
               };
               await settingClick(page, GlobalSettingOptions.PERSONA);
-              
+
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',
               });
@@ -2466,7 +2467,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 true
               );
               await page.getByRole('tab', { name: 'Customize UI' }).click();
-              
+
 
               // Navigate to Table customization
               await page
@@ -2505,7 +2506,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
 
               await redirectToHomePage(page);
               await entity.visitEntityPage(page);
-              
+
               await page.waitForSelector('[data-testid="loader"]', {
                 state: 'detached',
               });

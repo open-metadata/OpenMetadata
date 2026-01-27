@@ -15,6 +15,10 @@ export const PLAYWRIGHT_INGESTION_TAG_OBJ = {
   tag: '@ingestion',
 };
 
+export const PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ = {
+  tag: '@sample-data',
+};
+
 export const DOMAIN_TAGS = {
   GOVERNANCE: '@Governance',
   DISCOVERY: '@Discovery',

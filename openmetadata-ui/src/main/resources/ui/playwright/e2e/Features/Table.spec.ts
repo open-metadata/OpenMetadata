@@ -30,10 +30,11 @@ import {
 import { sidebarClick } from '../../utils/sidebar';
 import { columnPaginationTable } from '../../utils/table';
 import { test } from '../fixtures/pages';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 const table1 = new TableClass();
 
-test.describe('Table pagination sorting search scenarios ', () => {
+test.describe('Table pagination sorting search scenarios ', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
@@ -276,7 +277,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
   });
 });
 
-test.describe('Table & Data Model columns table pagination', () => {
+test.describe('Table & Data Model columns table pagination', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test('pagination for table column should work', async ({
     dataConsumerPage: page,
   }) => {
@@ -522,7 +523,7 @@ test.describe('Table & Data Model columns table pagination', () => {
 });
 
 test.describe(
-  'Tags and glossary terms should be consistent for search ',
+  'Tags and glossary terms should be consistent for search ', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
     const glossary = new Glossary();
     const glossaryTerm = new GlossaryTerm(glossary);
@@ -741,7 +742,7 @@ test.describe(
   }
 );
 
-test.describe('Large Table Column Search & Copy Link', () => {
+test.describe('Large Table Column Search & Copy Link', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.use({
     contextOptions: {
       permissions: ['clipboard-read', 'clipboard-write'],
