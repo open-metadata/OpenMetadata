@@ -40,6 +40,7 @@ import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.i
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
+import { LayoutType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import { PortsListViewProps, PortsListViewRef } from './PortsListView.types';
 
 const PORT_FIELDS = 'owners,tags,domains,extension';
@@ -239,6 +240,7 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                   className="m-b-sm"
                   id={port.id ?? ''}
                   source={port}
+                  tagsLayout={LayoutType.HORIZONTAL}
                 />
               </Col>
             ))}

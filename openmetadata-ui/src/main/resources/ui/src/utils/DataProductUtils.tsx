@@ -194,6 +194,7 @@ export const getDataProductDetailTabs = ({
                   wrapInCard: false,
                   children: (
                     <InputOutputPortsTab
+                      assetCount={assetCount}
                       dataProduct={dataProduct}
                       dataProductFqn={dataProduct.fullyQualifiedName ?? ''}
                       permissions={dataProductPermission}

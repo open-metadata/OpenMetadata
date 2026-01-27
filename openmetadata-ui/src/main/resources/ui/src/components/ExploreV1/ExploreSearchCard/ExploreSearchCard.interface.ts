@@ -12,6 +12,7 @@
  */
 
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import { LayoutType } from '../../Tag/TagsViewer/TagsViewer.interface';
 
 export interface ExploreSearchCardProps {
   id: string;
@@ -36,4 +37,5 @@ export interface ExploreSearchCardProps {
   searchValue?: string;
   score?: number;
   classNameForBreadcrumb?: string;
+  tagsLayout?: LayoutType;
 }

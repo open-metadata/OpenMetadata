@@ -22,6 +22,7 @@ interface AssetSelectionDrawerProps {
   emptyPlaceHolderText?: string;
   onSave?: () => void;
   onCancel: () => void;
+  title?: string;
 }
 
 export const AssetSelectionDrawer = ({
@@ -32,6 +33,7 @@ export const AssetSelectionDrawer = ({
   emptyPlaceHolderText,
   onSave,
   onCancel,
+  title,
 }: AssetSelectionDrawerProps) => {
   return useAssetSelectionDrawer({
     entityFqn,
@@ -41,5 +43,6 @@ export const AssetSelectionDrawer = ({
     emptyPlaceHolderText,
     onSave,
     onCancel,
+    title,
   });
 };

@@ -67,6 +67,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       searchValue,
       score,
       classNameForBreadcrumb,
+      tagsLayout,
     },
     ref
   ) => {
@@ -330,6 +331,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               searchValue
             )}
             extraInfo={otherDetails}
+            layout={tagsLayout}
             tags={showTags ? source.tags : []}
           />
         </div>

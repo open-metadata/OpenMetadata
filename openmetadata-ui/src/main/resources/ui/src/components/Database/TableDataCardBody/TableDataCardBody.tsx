@@ -20,17 +20,20 @@ import { getTagValue } from '../../../utils/CommonUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
+import { LayoutType } from '../../Tag/TagsViewer/TagsViewer.interface';
 
 type Props = {
   description: string;
   extraInfo: Array<ExtraInfo>;
   tags?: string[] | TagLabel[];
+  layout?: LayoutType;
 };
 
 const TableDataCardBody: FunctionComponent<Props> = ({
   description,
   extraInfo,
   tags,
+  layout,
 }: Props) => {
   const { t } = useTranslation();
 
@@ -67,6 +70,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
       {!isEmpty(tags) && (
         <div className="m-t-md" data-testid="tags-container">
           <TagsViewer
+            layout={layout}
             sizeCap={3}
             tags={(tags ?? []).map((tag) => getTagValue(tag))}
           />

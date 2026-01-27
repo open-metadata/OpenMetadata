@@ -23,6 +23,7 @@ interface UseAssetSelectionDrawerProps {
   type?: AssetsOfEntity;
   queryFilter?: QueryFilterInterface;
   emptyPlaceHolderText?: string;
+  title?: string;
   onSave?: () => void;
   onCancel: () => void;
 }
@@ -33,6 +34,7 @@ export const useAssetSelectionDrawer = ({
   type = AssetsOfEntity.GLOSSARY,
   queryFilter,
   emptyPlaceHolderText,
+  title,
   onSave,
   onCancel,
 }: UseAssetSelectionDrawerProps) => {
@@ -63,7 +65,8 @@ export const useAssetSelectionDrawer = ({
     testId: 'asset-selection-modal',
     onClose: onCancel,
     header: {
-      title: t('label.add-entity', { entity: t('label.asset-plural') }),
+      title:
+        title ?? t('label.add-entity', { entity: t('label.asset-plural') }),
       onClose: onCancel,
     },
     body: {

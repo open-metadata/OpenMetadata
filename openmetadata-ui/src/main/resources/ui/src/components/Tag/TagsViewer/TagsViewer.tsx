@@ -31,7 +31,11 @@ import TagChip from '../../common/atoms/TagChip/TagChip';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import './tags-viewer.less';
-import { DisplayType, TagsViewerProps } from './TagsViewer.interface';
+import {
+  DisplayType,
+  LayoutType,
+  TagsViewerProps,
+} from './TagsViewer.interface';
 
 const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   tags,
@@ -40,6 +44,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   showNoDataPlaceholder = true,
   newLook = false,
   entityFqn,
+  layout,
 }: TagsViewerProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -74,7 +79,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
             <Link
               className={classNames(
-                'w-full',
+                { 'w-full': layout !== LayoutType.HORIZONTAL },
                 { 'diff-added tw-mx-1': tag?.added },
                 { 'diff-removed': tag?.removed }
               )}

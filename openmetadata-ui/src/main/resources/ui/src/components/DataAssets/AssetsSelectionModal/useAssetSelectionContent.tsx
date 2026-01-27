@@ -97,6 +97,7 @@ export interface AssetSelectionContentProps {
   onCancel?: () => void;
   queryFilter?: QueryFilterInterface;
   emptyPlaceHolderText?: string;
+  title?: string;
 }
 
 export const useAssetSelectionContent = ({

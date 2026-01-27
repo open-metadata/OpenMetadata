@@ -54,6 +54,7 @@ const PortsLineageView = ({
   dataProduct,
   inputPortsData,
   outputPortsData,
+  assetCount,
   isFullScreen = false,
   height = 350,
   onToggleFullScreen,
@@ -221,7 +222,9 @@ const PortsLineageView = ({
           size={SIZE.SMALL}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <Typography className="text-center" variant="body2">
-            {t('message.no-ports-to-display-lineage')}
+            {assetCount === 0
+              ? t('message.no-assets-for-ports-lineage')
+              : t('message.no-ports-to-display-lineage')}
           </Typography>
         </ErrorPlaceHolder>
       </Box>

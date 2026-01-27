@@ -55,7 +55,14 @@ export const InputOutputPortsTab = forwardRef<
   InputOutputPortsTabProps
 >(
   (
-    { dataProduct, dataProductFqn, permissions, onPortsUpdate, onPortClick },
+    {
+      dataProduct,
+      dataProductFqn,
+      permissions,
+      assetCount,
+      onPortsUpdate,
+      onPortClick,
+    },
     ref
   ) => {
     const { t } = useTranslation();
@@ -283,6 +290,7 @@ export const InputOutputPortsTab = forwardRef<
                   ) : (
                     <ReactFlowProvider>
                       <PortsLineageView
+                        assetCount={assetCount}
                         dataProduct={dataProduct}
                         height={250}
                         inputPortsData={lineageInputPortsData}
@@ -336,6 +344,7 @@ export const InputOutputPortsTab = forwardRef<
                     <Button
                       className="h-8 flex items-center"
                       data-testid="add-input-port-button"
+                      disabled={assetCount === 0}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleAddInputPort();
@@ -380,7 +389,9 @@ export const InputOutputPortsTab = forwardRef<
                       size={SIZE.SMALL}
                       type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
                       <Typography className="text-center">
-                        {t('message.no-input-ports-added')}
+                        {assetCount === 0
+                          ? t('message.no-assets-for-input-ports')
+                          : t('message.no-input-ports-added')}
                       </Typography>
                     </ErrorPlaceHolder>
                   ) : (
@@ -435,6 +446,7 @@ export const InputOutputPortsTab = forwardRef<
                     <Button
                       className="h-8 flex items-center"
                       data-testid="add-output-port-button"
+                      disabled={assetCount === 0}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleAddOutputPort();
@@ -479,7 +491,9 @@ export const InputOutputPortsTab = forwardRef<
                       size={SIZE.SMALL}
                       type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
                       <Typography className="text-center">
-                        {t('message.no-output-ports-added')}
+                        {assetCount === 0
+                          ? t('message.no-assets-for-output-ports')
+                          : t('message.no-output-ports-added')}
                       </Typography>
                     </ErrorPlaceHolder>
                   ) : (
@@ -500,6 +514,9 @@ export const InputOutputPortsTab = forwardRef<
         <AssetSelectionDrawer
           entityFqn={dataProductFqn}
           open={isAddingInputPort}
+          title={t('label.add-entity', {
+            entity: t('label.entity-port', { entity: t('label.input') }),
+          })}
           type={AssetsOfEntity.DATA_PRODUCT_INPUT_PORT}
           onCancel={() => setIsAddingInputPort(false)}
           onSave={handleInputPortSave}
@@ -508,6 +525,9 @@ export const InputOutputPortsTab = forwardRef<
         <AssetSelectionDrawer
           entityFqn={dataProductFqn}
           open={isAddingOutputPort}
+          title={t('label.add-entity', {
+            entity: t('label.entity-port', { entity: t('label.output') }),
+          })}
           type={AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT}
           onCancel={() => setIsAddingOutputPort(false)}
           onSave={handleOutputPortSave}

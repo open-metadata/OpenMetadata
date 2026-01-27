@@ -19,6 +19,7 @@ export interface InputOutputPortsTabProps {
   dataProduct: DataProduct;
   dataProductFqn: string;
   permissions: OperationPermission;
+  assetCount: number;
   onPortsUpdate: () => void;
   onPortClick?: (port?: EntityDetailsObjectInterface) => void;
 }
