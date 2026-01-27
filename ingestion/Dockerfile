@@ -15,7 +15,7 @@ RUN apt-get -qq update \
   freetds-dev \
   gcc \
   gnupg \
-libaio1 \
+  libaio1 \
   libevent-dev \
   libffi-dev \
   libpq-dev \
