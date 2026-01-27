@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Locator } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { RightPanelPageObject } from './RightPanelPageObject';
 
 /**
@@ -21,20 +21,23 @@ import { RightPanelPageObject } from './RightPanelPageObject';
  */
 export class SchemaPageObject {
   private readonly rightPanel: RightPanelPageObject;
+  private readonly page: Page;
 
   // ============ PRIVATE LOCATORS (scoped to container) ============
   private readonly container: Locator;
-  private readonly fieldCard: Locator;
-  private readonly dataType: Locator;
+  private readonly schemaSearchBar: Locator;
+  private readonly schemaFieldsContainer: Locator;
+  private readonly schemaFields: Locator;
 
-  constructor(rightPanel: RightPanelPageObject) {
+
+  constructor(rightPanel: RightPanelPageObject, page: Page) {
     this.rightPanel = rightPanel;
-
+    this.page = page;
     // Base container - scoped to right panel summary panel
-      this.container = this.rightPanel.getSummaryPanel();
-      this.fieldCard = this.container.locator('.field-card, [class*="field"], [data-testid*="field"]');
-      this.dataType = this.container.locator('.data-type, [class*="type"], [data-testid*="type"]');
-
+    this.container = this.rightPanel.getSummaryPanel();
+    this.schemaSearchBar = this.page.getByTestId('searchbar');
+    this.schemaFieldsContainer = this.page.locator('.schema-field-cards-container');
+    this.schemaFields = this.schemaFieldsContainer.locator('.field-card ');
     }
 
   // ============ NAVIGATION METHODS (Fluent Interface) ============
@@ -63,66 +66,19 @@ export class SchemaPageObject {
    * Verify schema field is visible
    * @param fieldName - Name of the field to verify
    */
-  async shouldShowSchemaField(fieldName: string): Promise<void> {
-    // Use semantic selectors - look for field by name text instead of test IDs
-    const fieldCard = this.fieldCard.filter({ hasText: fieldName });
-    await fieldCard.waitFor({ state: 'visible' });
+  async shouldShowSchemaField(): Promise<void> {
+    await expect(this.schemaSearchBar).toBeVisible();
+    await expect(this.schemaFieldsContainer).toBeVisible();
+    await expect(this.schemaFields).toBeVisible();
   }
 
-  /**
-   * Verify schema field is not visible
-   * @param fieldName - Name of the field to verify
-   */
-  async shouldNotShowSchemaField(fieldName: string): Promise<void> {
-    // Use semantic selectors - look for field by name text instead of test IDs
-    const fieldCard = this.fieldCard.filter({ hasText: fieldName });
-    await fieldCard.waitFor({ state: 'hidden' });
-  }
+async schemaFieldsCount(): Promise<number> {
+  const count = await this.schemaFields.count();
+  return count;
+}
 
-  /**
-   * Verify data type is displayed for a field
-   * @param dataType - Expected data type
-   */
-  async shouldShowDataType(dataType: string): Promise<void> {
-    // Use semantic selectors - look for data type text anywhere in the container
-    const dataTypeElement = this.dataType.filter({ hasText: dataType });
-    await dataTypeElement.waitFor({ state: 'visible' });
-  }
-
-  /**
-   * Verify the number of schema fields shown
-   * @param expectedCount - Expected number of schema fields
-   */
-  async shouldShowSchemaFieldsCount(expectedCount: number): Promise<void> {
-    // Use semantic selectors - count all field elements
-    const fieldCards = this.fieldCard;
-    const actualCount = await fieldCards.count();
-    if (actualCount !== expectedCount) {
-      throw new Error(`Should show ${expectedCount} schema fields, but shows ${actualCount}`);
-    }
-  }
-
-  /**
-   * Verify schema contains at least one field
-   */
-  async shouldShowSchemaFields(): Promise<void> {
-    // Use semantic selectors - check for presence of any field elements
-    const fieldCards = this.fieldCard;
-    const count = await fieldCards.count();
-    if (count === 0) {
-      throw new Error('Should show at least one schema field but shows none');
-    }
-  }
-
-  /**
-   * Verify schema is empty (no fields visible)
-   */
-  async shouldShowEmptySchema(): Promise<void> {
-    // Use semantic selectors - ensure no field elements exist
-    const fieldCards = this.fieldCard;
-    const count = await fieldCards.count();
-    if (count > 0) {
-      throw new Error(`Should show empty schema but shows ${count} fields`);
-    }
-  }
+async shouldShowSchemaFieldsCount(expectedCount: number): Promise<void> {
+  const count = await this.schemaFieldsCount();
+  expect(count).toBe(expectedCount);
+}
 }

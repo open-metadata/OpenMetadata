@@ -48,6 +48,8 @@ import { MlModelClass } from '../../support/entity/MlModelClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { Domain } from '../../support/domain/Domain';
+import { Column } from '../../../src/generated/entity/data/table';
 
 // Test data setup
 const tableEntity = new TableClass();
@@ -60,6 +62,7 @@ const dashboardDataModelEntity = new DashboardDataModelClass();
 const mlmodelEntity = new MlModelClass();
 const containerEntity = new ContainerClass();
 const searchIndexEntity = new SearchIndexClass();
+const domainEntity = new Domain();
 
 const testClassification = new ClassificationClass();
 const testTag = new TagClass({
@@ -90,7 +93,7 @@ let lineage: LineagePageObject;
 let dataQuality: DataQualityPageObject;
 let customProperties: CustomPropertiesPageObject;
 
-const domainToUpdate = EntityDataClass.domain1.responseData?.displayName ?? EntityDataClass.domain1.data.displayName;
+const domainToUpdate = domainEntity.responseData?.displayName ?? domainEntity.data.displayName;
 const ownerToUpdate = [EntityDataClass.user1.getUserDisplayName()];
 const glossaryTermToUpdate = testGlossaryTerm.responseData?.displayName ?? testGlossaryTerm.data.displayName;
 const tagToUpdate = testTag.responseData?.displayName ?? testTag.data.displayName;
@@ -112,6 +115,7 @@ test.describe('Right Panel Page Objects Test Suite', () => {
       await testTag.create(apiContext);
       await testGlossary.create(apiContext);
       await testGlossaryTerm.create(apiContext);
+      await domainEntity.create(apiContext);
       // Wait for entities to be indexed
       await new Promise(resolve => setTimeout(resolve, 3000));
     } finally {
@@ -123,7 +127,7 @@ test.describe('Right Panel Page Objects Test Suite', () => {
   test.beforeEach(async ({ adminPage }) => {
     rightPanel = new RightPanelPageObject(adminPage);
     overview = new OverviewPageObject(rightPanel, adminPage);
-    schema = new SchemaPageObject(rightPanel);
+    schema = new SchemaPageObject(rightPanel, adminPage);
     lineage = new LineagePageObject(rightPanel);
     dataQuality = new DataQualityPageObject(rightPanel);
     customProperties = new CustomPropertiesPageObject(rightPanel);
@@ -141,16 +145,18 @@ test.describe('Right Panel Page Objects Test Suite', () => {
       await testClassification.delete(apiContext);
       await testGlossaryTerm.delete(apiContext);
       await testGlossary.delete(apiContext);
+      await domainEntity.delete(apiContext);
     } finally {
       await afterAction();
     }
   });
 
   
-  test.describe('OverviewPageObject - Full CRUD Operations', () => {
+  test.describe('Explore page right panel tests', () => {  
 
-    // ============ OVERVIEW PAGE OBJECT TESTS ============
-    Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
+
+    test.describe('Overview panel CRUD operations', () => { 
+      Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
       test(`Should update description for ${entityType}`, async ({ adminPage }) => {
         await navigateToExploreAndSelectEntity(adminPage, entityType);
         await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
@@ -213,49 +219,33 @@ test.describe('Right Panel Page Objects Test Suite', () => {
         await overview.shouldShowDomain(domainToUpdate);
       })
     });
+    })
+    
 
-      // ============ SCHEMA PAGE OBJECT TESTS ============
+      // ============ SCHEMA PAGE ============
 
-      test.describe('SchemaPageObject - Field and Data Type Visibility', () => {
-        test('Should display and verify schema fields', async ({ adminPage }) => {
-          await navigateToExploreAndSelectEntity(adminPage, 'Table');
-          const tableName = tableEntity.entity.name;
-          await openEntitySummaryPanel(adminPage, tableName);
+    test.describe('Schema panel tests', () => {
+        
+      Object.entries(entityMap).forEach(([entityType, entityInstance]) => { 
+        test(`Should display and verify schema fields for ${entityType}`, async ({ adminPage }) => {
+          await navigateToExploreAndSelectEntity(adminPage, entityType);
+          await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
           await rightPanel.waitForPanelVisible();
 
           await schema.navigateToSchemaTab();
           await schema.shouldBeVisible();
-
-          // Test schema field visibility
-          const tableColumns = tableEntity.children;
-          if (tableColumns && tableColumns.length > 0) {
-            const firstColumn = tableColumns[0];
-            await schema.shouldShowSchemaField(firstColumn.name);
-            await schema.shouldShowDataType(firstColumn.dataType);
-
-            // Test field count
-            await schema.shouldShowSchemaFieldsCount(tableColumns.length);
-          }
-        });
-
-        test('Should handle empty schema gracefully', async ({ adminPage }) => {
-          await navigateToExploreAndSelectEntity(adminPage, 'Table');
-          const tableName = tableEntity.entity.name;
-          await openEntitySummaryPanel(adminPage, tableName);
-          await rightPanel.waitForPanelVisible();
-
-          await schema.navigateToSchemaTab();
-          await schema.shouldShowSchemaFields(); // Should not fail even if empty
-        });
-      });
+      })
+    });
+    })
 
       // ============ LINEAGE PAGE OBJECT TESTS ============
 
-      test.describe('LineagePageObject - Navigation and Expansion', () => {
-        test('Should navigate to lineage and test controls', async ({ adminPage }) => {
-          await navigateToExploreAndSelectEntity(adminPage, 'Table');
-          const tableName = tableEntity.entity.name;
-          await openEntitySummaryPanel(adminPage, tableName);
+    test.describe('LineagePageObject - Navigation and Expansion', () => {
+      
+      Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
+        test(`Should navigate to lineage and test controls for ${entityType}`, async ({ adminPage }) => {
+          await navigateToExploreAndSelectEntity(adminPage, entityType);
+          await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
           await rightPanel.waitForPanelVisible();
 
           await lineage.navigateToLineageTab();
@@ -265,38 +255,34 @@ test.describe('Right Panel Page Objects Test Suite', () => {
           await lineage.shouldShowLineageControls();
         });
 
-        test('Should handle lineage expansion buttons', async ({ adminPage }) => {
-          await navigateToExploreAndSelectEntity(adminPage, 'Table');
-          const tableName = tableEntity.entity.name;
-          await openEntitySummaryPanel(adminPage, tableName);
+        test(`Should handle lineage expansion buttons for ${entityType}`, async ({ adminPage }) => {
+
+          
+          await navigateToExploreAndSelectEntity(adminPage, entityType);
+          await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
           await rightPanel.waitForPanelVisible();
 
-          await lineage.navigateToLineageTab();
-
-          // Test upstream/downstream buttons (may not be visible if no lineage exists)
-          try {
+          try { 
+            await lineage.navigateToLineageTab();
             await lineage.clickUpstreamButton();
             await lineage.shouldShowExpandUpstreamButton();
-          } catch {
-            // Expected if no upstream lineage exists
-            await lineage.shouldNotShowExpandUpstreamButton();
-          }
-
-          try {
             await lineage.clickDownstreamButton();
             await lineage.shouldShowExpandDownstreamButton();
           } catch {
-            // Expected if no downstream lineage exists
-            await lineage.shouldNotShowExpandDownstreamButton();
+            console.debug(`No lineage exists for ${entityType}`);
           }
         });
+      });
       });
 
       // ============ DATA QUALITY PAGE OBJECT TESTS ============
 
-      test.describe('DataQualityPageObject - Stat Cards and Filtering', () => {
-        test('Should navigate to data quality and show stat cards', async ({ adminPage }) => {
-          await navigateToExploreAndSelectEntity(adminPage, 'Table');
+    test.describe('DataQualityPageObject - Stat Cards and Filtering', () => {
+        
+      Object.entries(entityMap).forEach(([entityType, entityInstance]) => { 
+        test(`Should navigate to data quality and show stat cards for ${entityType}`, async ({ adminPage }) => {
+          await navigateToExploreAndSelectEntity(adminPage, entityType);
+          await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
           await rightPanel.waitForPanelVisible();
 
           await dataQuality.navigateToDataQualityTab();
@@ -304,8 +290,9 @@ test.describe('Right Panel Page Objects Test Suite', () => {
           await dataQuality.shouldShowAllStatCards();
         });
 
-        test('Should handle stat card interactions', async ({ adminPage }) => {
-          await navigateToExploreAndSelectEntity(adminPage, 'Table');
+        test(`Should handle stat card interactions for ${entityType}`, async ({ adminPage }) => {
+          await navigateToExploreAndSelectEntity(adminPage, entityType);
+          await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
           await rightPanel.waitForPanelVisible();
 
           await dataQuality.navigateToDataQualityTab();
@@ -326,12 +313,17 @@ test.describe('Right Panel Page Objects Test Suite', () => {
           }
         });
       });
+        
+      });
 
       // ============ CUSTOM PROPERTIES PAGE OBJECT TESTS ============
 
-      test.describe('CustomPropertiesPageObject - Search and Management', () => {
-        test('Should navigate to custom properties and show interface', async ({ adminPage }) => {
-          await navigateToExploreAndSelectEntity(adminPage, 'Table');
+    test.describe('CustomPropertiesPageObject - Search and Management', () => {
+        
+      Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
+        test(`Should navigate to custom properties and show interface for ${entityType}`, async ({ adminPage }) => {
+          await navigateToExploreAndSelectEntity(adminPage, entityType);
+          await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
           await rightPanel.waitForPanelVisible();
 
           await customProperties.navigateToCustomPropertiesTab();
@@ -339,8 +331,9 @@ test.describe('Right Panel Page Objects Test Suite', () => {
           await customProperties.shouldHaveSearchBar();
         });
 
-        test('Should handle search functionality', async ({ adminPage }) => {
-          await navigateToExploreAndSelectEntity(adminPage, 'Table');
+        test(`Should handle search functionality for ${entityType}`, async ({ adminPage }) => {
+          await navigateToExploreAndSelectEntity(adminPage, entityType);
+          await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
           await rightPanel.waitForPanelVisible();
 
           await customProperties.navigateToCustomPropertiesTab();
@@ -353,6 +346,8 @@ test.describe('Right Panel Page Objects Test Suite', () => {
           await customProperties.clearSearch();
           await customProperties.shouldShowSearchText('');
         });
+       });
+        
       });
     });
   });

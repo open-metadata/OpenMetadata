@@ -187,7 +187,7 @@ export class RightPanelPageObject {
 
   // Initialize section page objects
   this.overview = new OverviewPageObject(this, page);
-  this.schema = new SchemaPageObject(this);
+  this.schema = new SchemaPageObject(this, page);
   this.lineage = new LineagePageObject(this);
   this.dataQuality = new DataQualityPageObject(this);
   this.customProperties = new CustomPropertiesPageObject(this);

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Locator } from '@playwright/test';
+import { expect, Locator } from '@playwright/test';
 import { RightPanelPageObject } from './RightPanelPageObject';
 
 /**
@@ -136,8 +136,8 @@ export class LineagePageObject {
    * Verify lineage visualization controls are available
    */
   async shouldShowLineageControls(): Promise<void> {
-    const controls = this.container.locator('.lineage-controls, .react-flow__controls');
-    await controls.waitFor({ state: 'visible' });
+    await expect(this.upstreamButton).toBeVisible();
+    await expect(this.downstreamButton).toBeVisible();
   }
 
   /**

@@ -39,6 +39,7 @@ export class OverviewPageObject {
   private readonly searchBar: Locator;
   private readonly tagSearchBar: Locator;
   private readonly domainSearchBar: Locator;
+  private readonly domainList: Locator;
   private readonly glossaryTermSearchBar: Locator;
   private readonly tagListItem: Locator;
   private readonly tagListContainer: Locator;
@@ -68,7 +69,8 @@ export class OverviewPageObject {
     this.descriptionSection = this.page.locator('.description-section');
     this.searchBar = this.page.getByTestId('search-bar-container');
     this.tagSearchBar = this.searchBar.getByTestId('tag-select-search-bar');
-    this.domainSearchBar = this.searchBar.getByTestId('searchbar');
+    this.domainSearchBar = this.page.getByTestId('searchbar');
+    this.domainList = this.page.locator('.domains-content');
     this.glossaryTermSearchBar = this.searchBar.getByTestId('glossary-term-select-search-bar');
     this.tagListItem = this.selectableList.locator('.ant-list-item-main');
     this.tagListContainer = this.page.locator('.tags-section');
@@ -214,31 +216,24 @@ export class OverviewPageObject {
   async editDomain(domainName: string): Promise<OverviewPageObject> {
     await this.addDomainIcon.click();
 
-    // Wait for the domain tree selector
-    const tree = this.container.locator('[data-testid="domain-selectable-tree"], .domain-tree, [class*="domain"]');
-    await tree.waitFor({ state: 'visible' });
-
-    // Wait for search API response
-    const searchDomainPromise = this.rightPanel.page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes(`q=`)
-    );
-
+    // Wait for loader to disappear
+    await this.loader.waitFor({ state: 'detached' });
     // Use semantic search bar selector
-    
+    await this.domainSearchBar.waitFor({ state: 'visible' });
+    await this.domainSearchBar.scrollIntoViewIfNeeded();
     await this.domainSearchBar.fill(domainName);
 
-    await searchDomainPromise;
+    await this.loader.waitFor({ state: 'detached' });
 
-    const domainSelector = tree.getByText(domainName);
-    await domainSelector.waitFor({ state: 'visible' });
-    await domainSelector.click();
-
+    await this.page.locator('.ant-tree-treenode').filter({ hasText: domainName }).waitFor({ state: 'visible' });
+    await this.page.locator('.ant-tree-treenode').filter({ hasText: domainName }).click();
+ 
     await this.rightPanel.waitForPatchResponse();
 
     // Wait for loader to disappear
     await this.loader.waitFor({ state: 'hidden' });
+    await this.domainList.waitFor({ state: 'visible' });
+    expect(this.domainList).toContainText(domainName);
     return this;
   }
 
@@ -277,8 +272,7 @@ export class OverviewPageObject {
    * Verify domains section is visible
    */
   async shouldShowDomainsSection(): Promise<void> {
-    const domainsSection = this.container.locator('.domains-section, [class*="domain"]');
-    await domainsSection.waitFor({ state: 'visible' });
+    await this.domainList.waitFor({ state: 'visible' });
   }
 
   /**
