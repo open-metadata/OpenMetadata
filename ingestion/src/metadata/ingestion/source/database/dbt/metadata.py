@@ -1348,12 +1348,11 @@ class DbtSource(DbtServiceSource):
 
             if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tier:
                 tier_fqn = dbt_meta_info.openmetadata.tier
-                source_elements = fqn.split(tier_fqn)
                 dbt_table_tags_list.extend(
                     get_tag_labels(
                         metadata=self.metadata,
-                        tags=[source_elements[-1]],
-                        classification_name=source_elements[0],
+                        tags=[tier_fqn.split(fqn.FQN_SEPARATOR)[-1]],
+                        classification_name=tier_fqn.split(fqn.FQN_SEPARATOR)[0],
                         include_tags=True,
                     )
                     or []
