@@ -92,3 +92,13 @@ class QlikScript(BaseModel):
 
 class QlikScriptResult(BaseModel):
     result: Optional[QlikScript] = QlikScript()
+
+
+class QlikDataFile(BaseModel):
+    id: str
+    name: str
+    folder: bool = False
+
+
+class QlikDataFiles(BaseModel):
+    data: Optional[List[QlikDataFile]] = None

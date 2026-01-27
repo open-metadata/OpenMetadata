@@ -1,0 +1,29 @@
+{
+  "$id": "https://open-metadata.org/schema/type/workflowTriggerFields.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WorkflowTriggerFields",
+  "description": "Fields that can trigger workflow execution when changed",
+  "type": "string",
+  "javaType": "org.openmetadata.schema.type.WorkflowTriggerFields",
+  "enum": [
+    "name",
+    "displayName",
+    "fullyQualifiedName",
+    "description",
+    "owners",
+    "reviewers",
+    "tags",
+    "certification",
+    "domains",
+    "dataProducts",
+    "extension",
+    "deleted",
+    "synonyms",
+    "relatedTerms",
+    "references",
+    "glossary",
+    "parent",
+    "children",
+    "experts"
+  ]
+}

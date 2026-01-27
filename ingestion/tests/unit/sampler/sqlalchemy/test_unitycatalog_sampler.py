@@ -21,6 +21,9 @@ from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+    PersonalAccessToken,
+)
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
 )
@@ -67,7 +70,7 @@ class UnityCatalogSamplerTest(TestCase):
 
         self.unity_catalog_conn = UnityCatalogConnection(
             hostPort="localhost:443",
-            token="test_token",
+            authType=PersonalAccessToken(token="test_token"),
             httpPath="/sql/1.0/warehouses/test",
             catalog="test_catalog",
         )

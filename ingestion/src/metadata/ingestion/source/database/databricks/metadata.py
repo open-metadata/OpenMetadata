@@ -44,7 +44,10 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_DDL,
     DATABRICKS_GET_CATALOGS,
@@ -179,7 +182,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
     rows = _get_column_rows(self, connection, table_name, schema, kw.get("db_name"))
     result = []
-    for col_name, col_type, _comment in rows:
+    for ordinal_position, (col_name, col_type, _comment) in enumerate(rows):
         # Handle both oss hive and Databricks' hive partition header, respectively
         if col_name in (
             "# Partition Information",
@@ -187,6 +190,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "# Clustering Information",
             "# Delta Statistics Columns",
             "# Detailed Table Information",
+            "# Delta Uniform Iceberg",
         ):
             break
         # Take out the more detailed type information
@@ -207,6 +211,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "default": None,
             "comment": _comment,
             "system_data_type": raw_col_type,
+            "ordinal_position": ordinal_position,
         }
         if col_type in {"array", "struct", "map"}:
             try:
@@ -243,9 +248,35 @@ def get_schema_names_reflection(self, **kw):
     return []
 
 
+def get_table_names_reflection(self, schema=None, **kw):
+    """Return all table names."""
+
+    if hasattr(self.dialect, "get_table_names"):
+        with self._operation_context() as conn:  # pylint: disable=protected-access
+            return self.dialect.get_table_names(
+                conn, schema=schema, info_cache=self.info_cache, **kw
+            )
+    return []
+
+
+def get_view_names_reflection(self, schema=None, **kw):
+    """Return all view names."""
+
+    if hasattr(self.dialect, "get_view_names"):
+        with self._operation_context() as conn:  # pylint: disable=protected-access
+            return self.dialect.get_view_names(
+                conn, schema=schema, info_cache=self.info_cache, **kw
+            )
+    return []
+
+
 def get_view_names(
     self, connection, schema=None, **kw
 ):  # pylint: disable=unused-argument
+    if kw.get("db_name"):
+        connection.execute(
+            f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"
+        )
     query = "SHOW VIEWS"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
@@ -369,6 +400,10 @@ def get_table_ddl(
 def get_table_names(
     self, connection, schema=None, **kw
 ):  # pylint: disable=unused-argument
+    if kw.get("db_name"):
+        connection.execute(
+            f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"
+        )
     query = "SHOW TABLES"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
@@ -395,7 +430,7 @@ def get_table_names(
 
     # "SHOW TABLES" command in hive also fetches view names
     # Below code filters out view names from table names
-    views = self.get_view_names(connection, schema)
+    views = self.get_view_names(connection, schema, **kw)
     return [table for table in tables if table not in views]
 
 
@@ -438,6 +473,8 @@ DatabricksDialect.get_schema_comment_results = get_schema_comment_results
 DatabricksDialect.get_schema_comment_result = get_schema_comment_result
 DatabricksDialect.get_table_comment_result = get_table_comment_result
 reflection.Inspector.get_schema_names = get_schema_names_reflection
+reflection.Inspector.get_table_names = get_table_names_reflection
+reflection.Inspector.get_view_names = get_view_names_reflection
 reflection.Inspector.get_table_ddl = get_table_ddl
 
 
@@ -505,6 +542,46 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     yield row[0]
         else:
             yield DEFAULT_DATABASE
+
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """
+        Connect to the source database to get the table
+        name and type. By default, use the inspector method
+        to get the names and pass the Regular type.
+
+        This is useful for sources where we need fine-grained
+        logic on how to handle table types, e.g., external, foreign,...
+        """
+
+        return [
+            TableNameAndType(name=table_name)
+            for table_name in self.inspector.get_table_names(
+                schema=schema_name, db_name=self.context.get().database
+            )
+            or []
+        ]
+
+    def query_view_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """
+        Connect to the source database to get the view
+        name and type. By default, use the inspector method
+        to get the names and pass the View type.
+
+        This is useful for sources where we need fine-grained
+        logic on how to handle table types, e.g., material views,...
+        """
+
+        return [
+            TableNameAndType(name=table_name, type_=TableType.View)
+            for table_name in self.inspector.get_view_names(
+                schema=schema_name, db_name=self.context.get().database
+            )
+            or []
+        ]
 
     def _clear_tag_cache(self) -> None:
         """

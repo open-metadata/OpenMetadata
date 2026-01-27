@@ -89,6 +89,10 @@ export class DatabaseServiceClass extends EntityClass {
     return this.entityResponseData;
   }
 
+  set(data: ResponseDataType) {
+    this.entityResponseData = data;
+  }
+
   async visitEntityPage(page: Page) {
     await visitServiceDetailsPage(
       page,

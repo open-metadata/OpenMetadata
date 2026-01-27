@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -28,17 +28,35 @@ export interface TriggerConfiguration {
      */
     batchSize?: number;
     /**
-     * Entity Type for which it should be triggered.
+     * Deprecated: Single entity type for which workflow should be triggered. Use 'entityTypes'
+     * for multiple types.
      */
-    entityType: string;
+    entityType?: string;
     /**
-     * Select the Search Filters to filter down the entities fetched.
+     * Array of Entity Types for which this workflow should be triggered. Supports multiple
+     * entity types in one workflow.
      */
-    filters: string;
+    entityTypes?: string[];
+    /**
+     * Search filters for entities. Can be a string (applied to all entity types) or an object
+     * mapping entity types to their specific filters.
+     */
+    filters: FiltersObject | string;
     /**
      * Defines the schedule of the Periodic Trigger.
      */
     schedule: any[] | boolean | AppScheduleClass | number | number | null | string;
+}
+
+/**
+ * Entity-specific filters with optional default
+ */
+export interface FiltersObject {
+    /**
+     * Default filter for entity types not explicitly configured
+     */
+    default?: string;
+    [property: string]: string;
 }
 
 export interface AppScheduleClass {

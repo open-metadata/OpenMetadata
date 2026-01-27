@@ -6,7 +6,7 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.TaskListener;
@@ -26,6 +26,11 @@ public class SetCandidateUsersImpl implements TaskListener {
           JsonUtils.readOrConvertValue(
               delegateTask.getVariable(assigneesVarNameExpr.getValue(delegateTask).toString()),
               List.class);
+      LOG.debug(
+          "[Process: {}] Setting candidate users for task {}: {}",
+          delegateTask.getProcessInstanceId(),
+          delegateTask.getId(),
+          assignees);
       delegateTask.addCandidateUsers(assignees);
     } catch (Exception exc) {
       LOG.error(

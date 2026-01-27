@@ -14,12 +14,16 @@
 package org.openmetadata.service.resources.settings;
 
 import static org.openmetadata.schema.settings.SettingsType.ASSET_CERTIFICATION_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.ENTITY_RULES_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.OPEN_LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
@@ -46,12 +50,16 @@ import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
+import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -215,8 +223,61 @@ public class SettingsCache {
                   new LineageSettings()
                       .withDownstreamDepth(2)
                       .withUpstreamDepth(2)
-                      .withLineageLayer(LineageLayer.ENTITY_LINEAGE));
+                      .withLineageLayer(LineageLayer.ENTITY_LINEAGE)
+                      .withGraphPerformanceConfig(
+                          new org.openmetadata.schema.api.lineage.GraphPerformanceConfig()
+                              .withSmallGraphThreshold(5000)
+                              .withMediumGraphThreshold(50000)
+                              .withMaxInMemoryNodes(100000)
+                              .withSmallGraphBatchSize(10000)
+                              .withMediumGraphBatchSize(5000)
+                              .withLargeGraphBatchSize(1000)
+                              .withStreamingBatchSize(500)
+                              .withEnableCaching(true)
+                              .withCacheTTLSeconds(300)
+                              .withMaxCachedGraphs(100)
+                              .withEnableProgressTracking(false)
+                              .withProgressReportInterval(1000)
+                              .withUseScrollForLargeGraphs(true)
+                              .withScrollTimeoutMinutes(5)));
       Entity.getSystemRepository().createNewSetting(setting);
+    }
+
+    // Initialize Authentication Configuration
+    Settings storedAuthConfig =
+        Entity.getSystemRepository().getConfigWithKey(AUTHENTICATION_CONFIGURATION.toString());
+    if (storedAuthConfig == null) {
+      AuthenticationConfiguration authConfig = applicationConfig.getAuthenticationConfiguration();
+      if (authConfig != null) {
+        Settings setting =
+            new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig);
+
+        Entity.getSystemRepository().createNewSetting(setting);
+      }
+    }
+
+    // Initialize Authorizer Configuration
+    Settings storedAuthzConfig =
+        Entity.getSystemRepository().getConfigWithKey(AUTHORIZER_CONFIGURATION.toString());
+    if (storedAuthzConfig == null) {
+      AuthorizerConfiguration authzConfig = applicationConfig.getAuthorizerConfiguration();
+      if (authzConfig != null) {
+        Settings setting =
+            new Settings().withConfigType(AUTHORIZER_CONFIGURATION).withConfigValue(authzConfig);
+
+        Entity.getSystemRepository().createNewSetting(setting);
+      }
+    }
+
+    Settings storedScimConfig =
+        Entity.getSystemRepository().getConfigWithKey(SCIM_CONFIGURATION.toString());
+    if (storedScimConfig == null) {
+      ScimConfiguration scimConfiguration = applicationConfig.getScimConfiguration();
+      if (scimConfiguration != null) {
+        Settings setting =
+            new Settings().withConfigType(SCIM_CONFIGURATION).withConfigValue(scimConfiguration);
+        Entity.getSystemRepository().createNewSetting(setting);
+      }
     }
 
     Settings entityRulesSettings =
@@ -239,6 +300,21 @@ public class SettingsCache {
       } catch (IOException e) {
         LOG.error("Failed to read default Enitty Rules settings. Message: {}", e.getMessage(), e);
       }
+    }
+
+    // Initialize OpenLineage Settings
+    Settings openLineageSettings =
+        Entity.getSystemRepository().getConfigWithKey(OPEN_LINEAGE_SETTINGS.toString());
+    if (openLineageSettings == null) {
+      Settings setting =
+          new Settings()
+              .withConfigType(OPEN_LINEAGE_SETTINGS)
+              .withConfigValue(
+                  new OpenLineageSettings()
+                      .withEnabled(true)
+                      .withAutoCreateEntities(true)
+                      .withDefaultPipelineService("openlineage"));
+      Entity.getSystemRepository().createNewSetting(setting);
     }
   }
 

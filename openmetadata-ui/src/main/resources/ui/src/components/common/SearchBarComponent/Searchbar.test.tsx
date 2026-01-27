@@ -114,35 +114,4 @@ describe('Test Searchbar Component', () => {
 
     expect(screen.getByTestId('searchbar')).toHaveValue('updated');
   });
-
-  it('should update URL filters when urlSearchKey is provided', async () => {
-    render(
-      <Searchbar
-        typingInterval={1000}
-        urlSearchKey="search"
-        onSearch={mockOnUserSearch}
-      />
-    );
-
-    const searchInput = screen.getByTestId('searchbar');
-    fireEvent.change(searchInput, { target: { value: 'test' } });
-
-    expect(mockSetFilters).toHaveBeenCalledWith({ search: 'test' });
-  });
-
-  it('should set URL filter to null when search is empty', async () => {
-    render(
-      <Searchbar
-        searchValue="test"
-        typingInterval={1000}
-        urlSearchKey="search"
-        onSearch={mockOnUserSearch}
-      />
-    );
-
-    const searchInput = screen.getByTestId('searchbar');
-    fireEvent.change(searchInput, { target: { value: '' } });
-
-    expect(mockSetFilters).toHaveBeenCalledWith({ search: null });
-  });
 });

@@ -70,7 +70,7 @@ describe('TestCaseStatusSummaryIndicator', () => {
     expect(successIndicator).toBeInTheDocument();
     expect(successIndicator).toHaveAttribute(
       'href',
-      '/table/test/profiler?activeTab=Data%20Quality'
+      '/table/test/profiler/data-quality'
     );
   });
 });

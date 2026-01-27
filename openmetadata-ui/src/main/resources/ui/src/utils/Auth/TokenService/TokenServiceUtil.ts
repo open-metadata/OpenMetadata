@@ -86,6 +86,9 @@ class TokenService {
       return;
     }
 
+    // Set refresh in progress immediately to prevent race conditions
+    this.setRefreshInProgress();
+
     try {
       const token = await getOidcToken();
       const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
@@ -105,6 +108,9 @@ class TokenService {
 
         return newToken;
       } else {
+        // Token doesn't need refreshing, clear the flag
+        this.clearRefreshInProgress();
+
         return null;
       }
     } catch {
@@ -118,7 +124,6 @@ class TokenService {
     let response: string | AccessTokenResponse | null | void = null;
     if (typeof this.renewToken === 'function') {
       try {
-        this.setRefreshInProgress();
         response = await this.renewToken();
       } catch (error) {
         // Silent Frame window timeout error since it doesn't affect refresh token process

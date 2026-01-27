@@ -256,7 +256,8 @@ export const addMetric = async (page: Page) => {
 
   // Select the unit of measurement
   await page
-    .locator('[id="root\\/unitOfMeasurement"]')
+    .getByTestId('unitOfMeasurement')
+    .locator('input')
     .fill(metricData.unitOfMeasurement);
   await page
     .getByTitle(`${metricData.unitOfMeasurement}`, { exact: true })

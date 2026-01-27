@@ -79,6 +79,7 @@ from metadata.generated.schema.entity.services.securityService import SecuritySe
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.events.eventSubscription import EventSubscription
 
 DOT = "_DOT_"
 TEN_MIN = 10 * 60
@@ -154,6 +155,7 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "metric": Metric,
     "glossary": Glossary,
     "glossaryTerm": GlossaryTerm,
+    "eventSubscription": EventSubscription,
 }
 
 ENTITY_REFERENCE_TYPE_MAP = {
@@ -176,3 +178,6 @@ NON_SQA_DATABASE_CONNECTIONS = (
     SapErpType.SapErp.value,
     SasType.SAS.value,
 )
+
+# Size Conversion
+BYTES_PER_MB = 1024 * 1024

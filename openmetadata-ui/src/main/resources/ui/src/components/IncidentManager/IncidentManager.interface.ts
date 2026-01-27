@@ -14,5 +14,6 @@ import { Table } from '../../generated/entity/data/table';
 
 export interface IncidentManagerProps {
   isIncidentPage?: boolean;
+  isDateRangePickerVisible?: boolean;
   tableDetails?: Table;
 }

@@ -1,0 +1,61 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/hexConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "HexConnection",
+    "description": "Hex Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.dashboard.HexConnection",
+    "definitions": {
+      "hexType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["Hex"],
+        "default": "Hex"
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/hexType",
+        "default": "Hex"
+      },
+      "hostPort": {
+        "expose": true,
+        "title": "Host and Port",
+        "description": "Hex API URL. For Hex.tech cloud, use https://app.hex.tech",
+        "type": "string",
+        "format": "uri",
+        "default": "https://app.hex.tech"
+      },
+      "tokenType": {
+        "title": "Token Type",
+        "description": "Type of token to use for authentication",
+        "type": "string",
+        "enum": ["personal", "workspace"],
+        "default": "personal"
+      },
+      "token": {
+        "title": "API Token",
+        "description": "Hex API token for authentication. Can be personal or workspace token.",
+        "type": "string",
+        "format": "password"
+      },
+      "includeTags": {
+        "title": "Include Categories and status as Tags",
+        "description": "Whether to import Hex project categories as OpenMetadata tags",
+        "type": "boolean",
+        "default": true
+      },
+      "dashboardFilterPattern": {
+      "description": "Regex to exclude or include dashboards that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Dashboard Filter Pattern"
+      },
+      "supportsMetadataExtraction": {
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["hostPort", "token"]
+  }

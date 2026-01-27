@@ -71,7 +71,7 @@ public interface PipelineServiceClientInterface {
 
   String getBasicAuthenticationHeader(String username, String password);
 
-  Boolean validServerClientVersions(String clientVersion);
+  Boolean validServerClientVersions(String clientVersion, String serverVersion);
 
   Response getHostIp();
 

@@ -15,13 +15,17 @@ import { expect, Page } from '@playwright/test';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../support/entity/DashboardDataModelClass';
+import { DirectoryClass } from '../support/entity/DirectoryClass';
 import { EntityClass } from '../support/entity/EntityClass';
+import { FileClass } from '../support/entity/FileClass';
 import { MetricClass } from '../support/entity/MetricClass';
 import { MlModelClass } from '../support/entity/MlModelClass';
 import { PipelineClass } from '../support/entity/PipelineClass';
 import { SearchIndexClass } from '../support/entity/SearchIndexClass';
+import { SpreadsheetClass } from '../support/entity/SpreadsheetClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
+import { WorksheetClass } from '../support/entity/WorksheetClass';
 import { UserClass } from '../support/user/UserClass';
 import { redirectToHomePage } from './common';
 import { addCustomPropertiesForEntity } from './customProperty';
@@ -276,10 +280,7 @@ export const testProfilerTabPermission = async (
   effect: 'allow' | 'deny',
   expectedErrorMessage?: string
 ) => {
-  await testUserPage
-    .locator('[data-testid="profiler-tab-left-panel"]')
-    .getByText(tabName)
-    .click();
+  await testUserPage.getByRole('tab', { name: tabName }).click();
 
   if (effect === 'deny') {
     await expect(
@@ -392,7 +393,7 @@ export const testPipelineSpecificOperations = async (
   if (effect === 'allow') {
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeDisabled();
+    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
   }
 };
 
@@ -447,7 +448,7 @@ export const testDashboardDataModelSpecificOperations = async (
   if (effect === 'allow') {
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeDisabled();
+    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
   }
 };
 
@@ -545,6 +546,18 @@ export const entityConfig = {
   Metric: {
     class: MetricClass,
   },
+  Directory: {
+    class: DirectoryClass,
+  },
+  File: {
+    class: FileClass,
+  },
+  Spreadsheet: {
+    class: SpreadsheetClass,
+  },
+  Worksheet: {
+    class: WorksheetClass,
+  },
 } as const;
 
 // Function to create custom properties for different entity types
@@ -576,6 +589,10 @@ export const createCustomPropertyForEntity = async (
     ApiCollection: 'apiCollections',
     ApiEndpoint: 'apiEndpoints',
     DataProduct: 'dataProducts',
+    Directory: 'directories',
+    File: 'files',
+    Spreadsheet: 'spreadsheets',
+    Worksheet: 'worksheets',
   };
 
   const entityApiType =
@@ -586,7 +603,10 @@ export const createCustomPropertyForEntity = async (
   await addCustomPropertiesForEntity({
     page,
     propertyName: customPropertyName,
-    customPropertyData: { description: `Test ${entityType} custom property` },
+    customPropertyData: {
+      description: `Test ${entityType} custom property`,
+      entityApiType,
+    },
     customType: 'String',
   });
 

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SuggestionType } from '../../../generated/api/feed/createSuggestion';
 import { Suggestion } from '../../../generated/entity/feed/suggestion';
 import { EntityReference } from '../../../generated/entity/type';
 
@@ -22,6 +23,7 @@ export interface SuggestionDataByTypes {
 export interface SuggestionsContextType {
   suggestionLimit: number;
   suggestionPendingCount: number;
+  dataSuggestionType?: SuggestionType;
   selectedUserSuggestions: SuggestionDataByTypes;
   suggestions: Suggestion[];
   suggestionsByUser: Map<string, SuggestionDataByTypes>;

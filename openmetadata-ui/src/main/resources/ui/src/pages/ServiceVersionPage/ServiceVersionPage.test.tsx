@@ -32,6 +32,12 @@ const mockOtherData = { data: [], paging: {} };
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockParams),
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: '/service/databaseServices/sample_data/versions/1.2',
+    search: '',
+    hash: '',
+    state: null,
+  })),
 }));
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>

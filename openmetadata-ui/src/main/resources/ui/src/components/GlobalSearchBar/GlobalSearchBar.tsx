@@ -15,9 +15,17 @@ import { Button, Divider, Input, Popover, Select, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconSuggestionsActive } from '../../assets/svg/ic-suggestions-active.svg';
@@ -43,11 +51,18 @@ import './global-search-bar.less';
 
 export const GlobalSearchBar = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
-  const { searchCriteria, updateSearchCriteria } = useApplicationStore();
+  const { searchCriteria, updateSearchCriteria, currentUser } =
+    useApplicationStore(
+      useShallow((state) => ({
+        searchCriteria: state.searchCriteria,
+        updateSearchCriteria: state.updateSearchCriteria,
+        currentUser: state.currentUser,
+      }))
+    );
   const { isNLPEnabled, isNLPActive, setNLPActive, setNLPEnabled } =
     useSearchStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [isSearchBlur, setIsSearchBlur] = useState<boolean>(true);
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const location = useCustomLocation();
@@ -55,7 +70,6 @@ export const GlobalSearchBar = () => {
   const [isSearchBoxOpen, setIsSearchBoxOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const { isTourOpen, updateTourPage, updateTourSearch } = useTourProvider();
-  const { currentUser } = useApplicationStore();
   const parsedQueryString = Qs.parse(
     location.search.startsWith('?')
       ? location.search.substring(1)
@@ -66,6 +80,13 @@ export const GlobalSearchBar = () => {
     : '';
   const [searchValue, setSearchValue] = useState<string>(searchQuery);
 
+  const renderSearchDropdown = useCallback(
+    (originNode: ReactNode) => (
+      <div data-testid="global-search-select-dropdown">{originNode}</div>
+    ),
+    []
+  );
+
   const entitiesSelect = useMemo(
     () => (
       <Select
@@ -73,6 +94,7 @@ export const GlobalSearchBar = () => {
         bordered={false}
         className="global-search-select"
         data-testid="global-search-selector"
+        dropdownRender={renderSearchDropdown}
         listHeight={300}
         popupClassName="global-search-select-menu"
         size="small"
@@ -89,7 +111,7 @@ export const GlobalSearchBar = () => {
         ))}
       </Select>
     ),
-    [searchCriteria]
+    [searchCriteria, i18n.language, renderSearchDropdown]
   );
 
   const handleSelectOption = useCallback((text: string) => {

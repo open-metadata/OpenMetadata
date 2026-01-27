@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isEmpty } from 'lodash';
 import { SuggestionDataByTypes } from '../../components/Suggestions/SuggestionsProvider/SuggestionsProvider.interface';
 import {
   Suggestion,
@@ -65,4 +66,26 @@ export const getUniqueSuggestions = (
   );
 
   return [...existingSuggestions, ...uniqueNewSuggestions];
+};
+
+export const getSuggestionTypeBasedOnData = (data: Suggestion[]) => {
+  if (isEmpty(data)) {
+    return;
+  }
+  const isMultipleDescriptionSuggestion = data.every(
+    (item) => item.type === SuggestionType.SuggestDescription
+  );
+  const isMultipleTagSuggestion = data.every(
+    (item) => item.type === SuggestionType.SuggestTagLabel
+  );
+
+  if (isMultipleDescriptionSuggestion) {
+    return SuggestionType.SuggestDescription;
+  }
+
+  if (isMultipleTagSuggestion) {
+    return SuggestionType.SuggestTagLabel;
+  }
+
+  return;
 };

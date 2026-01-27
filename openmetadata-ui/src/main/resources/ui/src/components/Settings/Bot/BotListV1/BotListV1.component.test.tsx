@@ -51,10 +51,7 @@ describe('BotListV1', () => {
     const showDeletedSwitch = await screen.findByTestId('switch-deleted');
     fireEvent.click(showDeletedSwitch);
 
-    expect(mockHandleShowDeleted).toHaveBeenCalledWith(
-      true,
-      expect.objectContaining({})
-    );
+    expect(mockHandleShowDeleted).toHaveBeenCalledWith(true);
   });
 
   it('should render LimitWrapper', async () => {

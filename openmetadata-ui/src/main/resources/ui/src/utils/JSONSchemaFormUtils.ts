@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/ban-types */
-
 import { cloneDeep, isString } from 'lodash';
 
 export function escapeBackwardSlashChar<T>(formData: T): T {

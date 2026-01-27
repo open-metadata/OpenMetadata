@@ -80,6 +80,7 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
       EditDescription: true,
       EditDisplayName: true,
       EditCustomFields: true,
+      ViewCustomFields: true,
     }),
   }),
 }));

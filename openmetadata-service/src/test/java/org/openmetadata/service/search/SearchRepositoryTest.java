@@ -21,13 +21,37 @@ class SearchRepositoryTest {
 
   @Mock private SearchRepository searchRepository;
 
+  @Mock
+  private org.openmetadata.service.search.elasticsearch.ElasticSearchClient elasticSearchClient;
+
+  @Mock private org.openmetadata.service.search.opensearch.OpenSearchClient openSearchClient;
+
   @BeforeEach
   void setUp() {
     // Create a real instance for testing the new methods
     searchRepository = mock(SearchRepository.class);
 
+    // Mock the new Java API clients
+    es.co.elastic.clients.elasticsearch.ElasticsearchClient mockEsNewClient =
+        mock(es.co.elastic.clients.elasticsearch.ElasticsearchClient.class);
+    es.co.elastic.clients.transport.ElasticsearchTransport mockEsTransport =
+        mock(es.co.elastic.clients.transport.ElasticsearchTransport.class);
+    lenient().when(mockEsNewClient._transport()).thenReturn(mockEsTransport);
+    lenient().when(elasticSearchClient.getNewClient()).thenReturn(mockEsNewClient);
+
+    os.org.opensearch.client.opensearch.OpenSearchClient mockOsNewClient =
+        mock(os.org.opensearch.client.opensearch.OpenSearchClient.class);
+    os.org.opensearch.client.transport.OpenSearchTransport mockOsTransport =
+        mock(os.org.opensearch.client.transport.OpenSearchTransport.class);
+    lenient().when(mockOsNewClient._transport()).thenReturn(mockOsTransport);
+    lenient().when(openSearchClient.getNewClient()).thenReturn(mockOsNewClient);
+
     // Enable calling real methods for the methods we want to test
     lenient().when(searchRepository.createBulkSink(10, 2, 1000000L)).thenCallRealMethod();
+    lenient().when(searchRepository.createBulkSink(1, 1, 1L)).thenCallRealMethod();
+    lenient().when(searchRepository.createBulkSink(1000, 100, 100000000L)).thenCallRealMethod();
+    lenient().when(searchRepository.createBulkSink(50, 5, 5000000L)).thenCallRealMethod();
+    lenient().when(searchRepository.createBulkSink(100, 10, 10000000L)).thenCallRealMethod();
     lenient().when(searchRepository.isVectorEmbeddingEnabled()).thenCallRealMethod();
   }
 
@@ -37,6 +61,7 @@ class SearchRepositoryTest {
     lenient()
         .when(searchRepository.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    lenient().when(searchRepository.getSearchClient()).thenReturn(elasticSearchClient);
 
     BulkSink bulkSink = searchRepository.createBulkSink(10, 2, 1000000L);
 
@@ -50,6 +75,7 @@ class SearchRepositoryTest {
     lenient()
         .when(searchRepository.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.OPENSEARCH);
+    lenient().when(searchRepository.getSearchClient()).thenReturn(openSearchClient);
 
     BulkSink bulkSink = searchRepository.createBulkSink(10, 2, 1000000L);
 
@@ -63,6 +89,7 @@ class SearchRepositoryTest {
     lenient()
         .when(searchRepository.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    lenient().when(searchRepository.getSearchClient()).thenReturn(elasticSearchClient);
 
     BulkSink bulkSink1 = searchRepository.createBulkSink(50, 5, 5000000L);
     assertNotNull(bulkSink1);
@@ -85,6 +112,7 @@ class SearchRepositoryTest {
     lenient()
         .when(searchRepository.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    lenient().when(searchRepository.getSearchClient()).thenReturn(elasticSearchClient);
 
     // Test with minimum values
     BulkSink bulkSink1 = searchRepository.createBulkSink(1, 1, 1L);

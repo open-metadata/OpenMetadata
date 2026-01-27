@@ -67,6 +67,41 @@ mock_salesforce_config = {
         }
     },
 }
+
+mock_salesforce_oauth_config = {
+    "source": {
+        "type": "salesforce",
+        "serviceName": "local_salesforce_oauth",
+        "serviceConnection": {
+            "config": {
+                "type": "Salesforce",
+                "username": "username",
+                "password": "password",
+                "consumerKey": "test_consumer_key",
+                "consumerSecret": "test_consumer_secret",
+                "salesforceDomain": "login",
+                "sobjectName": "sobjectName",
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "type": "DatabaseMetadata",
+            }
+        },
+    },
+    "sink": {
+        "type": "metadata-rest",
+        "config": {},
+    },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "salesforce"},
+        }
+    },
+}
+
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="salesforce_source",
@@ -106,7 +141,7 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
 EXPECTED_COLUMN_VALUE = [
     Column(
         name=ColumnName("Description"),
-        displayName=None,
+        displayName="Contact Label",
         dataType=DataType.VARCHAR,
         arrayDataType=None,
         dataLength=32000,
@@ -125,14 +160,14 @@ EXPECTED_COLUMN_VALUE = [
     ),
     Column(
         name=ColumnName("OwnerId"),
-        displayName=None,
+        displayName="Owner ID",
         dataType=DataType.VARCHAR,
         arrayDataType=None,
         dataLength=18,
         precision=None,
         scale=None,
         dataTypeDisplay="reference",
-        description="Owner ID",
+        description=None,
         fullyQualifiedName=None,
         tags=[],
         constraint=Constraint.NOT_NULL,
@@ -144,14 +179,14 @@ EXPECTED_COLUMN_VALUE = [
     ),
     Column(
         name=ColumnName("Phone"),
-        displayName=None,
+        displayName="Phone",
         dataType=DataType.VARCHAR,
         arrayDataType=None,
         dataLength=0,
         precision=None,
         scale=None,
         dataTypeDisplay="phone",
-        description="Phone",
+        description=None,
         fullyQualifiedName=None,
         tags=[],
         constraint=Constraint.NOT_NULL,
@@ -163,14 +198,14 @@ EXPECTED_COLUMN_VALUE = [
     ),
     Column(
         name=ColumnName("CreatedById"),
-        displayName=None,
+        displayName="Created By ID",
         dataType=DataType.UNKNOWN,
         arrayDataType=None,
         dataLength=18,
         precision=None,
         scale=None,
         dataTypeDisplay="anytype",
-        description="Created By ID",
+        description=None,
         fullyQualifiedName=None,
         tags=[],
         constraint=Constraint.NOT_NULL,
@@ -215,7 +250,7 @@ SALESFORCE_FIELDS = [
             ("htmlFormatted", False),
             ("idLookup", False),
             ("inlineHelpText", None),
-            ("label", "Contact Description"),
+            ("label", "Contact Label"),
             ("length", 32000),
             ("mask", None),
             ("maskType", None),
@@ -453,7 +488,9 @@ class SalesforceUnitTest(TestCase):
         "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.get_table_column_description"
     )
     def test_table_column(self, get_table_column_description):
-        get_table_column_description.return_value = None
+        get_table_column_description.return_value = [
+            {"QualifiedApiName": "Description", "Description": "Contact Description"}
+        ]
         result = self.salesforce_source.get_columns("TEST_TABLE", SALESFORCE_FIELDS)
         assert EXPECTED_COLUMN_VALUE == result
 
@@ -468,11 +505,31 @@ class SalesforceUnitTest(TestCase):
         "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
     )
     @patch("simple_salesforce.api.Salesforce")
+    def test_oauth_connection(self, salesforce, test_connection) -> None:
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            mock_salesforce_oauth_config
+        )
+        self.salesforce_source = SalesforceSource.create(
+            mock_salesforce_oauth_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        self.assertTrue(
+            self.salesforce_source.config.serviceConnection.root.config.consumerKey
+        )
+        self.assertTrue(
+            self.salesforce_source.config.serviceConnection.root.config.consumerSecret
+        )
+
+    @patch(
+        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
+    )
+    @patch("simple_salesforce.api.Salesforce")
     def test_check_ssl(self, salesforce, test_connection) -> None:
         mock_salesforce_config["source"]["serviceConnection"]["config"]["sslConfig"] = {
             "caCertificate": """
         -----BEGIN CERTIFICATE-----
-        sample caCertificateData  
+        sample caCertificateData
         -----END CERTIFICATE-----
         """
         }
@@ -481,7 +538,7 @@ class SalesforceUnitTest(TestCase):
             "sslKey"
         ] = """
         -----BEGIN CERTIFICATE-----
-        sample caCertificateData  
+        sample caCertificateData
         -----END CERTIFICATE-----
         """
         mock_salesforce_config["source"]["serviceConnection"]["config"]["sslConfig"][

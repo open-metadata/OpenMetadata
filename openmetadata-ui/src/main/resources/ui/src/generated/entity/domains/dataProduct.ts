@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -69,13 +69,13 @@ export interface DataProduct {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
-    /**
-     * Input ports for consuming data into this data product
-     */
-    inputPorts?: DataProductPort[];
     /**
      * Current lifecycle stage of the data product
      */
@@ -84,10 +84,6 @@ export interface DataProduct {
      * A unique name of the Data Product
      */
     name: string;
-    /**
-     * Output ports for exposing data from this data product
-     */
-    outputPorts?: DataProductPort[];
     /**
      * Owners of this Data Product.
      */
@@ -136,8 +132,6 @@ export interface DataProduct {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Reference to the data asset exposed through this port
  */
 export interface EntityReference {
     /**
@@ -259,76 +253,7 @@ export enum EntityStatus {
     Draft = "Draft",
     InReview = "In Review",
     Rejected = "Rejected",
-}
-
-/**
- * Port definition for data product input/output
- */
-export interface DataProductPort {
-    /**
-     * Reference to the data asset exposed through this port
-     */
-    dataAsset?: EntityReference;
-    /**
-     * Description of the port
-     */
-    description?: string;
-    /**
-     * Display name of the port
-     */
-    displayName?: string;
-    /**
-     * Endpoint URL or connection string
-     */
-    endpoint?: string;
-    format?:   PortFormat;
-    /**
-     * Name of the port
-     */
-    name:      string;
-    portType:  PortType;
-    protocol?: PortProtocol;
-}
-
-/**
- * Data format supported by the port
- */
-export enum PortFormat {
-    Avro = "AVRO",
-    CSV = "CSV",
-    Custom = "CUSTOM",
-    Delta = "DELTA",
-    Iceberg = "ICEBERG",
-    JSON = "JSON",
-    Orc = "ORC",
-    Parquet = "PARQUET",
-    Protobuf = "PROTOBUF",
-    XML = "XML",
-}
-
-/**
- * Type of the data product port
- */
-export enum PortType {
-    Input = "INPUT",
-    Output = "OUTPUT",
-}
-
-/**
- * Protocol used by the port for data access
- */
-export enum PortProtocol {
-    AzureBlob = "AZURE_BLOB",
-    Custom = "CUSTOM",
-    File = "FILE",
-    Gcs = "GCS",
-    Graphql = "GRAPHQL",
-    Grpc = "GRPC",
-    JDBC = "JDBC",
-    Kafka = "KAFKA",
-    REST = "REST",
-    S3 = "S3",
-    Webhook = "WEBHOOK",
+    Unprocessed = "Unprocessed",
 }
 
 /**
@@ -394,15 +319,45 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
 }
 
 /**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */
@@ -424,9 +379,18 @@ export interface TagLabel {
      */
     labelType: LabelType;
     /**
+     * Additional metadata associated with this tag label, such as recognizer information for
+     * automatically applied tags.
+     */
+    metadata?: TagLabelMetadata;
+    /**
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
@@ -453,6 +417,75 @@ export enum LabelType {
     Generated = "Generated",
     Manual = "Manual",
     Propagated = "Propagated",
+}
+
+/**
+ * Additional metadata associated with this tag label, such as recognizer information for
+ * automatically applied tags.
+ *
+ * Additional metadata associated with a tag label, including information about how the tag
+ * was applied.
+ */
+export interface TagLabelMetadata {
+    /**
+     * Metadata about the recognizer that automatically applied this tag
+     */
+    recognizer?: TagLabelRecognizerMetadata;
+}
+
+/**
+ * Metadata about the recognizer that automatically applied this tag
+ *
+ * Metadata about the recognizer that applied a tag, including scoring and pattern
+ * information.
+ */
+export interface TagLabelRecognizerMetadata {
+    /**
+     * Details of patterns that matched during recognition
+     */
+    patterns?: PatternMatch[];
+    /**
+     * Unique identifier of the recognizer that applied this tag
+     */
+    recognizerId: string;
+    /**
+     * Human-readable name of the recognizer
+     */
+    recognizerName: string;
+    /**
+     * Confidence score assigned by the recognizer (0.0 to 1.0)
+     */
+    score: number;
+    /**
+     * What the recognizer analyzed to apply this tag
+     */
+    target?: Target;
+}
+
+/**
+ * Information about a pattern that matched during recognition
+ */
+export interface PatternMatch {
+    /**
+     * Name of the pattern that matched
+     */
+    name: string;
+    /**
+     * Regular expression or pattern definition
+     */
+    regex?: string;
+    /**
+     * Confidence score for this specific pattern match
+     */
+    score: number;
+}
+
+/**
+ * What the recognizer analyzed to apply this tag
+ */
+export enum Target {
+    ColumnName = "column_name",
+    Content = "content",
 }
 
 /**

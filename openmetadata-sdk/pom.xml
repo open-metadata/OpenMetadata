@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.open-metadata</groupId>
+        <artifactId>platform</artifactId>
+        <version>1.12.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>openmetadata-sdk</artifactId>
+    <name>OpenMetadata SDK</name>
+    <description>Official Java SDK for OpenMetadata API - Stripe-style implementation</description>
+
+    <properties>
+        <gson.version>2.10.1</gson.version>
+        <okhttp.version>4.12.0</okhttp.version>
+        <junit.version>5.9.3</junit.version>
+        <junit-platform.version>1.9.3</junit-platform.version>
+        <mockito.version>5.5.0</mockito.version>
+        <slf4j.version>2.0.9</slf4j.version>
+        <lombok.version>1.18.30</lombok.version>
+        <testcontainers.version>1.19.3</testcontainers.version>
+        <jwt.version>4.4.0</jwt.version>
+        <flyway.version>9.22.3</flyway.version>
+        <json.version>20240303</json.version>
+    </properties>
+
+    <dependencies>
+        <!-- OpenMetadata Generated Models -->
+        <dependency>
+            <groupId>org.open-metadata</groupId>
+            <artifactId>openmetadata-spec</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        
+        <!-- HTTP Client -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>${okhttp.version}</version>
+        </dependency>
+
+        <!-- JSON Processing -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
+        </dependency>
+        
+        <!-- Logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        
+        <!-- JSON Patch -->
+        <dependency>
+            <groupId>com.flipkart.zjsonpatch</groupId>
+            <artifactId>zjsonpatch</artifactId>
+            <version>0.4.14</version>
+        </dependency>
+        
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Socket.io Client for WebSocket notifications -->
+        <dependency>
+            <groupId>io.socket</groupId>
+            <artifactId>socket.io-client</artifactId>
+            <version>2.1.1</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.json</groupId>
+                    <artifactId>json</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- org.json with security fixes (excluded from socket.io-client) -->
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>${json.version}</version>
+        </dependency>
+
+        <!-- Test Dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+        
+        
+
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                </configuration>
+            </plugin>
+            
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.1.2</version>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                    </includes>
+                    <!-- Enable parallel test execution -->
+                    <parallel>methods</parallel>
+                    <threadCount>4</threadCount>
+                    <perCoreThreadCount>true</perCoreThreadCount>
+                    <useUnlimitedThreads>false</useUnlimitedThreads>
+                    <!-- Reuse JVM forks for better performance -->
+                    <reuseForks>true</reuseForks>
+                    <forkCount>2</forkCount>
+                    <!-- System properties for test configuration -->
+                    <systemPropertyVariables>
+                        <test.parallel.enabled>true</test.parallel.enabled>
+                        <test.cleanup.enabled>false</test.cleanup.enabled>
+                        <test.containers.stop>false</test.containers.stop>
+                        <testcontainers.reuse.enable>true</testcontainers.reuse.enable>
+                    </systemPropertyVariables>
+                    <!-- Skip integration tests by default, run with -DskipITs=false -->
+                    <skipTests>${skipTests}</skipTests>
+                </configuration>
+            </plugin>
+
+            <!-- Failsafe plugin for integration tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>3.1.2</version>
+                <configuration>
+                    <includes>
+                        <include>**/*IntegrationTest.java</include>
+                        <include>**/*IT.java</include>
+                    </includes>
+                    <!-- Enable parallel test execution -->
+                    <parallel>classes</parallel>
+                    <threadCount>4</threadCount>
+                    <perCoreThreadCount>true</perCoreThreadCount>
+                    <!-- System properties -->
+                    <systemPropertyVariables>
+                        <test.parallel.enabled>true</test.parallel.enabled>
+                        <test.database>${test.database}</test.database>
+                        <test.server.url>${test.server.url}</test.server.url>
+                        <testcontainers.reuse.enable>true</testcontainers.reuse.enable>
+                    </systemPropertyVariables>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!-- Maven Profiles for different test configurations -->
+    <profiles>
+        <!-- MySQL Profile (default) -->
+        <profile>
+            <id>mysql</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <test.database>mysql</test.database>
+            </properties>
+        </profile>
+
+        <!-- PostgreSQL Profile -->
+        <profile>
+            <id>postgresql</id>
+            <properties>
+                <test.database>postgresql</test.database>
+            </properties>
+        </profile>
+
+        <!-- Integration Tests Profile -->
+        <profile>
+            <id>integration-tests</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <skipITs>false</skipITs>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Parallel Tests Profile -->
+        <profile>
+            <id>parallel</id>
+            <properties>
+                <test.parallel.enabled>true</test.parallel.enabled>
+            </properties>
+        </profile>
+    </profiles>
+
+    <!-- Maven Central Publishing - handled by central-publishing-maven-plugin in parent POM -->
+</project>

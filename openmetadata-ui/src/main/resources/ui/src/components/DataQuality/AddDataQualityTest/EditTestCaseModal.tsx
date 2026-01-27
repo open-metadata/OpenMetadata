@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Form, FormProps, Input } from 'antd';
+import { Form, FormProps, Input, Select } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -19,7 +19,6 @@ import { isArray, isEmpty, isEqual, pick } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
-import { TABLE_DIFF } from '../../../constants/TestSuite.constant';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { TagSource } from '../../../generated/api/domains/createDataProduct';
 import { Table } from '../../../generated/entity/data/table';
@@ -45,7 +44,10 @@ import {
   getEntityName,
 } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
-import { generateFormFields } from '../../../utils/formUtils';
+import {
+  generateFormFields,
+  getPopupContainer,
+} from '../../../utils/formUtils';
 import { isValidJSONString } from '../../../utils/StringsUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
@@ -82,6 +84,23 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   const isComputeRowCountFieldVisible = useMemo(() => {
     return selectedDefinition?.supportsRowLevelPassedFailed ?? false;
   }, [selectedDefinition]);
+
+  const dimensionColumnOptions = useMemo(() => {
+    const selectedColumn = getColumnNameFromEntityLink(testCase?.entityLink);
+
+    return table?.columns?.reduce((acc, col) => {
+      if (col.name === selectedColumn) {
+        return acc;
+      }
+
+      acc.push({
+        label: getEntityName(col),
+        value: col.name,
+      });
+
+      return acc;
+    }, [] as { label: string; value: string }[]);
+  }, [table?.columns, testCase]);
 
   const formFields: FieldProp[] = [
     {
@@ -146,6 +165,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
             ...(value.tags ?? []),
             ...(value.glossaryTerms ?? []),
           ],
+      dimensionColumns: value.dimensionColumns || undefined,
     };
     const jsonPatch = compare(testCase, updatedTestCase);
 
@@ -199,18 +219,30 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     }, {});
   };
 
-  const fetchTableDetails = async (fqn: string) => {
+  const fetchTableDetails = async (tableFqn: string) => {
+    if (!tableFqn) {
+      return;
+    }
     try {
-      const data = await getTableDetailsByFQN(fqn);
-      setTable(data);
+      const response = await getTableDetailsByFQN(tableFqn, {
+        fields: [
+          TabSpecificField.TAGS,
+          TabSpecificField.OWNERS,
+          TabSpecificField.DOMAINS,
+          TabSpecificField.TESTSUITE,
+          TabSpecificField.COLUMNS,
+        ],
+      });
+      setTable(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
   const fetchTestDefinitionById = async () => {
-    setIsLoading(true);
     try {
+      setIsLoading(true);
+
       const testCaseDetails = await getTestCaseByFqn(
         testCase?.fullyQualifiedName ?? '',
         { fields: [TabSpecificField.TEST_DEFINITION] }
@@ -218,15 +250,16 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       const definition = await getTestDefinitionById(
         testCaseDetails.testDefinition.id || ''
       );
-      if (testCaseDetails.testDefinition?.fullyQualifiedName === TABLE_DIFF) {
-        await fetchTableDetails(tableFqn);
-      }
+
+      await fetchTableDetails(tableFqn);
+
       const formValue = pick(testCase, [
         'name',
         'displayName',
         'description',
         'computePassedFailedRowCount',
         'useDynamicAssertion',
+        'dimensionColumns',
       ]);
 
       form.setFieldsValue({
@@ -353,6 +386,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
                     <Input disabled />
                   </Form.Item>
                 )}
+
                 <Form.Item
                   required
                   label={t('label.name')}
@@ -383,6 +417,18 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
                   />
                 </Form.Item>
               </>
+            )}
+
+            {isColumn && (
+              <Form.Item
+                label={t('label.dimension-plural')}
+                name="dimensionColumns">
+                <Select
+                  getPopupContainer={getPopupContainer}
+                  mode="multiple"
+                  options={dimensionColumnOptions}
+                />
+              </Form.Item>
             )}
 
             {generateFormFields(

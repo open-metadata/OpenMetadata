@@ -9,13 +9,17 @@
     "databricksType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["UnityCatalog"],
+      "enum": [
+        "UnityCatalog"
+      ],
       "default": "UnityCatalog"
     },
     "databricksScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["databricks+connector"],
+      "enum": [
+        "databricks+connector"
+      ],
       "default": "databricks+connector"
     }
   },
@@ -37,11 +41,23 @@
       "description": "Host and port of the Databricks service.",
       "type": "string"
     },
-    "token": {
-      "title": "Token",
-      "description": "Generated Token to connect to Databricks.",
-      "type": "string",
-      "format": "password"
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Choose between different authentication types for Databricks.",
+      "oneOf": [
+        {
+          "title": "Personal Access Token",
+          "$ref": "./databricks/personalAccessToken.json"
+        },
+        {
+          "title": "Databricks OAuth",
+          "$ref": "./databricks/databricksOAuth.json"
+        },
+        {
+          "title": "Azure AD Setup",
+          "$ref": "./databricks/azureAdSetup.json"
+        }
+      ]
     },
     "httpPath": {
       "title": "Http Path",
@@ -78,7 +94,9 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^information_schema$"]
+        "excludes": [
+          "^information_schema$"
+        ]
       }
     },
     "tableFilterPattern": {
@@ -92,7 +110,9 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^system$"]
+        "excludes": [
+          "^system$"
+        ]
       }
     },
     "supportsUsageExtraction": {
@@ -126,5 +146,8 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "token"]
+  "required": [
+    "hostPort",
+    "authType"
+  ]
 }

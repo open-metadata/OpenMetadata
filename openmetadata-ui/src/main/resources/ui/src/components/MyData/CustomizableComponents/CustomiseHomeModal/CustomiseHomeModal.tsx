@@ -39,7 +39,7 @@ const CustomiseHomeModal = ({
   onClose,
   open,
   onBackgroundColorUpdate,
-  currentBackgroundColor,
+  currentBackgroundColor = DEFAULT_HEADER_BG_COLOR,
   placeholderWidgetKey,
   onHomePage,
   defaultSelectedKey = CustomiseHomeModalSelectedKey.HEADER_THEME,
@@ -47,7 +47,7 @@ const CustomiseHomeModal = ({
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedColor, setSelectedColor] = useState<string>(
-    currentBackgroundColor ?? DEFAULT_HEADER_BG_COLOR
+    currentBackgroundColor
   );
 
   const [widgets, setWidgets] = useState<Document[]>([]);

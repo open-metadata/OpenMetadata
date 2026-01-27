@@ -32,6 +32,30 @@ from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
+def get_connection_password(conn: Connection) -> str:
+    """
+    Get password from Airflow Connection in a version-compatible way.
+
+    In Airflow 2.x: Use conn.get_password()
+    In Airflow 3.x: Use conn.password directly
+    """
+    if hasattr(conn, "get_password"):
+        return conn.get_password()
+    return conn.password
+
+
+def get_connection_extra(conn: Connection) -> dict:
+    """
+    Get extra config from Airflow Connection in a version-compatible way.
+
+    In Airflow 2.x: Use conn.extra_dejson if conn.get_extra() else {}
+    In Airflow 3.x: Use conn.extra_dejson directly (get_extra() method removed)
+    """
+    if hasattr(conn, "get_extra"):
+        return conn.extra_dejson if conn.get_extra() else {}
+    return conn.extra_dejson or {}
+
+
 class OpenMetadataHook(BaseHook):
     """
     Airflow hook to store and use an `OpenMetadataConnection`
@@ -53,7 +77,7 @@ class OpenMetadataHook(BaseHook):
 
     def get_conn(self) -> OpenMetadataConnection:
         conn: Connection = self.get_connection(self.openmetadata_conn_id)
-        jwt_token = conn.get_password()
+        jwt_token = get_connection_password(conn)
         if not jwt_token:
             raise ValueError("JWT Token should be informed.")
 
@@ -63,7 +87,7 @@ class OpenMetadataHook(BaseHook):
         port = conn.port if conn.port else self.default_port
         schema = conn.schema if conn.schema else self.default_schema
 
-        extra = conn.extra_dejson if conn.get_extra() else {}
+        extra = get_connection_extra(conn)
         verify_ssl = extra.get("verifySSL") or self.default_verify_ssl
         ssl_config = (
             ValidateSslClientConfig(caCertificate=extra["sslConfig"])

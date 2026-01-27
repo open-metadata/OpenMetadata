@@ -130,7 +130,7 @@ describe('BubbleMenu', () => {
     render(<BubbleMenu {...mockProps} />);
 
     const heading1 = screen.getByLabelText('Heading 1');
-    fireEvent.click(heading1);
+    fireEvent.mouseDown(heading1);
 
     expect(mockToggleHeading).toHaveBeenCalled();
   });
@@ -139,7 +139,7 @@ describe('BubbleMenu', () => {
     render(<BubbleMenu {...mockProps} />);
 
     const bold = screen.getByLabelText('Bold');
-    fireEvent.click(bold);
+    fireEvent.mouseDown(bold);
 
     expect(mockToggleBold).toHaveBeenCalled();
   });
@@ -148,7 +148,7 @@ describe('BubbleMenu', () => {
     render(<BubbleMenu {...mockProps} />);
 
     const italic = screen.getByLabelText('Italic');
-    fireEvent.click(italic);
+    fireEvent.mouseDown(italic);
 
     expect(mockToggleItalic).toHaveBeenCalled();
   });
@@ -157,7 +157,7 @@ describe('BubbleMenu', () => {
     render(<BubbleMenu {...mockProps} />);
 
     const strike = screen.getByLabelText('Strike');
-    fireEvent.click(strike);
+    fireEvent.mouseDown(strike);
 
     expect(mockToggleStrike).toHaveBeenCalled();
   });
@@ -166,7 +166,7 @@ describe('BubbleMenu', () => {
     render(<BubbleMenu {...mockProps} />);
 
     const code = screen.getByLabelText('Inline code');
-    fireEvent.click(code);
+    fireEvent.mouseDown(code);
 
     expect(mockToggleCode).toHaveBeenCalled();
   });
@@ -175,7 +175,7 @@ describe('BubbleMenu', () => {
     render(<BubbleMenu {...mockProps} />);
 
     const link = screen.getByLabelText('Link');
-    fireEvent.click(link);
+    fireEvent.mouseDown(link);
 
     expect(mockSetLink).toHaveBeenCalled();
     expect(mockToggleLink).toHaveBeenCalled();

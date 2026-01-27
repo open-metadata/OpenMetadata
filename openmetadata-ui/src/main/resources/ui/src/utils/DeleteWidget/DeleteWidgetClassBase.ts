@@ -17,40 +17,43 @@ import i18n from '../i18next/LocalUtil';
 
 class DeleteWidgetClassBase {
   public prepareEntityType(entityType: string) {
-    const services = [
-      EntityType.DASHBOARD_SERVICE,
-      EntityType.DATABASE_SERVICE,
-      EntityType.MESSAGING_SERVICE,
-      EntityType.PIPELINE_SERVICE,
-      EntityType.METADATA_SERVICE,
-      EntityType.STORAGE_SERVICE,
-      EntityType.MLMODEL_SERVICE,
-      EntityType.SEARCH_SERVICE,
-      EntityType.API_SERVICE,
-    ];
-
-    const dataQuality = [EntityType.TEST_SUITE, EntityType.TEST_CASE];
-
-    if (services.includes((entityType || '') as EntityType)) {
-      return `services/${entityType}s`;
-    } else if (entityType === EntityType.GLOSSARY) {
-      return `glossaries`;
-    } else if (entityType === EntityType.GLOSSARY_TERM) {
-      return `glossaryTerms`;
-    } else if (entityType === EntityType.POLICY) {
-      return 'policies';
-    } else if (entityType === EntityType.KPI) {
-      return entityType;
-    } else if (entityType === EntityType.DASHBOARD_DATA_MODEL) {
-      return `dashboard/datamodels`;
-    } else if (dataQuality.includes(entityType as EntityType)) {
-      return `dataQuality/${entityType}s`;
-    } else if (entityType === EntityType.SEARCH_INDEX) {
-      return `searchIndexes`;
-    } else if (entityType === EntityType.SUBSCRIPTION) {
-      return `events/${entityType}s`;
-    } else {
-      return `${entityType}s`;
+    switch (entityType) {
+      case EntityType.DASHBOARD_SERVICE:
+      case EntityType.DATABASE_SERVICE:
+      case EntityType.MESSAGING_SERVICE:
+      case EntityType.PIPELINE_SERVICE:
+      case EntityType.METADATA_SERVICE:
+      case EntityType.STORAGE_SERVICE:
+      case EntityType.MLMODEL_SERVICE:
+      case EntityType.SEARCH_SERVICE:
+      case EntityType.API_SERVICE:
+      case EntityType.DRIVE_SERVICE:
+        return `services/${entityType}s`;
+      case EntityType.GLOSSARY:
+        return `glossaries`;
+      case EntityType.GLOSSARY_TERM:
+        return `glossaryTerms`;
+      case EntityType.POLICY:
+        return 'policies';
+      case EntityType.KPI:
+        return entityType;
+      case EntityType.DASHBOARD_DATA_MODEL:
+        return `dashboard/datamodels`;
+      case EntityType.TEST_SUITE:
+      case EntityType.TEST_CASE:
+        return `dataQuality/${entityType}s`;
+      case EntityType.SEARCH_INDEX:
+        return `searchIndexes`;
+      case EntityType.SUBSCRIPTION:
+        return `events/${entityType}s`;
+      case EntityType.DIRECTORY:
+        return 'drives/directories';
+      case EntityType.FILE:
+      case EntityType.SPREADSHEET:
+      case EntityType.WORKSHEET:
+        return `drives/${entityType}s`;
+      default:
+        return `${entityType}s`;
     }
   }
 

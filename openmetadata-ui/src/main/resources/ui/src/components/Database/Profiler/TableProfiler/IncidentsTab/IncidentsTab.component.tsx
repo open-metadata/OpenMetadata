@@ -17,7 +17,7 @@ const IncidentsTab = () => {
   const { table } = useTableProfiler();
 
   return (
-    <div className="p-b-lg p-t-md">
+    <div className="p-b-lg">
       <IncidentManager isIncidentPage={false} tableDetails={table} />
     </div>
   );

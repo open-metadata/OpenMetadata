@@ -65,6 +65,29 @@
           "items": {
             "$ref": "#/definitions/stackTraceError"
           }
+        },
+        "progress": {
+          "description": "Detailed progress tracking by entity type (databases, schemas, tables, stored procedures)",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "description": "Total number of entities discovered",
+                "type": "integer",
+                "default": 0
+              },
+              "processed": {
+                "description": "Number of entities processed",
+                "type": "integer",
+                "default": 0
+              },
+              "estimatedRemainingSeconds": {
+                "description": "Estimated remaining time in seconds for this entity type",
+                "type": "integer"
+              }
+            }
+          }
         }
       },
       "additionalProperties": false,

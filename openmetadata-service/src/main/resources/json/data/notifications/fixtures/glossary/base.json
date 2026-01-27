@@ -1,0 +1,14 @@
+{
+  "id": "1e2d1c0b-9a8f-7e6d-5c4b-3a2f1e0d9c8b",
+  "name": "sample_glossary",
+  "displayName": "Sample Glossary",
+  "fullyQualifiedName": "sample_glossary",
+  "description": "Mock glossary for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "href": "http://localhost:8585/api/v1/glossaries/1e2d1c0b-9a8f-7e6d-5c4b-3a2f1e0d9c8b",
+  "mutuallyExclusive": false,
+  "tags": []
+}

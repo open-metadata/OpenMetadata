@@ -13,7 +13,6 @@
 
 package org.openmetadata.csv;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
@@ -94,12 +93,22 @@ public final class CsvUtil {
 
   public static List<String> fieldToStrings(String field) {
     // Split a field that contains multiple strings separated by FIELD_SEPARATOR
-    return field == null || field.isBlank() ? null : listOf(field.split(FIELD_SEPARATOR));
+    if (field == null || field.isBlank()) {
+      return null;
+    }
+    return Arrays.stream(field.split(FIELD_SEPARATOR))
+        .map(String::trim)
+        .collect(Collectors.toList());
   }
 
   public static List<String> fieldToEntities(String field) {
-    // Split a field that contains multiple strings separated by FIELD_SEPARATOR
-    return field == null ? null : listOf(field.split(ENTITY_TYPE_SEPARATOR));
+    // Split a field that contains entity type and name separated by ENTITY_TYPE_SEPARATOR
+    if (field == null) {
+      return null;
+    }
+    return Arrays.stream(field.split(ENTITY_TYPE_SEPARATOR))
+        .map(String::trim)
+        .collect(Collectors.toList());
   }
 
   public static List<String> fieldToInternalArray(String field) {
@@ -108,7 +117,9 @@ public final class CsvUtil {
     if (field == null || field.isBlank()) {
       return Collections.emptyList();
     }
-    return listOf(field.split(Pattern.quote(INTERNAL_ARRAY_SEPARATOR)));
+    return Arrays.stream(field.split(Pattern.quote(INTERNAL_ARRAY_SEPARATOR)))
+        .map(String::trim)
+        .collect(Collectors.toList());
   }
 
   /**

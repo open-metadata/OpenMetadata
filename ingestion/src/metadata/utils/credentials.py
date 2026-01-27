@@ -73,6 +73,43 @@ def validate_private_key(private_key: str) -> None:
         raise InvalidPrivateKeyException(msg) from err
 
 
+def normalize_pem_string(value: str) -> str:
+    """
+    Normalize a PEM-encoded private key, public key, or certificate string.
+
+    This covers edge cases where getting private keys from the server end up with
+    escaped newlines for whatever reason. e.g: private key came from a JSON response like
+
+    `{"private_key": "-----BEGIN PRIVATE KEY-----\\nABC\\n-----END PRIVATE KEY-----"}`
+
+    - If the string looks like a PEM (contains BEGIN/END headers)
+      and has literal '\\n' sequences instead of real newlines,
+      convert them to real newlines.
+    - Otherwise, return the string unchanged.
+
+    Example:
+        >>> normalize_pem_string("-----BEGIN PRIVATE KEY-----\\nABC\\n-----END PRIVATE KEY-----")
+        '-----BEGIN PRIVATE KEY-----\nABC\n-----END PRIVATE KEY-----'
+    """
+    if not isinstance(value, str):
+        return value
+
+    pem_headers = (
+        "-----BEGIN RSA PRIVATE KEY-----",
+        "-----BEGIN ENCRYPTED PRIVATE KEY-----",
+        "-----BEGIN PRIVATE KEY-----",
+        "-----BEGIN OPENSSH PRIVATE KEY-----",
+        "-----BEGIN CERTIFICATE-----",
+    )
+
+    # Only normalize if it looks like PEM and is all on one line (escaped newlines)
+    if any(h in value for h in pem_headers):
+        if "\\n" in value and "\n" not in value:
+            return value.replace("\\n", "\n")
+
+    return value
+
+
 def create_credential_tmp_file(credentials: dict) -> str:
     """
     Given a credentials' dict, store it in a tmp file

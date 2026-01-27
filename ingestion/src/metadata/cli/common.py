@@ -20,7 +20,6 @@ from metadata.workflow.base import BaseWorkflow
 def execute_workflow(workflow: BaseWorkflow, config_dict: Dict[str, Any]) -> None:
     """Execute the workflow and raise if needed"""
     workflow.execute()
-    workflow.print_status()
     workflow.stop()
     if config_dict.get("workflowConfig", {}).get("raiseOnError", True):
         workflow.raise_from_status()

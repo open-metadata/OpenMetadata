@@ -58,9 +58,16 @@ Object.defineProperty(global, 'navigator', {
 });
 
 // Mock MessageChannel
+interface MockMessageEvent {
+  data: {
+    result?: unknown;
+    error?: string;
+  };
+}
+
 const mockMessageChannel = {
   port1: {
-    onmessage: null as ((event: any) => void) | null,
+    onmessage: null as ((event: MockMessageEvent) => void) | null,
   },
   port2: {},
 };
@@ -245,7 +252,7 @@ describe('SwMessenger', () => {
     });
 
     it('should resolve when service worker is ready', async () => {
-      let messageHandler: (event: any) => void;
+      let messageHandler: (event: MockMessageEvent) => void;
 
       Object.defineProperty(mockMessageChannel.port1, 'onmessage', {
         set: (handler) => {
@@ -303,7 +310,10 @@ describe('SwMessenger', () => {
     });
 
     it('should send message and return response', async () => {
-      const testMessage = { type: 'get', key: 'test-key' };
+      const testMessage: { type: 'get'; key: string } = {
+        type: 'get',
+        key: 'test-key',
+      };
       const expectedResponse = 'test-value';
 
       Object.defineProperty(mockMessageChannel.port1, 'onmessage', {
@@ -317,7 +327,7 @@ describe('SwMessenger', () => {
         configurable: true,
       });
 
-      const result = await sendMessageToServiceWorker(testMessage as any);
+      const result = await sendMessageToServiceWorker(testMessage);
 
       expect(mockController.postMessage).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -330,7 +340,10 @@ describe('SwMessenger', () => {
     });
 
     it('should handle service worker errors', async () => {
-      const testMessage = { type: 'get', key: 'test-key' };
+      const testMessage: { type: 'get'; key: string } = {
+        type: 'get',
+        key: 'test-key',
+      };
       const errorMessage = 'Service worker error';
 
       Object.defineProperty(mockMessageChannel.port1, 'onmessage', {
@@ -344,13 +357,13 @@ describe('SwMessenger', () => {
         configurable: true,
       });
 
-      await expect(
-        sendMessageToServiceWorker(testMessage as any)
-      ).rejects.toThrow(errorMessage);
+      await expect(sendMessageToServiceWorker(testMessage)).rejects.toThrow(
+        errorMessage
+      );
     });
 
     it('should increment request counter for unique request IDs', async () => {
-      const testMessage = { type: 'ping' };
+      const testMessage: { type: 'ping' } = { type: 'ping' };
 
       Object.defineProperty(mockMessageChannel.port1, 'onmessage', {
         set: (handler) => {
@@ -362,8 +375,8 @@ describe('SwMessenger', () => {
       });
 
       // Send two messages
-      await sendMessageToServiceWorker(testMessage as any);
-      await sendMessageToServiceWorker(testMessage as any);
+      await sendMessageToServiceWorker(testMessage);
+      await sendMessageToServiceWorker(testMessage);
 
       // Check that different request IDs were used
       const calls = mockController.postMessage.mock.calls;
@@ -402,7 +415,9 @@ describe('SwMessenger', () => {
         configurable: true,
       });
 
-      const result = await sendMessageToServiceWorker({ type: 'ping' } as any);
+      const result = await sendMessageToServiceWorker({
+        type: 'ping',
+      } as const);
 
       expect(result).toBe('success');
     });

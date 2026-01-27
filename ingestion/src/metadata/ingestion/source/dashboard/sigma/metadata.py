@@ -91,6 +91,8 @@ class SigmaSource(DashboardServiceSource):
         """
         get list of dashboard
         """
+        if not self.source_config.includeOwners:
+            logger.debug("Skipping owner information as includeOwners is False")
         return self.client.get_dashboards()
 
     def get_dashboard_name(self, dashboard: Workbook) -> Optional[str]:
@@ -367,6 +369,8 @@ class SigmaSource(DashboardServiceSource):
         Get owner from email
         """
         try:
+            if not self.source_config.includeOwners:
+                return None
             if dashboard_details.ownerId:
                 owner = self.client.get_owner_detail(dashboard_details.ownerId)
                 return self.metadata.get_reference_by_email(owner.email)

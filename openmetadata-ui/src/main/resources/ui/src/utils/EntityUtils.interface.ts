@@ -61,6 +61,7 @@ export enum FormattedPipelineServiceType {
   Spline = 'Spline',
   Stitch = 'Stitch',
   Wherescape = 'Wherescape',
+  MicrosoftFabricPipeline = 'Microsoft Fabric Pipeline',
 }
 export enum FormattedSearchServiceType {
   CustomSearch = 'Custom Search',
@@ -84,6 +85,7 @@ export enum FormattedDatabaseServiceType {
   DeltaLake = 'DeltaLake',
   DomoDatabase = 'Domo Database',
   Doris = 'Doris',
+  StarRocks = 'StarRocks',
   Druid = 'Druid',
   DynamoDB = 'Dynamo DB',
   Exasol = 'Exasol',
@@ -93,6 +95,7 @@ export enum FormattedDatabaseServiceType {
   Iceberg = 'Iceberg',
   Impala = 'Impala',
   MariaDB = 'Maria DB',
+  MicrosoftFabric = 'Microsoft Fabric',
   MongoDB = 'Mongo DB',
   Mssql = 'MS SQL',
   Mysql = 'MySQL',
@@ -149,4 +152,10 @@ export enum FormattedStorageServiceType {
   CustomStorage = 'CustomStorage',
   Gcs = 'GCS',
   S3 = 'S3',
+}
+
+export enum FormattedDriveServiceType {
+  CustomDrive = 'Custom Drive',
+  GoogleDrive = 'Google Drive',
+  SharePoint = 'Share Point',
 }

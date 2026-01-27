@@ -370,12 +370,20 @@ const AppRunsHistory = forwardRef(
             handleAppHistoryRecordUpdate(dataInsightJob);
           }
         });
+
+        socket.on(SOCKET_EVENTS.CACHE_WARMUP_JOB_BROADCAST_CHANNEL, (data) => {
+          if (data) {
+            const cacheWarmupJob = JSON.parse(data);
+            handleAppHistoryRecordUpdate(cacheWarmupJob);
+          }
+        });
       }
 
       return () => {
         if (socket) {
           socket.off(SOCKET_EVENTS.SEARCH_INDEX_JOB_BROADCAST_CHANNEL);
           socket.off(SOCKET_EVENTS.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL);
+          socket.off(SOCKET_EVENTS.CACHE_WARMUP_JOB_BROADCAST_CHANNEL);
         }
       };
     }, [socket]);
@@ -460,6 +468,7 @@ const AppRunsHistory = forwardRef(
           }
           width={800}>
           <FormBuilder
+            capitalizeOptionLabel
             hideCancelButton
             readonly
             useSelectWidget

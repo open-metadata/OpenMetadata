@@ -12,10 +12,12 @@
  */
 
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
+import { Table } from '../../generated/entity/data/table';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import {
   TestDataType,
   TestDefinition,
+  TestPlatform,
 } from '../../generated/tests/testDefinition';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import {
@@ -24,6 +26,7 @@ import {
   buildMustEsFilterForTags,
   buildTestCaseParams,
   createTestCaseParameters,
+  getServiceTypeForTestDefinition,
   getTestCaseFiltersValue,
   transformToTestCaseStatusObject,
 } from './DataQualityUtils';
@@ -39,6 +42,18 @@ jest.mock('../../constants/profiler.constant', () => ({
     tags: 'tags',
     service: 'serviceName',
   },
+  DEFAULT_SELECTED_RANGE: {
+    key: 'last7Days',
+    title: 'Last 7 days',
+    days: 7,
+  },
+  PROFILER_CHART_DATA_SIZE: 500,
+}));
+
+jest.mock('../date-time/DateTimeUtils', () => ({
+  formatDateTimeLong: jest.fn(),
+  getEpochMillisForPastDays: jest.fn().mockReturnValue(1609459200000),
+  getCurrentMillis: jest.fn().mockReturnValue(1640995200000),
 }));
 
 jest.mock('../TableUtils', () => ({
@@ -63,7 +78,7 @@ describe('DataQualityUtils', () => {
         endTimestamp: 1234567890,
         startTimestamp: 1234567890,
         entityLink: 'table1',
-        testPlatforms: ['DBT'],
+        testPlatforms: [TestPlatform.Dbt],
       } as ListTestCaseParamsBySearch;
       const filters = ['lastRunRange', 'tableFqn'];
 
@@ -201,7 +216,7 @@ describe('DataQualityUtils', () => {
       testCaseType: 'column',
       testCaseStatus: 'Success',
       searchValue: 'between',
-      testPlatforms: ['DBT', 'Deequ'],
+      testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
       lastRunRange: {
         startTs: '1720417883445',
         endTs: '1721022683445',
@@ -231,7 +246,7 @@ describe('DataQualityUtils', () => {
         endTimestamp: '1721022683445',
         startTimestamp: '1720417883445',
         entityLink: '<#E::table::sample_data.ecommerce_db.shopify.fact_sale>',
-        testPlatforms: ['DBT', 'Deequ'],
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
         testCaseType: 'column',
         testCaseStatus: 'Success',
         tags: ['PII.None'],
@@ -251,7 +266,7 @@ describe('DataQualityUtils', () => {
       const selectedFilter = ['testPlatforms', 'lastRunRange'];
 
       const expected = {
-        testPlatforms: ['DBT', 'Deequ'],
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
         endTimestamp: '1721022683445',
         startTimestamp: '1720417883445',
       };
@@ -269,14 +284,14 @@ describe('DataQualityUtils', () => {
         testCaseType: 'column',
         testCaseStatus: 'Success',
         searchValue: 'between',
-        testPlatforms: ['DBT', 'Deequ'],
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
         tags: ['PII.None'],
         tier: 'Tier.Tier1',
       } as unknown as TestCaseSearchParams;
       const selectedFilter = ['testPlatforms', 'tags', 'testCaseStatus'];
 
       const expected = {
-        testPlatforms: ['DBT', 'Deequ'],
+        testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
         tags: ['PII.None'],
         testCaseStatus: 'Success',
       };
@@ -519,7 +534,7 @@ describe('DataQualityUtils', () => {
       const result = buildDataQualityDashboardFilters({
         filters: {
           serviceName: 'test-service',
-          testPlatforms: ['DBT'],
+          testPlatforms: [TestPlatform.Dbt],
         },
       });
 
@@ -531,7 +546,7 @@ describe('DataQualityUtils', () => {
         },
         {
           terms: {
-            testPlatforms: ['DBT'],
+            testPlatforms: [TestPlatform.Dbt],
           },
         },
         {
@@ -540,6 +555,65 @@ describe('DataQualityUtils', () => {
           },
         },
       ]);
+    });
+  });
+
+  describe('getServiceTypeForTestDefinition', () => {
+    it('should return serviceType when table has serviceType property', () => {
+      const table = {
+        id: 'test-id',
+        name: 'test-table',
+        serviceType: 'BigQuery',
+      } as Table;
+
+      const result = getServiceTypeForTestDefinition(table);
+
+      expect(result).toBe('BigQuery');
+    });
+
+    it('should return serviceType for different service types', () => {
+      const serviceTypes = [
+        'Snowflake',
+        'PostgreSQL',
+        'MySQL',
+        'Redshift',
+        'Postgres',
+      ];
+
+      serviceTypes.forEach((serviceType) => {
+        const table = {
+          id: 'test-id',
+          name: 'test-table',
+          serviceType,
+        } as Table;
+
+        const result = getServiceTypeForTestDefinition(table);
+
+        expect(result).toBe(serviceType);
+      });
+    });
+
+    it('should return undefined when table does not have serviceType', () => {
+      const table = {
+        id: 'test-id',
+        name: 'test-table',
+      } as Table;
+
+      const result = getServiceTypeForTestDefinition(table);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when table is undefined', () => {
+      const result = getServiceTypeForTestDefinition();
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when table is null', () => {
+      const result = getServiceTypeForTestDefinition(null as unknown as Table);
+
+      expect(result).toBeUndefined();
     });
   });
 });

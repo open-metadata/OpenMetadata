@@ -39,6 +39,11 @@ public class Utilities {
   }
 
   public static String cleanUpDoubleQuotes(String input) {
+    // Handle properly escaped strings: remove outer quotes, unescape inner quotes
+    if (input.length() >= 2 && input.startsWith("\"") && input.endsWith("\"")) {
+      return input.substring(1, input.length() - 1).replace("\\\"", "\"");
+    }
+    // Fallback for non-quoted strings (backwards compatibility)
     return input.replaceAll("\"", "");
   }
 

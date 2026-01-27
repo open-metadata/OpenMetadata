@@ -19,6 +19,7 @@ import {
   MOCK_CURRENT_TEAM,
   MOCK_TABLE_DATA,
 } from '../../../../mocks/Teams.mock';
+import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import { TeamHierarchyProps } from './team.interface';
 import TeamHierarchy from './TeamHierarchy';
 
@@ -109,7 +110,6 @@ describe('Team Hierarchy page', () => {
     const subTeamsColumn = await screen.findByText('label.sub-team-plural');
     const usersColumn = await screen.findByText('label.user-plural');
     const assetCountColumn = await screen.findByText('label.entity-count');
-    const descriptionColumn = await screen.findByText('label.description');
     const rows = await screen.findAllByRole('row');
 
     expect(table).toBeInTheDocument();
@@ -118,7 +118,7 @@ describe('Team Hierarchy page', () => {
     expect(subTeamsColumn).toBeInTheDocument();
     expect(usersColumn).toBeInTheDocument();
     expect(assetCountColumn).toBeInTheDocument();
-    expect(descriptionColumn).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith({ width: 300 });
 
     expect(rows).toHaveLength(MOCK_TABLE_DATA.length + 1);
   });

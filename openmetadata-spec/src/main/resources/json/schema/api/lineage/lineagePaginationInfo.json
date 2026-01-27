@@ -1,0 +1,67 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/lineagePaginationInfo.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LineagePaginationInfo",
+  "description": "Pagination information for lineage entities across different layers and depths",
+  "javaType": "org.openmetadata.schema.api.lineage.LineagePaginationInfo",
+  "type": "object",
+  "definitions": {
+    "depthInfo": {
+      "javaType": "org.openmetadata.schema.api.lineage.DepthInfo",
+      "description": "Information about entities at a specific depth level",
+      "type": "object",
+      "properties": {
+        "depth": {
+          "description": "The depth level from root entity (0 for root, 1 for immediate upstream/downstream, etc.)",
+          "type": "integer",
+          "minimum": 0
+        },
+        "entityCount": {
+          "description": "Total number of entities at this depth level",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": ["depth", "entityCount"]
+    }
+  },
+  "properties": {
+    "totalUpstreamEntities": {
+      "description": "Total number of upstream entities across all depths",
+      "type": "integer",
+      "minimum": 0
+    },
+    "totalDownstreamEntities": {
+      "description": "Total number of downstream entities across all depths",
+      "type": "integer",
+      "minimum": 0
+    },
+    "upstreamDepthInfo": {
+      "description": "Depth-wise breakdown of upstream entities",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/depthInfo"
+      }
+    },
+    "downstreamDepthInfo": {
+      "description": "Depth-wise breakdown of downstream entities", 
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/depthInfo"
+      }
+    },
+    "maxUpstreamDepth": {
+      "description": "Maximum depth reached in upstream direction",
+      "type": "integer",
+      "minimum": 0
+    },
+    "maxDownstreamDepth": {
+      "description": "Maximum depth reached in downstream direction", 
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false,
+  "required": ["totalUpstreamEntities", "totalDownstreamEntities", "upstreamDepthInfo", "downstreamDepthInfo", "maxUpstreamDepth", "maxDownstreamDepth"]
+}

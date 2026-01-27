@@ -1,0 +1,90 @@
+{
+  "id": "df6c5b4a-3f2e-1d0c-9b8a-7f6e5d4c3b2a",
+  "name": "sample_data_contract",
+  "displayName": "Sample Data Contract",
+  "fullyQualifiedName": "sample_data_contract",
+  "description": "Mock data contract for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "href": "http://localhost:8585/api/v1/dataContracts/df6c5b4a-3f2e-1d0c-9b8a-7f6e5d4c3b2a",
+  "contractType": "SLA",
+  "entity": {
+    "id": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+    "type": "table",
+    "name": "sample_table",
+    "fullyQualifiedName": "sample-service.sample-db.public.sample_table",
+    "deleted": false
+  },
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "reviewers": [
+    {
+      "id": "b2c3d4e5-f678-90ab-cdef-123456789012",
+      "type": "user",
+      "name": "jane.smith",
+      "fullyQualifiedName": "jane.smith"
+    }
+  ],
+  "entityStatus": "Approved",
+  "schema": {
+    "columns": [
+      {
+        "name": "id",
+        "dataType": "BIGINT",
+        "constraint": "NOT NULL"
+      },
+      {
+        "name": "email",
+        "dataType": "VARCHAR",
+        "constraint": "NOT NULL"
+      }
+    ]
+  },
+  "qualityExpectations": {
+    "completeness": {
+      "threshold": 95.0
+    },
+    "accuracy": {
+      "threshold": 99.0
+    }
+  },
+  "contractUpdates": [
+    {
+      "timestamp": 1699564800000,
+      "updatedBy": "admin",
+      "changes": "Initial contract creation"
+    }
+  ],
+  "semantics": {
+    "purpose": "Customer data management",
+    "classifications": ["PII", "GDPR"]
+  },
+  "termsOfUse": "Data must be used in accordance with privacy policies",
+  "security": {
+    "encryption": "AES-256",
+    "accessControl": "RBAC"
+  },
+  "sla": {
+    "freshness": {
+      "maxAge": "PT24H"
+    },
+    "availability": {
+      "uptime": 99.9
+    }
+  },
+  "latestResult": {
+    "timestamp": 1699564800000,
+    "status": "Passed",
+    "violations": 0
+  },
+  "dataQualityTests": [],
+  "tags": []
+}

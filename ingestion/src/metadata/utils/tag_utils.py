@@ -85,6 +85,13 @@ def get_ometa_tag_and_classification(
                 break
 
     for tag in tags:
+        # Skip empty or whitespace-only tags
+        if not tag or not str(tag).strip():
+            logger.warning(
+                f"Skipping empty or whitespace-only tag for classification '{classification_name}'"
+            )
+            continue
+
         specific_tag_description = tag_description
         try:
             if system_tags:
@@ -143,6 +150,13 @@ def get_tag_label(
     """
     Returns the tag label if the tag is created
     """
+    # Skip empty or whitespace-only tag names
+    if not tag_name or not str(tag_name).strip():
+        logger.warning(
+            f"Skipping empty or whitespace-only tag name for classification '{classification_name}'"
+        )
+        return None
+
     try:
         if tag_type == Tag:
             # Build the tag FQN
@@ -190,6 +204,13 @@ def get_tag_labels(
     tag_labels_list = []
     if tags and include_tags:
         for tag in tags:
+            # Skip empty or whitespace-only tags
+            if not tag or not str(tag).strip():
+                logger.warning(
+                    f"Skipping empty or whitespace-only tag for classification '{classification_name}'"
+                )
+                continue
+
             try:
                 tag_label = get_tag_label(
                     metadata,

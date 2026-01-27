@@ -110,6 +110,26 @@ export const DATA_ASSETS = [
     label: 'api endpoints',
     indexType: 'api_endpoint_search_index',
   },
+  {
+    key: 'directory',
+    label: 'directories',
+    indexType: 'directory_search_index',
+  },
+  {
+    key: 'file',
+    label: 'files',
+    indexType: 'file_search_index',
+  },
+  {
+    key: 'spreadsheet',
+    label: 'spreadsheets',
+    indexType: 'spreadsheet_search_index',
+  },
+  {
+    key: 'worksheet',
+    label: 'worksheets',
+    indexType: 'worksheet_search_index',
+  },
 ];
 
 export const DATA_ASSETS_SORT = [
@@ -130,3 +150,16 @@ export const DATA_ASSETS_SORT = [
   { name: 'Tags', filter: 'tag' },
   { name: 'Metrics', filter: 'metric' },
 ];
+export const ENDPOINT_TO_FILTER_MAP: Record<string, string> = {
+  tables: 'Table',
+  databases: 'Database',
+  topics: 'Topic',
+  dashboards: 'Dashboard',
+  pipelines: 'Pipeline',
+  searchIndexes: 'Search Index',
+  mlmodels: 'ML Model',
+  containers: 'Container',
+  glossaryTerms: 'Glossary Term',
+  tags: 'Tag',
+  dataProducts: 'Data Product',
+};

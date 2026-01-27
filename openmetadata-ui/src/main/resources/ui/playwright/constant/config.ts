@@ -14,3 +14,11 @@
 export const PLAYWRIGHT_INGESTION_TAG_OBJ = {
   tag: '@ingestion',
 };
+
+export const DOMAIN_TAGS = {
+  GOVERNANCE: '@Governance',
+  DISCOVERY: '@Discovery',
+  PLATFORM: '@Platform',
+  OBSERVABILITY: '@Observability',
+  INTEGRATION: '@Integration',
+};

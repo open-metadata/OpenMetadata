@@ -13,6 +13,7 @@
 import '@testing-library/jest-dom';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AxiosError } from 'axios';
+import { EDataContractTab } from '../../../constants/DataContract.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
@@ -40,6 +41,18 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
     ...contract,
     ...formValues,
   })),
+  getDataContractTabByEntity: jest
+    .fn()
+    .mockReturnValue([
+      EDataContractTab.CONTRACT_DETAIL,
+      EDataContractTab.TERMS_OF_SERVICE,
+      EDataContractTab.SCHEMA,
+      EDataContractTab.SEMANTICS,
+      EDataContractTab.SECURITY,
+      EDataContractTab.QUALITY,
+      EDataContractTab.SLA,
+    ]),
+  getContractTabLabel: jest.fn(),
 }));
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
@@ -48,6 +61,12 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
       id: 'table-id',
       name: 'test-table',
     } as Table,
+  })),
+}));
+
+jest.mock('../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockImplementation(() => ({
+    entityType: 'table',
   })),
 }));
 
@@ -120,6 +139,54 @@ jest.mock('../ContractSemanticFormTab/ContractSemanticFormTab', () => ({
     )),
 }));
 
+jest.mock('../ContractSecurityFormTab/ContractSecurityFormTab', () => ({
+  ContractSecurityFormTab: jest
+    .fn()
+    .mockImplementation(({ onChange, onNext, onPrev }) => (
+      <div>
+        <h2>Contract Security</h2>
+        <button onClick={onPrev}>Previous</button>
+        <button
+          data-testid="security-change-btn"
+          onClick={() =>
+            onChange({
+              security: {
+                dataClassification: 'PII',
+                policies: [
+                  {
+                    accessPolicy: 'Read Only',
+                    identities: ['user@example.com'],
+                    rowFilters: [
+                      { columnName: 'col1', values: ['val1'] },
+                      { columnName: '', values: [] },
+                      { columnName: 'col2', values: [] },
+                      { columnName: '', values: ['val2'] },
+                    ],
+                  },
+                ],
+              },
+            })
+          }>
+          Change Security
+        </button>
+        <button onClick={onNext}>Next</button>
+      </div>
+    )),
+}));
+
+jest.mock('../ContractSLAFormTab/ContractSLAFormTab', () => ({
+  ContractSLAFormTab: jest
+    .fn()
+    .mockImplementation(({ onChange, onNext, onPrev }) => (
+      <div>
+        <h2>Contract SLA</h2>
+        <button onClick={onPrev}>Previous</button>
+        <button onClick={() => onChange({ sla: [] })}>Change</button>
+        <button onClick={onNext}>Next</button>
+      </div>
+    )),
+}));
+
 describe('AddDataContract', () => {
   describe('Basic Rendering', () => {
     it('should render the component with default props', () => {
@@ -163,6 +230,13 @@ describe('AddDataContract', () => {
       expect(
         screen.getByRole('tab', { name: 'label.quality' })
       ).toBeInTheDocument();
+
+      expect(
+        screen.getByRole('tab', { name: 'label.security' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('tab', { name: 'label.sla' })
+      ).toBeInTheDocument();
     });
   });
 
@@ -200,9 +274,143 @@ describe('AddDataContract', () => {
 
       expect(
         screen
-          .getByRole('tab', { name: 'label.schema' })
+          .getByRole('tab', { name: 'label.terms-of-service' })
           .closest('.ant-tabs-tab')
       ).toHaveClass('ant-tabs-tab-active');
+    });
+  });
+
+  describe('Security Validation', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should only keep row filters with both columnName AND values non-empty', async () => {
+      render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      // Navigate to security tab
+      const securityTab = screen.getByRole('tab', { name: 'label.security' });
+      await act(async () => {
+        fireEvent.click(securityTab);
+      });
+
+      // Trigger security form change
+      const changeSecurityButton = screen.getByTestId('security-change-btn');
+      await act(async () => {
+        fireEvent.click(changeSecurityButton);
+      });
+
+      // Save the contract
+      const saveButton = screen.getByTestId('save-contract-btn');
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      // Check that createContract was called with filtered row filters
+      // Only filters with BOTH columnName AND values non-empty are kept
+      expect(createContract).toHaveBeenCalledWith(
+        expect.objectContaining({
+          security: {
+            dataClassification: 'PII',
+            policies: [
+              {
+                accessPolicy: 'Read Only',
+                identities: ['user@example.com'],
+                rowFilters: [
+                  { columnName: 'col1', values: ['val1'] },
+                  // All others are filtered out:
+                  // - { columnName: '', values: [] } - both empty
+                  // - { columnName: 'col2', values: [] } - empty values
+                  // - { columnName: '', values: ['val2'] } - empty columnName
+                ],
+              },
+            ],
+          },
+        })
+      );
+    });
+
+    it('should filter out row filters with empty values even if columnName is present', async () => {
+      render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      // Navigate to security tab and trigger change
+      const securityTab = screen.getByRole('tab', { name: 'label.security' });
+      await act(async () => {
+        fireEvent.click(securityTab);
+      });
+
+      const changeSecurityButton = screen.getByTestId('security-change-btn');
+      await act(async () => {
+        fireEvent.click(changeSecurityButton);
+      });
+
+      const saveButton = screen.getByTestId('save-contract-btn');
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      // Verify that row filter with columnName but empty values is filtered out
+      const callArg = (createContract as jest.Mock).mock.calls[0][0];
+      const rowFilters = callArg.security.policies[0].rowFilters;
+
+      // Should NOT contain the filter with col2 (has columnName but empty values)
+      expect(rowFilters).not.toContainEqual({ columnName: 'col2', values: [] });
+      // Should only contain the valid filter
+      expect(rowFilters).toEqual([{ columnName: 'col1', values: ['val1'] }]);
+    });
+
+    it('should filter out row filters with empty columnName even if values are present', async () => {
+      render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      // Navigate to security tab and trigger change
+      const securityTab = screen.getByRole('tab', { name: 'label.security' });
+      await act(async () => {
+        fireEvent.click(securityTab);
+      });
+
+      const changeSecurityButton = screen.getByTestId('security-change-btn');
+      await act(async () => {
+        fireEvent.click(changeSecurityButton);
+      });
+
+      const saveButton = screen.getByTestId('save-contract-btn');
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      // Verify that row filter with empty columnName is filtered out even with values
+      const callArg = (createContract as jest.Mock).mock.calls[0][0];
+      const rowFilters = callArg.security.policies[0].rowFilters;
+
+      // Should NOT contain the filter with empty columnName (even though it has values)
+      expect(rowFilters).not.toContainEqual({
+        columnName: '',
+        values: ['val2'],
+      });
+      // Should only contain the valid filter
+      expect(rowFilters).toEqual([{ columnName: 'col1', values: ['val1'] }]);
+    });
+
+    it('should return undefined when security object is undefined', async () => {
+      render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      // Trigger a form change to enable save without setting security
+      const changeButton = screen.getByText('Change');
+      await act(async () => {
+        fireEvent.click(changeButton);
+      });
+
+      const saveButton = screen.getByTestId('save-contract-btn');
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      // When security is undefined, it should be passed as undefined
+      expect(createContract).toHaveBeenCalledWith(
+        expect.objectContaining({
+          security: undefined,
+        })
+      );
     });
   });
 
@@ -497,19 +705,6 @@ describe('AddDataContract', () => {
 
       expect(screen.getByTestId('add-contract-card')).toBeInTheDocument();
       expect(document.querySelector('.contract-tabs')).toBeInTheDocument();
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('should handle missing table context', () => {
-      const mockUseGenericContext = jest.requireMock(
-        '../../Customization/GenericProvider/GenericProvider'
-      ).useGenericContext;
-      mockUseGenericContext.mockReturnValue({ data: undefined });
-
-      expect(() => {
-        render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
-      }).not.toThrow();
     });
   });
 

@@ -9,15 +9,34 @@ from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.services.createDashboardService import (
+    CreateDashboardServiceRequest,
+)
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
 )
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LookerConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
+    DashboardService,
+    DashboardServiceType,
+)
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
+)
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -158,4 +177,56 @@ class OMetaTagMixinPost(TestCase):
         self.assertEqual(
             primary_tag.fullyQualifiedName,
             f"{LONG_CLASSIFICATION_NAME}.{LONG_PRIMARY_TAG_NAME}",
+        )
+
+    def test_get_tag_assets(self):
+        """We can get assets for a tag"""
+        service: DashboardService = self.metadata.create_or_update(
+            data=CreateDashboardServiceRequest(
+                name="test-service-dashboard-tag-assets",
+                serviceType=DashboardServiceType.Looker,
+                connection=DashboardConnection(
+                    config=LookerConnection(
+                        hostPort="http://hostPort", clientId="id", clientSecret="secret"
+                    )
+                ),
+            )
+        )
+
+        dashboard: Dashboard = self.metadata.create_or_update(
+            CreateDashboardRequest(
+                name="test-dashboard-tag-assets",
+                service=service.fullyQualifiedName,
+            )
+        )
+
+        tag_fqn = f"{CLASSIFICATION_NAME}.{PRIMARY_TAG_NAME}"
+        self.metadata.patch(
+            entity=Dashboard,
+            source=dashboard,
+            destination=Dashboard(
+                id=dashboard.id,
+                name=dashboard.name,
+                service=dashboard.service,
+                tags=[
+                    TagLabel(
+                        tagFQN=tag_fqn,
+                        source=TagSource.Classification,
+                        labelType=LabelType.Manual,
+                        state=State.Confirmed,
+                    )
+                ],
+            ),
+        )
+
+        assets_response = self.metadata.get_tag_assets(tag_fqn, limit=100)
+        self.assertGreaterEqual(len(assets_response["data"]), 1)
+        self.assertEqual(assets_response["data"][0]["id"], str(dashboard.id.root))
+        self.assertEqual(assets_response["data"][0]["type"], "dashboard")
+
+        self.metadata.delete(
+            entity=DashboardService,
+            entity_id=service.id,
+            recursive=True,
+            hard_delete=True,
         )

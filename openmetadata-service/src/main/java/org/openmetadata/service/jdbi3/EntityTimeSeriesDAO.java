@@ -148,6 +148,7 @@ public interface EntityTimeSeriesDAO {
           + "WHERE ranked.row_num = 1 LIMIT :limit OFFSET :offset")
   List<String> listWithOffset(
       @Define("table") String table,
+      @BindMap Map<String, ?> params,
       @Define("cond") String cond,
       @Define("partition") String partition,
       @Bind("limit") int limit,
@@ -160,6 +161,7 @@ public interface EntityTimeSeriesDAO {
     return latest
         ? listWithOffset(
             getTimeSeriesTableName(),
+            filter.getQueryParams(),
             filter.getCondition(),
             getPartitionFieldName(),
             limit,
@@ -400,6 +402,35 @@ public interface EntityTimeSeriesDAO {
     deleteBeforeTimestamp(getTimeSeriesTableName(), entityFQNHash, extension, timestamp);
   }
 
+  @ConnectionAwareSqlUpdate(
+      value =
+          "DELETE FROM <table> "
+              + "WHERE entityFQNHash = :entityFQNHash "
+              + "AND extension = :extension "
+              + "<mysqlCond>",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "DELETE FROM <table> "
+              + "WHERE entityFQNHash = :entityFQNHash "
+              + "AND extension = :extension "
+              + "<psqlCond>",
+      connectionType = POSTGRES)
+  void deleteExtensionByKeyInternal(
+      @Define("table") String table,
+      @Bind("value") String value,
+      @BindFQN("entityFQNHash") String entityFQNHash,
+      @Bind("extension") String extension,
+      @Define("mysqlCond") String mysqlCond,
+      @Define("psqlCond") String psqlCond);
+
+  default void deleteExtensionByKey(String key, String value, String entityFQN, String extension) {
+    String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
+    String psqlCond = String.format("AND json->>'%s' = :value", key);
+    deleteExtensionByKeyInternal(
+        getTimeSeriesTableName(), value, entityFQN, extension, mysqlCond, psqlCond);
+  }
+
   @SqlQuery(
       "SELECT json FROM <table> where entityFQNHash = :entityFQNHash and extension = :extension "
           + " AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp DESC")
@@ -541,6 +572,27 @@ public interface EntityTimeSeriesDAO {
     } else {
       insert(fqn, extension, jsonSchema, entityJson);
     }
+  }
+
+  @ConnectionAwareSqlUpdate(
+      value =
+          "DELETE FROM <table> "
+              + "WHERE json->>'id' IN ( "
+              + "  SELECT json->>'id' FROM <table> "
+              + "  WHERE timestamp < :cutoffTs ORDER BY timestamp LIMIT :limit "
+              + ")",
+      connectionType = POSTGRES)
+  @ConnectionAwareSqlUpdate(
+      value =
+          """
+            DELETE FROM <table> WHERE timestamp < :cutoffTs ORDER BY timestamp LIMIT :limit
+            """,
+      connectionType = MYSQL)
+  int deleteRecordsBeforeCutOff(
+      @Define("table") String table, @Bind("cutoffTs") long cutoffTs, @Bind("limit") int limit);
+
+  default int deleteRecordsBeforeCutOff(long cutoffTs, int limit) {
+    return deleteRecordsBeforeCutOff(getTimeSeriesTableName(), cutoffTs, limit);
   }
 
   /** @deprecated */

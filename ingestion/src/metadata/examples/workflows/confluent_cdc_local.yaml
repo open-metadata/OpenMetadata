@@ -1,0 +1,120 @@
+# Example: Local Confluent CDC Setup for Development
+# This example shows a typical local development setup with:
+# - Local Kafka Connect cluster
+# - MySQL source database
+# - PostgreSQL target database
+# - Local Kafka broker
+
+source:
+  type: kafkaconnect
+  serviceName: local_cdc_dev
+  serviceConnection:
+    config:
+      type: KafkaConnect
+      # Local Kafka Connect REST API
+      hostPort: http://localhost:8083
+
+      # No authentication for local development
+      # KafkaConnectConfig: null
+
+      # Or use basic auth if configured
+      KafkaConnectConfig:
+        username: connect-user
+        password: connect-password
+
+      verifySSL: false  # Typically disabled for local development
+      messagingServiceName: KafkaLocal
+
+  sourceConfig:
+    config:
+      type: PipelineMetadata
+      lineageInformation:
+        dbServiceNames:
+          - "MysqlLocal"
+          - "PostgresLocal"
+        storageServiceNames: []
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: DEBUG  # Use DEBUG for development to see detailed logs
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg
+
+# ============================================================================
+# Local Development Setup Guide
+# ============================================================================
+#
+# 1. Start local infrastructure:
+#    docker-compose up -d  # Start MySQL, Postgres, Kafka, Kafka Connect
+#
+# 2. Ingest database metadata into OpenMetadata:
+#    # MySQL
+#    metadata ingest -c mysql_local.yaml
+#
+#    # PostgreSQL
+#    metadata ingest -c postgres_local.yaml
+#
+#    # Kafka
+#    metadata ingest -c kafka_local.yaml
+#
+# 3. Configure CDC connectors in Kafka Connect:
+#
+#    # MySQL CDC Source Connector (Debezium)
+#    curl -X POST http://localhost:8083/connectors \
+#      -H "Content-Type: application/json" \
+#      -d '{
+#        "name": "mysql-source-customers",
+#        "config": {
+#          "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+#          "database.hostname": "mysql",
+#          "database.port": "3306",
+#          "database.user": "debezium",
+#          "database.password": "dbz",
+#          "database.server.id": "184054",
+#          "database.server.name": "local-mysql",
+#          "database.name": "testdb",
+#          "table.include.list": "testdb.customers,testdb.orders",
+#          "database.history.kafka.bootstrap.servers": "kafka:9092",
+#          "database.history.kafka.topic": "schema-changes.testdb"
+#        }
+#      }'
+#
+#    # PostgreSQL Sink Connector
+#    curl -X POST http://localhost:8083/connectors \
+#      -H "Content-Type: application/json" \
+#      -d '{
+#        "name": "postgres-sink-customers",
+#        "config": {
+#          "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+#          "connection.url": "jdbc:postgresql://postgres:5432/warehouse",
+#          "connection.user": "postgres",
+#          "connection.password": "postgres",
+#          "topics": "local-mysql.testdb.customers",
+#          "table.name.format": "customers",
+#          "auto.create": "true",
+#          "auto.evolve": "true",
+#          "insert.mode": "upsert",
+#          "pk.mode": "record_key",
+#          "delete.enabled": "true"
+#        }
+#      }'
+#
+# 4. Run this CDC workflow:
+#    metadata ingest -c confluent_cdc_local.yaml
+#
+# 5. View lineage in OpenMetadata UI:
+#    http://localhost:8585
+#    Navigate to: Pipeline Services → local_cdc_dev → Pipelines
+#    Click on a pipeline to see column-level lineage
+#
+# Expected Lineage:
+# testdb.customers.id       → local-mysql.testdb.customers.id       → warehouse.public.customers.id
+# testdb.customers.name     → local-mysql.testdb.customers.name     → warehouse.public.customers.name
+# testdb.customers.email    → local-mysql.testdb.customers.email    → warehouse.public.customers.email
+# testdb.customers.created  → local-mysql.testdb.customers.created  → warehouse.public.customers.created

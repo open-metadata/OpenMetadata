@@ -17,7 +17,6 @@ import {
   Config,
   ImmutableTree,
   JsonTree,
-  ListValues,
   Query,
   Utils as QbUtils,
 } from '@react-awesome-query-builder/antd';
@@ -84,7 +83,6 @@ const QueryBuilderWidgetV1: FC<{
         searchIndex: searchIndex,
         searchOutputType: outputType,
         isExplorePage: false,
-        tierOptions: new Promise<ListValues>((resolve) => resolve([])),
       }),
     [searchIndex, outputType]
   );

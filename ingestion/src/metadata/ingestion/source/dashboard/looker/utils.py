@@ -36,6 +36,15 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+def _extract_hostname(git_host_url) -> str:
+    """Extract hostname from git host URL by removing protocol prefix"""
+    # Handle both string and AnyUrl/HttpUrl objects from Pydantic
+    url_str = str(git_host_url)
+    # Remove protocol and trailing slash
+    hostname = url_str.replace("https://", "").replace("http://", "").rstrip("/")
+    return hostname
+
+
 def _clone_repo(
     repo_name: str,
     path: str,
@@ -57,12 +66,18 @@ def _clone_repo(
         url = None
         allow_unsafe_protocols = False
         if isinstance(credential, GitHubCredentials):
-            url = f"https://x-oauth-basic:{credential.token.root.get_secret_value()}@github.com/{repo_name}.git"
+            git_host = credential.gitHostURL or "https://github.com"
+            hostname = _extract_hostname(git_host)
+            url = f"https://x-oauth-basic:{credential.token.root.get_secret_value()}@{hostname}/{repo_name}.git"
         elif isinstance(credential, BitBucketCredentials):
-            url = f"https://x-token-auth:{credential.token.root.get_secret_value()}@bitbucket.org/{repo_name}.git"
+            git_host = credential.gitHostURL or "https://bitbucket.org"
+            hostname = _extract_hostname(git_host)
+            url = f"https://x-token-auth:{credential.token.root.get_secret_value()}@{hostname}/{repo_name}.git"
             allow_unsafe_protocols = True
         elif isinstance(credential, GitlabCredentials):
-            url = f"https://x-token-auth:{credential.token.root.get_secret_value()}@gitlab.com/{repo_name}.git"
+            git_host = credential.gitHostURL or "https://gitlab.com"
+            hostname = _extract_hostname(git_host)
+            url = f"https://x-token-auth:{credential.token.root.get_secret_value()}@{hostname}/{repo_name}.git"
 
         assert url is not None
 

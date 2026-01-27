@@ -18,6 +18,7 @@ from functools import partial
 from typing import Callable, Optional, Union
 
 from airflow import DAG
+from airflow.utils import timezone
 from openmetadata_managed_apis.api.utils import clean_dag_id
 from pydantic import ValidationError
 from requests.utils import quote
@@ -46,6 +47,7 @@ except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
 from croniter import croniter
+from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
 from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow_logger
 from openmetadata_managed_apis.utils.parser import (
     parse_service_connection,
@@ -200,7 +202,6 @@ def execute_workflow(
     Execute the workflow and handle the status
     """
     workflow.execute()
-    workflow.print_status()
     workflow.stop()
     if workflow_config.workflowConfig.raiseOnError:
         workflow.raise_from_status()
@@ -263,19 +264,25 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     """
     # Determine start_date based on schedule_interval using croniter
     schedule_interval = ingestion_pipeline.airflowConfig.scheduleInterval
-    now = datetime.now()
-
-    if schedule_interval is None:
-        # On-demand DAG, set start_date to now
-        start_date = now
-    elif croniter.is_valid(schedule_interval):
-        cron = croniter(schedule_interval, now)
-        start_date = cron.get_prev(datetime)
+    if is_airflow_3_or_higher():
+        # Use timezone-aware `now` to avoid Airflow auto-scheduling an immediate first run.
+        # Setting the start_date in the past (previous cron) causes Airflow 3 to fire a run
+        # right after deployment even with catchup disabled.
+        start_date = timezone.utcnow()
     else:
-        # Handle invalid cron expressions if necessary
-        start_date = now
+        now = datetime.now()
 
-    return {
+        if schedule_interval is None:
+            # On-demand DAG, set start_date to now
+            start_date = now
+        elif croniter.is_valid(schedule_interval):
+            cron = croniter(schedule_interval, now)
+            start_date = cron.get_prev(datetime)
+        else:
+            # Handle invalid cron expressions if necessary
+            start_date = now
+
+    dag_kwargs = {
         "dag_id": clean_dag_id(ingestion_pipeline.name.root),
         "description": ingestion_pipeline.description.root
         if ingestion_pipeline.description is not None
@@ -284,17 +291,13 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
         "end_date": ingestion_pipeline.airflowConfig.endDate.root
         if ingestion_pipeline.airflowConfig.endDate
         else None,
-        "concurrency": ingestion_pipeline.airflowConfig.concurrency,
         "max_active_runs": ingestion_pipeline.airflowConfig.maxActiveRuns,
-        "default_view": ingestion_pipeline.airflowConfig.workflowDefaultView,
-        "orientation": ingestion_pipeline.airflowConfig.workflowDefaultViewOrientation,
         "dagrun_timeout": timedelta(ingestion_pipeline.airflowConfig.workflowTimeout)
         if ingestion_pipeline.airflowConfig.workflowTimeout
         else None,
         "is_paused_upon_creation": ingestion_pipeline.airflowConfig.pausePipeline
         or False,
         "catchup": ingestion_pipeline.airflowConfig.pipelineCatchup or False,
-        "schedule_interval": schedule_interval,
         "tags": [
             "OpenMetadata",
             clean_name_tag(ingestion_pipeline.displayName)
@@ -303,6 +306,28 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
             f"service:{clean_name_tag(ingestion_pipeline.service.name)}",
         ],
     }
+
+    if is_airflow_3_or_higher():
+        dag_kwargs["schedule"] = schedule_interval
+    else:
+        dag_kwargs["schedule_interval"] = schedule_interval
+
+    if not is_airflow_3_or_higher():
+        dag_kwargs[
+            "default_view"
+        ] = ingestion_pipeline.airflowConfig.workflowDefaultView
+        dag_kwargs[
+            "orientation"
+        ] = ingestion_pipeline.airflowConfig.workflowDefaultViewOrientation
+
+    concurrency = ingestion_pipeline.airflowConfig.concurrency
+    if concurrency is not None:
+        if is_airflow_3_or_higher():
+            dag_kwargs["max_active_tasks"] = concurrency
+        else:
+            dag_kwargs["concurrency"] = concurrency
+
+    return dag_kwargs
 
 
 def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_, **__):
@@ -325,30 +350,36 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
     More info on context variables here
     https://airflow.apache.org/docs/apache-airflow/stable/templates-ref.html#templates-variables
     """
-    logger.info("Sending failed status from callback...")
+    try:
+        logger.info("Sending failed status from callback...")
 
-    metadata_config = workflow_config.workflowConfig.openMetadataServerConfig
-    metadata = OpenMetadata(config=metadata_config)
+        metadata_config = workflow_config.workflowConfig.openMetadataServerConfig
+        metadata = OpenMetadata(config=metadata_config)
 
-    if workflow_config.ingestionPipelineFQN:
-        logger.info(
-            f"Sending status to Ingestion Pipeline {workflow_config.ingestionPipelineFQN}"
-        )
+        if workflow_config.ingestionPipelineFQN:
+            logger.info(
+                f"Sending status to Ingestion Pipeline {workflow_config.ingestionPipelineFQN}"
+            )
 
-        pipeline_status = metadata.get_pipeline_status(
-            workflow_config.ingestionPipelineFQN,
-            str(workflow_config.pipelineRunId.root),
-        )
-        pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
-        pipeline_status.pipelineState = PipelineState.failed
+            pipeline_status = metadata.get_pipeline_status(
+                workflow_config.ingestionPipelineFQN,
+                str(workflow_config.pipelineRunId.root),
+            )
+            pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
+            pipeline_status.pipelineState = PipelineState.failed
 
-        metadata.create_or_update_pipeline_status(
-            workflow_config.ingestionPipelineFQN, pipeline_status
-        )
-    else:
-        logger.info(
-            "Workflow config does not have ingestionPipelineFQN informed. We won't update the status."
-        )
+            metadata.create_or_update_pipeline_status(
+                workflow_config.ingestionPipelineFQN, pipeline_status
+            )
+            logger.info(
+                f"Successfully sent failed status for {workflow_config.ingestionPipelineFQN}"
+            )
+        else:
+            logger.info(
+                "Workflow config does not have ingestionPipelineFQN informed. We won't update the status."
+            )
+    except Exception as exc:
+        logger.error(f"Failed to send failed status callback: {exc}", exc_info=True)
 
 
 class CustomPythonOperator(PythonOperator):
@@ -359,9 +390,24 @@ class CustomPythonOperator(PythonOperator):
         module within an operator needs to be cleaned up, or it will leave
         ghost processes behind.
         """
-        workflow_config = self.op_kwargs.get("workflow_config")
-        if workflow_config:
-            send_failed_status_callback(workflow_config)
+        # First call parent on_kill to ensure proper cleanup
+        super().on_kill()
+
+        # Then send failed status callback
+        try:
+            workflow_config = self.op_kwargs.get("workflow_config")
+            if workflow_config:
+                logger.info(
+                    f"Task killed, sending failed status for workflow: {workflow_config.ingestionPipelineFQN}"
+                )
+                send_failed_status_callback(workflow_config)
+            else:
+                logger.warning(
+                    "on_kill called but no workflow_config found in op_kwargs"
+                )
+        except Exception as exc:
+            # Log the error but don't raise - we don't want to prevent cleanup
+            logger.error(f"Error in on_kill callback: {exc}", exc_info=True)
 
 
 def build_dag(

@@ -40,6 +40,7 @@ describe('ClassificationUtils', () => {
       expect(result).toEqual({
         currentVersion: '0.1',
         isClassificationDisabled: false,
+        isClassificationDeleted: false,
         isTier: false,
         isSystemClassification: false,
         name: undefined,
@@ -69,6 +70,7 @@ describe('ClassificationUtils', () => {
       expect(result).toEqual({
         currentVersion: 1.2,
         isClassificationDisabled: false,
+        isClassificationDeleted: false,
         isTier: false,
         isSystemClassification: false,
         name: 'TestClassification',
@@ -98,6 +100,7 @@ describe('ClassificationUtils', () => {
       expect(result).toEqual({
         currentVersion: 1,
         isClassificationDisabled: false,
+        isClassificationDeleted: false,
         isTier: true,
         isSystemClassification: true,
         name: 'Tier',
@@ -127,6 +130,7 @@ describe('ClassificationUtils', () => {
       expect(result).toEqual({
         currentVersion: 2,
         isClassificationDisabled: true,
+        isClassificationDeleted: false,
         isTier: false,
         isSystemClassification: true,
         name: 'SystemClassification',
@@ -156,6 +160,7 @@ describe('ClassificationUtils', () => {
       expect(result).toEqual({
         currentVersion: 1.5,
         isClassificationDisabled: true,
+        isClassificationDeleted: false,
         isTier: false,
         isSystemClassification: false,
         name: 'DisabledClassification',
@@ -181,6 +186,7 @@ describe('ClassificationUtils', () => {
       expect(result).toEqual({
         currentVersion: '0.1',
         isClassificationDisabled: false,
+        isClassificationDeleted: false,
         isTier: false,
         isSystemClassification: false,
         name: 'MinimalClassification',
@@ -237,6 +243,7 @@ describe('ClassificationUtils', () => {
         expect(result).toEqual({
           currentVersion: 2,
           isClassificationDisabled: false,
+          isClassificationDeleted: false,
           isTier: false,
           isSystemClassification: false,
           name: 'VersionedName',
@@ -276,6 +283,7 @@ describe('ClassificationUtils', () => {
         expect(result).toEqual({
           currentVersion: 2,
           isClassificationDisabled: false,
+          isClassificationDeleted: false,
           isTier: false,
           isSystemClassification: false,
           name: 'VersionedName',
@@ -300,6 +308,7 @@ describe('ClassificationUtils', () => {
         expect(result).toEqual({
           currentVersion: 2,
           isClassificationDisabled: false,
+          isClassificationDeleted: false,
           isTier: false,
           isSystemClassification: false,
           name: 'VersionedClassification',
@@ -318,6 +327,7 @@ describe('ClassificationUtils', () => {
         expect(result).toEqual({
           currentVersion: '0.1',
           isClassificationDisabled: false,
+          isClassificationDeleted: false,
           isTier: false,
           isSystemClassification: false,
           name: undefined,
@@ -333,6 +343,7 @@ describe('ClassificationUtils', () => {
         expect(result).toEqual({
           currentVersion: '0.1',
           isClassificationDisabled: false,
+          isClassificationDeleted: false,
           isTier: false,
           isSystemClassification: false,
           name: undefined,

@@ -49,6 +49,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -1195,7 +1196,8 @@ public class LineageRepository {
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
         new ImmutablePair<>("upstreamLineage.docUniqueId.keyword", uniqueValue),
-        new ImmutablePair<>(String.format(REMOVE_LINEAGE_SCRIPT, uniqueValue), null));
+        new ImmutablePair<>(
+            REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
   }
 
   private EntityLineage getLineage(
@@ -1450,5 +1452,83 @@ public class LineageRepository {
       }
     }
     return modified;
+  }
+
+  public final String exportByEntityCountCsvAsync(
+      String fqn,
+      LineageDirection direction,
+      int from,
+      int size,
+      Integer nodeDepth,
+      int maxDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType,
+      String includeSourceFields) {
+    try {
+      SearchLineageResult response =
+          Entity.getSearchRepository()
+              .searchLineageByEntityCount(
+                  new org.openmetadata.schema.api.lineage.EntityCountLineageRequest()
+                      .withFqn(fqn)
+                      .withDirection(direction)
+                      .withFrom(from)
+                      .withSize(size)
+                      .withNodeDepth(nodeDepth)
+                      .withMaxDepth(maxDepth)
+                      .withQueryFilter(queryFilter)
+                      .withIncludeDeleted(deleted)
+                      .withIsConnectedVia(isConnectedVia(entityType))
+                      .withIncludeSourceFields(
+                          org.openmetadata.service.search.SearchUtils.getRequiredLineageFields(
+                              includeSourceFields)));
+      String jsonResponse = JsonUtils.pojoToJson(response);
+      JsonNode rootNode = JsonUtils.readTree(jsonResponse);
+
+      Map<String, JsonNode> entityMap = new HashMap<>();
+      JsonNode nodes = rootNode.path("nodes");
+      for (JsonNode node : nodes) {
+        JsonNode entityNode = node.path("entity");
+        String id = entityNode.path("id").asText();
+        entityMap.put(id, entityNode);
+      }
+
+      StringWriter csvContent = new StringWriter();
+      CSVWriter csvWriter = new CSVWriter(csvContent);
+      String[] headers = {
+        "fromEntityFQN",
+        "fromServiceName",
+        "fromServiceType",
+        "fromOwners",
+        "fromDomain",
+        "toEntityFQN",
+        "toServiceName",
+        "toServiceType",
+        "toOwners",
+        "toDomain",
+        "fromChildEntityFQN",
+        "toChildEntityFQN",
+        "pipelineName",
+        "pipelineDisplayName",
+        "pipelineType",
+        "pipelineDescription",
+        "pipelineOwners",
+        "pipelineDomain",
+        "pipelineServiceName",
+        "pipelineServiceType"
+      };
+      csvWriter.writeNext(headers);
+
+      JsonNode upstreamEdges = rootNode.path("upstreamEdges");
+      writeEdge(csvWriter, entityMap, upstreamEdges);
+
+      JsonNode downstreamEdges = rootNode.path("downstreamEdges");
+      writeEdge(csvWriter, entityMap, downstreamEdges);
+      csvWriter.close();
+      return csvContent.toString();
+    } catch (IOException e) {
+      throw CSVExportException.byMessage(
+          "Failed to export entity count lineage data to CSV", e.getMessage());
+    }
   }
 }

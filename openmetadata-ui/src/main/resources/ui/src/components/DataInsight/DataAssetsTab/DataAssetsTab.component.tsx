@@ -18,8 +18,8 @@ import Loader from '../../common/Loader/Loader';
 import { DataInsightChartCard } from '../DataInsightChartCard';
 
 const DataAssetsTab = () => {
-  const { kpi } = useDataInsightProvider();
   const { t } = useTranslation();
+  const { kpi } = useDataInsightProvider();
 
   if (kpi.isLoading) {
     return <Loader />;

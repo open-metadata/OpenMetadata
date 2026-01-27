@@ -16,10 +16,25 @@ import time
 from unittest import TestCase
 
 from _openmetadata_testutils.ometa import int_admin_ometa
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.services.createDashboardService import (
+    CreateDashboardServiceRequest,
+)
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LookerConnection,
+)
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
+    DashboardService,
+    DashboardServiceType,
+)
 from metadata.generated.schema.entity.teams.team import Team, TeamType
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 
 
 class OMetaUserTest(TestCase):
@@ -76,6 +91,25 @@ class OMetaUserTest(TestCase):
             data=CreateUserRequest(name="Lima", email="random.lima@getcollate.io"),
         )
 
+        cls.service: DashboardService = cls.metadata.create_or_update(
+            data=CreateDashboardServiceRequest(
+                name="test-service-dashboard-user-assets",
+                serviceType=DashboardServiceType.Looker,
+                connection=DashboardConnection(
+                    config=LookerConnection(
+                        hostPort="http://hostPort", clientId="id", clientSecret="secret"
+                    )
+                ),
+            )
+        )
+
+        cls.dashboard: Dashboard = cls.metadata.create_or_update(
+            CreateDashboardRequest(
+                name="test-dashboard-user-assets",
+                service=cls.service.fullyQualifiedName,
+            )
+        )
+
         # Leave some time for indexes to get updated, otherwise this happens too fast
         cls.check_es_index()
 
@@ -106,6 +140,13 @@ class OMetaUserTest(TestCase):
         cls.metadata.delete(
             entity=Team,
             entity_id=cls.team.id,
+            hard_delete=True,
+        )
+
+        cls.metadata.delete(
+            entity=DashboardService,
+            entity_id=cls.service.id,
+            recursive=True,
             hard_delete=True,
         )
 
@@ -205,3 +246,47 @@ class OMetaUserTest(TestCase):
         self.assertIsNone(
             self.metadata.get_reference_by_name(name="test", is_owner=True)
         )
+
+    def test_get_user_assets(self):
+        """We can get assets for a user"""
+        owners_ref = EntityReferenceList(
+            root=[EntityReference(id=self.user_1.id, type="user")]
+        )
+        self.metadata.patch(
+            entity=Dashboard,
+            source=self.dashboard,
+            destination=Dashboard(
+                id=self.dashboard.id,
+                name=self.dashboard.name,
+                service=self.dashboard.service,
+                owners=owners_ref,
+            ),
+        )
+
+        assets_response = self.metadata.get_user_assets(
+            self.user_1.name.root, limit=100
+        )
+        self.assertGreaterEqual(len(assets_response["data"]), 1)
+        self.assertEqual(assets_response["data"][0]["id"], str(self.dashboard.id.root))
+        self.assertEqual(assets_response["data"][0]["type"], "dashboard")
+
+    def test_get_team_assets(self):
+        """We can get assets for a team"""
+        owners_ref = EntityReferenceList(
+            root=[EntityReference(id=self.team.id, type="team")]
+        )
+        self.metadata.patch(
+            entity=Dashboard,
+            source=self.dashboard,
+            destination=Dashboard(
+                id=self.dashboard.id,
+                name=self.dashboard.name,
+                service=self.dashboard.service,
+                owners=owners_ref,
+            ),
+        )
+
+        assets_response = self.metadata.get_team_assets(self.team.name.root, limit=100)
+        self.assertGreaterEqual(len(assets_response["data"]), 1)
+        self.assertEqual(assets_response["data"][0]["id"], str(self.dashboard.id.root))
+        self.assertEqual(assets_response["data"][0]["type"], "dashboard")

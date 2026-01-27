@@ -277,7 +277,14 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text"
@@ -302,7 +309,14 @@
       "tier": {
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
           },
           "labelType": {
             "type": "keyword"
@@ -317,6 +331,14 @@
             "type": "keyword"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "tags": {
         "properties": {

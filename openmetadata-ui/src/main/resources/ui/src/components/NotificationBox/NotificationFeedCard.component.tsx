@@ -25,6 +25,7 @@ import { getEntityLinkFromType, getEntityName } from '../../utils/EntityUtils';
 import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtils';
 import Fqn from '../../utils/Fqn';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
+import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { NotificationFeedProp } from './NotificationFeedCard.interface';
@@ -36,6 +37,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
   timestamp,
   feedType,
   task,
+  isConversationFeed = false,
 }) => {
   const { t } = useTranslation();
   const { task: taskDetails } = task ?? {};
@@ -94,8 +96,8 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
     <Link
       className="no-underline"
       to={
-        feedType === ThreadType.Conversation
-          ? prepareFeedLink(entityType, entityFQN)
+        isConversationFeed
+          ? prepareFeedLink(entityType, entityFQN, ActivityFeedTabs.ALL)
           : getTaskDetailPath(task)
       }>
       <List.Item.Meta
@@ -117,7 +119,11 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
                   <Link
                     className="truncate"
                     data-testid={`notification-link-${entityName}`}
-                    to={prepareFeedLink(entityType, entityFQN)}>
+                    to={prepareFeedLink(
+                      entityType,
+                      entityFQN,
+                      ActivityFeedTabs.ALL
+                    )}>
                     {entityName}
                   </Link>
                 </>

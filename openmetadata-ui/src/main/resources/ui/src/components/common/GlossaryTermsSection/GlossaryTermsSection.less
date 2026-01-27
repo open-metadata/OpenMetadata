@@ -1,0 +1,208 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+.edit-icon {
+  cursor: pointer;
+  height: 20px;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.glossary-terms-section {
+  border-bottom: 0.6px solid @grey-15;
+  .glossary-terms-header {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-left: 14px;
+    padding-right: 14px;
+
+    .glossary-terms-title {
+      font-weight: 600;
+      color: @grey-900;
+      font-size: 13px;
+    }
+
+    .cursor-pointer {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+
+      &:hover {
+        opacity: 0.7;
+      }
+    }
+  }
+
+  .glossary-terms-content {
+    padding-left: 14px;
+    padding-right: 14px;
+    padding-bottom: 16px;
+
+    .glossary-term-selector-display {
+      background-color: @white;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      cursor: pointer;
+
+      &:hover {
+        border-color: @primary-color;
+      }
+
+      .selected-glossary-terms-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        width: 100%;
+
+        .selected-glossary-term-chip {
+          background-color: @blue-29;
+          border: 1px solid @blue-30;
+          border-radius: 8px;
+          padding: 5px 6px;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          height: 26px;
+
+          .glossary-term-icon {
+            height: 12px;
+            width: 12px;
+            flex-shrink: 0;
+          }
+
+          .glossary-term-name {
+            font-weight: 400;
+            font-size: 12px;
+            color: @tag-text;
+          }
+        }
+      }
+    }
+
+    .inline-edit-container {
+      .glossary-term-selector {
+        width: 100%;
+        min-height: 40px !important;
+        border-radius: 6px !important;
+        border: 1px solid @grey-22 !important;
+        background-color: @white !important;
+        padding: 4px 2px !important;
+        .ant-select-selector {
+          border: none !important;
+        }
+      }
+    }
+
+    .no-data-placeholder {
+      color: @grey-500;
+      font-size: 12px;
+    }
+
+    .glossary-terms-display {
+      .glossary-terms-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+
+        .glossary-term-item {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 5px 6px;
+          height: 26px;
+          border-radius: 8px;
+
+          min-width: 0;
+          background-color: @blue-29;
+          border: 1px solid @blue-30;
+          .glossary-term-icon {
+            width: 12px;
+            height: 12px;
+            color: @tag-text;
+            flex-shrink: 0;
+          }
+
+          .glossary-term-name {
+            color: @tag-text;
+            font-size: 12px;
+            font-weight: 400;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+        }
+
+        .show-more-terms-button {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          padding: 0;
+          height: auto;
+          width: 100%;
+          background-color: transparent;
+          border: none;
+          color: @primary-7;
+          font-size: 12px;
+          font-weight: 400;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &:hover {
+            text-decoration: underline;
+          }
+
+          &:focus {
+            outline: none;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Container for glossary terms select dropdown
+.glossary-terms-select-container {
+  min-width: 450px;
+  width: 100%;
+}
+.glossary-term-select-popover {
+  width: 285px;
+  padding-bottom: 0;
+  .ant-popover-inner {
+    border-radius: 16px;
+  }
+  .ant-popover-inner-content {
+    padding: 8px 12px;
+    padding-bottom: 0;
+  }
+  .ant-list-sm .ant-list-item {
+    padding: 8px 12px;
+    align-items: center;
+  }
+}

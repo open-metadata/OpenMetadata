@@ -1,0 +1,170 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/llmService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LLMService",
+  "description": "LLM Service Entity for managing Large Language Model providers such as OpenAI, Anthropic, Azure OpenAI, AWS Bedrock, etc.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.LLMService",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ServiceEntityInterface"
+  ],
+  "definitions": {
+    "llmServiceType": {
+      "description": "Type of LLM service provider",
+      "type": "string",
+      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
+      "enum": ["OpenAI", "Anthropic", "AzureOpenAI", "Bedrock", "VertexAI", "Ollama", "HuggingFace", "CustomLLM"],
+      "javaEnums": [
+        {"name": "OpenAI"},
+        {"name": "Anthropic"},
+        {"name": "AzureOpenAI"},
+        {"name": "Bedrock"},
+        {"name": "VertexAI"},
+        {"name": "Ollama"},
+        {"name": "HuggingFace"},
+        {"name": "CustomLLM"}
+      ]
+    },
+    "llmConnection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.LLMConnection",
+      "description": "LLM Service Connection.",
+      "javaInterfaces": [
+        "org.openmetadata.schema.ServiceConnectionEntityInterface"
+      ],
+      "properties": {
+        "config": {
+          "mask": true,
+          "oneOf": [
+            {
+              "$ref": "./connections/llm/openAIConnection.json"
+            },
+            {
+              "$ref": "./connections/llm/anthropicConnection.json"
+            },
+            {
+              "$ref": "./connections/llm/azureOpenAIConnection.json"
+            },
+            {
+              "$ref": "./connections/llm/bedrockConnection.json"
+            },
+            {
+              "$ref": "./connections/llm/vertexAIConnection.json"
+            },
+            {
+              "$ref": "./connections/llm/ollamaConnection.json"
+            },
+            {
+              "$ref": "./connections/llm/huggingFaceConnection.json"
+            },
+            {
+              "$ref": "./connections/llm/customLLMConnection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this LLM service instance",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this LLM service",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "serviceType": {
+      "description": "Type of LLM service provider",
+      "$ref": "#/definitions/llmServiceType"
+    },
+    "description": {
+      "description": "Description of this LLM service instance",
+      "type": "string"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this LLM service",
+      "type": "string"
+    },
+    "version": {
+      "description": "Metadata version of the entity",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time in Unix epoch milliseconds",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update",
+      "type": "string"
+    },
+    "models": {
+      "description": "LLM Models registered with this service",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this LLM service",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "connection": {
+      "$ref": "#/definitions/llmConnection"
+    },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
+    },
+    "tags": {
+      "description": "Tags for this LLM Service",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": []
+    },
+    "owners": {
+      "description": "Owners of this LLM service",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this LLM service",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version of the entity",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that led to this version of the entity",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted",
+      "type": "boolean",
+      "default": false
+    },
+    "dataProducts": {
+      "description": "List of data products this entity is part of",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "description": "Followers of this entity",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "domains": {
+      "description": "Domains the LLM service belongs to",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "ingestionRunner": {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": ["id", "name", "serviceType"],
+  "additionalProperties": false
+}

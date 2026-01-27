@@ -158,7 +158,12 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
           .withBotUser(
               Objects.requireNonNull(new UserResourceTest().createUser(name, true)).getName());
     }
-    return new CreateBot().withName(name).withBotUser(botUser.getName());
+    User bUser = new UserResourceTest().createUser(name, true);
+    if (bUser == null) {
+      // User already exists, fetch the user
+      return new CreateBot().withName(name).withBotUser(botUser.getName());
+    }
+    return new CreateBot().withName(name).withBotUser(bUser.getName());
   }
 
   @Override
@@ -168,8 +173,7 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
       assertNotNull(entity.getBotUser());
       TestUtils.validateEntityReference(entity.getBotUser());
       Assertions.assertEquals(
-          request.getBotUser().toLowerCase(),
-          entity.getBotUser().getFullyQualifiedName().toLowerCase());
+          request.getBotUser().toLowerCase(), entity.getBotUser().getName().toLowerCase());
     } else {
       Assertions.assertNull(entity.getBotUser());
     }

@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Module to define helper methods for datalake and to fetch data and metadata 
+Module to define helper methods for datalake and to fetch data and metadata
 from different auths and different file systems.
 """
 import ast
@@ -32,15 +32,23 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 
-def fetch_dataframe(
+def fetch_dataframe_generator(
     config_source,
     client,
     file_fqn: DatalakeTableSchemaWrapper,
-    fetch_raw_data: bool = False,
     **kwargs,
-) -> Optional[List["DataFrame"]]:
-    """
-    Method to get dataframe for profiling
+) -> Optional[DatalakeColumnWrapper]:
+    """Return the datafgrame generator
+
+    Args:
+        config_source: The configuration source for the datalake
+        client: The client to use for fetching the data
+        file_fqn: The fully qualified name of the file
+        fetch_raw_data: Whether to fetch the raw data or not
+        **kwargs: Additional arguments to pass to the reader
+
+    Returns:
+        DatalakeColumnWrapper: A wrapper containing the dataframes and raw data
     """
     # dispatch to handle fetching of data from multiple file formats (csv, tsv, json, avro and parquet)
     key: str = file_fqn.key
@@ -59,23 +67,72 @@ def fetch_dataframe(
                 separator=file_fqn.separator,
             )
             try:
-                df_wrapper: DatalakeColumnWrapper = df_reader.read(
-                    key=key, bucket_name=bucket_name, **kwargs
-                )
-                if fetch_raw_data:
-                    return df_wrapper.dataframes, df_wrapper.raw_data
-                return df_wrapper.dataframes
+                return df_reader.read(key=key, bucket_name=bucket_name, **kwargs)
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(
                     f"Error fetching file [{bucket_name}/{key}] using "
                     f"[{config_source.__class__.__name__}] due to: [{err}]"
                 )
+                raise err
     except Exception as err:
+        logger.debug(traceback.format_exc())
         logger.error(
             f"Error fetching file [{bucket_name}/{key}] using [{config_source.__class__.__name__}] due to: [{err}]"
         )
         # Here we need to blow things up. Without the dataframe we cannot move forward
+        raise err
+
+
+def fetch_dataframe_first_chunk(
+    config_source,
+    client,
+    file_fqn: DatalakeTableSchemaWrapper,
+    fetch_raw_data: bool = False,
+    **kwargs,
+) -> Optional["DataFrame"]:
+    """
+    Method to get only the first chunk of a dataframe for schema inference.
+    Avoids loading the entire file into memory.
+    """
+    key: str = file_fqn.key
+    bucket_name: str = file_fqn.bucket_name
+    try:
+        file_extension: Optional[SupportedTypes] = file_fqn.file_extension or next(
+            supported_type or None
+            for supported_type in SupportedTypes
+            if key.endswith(supported_type.value)
+        )
+        if file_extension and not key.endswith("/"):
+            df_reader = get_df_reader(
+                type_=file_extension,
+                config_source=config_source,
+                client=client,
+                separator=file_fqn.separator,
+            )
+            try:
+                df_wrapper: DatalakeColumnWrapper = df_reader.read_first_chunk(
+                    key=key, bucket_name=bucket_name, **kwargs
+                )
+                dataframes = df_wrapper.dataframes
+                # Handle callable (generator function) - call it to get the iterator
+                if callable(dataframes):
+                    dataframes = dataframes()
+                if fetch_raw_data:
+                    return dataframes, df_wrapper.raw_data
+                return dataframes
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error fetching first chunk of file [{bucket_name}/{key}] using "
+                    f"[{config_source.__class__.__name__}] due to: [{err}]"
+                )
+    except Exception as err:
+        logger.debug(traceback.format_exc())
+        logger.error(
+            f"Error fetching first chunk of file [{bucket_name}/{key}] using "
+            f"[{config_source.__class__.__name__}] due to: [{err}]"
+        )
         raise err
 
     if fetch_raw_data:
@@ -85,7 +142,7 @@ def fetch_dataframe(
 
 def get_file_format_type(key_name, metadata_entry=None):
     for supported_types in SupportedTypes:
-        if key_name.endswith(supported_types.value):
+        if key_name.lower().endswith(supported_types.value.lower()):
             return supported_types
         if metadata_entry:
             entry: list = [
@@ -155,6 +212,7 @@ class DataFrameColumnParser:
         data_frame: Union[List["DataFrame"], "DataFrame"], sample: bool, shuffle: bool
     ):
         """Return the dataframe to use for parsing"""
+
         import pandas as pd
 
         if not isinstance(data_frame, list):
@@ -300,8 +358,12 @@ class GenericDataFrameColumnParser:
                     data_type = max(parsed_object_datatype_list)
                     # Determine the data type of the parsed object
 
-                except (ValueError, SyntaxError):
+                except (ValueError, SyntaxError) as exc:
                     # Handle any exceptions that may occur
+                    logger.debug(
+                        f"ValueError/SyntaxError while parsing column '{column_name}' datatype: {exc}. "
+                        f"Falling back to string."
+                    )
                     data_type = "string"
 
             data_type = cls._data_formats.get(
@@ -378,10 +440,13 @@ class GenericDataFrameColumnParser:
         json_column = cast(Series, json_column)
         try:
             json_column = json_column.apply(json.loads)
-        except TypeError:
+        except TypeError as exc:
             # if values are not strings, we will assume they are already json objects
             # based on the read class logic
-            pass
+            logger.debug(
+                f"TypeError while parsing JSON column children: {exc}. "
+                f"Assuming values are already JSON objects."
+            )
         json_structure = cls.unique_json_structure(json_column.values.tolist())
 
         return cls.construct_json_column_children(json_structure)
@@ -453,8 +518,12 @@ class ParquetDataFrameColumnParser:
                 try:
                     item_field = column.type.value_field
                     parsed_column["arrayDataType"] = self._get_pq_data_type(item_field)
-                except AttributeError:
+                except AttributeError as exc:
                     # if the value field is not specified, we will set it to UNKNOWN
+                    logger.debug(
+                        f"Could not extract array item type for column '{column.name}': {exc}. "
+                        f"Setting arrayDataType to UNKNOWN."
+                    )
                     parsed_column["arrayDataType"] = DataType.UNKNOWN
 
             if parsed_column["dataType"] == DataType.BINARY:
@@ -542,8 +611,138 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
         """
         if self.raw_data:
             try:
+                # First, check if this is an Iceberg/Delta Lake metadata file
+                data = json.loads(self.raw_data)
+                if self._is_iceberg_delta_metadata(data):
+                    return self._parse_iceberg_delta_schema(data)
+                # Otherwise, try to parse as standard JSON Schema
                 return parse_json_schema(schema_text=self.raw_data, cls=Column)
             except Exception as exc:
                 logger.warning(f"Unable to parse the json schema: {exc}")
                 logger.debug(traceback.format_exc())
         return self._get_columns(self.data_frame)
+
+    def _is_iceberg_delta_metadata(self, data: dict) -> bool:
+        """
+        Check if the JSON data is an Iceberg or Delta Lake metadata file.
+        These files have a specific structure with 'schema' containing 'fields'.
+        """
+        return (
+            isinstance(data, dict)
+            and "schema" in data
+            and isinstance(data["schema"], dict)
+            and "fields" in data["schema"]
+            and isinstance(data["schema"]["fields"], list)
+        )
+
+    def _parse_iceberg_delta_schema(self, data: dict) -> List[Column]:
+        """
+        Parse Iceberg/Delta Lake metadata file schema to extract columns.
+        """
+        columns = []
+        schema = data.get("schema", {})
+        fields = schema.get("fields", [])
+
+        for field in fields:
+            try:
+                column_name = field.get("name", "")
+                column_type = field.get("type", "string")
+
+                # Get the type string from dict if needed
+                type_str = column_type
+                if isinstance(column_type, dict):
+                    type_str = column_type.get("type", "string")
+
+                # Use DataType enum directly - it will handle the conversion
+                try:
+                    data_type = (
+                        DataType(type_str.upper())
+                        if isinstance(type_str, str)
+                        else DataType.STRING
+                    )
+                except (ValueError, AttributeError) as exc:
+                    # If the type is not recognized, default to STRING
+                    logger.debug(
+                        f"Unrecognized data type '{type_str}' for column '{column_name}': {exc}. "
+                        f"Defaulting to STRING."
+                    )
+                    data_type = DataType.STRING
+
+                column = Column(
+                    name=truncate_column_name(column_name),
+                    displayName=column_name,
+                    dataType=data_type,
+                    dataTypeDisplay=(
+                        column_type
+                        if isinstance(column_type, str)
+                        else str(column_type)
+                    ),
+                )
+
+                # Handle nested struct types
+                if (
+                    isinstance(column_type, dict)
+                    and column_type.get("type") == "struct"
+                ):
+                    column.children = self._parse_struct_fields(
+                        column_type.get("fields", [])
+                    )
+                    column.dataType = DataType.STRUCT
+
+                columns.append(column)
+            except Exception as exc:
+                logger.warning(f"Unable to parse field {field}: {exc}")
+                logger.debug(traceback.format_exc())
+
+        return columns
+
+    def _parse_struct_fields(self, fields: list) -> List[dict]:
+        """
+        Parse nested struct fields in Iceberg/Delta Lake metadata.
+        """
+        children = []
+        for field in fields:
+            try:
+                child_name = field.get("name", "")
+                child_type = field.get("type", "string")
+
+                # Get the type string from dict if needed
+                type_str = child_type
+                if isinstance(child_type, dict):
+                    type_str = child_type.get("type", "string")
+
+                # Use DataType enum directly
+                try:
+                    data_type = (
+                        DataType(type_str.upper())
+                        if isinstance(type_str, str)
+                        else DataType.STRING
+                    )
+                except (ValueError, AttributeError) as exc:
+                    logger.debug(
+                        f"Unrecognized data type '{type_str}' for nested field '{child_name}': {exc}. "
+                        f"Defaulting to STRING."
+                    )
+                    data_type = DataType.STRING
+
+                child = {
+                    "name": truncate_column_name(child_name),
+                    "displayName": child_name,
+                    "dataType": data_type.value,
+                    "dataTypeDisplay": (
+                        child_type if isinstance(child_type, str) else str(child_type)
+                    ),
+                }
+
+                # Recursively handle nested structs
+                if isinstance(child_type, dict) and child_type.get("type") == "struct":
+                    child["children"] = self._parse_struct_fields(
+                        child_type.get("fields", [])
+                    )
+
+                children.append(child)
+            except Exception as exc:
+                logger.warning(f"Unable to parse nested field {field}: {exc}")
+                logger.debug(traceback.format_exc())
+
+        return children

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { ModalProps } from 'antd';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
 import CustomiseHomeModal from './CustomiseHomeModal';
 
@@ -49,12 +50,8 @@ jest.mock('antd', () => {
 
   return {
     ...antd,
-    Modal: ({ children, open, onCancel, ...props }: any) =>
-      open ? (
-        <div data-testid="modal" {...props}>
-          {children}
-        </div>
-      ) : null,
+    Modal: ({ children, open }: ModalProps) =>
+      open ? <div data-testid="modal">{children}</div> : null,
   };
 });
 

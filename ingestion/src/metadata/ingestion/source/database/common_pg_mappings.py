@@ -45,5 +45,12 @@ ischema_names.update(
         "txid_snapshot": create_sqlalchemy_type("TXID_SNAPSHOT"),
         "xid": SqlAlchemyString,
         "xml": create_sqlalchemy_type("XML"),
+        # PostgreSQL range types (used by TimescaleDB for chunk boundaries)
+        "int4range": create_sqlalchemy_type("INT4RANGE"),
+        "int8range": create_sqlalchemy_type("INT8RANGE"),
+        "numrange": create_sqlalchemy_type("NUMRANGE"),
+        "tsrange": create_sqlalchemy_type("TSRANGE"),
+        "tstzrange": create_sqlalchemy_type("TSTZRANGE"),
+        "daterange": create_sqlalchemy_type("DATERANGE"),
     }
 )

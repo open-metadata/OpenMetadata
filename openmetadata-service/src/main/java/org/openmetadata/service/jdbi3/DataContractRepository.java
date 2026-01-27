@@ -17,12 +17,21 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.DATA_CONTRACT;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
+import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -32,20 +41,27 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.ContractSLA;
+import org.openmetadata.schema.api.data.ContractSecurity;
+import org.openmetadata.schema.api.feed.CloseTask;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.LatestResult;
+import org.openmetadata.schema.entity.data.TermsOfUse;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.FailedRule;
 import org.openmetadata.schema.entity.datacontract.QualityValidation;
 import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.SemanticsValidation;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
@@ -53,12 +69,16 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.type.TaskStatus;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -67,24 +87,31 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.DataContractValidationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.data.DataContractResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 @Repository
 public class DataContractRepository extends EntityRepository<DataContract> {
 
   private static final String DATA_CONTRACT_UPDATE_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules";
   private static final String DATA_CONTRACT_PATCH_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules";
 
   public static final String RESULT_EXTENSION = "dataContract.dataContractResult";
   public static final String RESULT_SCHEMA = "dataContractResult";
@@ -123,7 +150,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   @Override
-  public void setFields(DataContract dataContract, Fields fields) {}
+  public void setFields(
+      DataContract dataContract, Fields fields, RelationIncludes relationIncludes) {}
 
   @Override
   public void clearFields(DataContract dataContract, Fields fields) {}
@@ -136,6 +164,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     if (!update) {
       validateEntityReference(entityRef);
+      dataContract.setCreatedAt(dataContract.getUpdatedAt());
+      dataContract.setCreatedBy(dataContract.getUpdatedBy());
     }
 
     // Validate schema fields and throw exception if there are failures
@@ -157,12 +187,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     createOrUpdateDataContractTestSuite(dataContract, update);
   }
 
-  @Override
-  protected void setDefaultStatus(DataContract entity, boolean update) {
-    // If the contract status is marked as null, let it be null, If it is not marked as null, leave
-    // it as is, so no implementation here
-  }
-
   // Ensure we have a pipeline after creation if needed
   @Override
   protected void postCreate(DataContract dataContract) {
@@ -174,6 +198,26 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   @Override
   protected void postUpdate(DataContract original, DataContract updated) {
     super.postUpdate(original, updated);
+    if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
+      if (updated.getEntityStatus() == EntityStatus.APPROVED) {
+        closeApprovalTask(updated, "Approved the data contract");
+      } else if (updated.getEntityStatus() == EntityStatus.REJECTED) {
+        closeApprovalTask(updated, "Rejected the data contract");
+      }
+    }
+
+    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
+    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
+    // will be a Task created.
+    // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
+    // Data Contract goes back to DRAFT.
+    if (updated.getEntityStatus() == EntityStatus.DRAFT) {
+      try {
+        closeApprovalTask(updated, "Closed due to data contract going back to DRAFT.");
+      } catch (EntityNotFoundException ignored) {
+      } // No ApprovalTask is present, and thus we don't need to worry about this.
+    }
+
     postCreateOrUpdate(updated);
   }
 
@@ -208,6 +252,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         }
       }
     }
+  }
+
+  /**
+   * Public method to validate a data contract's schema against an entity without creating the
+   * contract. This is useful for pre-validation during ODCS import preview.
+   */
+  public SchemaValidation validateContractSchema(
+      DataContract dataContract, EntityReference entityRef) {
+    return validateSchemaFieldsAgainstEntity(dataContract, entityRef);
   }
 
   private SchemaValidation validateSchemaFieldsAgainstEntity(
@@ -258,8 +311,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       return getAllContractFieldNames(dataContract);
     }
 
-    Set<String> tableColumnNames =
-        table.getColumns().stream().map(Column::getName).collect(Collectors.toSet());
+    Set<String> tableColumnNames = extractColumnNames(table.getColumns());
 
     return validateContractFieldsAgainstNames(dataContract, tableColumnNames);
   }
@@ -323,8 +375,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       return getAllContractFieldNames(dataContract);
     }
 
-    Set<String> dataModelColumnNames =
-        dashboardDataModel.getColumns().stream().map(Column::getName).collect(Collectors.toSet());
+    Set<String> dataModelColumnNames = extractColumnNames(dashboardDataModel.getColumns());
 
     return validateContractFieldsAgainstNames(dataContract, dataModelColumnNames);
   }
@@ -359,6 +410,21 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       }
     }
     return fieldNames;
+  }
+
+  private Set<String> extractColumnNames(List<Column> columns) {
+    if (columns == null || columns.isEmpty()) {
+      return Collections.emptySet();
+    }
+
+    Set<String> columnNames = new HashSet<>();
+    for (Column column : columns) {
+      columnNames.add(column.getName());
+      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
+        columnNames.addAll(extractColumnNames(column.getChildren()));
+      }
+    }
+    return columnNames;
   }
 
   /**
@@ -434,7 +500,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             Entity.DIRECTORY,
             Entity.FILE,
             Entity.SPREADSHEET,
-            Entity.WORKSHEET)
+            Entity.WORKSHEET,
+            Entity.DATA_PRODUCT)
         .contains(entityType);
   }
 
@@ -660,7 +727,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
       try {
         deployAndTriggerDQValidation(dataContract);
-        compileResult(result, ContractExecutionStatus.Running);
+        // Don't compile result yet - keep status as "Running"
+        // Final compilation will happen in updateContractDQResults() with complete data
       } catch (Exception e) {
         LOG.error(
             "Failed to trigger DQ validation for data contract {}: {}",
@@ -677,6 +745,86 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     // Add the result to the data contract and update the time series
     return addContractResult(dataContract, result);
+  }
+
+  /**
+   * Materialize an empty contract for an entity that currently only has an inherited contract.
+   * This allows the entity to have its own contract to store validation results, while still
+   * inheriting properties from the Data Product contract.
+   *
+   * @param entity The entity to create the contract for
+   * @param dataProductContractName The name of the Data Product contract being inherited from
+   * @param user The user creating the contract
+   */
+  public DataContract materializeInheritedContract(
+      EntityInterface entity, String dataProductContractName, String user) {
+    // Name format: "<Data Product Contract> - <entity name>"
+    String contractName = dataProductContractName + " - " + entity.getName();
+    String contractFqn = entity.getFullyQualifiedName() + ".contract";
+
+    DataContract newContract =
+        new DataContract()
+            .withId(UUID.randomUUID())
+            .withName(contractName)
+            .withFullyQualifiedName(contractFqn)
+            .withEntity(entity.getEntityReference())
+            .withEntityStatus(EntityStatus.DRAFT)
+            .withUpdatedBy(user)
+            .withUpdatedAt(System.currentTimeMillis());
+
+    return createInternal(newContract);
+  }
+
+  /**
+   * Validate a contract using the effective contract rules (which may include inherited properties)
+   * but store the results against the provided contract entity.
+   */
+  public RestUtil.PutResponse<DataContractResult> validateContractWithEffective(
+      DataContract contractForResults, DataContract effectiveContract) {
+    // Check if there's a running validation and abort it
+    abortRunningValidation(contractForResults);
+
+    DataContractResult result =
+        new DataContractResult()
+            .withId(UUID.randomUUID())
+            .withDataContractFQN(contractForResults.getFullyQualifiedName())
+            .withContractExecutionStatus(ContractExecutionStatus.Running)
+            .withTimestamp(System.currentTimeMillis());
+    addContractResult(contractForResults, result);
+
+    // Validate schema using effective contract's schema (if any)
+    if (effectiveContract.getSchema() != null && !effectiveContract.getSchema().isEmpty()) {
+      SchemaValidation schemaValidation =
+          validateSchemaFieldsAgainstEntity(effectiveContract, effectiveContract.getEntity());
+      result.withSchemaValidation(schemaValidation);
+    }
+
+    // Validate semantics using effective contract's rules (includes inherited rules)
+    if (!nullOrEmpty(effectiveContract.getSemantics())) {
+      SemanticsValidation semanticsValidation = validateSemantics(effectiveContract);
+      result.withSemanticsValidation(semanticsValidation);
+    }
+
+    // Handle quality expectations
+    if (!nullOrEmpty(effectiveContract.getQualityExpectations())) {
+      try {
+        deployAndTriggerDQValidation(effectiveContract);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to trigger DQ validation for data contract {}: {}",
+            contractForResults.getFullyQualifiedName(),
+            e.getMessage());
+        result
+            .withContractExecutionStatus(ContractExecutionStatus.Aborted)
+            .withResult("Failed to trigger DQ validation: " + e.getMessage());
+        compileResult(result, ContractExecutionStatus.Aborted);
+      }
+    } else {
+      compileResult(result, ContractExecutionStatus.Success);
+    }
+
+    // Store results against the entity's own contract
+    return addContractResult(contractForResults, result);
   }
 
   public void deployAndTriggerDQValidation(DataContract dataContract) {
@@ -865,7 +1013,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   public DataContractResult updateContractDQResults(
       EntityReference contractReference, TestSuite testSuite) {
-    DataContract dataContract = Entity.getEntity(contractReference, "", Include.NON_DELETED);
+    DataContract dataContract =
+        Entity.getEntity(contractReference, "entity,owners,reviewers", Include.NON_DELETED);
     if (dataContract == null) {
       throw EntityNotFoundException.byMessage(
           String.format("Data contract not found for Test Suite %s", testSuite.getName()));
@@ -887,6 +1036,29 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     compileResult(result, ContractExecutionStatus.Success);
     // Update the last result in the data contract
     addContractResult(dataContract, result);
+
+    // Sync the in-memory latestResult to reflect the updated status
+    dataContract.setLatestResult(
+        new LatestResult()
+            .withTimestamp(result.getTimestamp())
+            .withStatus(result.getContractExecutionStatus())
+            .withMessage(result.getResult())
+            .withResultId(result.getId()));
+
+    // Enrich the entity reference with fullyQualifiedName for notification template URL building
+    if (dataContract.getEntity() != null) {
+      EntityReference fullEntityRef =
+          Entity.getEntityReferenceById(
+              dataContract.getEntity().getType(),
+              dataContract.getEntity().getId(),
+              Include.NON_DELETED);
+      dataContract.setEntity(fullEntityRef);
+    }
+
+    ChangeEvent changeEvent =
+        FormatterUtil.getDataContractResultEvent(result, ADMIN_USER_NAME, ENTITY_UPDATED);
+    changeEvent.setEntity(JsonUtils.pojoToMaskedJson(dataContract));
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
 
     return result;
   }
@@ -926,6 +1098,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
 
     @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      // adding the reviewer should add the person as assignee to the task
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
+        updateTaskWithNewReviewers(updated);
+      }
+    }
+
+    @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("latestResult", original.getLatestResult(), updated.getLatestResult());
       recordChange("status", original.getEntityStatus(), updated.getEntityStatus());
@@ -936,6 +1119,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       updateSchema(original, updated);
       updateQualityExpectations(original, updated);
       updateSemantics(original, updated);
+      // Preserve immutable creation fields
+      updated.setCreatedAt(original.getCreatedAt());
+      updated.setCreatedBy(original.getCreatedBy());
     }
 
     private void updateSchema(DataContract original, DataContract updated) {
@@ -1024,6 +1210,155 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
+  public DataContract getEffectiveDataContract(EntityInterface entity) {
+    DataContract entityContract = getEntityDataContractSafely(entity);
+
+    List<EntityReference> dataProducts = entity.getDataProducts();
+    if (nullOrEmpty(dataProducts)) {
+      return entityContract;
+    }
+
+    // If entity belongs to multiple data products, we cannot determine which contract to inherit
+    // Return only the entity's own contract
+    if (dataProducts.size() > 1) {
+      LOG.debug(
+          "Entity {} belongs to {} data products. Skipping contract inheritance to avoid ambiguity.",
+          entity.getId(),
+          dataProducts.size());
+      return entityContract;
+    }
+
+    DataContract dataProductContract = null;
+    EntityReference dataProductRef = dataProducts.get(0);
+    try {
+      dataProductContract = loadEntityDataContract(dataProductRef);
+      if (dataProductContract != null
+          && dataProductContract.getEntityStatus() != EntityStatus.APPROVED) {
+        dataProductContract = null;
+      }
+    } catch (Exception e) {
+      LOG.debug(
+          "No contract found for data product {}: {}", dataProductRef.getId(), e.getMessage());
+    }
+
+    if (dataProductContract == null) {
+      return entityContract;
+    }
+
+    if (entityContract == null) {
+      return inheritFromDataProductContract(entity, dataProductContract);
+    }
+
+    return mergeContracts(entityContract, dataProductContract);
+  }
+
+  private DataContract inheritFromDataProductContract(
+      EntityInterface entity, DataContract dataProductContract) {
+    DataContract inherited = JsonUtils.deepCopy(dataProductContract, DataContract.class);
+
+    // Update the entity reference to point to the actual entity, not the data product
+    inherited.setEntity(entity.getEntityReference());
+
+    // Clear entity-specific fields that should not be inherited
+    inherited.setQualityExpectations(null);
+    inherited.setSchema(null);
+    inherited.setTestSuite(null);
+
+    // Clear execution-related fields - inherited contracts have no execution history
+    inherited.setLatestResult(null);
+    inherited.setContractUpdates(null);
+    inherited.setEntityStatus(EntityStatus.DRAFT);
+
+    // Mark all fields as inherited
+    if (inherited.getTermsOfUse() != null) {
+      inherited.getTermsOfUse().setInherited(true);
+    }
+    if (inherited.getSecurity() != null) {
+      inherited.getSecurity().setInherited(true);
+    }
+    if (inherited.getSla() != null) {
+      inherited.getSla().setInherited(true);
+    }
+
+    // Mark semantic rules as inherited
+    if (inherited.getSemantics() != null) {
+      for (SemanticsRule rule : inherited.getSemantics()) {
+        rule.setInherited(true);
+      }
+    }
+
+    // Mark the entire contract as inherited (asset has no contract of its own)
+    inherited.setInherited(true);
+
+    return inherited;
+  }
+
+  private DataContract mergeContracts(
+      DataContract entityContract, DataContract dataProductContract) {
+    DataContract merged = JsonUtils.deepCopy(entityContract, DataContract.class);
+
+    // Inherit terms of use if not defined in entity
+    if (merged.getTermsOfUse() == null && dataProductContract.getTermsOfUse() != null) {
+      merged.setTermsOfUse(
+          JsonUtils.deepCopy(dataProductContract.getTermsOfUse(), TermsOfUse.class));
+      if (merged.getTermsOfUse() != null) {
+        merged.getTermsOfUse().setInherited(true);
+      }
+    }
+
+    // Merge semantics - inherited rules from Data Product + entity's own rules
+    if (dataProductContract.getSemantics() != null) {
+      List<SemanticsRule> mergedSemantics = new ArrayList<>();
+
+      // Collect entity rule names to avoid duplicates
+      Set<String> entityRuleNames =
+          merged.getSemantics() != null
+              ? merged.getSemantics().stream()
+                  .map(SemanticsRule::getName)
+                  .collect(Collectors.toSet())
+              : Collections.emptySet();
+
+      // Add Data Product semantics and mark as inherited (skip if entity already has the rule)
+      for (SemanticsRule dpRule : dataProductContract.getSemantics()) {
+        if (!entityRuleNames.contains(dpRule.getName())) {
+          SemanticsRule inheritedRule = JsonUtils.deepCopy(dpRule, SemanticsRule.class);
+          inheritedRule.setInherited(true);
+          mergedSemantics.add(inheritedRule);
+        }
+      }
+
+      // Add entity's own semantics (not inherited)
+      if (merged.getSemantics() != null) {
+        for (SemanticsRule entityRule : merged.getSemantics()) {
+          // Keep the inherited flag as-is from the entity rule (should be false/null for native
+          // rules)
+          mergedSemantics.add(entityRule);
+        }
+      }
+
+      merged.setSemantics(mergedSemantics);
+    }
+
+    // Inherit security if not defined in entity
+    if (merged.getSecurity() == null && dataProductContract.getSecurity() != null) {
+      merged.setSecurity(
+          JsonUtils.deepCopy(dataProductContract.getSecurity(), ContractSecurity.class));
+      if (merged.getSecurity() != null) {
+        merged.getSecurity().setInherited(true);
+      }
+    }
+
+    // Inherit SLA if not defined in entity
+    if (merged.getSla() == null && dataProductContract.getSla() != null) {
+      merged.setSla(JsonUtils.deepCopy(dataProductContract.getSla(), ContractSLA.class));
+      if (merged.getSla() != null) {
+        merged.getSla().setInherited(true);
+      }
+    }
+
+    return merged;
+  }
+
   @Override
   public void storeEntity(DataContract dataContract, boolean update) {
     store(dataContract, update);
@@ -1048,8 +1383,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         .withId(original.getId())
         .withName(original.getName())
         .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withUpdatedAt(original.getUpdatedAt())
-        .withUpdatedBy(original.getUpdatedBy());
+        .withCreatedAt(original.getCreatedAt())
+        .withCreatedBy(original.getCreatedBy());
   }
 
   private void validateEntityReference(EntityReference entity) {
@@ -1066,6 +1401,139 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           String.format(
               "A data contract already exists for entity '%s' with ID %s",
               entity.getType(), entity.getId()));
+    }
+  }
+
+  @Override
+  public FeedRepository.TaskWorkflow getTaskWorkflow(FeedRepository.ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    TaskType taskType = threadContext.getThread().getTask().getType();
+    if (EntityUtil.isDescriptionTask(taskType)) {
+      return new DescriptionTaskWorkflow(threadContext);
+    } else if (EntityUtil.isTagTask(taskType)) {
+      return new TagTaskWorkflow(threadContext);
+    } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
+      return new ApprovalTaskWorkflow(threadContext);
+    }
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  public static class ApprovalTaskWorkflow extends FeedRepository.TaskWorkflow {
+    ApprovalTaskWorkflow(FeedRepository.ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      DataContract dataContract = (DataContract) threadContext.getAboutEntity();
+      DataContractRepository.checkUpdatedByReviewer(dataContract, user);
+
+      UUID taskId = threadContext.getThread().getId();
+      Map<String, Object> variables = new HashMap<>();
+      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
+      variables.put(UPDATED_BY_VARIABLE, user);
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      boolean workflowSuccess =
+          workflowHandler.resolveTask(
+              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      // If workflow failed (corrupted Flowable task), apply the status directly
+      if (!workflowSuccess) {
+        LOG.warn(
+            "[GlossaryTerm] Workflow failed for taskId='{}', applying status directly", taskId);
+        Boolean approved = (Boolean) variables.get(RESULT_VARIABLE);
+        String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
+        EntityFieldUtils.setEntityField(
+            dataContract, DATA_CONTRACT, user, FIELD_ENTITY_STATUS, entityStatus, true);
+      }
+
+      return dataContract;
+    }
+  }
+
+  @Override
+  protected void preDelete(DataContract entity, String deletedBy) {
+    // Inherited contracts cannot be deleted - they are virtual contracts derived from Data Product
+    if (Boolean.TRUE.equals(entity.getInherited())) {
+      throw BadRequestException.of(
+          "Cannot delete an inherited data contract. The contract is inherited from a Data Product "
+              + "and can only be removed by removing the entity from the Data Product or by creating "
+              + "an entity-specific contract that overrides the inherited one.");
+    }
+
+    // A data contract in `IN_REVIEW` state can only be deleted by the reviewers
+    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
+      checkUpdatedByReviewer(entity, deletedBy);
+    }
+  }
+
+  public static void checkUpdatedByReviewer(DataContract dataContract, String updatedBy) {
+    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
+    List<EntityReference> reviewers = dataContract.getReviewers();
+    if (!nullOrEmpty(reviewers)) {
+      // Updating user must be one of the reviewers
+      boolean isReviewer =
+          reviewers.stream()
+              .anyMatch(
+                  e -> {
+                    if (e.getType().equals(TEAM)) {
+                      Team team =
+                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
+                      return team.getUsers().stream()
+                          .anyMatch(
+                              u ->
+                                  u.getName().equals(updatedBy)
+                                      || u.getFullyQualifiedName().equals(updatedBy));
+                    } else {
+                      return e.getName().equals(updatedBy)
+                          || e.getFullyQualifiedName().equals(updatedBy);
+                    }
+                  });
+      if (!isReviewer) {
+        throw new AuthorizationException(notReviewer(updatedBy));
+      }
+    }
+  }
+
+  private void closeApprovalTask(DataContract entity, String comment) {
+    EntityLink about = new EntityLink(DATA_CONTRACT, entity.getFullyQualifiedName());
+    FeedRepository feedRepository = Entity.getFeedRepository();
+    // Close User Tasks
+    try {
+      Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      feedRepository.closeTask(
+          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
+    } catch (EntityNotFoundException ex) {
+      LOG.info("No approval task found for data contract {}", entity.getFullyQualifiedName());
+    }
+  }
+
+  protected void updateTaskWithNewReviewers(DataContract dataContract) {
+    try {
+      EntityLink about = new EntityLink(DATA_CONTRACT, dataContract.getFullyQualifiedName());
+      FeedRepository feedRepository = Entity.getFeedRepository();
+      Thread originalTask =
+          feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      dataContract =
+          Entity.getEntityByName(
+              Entity.DATA_CONTRACT,
+              dataContract.getFullyQualifiedName(),
+              "id,fullyQualifiedName,reviewers",
+              Include.ALL);
+
+      Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
+      updatedTask.getTask().withAssignees(new ArrayList<>(dataContract.getReviewers()));
+      JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
+      RestUtil.PatchResponse<Thread> thread =
+          feedRepository.patchThread(null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
+
+      // Send WebSocket Notification
+      WebsocketNotificationHandler.handleTaskNotification(thread.entity());
+    } catch (EntityNotFoundException e) {
+      LOG.info(
+          "{} Task not found for data contract {}",
+          TaskType.RequestApproval,
+          dataContract.getFullyQualifiedName());
     }
   }
 }

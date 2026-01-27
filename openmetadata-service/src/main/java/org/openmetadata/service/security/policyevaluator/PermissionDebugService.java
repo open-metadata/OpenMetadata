@@ -341,7 +341,7 @@ public class PermissionDebugService {
     }
 
     // Create evaluation contexts
-    SubjectContext subjectContext = new SubjectContext(user);
+    SubjectContext subjectContext = new SubjectContext(user, null);
     ResourceContext resourceContext =
         resource != null
             ? new ResourceContext(resourceType, resource, Entity.getEntityRepository(resourceType))

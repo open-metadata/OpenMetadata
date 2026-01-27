@@ -49,11 +49,13 @@ export const mockEntitySearchConfig = {
       name: 'database.displayName.keyword',
       type: 'terms',
       field: 'database.displayName.keyword',
+      script: '',
     },
     {
       name: 'databaseSchema.displayName.keyword',
       type: 'terms',
       field: 'databaseSchema.displayName.keyword',
+      script: '',
     },
   ],
   termBoosts: [],
@@ -66,7 +68,7 @@ export const mockEntitySearchConfig = {
     },
     {
       field: 'usageSummary.monthlyStats.percentileRank',
-      factor: 0.1,
+      factor: 1.0,
       modifier: 'none',
       missing: 0.0,
     },

@@ -86,4 +86,9 @@ class EventType(str, Enum):
     List of used OpenLineage event types.
     """
 
+    START = "START"
+    RUNNING = "RUNNING"
     COMPLETE = "COMPLETE"
+    ABORT = "ABORT"
+    FAIL = "FAIL"
+    OTHER = "OTHER"

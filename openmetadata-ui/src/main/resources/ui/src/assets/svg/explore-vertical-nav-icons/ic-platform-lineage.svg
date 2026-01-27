@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6.5,10.66h4.05c.55,0,1-.45,1-1v-4.5c0-.55.45-1,1-1h4.95"/>
+    <path d="M6.5,13.34h4.05c.55,0,1,.45,1,1v4.5c0,.55.45,1,1,1h4.95"/>
+    <line x1="6.37" y1="12" x2="18.22" y2="12"/>
+    <rect x="4.5" y="10" width="4" height="4" rx=".4" ry=".4"/>
+    <rect x="15.5" y="17.53" width="4" height="4" rx=".4" ry=".4"/>
+    <rect x="15.5" y="2.47" width="4" height="4" rx=".4" ry=".4"/>
+    <rect x="15.5" y="10" width="4" height="4" rx=".4" ry=".4"/>
+  </g>
+</svg>

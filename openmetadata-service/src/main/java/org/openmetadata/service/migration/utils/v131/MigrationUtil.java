@@ -41,7 +41,9 @@ public class MigrationUtil {
           "Got IllegalArgumentExpr Cron Expression might already be Migrated. Message : {}",
           e.getMessage());
     } catch (Exception ex) {
-      LOG.error("Error while migrating cron expression, Logging and moving further", ex);
+      LOG.error(
+          "Error while migrating cron expression, Logging and moving further : {} ",
+          ex.getMessage());
     }
   }
 }

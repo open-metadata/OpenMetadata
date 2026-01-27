@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -36,6 +36,10 @@ export interface Thread {
      * Card style for the thread.
      */
     cardStyle?: CardStyle;
+    /**
+     * Change that led to this version of the Thread.
+     */
+    changeDescription?: ChangeDescription;
     /**
      * Details about the Chatbot conversation. This is only applicable if thread is of type
      * Chatbot.
@@ -77,6 +81,10 @@ export interface Thread {
      * Unique identifier that identifies an entity instance.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * The main message of the thread in Markdown format.
      */
@@ -151,6 +159,71 @@ export enum CardStyle {
 }
 
 /**
+ * Change that led to this version of the Thread.
+ *
+ * Description of the change.
+ */
+export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
+    /**
+     * Names of fields added during the version changes.
+     */
+    fieldsAdded?: FieldChange[];
+    /**
+     * Fields deleted during the version changes with old value before deleted.
+     */
+    fieldsDeleted?: FieldChange[];
+    /**
+     * Fields modified during the version changes with old and new values.
+     */
+    fieldsUpdated?: FieldChange[];
+    /**
+     * When a change did not result in change, this could be same as the current version.
+     */
+    previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
+}
+
+export interface FieldChange {
+    /**
+     * Name of the entity field that changed.
+     */
+    name?: string;
+    /**
+     * New value of the field. Note that this is a JSON string and use the corresponding field
+     * type to deserialize it.
+     */
+    newValue?: any;
+    /**
+     * Previous value of the field. Note that this is a JSON string and use the corresponding
+     * field type to deserialize it.
+     */
+    oldValue?: any;
+}
+
+/**
  * Details about the Chatbot conversation. This is only applicable if thread is of type
  * Chatbot.
  */
@@ -175,11 +248,15 @@ export interface ChatbotDetails {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Reference to the test case for efficient querying of dimensional time series
+ *
  * Test case that this result is for.
  *
  * Test definition that this result is for.
  *
  * User who reacted.
+ *
+ * User who provided the feedback
  */
 export interface EntityReference {
     /**
@@ -318,6 +395,8 @@ export interface EntityTestResultSummaryObject {
  * Status of the test case.
  *
  * Status of Test Case run.
+ *
+ * Status of the test for this dimension combination
  */
 export enum TestCaseStatus {
     Aborted = "Aborted",
@@ -346,6 +425,11 @@ export interface TestCaseParameterValue {
  * Schema to capture test case result.
  */
 export interface TestCaseResult {
+    /**
+     * List of dimensional test results. Only populated when the test case has dimensionColumns
+     * specified.
+     */
+    dimensionResults?: TestCaseDimensionResult[];
     /**
      * Number of rows that failed.
      */
@@ -409,6 +493,86 @@ export interface TestCaseResult {
      */
     timestamp: number;
     [property: string]: any;
+}
+
+/**
+ * Test case result for dimensional analysis - supports both single and multi-dimensional
+ * groupings
+ */
+export interface TestCaseDimensionResult {
+    /**
+     * Composite key for API filtering: 'region=mumbai' or 'region=mumbai,product=laptop'
+     */
+    dimensionKey: string;
+    /**
+     * Array of dimension name-value pairs for this result (e.g., [{'name': 'region', 'value':
+     * 'mumbai'}, {'name': 'product', 'value': 'laptop'}])
+     */
+    dimensionValues: DimensionValue[];
+    /**
+     * Number of rows that failed for this dimension combination
+     */
+    failedRows?: number;
+    /**
+     * Percentage of rows that failed for this dimension combination
+     */
+    failedRowsPercentage?: number;
+    /**
+     * Unique identifier of this dimensional result instance
+     */
+    id: string;
+    /**
+     * Impact score indicating the significance of this dimension for revealing data quality
+     * variations. Higher scores indicate dimensions with more significant quality issues
+     * considering both failure rate and data volume.
+     */
+    impactScore?: number;
+    /**
+     * Number of rows that passed for this dimension combination
+     */
+    passedRows?: number;
+    /**
+     * Percentage of rows that passed for this dimension combination
+     */
+    passedRowsPercentage?: number;
+    /**
+     * Details of test case results for this dimension combination
+     */
+    result?: string;
+    /**
+     * Reference to the test case for efficient querying of dimensional time series
+     */
+    testCase?: EntityReference;
+    /**
+     * Reference to the parent TestCaseResult execution that generated this dimensional result
+     */
+    testCaseResultId: string;
+    /**
+     * Status of the test for this dimension combination
+     */
+    testCaseStatus: TestCaseStatus;
+    /**
+     * Test result values for this dimension combination
+     */
+    testResultValue?: TestResultValue[];
+    /**
+     * Timestamp when the dimensional test result was captured (same as parent TestCaseResult)
+     */
+    timestamp: number;
+}
+
+/**
+ * A single dimension name-value pair for dimensional test results
+ */
+export interface DimensionValue {
+    /**
+     * Name of the dimension (e.g., 'column', 'region', 'tier')
+     */
+    name: string;
+    /**
+     * Value for this dimension (e.g., 'address', 'US', 'gold')
+     */
+    value: string;
 }
 
 /**
@@ -518,6 +682,11 @@ export interface TaskDetails {
      */
     closedBy?: string;
     /**
+     * The recognizer feedback that we're reviewing for the Tag that's supposed to be pointed by
+     * this task
+     */
+    feedback?: RecognizerFeedback;
+    /**
      * Unique identifier that identifies the task.
      */
     id: number;
@@ -529,7 +698,11 @@ export interface TaskDetails {
      * The value of old object for which the task is created.
      */
     oldValue?: string;
-    status?:   ThreadTaskStatus;
+    /**
+     * Metadata about the recognizer that applied the tag being reviewed
+     */
+    recognizer?: TagLabelRecognizerMetadata;
+    status?:     ThreadTaskStatus;
     /**
      * The suggestion object to replace the old value for which the task is created.
      */
@@ -539,6 +712,186 @@ export interface TaskDetails {
      */
     testCaseResolutionStatusId?: string;
     type:                        TaskType;
+}
+
+/**
+ * The recognizer feedback that we're reviewing for the Tag that's supposed to be pointed by
+ * this task
+ *
+ * User feedback on auto-applied tags from recognizers
+ */
+export interface RecognizerFeedback {
+    createdAt?: number;
+    /**
+     * User who provided the feedback
+     */
+    createdBy?: EntityReference;
+    /**
+     * Link to the specific field where the tag was incorrectly applied (e.g.,
+     * <#E::table::customers::columns::company_name>)
+     */
+    entityLink: string;
+    /**
+     * Type of feedback
+     */
+    feedbackType: FeedbackType;
+    /**
+     * Unique identifier of the feedback
+     */
+    id?: string;
+    /**
+     * Information about which recognizer triggered this
+     */
+    recognizerInfo?: RecognizerInfo;
+    /**
+     * How this feedback was resolved
+     */
+    resolution?: Resolution;
+    /**
+     * Example values from this field that triggered the false positive (anonymized)
+     */
+    sampleValues?: string[];
+    /**
+     * Processing status
+     */
+    status?: Status;
+    /**
+     * Tag the user thinks should be applied instead (optional)
+     */
+    suggestedTag?: string;
+    /**
+     * Fully qualified name of the incorrectly applied tag
+     */
+    tagFQN: string;
+    /**
+     * Additional context from the user
+     */
+    userComments?: string;
+    /**
+     * User-selected reason for reporting
+     */
+    userReason?: UserReason;
+}
+
+/**
+ * Type of feedback
+ */
+export enum FeedbackType {
+    ContextSpecific = "CONTEXT_SPECIFIC",
+    FalsePositive = "FALSE_POSITIVE",
+    IncorrectClassification = "INCORRECT_CLASSIFICATION",
+    OverlyBroad = "OVERLY_BROAD",
+}
+
+/**
+ * Information about which recognizer triggered this
+ */
+export interface RecognizerInfo {
+    confidenceScore?: number;
+    /**
+     * The pattern that matched (for debugging)
+     */
+    matchPattern?:   string;
+    recognizerId?:   string;
+    recognizerName?: string;
+    [property: string]: any;
+}
+
+/**
+ * How this feedback was resolved
+ */
+export interface Resolution {
+    action?:          Action;
+    resolutionNotes?: string;
+    resolvedAt?:      number;
+    resolvedBy?:      EntityReference;
+    [property: string]: any;
+}
+
+export enum Action {
+    AddedToExceptionList = "ADDED_TO_EXCEPTION_LIST",
+    NoActionNeeded = "NO_ACTION_NEEDED",
+    PatternAdjusted = "PATTERN_ADJUSTED",
+    RecognizerDisabledForEntity = "RECOGNIZER_DISABLED_FOR_ENTITY",
+    ThresholdIncreased = "THRESHOLD_INCREASED",
+}
+
+/**
+ * Processing status
+ */
+export enum Status {
+    Applied = "APPLIED",
+    Pending = "PENDING",
+    Rejected = "REJECTED",
+    Reviewed = "REVIEWED",
+}
+
+/**
+ * User-selected reason for reporting
+ */
+export enum UserReason {
+    EncryptedData = "ENCRYPTED_DATA",
+    InternalIdentifier = "INTERNAL_IDENTIFIER",
+    NotSensitiveData = "NOT_SENSITIVE_DATA",
+    Other = "OTHER",
+    PublicInformation = "PUBLIC_INFORMATION",
+    TestData = "TEST_DATA",
+    WrongDataType = "WRONG_DATA_TYPE",
+}
+
+/**
+ * Metadata about the recognizer that applied the tag being reviewed
+ *
+ * Metadata about the recognizer that applied a tag, including scoring and pattern
+ * information.
+ */
+export interface TagLabelRecognizerMetadata {
+    /**
+     * Details of patterns that matched during recognition
+     */
+    patterns?: PatternMatch[];
+    /**
+     * Unique identifier of the recognizer that applied this tag
+     */
+    recognizerId: string;
+    /**
+     * Human-readable name of the recognizer
+     */
+    recognizerName: string;
+    /**
+     * Confidence score assigned by the recognizer (0.0 to 1.0)
+     */
+    score: number;
+    /**
+     * What the recognizer analyzed to apply this tag
+     */
+    target?: Target;
+}
+
+/**
+ * Information about a pattern that matched during recognition
+ */
+export interface PatternMatch {
+    /**
+     * Name of the pattern that matched
+     */
+    name: string;
+    /**
+     * Regular expression or pattern definition
+     */
+    regex?: string;
+    /**
+     * Confidence score for this specific pattern match
+     */
+    score: number;
+}
+
+/**
+ * What the recognizer analyzed to apply this tag
+ */
+export enum Target {
+    ColumnName = "column_name",
+    Content = "content",
 }
 
 /**
@@ -554,6 +907,7 @@ export enum ThreadTaskStatus {
  */
 export enum TaskType {
     Generic = "Generic",
+    RecognizerFeedbackApproval = "RecognizerFeedbackApproval",
     RequestApproval = "RequestApproval",
     RequestDescription = "RequestDescription",
     RequestTag = "RequestTag",

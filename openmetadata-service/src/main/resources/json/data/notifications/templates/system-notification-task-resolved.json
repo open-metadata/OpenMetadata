@@ -1,0 +1,9 @@
+{
+  "name": "system-notification-task-resolved",
+  "fullyQualifiedName": "system-notification-task-resolved",
+  "displayName": "Task Resolved Notification",
+  "description": "System default template for task resolution notifications",
+  "provider": "system",
+  "templateSubject": "[{{publisherName}}] - Change Event Update from {{emailingEntity}}",
+  "templateBody": "<strong>@{{entity.updatedBy}}</strong> resolved a <strong>{{camelCaseToTitle entity.task.type}}</strong> task for <strong>{{camelCaseToTitle entity.entityRef.type}}</strong> <a href=\"{{buildEntityUrl entity.entityRef.type entity.entityRef.fullyQualifiedName}}/activity_feed/tasks\">{{#if entity.entityRef.displayName}}{{entity.entityRef.displayName}}{{else}}{{entity.entityRef.fullyQualifiedName}}{{/if}}</a><br><br><strong>✅ Resolved task details:</strong><ul><li><strong>Assignees:</strong> {{#each entity.task.assignees}}@{{#if displayName}}{{displayName}}{{else}}{{name}}{{/if}}{{#unless @last}}, {{/unless}}{{/each}}</li>{{#if entity.task.newValue}}<li><strong>Description:</strong></li>{{/if}}</ul>{{#if entity.task.newValue}}<blockquote>{{{processMentions entity.task.newValue}}}</blockquote>{{/if}}"
+}

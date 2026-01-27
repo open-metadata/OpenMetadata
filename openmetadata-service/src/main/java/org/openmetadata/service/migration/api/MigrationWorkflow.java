@@ -1,9 +1,11 @@
 package org.openmetadata.service.migration.api;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.util.EntityUtil.hash;
 import static org.openmetadata.service.util.OpenMetadataOperations.printToAsciiTable;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -11,9 +13,19 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.flywaydb.core.api.configuration.ClassicConfiguration;
+import org.flywaydb.core.api.configuration.Configuration;
+import org.flywaydb.core.internal.database.postgresql.PostgreSQLParser;
+import org.flywaydb.core.internal.parser.Parser;
+import org.flywaydb.core.internal.parser.ParsingContext;
+import org.flywaydb.core.internal.resource.filesystem.FileSystemResource;
+import org.flywaydb.core.internal.sqlscript.SqlStatementIterator;
+import org.flywaydb.database.mysql.MySQLParser;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.json.JSONObject;
@@ -23,6 +35,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationWorkflowContext;
+import org.openmetadata.service.migration.utils.FlywayMigrationFile;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.util.AsciiTable;
 
@@ -35,6 +48,7 @@ public class MigrationWorkflow {
   private final String nativeSQLScriptRootPath;
   private final ConnectionType connectionType;
   private final String extensionSQLScriptRootPath;
+  private final String flywayPath;
   @Getter private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private final MigrationDAO migrationDAO;
   private final Jdbi jdbi;
@@ -47,6 +61,7 @@ public class MigrationWorkflow {
       String nativeSQLScriptRootPath,
       ConnectionType connectionType,
       String extensionSQLScriptRootPath,
+      String flywayPath,
       OpenMetadataApplicationConfig config,
       boolean forceMigrations) {
     this.jdbi = jdbi;
@@ -55,17 +70,30 @@ public class MigrationWorkflow {
     this.nativeSQLScriptRootPath = nativeSQLScriptRootPath;
     this.connectionType = connectionType;
     this.extensionSQLScriptRootPath = extensionSQLScriptRootPath;
+    this.flywayPath = flywayPath;
     this.openMetadataApplicationConfig = config;
   }
 
   public void loadMigrations() {
+    // Migrate Flyway history if this is a force migration on an existing database that was
+    // previously managed by Flyway. This must happen BEFORE parsing SQL files.
+    // 1. Migrate DATABASE_CHANGE_LOG entries to SERVER_CHANGE_LOG
+    // 2. Pre-populate SERVER_MIGRATION_SQL_LOGS so flyway queries don't re-execute
+    // NOTE: DO NOT REMOVE
+    if (hasExistingFlywayHistory()) {
+      migrateFlywayToServerChangeLogs();
+      prePopulateFlywayMigrationSQLLogs();
+      dropFlywayTable();
+    }
+
     // Sort Migration on the basis of version
     List<MigrationFile> availableMigrations =
         getMigrationFiles(
             nativeSQLScriptRootPath,
             connectionType,
             openMetadataApplicationConfig,
-            extensionSQLScriptRootPath);
+            extensionSQLScriptRootPath,
+            flywayPath);
     // Filter Migrations to Be Run
     this.migrations = filterAndGetMigrationsToRun(availableMigrations);
   }
@@ -84,27 +112,35 @@ public class MigrationWorkflow {
       String nativeSQLScriptRootPath,
       ConnectionType connectionType,
       OpenMetadataApplicationConfig config,
-      String extensionSQLScriptRootPath) {
+      String extensionSQLScriptRootPath,
+      String flywayPath) {
     List<MigrationFile> availableOMNativeMigrations =
         getMigrationFilesFromPath(nativeSQLScriptRootPath, connectionType, config, false);
 
-    // If we only have OM migrations, return them
-    if (extensionSQLScriptRootPath == null || extensionSQLScriptRootPath.isEmpty()) {
-      return availableOMNativeMigrations;
+    // Get Flyway migrations first (they should run before native migrations)
+    List<FlywayMigrationFile> availableFlywayMigrations =
+        FlywayMigrationFile.getFlywayMigrationFiles(
+            flywayPath, connectionType, config, migrationDAO);
+
+    // Get extension migrations if available
+    List<MigrationFile> availableExtensionMigrations = new ArrayList<>();
+    if (extensionSQLScriptRootPath != null && !extensionSQLScriptRootPath.isEmpty()) {
+      availableExtensionMigrations =
+          getMigrationFilesFromPath(extensionSQLScriptRootPath, connectionType, config, true);
     }
 
-    // Otherwise, fetch the extension migrations and sort the executions
-    List<MigrationFile> availableExtensionMigrations =
-        getMigrationFilesFromPath(extensionSQLScriptRootPath, connectionType, config, true);
-
     /*
-     If we create migrations version as:
-       - OpenMetadata: 1.1.0, 1.1.1, 1.2.0
-       - Extension: 1.1.0-extension, 1.2.0-extension
-     The end result will be 1.1.0, 1.1.0-extension, 1.1.1, 1.2.0, 1.2.0-extension
+     Combined execution order:
+       1. Flyway migrations (legacy SQL files from Flyway)
+       2. OpenMetadata native migrations
+       3. Extension migrations
+     All sorted by version within their respective groups
     */
-    return Stream.concat(
-            availableOMNativeMigrations.stream(), availableExtensionMigrations.stream())
+    return Stream.of(
+            availableFlywayMigrations.stream().map(f -> (MigrationFile) f),
+            availableOMNativeMigrations.stream(),
+            availableExtensionMigrations.stream())
+        .flatMap(stream -> stream)
         .sorted()
         .toList();
   }
@@ -123,7 +159,14 @@ public class MigrationWorkflow {
   private List<MigrationProcess> filterAndGetMigrationsToRun(
       List<MigrationFile> availableMigrations) {
     LOG.debug("Filtering Server Migrations");
-    executedMigrations = migrationDAO.getMigrationVersions();
+    try {
+      executedMigrations = migrationDAO.getMigrationVersions();
+    } catch (Exception e) {
+      // SERVER_CHANGE_LOG table doesn't exist yet, run all migrations including Flyway
+      LOG.info(
+          "SERVER_CHANGE_LOG table doesn't exist yet, will run all migrations including Flyway");
+      executedMigrations = new ArrayList<>();
+    }
     currentMaxMigrationVersion =
         executedMigrations.stream().max(MigrationWorkflow::compareVersions);
     List<MigrationFile> applyMigrations;
@@ -406,5 +449,210 @@ public class MigrationWorkflow {
         step.getMigrationsPath(),
         UUID.randomUUID().toString(),
         metrics.toString());
+  }
+
+  private boolean hasExistingFlywayHistory() {
+    try (Handle handle = jdbi.open()) {
+      String checkTableQuery =
+          connectionType == ConnectionType.MYSQL
+              ? "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'DATABASE_CHANGE_LOG'"
+              : "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'DATABASE_CHANGE_LOG'";
+
+      Integer tableExists = handle.createQuery(checkTableQuery).mapTo(Integer.class).one();
+      if (tableExists == null || tableExists == 0) {
+        return false;
+      }
+
+      String countQuery =
+          connectionType == ConnectionType.MYSQL
+              ? "SELECT COUNT(*) FROM DATABASE_CHANGE_LOG WHERE success = true"
+              : "SELECT COUNT(*) FROM \"DATABASE_CHANGE_LOG\" WHERE success = true";
+
+      Integer count = handle.createQuery(countQuery).mapTo(Integer.class).one();
+      return count != null && count > 0;
+    } catch (Exception e) {
+      LOG.debug("Error checking for existing Flyway history: {}", e.getMessage());
+      return false;
+    }
+  }
+
+  private void dropFlywayTable() {
+    // Drop the old DATABASE_CHANGE_LOG table after successful migration
+    try (Handle handle = jdbi.open()) {
+      String dropTableQuery =
+          connectionType == ConnectionType.MYSQL
+              ? "DROP TABLE IF EXISTS DATABASE_CHANGE_LOG"
+              : "DROP TABLE IF EXISTS \"DATABASE_CHANGE_LOG\"";
+
+      try {
+        handle.createUpdate(dropTableQuery).execute();
+        LOG.info("Dropped legacy DATABASE_CHANGE_LOG table");
+      } catch (Exception e) {
+        LOG.warn("Could not drop DATABASE_CHANGE_LOG table: {}", e.getMessage());
+      }
+    }
+  }
+
+  private void migrateFlywayToServerChangeLogs() {
+    LOG.info("Migrating Flyway history from DATABASE_CHANGE_LOG to SERVER_CHANGE_LOG");
+
+    try (Handle handle = jdbi.open()) {
+      // Check if Flyway records have already been migrated
+      String checkMigratedQuery =
+          connectionType == ConnectionType.MYSQL
+              ? """
+              SELECT COUNT(*) FROM SERVER_CHANGE_LOG scl
+              INNER JOIN DATABASE_CHANGE_LOG dcl ON CONCAT('0.0.', CAST(dcl.version AS UNSIGNED)) = scl.version
+              WHERE scl.migrationfilename LIKE '%flyway%'
+              """
+              : """
+              SELECT COUNT(*) FROM SERVER_CHANGE_LOG scl
+              INNER JOIN "DATABASE_CHANGE_LOG" dcl ON '0.0.' || CAST(dcl.version AS INTEGER) = scl.version
+              WHERE scl.migrationfilename LIKE '%flyway%'
+              """;
+
+      try {
+        Integer alreadyMigrated = handle.createQuery(checkMigratedQuery).mapTo(Integer.class).one();
+        if (alreadyMigrated != null && alreadyMigrated > 0) {
+          LOG.info("Flyway records already migrated to SERVER_CHANGE_LOG, skipping");
+          return;
+        }
+      } catch (Exception e) {
+        // SERVER_CHANGE_LOG might not exist yet, continue with migration
+        LOG.debug("Could not check if already migrated: {}", e.getMessage());
+      }
+
+      // Insert v0.0.0 baseline record if not present
+      String insertBaselineQuery =
+          connectionType == ConnectionType.MYSQL
+              ? """
+              INSERT IGNORE INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
+              VALUES ('0.0.0', 'bootstrap/sql/migrations/flyway/com.mysql.cj.jdbc.Driver/v000__create_server_change_log.sql', '0', NOW(), NULL)
+              """
+              : """
+              INSERT INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
+              VALUES ('0.0.0', 'bootstrap/sql/migrations/flyway/org.postgresql.Driver/v000__create_server_change_log.sql', '0', current_timestamp, NULL)
+              ON CONFLICT (version) DO NOTHING
+              """;
+
+      try {
+        handle.createUpdate(insertBaselineQuery).execute();
+      } catch (Exception e) {
+        LOG.debug("Could not insert baseline record: {}", e.getMessage());
+      }
+
+      // Migrate Flyway migration records to SERVER_CHANGE_LOG
+      String dbDir = connectionType == ConnectionType.MYSQL ? "mysql" : "postgres";
+      String insertQuery =
+          connectionType == ConnectionType.MYSQL
+              ? String.format(
+                  """
+                  INSERT INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
+                  SELECT CONCAT('0.0.', CAST(version AS UNSIGNED)) as version,
+                         CASE
+                           WHEN script LIKE 'v%%__.sql' THEN CONCAT('bootstrap/sql/migrations/flyway/%s/', script)
+                           ELSE CONCAT('bootstrap/sql/migrations/flyway/%s/v', version, '__', REPLACE(LOWER(description), ' ', '_'), '.sql')
+                         END as migrationfilename,
+                         '0' as checksum,
+                         installed_on,
+                         NULL as metrics
+                  FROM DATABASE_CHANGE_LOG
+                  WHERE CONCAT('0.0.', CAST(version AS UNSIGNED)) NOT IN (SELECT version FROM SERVER_CHANGE_LOG)
+                  AND success = true
+                  """,
+                  "com.mysql.cj.jdbc.Driver", "com.mysql.cj.jdbc.Driver")
+              : String.format(
+                  """
+                  INSERT INTO SERVER_CHANGE_LOG (version, migrationfilename, checksum, installed_on, metrics)
+                  SELECT '0.0.' || CAST(version AS INTEGER) as version,
+                         CASE
+                           WHEN script LIKE 'v%%__.sql' THEN 'bootstrap/sql/migrations/flyway/%s/' || script
+                           ELSE 'bootstrap/sql/migrations/flyway/%s/v' || version || '__' || REPLACE(LOWER(description), ' ', '_') || '.sql'
+                         END as migrationfilename,
+                         '0' as checksum,
+                         installed_on,
+                         NULL as metrics
+                  FROM "DATABASE_CHANGE_LOG"
+                  WHERE '0.0.' || CAST(version AS INTEGER) NOT IN (SELECT version FROM SERVER_CHANGE_LOG)
+                  AND success = true
+                  """,
+                  "org.postgresql.Driver", "org.postgresql.Driver");
+
+      int migratedCount = handle.createUpdate(insertQuery).execute();
+      LOG.info("Migrated {} Flyway records to SERVER_CHANGE_LOG", migratedCount);
+    } catch (Exception e) {
+      LOG.error("Error during Flyway history migration to SERVER_CHANGE_LOG", e);
+    }
+  }
+
+  private void prePopulateFlywayMigrationSQLLogs() {
+    LOG.info("Pre-populating SERVER_MIGRATION_SQL_LOGS with existing Flyway SQL statements");
+
+    if (flywayPath == null || flywayPath.isEmpty()) {
+      return;
+    }
+
+    String dbSubDir =
+        connectionType == ConnectionType.MYSQL
+            ? "com.mysql.cj.jdbc.Driver"
+            : "org.postgresql.Driver";
+    File flywayDir = new File(flywayPath, dbSubDir);
+
+    if (!flywayDir.exists() || !flywayDir.isDirectory()) {
+      LOG.info("Flyway migration directory does not exist: {}", flywayDir.getPath());
+      return;
+    }
+
+    File[] sqlFiles = flywayDir.listFiles((dir, name) -> name.endsWith(".sql"));
+    if (sqlFiles == null || sqlFiles.length == 0) {
+      return;
+    }
+
+    Pattern versionPattern = Pattern.compile("v(\\d+)__.*\\.sql");
+    ParsingContext parsingContext = new ParsingContext();
+    Configuration configuration = new ClassicConfiguration();
+    Parser parser =
+        connectionType == ConnectionType.MYSQL
+            ? new MySQLParser(configuration, parsingContext)
+            : new PostgreSQLParser(configuration, parsingContext);
+
+    int totalStatements = 0;
+    for (File sqlFile : sqlFiles) {
+      Matcher matcher = versionPattern.matcher(sqlFile.getName());
+      if (!matcher.matches()) {
+        continue;
+      }
+
+      String flywayVersion = matcher.group(1);
+      // Parse as integer to remove leading zeros (e.g., "001" -> 1)
+      String omVersion = "0.0." + Integer.parseInt(flywayVersion);
+
+      try (SqlStatementIterator iterator =
+          parser.parse(
+              new FileSystemResource(
+                  null, sqlFile.getAbsolutePath(), StandardCharsets.UTF_8, true))) {
+        while (iterator.hasNext()) {
+          String sql = iterator.next().getSql();
+          if (sql != null && !sql.isBlank()) {
+            String checksum = hash(sql);
+            try {
+              String existingQuery = migrationDAO.checkIfQueryPreviouslyRan(checksum);
+              if (existingQuery == null) {
+                migrationDAO.upsertServerMigrationSQL(omVersion, sql, checksum);
+                totalStatements++;
+              }
+            } catch (Exception e) {
+              LOG.debug(
+                  "Error inserting SQL statement from {}: {}", sqlFile.getName(), e.getMessage());
+            }
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed to parse SQL file {}: {}", sqlFile.getName(), e.getMessage());
+      }
+    }
+
+    LOG.info(
+        "Pre-populated {} Flyway SQL statements into SERVER_MIGRATION_SQL_LOGS", totalStatements);
   }
 }

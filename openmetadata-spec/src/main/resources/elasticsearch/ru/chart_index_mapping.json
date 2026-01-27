@@ -267,6 +267,14 @@
           }
         }
       },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "tags": {
         "properties": {
           "tagFQN": {
@@ -328,7 +336,14 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text"

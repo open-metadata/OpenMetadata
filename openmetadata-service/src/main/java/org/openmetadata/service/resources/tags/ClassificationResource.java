@@ -79,7 +79,7 @@ public class ClassificationResource
     extends EntityResource<Classification, ClassificationRepository> {
   private final ClassificationMapper mapper = new ClassificationMapper();
   public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
-  static final String FIELDS = "owners,reviewers,usageCount,termCount";
+  static final String FIELDS = "owners,reviewers,usageCount,termCount,autoClassificationConfig";
 
   static class ClassificationList extends ResultList<Classification> {
     /* Required for serde */
@@ -182,8 +182,17 @@ public class ClassificationResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @GET

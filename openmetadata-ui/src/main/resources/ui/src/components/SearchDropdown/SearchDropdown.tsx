@@ -68,7 +68,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   independent = false,
   hideCounts = false,
   hasNullOption = false,
+  showSelectedCounts = false,
   triggerButtonSize = 'small',
+  hideSearchBar = false,
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
@@ -79,9 +81,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     SearchDropdownOption[]
   >([]);
   const [nullOptionSelected, setNullOptionSelected] = useState<boolean>(false);
-  const nullLabelText = t('label.no-entity', {
-    entity: label,
-  });
+
+  const nullLabelText = t('label.no-entity', { entity: label });
 
   // derive menu props from options and selected keys
   const menuOptions: MenuProps['items'] = useMemo(() => {
@@ -206,7 +207,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   const getDropdownBody = useCallback(
     (menuNode: ReactNode) => {
       const entityLabel = index && tabsInfo[index]?.label;
-      const isDomainKey = searchKey.startsWith('domain');
+      const isDomainKey = searchKey?.startsWith('domain') ?? false;
       if (isSuggestionsLoading) {
         return (
           <Row align="middle" className="p-y-sm" justify="center">
@@ -243,19 +244,21 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         className="custom-dropdown-render"
         data-testid="drop-down-menu">
         <Space className="w-full" direction="vertical" size={0}>
-          <div className="p-t-sm p-x-sm">
-            <Input
-              autoFocus
-              data-testid="search-input"
-              placeholder={`${t('label.search-entity', {
-                entity: label,
-              })}...`}
-              onChange={(e) => {
-                const { value } = e.target;
-                debouncedOnSearch(value);
-              }}
-            />
-          </div>
+          {!hideSearchBar && (
+            <div className="p-t-sm p-x-sm">
+              <Input
+                autoFocus
+                data-testid="search-input"
+                placeholder={`${t('label.search-entity', {
+                  entity: label,
+                })}...`}
+                onChange={(e) => {
+                  const { value } = e.target;
+                  debouncedOnSearch(value);
+                }}
+              />
+            </div>
+          )}
           {showClearAllBtn && (
             <>
               <Divider className="m-t-xs m-b-0" />
@@ -270,9 +273,12 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
               </Button>
             </>
           )}
-          <Divider
-            className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
-          />
+          {!hideSearchBar && (
+            <Divider
+              className={classNames(showClearAllBtn ? 'm-y-0' : 'm-t-xs m-b-0')}
+            />
+          )}
+
           {hasNullOption && (
             <>
               <div className="d-flex items-center m-x-sm m-y-xs gap-2">
@@ -319,6 +325,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       getDropdownBody,
       handleUpdate,
       handleDropdownClose,
+      hideSearchBar,
     ]
   );
 
@@ -349,7 +356,11 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           className="quick-filter-dropdown-trigger-btn"
           size={triggerButtonSize}>
           <Space data-testid={`search-dropdown-${label}`} size={4}>
-            <Space size={0}>
+            <Space
+              className={classNames({
+                active: selectedKeys.length > 0,
+              })}
+              size={0}>
               <Typography.Text className="filters-label font-medium">
                 {label}
               </Typography.Text>
@@ -357,7 +368,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
                 <span>
                   {': '}
                   <Typography.Text className="text-primary font-medium">
-                    {getSelectedOptionLabelString(selectedKeys)}
+                    {showSelectedCounts
+                      ? `(${selectedKeys.length})`
+                      : getSelectedOptionLabelString(selectedKeys)}
                   </Typography.Text>
                 </span>
               )}

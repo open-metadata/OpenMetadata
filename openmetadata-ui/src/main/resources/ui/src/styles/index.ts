@@ -49,6 +49,7 @@ import './components/select.less';
 import './components/size.less';
 import './components/slider.less';
 import './components/step.less';
+import './components/tags.less';
 import './fonts.less';
 import './modal.less';
 import './temp.css';

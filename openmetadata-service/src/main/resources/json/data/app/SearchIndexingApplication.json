@@ -5,7 +5,7 @@
     "entities": [
       "all"
     ],
-    "recreateIndex": false,
+    "recreateIndex": true,
     "batchSize": "100",
     "payLoadSize": 104857600,
     "producerThreads": 1,

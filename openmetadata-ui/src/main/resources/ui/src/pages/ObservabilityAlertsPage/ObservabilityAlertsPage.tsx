@@ -12,7 +12,7 @@
  */
 import { Button, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -21,7 +21,6 @@ import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -31,6 +30,7 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -53,6 +53,7 @@ import {
   getObservabilityAlertDetailsPath,
   getObservabilityAlertsEditPath,
 } from '../../utils/RouterUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ObservabilityAlertsPage = () => {
@@ -70,6 +71,7 @@ const ObservabilityAlertsPage = () => {
     handlePagingChange,
     showPagination,
     paging,
+    pagingCursor,
   } = usePaging();
   const { getResourceLimit } = useLimitStore();
   const { getEntityPermissionByFqn, getResourcePermission } =
@@ -161,8 +163,14 @@ const ObservabilityAlertsPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchAlerts();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchAlerts({ [cursorType]: cursorValue });
+    } else {
+      fetchAlerts();
+    }
+  }, [pageSize, pagingCursor]);
 
   const handleAlertDelete = useCallback(async () => {
     try {
@@ -178,7 +186,11 @@ const ObservabilityAlertsPage = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         fetchAlerts({ [cursorType]: paging[cursorType] });
-        handlePageChange(currentPage);
+        handlePageChange(
+          currentPage,
+          { cursorType, cursorValue: paging[cursorType] },
+          pageSize
+        );
       }
     },
     [paging]
@@ -212,22 +224,7 @@ const ObservabilityAlertsPage = () => {
           return resources?.join(', ') || '--';
         },
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        flex: true,
-        key: 'description',
-        render: (description: string) =>
-          isEmpty(description) ? (
-            <Typography.Text className="text-grey-muted">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </Typography.Text>
-          ) : (
-            <RichTextEditorPreviewerNew markdown={description} />
-          ),
-      },
+      ...descriptionTableObject(),
       {
         title: t('label.action-plural'),
         dataIndex: 'fullyQualifiedName',
@@ -298,8 +295,12 @@ const ObservabilityAlertsPage = () => {
     <PageLayoutV1 pageTitle={t('label.observability-alert')}>
       <Row gutter={[0, 16]}>
         <Col span={24}>
-          <div className="d-flex justify-between">
-            <PageHeader data={pageHeaderData} />
+          <div className="d-flex justify-between m-t-xs">
+            <PageHeader
+              data={pageHeaderData}
+              learningPageId={LEARNING_PAGE_IDS.DATA_OBSERVABILITY}
+              title={t('label.observability-alert')}
+            />
             {(alertResourcePermission?.Create ||
               alertResourcePermission?.All) && (
               <LimitWrapper resource="eventsubscription">

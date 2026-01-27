@@ -1,0 +1,26 @@
+{
+  "$id": "https://open-metadata.org/schema/type/recognizers/regexFlags.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RegexFlags",
+  "description": "Regex flags used for PatternRecognizers",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.recognizers.RegexFlags",
+  "properties": {
+    "dotAll": {
+      "description": "DOTALL flag - `.` matches newlines",
+      "type": "boolean",
+      "default": true
+    },
+    "multiline": {
+      "description": "MULTILINE flag - `^` and `$` match line boundaries",
+      "type": "boolean",
+      "default": true
+    },
+    "ignoreCase": {
+      "description": "IGNORECASE flag - case insensitive matching",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,10 @@
+{
+  "name": "DataProducts",
+  "displayName": "Data Products",
+  "description": "Highlights data products across the platform for quicker access to frequently used or high-value products.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.DataProducts",
+  "data": {
+    "gridSizes": ["small"]
+  }
+}

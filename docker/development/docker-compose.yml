@@ -75,8 +75,8 @@ services:
       SERVER_PORT: ${SERVER_PORT:-8585}
       SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT:-8586}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      
-      # Migration 
+
+      # Migration
       MIGRATION_LIMIT_PARAM: ${MIGRATION_LIMIT_PARAM:-1200}
 
       # OpenMetadata Server Authentication Configuration
@@ -197,6 +197,13 @@ services:
       ELASTICSEARCH_BATCH_SIZE: ${ELASTICSEARCH_BATCH_SIZE:-100}
       ELASTICSEARCH_PAYLOAD_BYTES_SIZE: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}   #max payLoadSize in Bytes
       ELASTICSEARCH_INDEX_MAPPING_LANG: ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
+      # AWS IAM Authentication for OpenSearch (auto-enabled when AWS_DEFAULT_REGION is set)
+      # Uses standard AWS env vars: https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-envvars.html
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-""}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-""}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-""}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-""}
+      SEARCH_AWS_SERVICE_NAME: ${SEARCH_AWS_SERVICE_NAME:-"es"}
 
       #eventMonitoringConfiguration
       EVENT_MONITOR: ${EVENT_MONITOR:-prometheus}
@@ -413,6 +420,13 @@ services:
       ELASTICSEARCH_BATCH_SIZE: ${ELASTICSEARCH_BATCH_SIZE:-100}
       ELASTICSEARCH_PAYLOAD_BYTES_SIZE: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}   #max payLoadSize in Bytes
       ELASTICSEARCH_INDEX_MAPPING_LANG: ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
+      # AWS IAM Authentication for OpenSearch (auto-enabled when AWS_DEFAULT_REGION is set)
+      # Uses standard AWS env vars: https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-envvars.html
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-""}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-""}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-""}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-""}
+      SEARCH_AWS_SERVICE_NAME: ${SEARCH_AWS_SERVICE_NAME:-"es"}
 
       #eventMonitoringConfiguration
       EVENT_MONITOR: ${EVENT_MONITOR:-prometheus}
@@ -496,6 +510,7 @@ services:
     environment:
       AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__LOGGING__LOGGING_LEVEL: ${AIRFLOW_LOGGING_LEVEL:-DEBUG}
       AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: "/opt/airflow/dag_generated_configs"
       DB_HOST: ${AIRFLOW_DB_HOST:-mysql}
       DB_PORT: ${AIRFLOW_DB_PORT:-3306}
@@ -515,6 +530,8 @@ services:
       # AIRFLOW__LINEAGE__AIRFLOW_SERVICE_NAME: local_airflow
       # AIRFLOW__LINEAGE__OPENMETADATA_API_ENDPOINT: http://openmetadata-server:8585/api
       # AIRFLOW__LINEAGE__JWT_TOKEN: ...
+      # AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+      # AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: true
 
       ## Secrets Manager
       # To integrate Azure Key Vault

@@ -63,6 +63,8 @@ class MongodbSource(CommonNoSQLSource):
         need to be overridden by sources
         """
         try:
+            if self.service_connection.databaseSchema:
+                return [self.service_connection.databaseSchema]
             return self.mongodb.list_database_names()
         except Exception as exp:
             logger.debug(f"Failed to list database names: {exp}")

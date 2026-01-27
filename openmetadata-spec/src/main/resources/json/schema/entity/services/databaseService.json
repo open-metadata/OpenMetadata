@@ -21,6 +21,7 @@
         "Redshift",
         "Snowflake",
         "Postgres",
+        "Timescale",
         "Mssql",
         "Oracle",
         "Athena",
@@ -53,6 +54,7 @@
         "Couchbase",
         "Greenplum",
         "Doris",
+        "StarRocks",
         "UnityCatalog",
         "SAS",
         "Iceberg",
@@ -63,7 +65,9 @@
         "Cockroach",
         "SSAS",
         "Epic",
-        "ServiceNow"
+        "ServiceNow",
+        "Dremio",
+        "MicrosoftFabric"
       ],
       "javaEnums": [
         {
@@ -83,6 +87,9 @@
         },
         {
           "name": "Postgres"
+        },
+        {
+          "name": "Timescale"
         },
         {
           "name": "Mssql"
@@ -181,6 +188,9 @@
           "name": "Doris"
         },
         {
+          "name": "StarRocks"
+        },
+        {
           "name": "UnityCatalog"
         },
         {
@@ -212,6 +222,12 @@
         },
         {
           "name": "ServiceNow"
+        },
+        {
+          "name": "Dremio"
+        },
+        {
+          "name": "MicrosoftFabric"
         }
       ]
     },
@@ -283,6 +299,9 @@
               "$ref": "./connections/database/postgresConnection.json"
             },
             {
+              "$ref": "./connections/database/timescaleConnection.json"
+            },
+            {
               "$ref": "./connections/database/prestoConnection.json"
             },
             {
@@ -334,6 +353,9 @@
               "$ref": "./connections/database/dorisConnection.json"
             },
             {
+              "$ref": "./connections/database/starrocksConnection.json"
+            },
+            {
               "$ref": "./connections/database/unityCatalogConnection.json"
             },
             {
@@ -365,6 +387,12 @@
             },
             {
               "$ref": "./connections/database/serviceNowConnection.json"
+            },
+            {
+              "$ref": "./connections/database/dremioConnection.json"
+            },
+            {
+              "$ref": "./connections/database/microsoftFabricConnection.json"
             }
           ]
         }
@@ -427,6 +455,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "owners": {
       "description": "Owners of this database service.",

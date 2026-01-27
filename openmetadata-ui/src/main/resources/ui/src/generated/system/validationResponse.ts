@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -23,6 +23,10 @@ export interface ValidationResponse {
      */
     jwks?: StepValidation;
     /**
+     * Log storage connectivity check (only shown if S3 storage is configured)
+     */
+    logStorage?: StepValidation;
+    /**
      * List migration results
      */
     migrations?: StepValidation;
@@ -34,12 +38,15 @@ export interface ValidationResponse {
      * Search instance connectivity check
      */
     searchInstance?: StepValidation;
+    [property: string]: any;
 }
 
 /**
  * Database connectivity check
  *
  * JWKs validation
+ *
+ * Log storage connectivity check (only shown if S3 storage is configured)
  *
  * List migration results
  *

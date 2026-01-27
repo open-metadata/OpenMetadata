@@ -242,6 +242,9 @@ export const resetTokenFromBotPage = async (page: Page, botName: string) => {
     await expect(page.getByTestId('save-button')).toBeVisible();
 
     await page.getByTestId('save-button').click();
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   } else if (isAuthMechanismVisible) {
     await page.getByTestId('auth-mechanism').click();
   }

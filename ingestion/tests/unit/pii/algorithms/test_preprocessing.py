@@ -19,9 +19,9 @@ from metadata.pii.algorithms.preprocessing import convert_to_str, preprocess_val
         ("hello", "hello"),
         (123, "123"),
         (123.45, "123.45"),
-        (b"hello", "hello"),
+        (b"hello", None),
         (None, None),
-        ({"key": "value"}, '{"key": "value"}'),
+        ({"key": "value"}, ["value"]),
         ({1, 2, 3}, None),  # Sets cannot be converted to JSON
     ],
 )
@@ -32,10 +32,10 @@ def test_converts_various_types_to_string(input_value, expected):
 @pytest.mark.parametrize(
     "input_values,expected",
     [
-        (["hello", 123, None, b"world", "", "   "], ["hello", "123", "world"]),
+        (["hello", 123, None, b"world", "", "   "], ["hello", "123"]),
         ([], []),
         ([None, "", "   "], []),
-        ([{"key": "value"}, [1, 2, 3]], ['{"key": "value"}', "[1, 2, 3]"]),
+        ([{"key": "value"}, [1, 2, 3]], ["value", "1", "2", "3"]),
     ],
 )
 def test_preprocesses_sequences_correctly(input_values, expected):

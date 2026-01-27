@@ -83,6 +83,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.TokenRepository;
@@ -110,7 +111,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     this.tokenRepository = Entity.getTokenRepository();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
-    this.isSelfSignUpAvailable = config.getAuthenticationConfiguration().getEnableSelfSignup();
+    this.isSelfSignUpAvailable =
+        SecurityConfigurationManager.getCurrentAuthConfig().getEnableSelfSignup();
   }
 
   @Override
@@ -471,6 +473,11 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     User storedUser = lookUserInProvider(email, loginRequest.getPassword());
     validatePassword(email, loginRequest.getPassword(), storedUser);
     Entity.getUserRepository().updateUserLastLoginTime(storedUser, System.currentTimeMillis());
+    if (Entity.getAuditLogRepository() != null) {
+      Entity.getAuditLogRepository()
+          .writeAuthEvent(
+              AuditLogRepository.AUTH_EVENT_LOGIN, storedUser.getName(), storedUser.getId());
+    }
     return getJwtResponse(storedUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 

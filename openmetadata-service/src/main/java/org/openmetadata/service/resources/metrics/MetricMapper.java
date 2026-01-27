@@ -15,6 +15,7 @@ public class MetricMapper implements EntityMapper<Metric, CreateMetric> {
         .withGranularity(create.getGranularity())
         .withRelatedMetrics(getEntityReferences(Entity.METRIC, create.getRelatedMetrics()))
         .withMetricType(create.getMetricType())
-        .withUnitOfMeasurement(create.getUnitOfMeasurement());
+        .withUnitOfMeasurement(create.getUnitOfMeasurement())
+        .withCustomUnitOfMeasurement(create.getCustomUnitOfMeasurement());
   }
 }

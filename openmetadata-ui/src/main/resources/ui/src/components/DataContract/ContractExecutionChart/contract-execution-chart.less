@@ -10,10 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) '../../../styles/variables.less';
+
 .contract-execution-chart-container {
-  height: 360px;
+  height: 280px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  align-items: flex-end;
+
+  .contract-execution-data-picker {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .contract-execution-chart {
+    width: 100%;
+    height: 100%;
+  }
+
+  .recharts-cartesian-axis-tick-line {
+    display: none;
+  }
+  .recharts-tooltip-cursor {
+    fill: @grey-100;
+  }
 }

@@ -1,0 +1,198 @@
+#  Copyright 2025 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Validate OpenMetadata Docker Compose
+description: Build and validate OpenMetadata Docker Compose with health checks
+
+inputs:
+  compose_file:
+    description: Path to docker-compose file
+    required: false
+    default: ./docker/docker-compose-quickstart/docker-compose.yml
+  health_check_timeout:
+    description: Timeout in seconds for health checks
+    required: false
+    default: "300"
+
+runs:
+  using: composite
+  steps:
+    - name: Free disk space
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: false
+        dotnet: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
+      # shell: bash
+      # run: |
+      #   echo "Disk space before cleanup:"
+      #   df -h
+      #   sudo rm -rf /usr/share/dotnet
+      #   sudo rm -rf /opt/ghc
+      #   sudo rm -rf "/usr/local/share/boost"
+      #   sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+      #   echo "Disk space after cleanup:"
+      #   df -h
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Validate docker-compose file syntax
+      shell: bash
+      run: |
+        docker compose -f ${{ inputs.compose_file }} config --quiet
+
+    - name: Pull Docker images
+      shell: bash
+      run: |
+        docker compose -f ${{ inputs.compose_file }} pull
+
+    - name: Start services
+      shell: bash
+      run: |
+        docker compose -f ${{ inputs.compose_file }} up -d
+
+    - name: Wait for services to be healthy
+      shell: bash
+      run: |
+        echo "Waiting for services to become healthy..."
+        TIMEOUT=${{ inputs.health_check_timeout }}
+        ELAPSED=0
+        INTERVAL=10
+
+        while [ $ELAPSED -lt $TIMEOUT ]; do
+          echo "Checking service health (${ELAPSED}s/${TIMEOUT}s)..."
+
+          # Check MySQL health
+          MYSQL_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' openmetadata_mysql 2>/dev/null || echo "starting")
+          echo "MySQL: $MYSQL_HEALTH"
+
+          # Check Elasticsearch health
+          ES_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' openmetadata_elasticsearch 2>/dev/null || echo "starting")
+          echo "Elasticsearch: $ES_HEALTH"
+
+          # Check OpenMetadata Server health
+          OM_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' openmetadata_server 2>/dev/null || echo "starting")
+          echo "OpenMetadata Server: $OM_HEALTH"
+
+          # Check if all services are healthy
+          if [ "$MYSQL_HEALTH" = "healthy" ] && [ "$ES_HEALTH" = "healthy" ] && [ "$OM_HEALTH" = "healthy" ]; then
+            echo "All services are healthy!"
+            break
+          fi
+
+          # Check for unhealthy services
+          if [ "$MYSQL_HEALTH" = "unhealthy" ] || [ "$ES_HEALTH" = "unhealthy" ] || [ "$OM_HEALTH" = "unhealthy" ]; then
+            echo "One or more services are unhealthy"
+            docker compose -f ${{ inputs.compose_file }} ps
+            docker compose -f ${{ inputs.compose_file }} logs
+            exit 1
+          fi
+
+          sleep $INTERVAL
+          ELAPSED=$((ELAPSED + INTERVAL))
+        done
+
+        if [ $ELAPSED -ge $TIMEOUT ]; then
+          echo "Timeout waiting for services to become healthy"
+          docker compose -f ${{ inputs.compose_file }} ps
+          docker compose -f ${{ inputs.compose_file }} logs
+          exit 1
+        fi
+
+    - name: Verify OpenMetadata API endpoint
+      shell: bash
+      run: |
+        echo "Testing OpenMetadata API health endpoint..."
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8585/health-check)
+        if [ "$RESPONSE" != "200" ]; then
+          echo "OpenMetadata API health check failed with status code: $RESPONSE"
+          exit 1
+        fi
+        echo "OpenMetadata API is responding correctly (HTTP $RESPONSE)"
+
+    - name: Verify Elasticsearch endpoint
+      shell: bash
+      run: |
+        echo "Testing Elasticsearch endpoint..."
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9200/_cluster/health)
+        if [ "$RESPONSE" != "200" ]; then
+          echo "Elasticsearch health check failed with status code: $RESPONSE"
+          exit 1
+        fi
+        echo "Elasticsearch is responding correctly (HTTP $RESPONSE)"
+
+    - name: Wait for ingestion container to initialize
+      shell: bash
+      run: |
+        echo "Waiting for ingestion container to fully initialize..."
+        TIMEOUT=180
+        ELAPSED=0
+        INTERVAL=10
+
+        while [ $ELAPSED -lt $TIMEOUT ]; do
+          echo "Checking ingestion health (${ELAPSED}s/${TIMEOUT}s)..."
+
+          INGESTION_STATUS=$(docker inspect --format='{{.State.Status}}' openmetadata_ingestion 2>/dev/null || echo "not_found")
+          echo "Ingestion container status: $INGESTION_STATUS"
+
+          if [ "$INGESTION_STATUS" = "running" ]; then
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health 2>/dev/null || echo "000")
+            echo "Ingestion health endpoint response: $RESPONSE"
+
+            if [ "$RESPONSE" = "200" ]; then
+              echo "Ingestion service is healthy and responding!"
+              break
+            fi
+          fi
+
+          sleep $INTERVAL
+          ELAPSED=$((ELAPSED + INTERVAL))
+        done
+
+        if [ $ELAPSED -ge $TIMEOUT ]; then
+          echo "Timeout waiting for ingestion to become healthy"
+          docker logs openmetadata_ingestion
+          exit 1
+        fi
+
+    - name: Verify ingestion endpoint
+      shell: bash
+      run: |
+        echo "Testing ingestion endpoint..."
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health)
+        if [ "$RESPONSE" != "200" ]; then
+          echo "ingestion health check failed with status code: $RESPONSE"
+          exit 1
+        fi
+        echo "ingestion is responding correctly (HTTP $RESPONSE)"
+
+    - name: Display service status
+      shell: bash
+      if: always()
+      run: |
+        echo "Docker Compose service status:"
+        docker compose -f ${{ inputs.compose_file }} ps
+
+    - name: Display logs on failure
+      shell: bash
+      if: failure()
+      run: |
+        echo "Docker Compose logs:"
+        docker compose -f ${{ inputs.compose_file }} logs
+
+    - name: Cleanup
+      shell: bash
+      if: always()
+      run: |
+        docker compose -f ${{ inputs.compose_file }} down -v

@@ -16,7 +16,6 @@ import math
 import time
 import traceback
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
 from functools import singledispatchmethod
 from typing import Any, Generic, Iterable, List, Type, TypeVar
 
@@ -41,6 +40,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
+from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.execution_time_tracker import ExecutionTimeTrackerContextMap
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.source_hash import generate_source_hash
@@ -69,6 +69,10 @@ class TopologyRunnerMixin(Generic[C]):
 
     # The cache will have the shape {`child_stage.type_`: {`name`: `hash`}}
     cache = defaultdict(dict)
+
+    # The deleted will have the shape {`child_stage.type_`: {`name`: `hash`}}
+    # and will keep track of entities which were deleted and are being restored
+    deleted = defaultdict(dict)
     queue = Queue()
 
     def _run_node_producer(self, node: TopologyNode) -> Iterable[Entity]:
@@ -93,38 +97,37 @@ class TopologyRunnerMixin(Generic[C]):
             return
         else:
             chunksize = int(math.ceil(node_entities_length / threads))
-            chunks = [
+            chunks: list[list[Entity]] = [
                 node_entities[i : i + chunksize]
                 for i in range(0, node_entities_length, chunksize)
             ]
 
-            thread_pool = ThreadPoolExecutor(max_workers=threads)
+            with CustomThreadPoolExecutor(max_workers=threads) as pool:
+                futures = [
+                    pool.submit(
+                        self._multithread_process_entity,
+                        node,
+                        chunk,
+                        child_nodes,
+                        self.context.get_current_thread_id(),
+                    )
+                    for chunk in chunks
+                ]
 
-            futures = [
-                thread_pool.submit(
-                    self._multithread_process_entity,
-                    node,
-                    chunk,
-                    child_nodes,
-                    self.context.get_current_thread_id(),
-                )
-                for chunk in chunks
-            ]
+                while True:
+                    if self.queue.has_tasks():
+                        yield from self.queue.process()
 
-            while True:
-                if self.queue.has_tasks():
-                    yield from self.queue.process()
+                    else:
+                        if not futures:
+                            break
 
-                else:
-                    if not futures:
-                        break
+                        for i, future in enumerate(futures):
+                            if future.done():
+                                future.result()
+                                futures.pop(i)
 
-                    for i, future in enumerate(futures):
-                        if future.done():
-                            future.result()
-                            futures.pop(i)
-
-                time.sleep(0.01)
+                    time.sleep(0.01)
 
     def _process_node(self, node: TopologyNode) -> Iterable[Entity]:
         """Processing of a Node in a single thread."""
@@ -316,13 +319,15 @@ class TopologyRunnerMixin(Generic[C]):
         else:
             params = {"service": entity_fqn}
         entities_list = self.metadata.list_all_entities(
-            entity=child_type,
-            params=params,
-            fields=["sourceHash"],
+            entity=child_type, params=params, fields=["sourceHash"], include="all"
         )
         for entity in entities_list:
             if entity.sourceHash:
                 self.cache[child_type][
+                    model_str(entity.fullyQualifiedName)
+                ] = entity.sourceHash
+            if entity.deleted:
+                self.deleted[child_type][
                     model_str(entity.fullyQualifiedName)
                 ] = entity.sourceHash
 
@@ -393,17 +398,48 @@ class TopologyRunnerMixin(Generic[C]):
         if entity is None and stage.use_cache:
             # check if we find the entity in the entities list
             entity_source_hash = self.cache[stage.type_].get(entity_fqn)
+            is_deleted = entity_fqn in self.deleted[stage.type_]
+
+            # if the entity was deleted, restore it first
+            if is_deleted:
+                entity = self.metadata.get_by_name(
+                    entity=stage.type_, fqn=entity_fqn, fields=["*"], include="all"
+                )
+                if entity:
+                    logger.debug(
+                        f"Restoring deleted {str(stage.type_.__name__)} '{entity_fqn}'"
+                    )
+                    restored_entity = self.metadata.restore(
+                        entity=stage.type_, entity_id=entity.id
+                    )
+                    if restored_entity:
+                        self.deleted[stage.type_].pop(entity_fqn, None)
+                        # after restore, check if we need to patch for changes
+                        if (
+                            entity_source_hash != create_entity_request_hash
+                            or self.source_config.overrideMetadata
+                        ):
+                            patch_entity = self.create_patch_request(
+                                original_entity=restored_entity,
+                                create_request=entity_request.right,
+                            )
+                            entity_request.right = patch_entity
+                        else:
+                            # entity restored with same hash, skip update
+                            same_fingerprint = True
+                    else:
+                        logger.warning(
+                            f"Failed to restore deleted {str(stage.type_.__name__)} '{entity_fqn}'"
+                        )
             # if the source hash is not present or different from new hash, update the entity
             # if overrideMetadata is true, we will always update the entity
-            if (
+            elif (
                 entity_source_hash != create_entity_request_hash
                 or self.source_config.overrideMetadata
             ):
                 # the entity has changed, get the entity from server and make a patch request
                 entity = self.metadata.get_by_name(
-                    entity=stage.type_,
-                    fqn=entity_fqn,
-                    fields=["*"],
+                    entity=stage.type_, fqn=entity_fqn, fields=["*"]
                 )
 
                 # we return the entity for a patch update

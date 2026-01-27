@@ -26,6 +26,9 @@ from metadata.profiler.metrics.composed.like_ratio import LikeRatio
 from metadata.profiler.metrics.composed.non_parametric_skew import NonParametricSkew
 from metadata.profiler.metrics.composed.null_ratio import NullRatio
 from metadata.profiler.metrics.composed.unique_ratio import UniqueRatio
+from metadata.profiler.metrics.hybrid.cardinality_distribution import (
+    CardinalityDistribution,
+)
 from metadata.profiler.metrics.hybrid.histogram import Histogram
 from metadata.profiler.metrics.static.column_count import ColumnCount
 from metadata.profiler.metrics.static.column_names import ColumnNames
@@ -52,6 +55,7 @@ from metadata.profiler.metrics.system.system import System
 from metadata.profiler.metrics.window.first_quartile import FirstQuartile
 from metadata.profiler.metrics.window.median import Median
 from metadata.profiler.metrics.window.third_quartile import ThirdQuartile
+from metadata.profiler.metrics.window.value_rank import ValueRank
 from metadata.profiler.registry import MetricRegistry
 
 
@@ -98,12 +102,14 @@ class Metrics(MetricRegistry):
     MEDIAN = Median
     FIRST_QUARTILE = FirstQuartile
     THIRD_QUARTILE = ThirdQuartile
+    VALUE_RANK = ValueRank
 
     # System Metrics
     SYSTEM = System
 
     # Hybrid Metrics
     HISTOGRAM = Histogram
+    CARDINALITY_DISTRIBUTION = CardinalityDistribution
 
     # Missing Count
     NULL_MISSING_COUNT = NullMissingCount

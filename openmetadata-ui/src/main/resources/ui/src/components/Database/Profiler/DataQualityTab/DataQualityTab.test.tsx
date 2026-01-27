@@ -247,6 +247,7 @@ describe.skip('DataQualityTab test', () => {
               id: 'testSuiteId',
               name: 'testSuiteName',
             },
+            isAllowed: true,
           }}
           {...mockProps}
         />

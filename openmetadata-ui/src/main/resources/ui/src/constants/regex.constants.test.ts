@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ENTITY_NAME_REGEX, TAG_NAME_REGEX } from './regex.constants';
+import {
+  ENTITY_NAME_REGEX,
+  TAG_NAME_REGEX,
+  TEST_CASE_NAME_REGEX,
+} from './regex.constants';
 
 describe('Test Regex', () => {
   it('EntityName regex should pass for the valid entity name', () => {
@@ -207,6 +211,31 @@ describe('Test Regex', () => {
 
     it('should not match empty string', () => {
       expect(TAG_NAME_REGEX.test('')).toEqual(false);
+    });
+  });
+
+  describe('TEST_CASE_NAME_REGEX', () => {
+    it('should reject names with forbidden characters', () => {
+      expect(TEST_CASE_NAME_REGEX.test('test::case')).toEqual(false);
+      expect(TEST_CASE_NAME_REGEX.test('test"case')).toEqual(false);
+      expect(TEST_CASE_NAME_REGEX.test('test>case')).toEqual(false);
+      expect(TEST_CASE_NAME_REGEX.test('test::case"name>invalid')).toEqual(
+        false
+      );
+    });
+
+    it('should accept names with allowed characters', () => {
+      expect(TEST_CASE_NAME_REGEX.test('table_column_count_equals')).toEqual(
+        true
+      );
+      expect(
+        TEST_CASE_NAME_REGEX.test('shop_id.column_value_max_to_be_between')
+      ).toEqual(true);
+      expect(TEST_CASE_NAME_REGEX.test('test case with spaces')).toEqual(true);
+      expect(TEST_CASE_NAME_REGEX.test('test_case_123')).toEqual(true);
+      expect(TEST_CASE_NAME_REGEX.test('TestCase-WithHyphens')).toEqual(true);
+      expect(TEST_CASE_NAME_REGEX.test('test.case.with.dots')).toEqual(true);
+      expect(TEST_CASE_NAME_REGEX.test('test_case_!@#$%^&*()')).toEqual(true);
     });
   });
 });

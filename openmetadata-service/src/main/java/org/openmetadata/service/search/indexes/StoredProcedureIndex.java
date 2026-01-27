@@ -21,6 +21,8 @@ public record StoredProcedureIndex(StoredProcedure storedProcedure) implements S
     doc.put("tags", parseTags.getTags());
     doc.put("upstreamLineage", SearchIndex.getLineageData(storedProcedure.getEntityReference()));
     doc.put("tier", parseTags.getTierTag());
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("service", getEntityWithDisplayName(storedProcedure.getService()));
     doc.put("processedLineage", storedProcedure.getProcessedLineage());
     return doc;

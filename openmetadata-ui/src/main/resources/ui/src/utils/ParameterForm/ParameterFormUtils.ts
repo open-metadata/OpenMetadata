@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TestCaseParameterDefinition } from '../../generated/tests/testDefinition';
 import i18next from '../../utils/i18next/LocalUtil';
 
 export const validateGreaterThanOrEquals = (
@@ -55,4 +56,35 @@ export const validateNotEquals = (fieldValue: number, value: number) => {
   }
 
   return Promise.resolve();
+};
+
+export const getColumnSet = (
+  getFieldValue: (path: (string | number)[]) => unknown,
+  fieldName: string
+): Set<string> => {
+  const columnValues = getFieldValue(['params', fieldName]);
+
+  if (!columnValues || !Array.isArray(columnValues)) {
+    return new Set();
+  }
+
+  return new Set(
+    (columnValues as { value: string }[]).map((item) => item?.value)
+  );
+};
+
+export const getSelectedColumnsSet = (
+  data: TestCaseParameterDefinition,
+  getFieldValue: (path: (string | number)[]) => unknown
+): Set<string> => {
+  const isTable2KeyColumns = data.name === 'table2.keyColumns';
+
+  if (isTable2KeyColumns) {
+    return getColumnSet(getFieldValue, 'table2.keyColumns');
+  }
+
+  const keyColumns = getColumnSet(getFieldValue, 'keyColumns');
+  const useColumns = getColumnSet(getFieldValue, 'useColumns');
+
+  return new Set<string>([...keyColumns, ...useColumns]);
 };

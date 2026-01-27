@@ -45,16 +45,24 @@ public class MigrationValidationClient {
 
       List<String> availableOMNativeMigrations = getMigrationFilesFromPath(nativePath);
 
-      // If we only have OM migrations, return them
+      // Get Flyway versions from server_change_log (they have metrics = NULL)
+      List<String> expectedFlywayVersions = getExpectedFlywayVersions();
+
+      // If we only have OM and Flyway migrations, return them
       if (extensionPath == null || extensionPath.isEmpty()) {
-        return availableOMNativeMigrations;
+        return Stream.concat(expectedFlywayVersions.stream(), availableOMNativeMigrations.stream())
+            .sorted()
+            .toList();
       }
 
-      // Otherwise, fetch the extension migration and sort the results
+      // Otherwise, fetch the extension migration and sort all results
       List<String> availableOMExtensionMigrations = getMigrationFilesFromPath(extensionPath);
 
-      return Stream.concat(
-              availableOMNativeMigrations.stream(), availableOMExtensionMigrations.stream())
+      return Stream.of(
+              expectedFlywayVersions.stream(),
+              availableOMNativeMigrations.stream(),
+              availableOMExtensionMigrations.stream())
+          .flatMap(s -> s)
           .sorted()
           .toList();
     } catch (Exception e) {
@@ -68,5 +76,16 @@ public class MigrationValidationClient {
         .map(File::getName)
         .sorted()
         .toList();
+  }
+
+  private List<String> getExpectedFlywayVersions() {
+    try {
+      // Query server_change_log for versions where migrationFileName contains 'flyway'
+      return migrationDAO.getFlywayMigrationVersions();
+    } catch (Exception e) {
+      // If there's an error (e.g., table doesn't exist yet), return empty list
+      LOG.debug("Could not fetch Flyway versions from SERVER_CHANGE_LOG: {}", e.getMessage());
+      return List.of();
+    }
   }
 }

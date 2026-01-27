@@ -11,103 +11,64 @@
  *  limitations under the License.
  */
 
-import { Page, test as base } from '@playwright/test';
-import { EntityDataClass } from '../../../support/entity/EntityDataClass';
-import { ApiServiceClass } from '../../../support/entity/service/ApiServiceClass';
-import { DashboardServiceClass } from '../../../support/entity/service/DashboardServiceClass';
-import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
-import { MessagingServiceClass } from '../../../support/entity/service/MessagingServiceClass';
-import { MlmodelServiceClass } from '../../../support/entity/service/MlmodelServiceClass';
-import { PipelineServiceClass } from '../../../support/entity/service/PipelineServiceClass';
-import { SearchIndexServiceClass } from '../../../support/entity/service/SearchIndexServiceClass';
-import { StorageServiceClass } from '../../../support/entity/service/StorageServiceClass';
+import { Browser, Page } from '@playwright/test';
+import { test as baseTest } from '../../../support/fixtures/userPages';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { getApiContext } from '../../../utils/common';
+
 import {
   ALL_OPERATIONS,
   runCommonPermissionTests,
 } from '../../../utils/entityPermissionUtils';
 import {
   assignRoleToUser,
-  cleanupPermissions,
   initializePermissions,
 } from '../../../utils/permission';
+import { SERVICE_ENTITIES } from '../../../constant/service';
 
-const adminUser = new UserClass();
 const testUser = new UserClass();
 
-// Service entity classes
-const serviceEntities = [
-  ApiServiceClass,
-  DashboardServiceClass,
-  DatabaseServiceClass,
-  MessagingServiceClass,
-  MlmodelServiceClass,
-  PipelineServiceClass,
-  SearchIndexServiceClass,
-  StorageServiceClass,
-] as const;
-
-const test = base.extend<{
-  page: Page;
+const test = baseTest.extend<{
   testUserPage: Page;
 }>({
-  page: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    try {
-      await adminUser.login(adminPage);
-      await use(adminPage);
-    } finally {
-      await adminPage.close();
-    }
-  },
-  testUserPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    try {
-      await testUser.login(page);
-      await use(page);
-    } finally {
-      await page.close();
-    }
+  testUserPage: async ({ browser }: { browser: Browser }, use) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await testUser.login(page);
+    await use(page);
+    await context.close();
   },
 });
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
-  await adminUser.create(apiContext);
-  await adminUser.setAdminRole(apiContext);
   await testUser.create(apiContext);
   await afterAction();
 });
 
-serviceEntities.forEach((EntityClass) => {
-  const entity = new EntityClass();
-  const entityType = entity.getType();
-
+Object.entries(SERVICE_ENTITIES).forEach(([entityType, EntityClass]) => {
   test.describe(`${entityType} Permissions`, () => {
+    const entity = new EntityClass();
     test.beforeAll('Setup entity', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
-      await afterAction();
-    });
-
-    test.afterAll('Cleanup entity', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await entity.delete(apiContext);
       await afterAction();
     });
 
     test.describe('Allow permissions', () => {
       test.beforeAll('Initialize allow permissions', async ({ browser }) => {
-        const page = await browser.newPage();
-        await adminUser.login(page);
+        const { page, afterAction } = await performAdminLogin(browser);
         await initializePermissions(page, 'allow', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
-        await page.close();
+        await afterAction();
       });
 
+      /**
+       * Tests allow permissions for common service operations
+       * @description Verifies that a user with allow permissions can perform all common operations on the service,
+       * including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms,
+       * EditCustomFields, and Delete operations
+       */
       test(`${entityType} allow common operations permissions`, async ({
         testUserPage,
       }) => {
@@ -115,39 +76,28 @@ serviceEntities.forEach((EntityClass) => {
 
         await runCommonPermissionTests(testUserPage, entity, 'allow');
       });
-
-      test.afterAll('Cleanup allow permissions', async ({ browser }) => {
-        const page = await browser.newPage();
-        await adminUser.login(page);
-        const { apiContext } = await getApiContext(page);
-        await cleanupPermissions(apiContext);
-        await page.close();
-      });
     });
 
     test.describe('Deny permissions', () => {
       test.beforeAll('Initialize deny permissions', async ({ browser }) => {
-        const page = await browser.newPage();
-        await adminUser.login(page);
+        const { page, afterAction } = await performAdminLogin(browser);
         await initializePermissions(page, 'deny', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
-        await page.close();
+        await afterAction();
       });
 
+      /**
+       * Tests deny permissions for common service operations
+       * @description Verifies that a user with deny permissions cannot perform common operations on the service,
+       * including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms,
+       * EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled
+       */
       test(`${entityType} deny common operations permissions`, async ({
         testUserPage,
       }) => {
         test.slow(true);
 
         await runCommonPermissionTests(testUserPage, entity, 'deny');
-      });
-
-      test.afterAll('Cleanup deny permissions', async ({ browser }) => {
-        const page = await browser.newPage();
-        await adminUser.login(page);
-        const { apiContext } = await getApiContext(page);
-        await cleanupPermissions(apiContext);
-        await page.close();
       });
     });
   });

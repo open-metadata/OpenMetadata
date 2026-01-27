@@ -57,7 +57,7 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
 
   // Update URL with the filters applied for the table as query parameters.
   const updateUrlWithFilters = (updatedFilters: FilterState) => {
-    const currentQueryParams = qs.parse(window.location.search, {
+    const currentQueryParams = qs.parse(globalThis.location.search, {
       ignoreQueryPrefix: true,
     });
 
@@ -67,7 +67,7 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
       ...updatedFilters,
     };
 
-    Object.keys(mergedQueryParams).forEach((key) => {
+    for (const key of Object.keys(mergedQueryParams)) {
       const value = mergedQueryParams[key];
 
       if (isNil(value) || (isArray(value) && isEmpty(value))) {
@@ -75,7 +75,7 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
       }
       // Remove the array to string conversion to preserve array format
       // The qs.stringify function will handle arrays properly
-    });
+    }
     navigate(
       {
         search: qs.stringify(mergedQueryParams, {

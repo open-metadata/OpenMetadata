@@ -18,8 +18,9 @@ import { Link } from 'react-router-dom';
 import { TooltipProps } from 'recharts';
 import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
 import { Thread } from '../../../../generated/entity/feed/thread';
+import { formatNumberWithComma } from '../../../../utils/CommonUtils';
 import {
-  convertMillisecondsToHumanReadableFormat,
+  convertSecondsToHumanReadableFormat,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
@@ -79,6 +80,8 @@ const TestSummaryCustomTooltip = (
       ) : null;
     }
 
+    const tooltipValue = isNumber(value) ? formatNumberWithComma(value) : value;
+
     return (
       <li
         className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
@@ -88,15 +91,14 @@ const TestSummaryCustomTooltip = (
         </span>
         <span className="font-medium" data-testid={key}>
           {key === TABLE_FRESHNESS_KEY && isNumber(value)
-            ? // freshness will always be in seconds, so we need to convert it to milliseconds
-              convertMillisecondsToHumanReadableFormat(
-                value * 1000,
+            ? // freshness value is in seconds from Python/backend, use dedicated seconds converter
+              convertSecondsToHumanReadableFormat(
+                value,
                 undefined,
-                false,
                 // negative value will be shown as late by
                 `${t('label.late-by')} `
               )
-            : value}
+            : tooltipValue}
         </span>
       </li>
     );

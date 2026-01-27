@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -25,9 +25,17 @@ export interface SharePointConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Regex to only include/exclude directories that matches the pattern.
+     */
+    directoryFilterPattern?: FilterPattern;
+    /**
      * SharePoint drive ID. If not provided, default document library will be used
      */
     driveId?: string;
+    /**
+     * Regex to only include/exclude files that matches the pattern.
+     */
+    fileFilterPattern?: FilterPattern;
     /**
      * SharePoint site name
      */
@@ -35,7 +43,11 @@ export interface SharePointConnection {
     /**
      * SharePoint site URL
      */
-    siteUrl:                     string;
+    siteUrl: string;
+    /**
+     * Regex to only include/exclude spreadsheets that matches the pattern.
+     */
+    spreadsheetFilterPattern?:   FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * Directory (tenant) ID from Azure Active Directory
@@ -45,6 +57,32 @@ export interface SharePointConnection {
      * Service Type
      */
     type?: SharePointType;
+    /**
+     * Regex to only include/exclude worksheets that matches the pattern.
+     */
+    worksheetFilterPattern?: FilterPattern;
+}
+
+/**
+ * Regex to only include/exclude directories that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude files that matches the pattern.
+ *
+ * Regex to only include/exclude spreadsheets that matches the pattern.
+ *
+ * Regex to only include/exclude worksheets that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

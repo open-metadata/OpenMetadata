@@ -1,0 +1,9 @@
+{
+  "name": "system-notification-task-closed",
+  "fullyQualifiedName": "system-notification-task-closed",
+  "displayName": "Task Closed Notification",
+  "description": "System default template for task closure notifications",
+  "provider": "system",
+  "templateSubject": "[{{publisherName}}] - Change Event Update from {{emailingEntity}}",
+  "templateBody": "<strong>@{{entity.updatedBy}}</strong> closed a <strong>{{camelCaseToTitle entity.task.type}}</strong> task for <strong>{{camelCaseToTitle entity.entityRef.type}}</strong> <a href=\"{{buildEntityUrl entity.entityRef.type entity.entityRef.fullyQualifiedName}}/activity_feed/tasks\">{{#if entity.entityRef.displayName}}{{entity.entityRef.displayName}}{{else}}{{entity.entityRef.fullyQualifiedName}}{{/if}}</a><br><br><strong>❌ Closed task details:</strong><ul><li><strong>Assignees:</strong> {{#each entity.task.assignees}}@{{#if displayName}}{{displayName}}{{else}}{{name}}{{/if}}{{#unless @last}}, {{/unless}}{{/each}}</li>{{#if entity.task.suggestion}}<li><strong>Description:</strong></li>{{/if}}</ul>{{#if entity.task.suggestion}}<blockquote>{{{processMentions entity.task.suggestion}}}</blockquote>{{/if}}"
+}

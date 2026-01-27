@@ -36,6 +36,25 @@ export const CREATE_WORKFLOW_PAYLOAD = {
   },
 };
 
+export const CREATE_WORKFLOW_PAYLOAD_WITH_RUNNER = {
+  name: 'test-connection-Mysql-01',
+  workflowType: 'TEST_CONNECTION',
+  request: {
+    connection: {
+      config: {
+        type: 'Mysql',
+        scheme: 'mysql+pymysql',
+        username: 'openmetadata_user',
+        password: 'openmetadata_password',
+        hostPort: 'mysql:3306',
+      },
+    },
+    serviceType: 'Database',
+    connectionType: 'Mysql',
+    ingestionRunner: 'custom-runner-name',
+  },
+};
+
 export const WORKFLOW_DETAILS = {
   id: 'd6a5178d-06ba-4702-9b32-ce72349aa88c',
   name: 'test-connection-Mysql-01',

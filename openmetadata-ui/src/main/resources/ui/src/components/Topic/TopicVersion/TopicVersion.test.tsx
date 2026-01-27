@@ -12,6 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { topicVersionMockProps } from '../../../mocks/TopicVersion.mock';
 import TopicVersion from './TopicVersion.component';
@@ -62,12 +63,26 @@ jest.mock('react-router-dom', () => ({
     tab: 'topics',
   }),
   useNavigate: jest.fn().mockImplementation(() => mockPush),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
+
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
 
 describe('TopicVersion tests', () => {
   it('Should render component properly if not loading', async () => {
     await act(async () => {
-      render(<TopicVersion {...topicVersionMockProps} />);
+      render(<TopicVersion {...topicVersionMockProps} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     const dataAssetsVersionHeader = screen.getByText('DataAssetsVersionHeader');
@@ -89,7 +104,9 @@ describe('TopicVersion tests', () => {
 
   it('Should display Loader if isVersionLoading is true', async () => {
     await act(async () => {
-      render(<TopicVersion {...topicVersionMockProps} isVersionLoading />);
+      render(<TopicVersion {...topicVersionMockProps} isVersionLoading />, {
+        wrapper: MemoryRouter,
+      });
     });
 
     const loader = screen.getByText('Loader');
@@ -130,5 +147,80 @@ describe('TopicVersion tests', () => {
     expect(mockPush).toHaveBeenCalledWith(
       '/topic/sample_kafka.sales/versions/0.3/custom_properties'
     );
+  });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    const mockCustomPropertyTable = jest.requireMock(
+      '../../common/CustomPropertyTable/CustomPropertyTable'
+    ).CustomPropertyTable;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should pass hasPermission=true to CustomPropertyTable when ViewCustomFields is true', () => {
+      render(
+        <TopicVersion
+          {...topicVersionMockProps}
+          entityPermissions={{ ...ENTITY_PERMISSIONS, ViewCustomFields: true }}
+        />
+      );
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      fireEvent.click(customPropertyTabLabel);
+
+      expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasPermission: true,
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass hasPermission=false to CustomPropertyTable when ViewCustomFields is false', () => {
+      render(
+        <TopicVersion
+          {...topicVersionMockProps}
+          entityPermissions={{
+            ...ENTITY_PERMISSIONS,
+            ViewCustomFields: false,
+          }}
+        />
+      );
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      fireEvent.click(customPropertyTabLabel);
+
+      expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasPermission: false,
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should render custom properties tab regardless of ViewCustomFields value', () => {
+      render(
+        <TopicVersion
+          {...topicVersionMockProps}
+          entityPermissions={{
+            ...ENTITY_PERMISSIONS,
+            ViewCustomFields: false,
+          }}
+        />
+      );
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      expect(customPropertyTabLabel).toBeInTheDocument();
+    });
   });
 });

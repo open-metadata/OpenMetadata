@@ -50,9 +50,15 @@ class BulkLkmlParser(metaclass=Singleton):
     Approach:
     When we parse, we parse all files *.view.lkml to get all view and cached them. It can speed up the process and avoid
     infinity loop when parsing includes.
+
+    Supports multiple readers to aggregate views from multiple repositories.
     """
 
-    def __init__(self, reader: LocalReader):
+    def __init__(
+        self,
+        reader: LocalReader,
+        additional_readers: Optional[List[LocalReader]] = None,
+    ):
         self._views_cache: Dict[ViewName, LookMlView] = {}
         self._visited_files: Dict[Includes, List[Includes]] = {}
 
@@ -61,34 +67,45 @@ class BulkLkmlParser(metaclass=Singleton):
         self.parsed_view: Dict[str, List[Includes]] = {}
 
         self.reader = reader
-        self.__parse_all_views()
+        self.additional_readers = additional_readers or []
 
-    def __parse_all_views(self):
-        file_paths = self.reader.get_local_files(search_key=".view.lkml")
+        # Parse views from the primary reader
+        self.__parse_all_views(self.reader)
+
+        # Parse views from additional readers
+        for additional_reader in self.additional_readers:
+            self.__parse_all_views(additional_reader)
+
+    def __parse_all_views(self, reader: LocalReader):
+        file_paths = reader.get_local_files(search_key=".view.lkml")
         for _path in file_paths:
-            file = self._read_file(Includes(_path))
-            lkml_file = LkmlFile.model_validate(lkml.load(file))
-            self.parsed_files[Includes(_path)] = file
-            for view in lkml_file.views:
-                view.source_file = _path
-                self._views_cache[view.name] = view
+            try:
+                file = self._read_file(Includes(_path), reader)
+                lkml_file = LkmlFile.model_validate(lkml.load(file))
+                self.parsed_files[Includes(_path)] = file
+                for view in lkml_file.views:
+                    view.source_file = _path
+                    self._views_cache[view.name] = view
+            except Exception as err:
+                logger.debug(f"Error parsing file {_path}: {err}")
 
-    def _read_file(self, path: Includes) -> str:
+    def _read_file(self, path: Includes, reader: Optional[LocalReader] = None) -> str:
         """
         Read the LookML file
         """
+        reader_to_use = reader or self.reader
         suffixes = Path(path).suffixes
 
         # Check if any suffix is in our extension list
         if not set(suffixes).intersection(set(EXTENSIONS)):
             for suffix in EXTENSIONS:
                 try:
-                    return self.reader.read(path + suffix)
+                    return reader_to_use.read(path + suffix)
                 except ReadException as err:
                     logger.debug(f"Error trying to read the file [{path}]: {err}")
 
         else:
-            return self.reader.read(path)
+            return reader_to_use.read(path)
 
         raise ReadException(f"Error trying to read the file [{path}]")
 

@@ -367,6 +367,7 @@ class UnitycatalogSource(
                 ),
                 owners=self.get_owner_ref(table.owner),
                 tags=self.get_tag_labels(table_name),
+                locationPath=table.storage_location,
             )
             yield Either(right=table_request)
 
@@ -427,7 +428,12 @@ class UnitycatalogSource(
                 database_name=table_fqn_list[0],
                 service_name=self.context.get().database_service,
             )
-            if referred_table_fqn:
+
+            # Check if the referred table exists in OpenMetadata before adding constraint
+            referred_table = self.metadata.get_by_name(
+                entity=Table, fqn=referred_table_fqn
+            )
+            if referred_table:
                 for parent_column in column.parent_columns:
                     col_fqn = fqn._build(referred_table_fqn, parent_column, quote=False)
                     if col_fqn:
@@ -529,6 +535,7 @@ class UnitycatalogSource(
             parsed_string["tags"] = self.get_column_tag_labels(
                 table_name=table_name, column={"name": column.name}
             )
+            parsed_string["ordinalPosition"] = column.position
             parsed_column = Column(**parsed_string)
             self.add_complex_datatype_descriptions(
                 column=parsed_column,

@@ -23,6 +23,15 @@ import { Document } from '../generated/entity/docStore/document';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 
+/**
+ * Ensures widget width doesn't exceed the maximum allowed width of 2
+ */
+export const getConstrainedWidgetWidth = (width: number): number => {
+  const maxWidth = 2;
+
+  return Math.min(width, maxWidth);
+};
+
 export const getNewWidgetPlacement = (
   currentLayout: WidgetConfig[],
   widgetWidth: number
@@ -226,10 +235,11 @@ export const ensurePlaceholderAtEnd = (
 };
 
 /**
- * Layout update handler with tight coupling
+ * Layout update handler with tight coupling and dimension constraints
  * - Ensures widgets are packed tightly after drag operations
  * - Placeholder is always positioned correctly
  * - No gaps between widgets
+ * - Enforces maximum width of 2 and height of 3 for all widgets
  */
 export const getLayoutUpdateHandler =
   (updatedLayout: Layout[]) => (currentLayout: Array<WidgetConfig>) => {
@@ -246,6 +256,8 @@ export const getLayoutUpdateHandler =
       return {
         ...(!widgetData ? {} : widgetData),
         ...widget,
+        w: getConstrainedWidgetWidth(widget.w),
+        h: 3,
         static: false,
       };
     });
@@ -324,7 +336,7 @@ export const getAddWidgetHandler =
         return {
           ...widget,
           i: widgetFQN,
-          h: widgetHeight,
+          h: 3,
           w: widgetWidth,
           x: Math.min(widget.x, maxGridSize - widgetWidth),
           static: false,

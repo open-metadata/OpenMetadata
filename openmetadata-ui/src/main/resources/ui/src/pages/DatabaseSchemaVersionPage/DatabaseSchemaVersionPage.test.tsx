@@ -74,6 +74,7 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
 
 const mockGetEntityPermissionByFqn = jest.fn().mockReturnValue({
   ViewAll: true,
+  ViewCustomFields: true,
 });
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({

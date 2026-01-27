@@ -1,0 +1,260 @@
+package org.openmetadata.sdk.network;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import okhttp3.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.sdk.config.OpenMetadataConfig;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
+
+public class OpenMetadataHttpClientTest {
+
+  @Mock private OkHttpClient mockOkHttpClient;
+
+  @Mock private Call mockCall;
+
+  private OpenMetadataHttpClient httpClient;
+  private ObjectMapper objectMapper;
+  private OpenMetadataConfig config;
+
+  @BeforeEach
+  void setUp() {
+    MockitoAnnotations.openMocks(this);
+    objectMapper = new ObjectMapper();
+
+    config =
+        OpenMetadataConfig.builder()
+            .baseUrl("http://localhost:8585/api")
+            .accessToken("test-token")
+            .build();
+
+    httpClient =
+        new OpenMetadataHttpClient(config) {
+          protected OkHttpClient createOkHttpClient(OpenMetadataConfig config) {
+            return mockOkHttpClient;
+          }
+        };
+  }
+
+  @Test
+  void testGetRequest() throws IOException {
+    String responseJson = "{\"id\":\"123\",\"name\":\"test-table\"}";
+    Response mockResponse = createMockResponse(200, responseJson);
+
+    when(mockOkHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+    when(mockCall.execute()).thenReturn(mockResponse);
+
+    Table result = httpClient.execute(HttpMethod.GET, "/v1/tables/123", null, Table.class, null);
+
+    assertNotNull(result);
+    assertEquals("test-table", result.getName());
+
+    ArgumentCaptor<Request> requestCaptor = ArgumentCaptor.forClass(Request.class);
+    verify(mockOkHttpClient).newCall(requestCaptor.capture());
+
+    Request capturedRequest = requestCaptor.getValue();
+    assertEquals("GET", capturedRequest.method());
+    assertEquals("http://localhost:8585/api/v1/tables/123", capturedRequest.url().toString());
+    assertEquals("Bearer test-token", capturedRequest.header("Authorization"));
+  }
+
+  @Test
+  void testPostRequest() throws IOException {
+    String requestJson = "{\"name\":\"new-table\"}";
+    String responseJson = "{\"id\":\"456\",\"name\":\"new-table\"}";
+    Response mockResponse = createMockResponse(201, responseJson);
+
+    when(mockOkHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+    when(mockCall.execute()).thenReturn(mockResponse);
+
+    Table requestBody = new Table();
+    requestBody.setName("new-table");
+
+    Table result =
+        httpClient.execute(HttpMethod.POST, "/v1/tables", requestBody, Table.class, null);
+
+    assertNotNull(result);
+    assertEquals("new-table", result.getName());
+
+    ArgumentCaptor<Request> requestCaptor = ArgumentCaptor.forClass(Request.class);
+    verify(mockOkHttpClient).newCall(requestCaptor.capture());
+
+    Request capturedRequest = requestCaptor.getValue();
+    assertEquals("POST", capturedRequest.method());
+    assertEquals("application/json", capturedRequest.header("Content-Type"));
+    assertNotNull(capturedRequest.body());
+  }
+
+  @Test
+  void testPatchRequestWithJsonNode() throws IOException {
+    String patchJson = "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Updated\"}]";
+    JsonNode patchNode = objectMapper.readTree(patchJson);
+    String responseJson = "{\"id\":\"789\",\"description\":\"Updated\"}";
+    Response mockResponse = createMockResponse(200, responseJson);
+
+    when(mockOkHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+    when(mockCall.execute()).thenReturn(mockResponse);
+
+    Table result =
+        httpClient.execute(HttpMethod.PATCH, "/v1/tables/789", patchNode, Table.class, null);
+
+    assertNotNull(result);
+    assertEquals("Updated", result.getDescription());
+
+    ArgumentCaptor<Request> requestCaptor = ArgumentCaptor.forClass(Request.class);
+    verify(mockOkHttpClient).newCall(requestCaptor.capture());
+
+    Request capturedRequest = requestCaptor.getValue();
+    assertEquals("PATCH", capturedRequest.method());
+    assertEquals("application/json-patch+json", capturedRequest.header("Content-Type"));
+  }
+
+  @Test
+  void testDeleteRequest() throws IOException {
+    Response mockResponse = createMockResponse(204, "");
+
+    when(mockOkHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+    when(mockCall.execute()).thenReturn(mockResponse);
+
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("hardDelete", "true")
+            .queryParam("recursive", "false")
+            .build();
+
+    httpClient.execute(HttpMethod.DELETE, "/v1/tables/123", null, Void.class, options);
+
+    ArgumentCaptor<Request> requestCaptor = ArgumentCaptor.forClass(Request.class);
+    verify(mockOkHttpClient).newCall(requestCaptor.capture());
+
+    Request capturedRequest = requestCaptor.getValue();
+    assertEquals("DELETE", capturedRequest.method());
+    assertTrue(capturedRequest.url().toString().contains("hardDelete=true"));
+    assertTrue(capturedRequest.url().toString().contains("recursive=false"));
+  }
+
+  @Test
+  void testTestModeAuthentication() throws IOException {
+    config =
+        OpenMetadataConfig.builder()
+            .baseUrl("http://localhost:8585/api")
+            .testMode(true)
+            .accessToken("test@openmetadata.org")
+            .build();
+
+    httpClient =
+        new OpenMetadataHttpClient(config) {
+          protected OkHttpClient createOkHttpClient(OpenMetadataConfig config) {
+            return mockOkHttpClient;
+          }
+        };
+
+    Response mockResponse = createMockResponse(200, "{}");
+    when(mockOkHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+    when(mockCall.execute()).thenReturn(mockResponse);
+
+    httpClient.execute(HttpMethod.GET, "/v1/tables", null, Table.class);
+
+    ArgumentCaptor<Request> requestCaptor = ArgumentCaptor.forClass(Request.class);
+    verify(mockOkHttpClient).newCall(requestCaptor.capture());
+
+    Request capturedRequest = requestCaptor.getValue();
+    assertEquals("test@openmetadata.org", capturedRequest.header("X-Auth-Params-Email"));
+    assertNull(capturedRequest.header("Authorization"));
+  }
+
+  @Test
+  void testRequestWithQueryParameters() throws IOException {
+    Response mockResponse = createMockResponse(200, "{}");
+    when(mockOkHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+    when(mockCall.execute()).thenReturn(mockResponse);
+
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("limit", "10")
+            .queryParam("after", "cursor123")
+            .queryParam("fields", "id,name,description")
+            .build();
+
+    httpClient.execute(HttpMethod.GET, "/v1/tables", null, Table.class, options);
+
+    ArgumentCaptor<Request> requestCaptor = ArgumentCaptor.forClass(Request.class);
+    verify(mockOkHttpClient).newCall(requestCaptor.capture());
+
+    Request capturedRequest = requestCaptor.getValue();
+    String url = capturedRequest.url().toString();
+    assertTrue(url.contains("limit=10"));
+    assertTrue(url.contains("after=cursor123"));
+    assertTrue(url.contains("fields=id%2Cname%2Cdescription"));
+  }
+
+  @Test
+  void testErrorHandling() throws IOException {
+    String errorJson = "{\"error\":\"Not Found\",\"message\":\"Table not found\"}";
+    Response mockResponse = createMockResponse(404, errorJson);
+
+    when(mockOkHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+    when(mockCall.execute()).thenReturn(mockResponse);
+
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> {
+              httpClient.execute(HttpMethod.GET, "/v1/tables/999", null, Table.class, null);
+            });
+
+    assertTrue(exception.getMessage().contains("404"));
+    assertTrue(exception.getMessage().contains("Not Found"));
+  }
+
+  @Test
+  void testRetryOnTransientError() throws IOException {
+    Response mockResponse502 = createMockResponse(502, "Bad Gateway");
+    Response mockResponse200 = createMockResponse(200, "{\"id\":\"123\"}");
+
+    when(mockOkHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+    when(mockCall.execute()).thenReturn(mockResponse502).thenReturn(mockResponse200);
+
+    Table result = httpClient.execute(HttpMethod.GET, "/v1/tables/123", null, Table.class, null);
+
+    assertNotNull(result);
+    verify(mockCall, times(2)).execute();
+  }
+
+  @Test
+  void testUrlEncoding() throws IOException {
+    Response mockResponse = createMockResponse(200, "{}");
+    when(mockOkHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+    when(mockCall.execute()).thenReturn(mockResponse);
+
+    String pathWithSpecialChars = "/v1/tables/name/database.schema.table%20name";
+    httpClient.execute(HttpMethod.GET, pathWithSpecialChars, null, Table.class, null);
+
+    ArgumentCaptor<Request> requestCaptor = ArgumentCaptor.forClass(Request.class);
+    verify(mockOkHttpClient).newCall(requestCaptor.capture());
+
+    Request capturedRequest = requestCaptor.getValue();
+    String encodedUrl = capturedRequest.url().toString();
+    assertTrue(encodedUrl.contains("database.schema.table%2520name"));
+  }
+
+  private Response createMockResponse(int code, String body) {
+    return new Response.Builder()
+        .request(new Request.Builder().url("http://localhost:8585/api/test").build())
+        .protocol(Protocol.HTTP_1_1)
+        .code(code)
+        .message("")
+        .body(ResponseBody.create(body, MediaType.parse("application/json")))
+        .build();
+  }
+}

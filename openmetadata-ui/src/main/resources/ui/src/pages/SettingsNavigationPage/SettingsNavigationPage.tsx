@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,8 +17,10 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDown } from '../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../assets/svg/ic-arrow-right.svg';
+import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import {
   getHiddenKeysFromNavigationItems,
@@ -37,29 +38,21 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
   const { t } = useTranslation();
   const { getNavigation } = useCustomizeStore();
   const currentNavigation = getNavigation();
+  const { plugins = [] } = useApplicationsProvider();
 
   const [hiddenKeys, setHiddenKeys] = useState<string[]>(
-    getHiddenKeysFromNavigationItems(currentNavigation)
+    getHiddenKeysFromNavigationItems(currentNavigation, plugins)
   );
   const [treeData, setTreeData] = useState<TreeDataNode[]>(() =>
-    currentNavigation ? getTreeDataForNavigationItems(currentNavigation) : []
+    getTreeDataForNavigationItems(currentNavigation, plugins)
   );
 
   const disableSave = useMemo(() => {
-    // Get the initial hidden keys from the current navigation
-    const initialHiddenKeys =
-      getHiddenKeysFromNavigationItems(currentNavigation);
+    // Get the current navigation items from the modified tree data
+    const currentNavigationItems = getNavigationItems(treeData, hiddenKeys);
 
-    // Get the current navigation items from the tree data
-    const currentNavigationItems =
-      getNavigationItems(treeData, hiddenKeys) || [];
-
-    // Get the current hidden keys from the current navigation items
-    const currentHiddenKeys =
-      getHiddenKeysFromNavigationItems(currentNavigationItems) || [];
-
-    // Check if the initial hidden keys are the same as the current hidden keys
-    return isEqual(initialHiddenKeys, currentHiddenKeys);
+    // Compare the entire structure including order, names, hidden status, and all properties
+    return isEqual(currentNavigation, currentNavigationItems);
   }, [currentNavigation, treeData, hiddenKeys]);
 
   const handleSave = async () => {
@@ -128,8 +121,8 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
   }, []);
 
   const handleReset = () => {
-    setTreeData(getTreeDataForNavigationItems());
-    setHiddenKeys(getHiddenKeysFromNavigationItems());
+    setTreeData(getTreeDataForNavigationItems(null, plugins));
+    setHiddenKeys(getHiddenKeysFromNavigationItems(null, plugins));
   };
 
   const handleRemoveToggle = (checked: boolean, key: string) => {
@@ -149,37 +142,39 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
   );
 
   return (
-    <PageLayoutV1 className="bg-grey" pageTitle="Settings Navigation Page">
-      <Row gutter={[0, 20]}>
-        <Col span={24}>
-          <CustomizablePageHeader
-            disableSave={disableSave}
-            personaName={t('label.customize-your-navigation')}
-            onReset={handleReset}
-            onSave={handleSave}
-          />
-        </Col>
-
-        <Col span={24}>
-          <Card
-            bordered={false}
-            className="custom-navigation-tree-container"
-            title="Navigation Menus">
-            <Tree
-              autoExpandParent
-              blockNode
-              defaultExpandAll
-              showIcon
-              draggable={{ icon: <HolderOutlined /> }}
-              itemHeight={48}
-              switcherIcon={switcherIcon}
-              titleRender={titleRenderer}
-              treeData={treeData}
-              onDrop={onDrop}
+    <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
+      <PageLayoutV1 className="bg-grey" pageTitle="Settings Navigation Page">
+        <Row gutter={[0, 20]}>
+          <Col span={24}>
+            <CustomizablePageHeader
+              disableSave={disableSave}
+              personaName={t('label.customize-your-navigation')}
+              onReset={handleReset}
+              onSave={handleSave}
             />
-          </Card>
-        </Col>
-      </Row>
-    </PageLayoutV1>
+          </Col>
+
+          <Col span={24}>
+            <Card
+              bordered={false}
+              className="custom-navigation-tree-container"
+              title="Navigation Menus">
+              <Tree
+                autoExpandParent
+                blockNode
+                defaultExpandAll
+                showIcon
+                draggable={{ icon: <HolderOutlined /> }}
+                itemHeight={48}
+                switcherIcon={switcherIcon}
+                titleRender={titleRenderer}
+                treeData={treeData}
+                onDrop={onDrop}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </PageLayoutV1>
+    </NavigationBlocker>
   );
 };

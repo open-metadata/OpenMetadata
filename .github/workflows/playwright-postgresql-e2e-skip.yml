@@ -22,11 +22,13 @@ on:
       - synchronize
       - reopened
     paths:
-      - '.github/**'                            
-      - 'openmetadata-dist/**'
-      - 'docker/**'
-      - '!docker/development/docker-compose.yml'
-      - '!docker/development/docker-compose-postgres.yml'
+      - ".github/**"
+      - "openmetadata-dist/**"
+      - "docker/**"
+      - "!docker/development/docker-compose.yml"
+      - "!docker/development/docker-compose-postgres.yml"
+      - "OpenMetadata/openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
+      - "OpenMetadata/openmetadata-ui/src/main/resources/ui/playwright/docs/**"
 
 jobs:
   playwright-ci-postgresql:
@@ -34,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4]
-        shardTotal: [2]
+        shardIndex: [1, 2, 3, 4, 5, 6]
+        shardTotal: [6]
     steps:
       - run: 'echo "Step is not required"'

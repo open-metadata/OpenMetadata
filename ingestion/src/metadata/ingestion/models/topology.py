@@ -13,7 +13,7 @@ Defines the topology for ingesting sources
 """
 import queue
 import threading
-from functools import singledispatchmethod
+from functools import cache, singledispatchmethod
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
@@ -375,3 +375,122 @@ def get_topology_node(name: str, topology: ServiceTopology) -> TopologyNode:
         raise ValueError(f"{name} node not found in {topology}")
 
     return node
+
+
+def _build_hierarchy_from_topology(
+    topology: "ServiceTopology", node_name: str, current_depth: int = 0
+) -> Dict[Type[BaseModel], int]:
+    """
+    Recursively build entity hierarchy from a topology node.
+
+    Args:
+        topology: ServiceTopology instance
+        node_name: Name of the current node to process
+        current_depth: Current depth in the hierarchy tree
+
+    Returns:
+        Dictionary mapping entity types to their hierarchy depth
+    """
+
+    hierarchy = {}
+    node = get_topology_node(node_name, topology)
+
+    for stage in node.stages:
+        if stage.type_ not in hierarchy:
+            hierarchy[stage.type_] = current_depth
+
+    if node.children:
+        for child_name in node.children:
+            child_hierarchy = _build_hierarchy_from_topology(
+                topology, child_name, current_depth + 1
+            )
+            for entity_type, depth in child_hierarchy.items():
+                if entity_type not in hierarchy or depth < hierarchy[entity_type]:
+                    hierarchy[entity_type] = depth
+
+    return hierarchy
+
+
+@cache
+def get_entity_hierarchy() -> Dict[Type[BaseModel], int]:
+    """
+    Get the complete entity hierarchy for all service topologies.
+
+    This function builds a mapping of entity types to their depth in the hierarchy.
+    The hierarchy is cached using @cache decorator and only built once on first call.
+
+    Returns:
+        Dictionary mapping entity types to their depth in the hierarchy
+        (lower number = higher in hierarchy, e.g., Service=0, Database=1, Table=2)
+
+    Example:
+        >>> hierarchy = get_entity_hierarchy()
+        >>> hierarchy[DatabaseService]  # Returns 0
+        >>> hierarchy[Database]  # Returns 1
+        >>> hierarchy[Table]  # Returns 3
+    """
+    from metadata.ingestion.source.api.api_service import ApiServiceTopology
+    from metadata.ingestion.source.dashboard.dashboard_service import (
+        DashboardServiceTopology,
+    )
+    from metadata.ingestion.source.database.database_service import (
+        DatabaseServiceTopology,
+    )
+    from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceTopology
+    from metadata.ingestion.source.drive.drive_service import DriveServiceTopology
+    from metadata.ingestion.source.messaging.messaging_service import (
+        MessagingServiceTopology,
+    )
+    from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceTopology
+    from metadata.ingestion.source.pipeline.pipeline_service import (
+        PipelineServiceTopology,
+    )
+    from metadata.ingestion.source.search.search_service import SearchServiceTopology
+    from metadata.ingestion.source.security.security_service import (
+        SecurityServiceTopology,
+    )
+    from metadata.ingestion.source.storage.storage_service import StorageServiceTopology
+
+    all_topologies = [
+        DatabaseServiceTopology(),
+        DashboardServiceTopology(),
+        MessagingServiceTopology(),
+        PipelineServiceTopology(),
+        MlModelServiceTopology(),
+        ApiServiceTopology(),
+        SearchServiceTopology(),
+        StorageServiceTopology(),
+        DbtServiceTopology(),
+        SecurityServiceTopology(),
+        DriveServiceTopology(),
+    ]
+
+    hierarchy = {}
+
+    for topology in all_topologies:
+        root_nodes = get_topology_root(topology)
+        for root_node in root_nodes:
+            root_name = [
+                key for key, value in topology.__dict__.items() if value == root_node
+            ][0]
+            topology_hierarchy = _build_hierarchy_from_topology(topology, root_name, 0)
+
+            for entity_type, depth in topology_hierarchy.items():
+                if entity_type not in hierarchy or depth < hierarchy[entity_type]:
+                    hierarchy[entity_type] = depth
+
+    return hierarchy
+
+
+def get_entity_hierarchy_depth(entity_type: Type[BaseModel]) -> int:
+    """
+    Get the hierarchy depth for a specific entity type.
+
+    Args:
+        entity_type: The entity type to get depth for
+
+    Returns:
+        Hierarchy depth (lower = higher in hierarchy), or 999 if not found
+    """
+    hierarchy = get_entity_hierarchy()
+    return hierarchy.get(entity_type, 999)

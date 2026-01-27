@@ -179,6 +179,11 @@
     "ingestionRunner": {
       "description": "Link to the ingestion pipeline that ingested this entity.",
       "$ref": "../type/entityReference.json"
+    },
+    "reviewers": {
+      "description": "List of reviewers for this entity.",
+      "$ref": "../type/entityReferenceList.json",
+      "default": null
     }
   },
   "required": [

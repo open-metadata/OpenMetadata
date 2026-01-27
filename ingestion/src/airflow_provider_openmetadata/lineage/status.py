@@ -79,8 +79,10 @@ def add_status(
     dag_run: "DagRun" = context["dag_run"]
     task_instance: "TaskInstance" = context["task_instance"]
 
+    # Airflow 3.x uses logical_date instead of execution_date
     # Let this fail if we cannot properly extract & cast the start_date
-    execution_date = datetime_to_ts(dag_run.execution_date)
+    run_date = getattr(dag_run, "logical_date", None) or dag_run.execution_date
+    execution_date = datetime_to_ts(run_date)
     operator.log.info(f"Logging pipeline status for execution {execution_date}")
 
     # Check if we already have a pipelineStatus for

@@ -23,6 +23,7 @@ import './user-team-selectable-list-search-input.less';
 
 interface UserTeamSelectableListSearchProps extends UserSelectDropdownProps {
   disabled?: boolean;
+  placeholder?: string;
 }
 
 const UserTeamSelectableListSearchInput: React.FC<UserTeamSelectableListSearchProps> =
@@ -37,6 +38,7 @@ const UserTeamSelectableListSearchInput: React.FC<UserTeamSelectableListSearchPr
     previewSelected = false,
     listHeight,
     tooltipText,
+    placeholder,
   }) => {
     const [popoverVisible, setPopoverVisible] = useState(false);
     const [selectedUsers, setSelectedUsers] = useState<EntityReference[]>([]);
@@ -118,6 +120,7 @@ const UserTeamSelectableListSearchInput: React.FC<UserTeamSelectableListSearchPr
           filterOption={false}
           mode="multiple"
           notFoundContent={null}
+          placeholder={placeholder}
           suffixIcon={null}
           tagRender={customTagRender}
           value={selectedValues}

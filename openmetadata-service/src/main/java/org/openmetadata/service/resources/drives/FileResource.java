@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.FileRepository;
@@ -62,6 +63,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Path("/v1/drives/files")
 @Tag(name = "Files", description = "A `File` is a document or resource stored in a Drive Service.")
@@ -69,9 +72,9 @@ import org.openmetadata.service.security.Authorizer;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "files")
 public class FileResource extends EntityResource<File, FileRepository> {
-  public static final String COLLECTION_PATH = "v1/drives/files/";
+  public static final String COLLECTION_PATH = "/v1/drives/files/";
   static final String FIELDS =
-      "owners,directory,usageSummary,tags,fileExtension,extension,domains,sourceHash,lifeCycle,votes,followers";
+      "owners,directory,usageSummary,tags,fileExtension,extension,domains,sourceHash,lifeCycle,votes,followers,columns,sampleData";
   private final FileMapper mapper = new FileMapper();
 
   @Override
@@ -86,7 +89,12 @@ public class FileResource extends EntityResource<File, FileRepository> {
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("directory", MetadataOperation.VIEW_BASIC);
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
-    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
+    addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
+    return listOf(
+        MetadataOperation.VIEW_USAGE,
+        MetadataOperation.EDIT_USAGE,
+        MetadataOperation.VIEW_SAMPLE_DATA,
+        MetadataOperation.EDIT_SAMPLE_DATA);
   }
 
   public FileResource(Authorizer authorizer, Limits limits) {
@@ -135,6 +143,12 @@ public class FileResource extends EntityResource<File, FileRepository> {
       @Parameter(description = "Filter files by file type", schema = @Schema(type = "string"))
           @QueryParam("fileType")
           String fileTypeParam,
+      @Parameter(
+              description = "List files at the root level (without parent) when `true`",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("root")
+          @DefaultValue("false")
+          boolean root,
       @Parameter(description = "Limit the number files returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
@@ -161,7 +175,8 @@ public class FileResource extends EntityResource<File, FileRepository> {
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
             .addQueryParam("directory", directoryParam)
-            .addQueryParam("fileType", fileTypeParam);
+            .addQueryParam("fileType", fileTypeParam)
+            .addQueryParam("root", String.valueOf(root));
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -197,8 +212,17 @@ public class FileResource extends EntityResource<File, FileRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -235,8 +259,17 @@ public class FileResource extends EntityResource<File, FileRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
   }
 
   @POST
@@ -260,6 +293,27 @@ public class FileResource extends EntityResource<File, FileRepository> {
       @Valid CreateFile create) {
     File file = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, file);
+  }
+
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateFiles",
+      summary = "Bulk create or update files",
+      description = "Create or update multiple files in a single operation.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Bulk operation results"),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing"),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateFile> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
   @PATCH
@@ -288,6 +342,35 @@ public class FileResource extends EntityResource<File, FileRepository> {
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchFile",
+      summary = "Update a file by name.",
+      description = "Update an existing file using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the file", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -569,5 +652,88 @@ public class FileResource extends EntityResource<File, FileRepository> {
     return repository
         .updateVote(securityContext.getUserPrincipal().getName(), id, request)
         .toResponse();
+  }
+
+  @PUT
+  @Path("/{id}/sampleData")
+  @Operation(
+      operationId = "addSampleData",
+      summary = "Add sample data",
+      description = "Add sample data to the file.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The file with sample data",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = File.class)))
+      })
+  public File addSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the file", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Valid TableData tableData) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    File file = repository.addSampleData(id, tableData);
+    return addHref(uriInfo, file);
+  }
+
+  @GET
+  @Path("/{id}/sampleData")
+  @Operation(
+      operationId = "getSampleData",
+      summary = "Get sample data",
+      description = "Get sample data from the file.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The file with sample data",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = File.class)))
+      })
+  public File getSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the file", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
+    ResourceContext<?> resourceContext = getResourceContextById(id);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    File file = repository.getSampleData(id);
+    return addHref(uriInfo, file);
+  }
+
+  @DELETE
+  @Path("/{id}/sampleData")
+  @Operation(
+      operationId = "deleteSampleData",
+      summary = "Delete sample data",
+      description = "Delete sample data from the file.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The file",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = File.class)))
+      })
+  public File deleteSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the file", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    File file = repository.deleteSampleData(id);
+    return addHref(uriInfo, file);
   }
 }

@@ -1,0 +1,136 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ownerConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Owner Configuration",
+  "description": "Configuration for assigning owners to ingested entities following topology hierarchy with inheritance support",
+  "javaType": "org.openmetadata.schema.type.OwnerConfig",
+  "type": "object",
+  "definitions": {
+    "ownerValue": {
+      "description": "Single owner or list of owners. Business rules: multiple users allowed, only ONE team allowed, users and teams are mutually exclusive.",
+      "anyOf": [
+        {
+          "type": "string",
+          "description": "Single owner (user or team name/email)"
+        },
+        {
+          "type": "array",
+          "description": "Multiple owners (must be all users OR single team, cannot mix)",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      ]
+    }
+  },
+  "properties": {
+    "default": {
+      "description": "Default owner applied to all entities when no specific owner is configured (user or team name/email)",
+      "type": "string",
+      "examples": ["data-engineering-team", "admin@company.com"]
+    },
+    "service": {
+      "description": "Owner for the service level",
+      "type": "string"
+    },
+    "database": {
+      "description": "Owner for database entities. Can be a single owner for all databases, or a map of database names to owner(s).",
+      "anyOf": [
+        {
+          "type": "string",
+          "description": "Single owner (user or team) for all databases"
+        },
+        {
+          "type": "object",
+          "description": "Map of database names to their owner(s)",
+          "additionalProperties": {
+            "$ref": "#/definitions/ownerValue"
+          },
+          "examples": [{
+            "sales_db": "sales-team",
+            "analytics_db": "analytics-team",
+            "shared_db": ["alice", "bob", "charlie"]
+          }]
+        }
+      ]
+    },
+    "databaseSchema": {
+      "description": "Owner for schema entities. Can be a single owner for all schemas, or a map of schema FQNs to owner(s).",
+      "anyOf": [
+        {
+          "type": "string",
+          "description": "Single owner (user or team) for all schemas"
+        },
+        {
+          "type": "object",
+          "description": "Map of schema names/FQNs to their owner(s)",
+          "additionalProperties": {
+            "$ref": "#/definitions/ownerValue"
+          },
+          "examples": [{
+            "public": "public-schema-team",
+            "analytics_db.analytics_schema": "analytics-team",
+            "shared_schema": ["alice", "bob"]
+          }]
+        }
+      ]
+    },
+    "table": {
+      "description": "Owner for table entities. Can be a single owner for all tables, or a map of table FQNs to owner(s).",
+      "anyOf": [
+        {
+          "type": "string",
+          "description": "Single owner (user or team) for all tables"
+        },
+        {
+          "type": "object",
+          "description": "Map of table names/FQNs to their owner(s)",
+          "additionalProperties": {
+            "$ref": "#/definitions/ownerValue"
+          }
+        }
+      ]
+    },
+    "enableInheritance": {
+      "description": "Enable child entities to inherit owner from parent entities when they don't have a specific owner configured",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "default": "data-platform-team"
+    },
+    {
+      "default": "data-team",
+      "database": "database-admins",
+      "databaseSchema": "schema-owners",
+      "table": "table-stewards",
+      "enableInheritance": true
+    },
+    {
+      "default": "data-team",
+      "database": {
+        "sales_db": "sales-team",
+        "analytics_db": "analytics-team"
+      },
+      "databaseSchema": {
+        "public": "public-team",
+        "analytics_db.reporting": "reporting-team"
+      },
+      "enableInheritance": true
+    },
+    {
+      "default": "data-team",
+      "table": {
+        "customers": "customer-team",
+        "orders": ["alice", "bob"],
+        "sales_db.public.shared_data": ["charlie", "david", "emma"]
+      },
+      "enableInheritance": true
+    }
+  ]
+}
+

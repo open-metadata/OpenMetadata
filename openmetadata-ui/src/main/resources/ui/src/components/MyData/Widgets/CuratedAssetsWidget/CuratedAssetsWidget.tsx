@@ -445,7 +445,6 @@ const CuratedAssetsWidget = ({
           </Typography.Text>
         }
         widgetKey={widgetKey}
-        widgetWidth={curatedAssetsWidth}
         onEditClick={handleModalOpen}
         onSortChange={(key: string) => handleSortByClick({ key } as MenuInfo)}
         onTitleClick={handleTitleClick}

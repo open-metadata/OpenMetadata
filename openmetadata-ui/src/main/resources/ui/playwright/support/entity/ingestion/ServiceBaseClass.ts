@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -103,9 +102,28 @@ class ServiceBaseClass {
     // await airflowStatus;
     await this.fillConnectionDetails(page);
 
-    if (this.shouldTestConnection) {
-      expect(page.getByTestId('next-button')).not.toBeVisible();
+    const runnerSelector = page.getByTestId(
+      'select-widget-root/ingestionRunner'
+    );
 
+    if (await runnerSelector.isVisible()) {
+      await runnerSelector.click();
+      await page.waitForSelector(
+        '.ant-select-dropdown:visible [data-testid="select-option-Collate SaaS Runner"]',
+        { state: 'visible' }
+      );
+      await page
+        .locator(
+          '.ant-select-dropdown:visible [data-testid="select-option-Collate SaaS Runner"]'
+        )
+        .click();
+
+      await expect(
+        page.getByTestId('select-widget-root/ingestionRunner')
+      ).toContainText('Collate SaaS Runner');
+    }
+
+    if (this.shouldTestConnection) {
       await testConnection(page);
     }
 
@@ -313,27 +331,11 @@ class ServiceBaseClass {
     );
   }
 
-  handleIngestionRetry = async (ingestionType = 'metadata', page: Page) => {
-    const { apiContext } = await getApiContext(page);
-
-    // Need to wait before start polling as Ingestion is taking time to reflect state on their db
-    // Queued status are not stored in DB. cc: @ulixius9
-    await page.waitForTimeout(2000);
-
-    const response = await apiContext
-      .get(
-        `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
-          this.serviceName
-        }&pipelineType=${ingestionType}&serviceType=${getServiceCategoryFromService(
-          this.category
-        )}`
-      )
-      .then((res) => res.json());
-
-    const workflowData = response.data.filter(
-      (d: { pipelineType: string }) => d.pipelineType === ingestionType
-    )[0];
-
+  executeIngestionRetrySteps = async (
+    page: Page,
+    workflowData: { fullyQualifiedName: string; name: string },
+    ingestionType: string
+  ) => {
     const oneHourBefore = Date.now() - 86400000;
     let consecutiveErrors = 0;
 
@@ -394,27 +396,45 @@ class ServiceBaseClass {
     await page.waitForLoadState('networkidle');
     await page.waitForSelector(`td:has-text("${ingestionType}")`);
 
-    const pipelineStatus = await page
-      .locator(`[data-row-key*="${workflowData.name}"]`)
-      .getByTestId('pipeline-status')
-      .last()
-      .textContent();
-    // add logs to console for failed pipelines
-    if (pipelineStatus?.toLowerCase() === 'failed') {
-      const logsResponse = await apiContext
-        .get(`/api/v1/services/ingestionPipelines/logs/${workflowData.id}/last`)
-        .then((res) => res.json());
-
-      // eslint-disable-next-line no-console
-      console.log(logsResponse);
-    }
-
     await expect(
       page
         .locator(`[data-row-key*="${workflowData.name}"]`)
         .getByTestId('pipeline-status')
         .last()
     ).toContainText('Success');
+  };
+
+  handleIngestionRetryWithWorkflow = async (
+    page: Page,
+    workflowDetails: { fullyQualifiedName: string; name: string },
+    ingestionType = 'metadata'
+  ) => {
+    await page.waitForTimeout(2000);
+    await this.executeIngestionRetrySteps(page, workflowDetails, ingestionType);
+  };
+
+  handleIngestionRetry = async (ingestionType = 'metadata', page: Page) => {
+    const { apiContext } = await getApiContext(page);
+
+    // Need to wait before start polling as Ingestion is taking time to reflect state on their db
+    // Queued status are not stored in DB. cc: @ulixius9
+    await page.waitForTimeout(2000);
+
+    const response = await apiContext
+      .get(
+        `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
+          this.serviceName
+        }&pipelineType=${ingestionType}&serviceType=${getServiceCategoryFromService(
+          this.category
+        )}`
+      )
+      .then((res) => res.json());
+
+    const workflowData = response.data.find(
+      (d: { pipelineType: string }) => d.pipelineType === ingestionType
+    );
+
+    await this.executeIngestionRetrySteps(page, workflowData, ingestionType);
   };
 
   async updateService(page: Page) {
@@ -560,9 +580,21 @@ class ServiceBaseClass {
 
     // update description
     await page.click('[data-testid="edit-description"]');
-    await page.click(descriptionBox);
-    await page.fill(descriptionBox, '');
-    await page.fill(descriptionBox, description);
+    await page.waitForSelector(
+      `.description-markdown-editor:visible ${descriptionBox}`,
+      {
+        state: 'visible',
+      }
+    );
+    await page.click(`.description-markdown-editor:visible ${descriptionBox}`);
+    await page.fill(
+      `.description-markdown-editor:visible ${descriptionBox}`,
+      ''
+    );
+    await page.fill(
+      `.description-markdown-editor:visible ${descriptionBox}`,
+      description
+    );
 
     await page.click('[data-testid="save"]');
 

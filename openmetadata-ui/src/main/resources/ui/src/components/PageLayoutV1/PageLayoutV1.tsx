@@ -24,6 +24,7 @@ import {
   useState,
 } from 'react';
 import { useLocation } from 'react-router-dom';
+import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import AlertBar from '../AlertBar/AlertBar';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
@@ -84,6 +85,12 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     }
   }, [location.pathname, resetAlert, isErrorTimeOut]);
 
+  const isFullScreen = useMemo(() => {
+    const queryParams = new URLSearchParams(location.search);
+
+    return queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
+  }, [location.search]);
+
   useEffect(() => {
     setTimeout(() => {
       setPrevPath(location.pathname);
@@ -111,6 +118,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
             `page-layout-v1-center page-layout-v1-vertical-scroll`,
             {
               'flex justify-center': center,
+              'full-screen-view': isFullScreen,
             },
             mainContainerClassName
           )}

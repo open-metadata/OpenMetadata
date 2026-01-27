@@ -60,7 +60,8 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
       if (!isUndefined(formattedDestinations)) {
         const externalDestinations = formattedDestinations.filter(
           (destination) =>
-            destination.category === SubscriptionCategory.External
+            destination.category === SubscriptionCategory.External &&
+            !isEmpty(destination?.config)
         );
 
         const results = await testAlertDestination({

@@ -20,10 +20,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -32,10 +34,14 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
@@ -43,6 +49,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
+import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -633,6 +640,417 @@ class EntityRelationshipCleanupTest extends OpenMetadataApplicationTest {
         "Should NOT find orphaned relationship for invalid entity type without repository");
 
     // Clean up the orphaned relationships we created
+    EntityRelationshipCleanup actualCleanup = new EntityRelationshipCleanup(collectionDAO, false);
+    actualCleanup.performCleanup(100);
+  }
+
+  @Test
+  void test_lineageRelationship_withValidPipeline_shouldNotBeOrphaned(TestInfo test)
+      throws IOException, URISyntaxException {
+    // Create a pipeline
+    PipelineService pipelineService = createPipelineService(test);
+    org.openmetadata.service.resources.pipelines.PipelineResourceTest pipelineTest =
+        new org.openmetadata.service.resources.pipelines.PipelineResourceTest();
+    org.openmetadata.schema.entity.data.Pipeline pipeline =
+        pipelineTest.createEntity(
+            new CreatePipeline()
+                .withName("testPipeline")
+                .withService(pipelineService.getFullyQualifiedName())
+                .withTasks(new ArrayList<>()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create lineage details with pipeline reference
+    org.openmetadata.schema.type.LineageDetails lineageDetails =
+        new org.openmetadata.schema.type.LineageDetails()
+            .withPipeline(
+                new org.openmetadata.schema.type.EntityReference()
+                    .withId(pipeline.getId())
+                    .withName(pipeline.getName())
+                    .withType(Entity.PIPELINE));
+
+    String lineageJson = org.openmetadata.schema.utils.JsonUtils.pojoToJson(lineageDetails);
+
+    // Create UPSTREAM relationship with pipeline reference
+    Table fromTable = testTables.getFirst();
+    Table toTable = testTables.get(1);
+
+    collectionDAO
+        .relationshipDAO()
+        .insert(
+            fromTable.getId(),
+            toTable.getId(),
+            Entity.TABLE,
+            Entity.TABLE,
+            Relationship.UPSTREAM.ordinal(),
+            lineageJson);
+
+    // Run cleanup - should not find this as orphaned because pipeline exists
+    cleanup = new EntityRelationshipCleanup(collectionDAO, true);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(100);
+
+    assertNotNull(result);
+
+    // Verify that the lineage relationship with valid pipeline is not marked as orphaned
+    boolean foundLineageOrphan =
+        result.getOrphanedRelationships().stream()
+            .anyMatch(
+                orphan ->
+                    fromTable.getId().toString().equals(orphan.getFromId())
+                        && toTable.getId().toString().equals(orphan.getToId())
+                        && orphan.getRelation() == Relationship.UPSTREAM.ordinal());
+
+    assertFalse(
+        foundLineageOrphan,
+        "Lineage relationship with valid pipeline should not be marked as orphaned");
+  }
+
+  private PipelineService createPipelineService(TestInfo test) throws HttpResponseException {
+    PipelineServiceResourceTest pipelineServiceResourceTest = new PipelineServiceResourceTest();
+    CreatePipelineService createPipeline =
+        pipelineServiceResourceTest
+            .createRequest(test, 1)
+            .withServiceType(CreatePipelineService.PipelineServiceType.Airflow)
+            .withConnection(TestUtils.AIRFLOW_CONNECTION);
+    return pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_lineageRelationship_withOrphanedPipeline_shouldBeDetected(TestInfo test)
+      throws HttpResponseException {
+    UUID nonExistentPipelineId = UUID.randomUUID();
+
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Table fromTable =
+        tableResourceTest.createEntity(
+            tableResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    Table toTable =
+        tableResourceTest.createEntity(
+            tableResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
+    // Create lineage details with non-existent pipeline reference
+    org.openmetadata.schema.type.LineageDetails lineageDetails =
+        new org.openmetadata.schema.type.LineageDetails()
+            .withPipeline(
+                new org.openmetadata.schema.type.EntityReference()
+                    .withId(nonExistentPipelineId)
+                    .withName("nonExistentPipeline")
+                    .withType(Entity.PIPELINE));
+
+    String lineageJson = org.openmetadata.schema.utils.JsonUtils.pojoToJson(lineageDetails);
+
+    collectionDAO
+        .relationshipDAO()
+        .insert(
+            fromTable.getId(),
+            toTable.getId(),
+            Entity.TABLE,
+            Entity.TABLE,
+            Relationship.UPSTREAM.ordinal(),
+            lineageJson);
+
+    // Run cleanup - should find this as orphaned because pipeline doesn't exist
+    cleanup = new EntityRelationshipCleanup(collectionDAO, true);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(100);
+
+    assertNotNull(result);
+    assertTrue(
+        result.getOrphanedRelationshipsFound() > 0,
+        "Should find orphaned lineage relationship with non-existent pipeline");
+
+    // Verify that the specific lineage relationship is marked as orphaned
+    boolean foundLineageOrphan =
+        result.getOrphanedRelationships().stream()
+            .anyMatch(
+                orphan ->
+                    fromTable.getId().toString().equals(orphan.getFromId())
+                        && toTable.getId().toString().equals(orphan.getToId())
+                        && orphan.getRelation() == Relationship.UPSTREAM.ordinal()
+                        && orphan
+                            .getReason()
+                            .contains("Pipeline entity referenced in lineage does not exist"));
+
+    assertTrue(
+        foundLineageOrphan, "Should find the specific orphaned lineage relationship with reason");
+
+    // Clean up
+    EntityRelationshipCleanup actualCleanup = new EntityRelationshipCleanup(collectionDAO, false);
+    actualCleanup.performCleanup(100);
+  }
+
+  @Test
+  void test_lineageRelationship_withoutPipeline_shouldNotBeOrphaned(TestInfo test)
+      throws HttpResponseException {
+    // Create lineage details without pipeline reference (direct entity lineage)
+    org.openmetadata.schema.type.LineageDetails lineageDetails =
+        new org.openmetadata.schema.type.LineageDetails().withSource(LineageDetails.Source.MANUAL);
+
+    String lineageJson = org.openmetadata.schema.utils.JsonUtils.pojoToJson(lineageDetails);
+
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Table fromTable =
+        tableResourceTest.createEntity(
+            tableResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    Table toTable =
+        tableResourceTest.createEntity(
+            tableResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
+
+    collectionDAO
+        .relationshipDAO()
+        .insert(
+            fromTable.getId(),
+            toTable.getId(),
+            Entity.TABLE,
+            Entity.TABLE,
+            Relationship.UPSTREAM.ordinal(),
+            lineageJson);
+
+    // Run cleanup - should not find this as orphaned because no pipeline is referenced
+    cleanup = new EntityRelationshipCleanup(collectionDAO, true);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(100);
+
+    assertNotNull(result);
+
+    // Verify that the lineage relationship without pipeline is not marked as orphaned
+    boolean foundLineageOrphan =
+        result.getOrphanedRelationships().stream()
+            .anyMatch(
+                orphan ->
+                    fromTable.getId().toString().equals(orphan.getFromId())
+                        && toTable.getId().toString().equals(orphan.getToId())
+                        && orphan.getRelation() == Relationship.UPSTREAM.ordinal());
+
+    assertFalse(
+        foundLineageOrphan,
+        "Lineage relationship without pipeline reference should not be marked as orphaned");
+  }
+
+  @Test
+  void test_lineageRelationship_withNullPipeline_shouldNotBeOrphaned() {
+    // Create lineage details with explicit null pipeline
+    org.openmetadata.schema.type.LineageDetails lineageDetails =
+        new org.openmetadata.schema.type.LineageDetails()
+            .withSource(LineageDetails.Source.MANUAL)
+            .withPipeline(null);
+
+    String lineageJson = org.openmetadata.schema.utils.JsonUtils.pojoToJson(lineageDetails);
+
+    // Create UPSTREAM relationship with null pipeline
+    Table fromTable = testTables.get(1);
+    Table toTable = testTables.get(2);
+
+    collectionDAO
+        .relationshipDAO()
+        .insert(
+            fromTable.getId(),
+            toTable.getId(),
+            Entity.TABLE,
+            Entity.TABLE,
+            Relationship.UPSTREAM.ordinal(),
+            lineageJson);
+
+    // Run cleanup - should not find this as orphaned
+    cleanup = new EntityRelationshipCleanup(collectionDAO, true);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(100);
+
+    assertNotNull(result);
+
+    // Verify that the lineage relationship with null pipeline is not marked as orphaned
+    boolean foundLineageOrphan =
+        result.getOrphanedRelationships().stream()
+            .anyMatch(
+                orphan ->
+                    fromTable.getId().toString().equals(orphan.getFromId())
+                        && toTable.getId().toString().equals(orphan.getToId())
+                        && orphan.getRelation() == Relationship.UPSTREAM.ordinal());
+
+    assertFalse(
+        foundLineageOrphan,
+        "Lineage relationship with null pipeline should not be marked as orphaned");
+  }
+
+  @Test
+  void test_lineageRelationship_cleanupOrphanedPipeline(TestInfo testInfo) throws IOException {
+    // Create a pipeline
+    PipelineService pipelineService = createPipelineService(testInfo);
+    org.openmetadata.service.resources.pipelines.PipelineResourceTest pipelineTest =
+        new org.openmetadata.service.resources.pipelines.PipelineResourceTest();
+    org.openmetadata.schema.entity.data.Pipeline pipeline =
+        pipelineTest.createEntity(
+            new CreatePipeline()
+                .withName(testInfo.getDisplayName())
+                .withService(pipelineService.getFullyQualifiedName())
+                .withTasks(new ArrayList<>()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create lineage details with pipeline reference
+    org.openmetadata.schema.type.LineageDetails lineageDetails =
+        new org.openmetadata.schema.type.LineageDetails()
+            .withPipeline(
+                new org.openmetadata.schema.type.EntityReference()
+                    .withId(pipeline.getId())
+                    .withName(pipeline.getName())
+                    .withType(Entity.PIPELINE));
+
+    String lineageJson = org.openmetadata.schema.utils.JsonUtils.pojoToJson(lineageDetails);
+
+    // Create UPSTREAM relationship
+    Table fromTable = testTables.getFirst();
+    Table toTable = testTables.get(1);
+
+    collectionDAO
+        .relationshipDAO()
+        .insert(
+            fromTable.getId(),
+            toTable.getId(),
+            Entity.TABLE,
+            Entity.TABLE,
+            Relationship.UPSTREAM.ordinal(),
+            lineageJson);
+
+    // Delete the pipeline
+    collectionDAO.pipelineDAO().delete(pipeline.getId());
+
+    // Run dry-run cleanup
+    EntityRelationshipCleanup dryRunCleanup = new EntityRelationshipCleanup(collectionDAO, true);
+    EntityRelationshipCleanup.EntityCleanupResult dryRunResult = dryRunCleanup.performCleanup(100);
+
+    assertTrue(
+        dryRunResult.getOrphanedRelationshipsFound() > 0,
+        "Should find orphaned lineage after pipeline deletion");
+
+    // Run actual cleanup
+    EntityRelationshipCleanup actualCleanup = new EntityRelationshipCleanup(collectionDAO, false);
+    EntityRelationshipCleanup.EntityCleanupResult cleanupResult = actualCleanup.performCleanup(100);
+
+    assertTrue(
+        cleanupResult.getRelationshipsDeleted() > 0, "Should delete orphaned lineage relationship");
+
+    // Verify cleanup
+    EntityRelationshipCleanup verificationCleanup =
+        new EntityRelationshipCleanup(collectionDAO, true);
+    EntityRelationshipCleanup.EntityCleanupResult verificationResult =
+        verificationCleanup.performCleanup(100);
+
+    boolean stillFoundOrphan =
+        verificationResult.getOrphanedRelationships().stream()
+            .anyMatch(
+                orphan ->
+                    fromTable.getId().toString().equals(orphan.getFromId())
+                        && toTable.getId().toString().equals(orphan.getToId())
+                        && orphan.getRelation() == Relationship.UPSTREAM.ordinal());
+
+    assertFalse(
+        stillFoundOrphan, "Should not find the orphaned lineage relationship after cleanup");
+  }
+
+  @Test
+  void test_lineageRelationship_multipleLineagesWithMixedPipelines(TestInfo testInfo)
+      throws IOException {
+    // Create a valid pipeline
+    PipelineService pipelineService = createPipelineService(testInfo);
+    org.openmetadata.service.resources.pipelines.PipelineResourceTest pipelineTest =
+        new org.openmetadata.service.resources.pipelines.PipelineResourceTest();
+    org.openmetadata.schema.entity.data.Pipeline validPipeline =
+        pipelineTest.createEntity(
+            new CreatePipeline()
+                .withName(testInfo.getDisplayName())
+                .withService(pipelineService.getFullyQualifiedName())
+                .withTasks(new ArrayList<>()),
+            ADMIN_AUTH_HEADERS);
+
+    UUID orphanedPipelineId = UUID.randomUUID();
+
+    // Create lineage with valid pipeline
+    org.openmetadata.schema.type.LineageDetails validLineageDetails =
+        new org.openmetadata.schema.type.LineageDetails()
+            .withPipeline(
+                new org.openmetadata.schema.type.EntityReference()
+                    .withId(validPipeline.getId())
+                    .withName(validPipeline.getName())
+                    .withType(Entity.PIPELINE));
+
+    String validLineageJson =
+        org.openmetadata.schema.utils.JsonUtils.pojoToJson(validLineageDetails);
+
+    collectionDAO
+        .relationshipDAO()
+        .insert(
+            testTables.getFirst().getId(),
+            testTables.get(1).getId(),
+            Entity.TABLE,
+            Entity.TABLE,
+            Relationship.UPSTREAM.ordinal(),
+            validLineageJson);
+
+    // Create lineage with orphaned pipeline
+    org.openmetadata.schema.type.LineageDetails orphanedLineageDetails =
+        new org.openmetadata.schema.type.LineageDetails()
+            .withPipeline(
+                new org.openmetadata.schema.type.EntityReference()
+                    .withId(orphanedPipelineId)
+                    .withName("orphanedPipeline")
+                    .withType(Entity.PIPELINE));
+
+    String orphanedLineageJson =
+        org.openmetadata.schema.utils.JsonUtils.pojoToJson(orphanedLineageDetails);
+
+    collectionDAO
+        .relationshipDAO()
+        .insert(
+            testTables.get(1).getId(),
+            testTables.get(2).getId(),
+            Entity.TABLE,
+            Entity.TABLE,
+            Relationship.UPSTREAM.ordinal(),
+            orphanedLineageJson);
+
+    // Create lineage without pipeline
+    org.openmetadata.schema.type.LineageDetails noPipelineLineageDetails =
+        new org.openmetadata.schema.type.LineageDetails().withSource(LineageDetails.Source.MANUAL);
+
+    String noPipelineLineageJson =
+        org.openmetadata.schema.utils.JsonUtils.pojoToJson(noPipelineLineageDetails);
+
+    collectionDAO
+        .relationshipDAO()
+        .insert(
+            testTables.get(2).getId(),
+            testTables.getFirst().getId(),
+            Entity.TABLE,
+            Entity.TABLE,
+            Relationship.UPSTREAM.ordinal(),
+            noPipelineLineageJson);
+
+    // Run cleanup
+    cleanup = new EntityRelationshipCleanup(collectionDAO, true);
+    EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(100);
+
+    assertNotNull(result);
+
+    // Should find exactly 1 orphaned lineage (the one with orphaned pipeline)
+    long orphanedLineageCount =
+        result.getOrphanedRelationships().stream()
+            .filter(orphan -> orphan.getRelation() == Relationship.UPSTREAM.ordinal())
+            .count();
+
+    assertTrue(
+        orphanedLineageCount >= 1,
+        "Should find at least 1 orphaned lineage (with orphaned pipeline)");
+
+    // Verify the orphaned one has the correct reason
+    boolean foundOrphanedPipelineLineage =
+        result.getOrphanedRelationships().stream()
+            .anyMatch(
+                orphan ->
+                    orphan.getRelation() == Relationship.UPSTREAM.ordinal()
+                        && orphan
+                            .getReason()
+                            .contains("Pipeline entity referenced in lineage does not exist"));
+
+    assertTrue(
+        foundOrphanedPipelineLineage,
+        "Should find lineage with orphaned pipeline with correct reason");
+
+    // Clean up
     EntityRelationshipCleanup actualCleanup = new EntityRelationshipCleanup(collectionDAO, false);
     actualCleanup.performCleanup(100);
   }

@@ -127,7 +127,7 @@ const TaskFeedCard = ({
             <Typography.Text className="p-0 text-primary">{`#${taskDetails.id} `}</Typography.Text>
 
             <Typography.Text className="p-xss">
-              {TASK_TYPES[taskDetails.type]}
+              {t(TASK_TYPES[taskDetails.type])}
             </Typography.Text>
 
             {taskColumnName}
@@ -231,7 +231,6 @@ const TaskFeedCard = ({
                     </div>
                   </>
                 )}
-
                 <Typography.Text
                   className={classNames(
                     postLength > 0

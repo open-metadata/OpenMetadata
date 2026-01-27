@@ -35,6 +35,7 @@ export interface ChartDetailsTabsProps {
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
+  viewCustomPropertiesPermission: boolean;
   handleFeedCount: (data: FeedCounts) => void;
   feedCount: FeedCounts;
   activeTab: EntityTabs;
@@ -71,6 +72,7 @@ class ChartDetailsClassBase {
       EntityTabs.DETAILS,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,

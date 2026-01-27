@@ -117,6 +117,8 @@ class SupersetSourceMixin(DashboardServiceSource):
         self, dashboard_details: Union[DashboardResult, FetchDashboard]
     ) -> Optional[EntityReferenceList]:
         try:
+            if not self.source_config.includeOwners:
+                return None
             if hasattr(dashboard_details, "owners"):
                 for owner in dashboard_details.owners or []:
                     if owner.email:
@@ -140,6 +142,14 @@ class SupersetSourceMixin(DashboardServiceSource):
         """
         try:
             raw_position_data = dashboard_details.position_json
+
+            # For Superset 5.0.0+, position_json may be missing from list endpoint
+            # In this case, fetch individual dashboard details
+            if not raw_position_data and hasattr(self, "client"):
+                dashboard_response = self.client.fetch_dashboard(dashboard_details.id)
+                if dashboard_response and dashboard_response.result:
+                    raw_position_data = dashboard_response.result.position_json
+
             if raw_position_data:
                 position_data = json.loads(raw_position_data)
                 return [
@@ -217,7 +227,10 @@ class SupersetSourceMixin(DashboardServiceSource):
         # Every SQL query in tables is a SQL statement SELECTING data.
         # To get lineage we 'simulate' INSERT INTO query into dummy table.
         result = []
-        parser = LineageParser(f"INSERT INTO dummy_table {chart_json.sql}")
+        parser = LineageParser(
+            f"INSERT INTO dummy_table {chart_json.sql}",
+            parser_type=self.get_query_parser_type(),
+        )
 
         for table in parser.source_tables:
             table_name = table.raw_name

@@ -10,10 +10,6 @@ public class DataContractValidationException extends WebServiceException {
     super(Response.Status.INTERNAL_SERVER_ERROR, DATACONTRACT_VALIDATION_ERROR, message);
   }
 
-  public DataContractValidationException(Response.Status status, String message) {
-    super(status.getStatusCode(), DATACONTRACT_VALIDATION_ERROR, message);
-  }
-
   public static DataContractValidationException byMessage(String errorMessage) {
     return new DataContractValidationException(errorMessage);
   }

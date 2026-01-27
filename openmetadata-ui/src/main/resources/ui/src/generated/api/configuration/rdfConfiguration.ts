@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,13 +19,28 @@ export interface RDFConfiguration {
      */
     baseUri?: string;
     /**
+     * Cache inferred triples for better query performance (requires more storage)
+     */
+    cacheInferredTriples?: boolean;
+    /**
      * Dataset name in RDF storage
      */
     dataset?: string;
     /**
+     * Default reasoning level for SPARQL queries when inference is enabled. CUSTOM provides
+     * OpenMetadata-specific inference rules including transitive lineage traversal and inverse
+     * relationships.
+     */
+    defaultInferenceLevel?: ReasoningLevel;
+    /**
      * Enable or disable RDF support
      */
     enabled: boolean;
+    /**
+     * Enable inference/reasoning on SPARQL queries. When enabled, SPARQL queries will use the
+     * inference engine to derive additional triples based on the reasoning level.
+     */
+    inferenceEnabled?: boolean;
     /**
      * Password for RDF storage authentication
      */
@@ -42,6 +57,21 @@ export interface RDFConfiguration {
      * Username for RDF storage authentication
      */
     username?: string;
+}
+
+/**
+ * Default reasoning level for SPARQL queries when inference is enabled. CUSTOM provides
+ * OpenMetadata-specific inference rules including transitive lineage traversal and inverse
+ * relationships.
+ *
+ * Level of reasoning/inference to apply to SPARQL queries
+ */
+export enum ReasoningLevel {
+    Custom = "CUSTOM",
+    None = "NONE",
+    OwlDL = "OWL_DL",
+    OwlLite = "OWL_LITE",
+    Rdfs = "RDFS",
 }
 
 /**

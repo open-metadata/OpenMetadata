@@ -36,6 +36,8 @@ describe('useFqn', () => {
       fqn: 'sample_data.db_sample.schema_sample.dim/client.',
       ingestionFQN: 'sample_data.db_sample.schema_sample.dim/client.',
       ruleName: 'testing / policy rule do not use',
+      entityFqn: 'sample_data.db_sample.schema_sample.dim/client.',
+      columnFqn: undefined,
     });
   });
 
@@ -48,6 +50,27 @@ describe('useFqn', () => {
       fqn: '',
       ingestionFQN: '',
       ruleName: '',
+      entityFqn: '',
+      columnFqn: undefined,
+    });
+  });
+
+  it('returns split entityFqn and columnFqn when type is provided', () => {
+    (useRequiredParams as jest.Mock).mockReturnValue({
+      fqn: 'service.database.schema.table.column',
+      ingestionFQN: 'service.database.schema.table.column',
+      ruleName: '',
+    });
+
+    // We rely on the real EntityUtilClassBase behavior because it's not mocked in this file
+    const { result } = renderHook(() => useFqn({ type: 'table' as any }));
+
+    expect(result.current).toEqual({
+      fqn: 'service.database.schema.table.column',
+      ingestionFQN: 'service.database.schema.table.column',
+      ruleName: '',
+      entityFqn: 'service.database.schema.table',
+      columnFqn: 'column',
     });
   });
 });

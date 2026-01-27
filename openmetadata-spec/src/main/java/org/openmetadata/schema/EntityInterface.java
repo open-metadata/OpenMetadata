@@ -50,6 +50,10 @@ public interface EntityInterface {
 
   Long getUpdatedAt();
 
+  default String getImpersonatedBy() {
+    return null;
+  }
+
   URI getHref();
 
   ChangeDescription getChangeDescription();
@@ -149,6 +153,10 @@ public interface EntityInterface {
   void setUpdatedBy(String admin);
 
   void setUpdatedAt(Long updatedAt);
+
+  default void setImpersonatedBy(String botName) {
+    /* no-op implementation to be overridden */
+  }
 
   void setHref(URI href);
 

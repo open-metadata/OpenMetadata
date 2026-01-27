@@ -14,6 +14,7 @@
 import { SaveOutlined } from '@ant-design/icons';
 import { Button, Modal, Typography } from 'antd';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import './unsaved-changes-modal.less';
 import { UnsavedChangesModalProps } from './UnsavedChangesModal.interface';
 
@@ -22,17 +23,20 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
   onDiscard,
   onSave,
   onCancel,
-  title = 'Unsaved changes',
-  description = 'Do you want to save or discard changes?',
-  discardText = 'Discard',
-  saveText = 'Save changes',
+  title,
+  description,
+  discardText,
+  saveText,
   loading = false,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <Modal
       centered
       closable
       className="unsaved-changes-modal-container"
+      data-testid="unsaved-changes-modal"
       footer={null}
       open={open}
       width={400}
@@ -44,25 +48,34 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
           </div>
 
           <div className="unsaved-changes-modal-content">
-            <Typography.Title className="unsaved-changes-modal-title" level={5}>
-              {title}
+            <Typography.Title
+              className="unsaved-changes-modal-title"
+              data-testid="unsaved-changes-modal-title"
+              level={5}>
+              {title || t('message.unsaved-changes')}
             </Typography.Title>
-            <Typography.Text className="unsaved-changes-modal-description">
-              {description}
+            <Typography.Text
+              className="unsaved-changes-modal-description"
+              data-testid="unsaved-changes-modal-description">
+              {description || t('message.unsaved-changes-description')}
             </Typography.Text>
           </div>
         </div>
 
         <div className="unsaved-changes-modal-actions">
-          <Button className="unsaved-changes-modal-discard" onClick={onDiscard}>
-            {discardText}
+          <Button
+            className="unsaved-changes-modal-discard"
+            data-testid="unsaved-changes-modal-discard"
+            onClick={onDiscard}>
+            {discardText || t('message.unsaved-changes-discard')}
           </Button>
           <Button
             className="unsaved-changes-modal-save"
+            data-testid="unsaved-changes-modal-save"
             loading={loading}
             type="primary"
             onClick={onSave}>
-            {saveText}
+            {saveText || t('message.unsaved-changes-save')}
           </Button>
         </div>
       </div>

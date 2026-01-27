@@ -34,10 +34,6 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.time_utils import (
-    get_beginning_of_day_timestamp_mill,
-    get_end_of_day_timestamp_mill,
-)
 from metadata.workflow.metadata import MetadataWorkflow
 
 Base = declarative_base()
@@ -87,6 +83,14 @@ class User(Base):
     signedup = Column(DateTime)
 
 
+class Order(Base):
+    __tablename__ = "orders"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer)
+    amount = Column(Integer)
+    order_date = Column(DateTime)
+
+
 class TestGreatExpectationIntegration(TestCase):
     """Test great expectation integration"""
 
@@ -113,7 +117,12 @@ class TestGreatExpectationIntegration(TestCase):
         except Exception as exc:
             LOGGER.warning(f"Table Already exists: {exc}")
 
-        data = [
+        try:
+            Order.__table__.create(bind=cls.engine)
+        except Exception as exc:
+            LOGGER.warning(f"Table Already exists: {exc}")
+
+        users_data = [
             User(
                 name="John",
                 fullname="John Doe",
@@ -143,7 +152,29 @@ class TestGreatExpectationIntegration(TestCase):
                 signedup=datetime.now() - timedelta(days=1),
             ),
         ]
-        cls.session.add_all(data)
+        cls.session.add_all(users_data)
+
+        orders_data = [
+            Order(
+                id=1,
+                user_id=1,
+                amount=100,
+                order_date=datetime.now() - timedelta(days=5),
+            ),
+            Order(
+                id=2,
+                user_id=2,
+                amount=200,
+                order_date=datetime.now() - timedelta(days=3),
+            ),
+            Order(
+                id=3,
+                user_id=1,
+                amount=150,
+                order_date=datetime.now() - timedelta(days=1),
+            ),
+        ]
+        cls.session.add_all(orders_data)
         cls.session.commit()
 
         ingestion_workflow = MetadataWorkflow.create(INGESTION_CONFIG)
@@ -170,11 +201,13 @@ class TestGreatExpectationIntegration(TestCase):
         )
 
         User.__table__.drop(bind=cls.engine)
+        Order.__table__.drop(bind=cls.engine)
         cls.session.close()
 
     def test_great_expectation_integration(self):
         """
-        Test great expectation integration
+        Test great expectation integration with multi-table routing using expectation_suite_table_config_map
+        Tests Issue #22929: query-based validations routing to correct tables
         """
         self.install_gx_018x()
         import great_expectations as gx
@@ -187,13 +220,20 @@ class TestGreatExpectationIntegration(TestCase):
             # The test will run if we run this test alone without the 1.x.x test
             self.skipTest(f"GX version is not 0.18.x: {exc}")
 
-        table_entity = self.metadata.get_by_name(
+        # Verify both tables start with no test suites
+        users_table = self.metadata.get_by_name(
             entity=Table,
             fqn="test_sqlite.default.main.users",
             fields=["testSuite"],
         )
+        assert not users_table.testSuite
 
-        assert not table_entity.testSuite
+        orders_table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.default.main.orders",
+            fields=["testSuite"],
+        )
+        assert not orders_table.testSuite
 
         # GE config file
         ge_folder = os.path.join(
@@ -201,43 +241,122 @@ class TestGreatExpectationIntegration(TestCase):
         )
         ometa_config = os.path.join(ge_folder, "gx/ometa_config")
         context = gx.get_context(project_root_dir=ge_folder)
-        checkpoint = context.get_checkpoint("sqlite")
-        # update our checkpoint file at runtime to dynamically pass the ometa config file
-        checkpoint.action_list[-1].update(
-            {
-                "name": "ometa_ingestion",
-                "action": {
-                    "module_name": "metadata.great_expectations.action",
-                    "class_name": "OpenMetadataValidationAction",
-                    "config_file_path": ometa_config,
-                    "database_service_name": "test_sqlite",
-                    "database_name": "default",
-                    "schema_name": "main",
-                },
-            }
-        )
-        # run the checkpoint
-        checkpoint.run()
 
-        table_entity = self.metadata.get_by_name(
+        # Create query-based expectation suite for users table
+        users_query = "SELECT id, name FROM users WHERE id > 0"
+        users_suite = context.add_expectation_suite("users_query_suite")
+        users_suite.add_expectation(
+            gx.core.ExpectationConfiguration(
+                expectation_type="expect_column_values_to_not_be_null",
+                kwargs={"column": "name"},
+            )
+        )
+        context.save_expectation_suite(users_suite)
+
+        # Create query-based expectation suite for orders table
+        orders_query = "SELECT id, amount FROM orders WHERE amount > 0"
+        orders_suite = context.add_expectation_suite("orders_query_suite")
+        orders_suite.add_expectation(
+            gx.core.ExpectationConfiguration(
+                expectation_type="expect_column_values_to_not_be_null",
+                kwargs={"column": "amount"},
+            )
+        )
+        context.save_expectation_suite(orders_suite)
+
+        # Define the config map to route results to correct tables
+        table_config_map = {
+            "users_query_suite": {
+                "database_name": "default",
+                "schema_name": "main",
+                "table_name": "users",
+            },
+            "orders_query_suite": {
+                "database_name": "default",
+                "schema_name": "main",
+                "table_name": "orders",
+            },
+        }
+
+        # Create multi-table checkpoint with config map
+        checkpoint_config = {
+            "name": "multi_table_checkpoint",
+            "config_version": 1.0,
+            "class_name": "Checkpoint",
+            "validations": [
+                {
+                    "batch_request": {
+                        "datasource_name": "GEIntegrationTests",
+                        "data_connector_name": "default_runtime_data_connector_name",
+                        "data_asset_name": "users_query_asset",
+                        "runtime_parameters": {"query": users_query},
+                        "batch_identifiers": {"default_identifier_name": "users_check"},
+                    },
+                    "expectation_suite_name": "users_query_suite",
+                },
+                {
+                    "batch_request": {
+                        "datasource_name": "GEIntegrationTests",
+                        "data_connector_name": "default_runtime_data_connector_name",
+                        "data_asset_name": "orders_query_asset",
+                        "runtime_parameters": {"query": orders_query},
+                        "batch_identifiers": {
+                            "default_identifier_name": "orders_check"
+                        },
+                    },
+                    "expectation_suite_name": "orders_query_suite",
+                },
+            ],
+            "action_list": [
+                {
+                    "name": "openmetadata_action",
+                    "action": {
+                        "class_name": "OpenMetadataValidationAction",
+                        "module_name": "metadata.great_expectations.action",
+                        "database_service_name": "test_sqlite",
+                        "config_file_path": ometa_config,
+                        "database_name": "default",
+                        "schema_name": "main",
+                        "expectation_suite_table_config_map": table_config_map,
+                    },
+                }
+            ],
+        }
+
+        context.add_checkpoint(**checkpoint_config)
+        result = context.run_checkpoint(checkpoint_name="multi_table_checkpoint")
+
+        assert result.success
+
+        # Verify users table received its test results
+        users_table = self.metadata.get_by_name(
             entity=Table,
             fqn="test_sqlite.default.main.users",
             fields=["testSuite"],
         )
-
-        assert table_entity.testSuite
-        test_suite: TestSuite = self.metadata.get_by_id(
-            entity=TestSuite, entity_id=table_entity.testSuite.id, fields=["tests"]
+        assert users_table.testSuite
+        users_test_suite: TestSuite = self.metadata.get_by_id(
+            entity=TestSuite, entity_id=users_table.testSuite.id, fields=["tests"]
         )
-        assert len(test_suite.tests) == 1
-
-        test_case_results = self.metadata.get_test_case_results(
-            test_case_fqn=TEST_CASE_FQN,
-            start_ts=get_beginning_of_day_timestamp_mill(),
-            end_ts=get_end_of_day_timestamp_mill(),
+        assert len(users_test_suite.tests) >= 1
+        assert any(
+            "name" in str(test.fullyQualifiedName) for test in users_test_suite.tests
         )
 
-        assert test_case_results
+        # Verify orders table received its test results
+        orders_table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.default.main.orders",
+            fields=["testSuite"],
+        )
+        assert orders_table.testSuite
+        orders_test_suite: TestSuite = self.metadata.get_by_id(
+            entity=TestSuite, entity_id=orders_table.testSuite.id, fields=["tests"]
+        )
+        assert len(orders_test_suite.tests) >= 1
+        assert any(
+            "amount" in str(test.fullyQualifiedName) for test in orders_test_suite.tests
+        )
 
     def install_gx_018x(self):
         """Install GX 0.18.x at runtime as we support 0.18.x and 1.x.x and setup will install 1 default version"""

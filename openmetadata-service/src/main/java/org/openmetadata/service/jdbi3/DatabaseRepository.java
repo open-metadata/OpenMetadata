@@ -65,6 +65,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -85,7 +86,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put("name", this::fetchAndSetService);
     fieldFetchers.put("databaseSchemas", this::fetchAndSetDatabaseSchemas);
     fieldFetchers.put(DATABASE_PROFILER_CONFIG, this::fetchAndSetDatabaseProfilerConfigs);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
@@ -94,7 +94,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   @Override
   public void setFullyQualifiedName(Database database) {
     database.setFullyQualifiedName(
-        FullyQualifiedName.build(database.getService().getName(), database.getName()));
+        FullyQualifiedName.add(database.getService().getFullyQualifiedName(), database.getName()));
   }
 
   @Override
@@ -184,7 +184,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return databaseCsv.importCsv(records, dryRun);
   }
 
-  public void setFields(Database database, Fields fields) {
+  @Override
+  public void setFields(Database database, Fields fields, RelationIncludes relationIncludes) {
     database.setService(getContainer(database.getId()));
     database.setDatabaseSchemas(
         fields.contains("databaseSchemas") ? getSchemas(database) : database.getDatabaseSchemas());
@@ -323,24 +324,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     daoCollection.entityExtensionDAO().delete(databaseId, DATABASE_PROFILER_CONFIG_EXTENSION);
     clearFieldsInternal(database, Fields.EMPTY_FIELDS);
     return database;
-  }
-
-  private void fetchAndSetService(List<Database> entities, Fields fields) {
-    if (entities == null || entities.isEmpty() || (!fields.contains("name"))) {
-      return;
-    }
-
-    // Use batch fetch to get correct service for each database
-    var serviceMap = batchFetchServices(entities);
-
-    // Set the correct service for each database
-    entities.forEach(
-        database -> {
-          EntityReference service = serviceMap.get(database.getId());
-          if (service != null) {
-            database.setService(service);
-          }
-        });
   }
 
   private Map<UUID, List<EntityReference>> batchFetchDatabaseSchemas(List<Database> databases) {
@@ -620,7 +603,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       if (csvRecord == null) {
-        throw new IllegalArgumentException("Invalid Csv");
+        return; // Error has already been logged by getNextRecord, just skip this record
       }
 
       // Get entityType and fullyQualifiedName if provided

@@ -120,6 +120,12 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
   })),
 }));
 
+jest.mock('../Applications/ApplicationsProvider/ApplicationsProvider', () => ({
+  useApplicationsProvider: () => ({
+    extensionRegistry: { getContributions: jest.fn().mockReturnValue([]) },
+  }),
+}));
+
 jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
   jest
     .fn()

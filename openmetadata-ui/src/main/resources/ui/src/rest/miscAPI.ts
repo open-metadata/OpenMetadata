@@ -168,7 +168,8 @@ export const getAggregateFieldOptions = (
   field: string,
   value: string,
   q: string,
-  sourceFields?: string
+  sourceFields?: string,
+  deleted = false
 ) => {
   const withWildCardValue = value
     ? `.*${escapeESReservedCharacters(value)}.*`
@@ -179,6 +180,7 @@ export const getAggregateFieldOptions = (
     value: withWildCardValue,
     q,
     sourceFields,
+    deleted,
   };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
@@ -191,28 +193,20 @@ export const getAggregateFieldOptions = (
 
 /**
  * Posts aggregate field options request with parameters in the body.
- *
- * @param {SearchIndex | SearchIndex[]} index - The search index or array of search indexes.
- * @param {string} field - The field to aggregate on. Example owner.displayName.keyword
- * @param {string} value - The value to filter the aggregation on.
- * @param {string} q - The search query.
+ * @param {SearchRequest} body - The search request body containing the parameters.
  * @return {Promise<SearchResponse<ExploreSearchIndex>>} A promise that resolves to the search response
  * containing the aggregate field options.
  */
-export const postAggregateFieldOptions = (
-  index: SearchIndex | SearchIndex[],
-  field: string,
-  value: string,
-  q: string
-) => {
-  const withWildCardValue = value
-    ? `.*${escapeESReservedCharacters(value)}.*`
+export const postAggregateFieldOptions = ({
+  fieldValue,
+  ...rest
+}: SearchRequest) => {
+  const withWildCardValue = fieldValue
+    ? `.*${escapeESReservedCharacters(fieldValue)}.*`
     : '.*';
   const body: SearchRequest = {
-    index: index as string,
-    fieldName: field,
     fieldValue: withWildCardValue,
-    query: q,
+    ...rest,
   };
 
   return APIClient.post<SearchResponse<ExploreSearchIndex>>(
@@ -239,6 +233,11 @@ export const fetchMarkdownFile = async (filePath: string) => {
     const url = new URL(filePath);
     baseURL = `${url.origin}/`;
   } catch (error) {
+    // eslint-disable-next-line no-console
+    console.info(
+      'Error while fetching markdown file, using default baseURL',
+      error
+    );
     baseURL = '/';
   }
 

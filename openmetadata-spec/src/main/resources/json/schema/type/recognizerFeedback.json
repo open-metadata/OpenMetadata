@@ -1,0 +1,120 @@
+{
+  "$id": "https://open-metadata.org/schema/type/recognizerFeedback.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RecognizerFeedback",
+  "description": "User feedback on auto-applied tags from recognizers",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.RecognizerFeedback",
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the feedback",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "entityLink": {
+      "description": "Link to the specific field where the tag was incorrectly applied (e.g., <#E::table::customers::columns::company_name>)",
+      "$ref": "basic.json#/definitions/entityLink"
+    },
+    "tagFQN": {
+      "description": "Fully qualified name of the incorrectly applied tag",
+      "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "feedbackType": {
+      "description": "Type of feedback",
+      "type": "string",
+      "enum": [
+        "FALSE_POSITIVE",
+        "INCORRECT_CLASSIFICATION", 
+        "OVERLY_BROAD",
+        "CONTEXT_SPECIFIC"
+      ],
+      "default": "FALSE_POSITIVE"
+    },
+    "userReason": {
+      "description": "User-selected reason for reporting",
+      "type": "string",
+      "enum": [
+        "NOT_SENSITIVE_DATA",
+        "WRONG_DATA_TYPE",
+        "INTERNAL_IDENTIFIER",
+        "PUBLIC_INFORMATION",
+        "TEST_DATA",
+        "ENCRYPTED_DATA",
+        "OTHER"
+      ]
+    },
+    "userComments": {
+      "description": "Additional context from the user",
+      "type": "string"
+    },
+    "suggestedTag": {
+      "description": "Tag the user thinks should be applied instead (optional)",
+      "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "sampleValues": {
+      "description": "Example values from this field that triggered the false positive (anonymized)",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recognizerInfo": {
+      "description": "Information about which recognizer triggered this",
+      "type": "object",
+      "properties": {
+        "recognizerId": {
+          "$ref": "basic.json#/definitions/uuid"
+        },
+        "recognizerName": {
+          "type": "string"
+        },
+        "matchPattern": {
+          "description": "The pattern that matched (for debugging)",
+          "type": "string"
+        },
+        "confidenceScore": {
+          "type": "number"
+        }
+      }
+    },
+    "createdBy": {
+      "description": "User who provided the feedback",
+      "$ref": "entityReference.json"
+    },
+    "createdAt": {
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "status": {
+      "description": "Processing status",
+      "type": "string",
+      "enum": ["PENDING", "REVIEWED", "APPLIED", "REJECTED"],
+      "default": "PENDING"
+    },
+    "resolution": {
+      "description": "How this feedback was resolved",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "ADDED_TO_EXCEPTION_LIST",
+            "PATTERN_ADJUSTED",
+            "THRESHOLD_INCREASED",
+            "RECOGNIZER_DISABLED_FOR_ENTITY",
+            "NO_ACTION_NEEDED"
+          ]
+        },
+        "resolvedBy": {
+          "$ref": "entityReference.json"
+        },
+        "resolvedAt": {
+          "$ref": "basic.json#/definitions/timestamp"
+        },
+        "resolutionNotes": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": ["entityLink", "tagFQN", "feedbackType"],
+  "additionalProperties": false
+}

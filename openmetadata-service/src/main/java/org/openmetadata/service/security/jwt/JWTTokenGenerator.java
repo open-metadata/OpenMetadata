@@ -25,6 +25,8 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
+import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -52,6 +54,9 @@ public class JWTTokenGenerator {
   private static final String EMAIL_CLAIM = "email";
   private static final String IS_BOT_CLAIM = "isBot";
   public static final String TOKEN_TYPE = "tokenType";
+  public static final String PREFERRED_USERNAME = "preferred_username";
+  public static final String USERNAME = "username";
+  public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   private static final JWTTokenGenerator INSTANCE = new JWTTokenGenerator();
   private RSAPrivateKey privateKey;
   @Getter private RSAPublicKey publicKey;
@@ -156,6 +161,8 @@ public class JWTTokenGenerator {
               .withClaim(EMAIL_CLAIM, email)
               .withClaim(IS_BOT_CLAIM, isBot)
               .withClaim(TOKEN_TYPE, tokenType.value())
+              .withClaim(USERNAME, userName)
+              .withClaim(PREFERRED_USERNAME, userName)
               .withIssuedAt(new Date(System.currentTimeMillis()))
               .withExpiresAt(expires)
               .sign(algorithm);
@@ -187,6 +194,38 @@ public class JWTTokenGenerator {
   public Date getCustomExpiryDate(long seconds) {
     LocalDateTime expiryDate = LocalDateTime.now().plusSeconds(seconds);
     return Date.from(expiryDate.atZone(ZoneId.systemDefault()).toInstant());
+  }
+
+  public JWTAuthMechanism generateImpersonationToken(
+      String botName,
+      String targetUser,
+      Set<String> botRoles,
+      boolean isBotAdmin,
+      String botEmail,
+      long expiryInSeconds) {
+    try {
+      Algorithm algorithm = getAlgorithm(tokenValidationAlgorithm, null, privateKey);
+      Date expiryDate = getCustomExpiryDate(expiryInSeconds);
+
+      String token =
+          JWT.create()
+              .withIssuer(issuer)
+              .withKeyId(kid)
+              .withClaim(SUBJECT_CLAIM, targetUser)
+              .withClaim(IS_BOT_CLAIM, false)
+              .withClaim(TOKEN_TYPE, ServiceTokenType.BOT.value())
+              .withClaim(IMPERSONATED_USER_CLAIM, botName)
+              .withIssuedAt(new Date(System.currentTimeMillis()))
+              .withExpiresAt(expiryDate)
+              .sign(algorithm);
+
+      JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism();
+      jwtAuthMechanism.setJWTToken(token);
+      jwtAuthMechanism.setJWTTokenExpiresAt(expiryDate.getTime());
+      return jwtAuthMechanism;
+    } catch (Exception e) {
+      throw new JWTCreationException("Failed to generate impersonation token", e);
+    }
   }
 
   public JWKSResponse getJWKSResponse() {
@@ -222,12 +261,42 @@ public class JWTTokenGenerator {
 
   public static Algorithm getAlgorithm(
       AuthenticationConfiguration.TokenValidationAlgorithm algorithm,
-      RSAPublicKey publicKey,
-      RSAPrivateKey privateKey) {
+      RSAPublicKey rsaPublicKey,
+      RSAPrivateKey rsaPrivateKey) {
     return switch (algorithm) {
-      case RS_256 -> Algorithm.RSA256(publicKey, privateKey);
-      case RS_384 -> Algorithm.RSA384(publicKey, privateKey);
-      case RS_512 -> Algorithm.RSA512(publicKey, privateKey);
+      case RS_256 -> Algorithm.RSA256(rsaPublicKey, rsaPrivateKey);
+      case RS_384 -> Algorithm.RSA384(rsaPublicKey, rsaPrivateKey);
+      case RS_512 -> Algorithm.RSA512(rsaPublicKey, rsaPrivateKey);
+      case ES_256, ES_384, ES_512 -> throw new IllegalArgumentException(
+          "EC algorithms require ECPublicKey/ECPrivateKey. Use getAlgorithm(algorithm, ecPublicKey, ecPrivateKey) instead.");
     };
+  }
+
+  public static Algorithm getAlgorithm(
+      AuthenticationConfiguration.TokenValidationAlgorithm algorithm,
+      ECPublicKey ecPublicKey,
+      ECPrivateKey ecPrivateKey) {
+    return switch (algorithm) {
+      case ES_256 -> Algorithm.ECDSA256(ecPublicKey, ecPrivateKey);
+      case ES_384 -> Algorithm.ECDSA384(ecPublicKey, ecPrivateKey);
+      case ES_512 -> Algorithm.ECDSA512(ecPublicKey, ecPrivateKey);
+      case RS_256, RS_384, RS_512 -> throw new IllegalArgumentException(
+          "RSA algorithms require RSAPublicKey/RSAPrivateKey. Use getAlgorithm(algorithm, rsaPublicKey, rsaPrivateKey) instead.");
+    };
+  }
+
+  public static Algorithm getAlgorithmFromPublicKey(
+      AuthenticationConfiguration.TokenValidationAlgorithm algorithm,
+      java.security.PublicKey publicKey) {
+    if (publicKey instanceof RSAPublicKey rsaPublicKey) {
+      return getAlgorithm(algorithm, rsaPublicKey, null);
+    } else if (publicKey instanceof ECPublicKey ecPublicKey) {
+      return getAlgorithm(algorithm, ecPublicKey, null);
+    } else {
+      throw new IllegalArgumentException(
+          "Unsupported public key type: "
+              + publicKey.getClass().getSimpleName()
+              + ". Only RSA and EC keys are supported.");
+    }
   }
 }

@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.datamodels;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -42,6 +44,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
@@ -73,7 +76,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 public class DashboardDataModelResource
     extends EntityResource<DashboardDataModel, DashboardDataModelRepository> {
   private final DashboardDataModelMapper mapper = new DashboardDataModelMapper();
-  public static final String COLLECTION_PATH = "/v1/dashboard/datamodels";
+  public static final String COLLECTION_PATH = "/v1/dashboard/datamodels/";
   protected static final String FIELDS = "owners,tags,followers,domains,sourceHash,extension";
 
   @Override
@@ -85,6 +88,12 @@ public class DashboardDataModelResource
 
   public DashboardDataModelResource(Authorizer authorizer, Limits limits) {
     super(Entity.DASHBOARD_DATA_MODEL, authorizer, limits);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+
+    return listOf(MetadataOperation.EDIT_LINEAGE);
   }
 
   public static class DashboardDataModelList extends ResultList<DashboardDataModel> {
@@ -210,8 +219,17 @@ public class DashboardDataModelResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -250,8 +268,17 @@ public class DashboardDataModelResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -308,6 +335,45 @@ public class DashboardDataModelResource
     DashboardDataModel dashboardDataModel =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dashboardDataModel);
+  }
+
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateDashboardDataModels",
+      summary = "Bulk create or update dashboardDataModels",
+      description =
+          "Create or update multiple dashboardDataModels in a single operation. "
+              + "Returns a BulkOperationResult with success/failure details for each dashboardDataModel.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Bulk operation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateDashboardDataModel> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
   @PATCH

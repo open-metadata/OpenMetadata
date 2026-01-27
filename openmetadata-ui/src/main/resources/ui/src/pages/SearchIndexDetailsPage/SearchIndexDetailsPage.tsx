@@ -78,8 +78,11 @@ function SearchIndexDetailsPage() {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab: activeTab = EntityTabs.FIELDS } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedSearchIndexFQN } = useFqn();
+  const { entityFqn: decodedSearchIndexFQN } = useFqn({
+    type: EntityType.SEARCH_INDEX,
+  });
   const { t } = useTranslation();
+
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
@@ -159,6 +162,7 @@ function SearchIndexDetailsPage() {
     editLineagePermission,
     viewSampleDataPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -191,6 +195,10 @@ function SearchIndexDetailsPage() {
         Operation.ViewSampleData
       ),
       viewAllPermission: searchIndexPermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        searchIndexPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [
       searchIndexPermissions,
@@ -331,6 +339,7 @@ function SearchIndexDetailsPage() {
     const allTabs = searchIndexClassBase.getSearchIndexDetailPageTabs({
       searchIndexDetails: searchIndexDetails ?? ({} as SearchIndex),
       viewAllPermission,
+      viewCustomPropertiesPermission,
       feedCount,
       activeTab,
       getEntityFeedCount,
@@ -362,6 +371,7 @@ function SearchIndexDetailsPage() {
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     searchIndexDetails,
     searchIndexDetails?.extension,
     onDescriptionUpdate,
@@ -575,9 +585,7 @@ function SearchIndexDetailsPage() {
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.search-index'),
-      })}
+      pageTitle={entityName}
       title={t('label.entity-detail-plural', {
         entity: t('label.search-index'),
       })}>

@@ -406,7 +406,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 for glue_col in glue_columns:
                     col_name = glue_col["Name"]
                     col_type = glue_col["Type"]
-                    col_comment = glue_col.get("Comment", "")
+                    col_comment = glue_col.get("Comment")
                     col_parameters = glue_col.get("Parameters", {})
 
                     # Check if this is a non-current Iceberg column
@@ -427,7 +427,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 for glue_col in partition_keys:
                     col_name = glue_col["Name"]
                     col_type = glue_col["Type"]
-                    col_comment = glue_col.get("Comment", "")
+                    col_comment = glue_col.get("Comment")
                     col_parameters = glue_col.get("Parameters", {})
 
                     # Check if this is a non-current Iceberg column

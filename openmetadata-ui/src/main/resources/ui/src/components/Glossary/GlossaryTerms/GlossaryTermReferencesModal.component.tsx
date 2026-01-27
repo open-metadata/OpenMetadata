@@ -40,8 +40,6 @@ const GlossaryTermReferencesModal = ({
       setSaving(true);
       await form.validateFields();
       await onSave(obj.references);
-    } catch (_) {
-      // Nothing here
     } finally {
       setSaving(false);
     }
@@ -127,6 +125,7 @@ const GlossaryTermReferencesModal = ({
 
                   <Col span={1}>
                     <Button
+                      data-testid="delete-ref-btn"
                       icon={
                         <Icon
                           className="align-middle"

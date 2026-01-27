@@ -21,6 +21,7 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants'
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -33,6 +34,8 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../../utils/CustomizePage/CustomizePageUtils';
 import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
+import { getEntityName } from '../../../../utils/EntityUtils';
+import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {
   getEntityDetailsPath,
   getVersionPath,
@@ -64,7 +67,7 @@ const DataModelDetails = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedDataModelFQN } = useFqn();
+
   const { customizedPage, isLoading } = useCustomPages(
     PageType.DashboardDataModel
   );
@@ -72,6 +75,10 @@ const DataModelDetails = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+
+  const { entityFqn: decodedDataModelFQN } = useFqn({
+    type: EntityType.DASHBOARD_DATA_MODEL,
+  });
 
   const { deleted, version } = useMemo(() => {
     return {
@@ -163,8 +170,10 @@ const DataModelDetails = ({
   const { editLineagePermission } = useMemo(() => {
     return {
       editLineagePermission:
-        (dataModelPermissions.EditAll || dataModelPermissions.EditLineage) &&
-        !deleted,
+        getPrioritizedEditPermission(
+          dataModelPermissions,
+          Operation.EditLineage
+        ) && !deleted,
     };
   }, [dataModelPermissions, deleted]);
 
@@ -234,9 +243,7 @@ const DataModelDetails = ({
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.data-model'),
-      })}
+      pageTitle={getEntityName(dataModelData)}
       title="Data Model Details">
       <Row gutter={[0, 12]}>
         <Col span={24}>

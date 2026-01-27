@@ -13,14 +13,10 @@
 
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEqual, isUndefined, uniqWith } from 'lodash';
+import { isEqual, isUndefined, toLower, uniqWith } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  MISC_FIELDS,
-  OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
-} from '../../constants/AdvancedSearch.constants';
 import { TIER_FQN_KEY } from '../../constants/explore.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -34,6 +30,7 @@ import {
   getQuickFilterWithDeletedFlag,
 } from '../../utils/ExplorePage/ExplorePageUtils';
 import { getAggregationOptions } from '../../utils/ExploreUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -49,12 +46,18 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   onFieldValueSelect,
   fieldsWithNullValues = [],
   defaultQueryFilter,
+  showSelectedCounts = false,
+  optionPageSize,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
   const [tierOptions, setTierOptions] = useState<SearchDropdownOption[]>();
   const { queryFilter } = useAdvanceSearch();
+  const getStaticOptions = useCallback(
+    (key: string) => fields.find((item) => item.key === key)?.options,
+    [fields]
+  );
 
   const { showDeleted, quickFilter } = useMemo(() => {
     const parsed = Qs.parse(
@@ -69,6 +72,12 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     };
   }, [location.search]);
 
+  // Get first index for display in SearchDropdown (which expects single index)
+  const displayIndex = useMemo(
+    () => (Array.isArray(index) ? index[0] : index),
+    [index]
+  );
+
   const getAdvancedSearchQuickFilters = useCallback(() => {
     return getQuickFilterWithDeletedFlag(quickFilter as string, showDeleted);
   }, [quickFilter, showDeleted]);
@@ -82,31 +91,47 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
   const fetchDefaultOptions = async (
     index: SearchIndex | SearchIndex[],
-    key: string
+    key: string,
+    fieldSearchIndex?: SearchIndex,
+    fieldSearchKey?: string
   ) => {
+    const staticOptions = getStaticOptions(key);
+    if (staticOptions) {
+      setOptions(staticOptions);
+
+      return;
+    }
+
+    // Use field-specific searchIndex if provided, otherwise use the default index
+    const searchIndexToUse = fieldSearchIndex ?? index;
+    // Use field-specific searchKey if provided, otherwise use the key
+    const searchKeyToUse = fieldSearchKey ?? key;
+
     let buckets: Bucket[] = [];
     if (aggregations?.[key] && key !== TIER_FQN_KEY) {
       buckets = aggregations[key].buckets;
     } else {
       const [res, tierTags] = await Promise.all([
         getAggregationOptions(
-          index,
-          key,
+          searchIndexToUse,
+          searchKeyToUse,
           '',
           JSON.stringify(combinedQueryFilter),
-          independent
+          independent,
+          showDeleted,
+          optionPageSize
         ),
         key === TIER_FQN_KEY
           ? getTags({ parent: 'Tier', limit: 50 })
           : Promise.resolve(null),
       ]);
 
-      buckets = res.data.aggregations[`sterms#${key}`].buckets;
+      buckets = res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
 
       if (key === TIER_FQN_KEY && tierTags) {
         const options = tierTags.data.map((option) => {
           const bucketItem = buckets.find(
-            (item) => item.key === option.fullyQualifiedName
+            (item) => toLower(item.key) === toLower(option.fullyQualifiedName)
           );
 
           return {
@@ -125,18 +150,22 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
   };
 
-  const getInitialOptions = async (key: string) => {
+  const getInitialOptions = async (
+    key: string,
+    fieldSearchIndex?: SearchIndex,
+    fieldSearchKey?: string
+  ) => {
+    const staticOptions = getStaticOptions(key);
+    if (staticOptions) {
+      setOptions(staticOptions);
+
+      return;
+    }
+
     setIsOptionsLoading(true);
     setOptions([]);
     try {
-      if (key === MISC_FIELDS[0]) {
-        await fetchDefaultOptions(
-          [SearchIndex.USER, SearchIndex.TEAM],
-          OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY
-        );
-      } else {
-        await fetchDefaultOptions(index, key);
-      }
+      await fetchDefaultOptions(index, key, fieldSearchIndex, fieldSearchKey);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -144,25 +173,48 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     }
   };
 
-  const getFilterOptions = async (value: string, key: string) => {
+  const getFilterOptions = async (
+    value: string,
+    key: string,
+    fieldSearchIndex?: SearchIndex,
+    fieldSearchKey?: string
+  ) => {
+    const staticOptions = getStaticOptions(key);
+    if (staticOptions) {
+      const filteredOptions = value
+        ? staticOptions.filter((option) =>
+            option.label.toLowerCase().includes(value.toLowerCase())
+          )
+        : staticOptions;
+      setOptions(filteredOptions);
+
+      return;
+    }
+
     setIsOptionsLoading(true);
     setOptions([]);
     try {
       if (!value) {
-        getInitialOptions(key);
+        getInitialOptions(key, fieldSearchIndex, fieldSearchKey);
 
         return;
       }
+
+      const searchIndexToUse = fieldSearchIndex ?? index;
+      const searchKeyToUse = fieldSearchKey ?? key;
+
       if (key !== TIER_FQN_KEY) {
         const res = await getAggregationOptions(
-          index,
-          key,
+          searchIndexToUse,
+          searchKeyToUse,
           value,
           JSON.stringify(combinedQueryFilter),
-          independent
+          independent,
+          showDeleted
         );
 
-        const buckets = res.data.aggregations[`sterms#${key}`].buckets;
+        const buckets =
+          res.data.aggregations[`sterms#${searchKeyToUse}`].buckets;
         setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
       } else if (key === TIER_FQN_KEY) {
         const filteredOptions = tierOptions?.filter((option) => {
@@ -190,6 +242,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         const hasNullOption = fieldsWithNullValues.includes(
           field.key as EntityFields
         );
+        const dropdownOptions = field.options ?? options ?? [];
         const selectedKeys =
           field.key === TIER_FQN_KEY && options?.length
             ? field.value?.map((value) => {
@@ -204,20 +257,27 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             highlight
             fixedOrderOptions={field.key === TIER_FQN_KEY}
             hasNullOption={hasNullOption}
+            hideCounts={field.hideCounts ?? false}
+            hideSearchBar={field.hideSearchBar ?? false}
             independent={independent}
-            index={index as ExploreSearchIndex}
+            index={displayIndex as ExploreSearchIndex}
             isSuggestionsLoading={isOptionsLoading}
             key={field.key}
-            label={field.label}
-            options={options ?? []}
+            label={translateWithNestedKeys(field.label, field.labelKeyOptions)}
+            options={dropdownOptions}
             searchKey={field.key}
             selectedKeys={selectedKeys ?? []}
+            showSelectedCounts={showSelectedCounts}
             triggerButtonSize="middle"
             onChange={(updatedValues) => {
               onFieldValueSelect({ ...field, value: updatedValues });
             }}
-            onGetInitialOptions={getInitialOptions}
-            onSearch={getFilterOptions}
+            onGetInitialOptions={(key) =>
+              getInitialOptions(key, field.searchIndex, field.searchKey)
+            }
+            onSearch={(value, key) =>
+              getFilterOptions(value, key, field.searchIndex, field.searchKey)
+            }
           />
         );
       })}

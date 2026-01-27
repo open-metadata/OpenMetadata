@@ -12,11 +12,8 @@
  */
 
 import {
-  act,
   findByTestId,
   findByText,
-  fireEvent,
-  getByText,
   render,
   screen,
 } from '@testing-library/react';
@@ -26,7 +23,7 @@ import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Paging } from '../../../generated/type/paging';
 import { mockPipelineDetails } from '../../../utils/mocks/PipelineDetailsUtils.mock';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import PipelineDetails from './PipelineDetails.component';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
@@ -171,13 +168,6 @@ jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
   getFilterTags: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('testEntityName'),
-  getColumnSorter: jest.fn().mockImplementation(() => {
-    return () => 1;
-  }),
-}));
-
 jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest
     .fn()
@@ -261,8 +251,10 @@ jest.mock('../../../constants/constants', () => ({
 jest.mock('../../../utils/EntityUtils', () => {
   return {
     getEntityFeedLink: jest.fn(),
-    getEntityName: jest.fn(),
-    getColumnSorter: jest.fn(),
+    getEntityName: jest.fn().mockReturnValue('testEntityName'),
+    getColumnSorter: jest.fn().mockImplementation(() => {
+      return () => 1;
+    }),
   };
 });
 
@@ -272,6 +264,11 @@ jest.mock('../../../rest/pipelineAPI', () => ({
 
 jest.mock('../../../hooks/useCustomPages', () => ({
   useCustomPages: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../../constants/LeftSidebar.constants', () => ({
+  SIDEBAR_NESTED_KEYS: {},
+  SIDEBAR_LIST: [],
 }));
 
 describe('Test PipelineDetails component', () => {
@@ -309,26 +306,6 @@ describe('Test PipelineDetails component', () => {
     const taskDetail = await screen.findByText('label.task-plural');
 
     expect(taskDetail).toBeInTheDocument();
-  });
-
-  it.skip('Should render no tasks data placeholder is tasks list is empty', async () => {
-    (useGenericContext as jest.Mock).mockReturnValue({
-      data: { tasks: [] } as unknown as Pipeline,
-      permissions: DEFAULT_ENTITY_PERMISSION,
-    });
-    render(<PipelineDetails {...PipelineDetailsProps} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const switchContainer = screen.getByTestId('pipeline-task-switch');
-
-    const dagButton = getByText(switchContainer, 'Dag');
-
-    await act(async () => {
-      fireEvent.click(dagButton);
-    });
-
-    expect(await screen.findByTestId('no-tasks-data')).toBeInTheDocument();
   });
 
   it('Check if active tab is activity feed', async () => {
@@ -390,5 +367,18 @@ describe('Test PipelineDetails component', () => {
     );
 
     expect(customProperties).toBeInTheDocument();
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', () => {
+    render(<PipelineDetails {...PipelineDetailsProps} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(PageLayoutV1).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: 'testEntityName',
+      }),
+      expect.anything()
+    );
   });
 });

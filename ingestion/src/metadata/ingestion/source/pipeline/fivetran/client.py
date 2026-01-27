@@ -42,6 +42,10 @@ class FivetranClient:
             auth_header="Authorization",
             auth_token=lambda: (api_token[2:-1], 0),
             auth_token_mode="Basic",
+            retry=20,
+            retry_wait=60,
+            retry_codes=[429],
+            limit_codes=[],
         )
         self.client = REST(client_config)
 
@@ -88,15 +92,15 @@ class FivetranClient:
         Method returns destination details
         """
         response = self.client.get(f"/connectors/{connector_id}/schemas")
-        return response.get("data", {}).get("schemas", [])
+        return response.get("data", {}).get("schemas", {})
 
     def get_connector_column_lineage(
         self, connector_id: str, schema_name: str, table_name: str
     ) -> dict:
         """
-        Method returns destination details
+        Method returns column lineage details for a table
         """
         response: Optional[Response] = self.client.get(
             f"/connectors/{connector_id}/schemas/{schema_name}/tables/{table_name}/columns"
         )
-        return response.get("data", {}).get("columns", [])
+        return response.get("data", {}).get("columns", {})

@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
-import { Col, Drawer, Row, Typography } from 'antd';
-import { isUndefined } from 'lodash';
+import { CloseOutlined } from '@mui/icons-material';
+import { GitMerge } from '@untitledui/icons';
+import { Button, Tooltip, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
-import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import DescriptionSection from '../../../components/common/DescriptionSection/DescriptionSection';
+import OverviewSection from '../../../components/common/OverviewSection/OverviewSection';
+import SectionWithEdit from '../../../components/common/SectionWithEdit/SectionWithEdit';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { LINEAGE_SOURCE } from '../../../constants/Lineage.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
-import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { Source } from '../../../generated/type/entityLineage';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
@@ -33,16 +33,12 @@ import {
 } from '../../../utils/EntityLineageUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithFunctionEditor } from '../../Modals/ModalWithFunctionEditor/ModalWithFunctionEditor';
 import { ModalWithQueryEditor } from '../../Modals/ModalWithQueryEditor/ModalWithQueryEditor';
 import './entity-info-drawer.less';
-import {
-  EdgeInfoDrawerInfo,
-  EdgeInformationType,
-} from './EntityInfoDrawer.interface';
+import { EdgeInfoDrawerInfo } from './EntityInfoDrawer.interface';
 
 const EdgeInfoDrawer = ({
   edge,
@@ -52,7 +48,15 @@ const EdgeInfoDrawer = ({
   hasEditAccess,
   onEdgeDetailsUpdate,
 }: EdgeInfoDrawerInfo) => {
-  const [edgeData, setEdgeData] = useState<EdgeInformationType>();
+  const [edgeData, setEdgeData] = useState<
+    Array<{
+      name: string;
+      value?: unknown;
+      url?: string;
+      isLink?: boolean;
+      visible?: string[];
+    }>
+  >([]);
   const [mysqlQuery, setMysqlQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showSqlQueryModal, setShowSqlQueryModal] = useState(false);
@@ -157,104 +161,52 @@ const EdgeInfoDrawer = ({
       );
 
       return (
-        <Row
-          className="p-md border-radius-card summary-panel-card"
-          gutter={[0, 8]}>
-          <Col span={24}>
-            <div className="d-flex items-center m-b-xs gap-2">
-              <Typography.Paragraph className="right-panel-label m-b-0">
-                {`${t('label.sql-function')}`}
-              </Typography.Paragraph>
-              {hasEditAccess && (
-                <EditIconButton
-                  newLook
-                  data-testid="edit-function"
-                  size="small"
-                  title={t('label.edit-entity', {
-                    entity: t('label.sql-function'),
-                  })}
-                  onClick={() => {
-                    setSqlFunction(functionValue ?? '');
-                    setShowSqlFunctionModal(true);
-                  }}
-                />
-              )}
-            </div>
-            <Typography.Text className="m-b-0" data-testid="sql-function">
-              {functionValue ?? NO_DATA_PLACEHOLDER}
-            </Typography.Text>
-          </Col>
-        </Row>
+        <SectionWithEdit
+          className="summary-panel-card sql-function-section"
+          showEditButton={hasEditAccess}
+          title={t('label.sql-function')}
+          onEdit={() => {
+            setSqlFunction(functionValue ?? '');
+            setShowSqlFunctionModal(true);
+          }}>
+          <Typography.Text className="m-b-0" data-testid="sql-function">
+            {functionValue ?? NO_DATA_PLACEHOLDER}
+          </Typography.Text>
+        </SectionWithEdit>
       );
     }
 
     return (
       <>
-        <Row
-          className="p-md border-radius-card summary-panel-card"
-          gutter={[0, 8]}>
-          <Col span={24}>
-            <DescriptionV1
-              description={edgeEntity?.description ?? ''}
-              entityName="Edge"
-              entityType={EntityType.LINEAGE_EDGE}
-              hasEditAccess={hasEditAccess}
-              showCommentsIcon={false}
-              onDescriptionUpdate={onDescriptionUpdate}
+        <SectionWithEdit
+          className="summary-panel-card"
+          showEditButton={hasEditAccess}
+          title={t('label.sql-uppercase-query')}
+          onEdit={() => setShowSqlQueryModal(true)}>
+          {mysqlQuery ? (
+            <SchemaEditor
+              className="edge-drawer-sql-editor"
+              mode={{ name: CSMode.SQL }}
+              options={{
+                styleActiveLine: false,
+                readOnly: 'nocursor',
+              }}
+              value={mysqlQuery}
             />
-          </Col>
-        </Row>
-        <Row
-          className="p-md border-radius-card summary-panel-card"
-          gutter={[0, 8]}>
-          <Col span={24}>
-            <div className="d-flex items-center m-b-xs gap-2">
-              <Typography.Paragraph className="right-panel-label m-b-0 ">
-                {`${t('label.sql-uppercase-query')}`}
-              </Typography.Paragraph>
-              {hasEditAccess && (
-                <EditIconButton
-                  newLook
-                  data-testid="edit-sql"
-                  size="small"
-                  title={t('label.edit-entity', {
-                    entity: t('label.sql-uppercase-query'),
-                  })}
-                  onClick={() => setShowSqlQueryModal(true)}
-                />
-              )}
-            </div>
-            {mysqlQuery ? (
-              <SchemaEditor
-                className="edge-drawer-sql-editor"
-                mode={{ name: CSMode.SQL }}
-                options={{
-                  styleActiveLine: false,
-                  readOnly: 'nocursor',
-                }}
-                value={mysqlQuery}
-              />
-            ) : (
-              <Typography.Paragraph className="m-b-0">
-                {t('server.no-query-available')}
-              </Typography.Paragraph>
-            )}
-          </Col>
-        </Row>
-        <Row
-          className="p-md border-radius-card summary-panel-card"
-          gutter={[0, 8]}>
-          <Col span={24}>
-            <div className="m-b-xs">
-              <Typography.Paragraph className="right-panel-label m-b-0">
-                {`${t('label.lineage-source')}`}
-              </Typography.Paragraph>
-            </div>
-            <Typography.Text className="m-b-0">
-              {LINEAGE_SOURCE[edgeEntity.source as keyof typeof Source]}
-            </Typography.Text>
-          </Col>
-        </Row>
+          ) : (
+            <Typography.Paragraph className="m-b-0">
+              {t('server.no-query-available')}
+            </Typography.Paragraph>
+          )}
+        </SectionWithEdit>
+        <SectionWithEdit
+          className="summary-panel-card"
+          showEditButton={false}
+          title={t('label.lineage-source')}>
+          <Typography.Text className="lineage-source-text">
+            {LINEAGE_SOURCE[edgeEntity.source as keyof typeof Source]}
+          </Typography.Text>
+        </SectionWithEdit>
       </>
     );
   }, [
@@ -292,40 +244,53 @@ const EdgeInfoDrawer = ({
       fullyQualifiedName: targetFqn = '',
     } = targetData?.data?.node ?? {};
 
-    setEdgeData({
-      sourceData: {
-        key: t('label.source'),
-        value: sourceData && getEntityName(sourceData?.data?.node),
-        link:
-          sourceData &&
-          entityUtilClassBase.getEntityLink(sourceEntityType, sourceFqn),
-      },
-      sourceColumn: {
-        key: t('label.source-column'),
-        value: sourceHandle ? getNameFromFQN(sourceHandle) : undefined,
-      },
-      targetData: {
-        key: t('label.target'),
-        value: targetData ? getEntityName(targetData?.data?.node) : undefined,
-        link:
-          targetData &&
-          entityUtilClassBase.getEntityLink(targetEntityType, targetFqn),
-      },
-      targetColumn: {
-        key: t('label.target-column'),
-        value: targetHandle ? getNameFromFQN(targetHandle) : undefined,
-      },
-      pipeline: {
-        key: t('label.edge'),
-        value: pipeline ? getEntityName(pipeline) : undefined,
-        link:
-          pipeline &&
-          entityUtilClassBase.getEntityLink(
-            pipelineEntityType,
-            pipeline.fullyQualifiedName
-          ),
-      },
-    });
+    const overviewData = [];
+
+    if (sourceData) {
+      overviewData.push({
+        name: t('label.source'),
+        value: getEntityName(sourceData?.data?.node),
+        url: entityUtilClassBase.getEntityLink(sourceEntityType, sourceFqn),
+        isLink: true,
+      });
+    }
+
+    if (sourceHandle) {
+      overviewData.push({
+        name: t('label.source-column'),
+        value: getNameFromFQN(sourceHandle),
+      });
+    }
+
+    if (targetData) {
+      overviewData.push({
+        name: t('label.target'),
+        value: getEntityName(targetData?.data?.node),
+        url: entityUtilClassBase.getEntityLink(targetEntityType, targetFqn),
+        isLink: true,
+      });
+    }
+
+    if (targetHandle) {
+      overviewData.push({
+        name: t('label.target-column'),
+        value: getNameFromFQN(targetHandle),
+      });
+    }
+
+    if (pipeline) {
+      overviewData.push({
+        name: t('label.edge'),
+        value: getEntityName(pipeline),
+        url: entityUtilClassBase.getEntityLink(
+          pipelineEntityType,
+          pipeline.fullyQualifiedName
+        ),
+        isLink: true,
+      });
+    }
+
+    setEdgeData(overviewData);
     setIsLoading(false);
   };
 
@@ -366,50 +331,67 @@ const EdgeInfoDrawer = ({
 
   return (
     <>
-      <Drawer
-        destroyOnClose
-        bodyStyle={{ padding: 16 }}
-        className="entity-panel-container edge-info-drawer"
-        closable={false}
-        extra={<CloseOutlined onClick={onClose} />}
-        getContainer={false}
-        headerStyle={{ padding: 16 }}
-        mask={false}
-        open={visible}
-        style={{ position: 'absolute' }}
-        title={t('label.edge-information')}>
-        {isLoading ? (
-          <Loader />
-        ) : (
-          <>
-            {edgeData && (
-              <div className="d-flex gap-5 flex-col">
-                <Row
-                  className="p-md border-radius-card summary-panel-card"
-                  gutter={[0, 8]}>
-                  {Object.values(edgeData).map(
-                    (data) =>
-                      data.value && (
-                        <Col data-testid={data.key} key={data.key} span={24}>
-                          <Typography.Text className="m-r-sm font-semibold">
-                            {`${data.key}:`}
-                          </Typography.Text>
+      {visible && (
+        <div className="edge-info-drawer-container">
+          <div className="d-flex items-center justify-between">
+            <div className="title-section drawer-title-section">
+              <div className="title-container">
+                <Tooltip
+                  mouseEnterDelay={0.5}
+                  placement="bottomLeft"
+                  title={t('label.edge-information')}
+                  trigger="hover">
+                  <div className="d-flex items-center gap-2">
+                    <span className="d-flex">
+                      <GitMerge height={16} width={16} />
+                    </span>
+                    <Typography.Text
+                      className="edge-info-drawer-title"
+                      data-testid="edge-header-title">
+                      {t('label.edge-information')}
+                    </Typography.Text>
+                  </div>
+                </Tooltip>
+              </div>
+            </div>
+            <Button
+              aria-label={t('label.close')}
+              className="drawer-close-icon flex-center mr-2"
+              data-testid="drawer-close-icon"
+              icon={<CloseOutlined />}
+              size="small"
+              onClick={onClose}
+            />
+          </div>
+          <div className="edge-info-drawer-content">
+            {isLoading ? (
+              <Loader />
+            ) : (
+              <div className="d-flex flex-col">
+                <div className="summary-panel-card">
+                  <DescriptionSection
+                    description={edgeEntity?.description ?? ''}
+                    hasPermission={hasEditAccess}
+                    showEditButton={hasEditAccess}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                  />
+                </div>
+                {edgeData && edgeData.length > 0 && (
+                  <div className="summary-panel-card">
+                    <OverviewSection
+                      componentType=""
+                      entityInfoV1={edgeData}
+                      showEditButton={false}
+                    />
+                  </div>
+                )}
 
-                          {isUndefined(data.link) ? (
-                            <Typography.Text>{data.value}</Typography.Text>
-                          ) : (
-                            <Link to={data.link}>{data.value}</Link>
-                          )}
-                        </Col>
-                      )
-                  )}
-                </Row>
                 {edgeDetailsSection}
               </div>
             )}
-          </>
-        )}
-      </Drawer>
+          </div>
+        </div>
+      )}
       {showSqlQueryModal && (
         <ModalWithQueryEditor
           header={t('label.edit-entity', {

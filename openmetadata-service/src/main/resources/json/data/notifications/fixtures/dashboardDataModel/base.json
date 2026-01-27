@@ -1,0 +1,52 @@
+{
+  "id": "8e7d6c5b-4a3f-2e1d-0c9b-8a7f6e5d4c3b",
+  "name": "sample_data_model",
+  "displayName": "Sample Data Model",
+  "fullyQualifiedName": "sample-dashboard-service.sample_dashboard.datamodel.sample_data_model",
+  "description": "Mock dashboard data model for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "dataModelType": "SupersetDataModel",
+  "sourceUrl": "/datamodels/sample_data_model",
+  "href": "http://localhost:8585/api/v1/dashboardDataModels/8e7d6c5b-4a3f-2e1d-0c9b-8a7f6e5d4c3b",
+  "service": {
+    "id": "9e8d7c6b-5a4f-3e2d-1c0b-9a8f7e6d5c4b",
+    "type": "dashboardService",
+    "name": "sample-dashboard-service",
+    "fullyQualifiedName": "sample-dashboard-service",
+    "deleted": false,
+    "href": "http://localhost:8585/api/v1/services/dashboardServices/9e8d7c6b-5a4f-3e2d-1c0b-9a8f7e6d5c4b"
+  },
+  "serviceType": "Superset",
+  "columns": [
+    {
+      "name": "user_id",
+      "dataType": "NUMERIC",
+      "description": "User identifier"
+    },
+    {
+      "name": "revenue",
+      "dataType": "NUMERIC",
+      "description": "Total revenue"
+    }
+  ],
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "domains": [
+    {
+      "id": "c3d4e5f6-7890-abcd-ef12-34567890abcd",
+      "type": "domain",
+      "name": "Engineering",
+      "fullyQualifiedName": "Engineering"
+    }
+  ],
+  "tags": []
+}

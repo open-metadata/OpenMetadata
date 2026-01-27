@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -24,20 +24,28 @@ export interface EventBasedEntityTrigger {
  */
 export interface TriggerConfiguration {
     /**
-     * Entity Type for which it should be triggered.
+     * Deprecated: Single entity type for which workflow should be triggered. Use 'entityTypes'
+     * for multiple types.
      */
-    entityType: string;
-    events:     Event[];
+    entityType?: string;
+    /**
+     * Array of Entity Types for which this workflow should be triggered. Supports multiple
+     * entity types in one workflow.
+     */
+    entityTypes?: string[];
+    /**
+     * Select the events that should trigger this workflow
+     */
+    events: Event[];
     /**
      * Select fields that should not trigger the workflow if only them are modified.
      */
     exclude?: string[];
     /**
-     * JSON Logic expression to determine if the workflow should be triggered. The expression
-     * has access to: entity (current entity), changeDescription (what changed), updatedBy (user
-     * who made the change), changedFields (array of field names that changed).
+     * JSON Logic expression to determine if the workflow should be triggered. Can be a string
+     * (applied to all entity types) or an object mapping entity types to their specific filters.
      */
-    filter?: string;
+    filter?: FilterConditionObject | string;
 }
 
 /**
@@ -46,4 +54,15 @@ export interface TriggerConfiguration {
 export enum Event {
     Created = "Created",
     Updated = "Updated",
+}
+
+/**
+ * Entity-specific filters with optional default
+ */
+export interface FilterConditionObject {
+    /**
+     * Default filter for entity types not explicitly configured
+     */
+    default?: string;
+    [property: string]: string;
 }

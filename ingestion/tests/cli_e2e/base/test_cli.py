@@ -17,11 +17,14 @@ import re
 import subprocess
 from abc import ABC, abstractmethod
 from ast import literal_eval
+from copy import deepcopy
 from pathlib import Path
+from typing import Any, Optional
 
 import yaml
 
 from metadata.config.common import load_config_file
+from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
@@ -43,6 +46,7 @@ class CliBase(ABC):
     openmetadata: OpenMetadata
     test_file_path: str
     config_file_path: str
+    ingestion_bot_jwt_token: Optional[str] = None
 
     def run_command(self, command: str = "ingest", test_file_path=None) -> str:
         file_path = (
@@ -70,11 +74,34 @@ class CliBase(ABC):
             f"/lineage/table/name/{entity_fqn}?upstreamDepth=3&downstreamDepth=3"
         )
 
+    @classmethod
+    def set_ingestion_bot_jwt_token(cls) -> None:
+        ingestion_bot: User = cls.openmetadata.get_by_name(User, "ingestion-bot")
+        ingestion_bot_auth: AuthenticationMechanism = cls.openmetadata.get_by_id(
+            AuthenticationMechanism, ingestion_bot.id
+        )
+        cls.ingestion_bot_jwt_token = (
+            ingestion_bot_auth.config.JWTToken.get_secret_value()
+        )
+
+    def patch_server_security_config(self, config: dict[str, Any]) -> dict[str, Any]:
+        if self.ingestion_bot_jwt_token is None:
+            return config
+
+        server_config = deepcopy(config)
+        server_config["workflowConfig"]["openMetadataServerConfig"][
+            "securityConfig"
+        ] = {
+            "jwtToken": self.ingestion_bot_jwt_token,
+        }
+        return server_config
+
     def build_config_file(
         self, test_type: E2EType = E2EType.INGEST, extra_args: dict = None
     ) -> None:
         config_yaml = load_config_file(Path(self.config_file_path))
         config_yaml = self.build_yaml(config_yaml, test_type, extra_args)
+        config_yaml = self.patch_server_security_config(config_yaml)
         with open(self.test_file_path, "w", encoding=UTF_8) as test_file:
             yaml.dump(config_yaml, test_file)
 

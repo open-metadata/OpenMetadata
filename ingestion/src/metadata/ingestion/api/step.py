@@ -77,7 +77,9 @@ class Summary(StepSummary):
         """Compute summary from Step"""
         return Summary(
             name=step.name,
-            records=len(step.status.records),
+            records=step.status.record_count
+            if step.status.record_count > 0
+            else len(step.status.records),
             updated_records=len(step.status.updated_records),
             warnings=len(step.status.warnings),
             errors=len(step.status.failures),

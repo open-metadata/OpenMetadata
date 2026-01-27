@@ -14,17 +14,16 @@
 import test, { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
-  clickOutside,
   createNewPage,
   descriptionBox,
   generateRandomUsername,
   redirectToHomePage,
-  uuid,
+  uuid
 } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 import { visitUserProfilePage } from '../../utils/user';
 
-const roleName = `Role-test-${uuid()}`;
+const roleName = `Add-Role-test-${uuid()}`;
 const user = generateRandomUsername();
 const userDisplayName = user.firstName + ' ' + user.lastName;
 const userName = user.email.split('@')[0].toLowerCase();
@@ -94,18 +93,23 @@ test.describe.serial('Add role and assign it to the user', () => {
     await page.click('[data-testid="password-generator"]');
     await generatePasswordResponse;
 
+    await expect(page.locator('#generatedPassword')).toHaveValue(/\S+/);
+
     await page.click('[data-testid="roles-dropdown"]');
+    await page.waitForSelector('.ant-select-dropdown', {
+      state: 'visible',
+    });
     await page.fill('#roles', roleName);
     await page.click(`[title="${roleName}"]`);
 
-    await clickOutside(page);
-    const userResponse = page.waitForResponse(`/api/v1/users`);
+    await page.keyboard.press('Escape');
 
     await page.waitForSelector('[data-testid="save-user"]', {
       state: 'visible',
     });
-    await page.click('[data-testid="save-user"]');
 
+    const userResponse = page.waitForResponse('/api/v1/users');
+    await page.click('[data-testid="save-user"]');
     await userResponse;
   });
 

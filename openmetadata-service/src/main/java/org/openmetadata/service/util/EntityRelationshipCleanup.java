@@ -27,12 +27,16 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.FeedRepository;
+import org.openmetadata.service.util.relationshipcleanup.DefaultRelationshipValidator;
+import org.openmetadata.service.util.relationshipcleanup.LineageRelationshipValidator;
+import org.openmetadata.service.util.relationshipcleanup.RelationshipValidator;
 
 @Slf4j
 public class EntityRelationshipCleanup {
@@ -191,41 +195,28 @@ public class EntityRelationshipCleanup {
   private OrphanedRelationship validateRelationship(
       CollectionDAO.EntityRelationshipObject relationship) {
     try {
-      UUID fromId = UUID.fromString(relationship.getFromId());
-      UUID toId = UUID.fromString(relationship.getToId());
       String fromEntity = relationship.getFromEntity();
       String toEntity = relationship.getToEntity();
 
-      // Check if fromEntity has any repository
-      boolean fromEntityHasNoRepository = doEntityHaveAnyRepository(fromEntity);
-      if (!fromEntityHasNoRepository) {
+      if (!doEntityHaveAnyRepository(fromEntity)) {
         LOG.error(
             "No repository found for from entity type: {}, the entity will not be cleaned",
             fromEntity);
         return null;
       }
 
-      boolean toEntityHasNoRepository = doEntityHaveAnyRepository(toEntity);
-      if (!toEntityHasNoRepository) {
+      if (!doEntityHaveAnyRepository(toEntity)) {
         LOG.error(
             "No repository found for to entity type: {}, the entity will not be cleaned", toEntity);
         return null;
       }
 
-      boolean fromExists = entityExists(fromId, fromEntity);
-      boolean toExists = entityExists(toId, toEntity);
+      RelationshipValidator validator = getValidatorForRelationship(relationship.getRelation());
+      RelationshipValidator.ValidationResult result =
+          validator.validate(relationship, this::entityExists);
 
-      if (fromExists && toExists) {
+      if (!result.isOrphaned()) {
         return null;
-      }
-
-      String reason;
-      if (!fromExists && !toExists) {
-        reason = "Both fromEntity and toEntity do not exist";
-      } else if (!fromExists) {
-        reason = "fromEntity does not exist";
-      } else {
-        reason = "toEntity does not exist";
       }
 
       return OrphanedRelationship.builder()
@@ -234,7 +225,7 @@ public class EntityRelationshipCleanup {
           .fromEntity(fromEntity)
           .toEntity(toEntity)
           .relation(relationship.getRelation())
-          .reason(reason)
+          .reason(result.getReason())
           .relationshipName(getRelationshipName(relationship.getRelation()))
           .build();
 
@@ -255,6 +246,13 @@ public class EntityRelationshipCleanup {
           .relationshipName(getRelationshipName(relationship.getRelation()))
           .build();
     }
+  }
+
+  private RelationshipValidator getValidatorForRelationship(int relation) {
+    if (relation == Relationship.UPSTREAM.ordinal()) {
+      return new LineageRelationshipValidator();
+    }
+    return new DefaultRelationshipValidator();
   }
 
   private boolean doEntityHaveAnyRepository(String entityType) {
@@ -426,22 +424,15 @@ public class EntityRelationshipCleanup {
   }
 
   private String getRelationshipName(int relation) {
-    // Map common relationship types to names
-    // These constants should ideally be imported from the actual schema
-    return switch (relation) {
-      case 10 -> "CONTAINS";
-      case 11 -> "CREATED_BY";
-      case 12 -> "MENTIONED_IN";
-      case 13 -> "PARENT_OF";
-      case 14 -> "OWNS";
-      case 15 -> "FOLLOWS";
-      case 16 -> "JOINED";
-      case 17 -> "REACTED_TO";
-      case 18 -> "REPLIED_TO";
-      case 19 -> "TESTED_BY";
-      case 20 -> "UPSTREAM";
-      case 21 -> "DOWNSTREAM";
-      default -> "RELATION_" + relation;
-    };
+    try {
+      Relationship[] relationships = Relationship.values();
+      if (relation >= 0 && relation < relationships.length) {
+        return relationships[relation].name();
+      }
+      return "UNKNOWN_RELATION_" + relation;
+    } catch (Exception e) {
+      LOG.debug("Error getting relationship name for ordinal {}: {}", relation, e.getMessage());
+      return "UNKNOWN_RELATION_" + relation;
+    }
   }
 }

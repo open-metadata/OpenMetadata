@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Box } from '@mui/material';
 import { Button, Col, Row, Tabs, TabsProps, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -20,15 +21,19 @@ import { isUndefined, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { ReactComponent as DimensionIcon } from '../../../assets/svg/data-observability/dimension.svg';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
+import { BetaBadge } from '../../../components/common/Badge/Badge.component';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../../components/common/IconButtons/EditIconButton';
 import Loader from '../../../components/common/Loader/Loader';
+import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import EditTestCaseModal from '../../../components/DataQuality/AddDataQualityTest/EditTestCaseModal';
 import IncidentManagerPageHeader from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import EntityVersionTimeLine from '../../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -59,6 +64,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import {
   getTestCaseDetailPagePath,
+  getTestCaseDimensionsDetailPagePath,
   getTestCaseVersionPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -77,10 +83,18 @@ const IncidentManagerDetailPage = ({
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { tab: activeTab = TestCasePageTabs.TEST_CASE_RESULTS, version } =
-    useRequiredParams<{ tab: EntityTabs; version: string }>();
+  const {
+    tab: activeTab = TestCasePageTabs.TEST_CASE_RESULTS,
+    version,
+    dimensionKey,
+  } = useRequiredParams<{
+    tab: EntityTabs;
+    version: string;
+    dimensionKey?: string;
+  }>();
 
   const { fqn: testCaseFQN } = useFqn();
+  const isDimensionPage = Boolean(dimensionKey);
 
   const {
     isLoading,
@@ -102,18 +116,24 @@ const IncidentManagerDetailPage = ({
     entityType: EntityType.TEST_CASE,
     versions: [],
   });
+  const [isDimensionEdit, setIsDimensionEdit] = useState<boolean>(false);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { hasViewPermission, editDisplayNamePermission, hasDeletePermission } =
-    useMemo(() => {
-      return {
-        hasViewPermission:
-          testCasePermission?.ViewAll || testCasePermission?.ViewBasic,
-        editDisplayNamePermission:
-          testCasePermission?.EditAll || testCasePermission?.EditDisplayName,
-        hasDeletePermission: testCasePermission?.Delete,
-      };
-    }, [testCasePermission]);
+  const {
+    hasViewPermission,
+    editDisplayNamePermission,
+    hasDeletePermission,
+    hasEditPermission,
+  } = useMemo(() => {
+    return {
+      hasViewPermission:
+        testCasePermission?.ViewAll || testCasePermission?.ViewBasic,
+      editDisplayNamePermission:
+        testCasePermission?.EditAll || testCasePermission?.EditDisplayName,
+      hasDeletePermission: testCasePermission?.Delete,
+      hasEditPermission: testCasePermission?.EditAll,
+    };
+  }, [testCasePermission]);
 
   const isExpandViewSupported = useMemo(
     () => activeTab === TestCasePageTabs.TEST_CASE_RESULTS,
@@ -125,17 +145,29 @@ const IncidentManagerDetailPage = ({
   }, [isTabExpanded, setIsTabExpanded]);
 
   const tabDetails: TabsProps['items'] = useMemo(() => {
+    const isDimensionalityTabVisible =
+      testCase?.dimensionColumns && testCase.dimensionColumns.length > 0;
     const tabs = testCaseClassBase.getTab(
       feedCount.openTaskCount,
-      isVersionPage
+      isVersionPage,
+      isDimensionalityTabVisible
     );
 
-    return tabs.map(({ LabelComponent, labelProps, key, Tab }) => ({
+    return tabs.map(({ LabelComponent, labelProps, key, Tab, isBeta }) => ({
       key,
-      label: <LabelComponent {...labelProps} />,
+      label: (
+        <Box alignItems="center" display="flex" gap={1}>
+          <LabelComponent {...labelProps} />
+          {isBeta && <BetaBadge />}
+        </Box>
+      ),
       children: <Tab />,
     }));
-  }, [feedCount.openTaskCount, testCaseClassBase.showSqlQueryTab]);
+  }, [
+    feedCount.openTaskCount,
+    testCaseClassBase.showSqlQueryTab,
+    testCase?.dimensionColumns,
+  ]);
 
   const fetchTestCasePermission = async () => {
     setIsPermissionLoading(true);
@@ -180,13 +212,32 @@ const IncidentManagerDetailPage = ({
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = location.state
       ?.breadcrumbData
-      ? location.state.breadcrumbData
+      ? [...location.state.breadcrumbData]
       : [
           {
             name: t('label.incident-manager'),
             url: ROUTES.INCIDENT_MANAGER,
           },
         ];
+
+    if (isDimensionPage) {
+      return [
+        ...data,
+        {
+          name: testCase?.name ?? '',
+          url: getTestCaseDetailPagePath(
+            testCaseFQN,
+            activeTab as TestCasePageTabs
+          ),
+          activeTitle: false,
+        },
+        {
+          name: dimensionKey || '',
+          url: '',
+          activeTitle: true,
+        },
+      ];
+    }
 
     return [
       ...data,
@@ -196,10 +247,18 @@ const IncidentManagerDetailPage = ({
         activeTitle: true,
       },
     ];
-  }, [testCase]);
+  }, [testCase, location.state, isDimensionPage, dimensionKey]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
+      const testCaseDetailsPath = isDimensionPage
+        ? getTestCaseDimensionsDetailPagePath(
+            testCaseFQN,
+            dimensionKey || '',
+            activeKey as TestCasePageTabs
+          )
+        : getTestCaseDetailPagePath(testCaseFQN, activeKey as TestCasePageTabs);
+
       navigate(
         isVersionPage
           ? getTestCaseVersionPath(
@@ -207,10 +266,7 @@ const IncidentManagerDetailPage = ({
               version,
               activeKey as TestCasePageTabs
             )
-          : getTestCaseDetailPagePath(
-              testCaseFQN,
-              activeKey as TestCasePageTabs
-            )
+          : testCaseDetailsPath
       );
     }
   };
@@ -261,6 +317,11 @@ const IncidentManagerDetailPage = ({
   const getEntityFeedCount = useCallback(() => {
     getFeedCounts(EntityType.TEST_CASE, testCaseFQN, handleFeedCount);
   }, [testCaseFQN]);
+
+  const handleCancelDimension = useCallback(
+    () => setIsDimensionEdit(false),
+    []
+  );
 
   const onVersionClick = () => {
     navigate(
@@ -329,6 +390,29 @@ const IncidentManagerDetailPage = ({
     }
   }, [version, testCase?.id, isVersionPage]);
 
+  const extraDropdownContent = useMemo(() => {
+    const isColumn = testCase?.entityLink.includes('::columns::');
+
+    if (!hasEditPermission || isVersionPage || !isColumn) {
+      return [];
+    }
+
+    return [
+      {
+        key: 'edit-dimensions',
+        label: (
+          <ManageButtonItemLabel
+            description={t('message.edit-dimension-description')}
+            icon={DimensionIcon}
+            id="profiler-setting-button"
+            name={t('label.dimension-plural')}
+          />
+        ),
+        onClick: () => setIsDimensionEdit(true),
+      },
+    ];
+  }, [t, hasEditPermission, isVersionPage, testCase?.entityLink]);
+
   if (isLoading || isPermissionLoading) {
     return <Loader />;
   }
@@ -385,15 +469,17 @@ const IncidentManagerDetailPage = ({
                 className="data-asset-button-group spaced"
                 data-testid="asset-header-btn-group"
                 size="small">
-                <Tooltip title={t('label.version-plural-history')}>
-                  <Button
-                    className="version-button"
-                    data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
-                    onClick={onVersionClick}>
-                    <Typography.Text>{testCase?.version}</Typography.Text>
-                  </Button>
-                </Tooltip>
+                {!isDimensionPage && (
+                  <Tooltip title={t('label.version-plural-history')}>
+                    <Button
+                      className="version-button"
+                      data-testid="version-button"
+                      icon={<Icon component={VersionIcon} />}
+                      onClick={onVersionClick}>
+                      <Typography.Text>{testCase?.version}</Typography.Text>
+                    </Button>
+                  </Tooltip>
+                )}
                 {!isVersionPage && (
                   <ManageButton
                     isRecursiveDelete
@@ -406,6 +492,7 @@ const IncidentManagerDetailPage = ({
                     entityId={testCase.id}
                     entityName={testCase.name}
                     entityType={EntityType.TEST_CASE}
+                    extraDropdownContent={extraDropdownContent}
                     onEditDisplayName={handleDisplayNameChange}
                   />
                 )}
@@ -450,6 +537,14 @@ const IncidentManagerDetailPage = ({
           versionHandler={versionHandler}
           versionList={versionList}
           onBack={onVersionClick}
+        />
+      )}
+      {testCase && isDimensionEdit && (
+        <EditTestCaseModal
+          testCase={testCase}
+          visible={isDimensionEdit}
+          onCancel={handleCancelDimension}
+          onUpdate={setTestCase}
         />
       )}
     </PageLayoutV1>

@@ -42,6 +42,7 @@ public class AppMarketPlaceMapper
             .withFeatures(create.getFeatures())
             .withSourcePythonClass(create.getSourcePythonClass())
             .withAllowConfiguration(create.getAllowConfiguration())
+            .withAllowConcurrentExecution(create.getAllowConcurrentExecution())
             .withSystem(create.getSystem())
             .withSupportsInterrupt(create.getSupportsInterrupt())
             .withEventSubscriptions(create.getEventSubscriptions())

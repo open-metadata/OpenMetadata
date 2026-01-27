@@ -30,6 +30,7 @@ import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -48,6 +49,7 @@ import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
@@ -202,7 +204,7 @@ class RuleEvaluatorTest {
         Mockito.spy(new CreateResourceContext<>(Entity.DATA_PRODUCT, dataProduct));
 
     resourceContext = new ResourceContext<>(Entity.TABLE, table, tableRepository);
-    subjectContext = new SubjectContext(user);
+    subjectContext = new SubjectContext(user, null);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
   }
@@ -277,13 +279,13 @@ class RuleEvaluatorTest {
             policy.getName(),
             compiledRules);
 
-    subjectContext = new SubjectContext(ownerUser);
+    subjectContext = new SubjectContext(ownerUser, null);
     RuleEvaluator ruleEvaluator =
         new RuleEvaluator(policyContext, subjectContext, createResourceContextSchema);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertTrue(evaluateExpression("isOwner()"));
 
-    subjectContext = new SubjectContext(nonOwnerUser);
+    subjectContext = new SubjectContext(nonOwnerUser, null);
     ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, createResourceContextSchema);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertFalse(evaluateExpression("isOwner()"));
@@ -306,7 +308,7 @@ class RuleEvaluatorTest {
             policy.getName(),
             compiledRules);
 
-    subjectContext = new SubjectContext(ownerUser);
+    subjectContext = new SubjectContext(ownerUser, null);
     ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContextDataProduct);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertTrue(evaluateExpression("isOwner()"));
@@ -315,7 +317,7 @@ class RuleEvaluatorTest {
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertTrue(evaluateExpression("isOwner()"));
 
-    subjectContext = new SubjectContext(nonOwnerUser);
+    subjectContext = new SubjectContext(nonOwnerUser, null);
     ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContextDataProduct);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertFalse(evaluateExpression("isOwner()"));
@@ -323,6 +325,48 @@ class RuleEvaluatorTest {
         new RuleEvaluator(policyContext, subjectContext, createResourceContextDataProduct);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertFalse(evaluateExpression("isOwner()"));
+  }
+
+  @Test
+  void test_isReviewer() {
+    GlossaryRepository glossaryRepository = mock(GlossaryRepository.class);
+    Entity.registerEntity(Glossary.class, Entity.GLOSSARY, glossaryRepository);
+
+    User reviewer = new User().withId(UUID.randomUUID()).withName("reviewerUser");
+    EntityReference reviewerRef =
+        new EntityReference()
+            .withId(reviewer.getId())
+            .withType(Entity.USER)
+            .withName("reviewerUser");
+
+    Glossary glossary =
+        new Glossary()
+            .withId(UUID.randomUUID())
+            .withName("testGlossary")
+            .withReviewers(List.of(reviewerRef));
+
+    EntityRepository.CACHE_WITH_ID.put(
+        new ImmutablePair<>(Entity.GLOSSARY, glossary.getId()), glossary);
+
+    SubjectContext subjectContext = new SubjectContext(reviewer, null);
+
+    ResourceContext<Glossary> glossaryResourceContext =
+        new ResourceContext<>(Entity.GLOSSARY, glossary, glossaryRepository);
+
+    RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, glossaryResourceContext);
+    EvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+
+    assertTrue(
+        parseExpression("isReviewer()").getValue(evaluationContext, Boolean.class),
+        "Reviewer user should return true for isReviewer()");
+
+    User otherUser = new User().withId(UUID.randomUUID()).withName("otherUser");
+    SubjectContext otherSubjectContext = new SubjectContext(otherUser, null);
+    ruleEvaluator = new RuleEvaluator(null, otherSubjectContext, glossaryResourceContext);
+    evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+    assertFalse(
+        parseExpression("isReviewer()").getValue(evaluationContext, Boolean.class),
+        "Non-reviewer user should return false for isReviewer()");
   }
 
   @Test
@@ -880,9 +924,110 @@ class RuleEvaluatorTest {
         "hasDomain should work correctly in OR expressions");
   }
 
+  @Test
+  void test_noDomain() {
+    // Test 1: Entity with no domains assigned
+    CreateResourceContext<?> contextNoDomains = mock(CreateResourceContext.class);
+    Mockito.when(contextNoDomains.getDomains()).thenReturn(new ArrayList<>());
+
+    RuleEvaluator ruleEvaluatorNoDomains =
+        new RuleEvaluator(null, subjectContext, contextNoDomains);
+    StandardEvaluationContext contextEmpty = new StandardEvaluationContext(ruleEvaluatorNoDomains);
+
+    // Should return true when entity has no domains
+    Boolean noDomainResult = parseExpression("noDomain()").getValue(contextEmpty, Boolean.class);
+    assertTrue(noDomainResult);
+
+    // Test 2: Entity with null domains (no parent entities)
+    CreateResourceContext<?> contextNullDomains = mock(CreateResourceContext.class);
+    Mockito.when(contextNullDomains.getDomains()).thenReturn(null);
+
+    RuleEvaluator ruleEvaluatorNullDomains =
+        new RuleEvaluator(null, subjectContext, contextNullDomains);
+    StandardEvaluationContext contextNull = new StandardEvaluationContext(ruleEvaluatorNullDomains);
+
+    // Should return true when getDomains() returns null
+    Boolean noDomainNullResult = parseExpression("noDomain()").getValue(contextNull, Boolean.class);
+    assertTrue(noDomainNullResult);
+
+    // Test 3: Entity with directly assigned domains
+    EntityReference domainRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withName("Engineering")
+            .withFullyQualifiedName("Engineering");
+
+    CreateResourceContext<?> contextWithDomains = mock(CreateResourceContext.class);
+    Mockito.when(contextWithDomains.getDomains()).thenReturn(listOf(domainRef));
+
+    RuleEvaluator ruleEvaluatorWithDomains =
+        new RuleEvaluator(null, subjectContext, contextWithDomains);
+    StandardEvaluationContext contextWithDomainsEval =
+        new StandardEvaluationContext(ruleEvaluatorWithDomains);
+
+    // Should return false when entity has domains
+    Boolean hasDomainResult =
+        parseExpression("noDomain()").getValue(contextWithDomainsEval, Boolean.class);
+    assertFalse(hasDomainResult);
+
+    // Test 4: Entity with inherited domains from parent
+    EntityReference inheritedDomainRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withName("DataScience")
+            .withFullyQualifiedName("DataScience");
+
+    CreateResourceContext<?> contextWithInheritedDomains = mock(CreateResourceContext.class);
+    Mockito.when(contextWithInheritedDomains.getDomains()).thenReturn(listOf(inheritedDomainRef));
+
+    RuleEvaluator ruleEvaluatorWithInheritedDomains =
+        new RuleEvaluator(null, subjectContext, contextWithInheritedDomains);
+    StandardEvaluationContext contextInherited =
+        new StandardEvaluationContext(ruleEvaluatorWithInheritedDomains);
+
+    // Should return false when entity has inherited domains
+    Boolean inheritedDomainResult =
+        parseExpression("noDomain()").getValue(contextInherited, Boolean.class);
+    assertTrue(inheritedDomainResult != null && !inheritedDomainResult);
+
+    // Test 5: Entity with multiple domains (direct + inherited)
+    EntityReference domain2Ref =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withName("Marketing")
+            .withFullyQualifiedName("Marketing");
+
+    CreateResourceContext<?> contextWithMultipleDomains = mock(CreateResourceContext.class);
+    Mockito.when(contextWithMultipleDomains.getDomains())
+        .thenReturn(listOf(domainRef, inheritedDomainRef, domain2Ref));
+
+    RuleEvaluator ruleEvaluatorWithMultipleDomains =
+        new RuleEvaluator(null, subjectContext, contextWithMultipleDomains);
+    StandardEvaluationContext contextMultiple =
+        new StandardEvaluationContext(ruleEvaluatorWithMultipleDomains);
+
+    // Should return false when entity has multiple domains
+    Boolean multipleDomainResult =
+        parseExpression("noDomain()").getValue(contextMultiple, Boolean.class);
+    assertTrue(multipleDomainResult != null && !multipleDomainResult);
+
+    // Test 6: Negation tests - !noDomain()
+    Boolean negatedNoDomainEmpty =
+        parseExpression("!noDomain()").getValue(contextEmpty, Boolean.class);
+    assertTrue(negatedNoDomainEmpty != null && !negatedNoDomainEmpty);
+
+    Boolean negatedNoDomainWithDomains =
+        parseExpression("!noDomain()").getValue(contextWithDomainsEval, Boolean.class);
+    assertTrue(negatedNoDomainWithDomains != null && negatedNoDomainWithDomains);
+
+    Boolean negatedNoDomainInherited =
+        parseExpression("!noDomain()").getValue(contextInherited, Boolean.class);
+    assertTrue(negatedNoDomainInherited != null && negatedNoDomainInherited);
+  }
+
   @AfterEach
   void resetContext() {
-    subjectContext = new SubjectContext(user);
+    subjectContext = new SubjectContext(user, null);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     LOG.info("Context reset to default state after test completion.");

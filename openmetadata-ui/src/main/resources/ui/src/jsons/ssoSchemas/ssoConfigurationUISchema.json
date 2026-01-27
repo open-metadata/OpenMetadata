@@ -1,0 +1,120 @@
+{
+  "ui:order": [
+    "provider",
+    "clientId",
+    "callbackUrl",
+    "authority",
+    "enableSelfSignup",
+    "publicKeyUrls",
+    "authConfig"
+  ],
+  "provider": {
+    "ui:widget": "select",
+    "ui:placeholder": "Select SSO provider"
+  },
+  "clientId": {
+    "ui:placeholder": "Enter client ID from your SSO provider"
+  },
+  "callbackUrl": {
+    "ui:placeholder": "Enter callback URL for SSO authentication"
+  },
+  "authority": {
+    "ui:placeholder": "Enter authority URL (optional for some providers)"
+  },
+  "enableSelfSignup": {
+    "ui:widget": "checkbox",
+    "ui:description": "Allow users to sign up automatically through SSO"
+  },
+  "publicKeyUrls": {
+    "ui:widget": "tags",
+    "ui:placeholder": "Enter public key URLs for token validation"
+  },
+  "authConfig": {
+    "ui:title": "Provider Configuration",
+    "ui:description": "Configure provider-specific settings",
+    "audience": {
+      "ui:placeholder": "Enter Google audience identifier"
+    },
+    "secretKey": {
+      "ui:widget": "password",
+      "ui:placeholder": "Enter secret key"
+    },
+    "domain": {
+      "ui:placeholder": "Enter Auth0 domain (e.g., your-tenant.auth0.com)"
+    },
+    "authority": {
+      "ui:placeholder": "Enter Azure AD authority URL"
+    },
+    "clientSecret": {
+      "ui:widget": "password",
+      "ui:placeholder": "Enter client secret"
+    },
+    "scopes": {
+      "ui:widget": "tags",
+      "ui:placeholder": "Select OAuth scopes"
+    },
+    "orgURL": {
+      "ui:placeholder": "Enter Okta organization URL"
+    },
+    "email": {
+      "ui:placeholder": "Enter service account email"
+    },
+    "privateKey": {
+      "ui:widget": "textarea",
+      "ui:placeholder": "Enter private key",
+      "ui:options": {
+        "rows": 4
+      }
+    },
+    "tokenEndpoint": {
+      "ui:placeholder": "Enter OIDC token endpoint URL"
+    },
+    "region": {
+      "ui:placeholder": "Enter AWS region"
+    },
+    "userPoolId": {
+      "ui:placeholder": "Enter Cognito user pool ID"
+    },
+    "idp": {
+      "ui:title": "Identity Provider (IDP) Configuration",
+      "ui:description": "Configure your SAML identity provider settings",
+      "entityId": {
+        "ui:placeholder": "Enter IDP entity ID"
+      },
+      "ssoLoginUrl": {
+        "ui:placeholder": "Enter IDP SSO login URL"
+      },
+      "x509Certificate": {
+        "ui:widget": "textarea",
+        "ui:placeholder": "Enter IDP X.509 certificate",
+        "ui:options": {
+          "rows": 6
+        }
+      }
+    },
+    "sp": {
+      "ui:title": "Service Provider (SP) Configuration",
+      "ui:description": "Configure your SAML service provider settings",
+      "entityId": {
+        "ui:placeholder": "Enter SP entity ID"
+      },
+      "acs": {
+        "ui:placeholder": "Enter Assertion Consumer Service URL"
+      },
+      "callback": {
+        "ui:placeholder": "Enter callback URL for SAML responses"
+      },
+      "x509Certificate": {
+        "ui:widget": "textarea",
+        "ui:placeholder": "Enter SP X.509 certificate",
+        "ui:options": {
+          "rows": 6
+        }
+      },
+      "privateKey": {
+        "ui:widget": "password",
+        "ui:placeholder": "Enter SP private key"
+      }
+    }
+  }
+}

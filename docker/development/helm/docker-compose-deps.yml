@@ -1,0 +1,82 @@
+# Docker compose for OpenMetadata dependencies (PostgreSQL + OpenSearch)
+# Use this for local Helm chart testing
+
+version: "3.9"
+services:
+
+  # PostgreSQL Database
+  postgres:
+    container_name: openmetadata_postgres_test
+    build:
+      context: ../../../
+      dockerfile: docker/postgresql/Dockerfile_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: openmetadata_db
+      POSTGRES_USER: openmetadata_user
+      POSTGRES_PASSWORD: openmetadata_password
+      POSTGRES_ROOT_PASSWORD: password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    expose:
+      - 5432
+    ports:
+      - "5433:5432"  # Use different port to avoid conflicts
+    networks:
+      - openmetadata_network
+    volumes:
+      - ./docker-volume/db-data-postgres:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openmetadata_user -d openmetadata_db"]
+      timeout: 20s
+      retries: 10
+      interval: 30s
+
+  # OpenSearch for metadata search
+  opensearch:
+    container_name: openmetadata_opensearch_test
+    image: opensearchproject/opensearch:2.11.1
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - node.name=opensearch
+      - cluster.name=opensearch-cluster
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms1024m -Xmx1024m"
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+      - "DISABLE_SECURITY_PLUGIN=true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - openmetadata_network
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  opensearch_data:
+
+networks:
+  openmetadata_network:
+    driver: bridge

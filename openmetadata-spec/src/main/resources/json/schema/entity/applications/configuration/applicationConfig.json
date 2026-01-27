@@ -14,7 +14,13 @@
           "$ref": "external/automatorAppConfig.json"
         },
         {
-          "$ref": "external/slackAppTokenConfiguration.json"
+          "$ref": "../../../configuration/slackAppConfiguration.json"
+        },
+        {
+          "$ref": "external/collateAIQualityAgentAppConfig.json"
+        },
+        {
+          "$ref": "external/collateAITierAgentAppConfig.json"
         },
         {
           "$ref": "internal/dataInsightsAppConfig.json"
@@ -26,7 +32,7 @@
           "$ref": "internal/searchIndexingAppConfig.json"
         },
         {
-          "$ref": "internal/collateAIQualityAgentAppConfig.json"
+          "$ref": "internal/cacheWarmupAppConfig.json"
         },
         {
           "$ref": "internal/dataRetentionConfiguration.json"

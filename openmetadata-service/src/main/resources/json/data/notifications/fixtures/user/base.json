@@ -1,0 +1,72 @@
+{
+  "id": "9a8f7e6d-5c4b-3a2f-1e0d-9c8b7a6f5e4d",
+  "name": "sample.user",
+  "displayName": "Sample User",
+  "fullyQualifiedName": "sample.user",
+  "description": "Mock user for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "href": "http://localhost:8585/api/v1/users/9a8f7e6d-5c4b-3a2f-1e0d-9c8b7a6f5e4d",
+  "email": "sample.user@example.com",
+  "timezone": "America/Los_Angeles",
+  "isBot": false,
+  "isAdmin": false,
+  "authenticationMechanism": {
+    "authType": "JWT",
+    "config": {}
+  },
+  "roles": [
+    {
+      "id": "8f7e6d5c-4b3a-2f1e-0d9c-8b7a6f5e4d3c",
+      "type": "role",
+      "name": "DataConsumer",
+      "fullyQualifiedName": "DataConsumer",
+      "deleted": false
+    }
+  ],
+  "teams": [
+    {
+      "id": "7e6d5c4b-3a2f-1e0d-9c8b-7a6f5e4d3c2b",
+      "type": "team",
+      "name": "Data",
+      "fullyQualifiedName": "Data",
+      "deleted": false
+    }
+  ],
+  "isEmailVerified": true,
+  "profile": {
+    "images": {
+      "image": "https://example.com/images/users/sample-user.jpg",
+      "image192": "https://example.com/images/users/sample-user-192.jpg",
+      "image512": "https://example.com/images/users/sample-user-512.jpg"
+    }
+  },
+  "personas": [
+    {
+      "id": "d4e5f6a7-8901-2345-6789-0abcdef12345",
+      "type": "persona",
+      "name": "DataAnalyst",
+      "fullyQualifiedName": "DataAnalyst"
+    }
+  ],
+  "defaultPersona": {
+    "id": "d4e5f6a7-8901-2345-6789-0abcdef12345",
+    "type": "persona",
+    "name": "DataAnalyst",
+    "fullyQualifiedName": "DataAnalyst"
+  },
+  "domains": [
+    {
+      "id": "c3d4e5f6-7890-abcd-ef12-34567890abcd",
+      "type": "domain",
+      "name": "Engineering",
+      "fullyQualifiedName": "Engineering"
+    }
+  ],
+  "personaPreferences": {
+    "landingPage": "myData",
+    "assistantEnabled": true
+  }
+}

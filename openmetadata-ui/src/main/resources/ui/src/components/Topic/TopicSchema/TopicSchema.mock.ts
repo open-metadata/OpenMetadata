@@ -17,6 +17,7 @@ export const nestedField: Field = {
   name: 'Order',
   displayName: 'Order',
   dataType: DataTypeTopic.Record,
+  fullyQualifiedName: 'sample_kafka.customer_events.Order',
   description: 'All the order events on our online store',
   children: [
     {

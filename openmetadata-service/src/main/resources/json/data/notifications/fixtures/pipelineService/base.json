@@ -1,0 +1,28 @@
+{
+  "id": "7c6b5a4f-3e2d-1c0b-9a8f-7e6d5c4b3a2f",
+  "name": "sample-pipeline-service",
+  "displayName": "Sample Pipeline Service",
+  "fullyQualifiedName": "sample-pipeline-service",
+  "description": "Mock pipeline service for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "href": "http://localhost:8585/api/v1/services/pipelineServices/7c6b5a4f-3e2d-1c0b-9a8f-7e6d5c4b3a2f",
+  "serviceType": "Airflow",
+  "connection": {
+    "config": {
+      "type": "Airflow",
+      "hostPort": "http://localhost:8080"
+    }
+  },
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "tags": []
+}

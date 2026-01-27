@@ -38,21 +38,19 @@ type ResponseDataType = {
 };
 
 export class Domain extends EntityClass {
-  id: string;
   data: ResponseDataType;
-
   responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(data?: ResponseDataType) {
     super(EntityTypeEndpoint.Domain);
-    this.id = uuid();
+    const id = uuid();
     this.data = data ?? {
-      name: `PW%domain.${this.id}`,
-      displayName: `PW Domain ${this.id}`,
+      name: `PW%domain.${id}`,
+      displayName: `PW Domain ${id}`,
       description: 'playwright domain description',
       domainType: 'Aggregate',
       // eslint-disable-next-line no-useless-escape
-      fullyQualifiedName: `\"PW%domain.${this.id}\"`,
+      fullyQualifiedName: `\"PW%domain.${id}\"`,
     };
   }
 

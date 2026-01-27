@@ -88,7 +88,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     );
     await page.getByTestId('explore-asset-with-no-description').click();
 
-    await page.waitForURL('**/explore?**');
+    await page.waitForURL('/explore/tables?*');
 
     await expect(page.getByTestId('advance-search-filter-text')).toContainText(
       "descriptionStatus = 'INCOMPLETE'"
@@ -100,7 +100,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     );
 
     await page.getByTestId('explore-asset-with-no-owner').click();
-    await page.waitForURL('**/explore?**');
+    await page.waitForURL('/explore/tables?*');
 
     await expect(page.getByTestId('advance-search-filter-text')).toContainText(
       'owners.displayName.keyword IS NULL'
@@ -168,7 +168,8 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
       'api/v1/kpi?fields=dataInsightChart'
     );
 
-    await redirectToHomePage(page);
+    // Pass false to skip waiting for network idle, allowing us to catch the KPI API response
+    await redirectToHomePage(page, false);
 
     await kpiResponse;
 

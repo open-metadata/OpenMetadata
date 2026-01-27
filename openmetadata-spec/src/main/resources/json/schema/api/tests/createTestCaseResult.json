@@ -34,11 +34,13 @@
     },
     "passedRows": {
       "description": "Number of rows that passed.",
-      "type": "integer"
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
     },
     "failedRows": {
       "description": "Number of rows that failed.",
-      "type": "integer"
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
     },
     "passedRowsPercentage": {
       "description": "Percentage of rows that passed.",
@@ -59,6 +61,13 @@
     "minBound": {
       "description": "Lower bound limit for the test case result as defined in the test definition.",
       "type": "number"
+    },
+    "dimensionResults": {
+      "description": "List of dimensional test results. Only populated when the test case has dimensionColumns specified.",
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/basic.json#/definitions/testCaseDimensionResult"
+      }
     }
   },
   "required": ["timestamp", "testCaseStatus", "testResultValue"],

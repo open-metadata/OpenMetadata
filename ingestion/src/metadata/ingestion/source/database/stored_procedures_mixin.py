@@ -168,6 +168,9 @@ class StoredProcedureLineageMixin(ABC):
 
         # Yield the ProcedureAndQuery for filtered stored procedure
         for query_by_procedure in queries:
+            if not query_by_procedure.procedure_name:
+                continue
+
             procedure_name = query_by_procedure.procedure_name.lower()
             queries_count_per_procedure[procedure_name] += 1
 
@@ -203,6 +206,7 @@ class StoredProcedureLineageMixin(ABC):
             self.source_config.parsingTimeoutLimit,
             self.procedure_graph_map,
             self.source_config.enableTempTableLineage,
+            self.get_query_parser_type(),
         )
         yield from self.generate_lineage_with_processes(
             producer_fn,

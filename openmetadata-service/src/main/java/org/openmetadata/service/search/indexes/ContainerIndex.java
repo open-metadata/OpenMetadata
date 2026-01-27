@@ -47,6 +47,8 @@ public record ContainerIndex(Container container) implements ColumnIndex {
     doc.putAll(commonAttributes);
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("serviceType", container.getServiceType());
     doc.put("fullPath", container.getFullPath());
     doc.put("upstreamLineage", SearchIndex.getLineageData(container.getEntityReference()));

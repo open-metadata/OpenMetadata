@@ -17,19 +17,31 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.opensearch.OpenSearchRequestBuilder;
 import org.openmetadata.service.search.opensearch.OpenSearchSourceBuilderFactory;
-import os.org.opensearch.index.query.MultiMatchQueryBuilder;
-import os.org.opensearch.index.query.QueryBuilders;
-import os.org.opensearch.search.builder.SearchSourceBuilder;
+import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 
 class FuzzySearchClauseTest {
+
+  @BeforeEach
+  void setUp() {
+    // Mock the Entity.getSearchRepository() static method dependency
+    SearchRepository mockSearchRepository = mock(SearchRepository.class);
+    when(mockSearchRepository.getIndexNameWithoutAlias("table_search_index"))
+        .thenReturn("table_search_index");
+    Entity.setSearchRepository(mockSearchRepository);
+  }
 
   @Test
   void testNgramFieldsAreSeparatedFromFuzzySearch() {
@@ -88,10 +100,11 @@ class FuzzySearchClauseTest {
     };
 
     String flatColumnNames = String.join(" ", columnNames);
-    MultiMatchQueryBuilder flatQuery =
-        QueryBuilders.multiMatchQuery("test_query")
-            .field("columnNamesFuzzy", 1.5f)
-            .fuzziness("AUTO");
+    Query flatQuery =
+        Query.of(
+            q ->
+                q.multiMatch(
+                    m -> m.query("test_query").fields("columnNamesFuzzy^1.5").fuzziness("AUTO")));
 
     assertNotNull(flatQuery, "Flat query should be created successfully");
     assertTrue(
@@ -112,11 +125,12 @@ class FuzzySearchClauseTest {
     String problematicQuery = "int_snowplow_experiment_evaluation";
 
     try {
-      SearchSourceBuilder sourceBuilder =
-          factory.buildDataAssetSearchBuilder("table_search_index", problematicQuery, 0, 10);
+      OpenSearchRequestBuilder sourceBuilder =
+          factory.buildDataAssetSearchBuilderV2(
+              "table_search_index", problematicQuery, 0, 10, false);
 
       assertNotNull(sourceBuilder, "Search source builder should be created successfully");
-      assertNotNull(sourceBuilder.query(), "Query should be built successfully");
+      assertNotNull(sourceBuilder.build().query(), "Query should be built successfully");
 
     } catch (Exception e) {
       throw new AssertionError("Query building should not throw exceptions with the fix", e);

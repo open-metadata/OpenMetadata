@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,7 +17,11 @@ export interface BitbucketCredentials {
     /**
      * Main production branch of the repository. E.g., `main`
      */
-    branch:          string;
+    branch: string;
+    /**
+     * BitBucket instance URL. For BitBucket Cloud, use https://bitbucket.org
+     */
+    gitHostURL?:     string;
     repositoryName:  string;
     repositoryOwner: string;
     token?:          string;

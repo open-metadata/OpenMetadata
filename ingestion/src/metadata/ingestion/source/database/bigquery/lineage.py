@@ -40,6 +40,7 @@ class BigqueryLineageSource(
             statement_type IN ("MERGE", "CREATE_TABLE_AS_SELECT", "UPDATE") 
             OR (statement_type = "INSERT" and UPPER(query) like '%%INSERT%%INTO%%SELECT%%')
             OR (statement_type = "CREATE_TABLE" and UPPER(query) like '%%CLONE%%')
+            OR (statement_type = "CREATE_TABLE" and UPPER(query) like '%%LIKE%%')
         )
     """
 

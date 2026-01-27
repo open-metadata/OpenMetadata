@@ -14,7 +14,7 @@ Base class for ingesting database services
 import traceback
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set
 
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
@@ -36,6 +36,7 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.pipelineObservability import PipelineObservability
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
@@ -70,6 +71,15 @@ class PipelineUsage(BaseModel):
 
     pipeline: Pipeline
     usage: UsageRequest
+
+
+class TablePipelineObservability(BaseModel):
+    """
+    Model to represent table with its pipeline observability data
+    """
+
+    table: Table
+    observability_data: List[PipelineObservability]
 
 
 class PipelineServiceTopology(ServiceTopology):
@@ -130,6 +140,12 @@ class PipelineServiceTopology(ServiceTopology):
             NodeStage(
                 type_=UsageRequest,
                 processor="yield_pipeline_usage",
+                consumer=["pipeline_service"],
+                nullable=True,
+            ),
+            NodeStage(
+                type_=TablePipelineObservability,
+                processor="yield_pipeline_observability",
                 consumer=["pipeline_service"],
                 nullable=True,
             ),
@@ -232,7 +248,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 fields=["tasks", "usageSummary"],
             )
 
-            if pipeline.tasks:
+            if pipeline and pipeline.tasks:
                 current_task_usage = sum(
                     1
                     for task in pipeline.tasks
@@ -386,6 +402,43 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 )
                 continue
             yield pipeline_detail
+
+    def get_table_pipeline_observability(
+        self, pipeline_details: Any
+    ) -> Iterable[Dict[str, List[PipelineObservability]]]:
+        """
+        Method to extract pipeline observability data grouped by table FQN.
+        This method should be implemented by each pipeline service.
+        """
+
+    def yield_pipeline_observability(
+        self, pipeline_details: Any
+    ) -> Iterable[Either[TablePipelineObservability]]:
+        """Method to fetch pipeline observability data"""
+        try:
+            for table_observability_map in (
+                self.get_table_pipeline_observability(pipeline_details) or []
+            ):
+                for table_fqn, observability_list in table_observability_map.items():
+                    table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                    if table:
+                        yield Either(
+                            right=TablePipelineObservability(
+                                table=table, observability_data=observability_list
+                            )
+                        )
+                    else:
+                        logger.warning(f"Table not found: {table_fqn}")
+        except Exception as exc:
+            logger.error(f"Failed to extract pipeline observability data: {exc}")
+            logger.debug(traceback.format_exc())
+            yield Either(
+                left=StackTraceError(
+                    name="Pipeline Profiler Source",
+                    error=f"Failed to extract pipeline observability data: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def test_connection(self) -> None:
         test_connection_common(

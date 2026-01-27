@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnsType, ColumnType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import DataProductsContainer from '../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { TAG_LIST_SIZE } from '../constants/constants';
@@ -42,7 +43,7 @@ export const ownerTableObject = <
     title: i18n.t('label.owner-plural').toString(),
     dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
     key: TABLE_COLUMNS_KEYS.OWNERS,
-    width: 180,
+    width: 280,
     filterIcon: columnFilterIcon,
     render: (owners: EntityReference[]) => (
       <OwnerLabel
@@ -104,5 +105,22 @@ export const tagTableObject = <
     render: (_, record: T) => (
       <TagsViewer sizeCap={TAG_LIST_SIZE} tags={record.tags ?? []} />
     ),
+  },
+];
+
+/**
+ * Generates a table column configuration for the description field.
+ * @param args - Additional column properties to be merged
+ * @returns A ColumnsType<T> array with the description column configuration
+ */
+export const descriptionTableObject = <T extends { description?: string }>(
+  args: ColumnType<T> = {}
+): ColumnsType<T> => [
+  {
+    title: i18n.t('label.description').toString(),
+    dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+    key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+    render: (text: string) => <RichTextEditorPreviewerNew markdown={text} />,
+    ...args,
   },
 ];

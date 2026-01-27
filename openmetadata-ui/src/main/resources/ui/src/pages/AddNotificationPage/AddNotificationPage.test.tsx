@@ -15,6 +15,19 @@ import { MemoryRouter } from 'react-router-dom';
 import AddNotificationPage from './AddNotificationPage';
 
 const mockNavigate = jest.fn();
+const mockHandleAlertSave = jest.fn();
+const mockGetModifiedAlertDataForForm = jest.fn();
+
+jest.mock('../../utils/AlertsClassBase', () => ({
+  __esModule: true,
+  default: {
+    handleAlertSave: (...args: unknown[]) => mockHandleAlertSave(...args),
+    getModifiedAlertDataForForm: (...args: unknown[]) =>
+      mockGetModifiedAlertDataForForm(...args),
+    getAddAlertFormExtraWidgets: jest.fn().mockReturnValue({}),
+    getAddAlertFormExtraButtons: jest.fn().mockReturnValue({}),
+  },
+}));
 
 jest.mock('../../rest/alertsAPI', () => ({
   getAlertsFromName: jest.fn().mockImplementation(() =>
@@ -63,6 +76,31 @@ jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: '' }),
 }));
 
+jest.mock(
+  '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="source-select">Source Select</div>
+      ))
+);
+
+jest.mock(
+  '../../components/Alerts/DestinationFormItem/DestinationFormItem.component',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="destination-category-select">Destination Select</div>
+      ))
+);
+
+jest.mock(
+  '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem',
+  () => jest.fn().mockImplementation(() => <div>Filters</div>)
+);
+
 const mockProps = {
   pageTitle: 'add-notifications',
 };
@@ -94,7 +132,8 @@ describe('AddNotificationPage', () => {
 
     expect(breadcrumbLinks[0]).toHaveTextContent('label.setting-plural');
     expect(breadcrumbLinks[1]).toHaveTextContent('label.notification-plural');
-    expect(breadcrumbLinks[2]).toHaveTextContent('label.create-entity');
+    expect(breadcrumbLinks[2]).toHaveTextContent('label.alert-plural');
+    expect(breadcrumbLinks[3]).toHaveTextContent('label.create-entity');
   });
 
   it('should display SubTitle', async () => {
@@ -133,5 +172,90 @@ describe('AddNotificationPage', () => {
     });
 
     expect(mockNavigate).toHaveBeenCalledWith(-1);
+  });
+
+  it('should render form field for name', async () => {
+    await act(async () => {
+      render(<AddNotificationPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await screen.findByText('label.notification-plural');
+
+    expect(screen.getByPlaceholderText('label.name')).toBeInTheDocument();
+  });
+
+  it('should render save button', async () => {
+    await act(async () => {
+      render(<AddNotificationPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await screen.findByText('label.notification-plural');
+
+    const saveButton = screen.getByTestId('save-button');
+
+    expect(saveButton).toBeInTheDocument();
+    expect(saveButton).toHaveTextContent('label.save');
+  });
+
+  it('should render AlertFormSourceItem component', async () => {
+    await act(async () => {
+      render(<AddNotificationPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await screen.findByText('label.notification-plural');
+
+    expect(screen.getByTestId('source-select')).toBeInTheDocument();
+  });
+
+  it('should render DestinationFormItem component', async () => {
+    await act(async () => {
+      render(<AddNotificationPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await screen.findByText('label.notification-plural');
+
+    expect(
+      screen.getByTestId('destination-category-select')
+    ).toBeInTheDocument();
+  });
+
+  it('should call getAddAlertFormExtraWidgets from alertsClassBase', async () => {
+    const { default: alertsClassBase } = await import(
+      '../../utils/AlertsClassBase'
+    );
+
+    await act(async () => {
+      render(<AddNotificationPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await screen.findByText('label.notification-plural');
+
+    expect(alertsClassBase.getAddAlertFormExtraWidgets).toHaveBeenCalled();
+  });
+
+  it('should call getAddAlertFormExtraButtons from alertsClassBase', async () => {
+    const { default: alertsClassBase } = await import(
+      '../../utils/AlertsClassBase'
+    );
+
+    await act(async () => {
+      render(<AddNotificationPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await screen.findByText('label.notification-plural');
+
+    expect(alertsClassBase.getAddAlertFormExtraButtons).toHaveBeenCalled();
   });
 });

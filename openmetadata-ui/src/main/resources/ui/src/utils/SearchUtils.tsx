@@ -15,6 +15,7 @@ import { SearchOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import i18next from 'i18next';
 import { isEmpty } from 'lodash';
+import { Bucket } from 'Models';
 import { Link } from 'react-router-dom';
 import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
 import { ReactComponent as IconChart } from '../assets/svg/chart.svg';
@@ -40,6 +41,7 @@ import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './CommonUtils';
+import { ElasticsearchQuery } from './QueryBuilderUtils';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
@@ -189,6 +191,26 @@ export const getGroupLabel = (index: string) => {
       GroupIcon = MetricIcon;
 
       break;
+    case SearchIndex.DIRECTORY_SEARCH_INDEX:
+      label = i18next.t('label.directory-plural');
+      GroupIcon = MetricIcon;
+
+      break;
+    case SearchIndex.FILE_SEARCH_INDEX:
+      label = i18next.t('label.file-plural');
+      GroupIcon = MetricIcon;
+
+      break;
+    case SearchIndex.SPREADSHEET_SEARCH_INDEX:
+      label = i18next.t('label.spreadsheet-plural');
+      GroupIcon = MetricIcon;
+
+      break;
+    case SearchIndex.WORKSHEET_SEARCH_INDEX:
+      label = i18next.t('label.worksheet-plural');
+      GroupIcon = MetricIcon;
+
+      break;
 
     default: {
       const { label: indexLabel, GroupIcon: IndexIcon } =
@@ -307,23 +329,184 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
  * @returns An array of objects with value and title properties
  */
 export const parseBucketsData = (
-  buckets: Array<any>,
-  sourceFields?: string
+  buckets: Array<Bucket>,
+  sourceFields?: string,
+  sourceFieldOptionType?: {
+    label: string;
+    value: string;
+  }
 ) => {
+  if (sourceFieldOptionType) {
+    return buckets.map((bucket) => {
+      const topHitsData = (bucket as Record<string, unknown>)[
+        'top_hits#top'
+      ] as
+        | {
+            hits?: {
+              hits?: Array<{
+                _source?: Record<string, unknown>;
+              }>;
+            };
+          }
+        | undefined;
+      const data = topHitsData?.hits?.hits?.[0]?._source;
+
+      return {
+        title: data?.[sourceFieldOptionType.label] as string,
+        value: data?.[sourceFieldOptionType.value] as string,
+      };
+    });
+  }
+
   return buckets.map((bucket) => {
-    const actualValue = sourceFields
-      ? sourceFields
-          .split('.')
-          .reduce(
-            (obj, key) =>
-              obj && obj[key] !== undefined ? obj[key] : undefined,
-            bucket['top_hits#top']?.hits?.hits?.[0]?._source
-          ) ?? bucket.key
-      : bucket.key;
+    const topHitsSource = (
+      (bucket as Record<string, unknown>)['top_hits#top'] as
+        | {
+            hits?: {
+              hits?: Array<{
+                _source?: Record<string, unknown>;
+              }>;
+            };
+          }
+        | undefined
+    )?.hits?.hits?.[0]?._source;
+
+    const actualValue =
+      sourceFields && topHitsSource
+        ? sourceFields
+            .split('.')
+            .reduce(
+              (obj: unknown, key: string): unknown =>
+                obj && typeof obj === 'object' && obj !== null && key in obj
+                  ? (obj as Record<string, unknown>)[key]
+                  : undefined,
+              topHitsSource
+            ) ?? bucket.key
+        : bucket.key;
 
     return {
       value: actualValue,
       title: bucket.label ?? actualValue,
     };
   });
+};
+
+/**
+ * Generic term query builder from object
+ * Creates an Elasticsearch query filter structure from field-value pairs
+ * @param terms - Record of field names and their values, or mixed query configuration
+ * @param queryType - Type of boolean query: 'must' | 'must_not' | 'should' | 'should_not'
+ * @param minimumShouldMatch - Minimum number of should clauses that must match (only for 'should')
+ * @param wildcardTerms - Optional record for wildcard queries
+ * @returns Query filter object for searchQuery API
+ */
+export const getTermQuery = (
+  terms: Record<string, string | string[] | number | boolean>,
+  queryType: 'must' | 'must_not' | 'should' | 'should_not' = 'must',
+  minimumShouldMatch?: number,
+  options?: {
+    wildcardTerms?: Record<string, string>;
+    wildcardShouldQueries?: Record<string, string>;
+    mustNotTerms?: Record<string, string | string[] | number | boolean>;
+    matchTerms?: Record<string, string | number | boolean>;
+    wildcardMustNotQueries?: Record<string, string | string[]>;
+  }
+) => {
+  const termQueries = Object.entries(terms)
+    .map(([field, value]) => {
+      if (Array.isArray(value)) {
+        return value.map((v) => ({ term: { [field]: v } }));
+      }
+
+      return { term: { [field]: value } };
+    })
+    .flat();
+
+  const wildcardQueries = options?.wildcardTerms
+    ? Object.entries(options.wildcardTerms).map(([field, value]) => ({
+        wildcard: { [field]: value },
+      }))
+    : [];
+
+  const mustNotQueries = options?.mustNotTerms
+    ? Object.entries(options.mustNotTerms)
+        .map(([field, value]) => {
+          if (Array.isArray(value)) {
+            return value.map((v) => ({ term: { [field]: v } }));
+          }
+
+          return { term: { [field]: value } };
+        })
+        .flat()
+    : [];
+
+  const matchQueries = options?.matchTerms
+    ? Object.entries(options.matchTerms).map(([field, value]) => ({
+        match: { [field]: value },
+      }))
+    : [];
+
+  const allQueries: ElasticsearchQuery[] = [
+    ...termQueries,
+    ...wildcardQueries,
+    ...matchQueries,
+  ];
+
+  // Handle wildcardShouldQueries - creates a nested bool with should clauses
+  if (
+    options?.wildcardShouldQueries &&
+    Object.keys(options.wildcardShouldQueries).length > 0
+  ) {
+    const shouldWildcardQueries = Object.entries(
+      options.wildcardShouldQueries
+    ).map(([field, value]) => ({
+      wildcard: { [field]: value },
+    }));
+
+    allQueries.push({
+      bool: {
+        should: shouldWildcardQueries,
+        minimum_should_match: 1,
+      },
+    });
+  }
+
+  // Define type for Elasticsearch bool query structure
+  type ESBoolQuery = Record<string, ElasticsearchQuery[] | number> & {
+    must_not?: ElasticsearchQuery[];
+    minimum_should_match?: number;
+  };
+
+  const boolQuery: ESBoolQuery = {
+    [queryType]: allQueries,
+  };
+
+  // Handle wildcardMustNotQueries
+  const wildcardMustNotQueries = options?.wildcardMustNotQueries
+    ? Object.entries(options.wildcardMustNotQueries)
+        .map(([field, value]) => {
+          if (Array.isArray(value)) {
+            return value.map((v) => ({ wildcard: { [field]: v } }));
+          }
+
+          return { wildcard: { [field]: value } };
+        })
+        .flat()
+    : [];
+
+  const allMustNotQueries = [...mustNotQueries, ...wildcardMustNotQueries];
+
+  if (allMustNotQueries.length > 0) {
+    boolQuery.must_not = allMustNotQueries;
+  }
+
+  if (queryType === 'should' && minimumShouldMatch !== undefined) {
+    boolQuery.minimum_should_match = minimumShouldMatch;
+  }
+
+  return {
+    query: {
+      bool: boolQuery,
+    },
+  };
 };

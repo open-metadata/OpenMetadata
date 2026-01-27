@@ -1,0 +1,24 @@
+{
+  "id": "0f3e2d1c-0b9a-8f7e-6d5c-4b3a2f1e0d9c",
+  "name": "sample_location",
+  "displayName": "Sample Location",
+  "fullyQualifiedName": "sample-storage-service.sample_location",
+  "description": "Mock location for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "locationType": "Bucket",
+  "path": "s3://sample-bucket/data",
+  "href": "http://localhost:8585/api/v1/locations/0f3e2d1c-0b9a-8f7e-6d5c-4b3a2f1e0d9c",
+  "service": {
+    "id": "5a4f3e2d-1c0b-9a8f-7e6d-5c4b3a2f1e0d",
+    "type": "storageService",
+    "name": "sample-storage-service",
+    "fullyQualifiedName": "sample-storage-service",
+    "deleted": false,
+    "href": "http://localhost:8585/api/v1/services/storageServices/5a4f3e2d-1c0b-9a8f-7e6d-5c4b3a2f1e0d"
+  },
+  "serviceType": "S3",
+  "tags": []
+}

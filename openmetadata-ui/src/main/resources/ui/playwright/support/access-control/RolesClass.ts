@@ -22,11 +22,12 @@ type ResponseDataType = {
 };
 
 export class RolesClass {
-  id = uuid();
+  id: string;
   data: ResponseDataType;
   responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(data?: ResponseDataType) {
+    this.id = uuid();
     this.data = data ?? {
       name: `PW%Roles-${this.id}`,
       displayName: `PW Roles ${this.id}`,

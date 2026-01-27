@@ -15,12 +15,15 @@ import { Button, Card, RadioChangeEvent, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
+import { ReactComponent as SecurityIcon } from '../../../assets/svg/ic-security.svg';
+import { ReactComponent as TermsIcon } from '../../../assets/svg/icon-test-suite.svg';
 import { ReactComponent as QualityIcon } from '../../../assets/svg/policies.svg';
 import { ReactComponent as SemanticsIcon } from '../../../assets/svg/semantics.svg';
 import { ReactComponent as TableIcon } from '../../../assets/svg/table-outline.svg';
+import { ReactComponent as SLAIcon } from '../../../assets/svg/timeout.svg';
 import {
   DataContractMode,
   EDataContractTab,
@@ -30,16 +33,25 @@ import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
   EntityStatus,
+  TermsOfUse,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { createContract, updateContract } from '../../../rest/contractAPI';
+import {
+  getContractTabLabel,
+  getDataContractTabByEntity,
+} from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ContractDetailFormTab } from '../ContractDetailFormTab/ContractDetailFormTab';
 import { ContractQualityFormTab } from '../ContractQualityFormTab/ContractQualityFormTab';
 import { ContractSchemaFormTab } from '../ContractSchemaFormTab/ContractScehmaFormTab';
+import { ContractSecurityFormTab } from '../ContractSecurityFormTab/ContractSecurityFormTab';
 import { ContractSemanticFormTab } from '../ContractSemanticFormTab/ContractSemanticFormTab';
+import { ContractSLAFormTab } from '../ContractSLAFormTab/ContractSLAFormTab';
+import ContractTermsOfService from '../ContractTermOfService/ContractTermsOfService.component';
 import './add-data-contract.less';
 
 export interface FormStepProps {
@@ -59,60 +71,195 @@ const AddDataContract: React.FC<{
   const { t } = useTranslation();
   const [mode, setMode] = useState<DataContractMode>(DataContractMode.UI);
   const [yaml, setYaml] = useState('');
-  const [activeTab, setActiveTab] = useState(
-    EDataContractTab.CONTRACT_DETAIL.toString()
-  );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { data: table } = useGenericContext<Table>();
+  const { data: entityData } = useGenericContext<Table>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const entityContractTabs = useMemo(
+    () => getDataContractTabByEntity(entityType),
+    [entityType]
+  );
+
+  // Filter out inherited fields from the contract for editing
+  // Inherited fields should not be shown in the edit form
+  // IMPORTANT: We must completely REMOVE inherited fields from the object (not set to undefined)
+  // so that fast-json-patch generates /add operations instead of /replace when adding new values
+  const filteredContract = useMemo(() => {
+    if (!contract) {
+      return undefined;
+    }
+
+    // Type guard to check if an object has the inherited flag
+    // This provides type-safe access to the inherited property
+    const hasInheritedFlag = (obj: unknown): obj is { inherited?: boolean } => {
+      return typeof obj === 'object' && obj !== null && 'inherited' in obj;
+    };
+
+    // Type guard to check if a field is inherited from Data Product
+    const isInheritedField = (field: unknown): boolean => {
+      return hasInheritedFlag(field) && field.inherited === true;
+    };
+
+    // Filter semantics to exclude inherited rules
+    const filteredSemantics = contract.semantics?.filter(
+      (rule) => !isInheritedField(rule)
+    );
+
+    // Get termsOfUse, excluding if inherited
+    // Handle three cases:
+    // 1. Object with inherited=true -> exclude (set undefined)
+    // 2. Object with inherited=false/undefined -> keep as object
+    // 3. String (legacy format) -> convert to object format for form consistency
+    // Note: isInheritedField() returns false for null/undefined/string, so those fall through
+    let filteredTermsOfUse: TermsOfUse | undefined;
+    if (isInheritedField(contract.termsOfUse)) {
+      // Case 1: Inherited from Data Product - exclude from editable form
+      filteredTermsOfUse = undefined;
+    } else if (
+      typeof contract.termsOfUse === 'object' &&
+      contract.termsOfUse !== null
+    ) {
+      // Case 2: Non-inherited object format - keep as-is
+      filteredTermsOfUse = contract.termsOfUse;
+    } else if (typeof contract.termsOfUse === 'string') {
+      // Case 3: Legacy string format - convert to object for form consistency
+      filteredTermsOfUse = { content: contract.termsOfUse };
+    }
+    // If none match (null/undefined), filteredTermsOfUse remains undefined
+
+    // Check if security and SLA are inherited
+    const isSecurityInherited = isInheritedField(contract.security);
+    const isSlaInherited = isInheritedField(contract.sla);
+
+    // Start with base contract fields, excluding potentially inherited fields
+    // We destructure to exclude sla, security, termsOfUse, semantics, then add them back only if not inherited
+    const {
+      sla: _sla,
+      security: _security,
+      termsOfUse: _termsOfUse,
+      semantics: _semantics,
+      ...baseContract
+    } = contract;
+
+    // Build result object, only adding fields that are not inherited
+    // This ensures fast-json-patch generates /add operations instead of /replace
+    const result: Partial<DataContract> = {
+      ...baseContract,
+    };
+
+    // Only add semantics if there are non-inherited rules
+    if (filteredSemantics && filteredSemantics.length > 0) {
+      result.semantics = filteredSemantics;
+    }
+
+    // Only add termsOfUse if not inherited
+    if (filteredTermsOfUse !== undefined) {
+      result.termsOfUse = filteredTermsOfUse;
+    }
+
+    // Only add security if not inherited
+    if (!isSecurityInherited && contract.security) {
+      result.security = contract.security;
+    }
+
+    // Only add SLA if not inherited
+    if (!isSlaInherited && contract.sla) {
+      result.sla = contract.sla;
+    }
+
+    return result as DataContract;
+  }, [contract]);
 
   const [formValues, setFormValues] = useState<DataContract>(
-    contract || ({} as DataContract)
+    filteredContract || ({} as DataContract)
+  );
+
+  useEffect(() => {
+    setFormValues(filteredContract || ({} as DataContract));
+  }, [filteredContract]);
+
+  const [activeTab, setActiveTab] = useState(
+    entityContractTabs[0]?.toString() ||
+      EDataContractTab.CONTRACT_DETAIL.toString()
   );
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
   }, []);
 
-  const { validSemantics, isSaveDisabled } = useMemo(() => {
+  const { validSemantics, validSecurity, isSaveDisabled } = useMemo(() => {
     const validSemantics = formValues.semantics?.filter(
       (semantic) => !isEmpty(semantic.name) && !isEmpty(semantic.rule)
     );
 
+    const validSecurity = formValues.security
+      ? {
+          ...formValues.security,
+          policies: formValues.security.policies?.map((policy) => ({
+            ...policy,
+            rowFilters: policy.rowFilters?.filter(
+              (filter) =>
+                !isEmpty(filter?.columnName) && !isEmpty(filter?.values)
+            ),
+          })),
+        }
+      : undefined;
+
     return {
       validSemantics,
+      validSecurity,
+      // Compare against filteredContract (without inherited fields) to avoid
+      // generating "remove" operations for inherited fields
       isSaveDisabled: isEmpty(
-        compare(contract ?? {}, {
-          ...contract,
+        compare(filteredContract ?? {}, {
+          ...filteredContract,
           ...formValues,
           semantics: validSemantics,
+          security: validSecurity,
         })
       ),
     };
-  }, [contract, formValues]);
+  }, [filteredContract, formValues]);
 
   const handleSave = useCallback(async () => {
     setIsSubmitting(true);
 
     try {
       if (contract) {
+        // Use filteredContract for PATCH comparison to avoid generating
+        // "remove" operations for inherited fields (SLA, security, terms, semantics)
         await updateContract(
           contract?.id,
-          compare(contract, {
-            ...contract,
+          compare(filteredContract ?? {}, {
+            ...filteredContract,
             ...formValues,
             semantics: validSemantics,
+            security: validSecurity,
             displayName: formValues.name,
           })
         );
       } else {
+        // Extract termsOfUse content string for CreateDataContract API
+        // The form stores termsOfUse as { content: string } but the API expects just the string
+        // Note: Runtime data may have termsOfUse as string (legacy) or TermsOfUse object
+        const termsOfUseRaw = formValues.termsOfUse as
+          | TermsOfUse
+          | string
+          | undefined;
+        const termsOfUseContent =
+          typeof termsOfUseRaw === 'string'
+            ? termsOfUseRaw
+            : termsOfUseRaw?.content;
+
         await createContract({
           ...formValues,
           displayName: formValues.name,
           entity: {
-            id: table.id,
-            type: EntityType.TABLE,
+            id: entityData.id,
+            type: entityType,
           },
           semantics: validSemantics,
+          security: validSecurity,
+          termsOfUse: termsOfUseContent,
           entityStatus: EntityStatus.Approved,
         });
       }
@@ -124,7 +271,15 @@ const AddDataContract: React.FC<{
     } finally {
       setIsSubmitting(false);
     }
-  }, [contract, formValues, table?.id, validSemantics]);
+  }, [
+    contract,
+    filteredContract,
+    formValues,
+    entityData.id,
+    entityType,
+    validSemantics,
+    validSecurity,
+  ]);
 
   const onFormChange = useCallback(
     (data: Partial<DataContract>) => {
@@ -133,16 +288,46 @@ const AddDataContract: React.FC<{
     [setFormValues]
   );
 
+  const currentActiveTabIndex = useMemo(
+    () => entityContractTabs.findIndex((tab) => tab.toString() === activeTab),
+    [entityContractTabs, activeTab]
+  );
+
   const onNext = useCallback(async () => {
-    setActiveTab((prev) => (Number(prev) + 1).toString());
-  }, [setActiveTab]);
+    if (
+      currentActiveTabIndex !== -1 &&
+      currentActiveTabIndex < entityContractTabs.length - 1
+    ) {
+      setActiveTab(entityContractTabs[currentActiveTabIndex + 1].toString());
+    }
+  }, [setActiveTab, currentActiveTabIndex, entityContractTabs]);
 
   const onPrev = useCallback(() => {
-    setActiveTab((prev) => (Number(prev) - 1).toString());
-  }, [setActiveTab]);
+    if (currentActiveTabIndex > 0) {
+      setActiveTab(entityContractTabs[currentActiveTabIndex - 1].toString());
+    }
+  }, [setActiveTab, currentActiveTabIndex, entityContractTabs]);
 
-  const items = useMemo(
-    () => [
+  // Optimized helper functions using single index calculation
+  const currentTabInfo = useMemo(() => {
+    return {
+      hasNext:
+        currentActiveTabIndex !== -1 &&
+        currentActiveTabIndex < entityContractTabs.length - 1,
+      nextTabLabel:
+        currentActiveTabIndex !== -1 &&
+        currentActiveTabIndex < entityContractTabs.length - 1
+          ? getContractTabLabel(entityContractTabs[currentActiveTabIndex + 1])
+          : '',
+      prevTabLabel:
+        currentActiveTabIndex > 0
+          ? getContractTabLabel(entityContractTabs[currentActiveTabIndex - 1])
+          : '',
+    };
+  }, [currentActiveTabIndex, entityContractTabs]);
+
+  const items = useMemo(() => {
+    const tabs = [
       {
         label: (
           <div className="d-flex items-center">
@@ -153,10 +338,35 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.CONTRACT_DETAIL.toString(),
         children: (
           <ContractDetailFormTab
-            initialValues={contract}
-            nextLabel={t('label.schema')}
+            buttonProps={{
+              isNextVisible: currentTabInfo.hasNext,
+              nextLabel: currentTabInfo.nextTabLabel,
+            }}
+            initialValues={filteredContract}
             onChange={onFormChange}
             onNext={onNext}
+          />
+        ),
+      },
+      {
+        label: (
+          <div className="d-flex items-center">
+            <TermsIcon className="contract-tab-icon" />
+            <span>{t('label.terms-of-service')}</span>
+          </div>
+        ),
+        key: EDataContractTab.TERMS_OF_SERVICE.toString(),
+        children: (
+          <ContractTermsOfService
+            buttonProps={{
+              isNextVisible: currentTabInfo.hasNext,
+              nextLabel: currentTabInfo.nextTabLabel,
+              prevLabel: currentTabInfo.prevTabLabel,
+            }}
+            initialValues={filteredContract}
+            onChange={onFormChange}
+            onNext={onNext}
+            onPrev={onPrev}
           />
         ),
       },
@@ -170,9 +380,12 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.SCHEMA.toString(),
         children: (
           <ContractSchemaFormTab
-            nextLabel={t('label.semantic-plural')}
-            prevLabel={t('label.contract-detail-plural')}
-            selectedSchema={contract?.schema ?? []}
+            buttonProps={{
+              isNextVisible: currentTabInfo.hasNext,
+              nextLabel: currentTabInfo.nextTabLabel,
+              prevLabel: currentTabInfo.prevTabLabel,
+            }}
+            selectedSchema={filteredContract?.schema ?? []}
             onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
@@ -189,9 +402,34 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.SEMANTICS.toString(),
         children: (
           <ContractSemanticFormTab
-            initialValues={contract}
-            nextLabel={t('label.quality')}
-            prevLabel={t('label.schema')}
+            buttonProps={{
+              isNextVisible: currentTabInfo.hasNext,
+              nextLabel: currentTabInfo.nextTabLabel,
+              prevLabel: currentTabInfo.prevTabLabel,
+            }}
+            initialValues={filteredContract}
+            onChange={onFormChange}
+            onNext={onNext}
+            onPrev={onPrev}
+          />
+        ),
+      },
+      {
+        label: (
+          <div className="d-flex items-center">
+            <SecurityIcon className="contract-tab-icon" />
+            <span>{t('label.security')}</span>
+          </div>
+        ),
+        key: EDataContractTab.SECURITY.toString(),
+        children: (
+          <ContractSecurityFormTab
+            buttonProps={{
+              isNextVisible: currentTabInfo.hasNext,
+              nextLabel: currentTabInfo.nextTabLabel,
+              prevLabel: currentTabInfo.prevTabLabel,
+            }}
+            initialValues={filteredContract}
             onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
@@ -208,20 +446,54 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.QUALITY.toString(),
         children: (
           <ContractQualityFormTab
-            prevLabel={t('label.semantic-plural')}
+            buttonProps={{
+              isNextVisible: currentTabInfo.hasNext,
+              nextLabel: currentTabInfo.nextTabLabel,
+              prevLabel: currentTabInfo.prevTabLabel,
+            }}
             selectedQuality={
-              contract?.qualityExpectations?.map(
+              filteredContract?.qualityExpectations?.map(
                 (quality) => quality.id ?? ''
               ) ?? []
             }
+            onChange={onFormChange}
+            onNext={onNext}
+            onPrev={onPrev}
+          />
+        ),
+      },
+      {
+        label: (
+          <div className="d-flex items-center">
+            <SLAIcon className="contract-tab-icon" />
+            <span>{t('label.sla')}</span>
+          </div>
+        ),
+        key: EDataContractTab.SLA.toString(),
+        children: (
+          <ContractSLAFormTab
+            buttonProps={{
+              isNextVisible: currentTabInfo.hasNext,
+              nextLabel: currentTabInfo.nextTabLabel,
+              prevLabel: currentTabInfo.prevTabLabel,
+            }}
+            initialValues={filteredContract}
             onChange={onFormChange}
             onPrev={onPrev}
           />
         ),
       },
-    ],
-    [contract, onFormChange, onNext, onPrev]
-  );
+    ];
+
+    return tabs.filter((tab) => entityContractTabs.includes(Number(tab.key)));
+  }, [
+    entityContractTabs,
+    filteredContract,
+    onFormChange,
+    onNext,
+    onPrev,
+    currentTabInfo,
+  ]);
 
   const handleModeChange = useCallback((e: RadioChangeEvent) => {
     setMode(e.target.value);

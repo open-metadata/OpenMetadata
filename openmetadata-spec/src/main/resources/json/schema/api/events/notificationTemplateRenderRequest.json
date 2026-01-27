@@ -1,0 +1,34 @@
+{
+  "$id": "https://open-metadata.org/schema/api/events/notificationTemplateRenderRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NotificationTemplateRenderRequest",
+  "description": "Request to render a notification template with mock data for preview.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.events.NotificationTemplateRenderRequest",
+  "properties": {
+    "templateSubject": {
+      "description": "Handlebars template for notification subject line",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "templateBody": {
+      "description": "Handlebars template content for rendering notifications",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 10240
+    },
+    "resource": {
+      "type": "string",
+      "description": "Entity type to mock (e.g., 'table', 'dashboard', 'task'). Falls back to generic fixture if not found.",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "eventType": {
+      "$ref": "../../type/changeEventType.json",
+      "description": "Optional. Specific event type to test (e.g., 'entityUpdated'). When omitted, generates a neutral ChangeEvent with no event-specific fields."
+    }
+  },
+  "required": ["templateSubject", "templateBody", "resource"],
+  "additionalProperties": false
+}

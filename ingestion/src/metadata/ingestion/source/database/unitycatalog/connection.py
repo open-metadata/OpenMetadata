@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+from copy import deepcopy
 from functools import partial
 from typing import Optional
 
@@ -21,6 +22,15 @@ from sqlalchemy.exc import DatabaseError
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.services.connections.database.databricks.azureAdSetup import (
+    AzureAdSetup,
+)
+from metadata.generated.schema.entity.services.connections.database.databricks.databricksOAuth import (
+    DatabricksOauth,
+)
+from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+    PersonalAccessToken,
 )
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
@@ -35,6 +45,7 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.databricks.auth import get_auth_config
 from metadata.ingestion.source.database.unitycatalog.models import DatabricksTable
 from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_GET_ALL_SCHEMA_TAGS,
@@ -51,7 +62,7 @@ logger = ingestion_logger()
 
 
 def get_connection_url(connection: UnityCatalogConnection) -> str:
-    url = f"{connection.scheme.value}://token:{connection.token.get_secret_value()}@{connection.hostPort}"
+    url = f"{connection.scheme.value}://{connection.hostPort}"
     return url
 
 
@@ -59,10 +70,23 @@ def get_connection(connection: UnityCatalogConnection) -> WorkspaceClient:
     """
     Create connection
     """
+    client_params = {}
+    if isinstance(connection.authType, PersonalAccessToken):
+        client_params["token"] = connection.authType.token.get_secret_value()
+    elif isinstance(connection.authType, DatabricksOauth):
+        client_params["client_id"] = connection.authType.clientId
+        client_params[
+            "client_secret"
+        ] = connection.authType.clientSecret.get_secret_value()
+    elif isinstance(connection.authType, AzureAdSetup):
+        client_params["azure_client_id"] = connection.authType.azureClientId
+        client_params[
+            "azure_client_secret"
+        ] = connection.authType.azureClientSecret.get_secret_value()
+        client_params["azure_tenant_id"] = connection.authType.azureTenantId
 
     return WorkspaceClient(
-        host=get_host_from_host_port(connection.hostPort),
-        token=connection.token.get_secret_value(),
+        host=get_host_from_host_port(connection.hostPort), **client_params
     )
 
 
@@ -76,11 +100,19 @@ def get_sqlalchemy_connection(connection: UnityCatalogConnection) -> Engine:
             connection.connectionArguments = init_empty_connection_arguments()
         connection.connectionArguments.root["http_path"] = connection.httpPath
 
-    return create_generic_db_connection(
+    auth_args = get_auth_config(connection)
+
+    original_connection_arguments = connection.connectionArguments
+    connection.connectionArguments = deepcopy(original_connection_arguments)
+    connection.connectionArguments.root.update(auth_args)
+
+    engine = create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args_common,
     )
+    connection.connectionArguments = original_connection_arguments
+    return engine
 
 
 def test_connection(

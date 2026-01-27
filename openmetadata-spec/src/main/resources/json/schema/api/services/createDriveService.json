@@ -5,7 +5,9 @@
   "description": "Create Drive Service entity request",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.services.CreateDriveService",
-  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
   "properties": {
     "name": {
       "description": "Name that identifies this drive service.",
@@ -53,8 +55,15 @@
         "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       },
       "default": null
+    },
+    "ingestionRunner": {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "serviceType"],
+  "required": [
+    "name",
+    "serviceType"
+  ],
   "additionalProperties": false
 }

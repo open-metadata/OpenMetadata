@@ -21,4 +21,5 @@ export interface NotificationFeedProp
   entityType: string;
   entityFQN: string;
   timestamp?: number;
+  isConversationFeed?: boolean;
 }

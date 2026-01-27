@@ -14,11 +14,10 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Input, InputProps } from 'antd';
 import classNames from 'classnames';
-import { debounce, isEmpty } from 'lodash';
+import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
-import { useTableFilters } from '../../../hooks/useTableFilters';
 import Loader from '../Loader/Loader';
 import './search-bar.less';
 
@@ -35,10 +34,6 @@ export type SearchBarProps = {
   showClearSearch?: boolean;
   inputProps?: InputProps;
   searchBarDataTestId?: string;
-  /**
-   * Key to be used for url search
-   */
-  urlSearchKey?: string;
 };
 
 const Searchbar = ({
@@ -54,46 +49,33 @@ const Searchbar = ({
   showClearSearch = true,
   searchBarDataTestId,
   inputProps,
-  urlSearchKey,
 }: SearchBarProps) => {
-  const [userSearch, setUserSearch] = useState('');
+  const [userSearch, setUserSearch] = useState(searchValue ?? '');
   const [loadingState, setLoadingState] = useState<LoadingState>('initial');
   const [isSearchBlur, setIsSearchBlur] = useState(true);
-  const { setFilters } = useTableFilters(
-    urlSearchKey
-      ? {
-          [urlSearchKey]: '',
-        }
-      : {}
-  );
+  const searchTextRef = useRef(searchValue ?? '');
 
   useEffect(() => {
     setUserSearch(searchValue ?? '');
+    searchTextRef.current = searchValue ?? '';
   }, [searchValue]);
 
-  const debouncedOnSearch = useCallback(
-    (searchText: string): void => {
-      setLoadingState((pre) => (pre === 'waiting' ? 'success' : pre));
-
-      if (urlSearchKey) {
-        setFilters({ [urlSearchKey]: isEmpty(searchText) ? null : searchText });
-      }
-
-      onSearch(searchText);
-    },
-    [onSearch]
-  );
+  const debouncedOnSearch = useCallback((): void => {
+    setLoadingState((pre) => (pre === 'waiting' ? 'success' : pre));
+    onSearch(searchTextRef.current);
+  }, [onSearch]);
 
   const debounceOnSearch = useCallback(
     debounce(debouncedOnSearch, typingInterval),
-    [debouncedOnSearch]
+    [debouncedOnSearch, typingInterval]
   );
 
   const handleChange = (e: React.ChangeEvent<{ value: string }>): void => {
     const searchText = e.target.value;
+    searchTextRef.current = searchText;
     setUserSearch(searchText);
     setLoadingState((pre) => (pre !== 'waiting' ? 'waiting' : pre));
-    debounceOnSearch(searchText);
+    debounceOnSearch();
   };
 
   return (

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -97,6 +97,8 @@ export interface DatabaseConnection {
  *
  * Postgres Database Connection Config
  *
+ * TimescaleDB Database Connection Config
+ *
  * Presto Database Connection Config
  *
  * Redshift  Connection Config
@@ -132,6 +134,8 @@ export interface DatabaseConnection {
  *
  * Doris Database Connection Config
  *
+ * StarRocks Database Connection Config
+ *
  * UnityCatalog Connection Config
  *
  * SAS Connection Config
@@ -153,6 +157,11 @@ export interface DatabaseConnection {
  * Epic FHIR Connection Config
  *
  * ServiceNow Connection Config
+ *
+ * Dremio Connection Config supporting both Dremio Cloud (SaaS) and Dremio Software
+ * (self-hosted)
+ *
+ * Microsoft Fabric Warehouse and Lakehouse Connection Config
  */
 export interface ConfigObject {
     /**
@@ -174,6 +183,9 @@ export interface ConfigObject {
     credentials?: GCPCredentials;
     /**
      * Regex to only include/exclude databases that matches the pattern.
+     *
+     * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
+     * Dremio Cloud, namespaces are mapped as databases.
      */
     databaseFilterPattern?: FilterPattern;
     /**
@@ -205,6 +217,8 @@ export interface ConfigObject {
      *
      * Host and port of the source service.
      *
+     * Host and port of the TimescaleDB service.
+     *
      * Host and port of the Presto service.
      *
      * Host and port of the Redshift service.
@@ -225,6 +239,8 @@ export interface ConfigObject {
      *
      * Host and port of the Doris service.
      *
+     * Host and port of the StarRocks service.
+     *
      * Host and port of the Teradata service.
      *
      * Host and Port of the SAP ERP instance.
@@ -234,13 +250,26 @@ export interface ConfigObject {
      * Host and port of the Cockrooach service.
      *
      * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
+     *
+     * Host and port of the Microsoft Fabric SQL endpoint (e.g.,
+     * your-workspace.datawarehouse.fabric.microsoft.com:1433).
      */
-    hostPort?:                string;
+    hostPort?: string;
+    /**
+     * Option to include policy tags as part of column description.
+     */
+    includePolicyTags?:       boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      *
+     * Regex to only include/exclude schemas that matches the pattern. System schemas
+     * (information_schema, _statistics_, sys) are excluded by default.
+     *
      * Regex to include/exclude FHIR resource categories
+     *
+     * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
+     * are mapped as schemas.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -250,7 +279,11 @@ export interface ConfigObject {
      *
      * Couchbase driver scheme options.
      */
-    scheme?:                                ConfigScheme;
+    scheme?: ConfigScheme;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?:          FilterPattern;
     supportsDatabase?:                      boolean;
     supportsDataDiff?:                      boolean;
     supportsDBTExtraction?:                 boolean;
@@ -271,6 +304,8 @@ export interface ConfigObject {
      * Regex to only include/exclude tables that matches the pattern.
      *
      * Regex to include/exclude FHIR resource types
+     *
+     * Regex to only include/exclude tables that match the pattern.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -337,6 +372,13 @@ export interface ConfigObject {
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
+     *
+     * Optional: Restrict metadata ingestion to a specific namespace (source/space). When left
+     * blank, all namespaces will be ingested.
+     *
+     * Database of the data source. This is the name of your Fabric Warehouse or Lakehouse. This
+     * is optional parameter, if you would like to restrict the metadata reading to a single
+     * database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
      */
     database?: string;
     /**
@@ -355,6 +397,9 @@ export interface ConfigObject {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      *
+     * Ingest data from all databases in TimescaleDB. You can use databaseFilterPattern on top
+     * of this.
+     *
      * Ingest data from all databases in Redshift. You can use databaseFilterPattern on top of
      * this.
      *
@@ -363,6 +408,9 @@ export interface ConfigObject {
      *
      * Ingest data from all databases in Azure Synapse. You can use databaseFilterPattern on top
      * of this.
+     *
+     * Ingest data from all databases (Warehouses and Lakehouses) in Microsoft Fabric. You can
+     * use databaseFilterPattern on top of this.
      */
     ingestAllDatabases?: boolean;
     /**
@@ -390,7 +438,7 @@ export interface ConfigObject {
      *
      * Password to connect to Redshift.
      *
-     * Password to connect to the Salesforce.
+     * Password to connect to Salesforce.
      *
      * Password to connect to SingleStore.
      *
@@ -405,6 +453,8 @@ export interface ConfigObject {
      * Password to connect to Couchbase.
      *
      * Password to connect to Doris.
+     *
+     * Password to connect to StarRocks.
      *
      * Password to connect to SAS Viya
      *
@@ -454,14 +504,17 @@ export interface ConfigObject {
      * Username to connect to Postgres. This user should have privileges to read all the
      * metadata in Postgres.
      *
+     * Username to connect to TimescaleDB. This user should have privileges to read all the
+     * metadata in TimescaleDB.
+     *
      * Username to connect to Presto. This user should have privileges to read all the metadata
      * in Postgres.
      *
      * Username to connect to Redshift. This user should have privileges to read all the
      * metadata in Redshift.
      *
-     * Username to connect to the Salesforce. This user should have privileges to read all the
-     * metadata in Redshift.
+     * Username to connect to Salesforce. This user should have privileges to read all the
+     * metadata in Salesforce.
      *
      * Username to connect to SingleStore. This user should have privileges to read all the
      * metadata in MySQL.
@@ -492,6 +545,9 @@ export interface ConfigObject {
      *
      * Username to connect to Doris. This user should have privileges to read all the metadata
      * in Doris.
+     *
+     * Username to connect to StarRocks. This user should have privileges to read all the
+     * metadata in StarRocks.
      *
      * Username to connect to SAS Viya.
      *
@@ -543,6 +599,14 @@ export interface ConfigObject {
      */
     secure?: boolean;
     /**
+     * Choose between different authentication types for Databricks.
+     *
+     * Choose Auth Config Type.
+     *
+     * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
+     */
+    authType?: AuthenticationType | NoConfigAuthenticationTypes;
+    /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
      * OpenMetadata Ingestion attempts to scan all the catalog.
@@ -567,10 +631,6 @@ export interface ConfigObject {
      */
     queryHistoryTable?: string;
     /**
-     * Generated Token to connect to Databricks.
-     */
-    token?: string;
-    /**
      * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
      */
     clidriverVersion?: string;
@@ -581,7 +641,18 @@ export interface ConfigObject {
     /**
      * License file name to connect to DB2.
      */
-    licenseFileName?:               string;
+    licenseFileName?: string;
+    /**
+     * SSL Configuration details for DB2 connection. Provide CA certificate for server
+     * validation, and optionally client certificate and key for mutual TLS authentication.
+     *
+     * SSL Configuration details.
+     *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     */
+    sslConfig?:                     Config;
+    sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
     /**
      * Available sources to fetch the metadata.
@@ -608,10 +679,6 @@ export interface ConfigObject {
      */
     metastoreConnection?: HiveMetastoreConnectionDetails;
     /**
-     * SSL Configuration details.
-     */
-    sslConfig?: Config;
-    /**
      * Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure
      * communication.
      *
@@ -623,9 +690,15 @@ export interface ConfigObject {
      */
     authMechanism?: AuthMechanismEnum;
     /**
-     * Choose Auth Config Type.
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
      */
-    authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
+    encrypt?: boolean;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
     /**
      * Use slow logs to extract lineage.
      */
@@ -646,9 +719,17 @@ export interface ConfigObject {
     oracleConnectionType?: OracleConnectionType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
+     *
+     * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
-    sslMode?:            SSLMode;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?: string;
     /**
      * Protocol ( Connection Argument ) to connect to Presto.
      */
@@ -659,6 +740,18 @@ export interface ConfigObject {
      * Verify ( Connection Argument for SSL ) to connect to Trino.
      */
     verify?: string;
+    /**
+     * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
+     * your Salesforce Connected App configuration. Required along with Consumer Secret for
+     * OAuth authentication.
+     */
+    consumerKey?: string;
+    /**
+     * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
+     * from your Salesforce Connected App configuration. Required along with Consumer Key for
+     * OAuth authentication.
+     */
+    consumerSecret?: string;
     /**
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
      */
@@ -672,7 +765,7 @@ export interface ConfigObject {
      */
     salesforceDomain?: string;
     /**
-     * Salesforce Security Token.
+     * Salesforce Security Token for username/password authentication.
      */
     securityToken?: string;
     /**
@@ -701,6 +794,11 @@ export interface ConfigObject {
      * Cost of credit for the Snowflake account.
      */
     creditCost?: number;
+    /**
+     * Optional configuration for ingestion of Snowflake stages (internal and external). By
+     * default, stages are not ingested.
+     */
+    includeStages?: boolean;
     /**
      * Optional configuration for ingestion of streams, By default, it will skip the streams.
      */
@@ -763,6 +861,8 @@ export interface ConfigObject {
      * Client ID for DOMO
      *
      * Azure Application (client) ID for service principal authentication.
+     *
+     * Azure Application (client) ID for Service Principal authentication.
      */
     clientId?: string;
     /**
@@ -847,10 +947,14 @@ export interface ConfigObject {
     verifySSL?:       VerifySSL;
     /**
      * Azure Application client secret for service principal authentication.
+     *
+     * Azure Application client secret for Service Principal authentication.
      */
     clientSecret?: string;
     /**
      * Azure Directory (tenant) ID for service principal authentication.
+     *
+     * Azure Directory (tenant) ID for Service Principal authentication.
      */
     tenantId?: string;
     /**
@@ -909,6 +1013,16 @@ export enum AuthMechanismEnum {
 }
 
 /**
+ * Choose between different authentication types for Databricks.
+ *
+ * Personal Access Token authentication for Databricks.
+ *
+ * OAuth2 Machine-to-Machine authentication using Service Principal credentials for
+ * Databricks.
+ *
+ * Azure Active Directory authentication for Azure Databricks workspaces using Service
+ * Principal.
+ *
  * Choose Auth Config Type.
  *
  * Common Database Connection Config
@@ -918,10 +1032,47 @@ export enum AuthMechanismEnum {
  * Azure Database Connection Config
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
+ *
+ * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
+ *
+ * Authentication configuration for Dremio Cloud using Personal Access Token (PAT). Dremio
+ * Cloud is a fully managed SaaS platform.
+ *
+ * Authentication configuration for self-hosted Dremio Software using username and password.
+ * Dremio Software is deployed on-premises or in your own cloud infrastructure.
  */
-export interface AuthConfigurationType {
+export interface AuthenticationType {
+    /**
+     * Generated Personal Access Token for Databricks workspace authentication. This token is
+     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     */
+    token?: string;
+    /**
+     * Service Principal Application ID created in your Databricks Account Console for OAuth
+     * Machine-to-Machine authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
+     * secure OAuth2 authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Service Principal Application (client) ID registered in your Azure Active Directory.
+     */
+    azureClientId?: string;
+    /**
+     * Azure Service Principal client secret created in Azure AD for authentication.
+     */
+    azureClientSecret?: string;
+    /**
+     * Azure Active Directory Tenant ID where your Service Principal is registered.
+     */
+    azureTenantId?: string;
     /**
      * Password to connect to source.
+     *
+     * Password for the Dremio Software user account.
      */
     password?:    string;
     awsConfig?:   AWSCredentials;
@@ -934,6 +1085,31 @@ export interface AuthConfigurationType {
      * Configuration for connecting to DataStax Astra DB in the cloud.
      */
     cloudConfig?: DataStaxAstraDBConfiguration;
+    /**
+     * Personal Access Token for authenticating with Dremio Cloud. Generate this token from your
+     * Dremio Cloud account settings under Settings -> Personal Access Tokens.
+     */
+    personalAccessToken?: string;
+    /**
+     * Dremio Cloud Project ID (required). This unique identifier can be found in your Dremio
+     * Cloud project URL or project settings.
+     */
+    projectId?: string;
+    /**
+     * Dremio Cloud region where your organization is hosted. Choose 'US' for United States
+     * region or 'EU' for European region.
+     */
+    region?: CloudRegion;
+    /**
+     * URL to your self-hosted Dremio Software instance, including protocol and port (e.g.,
+     * http://localhost:9047 or https://dremio.example.com:9047).
+     */
+    hostPort?: string;
+    /**
+     * Username for authenticating with Dremio Software. This user should have appropriate
+     * permissions to access metadata.
+     */
+    username?: string;
 }
 
 /**
@@ -972,6 +1148,12 @@ export interface AWSCredentials {
      * AWS Session Token.
      */
     awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
     /**
      * EndPoint URL for the AWS
      */
@@ -1034,6 +1216,15 @@ export interface DataStaxAstraDBConfiguration {
      */
     token?: string;
     [property: string]: any;
+}
+
+/**
+ * Dremio Cloud region where your organization is hosted. Choose 'US' for United States
+ * region or 'EU' for European region.
+ */
+export enum CloudRegion {
+    Eu = "EU",
+    Us = "US",
 }
 
 /**
@@ -1205,6 +1396,12 @@ export interface Credentials {
      * AWS Session Token.
      */
     awsSessionToken?: string;
+    /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
     /**
      * EndPoint URL for the AWS
      */
@@ -1433,6 +1630,12 @@ export interface SecurityConfigClass {
      */
     awsSessionToken?: string;
     /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
      * EndPoint URL for the AWS
      */
     endPointURL?: string;
@@ -1605,11 +1808,24 @@ export interface GCPCredentials {
  *
  * Regex to only include/exclude schemas that matches the pattern.
  *
+ * Regex to only include/exclude stored procedures that matches the pattern.
+ *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern. System schemas
+ * (information_schema, _statistics_, sys) are excluded by default.
  *
  * Regex to include/exclude FHIR resource categories
  *
  * Regex to include/exclude FHIR resource types
+ *
+ * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
+ * Dremio Cloud, namespaces are mapped as databases.
+ *
+ * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
+ * are mapped as schemas.
+ *
+ * Regex to only include/exclude tables that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -1655,7 +1871,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Choose Auth Config Type.
      */
-    authType?: HiveMetastoreConnectionDetailsAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -1682,7 +1898,14 @@ export interface HiveMetastoreConnectionDetails {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
+    /**
+     * Fully qualified name of the view or table to use for query logs. If not provided,
+     * defaults to pg_stat_statements. Use this to configure a custom view (e.g.,
+     * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
+     * restricted.
+     */
+    queryStatementSource?:    string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -1695,16 +1918,20 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                  Config;
-    sslMode?:                    SSLMode;
-    supportsDatabase?:           boolean;
-    supportsDataDiff?:           boolean;
-    supportsDBTExtraction?:      boolean;
-    supportsLineageExtraction?:  boolean;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsUsageExtraction?:    boolean;
+    sslConfig?: Config;
+    sslMode?:   SSLMode;
+    /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    supportsDatabase?:             boolean;
+    supportsDataDiff?:             boolean;
+    supportsDBTExtraction?:        boolean;
+    supportsLineageExtraction?:    boolean;
+    supportsMetadataExtraction?:   boolean;
+    supportsProfiler?:             boolean;
+    supportsQueryComment?:         boolean;
+    supportsUsageExtraction?:      boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -1747,7 +1974,7 @@ export interface HiveMetastoreConnectionDetails {
  *
  * Azure Database Connection Config
  */
-export interface HiveMetastoreConnectionDetailsAuthConfigurationType {
+export interface AuthConfigurationType {
     /**
      * Password to connect to source.
      */
@@ -1825,6 +2052,12 @@ export interface AwsCredentials {
      */
     awsSessionToken?: string;
     /**
+     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
+     * (environment variables, instance profile, etc.). Defaults to false for backward
+     * compatibility.
+     */
+    enabled?: boolean;
+    /**
      * EndPoint URL for the AWS
      */
     endPointURL?: string;
@@ -1844,9 +2077,15 @@ export enum HiveMetastoreConnectionDetailsScheme {
 }
 
 /**
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -2000,6 +2239,7 @@ export enum ConfigType {
     DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
+    Dremio = "Dremio",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     Epic = "Epic",
@@ -2010,6 +2250,7 @@ export enum ConfigType {
     Iceberg = "Iceberg",
     Impala = "Impala",
     MariaDB = "MariaDB",
+    MicrosoftFabric = "MicrosoftFabric",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
     Mysql = "Mysql",
@@ -2027,8 +2268,10 @@ export enum ConfigType {
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
+    StarRocks = "StarRocks",
     Synapse = "Synapse",
     Teradata = "Teradata",
+    Timescale = "Timescale",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",
@@ -2122,6 +2365,7 @@ export enum DatabaseServiceType {
     DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
+    Dremio = "Dremio",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     Epic = "Epic",
@@ -2132,6 +2376,7 @@ export enum DatabaseServiceType {
     Iceberg = "Iceberg",
     Impala = "Impala",
     MariaDB = "MariaDB",
+    MicrosoftFabric = "MicrosoftFabric",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
     Mysql = "Mysql",
@@ -2150,8 +2395,10 @@ export enum DatabaseServiceType {
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
+    StarRocks = "StarRocks",
     Synapse = "Synapse",
     Teradata = "Teradata",
+    Timescale = "Timescale",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",
@@ -2161,6 +2408,14 @@ export enum DatabaseServiceType {
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
+    /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
     /**
      * Description for the tag label.
      */
@@ -2182,9 +2437,18 @@ export interface TagLabel {
      */
     labelType: LabelType;
     /**
+     * Additional metadata associated with this tag label, such as recognizer information for
+     * automatically applied tags.
+     */
+    metadata?: TagLabelMetadata;
+    /**
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
@@ -2214,6 +2478,75 @@ export enum LabelType {
 }
 
 /**
+ * Additional metadata associated with this tag label, such as recognizer information for
+ * automatically applied tags.
+ *
+ * Additional metadata associated with a tag label, including information about how the tag
+ * was applied.
+ */
+export interface TagLabelMetadata {
+    /**
+     * Metadata about the recognizer that automatically applied this tag
+     */
+    recognizer?: TagLabelRecognizerMetadata;
+}
+
+/**
+ * Metadata about the recognizer that automatically applied this tag
+ *
+ * Metadata about the recognizer that applied a tag, including scoring and pattern
+ * information.
+ */
+export interface TagLabelRecognizerMetadata {
+    /**
+     * Details of patterns that matched during recognition
+     */
+    patterns?: PatternMatch[];
+    /**
+     * Unique identifier of the recognizer that applied this tag
+     */
+    recognizerId: string;
+    /**
+     * Human-readable name of the recognizer
+     */
+    recognizerName: string;
+    /**
+     * Confidence score assigned by the recognizer (0.0 to 1.0)
+     */
+    score: number;
+    /**
+     * What the recognizer analyzed to apply this tag
+     */
+    target?: Target;
+}
+
+/**
+ * Information about a pattern that matched during recognition
+ */
+export interface PatternMatch {
+    /**
+     * Name of the pattern that matched
+     */
+    name: string;
+    /**
+     * Regular expression or pattern definition
+     */
+    regex?: string;
+    /**
+     * Confidence score for this specific pattern match
+     */
+    score: number;
+}
+
+/**
+ * What the recognizer analyzed to apply this tag
+ */
+export enum Target {
+    ColumnName = "column_name",
+    Content = "content",
+}
+
+/**
  * Label is from Tags or Glossary.
  */
 export enum TagSource {
@@ -2240,7 +2573,29 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable i18next/no-literal-string */
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { useContext } from 'react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -27,6 +26,11 @@ jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
     .fn()
     .mockImplementation(() => ({ search: '?activeTab=Data%20Quality' }));
 });
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: jest.fn().mockReturnValue({ subTab: 'data-quality' }),
+}));
 
 jest.mock('../../../../context/TourProvider/TourProvider', () => ({
   useTourProvider: jest.fn().mockReturnValue({ isTourOpen: false }),

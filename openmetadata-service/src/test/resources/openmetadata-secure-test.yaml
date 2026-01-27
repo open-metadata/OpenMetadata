@@ -19,6 +19,7 @@ server:
   applicationConnectors:
     - type: http
       port: 0
+      uriCompliance: UNSAFE
   adminConnectors:
     - type: http
       port: 0
@@ -101,15 +102,45 @@ database:
   password:
   # the JDBC URL; the database is called openmetadata_test_db
   url: jdbc:postgresql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
+  
+  # HikariCP Connection Pool Settings for Tests
+  maxSize: 10  # Smaller pool for tests
+  minimumIdle: 2  # Keep minimal connections for tests
+  connectionTimeout: 30000  # 30 seconds
+  idleTimeout: 600000  # 10 minutes
+  maxLifetime: 1800000  # 30 minutes
+  
+  # Enable batch operations for faster tests
+  properties:
+    reWriteBatchedInserts: true  # PostgreSQL batch optimization
+    rewriteBatchedStatements: true  # MySQL batch optimization (ignored by PostgreSQL)
 
 migrationConfiguration:
   flywayPath: "../bootstrap/sql/migrations/flyway"
   nativePath: "../bootstrap/sql/migrations/native"
   extensionPath: ""
 
-#elasticsearch:
-#  host: localhost
-#  port: 0
+elasticsearch:
+  searchType: "elasticsearch"
+  # Single host configuration for test
+  host: localhost
+  port: 9200
+  scheme: http
+  username: ""
+  password: ""
+  clusterAlias: ""
+  truststorePath: ""
+  truststorePassword: ""
+  connectionTimeoutSecs: 5
+  socketTimeoutSecs: 60
+  keepAliveTimeoutSecs: 600
+  # Connection pool settings
+  maxConnTotal: 30
+  maxConnPerRoute: 10
+  batchSize: 100
+  payLoadSize: 10485760
+  searchIndexMappingLanguage: EN
+  searchIndexFactoryClassName: org.openmetadata.service.search.SearchIndexFactory
 
 secretsManagerConfiguration:
   secretsManager: db
@@ -159,7 +190,6 @@ authenticationConfiguration:
       entityId: ""
       ssoLoginUrl: ""
       idpX509Certificate: ""
-      authorityUrl: ""
       nameId: ""
     sp:
       entityId: ""
@@ -196,13 +226,16 @@ eventHandlerConfiguration:
     - "org.openmetadata.service.governance.workflows.WorkflowEventConsumer"
 
 pipelineServiceClientConfiguration:
-  className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
+  className: "org.openmetadata.service.pipelineService.MockPipelineServiceClient"
   metadataApiEndpoint: http://localhost:8585/api
   apiEndpoint: http://localhost:8080
   hostIp: ""
   healthCheckInterval: 300
   verifySSL: "no-ssl"
   authProvider: "openmetadata"
+
+  logStorageConfiguration:
+    type: "default"
 
   parameters:
     username: admin

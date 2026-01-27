@@ -1,0 +1,69 @@
+{
+  "id": "bf8e7d6c-5a4f-3e2d-1c0b-9a8f7e6d5c4b",
+  "name": "sample_ml_model",
+  "displayName": "Sample ML Model",
+  "fullyQualifiedName": "sample-mlmodel-service.sample_ml_model",
+  "description": "Mock ML model for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "algorithm": "RandomForest",
+  "href": "http://localhost:8585/api/v1/mlmodels/bf8e7d6c-5a4f-3e2d-1c0b-9a8f7e6d5c4b",
+  "service": {
+    "id": "6b5a4f3e-2d1c-0b9a-8f7e-6d5c4b3a2f1e",
+    "type": "mlmodelService",
+    "name": "sample-mlmodel-service",
+    "fullyQualifiedName": "sample-mlmodel-service",
+    "deleted": false,
+    "href": "http://localhost:8585/api/v1/services/mlmodelServices/6b5a4f3e-2d1c-0b9a-8f7e-6d5c4b3a2f1e"
+  },
+  "serviceType": "Mlflow",
+  "mlFeatures": [
+    {
+      "name": "age",
+      "dataType": "numerical",
+      "description": "Customer age"
+    },
+    {
+      "name": "category",
+      "dataType": "categorical",
+      "description": "Product category"
+    }
+  ],
+  "mlHyperParameters": [
+    {
+      "name": "n_estimators",
+      "value": "100"
+    },
+    {
+      "name": "max_depth",
+      "value": "10"
+    }
+  ],
+  "target": "purchase_probability",
+  "dashboard": {
+    "id": "a1b2c3d4-1111-2222-3333-444444444444",
+    "type": "dashboard",
+    "name": "sample_dashboard",
+    "fullyQualifiedName": "sample-dashboard-service.sample_dashboard",
+    "displayName": "Sample Dashboard"
+  },
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "domains": [
+    {
+      "id": "c3d4e5f6-7890-abcd-ef12-34567890abcd",
+      "type": "domain",
+      "name": "Engineering",
+      "fullyQualifiedName": "Engineering"
+    }
+  ],
+  "tags": []
+}

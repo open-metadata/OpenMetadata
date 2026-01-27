@@ -25,13 +25,21 @@ const mockGetItem = jest.fn();
 
 jest.mock('./SwTokenStorage', () => ({
   swTokenStorage: {
-    setItem: (...args: any[]) => mockSetItem(...args),
-    getItem: (...args: any[]) => mockGetItem(...args),
+    setItem: (key: string, value: string) => mockSetItem(key, value),
+    getItem: (key: string) => mockGetItem(key),
   },
 }));
 
 // Mock navigator and localStorage for browser environment simulation
-const mockNavigator = {
+interface MockNavigator {
+  serviceWorker?: Record<string, unknown>;
+}
+
+interface MockWindow {
+  indexedDB?: Record<string, unknown>;
+}
+
+const mockNavigator: MockNavigator = {
   serviceWorker: {},
 };
 
@@ -53,7 +61,7 @@ Object.defineProperty(global, 'localStorage', {
 Object.defineProperty(global, 'window', {
   value: {
     indexedDB: {},
-  },
+  } as MockWindow,
   writable: true,
 });
 
@@ -65,7 +73,7 @@ describe('SwTokenStorageUtils', () => {
   describe('isServiceWorkerAvailable', () => {
     it('should return true when both serviceWorker and indexedDB are available', () => {
       mockNavigator.serviceWorker = {};
-      (global as any).window.indexedDB = {};
+      (global.window as unknown as MockWindow).indexedDB = {};
 
       const result = isServiceWorkerAvailable();
 
@@ -73,8 +81,8 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should return false when serviceWorker is not available', () => {
-      delete (mockNavigator as any).serviceWorker;
-      (global as any).window.indexedDB = {};
+      delete mockNavigator.serviceWorker;
+      (global.window as unknown as MockWindow).indexedDB = {};
 
       const result = isServiceWorkerAvailable();
 
@@ -83,7 +91,7 @@ describe('SwTokenStorageUtils', () => {
 
     it('should return false when indexedDB is not available', () => {
       mockNavigator.serviceWorker = {};
-      delete (global as any).window.indexedDB;
+      delete (global.window as unknown as MockWindow).indexedDB;
 
       const result = isServiceWorkerAvailable();
 
@@ -91,8 +99,8 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should return false when neither serviceWorker nor indexedDB are available', () => {
-      delete (mockNavigator as any).serviceWorker;
-      delete (global as any).window.indexedDB;
+      delete mockNavigator.serviceWorker;
+      delete (global.window as unknown as MockWindow).indexedDB;
 
       const result = isServiceWorkerAvailable();
 
@@ -104,7 +112,7 @@ describe('SwTokenStorageUtils', () => {
     beforeEach(() => {
       // Reset environment for each test
       mockNavigator.serviceWorker = {};
-      (global as any).window.indexedDB = {};
+      (global.window as unknown as MockWindow).indexedDB = {};
     });
 
     it('should return token from service worker when available', async () => {
@@ -136,7 +144,7 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should fallback to localStorage when service worker is not available', async () => {
-      delete (mockNavigator as any).serviceWorker;
+      delete mockNavigator.serviceWorker;
       const mockToken = 'test-oidc-token';
       const mockAppState = JSON.stringify({ primary: mockToken });
       mockLocalStorage.getItem.mockReturnValue(mockAppState);
@@ -167,7 +175,7 @@ describe('SwTokenStorageUtils', () => {
   describe('setOidcToken', () => {
     beforeEach(() => {
       mockNavigator.serviceWorker = {};
-      (global as any).window.indexedDB = {};
+      (global.window as unknown as MockWindow).indexedDB = {};
     });
 
     it('should set token in service worker when available', async () => {
@@ -200,7 +208,7 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should fallback to localStorage when service worker is not available', async () => {
-      delete (mockNavigator as any).serviceWorker;
+      delete mockNavigator.serviceWorker;
       const mockToken = 'new-oidc-token';
       const expectedState = JSON.stringify({ primary: mockToken });
 
@@ -224,7 +232,7 @@ describe('SwTokenStorageUtils', () => {
   describe('getRefreshToken', () => {
     beforeEach(() => {
       mockNavigator.serviceWorker = {};
-      (global as any).window.indexedDB = {};
+      (global.window as unknown as MockWindow).indexedDB = {};
     });
 
     it('should return refresh token from service worker when available', async () => {
@@ -248,7 +256,7 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should fallback to localStorage when service worker is not available', async () => {
-      delete (mockNavigator as any).serviceWorker;
+      delete mockNavigator.serviceWorker;
       const mockToken = 'test-refresh-token';
       const mockAppState = JSON.stringify({ secondary: mockToken });
       mockLocalStorage.getItem.mockReturnValue(mockAppState);
@@ -271,7 +279,7 @@ describe('SwTokenStorageUtils', () => {
   describe('setRefreshToken', () => {
     beforeEach(() => {
       mockNavigator.serviceWorker = {};
-      (global as any).window.indexedDB = {};
+      (global.window as unknown as MockWindow).indexedDB = {};
     });
 
     it('should set refresh token in service worker when available', async () => {
@@ -304,7 +312,7 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should fallback to localStorage when service worker is not available', async () => {
-      delete (mockNavigator as any).serviceWorker;
+      delete mockNavigator.serviceWorker;
       const mockToken = 'new-refresh-token';
       const expectedState = JSON.stringify({ secondary: mockToken });
 
@@ -328,7 +336,7 @@ describe('SwTokenStorageUtils', () => {
   describe('integration scenarios', () => {
     beforeEach(() => {
       mockNavigator.serviceWorker = {};
-      (global as any).window.indexedDB = {};
+      (global.window as unknown as MockWindow).indexedDB = {};
     });
 
     it('should maintain both tokens when updating one', async () => {
@@ -363,7 +371,7 @@ describe('SwTokenStorageUtils', () => {
     it('should handle mixed environment gracefully (some features available)', async () => {
       // Simulate environment where serviceWorker exists but indexedDB doesn't
       mockNavigator.serviceWorker = {};
-      delete (global as any).window.indexedDB;
+      delete (global.window as unknown as MockWindow).indexedDB;
 
       const result = await getOidcToken();
 

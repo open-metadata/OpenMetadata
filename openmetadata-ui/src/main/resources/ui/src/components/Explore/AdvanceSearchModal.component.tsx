@@ -69,7 +69,7 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
           entity: t('label.search'),
         })
       }
-      width={950}
+      width={1080}
       onCancel={onCancel}>
       <Typography.Text data-testid="advanced-search-message">
         {modalProps?.subTitle ?? t('message.advanced-search-message')}

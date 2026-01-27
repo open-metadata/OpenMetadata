@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../../../styles/variables.less';
 
 .ant-card.team-user-select-dropdown {
   padding: 8px;
+  border-radius: 4px;
 
   .ant-card-body {
     max-width: 30vw;
@@ -22,6 +24,7 @@
     padding: 0px;
     overflow-y: scroll;
     max-height: 200px;
+    border-radius: 0px;
 
     .ant-dropdown-menu-item {
       padding: 4px 0px;
@@ -46,6 +49,11 @@
   width: 100%;
   height: auto;
   min-height: 32px;
+  border-radius: 2px;
+}
+
+.ant-btn.ant-btn-default:not(:hover).select-trigger {
+  border-color: @grey-22;
 }
 
 .selected-options-list {

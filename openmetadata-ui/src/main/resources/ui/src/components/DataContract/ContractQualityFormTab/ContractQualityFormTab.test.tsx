@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -135,6 +134,18 @@ jest.mock('react-i18next', () => ({
 
 const mockOnChange = jest.fn();
 const mockOnPrev = jest.fn();
+const mockOnNext = jest.fn();
+
+const commonProps = {
+  onChange: mockOnChange,
+  onNext: mockOnNext,
+  onPrev: mockOnPrev,
+  buttonProps: {
+    nextLabel: 'Custom Next',
+    prevLabel: 'Custom Previous',
+    isNextVisible: true,
+  },
+};
 
 const mockTestCases: TestCase[] = [
   {
@@ -172,13 +183,7 @@ describe('ContractQualityFormTab', () => {
 
   describe('Basic Rendering', () => {
     it('should render the component with default props', () => {
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       expect(screen.getByText('Quality')).toBeInTheDocument();
       expect(
@@ -189,25 +194,14 @@ describe('ContractQualityFormTab', () => {
 
     it('should render with selected quality test cases', () => {
       render(
-        <ContractQualityFormTab
-          selectedQuality={['test-1']}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
+        <ContractQualityFormTab selectedQuality={['test-1']} {...commonProps} />
       );
 
       expect(screen.getByTestId('mock-table')).toBeInTheDocument();
     });
 
     it('should render with custom previous label', () => {
-      render(
-        <ContractQualityFormTab
-          prevLabel="Custom Previous"
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       expect(screen.getByText('Custom Previous')).toBeInTheDocument();
     });
@@ -215,13 +209,7 @@ describe('ContractQualityFormTab', () => {
 
   describe('Data Fetching', () => {
     it('should fetch test cases on component mount', async () => {
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       await waitFor(() => {
         expect(getListTestCaseBySearch).toHaveBeenCalledWith(
@@ -239,13 +227,7 @@ describe('ContractQualityFormTab', () => {
       const mockError = new AxiosError('API Error');
       (getListTestCaseBySearch as jest.Mock).mockRejectedValue(mockError);
 
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(mockError);
@@ -257,13 +239,7 @@ describe('ContractQualityFormTab', () => {
         () => new Promise((resolve) => setTimeout(resolve, 100))
       );
 
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       expect(screen.getByText('Loading: true')).toBeInTheDocument();
     });
@@ -276,13 +252,7 @@ describe('ContractQualityFormTab', () => {
         data: { fullyQualifiedName: undefined },
       });
 
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       expect(getListTestCaseBySearch).not.toHaveBeenCalled();
     });
@@ -290,13 +260,7 @@ describe('ContractQualityFormTab', () => {
 
   describe('Test Case Selection', () => {
     it('should handle test case selection', async () => {
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       await waitFor(() => {
         expect(screen.getByTestId('select-row-test-1')).toBeInTheDocument();
@@ -317,11 +281,7 @@ describe('ContractQualityFormTab', () => {
 
     it('should display selected rows in table', async () => {
       render(
-        <ContractQualityFormTab
-          selectedQuality={['test-1']}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
+        <ContractQualityFormTab selectedQuality={['test-1']} {...commonProps} />
       );
 
       await waitFor(() => {
@@ -332,13 +292,7 @@ describe('ContractQualityFormTab', () => {
 
   describe('Test Case Types Filtering', () => {
     it('should filter by test case type', async () => {
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       // Wait for initial load
       await waitFor(() => {
@@ -356,13 +310,7 @@ describe('ContractQualityFormTab', () => {
 
   describe('Add Test Case', () => {
     it('should open test case drawer when add button is clicked', async () => {
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       const addButton = screen.getByText('Add label.test');
 
@@ -374,13 +322,7 @@ describe('ContractQualityFormTab', () => {
     });
 
     it('should close test case drawer when cancelled', async () => {
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       const addButton = screen.getByText('Add label.test');
 
@@ -398,13 +340,7 @@ describe('ContractQualityFormTab', () => {
     });
 
     it('should refetch test cases after new test case is submitted', async () => {
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       const addButton = screen.getByText('Add label.test');
 
@@ -438,13 +374,7 @@ describe('ContractQualityFormTab', () => {
         handlePagingChange: jest.fn(),
       });
 
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       await waitFor(() => {
         expect(getListTestCaseBySearch).toHaveBeenCalled();
@@ -454,27 +384,15 @@ describe('ContractQualityFormTab', () => {
 
   describe('Navigation', () => {
     it('should display navigation buttons', () => {
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
-      expect(screen.getByText('Previous')).toBeInTheDocument();
+      expect(screen.getByText('Custom Previous')).toBeInTheDocument();
     });
 
     it('should call onPrev when previous button is clicked', () => {
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
-      const prevButton = screen.getByText('Previous');
+      const prevButton = screen.getByText('Custom Previous');
       fireEvent.click(prevButton);
 
       expect(mockOnPrev).toHaveBeenCalled();
@@ -483,13 +401,7 @@ describe('ContractQualityFormTab', () => {
 
   describe('Table Rendering', () => {
     it('should display test cases in table', async () => {
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       await waitFor(() => {
         expect(screen.getByText('Data Source Length: 2')).toBeInTheDocument();
@@ -505,13 +417,7 @@ describe('ContractQualityFormTab', () => {
         paging: { total: 0 },
       });
 
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       await waitFor(() => {
         expect(screen.getByText('Data Source Length: 0')).toBeInTheDocument();
@@ -528,11 +434,7 @@ describe('ContractQualityFormTab', () => {
 
       expect(() => {
         render(
-          <ContractQualityFormTab
-            selectedQuality={[]}
-            onChange={mockOnChange}
-            onPrev={mockOnPrev}
-          />
+          <ContractQualityFormTab selectedQuality={[]} {...commonProps} />
         );
       }).not.toThrow();
     });
@@ -540,19 +442,13 @@ describe('ContractQualityFormTab', () => {
 
   describe('Accessibility', () => {
     it('should have proper button roles and attributes', () => {
-      render(
-        <ContractQualityFormTab
-          selectedQuality={[]}
-          onChange={mockOnChange}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       const addButton = screen.getByText('Add label.test');
 
       expect(addButton).toBeInTheDocument();
 
-      const prevButton = screen.getByText('Previous');
+      const prevButton = screen.getByText('Custom Previous');
 
       expect(prevButton).toBeInTheDocument();
     });

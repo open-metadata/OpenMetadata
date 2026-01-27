@@ -11,9 +11,11 @@
 """
 Metabase Models
 """
+import ast
+import json
 from typing import List, Optional
 
-from pydantic import BaseModel, BeforeValidator, Field
+from pydantic import BaseModel, BeforeValidator, Field, field_validator
 from typing_extensions import Annotated
 
 MetabaseStrId = Annotated[str, BeforeValidator(lambda x: str(x))]
@@ -83,6 +85,52 @@ class MetabaseChart(BaseModel):
     id: Optional[MetabaseStrId] = None
     display: Optional[str] = None
     dashboard_ids: List[str] = []
+
+    @field_validator("dataset_query", mode="before")
+    @classmethod
+    def parse_dataset_query(cls, v):
+        if v is None:
+            return None
+
+        # If it's already a dict or DatasetQuery object, return as is
+        if isinstance(v, (dict, DatasetQuery)):
+            return v
+
+        # If it's a string, try multiple parsing strategies
+        if isinstance(v, str):
+            # Strategy 1: Try standard JSON parsing
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                pass
+
+            # Strategy 2: Try ast.literal_eval for Python dict strings
+            try:
+                parsed = ast.literal_eval(v)
+                if isinstance(parsed, dict):
+                    return parsed
+            except (ValueError, SyntaxError):
+                pass
+
+            # Strategy 3: More sophisticated quote replacement
+            try:
+                # Handle None values and booleans
+                json_str = (
+                    v.replace("'", '"')
+                    .replace("None", "null")
+                    .replace("True", "true")
+                    .replace("False", "false")
+                )
+                return json.loads(json_str)
+            except json.JSONDecodeError:
+                pass
+
+            # If all strategies fail, log and return None
+            print(f"Failed to parse dataset_query string: {v[:100]}...")
+            return None
+
+        # For any other type, return as is and let Pydantic handle validation
+        return v
 
 
 class DashCard(BaseModel):

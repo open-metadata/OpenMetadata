@@ -10,11 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Table, TableProfile } from '../generated/entity/data/table';
+import {
+  ColumnProfile,
+  Table,
+  TableProfile,
+} from '../generated/entity/data/table';
 import {
   calculateColumnProfilerMetrics,
   calculateCustomMetrics,
+  formatProfileMetricValue,
   getColumnCustomMetric,
+  getKeyProfileMetrics,
 } from './TableProfilerUtils';
 import { CalculateColumnProfilerMetricsInterface } from './TableProfilerUtils.interface';
 
@@ -23,6 +29,15 @@ jest.mock('./date-time/DateTimeUtils', () => {
     customFormatDateTime: jest.fn().mockReturnValue('Dec 05, 11:54'),
   };
 });
+
+jest.mock('./CommonUtils', () => ({
+  calculatePercentage: jest.fn((numerator, denominator, precision, format) => {
+    const value = (numerator / denominator) * 100;
+
+    return format ? `${value.toFixed(precision)}%` : value;
+  }),
+  formatNumberWithComma: jest.fn((value) => value.toLocaleString()),
+}));
 
 const columnFqn = 'fqn1';
 const customMetrics = [
@@ -302,5 +317,214 @@ describe('TableProfilerUtils', () => {
     ]);
     expect(result.sumMetrics.data).toEqual([]);
     expect(result.quartileMetrics.data).toEqual([]);
+  });
+
+  describe('formatProfileMetricValue', () => {
+    it('should return NO_DATA_PLACEHOLDER when value is null', () => {
+      const result = formatProfileMetricValue(null);
+
+      expect(result).toBe('--');
+    });
+
+    it('should return NO_DATA_PLACEHOLDER when value is undefined', () => {
+      const result = formatProfileMetricValue(undefined);
+
+      expect(result).toBe('--');
+    });
+
+    it('should return the value when no formatter is provided', () => {
+      const result = formatProfileMetricValue(42);
+
+      expect(result).toBe(42);
+    });
+
+    it('should apply formatter when provided', () => {
+      const formatter = (value: number) => `${value * 2}`;
+      const result = formatProfileMetricValue(21, formatter);
+
+      expect(result).toBe('42');
+    });
+
+    it('should handle formatter returning number', () => {
+      const formatter = (value: number) => value * 2;
+      const result = formatProfileMetricValue(21, formatter);
+
+      expect(result).toBe(42);
+    });
+  });
+
+  describe('getKeyProfileMetrics', () => {
+    const mockT = (key: string) => key;
+
+    it('should return metrics with NO_DATA_PLACEHOLDER when profile is undefined', () => {
+      const result = getKeyProfileMetrics(undefined, mockT);
+
+      expect(result).toEqual([
+        {
+          label: 'label.uniqueness',
+          value: '--',
+          tooltip: 'message.uniqueness-profile-metric-description',
+        },
+        {
+          label: 'label.nullness',
+          value: '--',
+          tooltip: 'message.nullness-profile-metric-description',
+        },
+        {
+          label: 'label.distinct',
+          value: '--',
+          tooltip: 'message.distinct-profile-metric-description',
+        },
+        {
+          label: 'label.value-count',
+          value: '--',
+          tooltip: 'message.value-count-profile-metric-description',
+        },
+      ]);
+    });
+
+    it('should return formatted metrics when profile has valid data', () => {
+      const profile: ColumnProfile = {
+        name: 'name',
+        uniqueProportion: 0.75,
+        nullProportion: 0.1,
+        distinctProportion: 0.6,
+        valuesCount: 1000,
+        timestamp: 1701757494892,
+      };
+
+      const result = getKeyProfileMetrics(profile, mockT);
+
+      expect(result).toEqual([
+        {
+          label: 'label.uniqueness',
+          value: '75%',
+          tooltip: 'message.uniqueness-profile-metric-description',
+        },
+        {
+          label: 'label.nullness',
+          value: '10%',
+          tooltip: 'message.nullness-profile-metric-description',
+        },
+        {
+          label: 'label.distinct',
+          value: '60%',
+          tooltip: 'message.distinct-profile-metric-description',
+        },
+        {
+          label: 'label.value-count',
+          value: '1,000',
+          tooltip: 'message.value-count-profile-metric-description',
+        },
+      ]);
+    });
+
+    it('should handle profile with null values', () => {
+      const profile: ColumnProfile = {
+        name: 'name',
+        uniqueProportion: null,
+        nullProportion: null,
+        distinctProportion: null,
+        valuesCount: null,
+        timestamp: 1701757494892,
+      };
+
+      const result = getKeyProfileMetrics(profile, mockT);
+
+      expect(result).toEqual([
+        {
+          label: 'label.uniqueness',
+          value: '--',
+          tooltip: 'message.uniqueness-profile-metric-description',
+        },
+        {
+          label: 'label.nullness',
+          value: '--',
+          tooltip: 'message.nullness-profile-metric-description',
+        },
+        {
+          label: 'label.distinct',
+          value: '--',
+          tooltip: 'message.distinct-profile-metric-description',
+        },
+        {
+          label: 'label.value-count',
+          value: '--',
+          tooltip: 'message.value-count-profile-metric-description',
+        },
+      ]);
+    });
+
+    it('should handle profile with partial data', () => {
+      const profile: ColumnProfile = {
+        name: 'test_column',
+        uniqueProportion: 0.5,
+        nullProportion: null,
+        distinctProportion: undefined,
+        valuesCount: 500,
+        timestamp: 1701757494892,
+      };
+
+      const result = getKeyProfileMetrics(profile, mockT);
+
+      expect(result).toEqual([
+        {
+          label: 'label.uniqueness',
+          value: '50%',
+          tooltip: 'message.uniqueness-profile-metric-description',
+        },
+        {
+          label: 'label.nullness',
+          value: '--',
+          tooltip: 'message.nullness-profile-metric-description',
+        },
+        {
+          label: 'label.distinct',
+          value: '--',
+          tooltip: 'message.distinct-profile-metric-description',
+        },
+        {
+          label: 'label.value-count',
+          value: '500',
+          tooltip: 'message.value-count-profile-metric-description',
+        },
+      ]);
+    });
+
+    it('should handle zero values correctly', () => {
+      const profile: ColumnProfile = {
+        name: 'test_column',
+        uniqueProportion: 0,
+        nullProportion: 0,
+        distinctProportion: 0,
+        valuesCount: 0,
+        timestamp: 1701757494892,
+      };
+
+      const result = getKeyProfileMetrics(profile, mockT);
+
+      expect(result).toEqual([
+        {
+          label: 'label.uniqueness',
+          value: '0%',
+          tooltip: 'message.uniqueness-profile-metric-description',
+        },
+        {
+          label: 'label.nullness',
+          value: '0%',
+          tooltip: 'message.nullness-profile-metric-description',
+        },
+        {
+          label: 'label.distinct',
+          value: '0%',
+          tooltip: 'message.distinct-profile-metric-description',
+        },
+        {
+          label: 'label.value-count',
+          value: '0',
+          tooltip: 'message.value-count-profile-metric-description',
+        },
+      ]);
+    });
   });
 });

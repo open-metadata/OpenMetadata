@@ -27,7 +27,6 @@ import {
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-  getRefreshToken,
   setOidcToken,
   setRefreshToken,
 } from '../../../utils/SwTokenStorageUtils';
@@ -46,8 +45,6 @@ const BasicAuthenticator = forwardRef(
 
     const handleSilentSignIn =
       useCallback(async (): Promise<AccessTokenResponse> => {
-        const refreshToken = await getRefreshToken();
-
         if (
           authConfig?.provider !== AuthProvider.Basic &&
           authConfig?.provider !== AuthProvider.LDAP
@@ -57,19 +54,12 @@ const BasicAuthenticator = forwardRef(
           );
         }
 
-        if (!refreshToken) {
-          return Promise.reject(new Error(t('message.no-token-available')));
-        }
+        const response = await getAccessTokenOnExpiry();
 
-        const response = await getAccessTokenOnExpiry({
-          refreshToken: refreshToken as string,
-        });
-
-        await setRefreshToken(response.refreshToken);
         await setOidcToken(response.accessToken);
 
         return Promise.resolve(response);
-      }, [authConfig, getRefreshToken, setOidcToken, setRefreshToken, t]);
+      }, [authConfig, setOidcToken, setRefreshToken, t]);
 
     useImperativeHandle(ref, () => ({
       invokeLogout: handleLogout,

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -22,6 +22,15 @@ export interface DataContract {
      * History of updates to the data contract.
      */
     contractUpdates?: ContractUpdate[];
+    /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when the data contract was
+     * created.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created the data contract.
+     */
+    createdBy?: string;
     /**
      * When `true` indicates the entity has been soft deleted.
      */
@@ -67,9 +76,17 @@ export interface DataContract {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Incremental change description of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Indicates whether this data contract is inherited from a parent entity.
+     */
+    inherited?: boolean;
     /**
      * Latest validation result for this data contract.
      */
@@ -78,6 +95,10 @@ export interface DataContract {
      * Name of the data contract.
      */
     name: string;
+    /**
+     * ODCS quality rules stored during import for round-trip compatibility with ODCS export.
+     */
+    odcsQualityRules?: OdcsQualityRule[];
     /**
      * Owners of this data contract.
      */
@@ -113,7 +134,7 @@ export interface DataContract {
     /**
      * Terms of use for the data contract for both human and AI agents consumption.
      */
-    termsOfUse?: string;
+    termsOfUse?: TermsOfUse;
     /**
      * Reference to the test suite that contains tests related to this data contract.
      */
@@ -209,6 +230,10 @@ export interface ContractUpdate {
      */
     changeDescription?: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Timestamp when the contract was updated.
      */
     timestamp: number;
@@ -294,6 +319,7 @@ export enum EntityStatus {
     Draft = "Draft",
     InReview = "In Review",
     Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**
@@ -316,6 +342,187 @@ export enum ContractExecutionStatus {
     Queued = "Queued",
     Running = "Running",
     Success = "Success",
+}
+
+/**
+ * Data quality rule definition.
+ */
+export interface OdcsQualityRule {
+    /**
+     * External rule documentation.
+     */
+    authoritativeDefinitions?: OdcsAuthoritativeDefinition[];
+    /**
+     * Failure consequences.
+     */
+    businessImpact?: string;
+    /**
+     * Column to apply the rule to.
+     */
+    column?: string;
+    /**
+     * Additional execution properties.
+     */
+    customProperties?: { [key: string]: any };
+    /**
+     * Rule documentation.
+     */
+    description?: string;
+    /**
+     * KPI classification.
+     */
+    dimension?: Dimension;
+    /**
+     * Vendor name (soda, greatExpectations, etc.).
+     */
+    engine?: string;
+    /**
+     * Vendor-specific configuration.
+     */
+    implementation?: string;
+    /**
+     * Standard quality metric from library (ODCS 3.1.0).
+     */
+    metric?: OdcsQualityMetric;
+    /**
+     * Value must equal.
+     */
+    mustBe?: number;
+    /**
+     * Value must be between [min, max].
+     */
+    mustBeBetween?: number[];
+    /**
+     * Value must be greater than or equal to.
+     */
+    mustBeGreaterOrEqualTo?: number;
+    /**
+     * Value must be greater than.
+     */
+    mustBeGreaterThan?: number;
+    /**
+     * Value must be less than or equal to.
+     */
+    mustBeLessOrEqualTo?: number;
+    /**
+     * Value must be less than.
+     */
+    mustBeLessThan?: number;
+    /**
+     * Value must not equal.
+     */
+    mustNotBe?: number;
+    /**
+     * Value must not be between [min, max].
+     */
+    mustNotBeBetween?: number[];
+    /**
+     * Rule identifier.
+     */
+    name?: string;
+    /**
+     * SQL for type=sql.
+     */
+    query?: string;
+    /**
+     * Library rule name. For type=library, can be one of the standard quality metrics.
+     */
+    rule?: string;
+    /**
+     * Schedule expression.
+     */
+    schedule?: string;
+    /**
+     * Cron or tool name.
+     */
+    scheduler?: string;
+    /**
+     * Impact level designation.
+     */
+    severity?: string;
+    /**
+     * Rule categorization.
+     */
+    tags?: string[];
+    /**
+     * Quality rule type.
+     */
+    type?: Type;
+    /**
+     * Measurement unit (rows, percent).
+     */
+    unit?: string;
+    /**
+     * Static value list.
+     */
+    validValues?: string[];
+    [property: string]: any;
+}
+
+/**
+ * External reference link.
+ */
+export interface OdcsAuthoritativeDefinition {
+    /**
+     * Name of the authoritative definition.
+     */
+    name?: string;
+    /**
+     * Type of the reference (e.g., documentation, specification).
+     */
+    type?: string;
+    /**
+     * URL to the authoritative definition.
+     */
+    url?: string;
+    [property: string]: any;
+}
+
+/**
+ * KPI classification.
+ */
+export enum Dimension {
+    AC = "ac",
+    Accuracy = "accuracy",
+    CF = "cf",
+    CS = "cs",
+    Completeness = "completeness",
+    Conformity = "conformity",
+    Consistency = "consistency",
+    Coverage = "coverage",
+    Cp = "cp",
+    Cv = "cv",
+    Timeliness = "timeliness",
+    Tm = "tm",
+    Uniqueness = "uniqueness",
+    Uq = "uq",
+}
+
+/**
+ * Standard quality metric from library (ODCS 3.1.0).
+ *
+ * Standard quality metrics library supported by ODCS 3.1.0.
+ */
+export enum OdcsQualityMetric {
+    Completeness = "completeness",
+    DistinctValues = "distinctValues",
+    DuplicateValues = "duplicateValues",
+    Freshness = "freshness",
+    InvalidValues = "invalidValues",
+    MissingValues = "missingValues",
+    NullValues = "nullValues",
+    RowCount = "rowCount",
+    UniqueValues = "uniqueValues",
+}
+
+/**
+ * Quality rule type.
+ */
+export enum Type {
+    Custom = "custom",
+    Library = "library",
+    SQL = "sql",
+    Text = "text",
 }
 
 /**
@@ -360,7 +567,11 @@ export interface Column {
     /**
      * Display Name that identifies this column name.
      */
-    displayName?:        string;
+    displayName?: string;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?:          any;
     fullyQualifiedName?: string;
     /**
      * Json schema only if the dataType is JSON else null.
@@ -430,6 +641,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -547,6 +759,10 @@ export interface CustomMetric {
  * This schema defines the type to capture the table's column profile.
  */
 export interface ColumnProfile {
+    /**
+     * Cardinality distribution showing top categories with an 'Others' bucket.
+     */
+    cardinalityDistribution?: CardinalityDistribution;
     /**
      * Custom Metrics profile list bound to a column.
      */
@@ -666,6 +882,29 @@ export interface ColumnProfile {
 }
 
 /**
+ * Cardinality distribution showing top categories with an 'Others' bucket.
+ */
+export interface CardinalityDistribution {
+    /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
+     * List of category names including 'Others'.
+     */
+    categories?: string[];
+    /**
+     * List of counts corresponding to each category.
+     */
+    counts?: number[];
+    /**
+     * List of percentages corresponding to each category.
+     */
+    percentages?: number[];
+}
+
+/**
  * Profiling results of a Custom Metric.
  */
 export interface CustomMetricProfile {
@@ -695,6 +934,14 @@ export interface HistogramClass {
  */
 export interface TagLabel {
     /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
+     * Who it is that applied this tag (e.g: a bot, AI or a human)
+     */
+    appliedBy?: string;
+    /**
      * Description for the tag label.
      */
     description?: string;
@@ -715,9 +962,18 @@ export interface TagLabel {
      */
     labelType: LabelType;
     /**
+     * Additional metadata associated with this tag label, such as recognizer information for
+     * automatically applied tags.
+     */
+    metadata?: TagLabelMetadata;
+    /**
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
@@ -747,6 +1003,75 @@ export enum LabelType {
 }
 
 /**
+ * Additional metadata associated with this tag label, such as recognizer information for
+ * automatically applied tags.
+ *
+ * Additional metadata associated with a tag label, including information about how the tag
+ * was applied.
+ */
+export interface TagLabelMetadata {
+    /**
+     * Metadata about the recognizer that automatically applied this tag
+     */
+    recognizer?: TagLabelRecognizerMetadata;
+}
+
+/**
+ * Metadata about the recognizer that automatically applied this tag
+ *
+ * Metadata about the recognizer that applied a tag, including scoring and pattern
+ * information.
+ */
+export interface TagLabelRecognizerMetadata {
+    /**
+     * Details of patterns that matched during recognition
+     */
+    patterns?: PatternMatch[];
+    /**
+     * Unique identifier of the recognizer that applied this tag
+     */
+    recognizerId: string;
+    /**
+     * Human-readable name of the recognizer
+     */
+    recognizerName: string;
+    /**
+     * Confidence score assigned by the recognizer (0.0 to 1.0)
+     */
+    score: number;
+    /**
+     * What the recognizer analyzed to apply this tag
+     */
+    target?: Target;
+}
+
+/**
+ * Information about a pattern that matched during recognition
+ */
+export interface PatternMatch {
+    /**
+     * Name of the pattern that matched
+     */
+    name: string;
+    /**
+     * Regular expression or pattern definition
+     */
+    regex?: string;
+    /**
+     * Confidence score for this specific pattern match
+     */
+    score: number;
+}
+
+/**
+ * What the recognizer analyzed to apply this tag
+ */
+export enum Target {
+    ColumnName = "column_name",
+    Content = "content",
+}
+
+/**
  * Label is from Tags or Glossary.
  */
 export enum TagSource {
@@ -773,9 +1098,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -785,20 +1132,24 @@ export interface Style {
  */
 export interface ContractSecurity {
     /**
-     * Intended consumers of the data (e.g. internal teams, external partners, etc.)
-     */
-    consumers?: DataConsumers[];
-    /**
      * Expected data classification (e.g. Confidential, PII, etc.)
      */
     dataClassification?: string;
+    /**
+     * If the property is inherited from the Data Product
+     */
+    inherited?: boolean;
+    /**
+     * Intended consumers of the data (e.g. internal teams, external partners, etc.)
+     */
+    policies?: Policy[];
     [property: string]: any;
 }
 
 /**
  * Intended consumers of the data (e.g. internal teams, external partners, etc.)
  */
-export interface DataConsumers {
+export interface Policy {
     /**
      * Reference to an access policy ID or name that should govern this data
      */
@@ -850,6 +1201,10 @@ export interface SemanticsRule {
      */
     ignoredEntities?: string[];
     /**
+     * Whether this rule was inherited from a Data Product.
+     */
+    inherited?: boolean;
+    /**
      * JSON Tree to represents rule in UI.
      */
     jsonTree?: string;
@@ -887,6 +1242,14 @@ export interface ContractSLA {
      */
     availabilityTime?: string;
     /**
+     * Column that represents the refresh time of the data (if applicable)
+     */
+    columnName?: string;
+    /**
+     * If the property is inherited from the Data Product
+     */
+    inherited?: boolean;
+    /**
      * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
      */
     maxLatency?: MaximumLatency;
@@ -898,6 +1261,10 @@ export interface ContractSLA {
      * How long the data is retained (if relevant)
      */
     retention?: DataRetentionPeriod;
+    /**
+     * Timezone for the availability time. UTC by default.
+     */
+    timezone?: Timezone;
     [property: string]: any;
 }
 
@@ -947,4 +1314,58 @@ export enum RetentionUnit {
     Month = "month",
     Week = "week",
     Year = "year",
+}
+
+/**
+ * Timezone for the availability time. UTC by default.
+ */
+export enum Timezone {
+    GMT0000EuropeLondon = "GMT+00:00 (Europe/London)",
+    GMT0100AtlanticAzores = "GMT-01:00 (Atlantic/Azores)",
+    GMT0100EuropeParis = "GMT+01:00 (Europe/Paris)",
+    GMT0200AtlanticSouthGeorgia = "GMT-02:00 (Atlantic/South_Georgia)",
+    GMT0200EuropeAthens = "GMT+02:00 (Europe/Athens)",
+    GMT0230AtlanticNewfoundland = "GMT-02:30 (Atlantic/Newfoundland)",
+    GMT0300AmericaSaoPaulo = "GMT-03:00 (America/Sao Paulo)",
+    GMT0300AsiaIran = "GMT+03:00 (Asia/Iran)",
+    GMT0300EuropeMoscow = "GMT+03:00 (Europe/Moscow)",
+    GMT0400AmericaSantiago = "GMT-04:00 (America/Santiago)",
+    GMT0400AsiaDubai = "GMT+04:00 (Asia/Dubai)",
+    GMT0430AsiaAfghanistan = "GMT+04:30 (Asia/Afghanistan)",
+    GMT0500AmericaNewYork = "GMT-05:00 (America/New York)",
+    GMT0500AsiaKarachi = "GMT+05:00 (Asia/Karachi)",
+    GMT0530AsiaKolkata = "GMT+05:30 (Asia/Kolkata)",
+    GMT0545AsiaNepal = "GMT+05:45 (Asia/Nepal)",
+    GMT0600AmericaChicago = "GMT-06:00 (America/Chicago)",
+    GMT0600AsiaDhaka = "GMT+06:00 (Asia/Dhaka)",
+    GMT0600AsiaMyanmar = "GMT+06:00 (Asia/Myanmar)",
+    GMT0700AmericaDenver = "GMT-07:00 (America/Denver)",
+    GMT0700AsiaBangkok = "GMT+07:00 (Asia/Bangkok)",
+    GMT0800AmericaLosAngeles = "GMT-08:00 (America/Los Angeles)",
+    GMT0800AsiaShanghai = "GMT+08:00 (Asia/Shanghai)",
+    GMT0845AustraliaAustralianCentralWesternStandardTime = "GMT+08:45 (Australia/Australian Central Western Standard Time)",
+    GMT0900AmericaAnchorage = "GMT-09:00 (America/Anchorage)",
+    GMT0900AsiaTokyo = "GMT+09:00 (Asia/Tokyo)",
+    GMT0900AustraliaAdelaide = "GMT+09:00 (Australia/Adelaide)",
+    GMT0930PacificMarquesas = "GMT-09:30 (Pacific/Marquesas)",
+    GMT1000AustraliaSydney = "GMT+10:00 (Australia/Sydney)",
+    GMT1000PacificHonolulu = "GMT-10:00 (Pacific/Honolulu)",
+    GMT1030AustraliaLordHowe = "GMT+10:30 (Australia/Lord Howe)",
+    GMT1100PacificNiue = "GMT-11:00 (Pacific/Niue)",
+    GMT1100PacificNorfolk = "GMT+11:00 (Pacific/Norfolk)",
+    GMT1200PacificAuckland = "GMT+12:00 (Pacific/Auckland)",
+    GMT1300PacificTongatapu = "GMT+13:00 (Pacific/Tongatapu)",
+    GMT1400PacificKiritimati = "GMT+14:00 (Pacific/Kiritimati)",
+}
+
+/**
+ * Terms of use for the data contract for both human and AI agents consumption.
+ */
+export interface TermsOfUse {
+    content?: string;
+    /**
+     * If the property is inherited from the Data Product
+     */
+    inherited?: boolean;
+    [property: string]: any;
 }

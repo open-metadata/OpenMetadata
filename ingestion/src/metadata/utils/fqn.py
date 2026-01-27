@@ -13,10 +13,12 @@ Handle FQN building and splitting logic.
 Filter information has been taken from the
 ES indexes definitions
 """
+from __future__ import annotations
+
 import hashlib
 import re
 import traceback
-from typing import Dict, List, Optional, Type, TypeVar, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Type, TypeVar, Union
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
@@ -51,10 +53,12 @@ from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testSuite import TestSuite
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.dispatch import class_register
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import utils_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 logger = utils_logger()
 
@@ -381,21 +385,37 @@ def _(
 
 @fqn_build_registry.add(Container)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for Container FQN building
+    metadata: Optional[OpenMetadata],
     *,
     service_name: str,
-    parent_container: str,
+    parent_container: Optional[str] = None,
     container_name: str,
-) -> str:
-    if not service_name or not container_name:
-        raise FQNBuildingException(
-            f"Args should be informed, but got service=`{service_name}`, container=`{container_name}``"
+    skip_es_search: bool = False,
+    fetch_multiple_entities: bool = False,
+) -> Union[Optional[str], Optional[List[str]]]:
+    entity: Optional[Union[Container, List[Container]]] = None
+
+    if not skip_es_search and metadata is not None:
+        entity = search_container_from_es(
+            metadata=metadata,
+            service_name=service_name,
+            parent_container=parent_container,
+            container_name=container_name,
+            fetch_multiple_entities=fetch_multiple_entities,
         )
-    return (
-        _build(parent_container, container_name, quote=False)
-        if parent_container
-        else (_build(service_name, container_name))
-    )
+
+    if not entity and service_name and container_name:
+        fqn = (
+            _build(service_name, parent_container, container_name, quote=False)
+            if parent_container
+            else _build(service_name, container_name)
+        )
+        return [fqn] if fetch_multiple_entities else fqn
+    if entity and fetch_multiple_entities:
+        return [str(container.fullyQualifiedName.root) for container in entity]
+    if entity:
+        return str(entity.fullyQualifiedName.root)
+    return None
 
 
 @fqn_build_registry.add(SearchIndex)
@@ -860,9 +880,97 @@ def search_topic_from_es(
     )
 
 
+def search_container_from_es(
+    metadata: OpenMetadata,
+    container_name: str,
+    service_name: Optional[str],
+    parent_container: Optional[str] = None,
+    fetch_multiple_entities: Optional[bool] = False,
+    fields: Optional[str] = None,
+):
+    """
+    Search Container entity from ES
+    """
+
+    if not container_name:
+        raise FQNBuildingException(
+            f"Container Name should be informed, but got container=`{container_name}`"
+        )
+
+    if parent_container:
+        fqn_search_string = _build(
+            service_name or "*", parent_container, container_name, quote=False
+        )
+    else:
+        fqn_search_string = _build(service_name or "*", container_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Container,
+        fqn_search_string=fqn_search_string,
+        fields=fields,
+    )
+
+    return get_entity_from_es_result(
+        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+    )
+
+
 def get_query_checksum(query: str) -> str:
     """
     Prepare the query checksum from its string representation.
     The checksum is used as the query's name.
     """
     return hashlib.md5(query.encode()).hexdigest()
+
+
+# Not adding container since children can have recursive slots: service.container1.container2...
+FQN_ENTITY_SLOTS = {
+    Table.__name__: 4,
+    DatabaseSchema.__name__: 3,
+    Database.__name__: 2,
+    Dashboard.__name__: 2,
+    APICollection.__name__: 2,
+    Chart.__name__: 2,
+    MlModel.__name__: 2,
+    Topic.__name__: 2,
+    SearchIndex.__name__: 2,
+    Tag.__name__: 2,
+    DataModel.__name__: 2,
+    StoredProcedure.__name__: 4,
+    Pipeline.__name__: 2,
+}
+
+
+def prefix_entity_for_wildcard_search(entity_type: Type[T], fqn: str) -> str:
+    """
+    Given an entity type and an FQN, return the FQN prefixed with wildcards
+    to match any parent hierarchy leading to that entity.
+
+    For example, for a Topic with FQN "potato", return "*.potato" to match
+    the topic in any service. For a Table with FQN "schema.table", return
+    "*.*.schema.table" to match the table in any service and database.
+
+    Args:
+        entity_type: The entity type to match.
+        fqn: The FQN to prefix.
+
+    Returns:
+        The prefixed FQN with wildcards for missing parent levels.
+    """
+    slots = FQN_ENTITY_SLOTS.get(entity_type.__name__)
+    if not slots:
+        raise FQNBuildingException(
+            f"Entity type {entity_type.__name__} not supported for wildcard search"
+        )
+
+    parts = split(fqn)
+    if len(parts) > slots:
+        raise FQNBuildingException(
+            f"FQN {fqn} has too many parts ({len(parts)})"
+            f"for entity type {entity_type.__name__} (expected {slots} or fewer)"
+        )
+
+    # Add wildcards for missing parent levels
+    wildcards_needed = slots - len(parts)
+    prefixed_parts = ["*"] * wildcards_needed + parts
+    return _build(*prefixed_parts, quote=True)

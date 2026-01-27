@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,6 +17,18 @@ export interface SalesforceConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
+     * your Salesforce Connected App configuration. Required along with Consumer Secret for
+     * OAuth authentication.
+     */
+    consumerKey?: string;
+    /**
+     * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
+     * from your Salesforce Connected App configuration. Required along with Consumer Key for
+     * OAuth authentication.
+     */
+    consumerSecret?: string;
+    /**
      * Regex to only include/exclude databases that matches the pattern.
      */
     databaseFilterPattern?: FilterPattern;
@@ -30,7 +42,7 @@ export interface SalesforceConnection {
      */
     organizationId?: string;
     /**
-     * Password to connect to the Salesforce.
+     * Password to connect to Salesforce.
      */
     password?: string;
     /**
@@ -46,7 +58,7 @@ export interface SalesforceConnection {
      */
     schemaFilterPattern?: FilterPattern;
     /**
-     * Salesforce Security Token.
+     * Salesforce Security Token for username/password authentication.
      */
     securityToken?: string;
     /**
@@ -67,10 +79,10 @@ export interface SalesforceConnection {
      */
     type?: SalesforceType;
     /**
-     * Username to connect to the Salesforce. This user should have privileges to read all the
-     * metadata in Redshift.
+     * Username to connect to Salesforce. This user should have privileges to read all the
+     * metadata in Salesforce.
      */
-    username: string;
+    username?: string;
 }
 
 /**

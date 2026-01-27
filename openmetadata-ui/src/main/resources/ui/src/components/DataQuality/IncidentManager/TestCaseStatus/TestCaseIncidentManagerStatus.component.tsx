@@ -17,6 +17,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
+import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -27,13 +28,16 @@ import AppBadge from '../../../common/Badge/Badge.component';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import { TestCaseStatusModal } from '../../TestCaseStatusModal/TestCaseStatusModal.component';
 import '../incident-manager.style.less';
+import InlineTestCaseIncidentStatus from './InlineTestCaseIncidentStatus.component';
 import { TestCaseStatusIncidentManagerProps } from './TestCaseIncidentManagerStatus.interface';
+
 const TestCaseIncidentManagerStatus = ({
   data,
   onSubmit,
   hasPermission,
   newLook = false,
   headerName,
+  isInline = false,
 }: TestCaseStatusIncidentManagerProps) => {
   const [isEditStatus, setIsEditStatus] = useState<boolean>(false);
   const { t } = useTranslation();
@@ -50,6 +54,22 @@ const TestCaseIncidentManagerStatus = ({
       )
     );
   }, [permissions, hasPermission]);
+
+  const tooltipTitle = useMemo(() => {
+    if (!data?.updatedAt) {
+      return '';
+    }
+
+    const formattedDate = formatDate(data.updatedAt);
+
+    if (data.updatedBy) {
+      return `${formattedDate} ${t('label.by-lowercase')} ${getEntityName(
+        data.updatedBy
+      )}`;
+    }
+
+    return formattedDate;
+  }, [data?.updatedAt, data.updatedBy, t]);
 
   const onEditStatus = useCallback(() => setIsEditStatus(true), []);
   const onCancel = useCallback(() => setIsEditStatus(false), []);
@@ -74,13 +94,7 @@ const TestCaseIncidentManagerStatus = ({
             />
           )}
         </div>
-        <Tooltip
-          placement="bottom"
-          title={
-            data?.updatedAt &&
-            `${formatDate(data.updatedAt)}
-                ${data.updatedBy ? 'by ' + getEntityName(data.updatedBy) : ''}`
-          }>
+        <Tooltip placement="bottom" title={tooltipTitle}>
           <Space
             align="center"
             data-testid={`${data.testCaseReference?.name}-status`}>
@@ -89,7 +103,7 @@ const TestCaseIncidentManagerStatus = ({
                 'resolution',
                 statusType.toLocaleLowerCase()
               )}
-              label={statusType}
+              label={TEST_CASE_RESOLUTION_STATUS_LABELS[statusType]}
             />
           </Space>
         </Tooltip>
@@ -107,21 +121,25 @@ const TestCaseIncidentManagerStatus = ({
     );
   }
 
+  if (isInline) {
+    return (
+      <InlineTestCaseIncidentStatus
+        data={data}
+        hasEditPermission={hasEditPermission}
+        onSubmit={onSubmit}
+      />
+    );
+  }
+
   return (
     <>
       <Space
         align="center"
         data-testid={`${data.testCaseReference?.name}-status`}>
-        <Tooltip
-          placement="bottom"
-          title={
-            data?.updatedAt &&
-            `${formatDate(data.updatedAt)}
-                ${data.updatedBy ? 'by ' + getEntityName(data.updatedBy) : ''}`
-          }>
+        <Tooltip placement="bottom" title={tooltipTitle}>
           <AppBadge
             className={classNames('resolution', statusType.toLocaleLowerCase())}
-            label={statusType}
+            label={TEST_CASE_RESOLUTION_STATUS_LABELS[statusType]}
           />
         </Tooltip>
 

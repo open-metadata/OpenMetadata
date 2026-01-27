@@ -126,9 +126,20 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
     }
   }
 
+  private String getMajorMinorVersion(String fullVersion) {
+    String[] versionParts = fullVersion.split("\\.");
+    if (versionParts.length >= 2) {
+      return versionParts[0] + "." + versionParts[1];
+    }
+    return fullVersion;
+  }
+
   @Override
-  public final Boolean validServerClientVersions(String clientVersion) {
-    return getVersionFromString(clientVersion).equals(getVersionFromString(SERVER_VERSION));
+  public final Boolean validServerClientVersions(String clientVersion, String serverVersion) {
+    String clientFullVersion = getVersionFromString(clientVersion);
+    String serverFullVersion = getVersionFromString(serverVersion);
+
+    return getMajorMinorVersion(clientFullVersion).equals(getMajorMinorVersion(serverFullVersion));
   }
 
   public String buildVersionMismatchErrorMessage(String ingestionVersion, String serverVersion) {

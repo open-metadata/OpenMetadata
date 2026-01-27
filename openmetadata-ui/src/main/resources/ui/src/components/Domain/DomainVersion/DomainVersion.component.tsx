@@ -34,7 +34,7 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import Loader from '../../common/Loader/Loader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
-import DomainDetailsPage from '../DomainDetailsPage/DomainDetailsPage.component';
+import DomainDetails from '../DomainDetails/DomainDetails.component';
 
 const DomainVersion = () => {
   const navigate = useNavigate();
@@ -103,7 +103,7 @@ const DomainVersion = () => {
       return <ErrorPlaceHolder />;
     } else {
       return (
-        <DomainDetailsPage
+        <DomainDetails
           isVersionsView
           domain={selectedData}
           onDelete={noop}

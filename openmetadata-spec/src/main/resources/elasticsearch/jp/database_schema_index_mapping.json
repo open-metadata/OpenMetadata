@@ -32,9 +32,8 @@
           ]
         },
         "om_ngram": {
-          "tokenizer": "ngram",
-          "min_gram": 1,
-          "max_gram": 2,
+          "type": "custom",
+          "tokenizer": "n_gram_tokenizer",
           "filter": [
             "lowercase"
           ]
@@ -64,6 +63,17 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        }
+      },
+      "tokenizer": {
+        "n_gram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 1,
+          "max_gram": 2,
+          "token_chars": [
+            "letter",
+            "digit"
+          ]
         }
       }
     }
@@ -165,6 +175,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -305,6 +316,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "service": {
         "properties": {
           "id": {
@@ -340,7 +354,14 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text"
@@ -467,6 +488,14 @@
             "type": "keyword"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "tags": {
         "properties": {

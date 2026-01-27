@@ -33,6 +33,7 @@ public class EventSubscriptionMapper
         .withRetries(create.getRetries())
         .withPollInterval(create.getPollInterval())
         .withInput(create.getInput())
+        .withNotificationTemplate(create.getNotificationTemplate())
         .withClassName(
             validateConsumerClass(
                 Optional.ofNullable(create.getClassName())
@@ -62,6 +63,9 @@ public class EventSubscriptionMapper
 
   private List<SubscriptionDestination> getSubscriptions(
       List<SubscriptionDestination> subscriptions) {
+    if (subscriptions == null) {
+      return new ArrayList<>();
+    }
     List<SubscriptionDestination> result = new ArrayList<>();
     subscriptions.forEach(
         subscription -> {

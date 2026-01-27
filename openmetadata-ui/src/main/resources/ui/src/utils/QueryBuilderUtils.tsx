@@ -19,7 +19,7 @@ import {
   RenderSettings,
 } from '@react-awesome-query-builder/antd';
 import { Button } from 'antd';
-import { isBoolean, isUndefined } from 'lodash';
+import { isBoolean, isEmpty, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import {
@@ -45,6 +45,8 @@ export enum JSONLOGIC_OPERATORS {
   NOT = 'not',
 }
 
+type FieldWithSubFields = FieldOrGroup & { subfields: Fields };
+
 export const resolveFieldType = (
   fields: Fields | undefined,
   field: string
@@ -64,20 +66,22 @@ export const resolveFieldType = (
 
   // Traverse nested subfields if there are more parts
   for (let i = 1; i < fieldParts.length; i++) {
-    if (i === 1 && (currentField as any)?.subfields) {
+    if (i === 1 && (currentField as FieldWithSubFields)?.subfields) {
       // Join the remaining parts and check if it exists as a single subfield
       const remainingPath = fieldParts.slice(1).join('.');
-      const remainingField = (currentField as any).subfields[remainingPath];
+      const remainingField = (currentField as FieldWithSubFields).subfields[
+        remainingPath
+      ];
       if (remainingField?.type) {
         return remainingField.type;
       }
     }
 
     // If no specific path found, continue with normal traversal
-    if (!(currentField as any)?.subfields?.[fieldParts[i]]) {
+    if (!(currentField as FieldWithSubFields)?.subfields?.[fieldParts[i]]) {
       return undefined; // Subfield not found
     }
-    currentField = (currentField as any).subfields[
+    currentField = (currentField as FieldWithSubFields).subfields[
       fieldParts[i]
     ] as FieldOrGroup;
   }
@@ -396,36 +400,17 @@ export const getJsonTreeFromQueryFilter = (
     const id2 = generateUUID();
     const mustFilters = queryFilter?.query?.bool?.must as QueryFieldInterface[];
 
-    // If must array is empty or doesn't exist, return empty object
-    if (!mustFilters || mustFilters.length === 0) {
-      return {} as OldJsonTree;
-    }
-
-    // Detect conjunction from the elasticsearch query structure
-    // If the first filter has 'should' array, it's OR conjunction
-    // If it has 'must' array, it's AND conjunction
-    const firstFilter = mustFilters?.[0]?.bool as EsBoolQuery;
-    const hasShould = firstFilter?.should && Array.isArray(firstFilter.should);
-    const hasMust = firstFilter?.must && Array.isArray(firstFilter.must);
-
-    // Determine the conjunction based on the query structure
-    const conjunction = hasShould ? 'OR' : 'AND';
-    const filtersToProcess = hasShould
-      ? firstFilter.should
-      : hasMust
-      ? firstFilter.must
-      : [];
-
     return {
       type: 'group',
       properties: { conjunction: 'AND', not: false },
       children1: {
         [id2]: {
           type: 'group',
-          properties: { conjunction, not: false },
+          properties: { conjunction: 'AND', not: false },
           children1: getJsonTreePropertyFromQueryFilter(
             [id1, id2],
-            filtersToProcess as QueryFieldInterface[],
+            (mustFilters?.[0]?.bool as EsBoolQuery)
+              .must as QueryFieldInterface[],
             fields
           ),
           id: id2,
@@ -516,21 +501,25 @@ export const renderJSONLogicQueryBuilderButtons: RenderSettings['renderButton'] 
     return <></>;
   };
 
-interface ElasticsearchQuery {
+export interface ElasticsearchQuery {
   bool?: {
     must?: ElasticsearchQuery[];
     should?: ElasticsearchQuery[];
     filter?: ElasticsearchQuery[];
     must_not?: ElasticsearchQuery | ElasticsearchQuery[];
+    minimum_should_match?: number;
   };
   term?: {
-    [key: string]: string;
+    [key: string]: string | number | boolean;
   };
   exists?: {
     field: string;
   };
   wildcard?: {
-    [key: string]: Record<string, string>;
+    [key: string]: Record<string, string> | string;
+  };
+  match?: {
+    [key: string]: string | number | boolean;
   };
 }
 
@@ -642,7 +631,7 @@ export const elasticsearchToJsonLogic = (
   if (query.wildcard) {
     const wildcardQuery = query.wildcard;
     const field = Object.keys(wildcardQuery)[0];
-    const value = wildcardQuery[field].value;
+    const value = (wildcardQuery[field] as Record<string, string>).value;
 
     if (field.includes('.')) {
       // use in operator for wildcards
@@ -853,7 +842,7 @@ export const addEntityTypeFilter = (
         must: [
           {
             term: {
-              entityType: entityType,
+              'entityType.keyword': entityType,
             },
           },
         ],
@@ -877,7 +866,7 @@ export const getEntityTypeAggregationFilter = (
       entityTypes.forEach((entityType) => {
         (firstMustBlock?.bool?.must as QueryFieldInterface[])?.push({
           term: {
-            entityType: entityType,
+            'entityType.keyword': entityType,
           },
         });
       });
@@ -954,3 +943,12 @@ export const getFieldsByKeys = (
 
   return filteredFields;
 };
+
+export const buildExploreUrlParams = (
+  tree: unknown,
+  qFilter?: QueryFilterInterface
+): Record<string, string> => ({
+  ...(!isEmpty(tree) && { queryFilter: JSON.stringify(tree) }),
+  ...(!isEmpty(qFilter) &&
+    qFilter?.query && { quickFilter: JSON.stringify(qFilter) }),
+});

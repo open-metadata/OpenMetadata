@@ -17,10 +17,10 @@ import InlineAlert from './InlineAlert';
 const mockSetInlineAlertDetails = jest.fn();
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockReturnValue({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
     inlineAlertDetails: undefined,
     setInlineAlertDetails: mockSetInlineAlertDetails,
-  }),
+  })),
 }));
 
 const mockProps = {
@@ -31,10 +31,6 @@ const mockProps = {
 };
 
 describe('InlineAlert', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   it('should render alert with basic props', () => {
     render(<InlineAlert {...mockProps} />);
 

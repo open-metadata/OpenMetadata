@@ -186,6 +186,10 @@ setup('authenticate all users', async ({ browser }) => {
       .storageState({ path: ownerFile, indexedDB: true });
 
     await afterAction();
+
+    if (newAdminPage) {
+      await newAdminPage.close();
+    }
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error during authentication setup:', error);

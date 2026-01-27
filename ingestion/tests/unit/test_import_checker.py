@@ -90,10 +90,40 @@ class TestImportChecker:
         assert len(messages) == 1
         assert messages[0].msg_id == "ingestion-src-import"
 
+    def test_invalid_direct_import_build_lib(self):
+        """Test that direct ingestion.build.lib imports trigger warnings."""
+        test_code = """
+        import ingestion.build.lib.something
+        """
+        ast_node = parse(test_code)
+        import_nodes, _ = self._find_import_nodes(ast_node)
+
+        for node in import_nodes:
+            self.checker.visit_import(node)
+
+        messages = self.linter.release_messages()
+        assert len(messages) == 1
+        assert messages[0].msg_id == "ingestion-src-import"
+
     def test_invalid_from_import(self):
         """Test that from ingestion.src.metadata imports trigger warnings."""
         test_code = """
         from ingestion.src.metadata import something
+        """
+        ast_node = parse(test_code)
+        _, importfrom_nodes = self._find_import_nodes(ast_node)
+
+        for node in importfrom_nodes:
+            self.checker.visit_importfrom(node)
+
+        messages = self.linter.release_messages()
+        assert len(messages) == 1
+        assert messages[0].msg_id == "ingestion-src-import"
+
+    def test_invalid_from_import_build_lib(self):
+        """Test that from ingestion.build.lib imports trigger warnings."""
+        test_code = """
+        from ingestion.build.lib.metadata import something
         """
         ast_node = parse(test_code)
         _, importfrom_nodes = self._find_import_nodes(ast_node)

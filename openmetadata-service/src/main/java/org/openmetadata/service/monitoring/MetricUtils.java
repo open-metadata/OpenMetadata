@@ -1,10 +1,83 @@
 package org.openmetadata.service.monitoring;
 
 import java.time.Duration;
+import java.util.regex.Pattern;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class MetricUtils {
+
+  // Compiled patterns for efficient operation type detection
+  private static final Pattern LIST_PATTERN = Pattern.compile("^/?v1/[^/]+/?$");
+  private static final Pattern GET_BY_ID_PATTERN =
+      Pattern.compile(
+          "^/?v1/[^/]+/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/?$");
+  private static final Pattern GET_BY_FQN_PATTERN = Pattern.compile("^/?v1/[^/]+/name/[^?]+/?$");
+  private static final Pattern RESOURCE_PATTERN = Pattern.compile("^/?v1/([^/?]+).*");
+
+  /**
+   * Operation types for API endpoint classification
+   */
+  public enum OperationType {
+    LIST, // GET /v1/{resource} - list operations
+    GET // GET /v1/{resource}/{id} or /v1/{resource}/name/{fqn} - single entity operations
+  }
+
+  /**
+   * Determines the operation type based on the URI pattern.
+   * This works for all OpenMetadata resources following the standard pattern:
+   * - LIST: GET /v1/{resource} (with optional query params)
+   * - GET: GET /v1/{resource}/{id} or GET /v1/{resource}/name/{fqn}
+   *
+   * @param uri the request URI (without query parameters)
+   * @return the operation type (LIST or GET)
+   */
+  public static OperationType getOperationType(String uri) {
+    if (uri == null || uri.isEmpty()) {
+      return OperationType.LIST;
+    }
+
+    // Remove query parameters
+    String cleanUri = uri.split("\\?")[0];
+
+    // Check patterns in order of specificity
+    if (GET_BY_FQN_PATTERN.matcher(cleanUri).matches()) {
+      return OperationType.GET;
+    }
+
+    if (GET_BY_ID_PATTERN.matcher(cleanUri).matches()) {
+      return OperationType.GET;
+    }
+
+    if (LIST_PATTERN.matcher(cleanUri).matches()) {
+      return OperationType.LIST;
+    }
+
+    // For sub-resources (e.g., /v1/tables/{id}/columns), always classify as GET
+    // since they operate on a specific entity
+    return OperationType.GET;
+  }
+
+  /**
+   * Extracts the resource name from a v1 API URI.
+   *
+   * @param uri the request URI
+   * @return the resource name (e.g., "tables", "databases", "users") or "unknown"
+   */
+  public static String extractResourceName(String uri) {
+    if (uri == null || uri.isEmpty()) {
+      return "unknown";
+    }
+
+    String cleanUri = uri.split("\\?")[0];
+    var matcher = RESOURCE_PATTERN.matcher(cleanUri);
+    if (matcher.matches()) {
+      return matcher.group(1);
+    }
+
+    return "unknown";
+  }
+
   // Standard SLA buckets for all latency metrics (10 buckets total)
   public static final Duration[] LATENCY_SLA_BUCKETS = {
     Duration.ofMillis(10), // 10ms
@@ -28,206 +101,44 @@ public class MetricUtils {
     // Remove query parameters to reduce cardinality
     String normalizedUri = uri.split("\\?")[0];
 
-    // Replace various ID patterns with placeholders
+    // Handle generic OpenMetadata v1 API patterns FIRST for proper differentiation
+    // Pattern: /v1/{resource}/name/{fqn} -> /v1/{resource}/name/{fqn}
+    normalizedUri = normalizedUri.replaceAll("(^|/)v1/([^/]+)/name/[^/]+$", "$1v1/$2/name/{fqn}");
+    // Pattern: /v1/{resource}/name/{fqn}/{subresource} -> /v1/{resource}/name/{fqn}/{subresource}
+    normalizedUri =
+        normalizedUri.replaceAll("(^|/)v1/([^/]+)/name/[^/]+/([^/]+)$", "$1v1/$2/name/{fqn}/$3");
+
+    // Handle special endpoints that don't follow the standard pattern
     normalizedUri =
         normalizedUri
-            // UUID patterns (e.g., /api/v1/tables/12345678-1234-1234-1234-123456789abc)
-            .replaceAll("/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "/{id}")
-            // Numeric IDs (e.g., /api/v1/tables/123456)
-            .replaceAll("/\\d+", "/{id}")
+            .replaceAll(
+                "(^|/)v1/([^/]+)/entityRelationship/([^/]+)$",
+                "$1v1/$2/entityRelationship/{direction}")
+            .replaceAll("(^|/)v1/([^/]+)/entityRelationship$", "$1v1/$2/entityRelationship");
+
+    // Replace various ID patterns with placeholders in order of specificity
+    normalizedUri =
+        normalizedUri
+            // UUID patterns (e.g., /v1/tables/550e8400-e29b-41d4-a716-446655440000)
+            .replaceAll(
+                "/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+                "/{name}")
+            // Numeric IDs (e.g., /v1/tables/123456)
+            .replaceAll("/\\d+", "/{name}")
             // Entity names that contain special characters or spaces (encoded)
             .replaceAll("/[^/]*%[0-9a-fA-F]{2}[^/]*", "/{name}")
-            // Long alphanumeric strings that might be encoded names
-            .replaceAll("/[a-zA-Z0-9_.-]{20,}", "/{name}")
-            // Handle common OpenMetadata API patterns - split into multiple patterns to reduce
-            // complexity
-            .replaceAll(
-                "/(tables|databases|services|pipelines|topics|dashboards|charts|containers)/[^/]+/[^/]+",
-                "/$1/{name}/{subresource}")
-            .replaceAll(
-                "/(glossaryTerms|tags|policies|roles|users|teams|dataModels|searchIndexes)/[^/]+/[^/]+",
-                "/$1/{name}/{subresource}")
-            .replaceAll(
-                "/(testSuites|testCases|webhooks|bots|automations|applications|connections)/[^/]+/[^/]+",
-                "/$1/{name}/{subresource}")
-            .replaceAll(
-                "/(secrets|storedProcedures|databaseSchemas|mlModels|reports|metrics)/[^/]+/[^/]+",
-                "/$1/{name}/{subresource}")
-            .replaceAll(
-                "/(queries|suggestions|lineage|events|feeds|conversations|activities)/[^/]+/[^/]+",
-                "/$1/{name}/{subresource}")
-            .replaceAll(
-                "/(tasks|kpis|domains|dataProducts|governanceWorkflows)/[^/]+/[^/]+",
-                "/$1/{name}/{subresource}")
-            .replaceAll(
-                "/(tables|databases|services|pipelines|topics|dashboards|charts|containers)/[^/]+",
-                "/$1/{name}")
-            .replaceAll(
-                "/(glossaryTerms|tags|policies|roles|users|teams|dataModels|searchIndexes)/[^/]+",
-                "/$1/{name}")
-            .replaceAll(
-                "/(testSuites|testCases|webhooks|bots|automations|applications|connections)/[^/]+",
-                "/$1/{name}")
-            .replaceAll(
-                "/(secrets|storedProcedures|databaseSchemas|mlModels|reports|metrics)/[^/]+",
-                "/$1/{name}")
-            .replaceAll(
-                "/(queries|suggestions|lineage|events|feeds|conversations|activities)/[^/]+",
-                "/$1/{name}")
-            .replaceAll(
-                "/(tasks|kpis|domains|dataProducts|governanceWorkflows)/[^/]+", "/$1/{name}")
-            // Analytics deep paths with timestamps and multiple segments
-            .replaceAll(
-                "/analytics/dataInsights/[^/]+/[^/]+", "/analytics/dataInsights/{type}/{id}")
-            .replaceAll(
-                "/analytics/web/events/[^/]+/[^/]+/collect",
-                "/analytics/web/events/{name}/{timestamp}/collect")
-            // Data quality multi-level paths
-            .replaceAll("/dataQuality/testCases/[^/]+/[^/]+", "/dataQuality/testCases/{type}/{id}")
-            .replaceAll(
-                "/dataQuality/testSuites/[^/]+/[^/]+", "/dataQuality/testSuites/{id}/{subresource}")
-            // Complex lineage patterns with multiple entities
-            .replaceAll(
-                "/lineage/[^/]+/[^/]+/[^/]+/[^/]+",
-                "/lineage/{fromEntity}/{fromId}/{toEntity}/{toId}")
-            .replaceAll(
-                "/lineage/[^/]+/name/[^/]+/[^/]+/name/[^/]+",
-                "/lineage/{fromEntity}/name/{fromFQN}/{toEntity}/name/{toFQN}")
-            .replaceAll(
-                "/lineage/[^/]+/[^/]+/type/[^/]+",
-                "/lineage/{entityType}/{entityId}/type/{lineageSource}")
-            // Event subscriptions complex paths
-            .replaceAll(
-                "/events/subscriptions/[^/]+/[^/]+/[^/]+",
-                "/events/subscriptions/{id}/{resource}/{subresource}")
-            .replaceAll(
-                "/events/subscriptions/name/[^/]+/[^/]+",
-                "/events/subscriptions/name/{name}/{resource}")
-            // Service nested paths
-            .replaceAll("/services/[^/]+/[^/]+/[^/]+", "/services/{serviceType}/{id}/{subresource}")
-            .replaceAll(
-                "/services/testConnectionDefinitions/[^/]+",
-                "/services/testConnectionDefinitions/{connectionType}")
-            // Governance workflow paths
-            .replaceAll(
-                "/governance/[^/]+/[^/]+/[^/]+",
-                "/governance/{workflowType}/{definitionName}/{instanceId}")
-            // Drive/file management paths
-            .replaceAll("/drives/[^/]+/[^/]+/[^/]+", "/drives/{type}/{id}/{subresource}")
-            // Universal entity sub-resources (versions, followers, results, etc.)
-            .replaceAll("/([^/]+)/([^/]+)/versions/[^/]+", "/$1/$2/versions/{version}")
-            .replaceAll("/([^/]+)/([^/]+)/followers/[^/]+", "/$1/$2/followers/{userId}")
-            .replaceAll("/([^/]+)/([^/]+)/results/[^/]+", "/$1/$2/results/{result}")
-            .replaceAll(
-                "/([^/]+)/([^/]+)/results/before/[^/]+", "/$1/$2/results/before/{timestamp}")
-            .replaceAll(
-                "/([^/]+)/name/([^/]+)/(export|import|exportAsync|importAsync)", "/$1/name/$2/$3")
-            // SCIM paths
-            .replaceAll("/scim/(Users|Groups)/[^/]+", "/scim/$1/{id}")
-            // Permission resource patterns
-            .replaceAll("/permissions/[^/]+/[^/]+", "/permissions/{resource}/{id}")
-            .replaceAll("/permissions/[^/]+/name/[^/]+", "/permissions/{resource}/name/{name}")
-            .replaceAll("/permissions/view/[^/]+", "/permissions/view/{entityType}")
-            .replaceAll("/permissions/debug/user/[^/]+", "/permissions/debug/user/{username}")
-            .replaceAll("/permissions/debug/evaluate", "/permissions/debug/evaluate")
-            .replaceAll("/permissions/[^/]+", "/permissions/{resource}")
-            // EventSubscription complex patterns (HIGH PRIORITY - prevents cardinality explosion)
-            .replaceAll(
-                "/events/subscriptions/name/[^/]+/status/[^/]+",
-                "/events/subscriptions/name/{name}/status/{destinationId}")
-            .replaceAll(
-                "/events/subscriptions/[^/]+/status/[^/]+",
-                "/events/subscriptions/{id}/status/{destinationId}")
-            .replaceAll(
-                "/events/subscriptions/[^/]+/resources",
-                "/events/subscriptions/{alertType}/resources")
-            .replaceAll(
-                "/events/subscriptions/id/[^/]+/listEvents",
-                "/events/subscriptions/id/{id}/listEvents")
-            .replaceAll(
-                "/events/subscriptions/id/[^/]+/eventsRecord",
-                "/events/subscriptions/id/{subscriptionId}/eventsRecord")
-            .replaceAll(
-                "/events/subscriptions/name/[^/]+/eventsRecord",
-                "/events/subscriptions/name/{subscriptionName}/eventsRecord")
-            .replaceAll(
-                "/events/subscriptions/id/[^/]+/diagnosticInfo",
-                "/events/subscriptions/id/{subscriptionId}/diagnosticInfo")
-            .replaceAll(
-                "/events/subscriptions/name/[^/]+/diagnosticInfo",
-                "/events/subscriptions/name/{subscriptionName}/diagnosticInfo")
-            .replaceAll(
-                "/events/subscriptions/id/[^/]+/failedEvents",
-                "/events/subscriptions/id/{id}/failedEvents")
-            .replaceAll(
-                "/events/subscriptions/name/[^/]+/failedEvents",
-                "/events/subscriptions/name/{eventSubscriptionName}/failedEvents")
-            .replaceAll(
-                "/events/subscriptions/id/[^/]+/listSuccessfullySentChangeEvents",
-                "/events/subscriptions/id/{id}/listSuccessfullySentChangeEvents")
-            .replaceAll(
-                "/events/subscriptions/name/[^/]+/listSuccessfullySentChangeEvents",
-                "/events/subscriptions/name/{eventSubscriptionName}/listSuccessfullySentChangeEvents")
-            .replaceAll(
-                "/events/subscriptions/id/[^/]+/destinations",
-                "/events/subscriptions/id/{eventSubscriptionId}/destinations")
-            .replaceAll(
-                "/events/subscriptions/name/[^/]+/destinations",
-                "/events/subscriptions/name/{eventSubscriptionName}/destinations")
-            .replaceAll(
-                "/events/subscriptions/name/[^/]+/syncOffset",
-                "/events/subscriptions/name/{eventSubscriptionName}/syncOffset")
-            // App management patterns
-            .replaceAll("/apps/name/[^/]+/status", "/apps/name/{name}/status")
-            .replaceAll("/apps/name/[^/]+/extension", "/apps/name/{name}/extension")
-            .replaceAll("/apps/name/[^/]+/logs", "/apps/name/{name}/logs")
-            .replaceAll("/apps/name/[^/]+/runs/latest", "/apps/name/{name}/runs/latest")
-            .replaceAll("/apps/schedule/[^/]+", "/apps/schedule/{name}")
-            .replaceAll("/apps/configure/[^/]+", "/apps/configure/{name}")
-            .replaceAll("/apps/trigger/[^/]+", "/apps/trigger/{name}")
-            .replaceAll("/apps/stop/[^/]+", "/apps/stop/{name}")
-            .replaceAll("/apps/deploy/[^/]+", "/apps/deploy/{name}")
-            // IngestionPipeline operational patterns
-            .replaceAll(
-                "/services/ingestionPipelines/deploy/[^/]+",
-                "/services/ingestionPipelines/deploy/{id}")
-            .replaceAll(
-                "/services/ingestionPipelines/trigger/[^/]+",
-                "/services/ingestionPipelines/trigger/{id}")
-            .replaceAll(
-                "/services/ingestionPipelines/toggleIngestion/[^/]+",
-                "/services/ingestionPipelines/toggleIngestion/{id}")
-            .replaceAll(
-                "/services/ingestionPipelines/kill/[^/]+", "/services/ingestionPipelines/kill/{id}")
-            .replaceAll(
-                "/services/ingestionPipelines/logs/[^/]+/last",
-                "/services/ingestionPipelines/logs/{id}/last")
-            .replaceAll(
-                "/services/ingestionPipelines/[^/]+/pipelineStatus/[^/]+",
-                "/services/ingestionPipelines/{fqn}/pipelineStatus/{id}")
-            .replaceAll(
-                "/services/ingestionPipelines/[^/]+/pipelineStatus",
-                "/services/ingestionPipelines/{fqn}/pipelineStatus")
-            // Search resource patterns
-            .replaceAll("/search/get/[^/]+/doc/[^/]+", "/search/get/{index}/doc/{id}")
-            // User authentication & security patterns
-            .replaceAll("/users/generateToken/[^/]+", "/users/generateToken/{id}")
-            .replaceAll("/users/token/[^/]+", "/users/token/{id}")
-            .replaceAll("/users/auth-mechanism/[^/]+", "/users/auth-mechanism/{id}")
-            // Feed & discussion patterns
-            .replaceAll("/feed/tasks/[^/]+/resolve", "/feed/tasks/{id}/resolve")
-            .replaceAll("/feed/tasks/[^/]+/close", "/feed/tasks/{id}/close")
-            .replaceAll("/feed/tasks/[^/]+", "/feed/tasks/{id}")
-            .replaceAll("/feed/[^/]+/posts/[^/]+", "/feed/{threadId}/posts/{postId}")
-            .replaceAll("/feed/[^/]+/posts", "/feed/{id}/posts")
-            .replaceAll("/feed/[^/]+", "/feed/{threadId}")
-            // System & configuration patterns
-            .replaceAll("/system/settings/[^/]+", "/system/settings/{name}")
-            .replaceAll("/system/settings/reset/[^/]+", "/system/settings/reset/{name}")
-            // DocStore patterns
-            .replaceAll(
-                "/docStore/validateTemplate/[^/]+", "/docStore/validateTemplate/{templateName}")
-            // Handle remaining timestamp patterns
+            // Long alphanumeric strings that might be encoded names (but not 'name' literal)
+            .replaceAll("/(?!name)[a-zA-Z0-9_.-]{20,}", "/{name}")
+
+            // Generic patterns for OpenMetadata resources with sub-resources
+            // Pattern: /v1/{resource}/{identifier}/{subresource}/{subidentifier}
+            .replaceAll("(^|/)v1/([^/]+)/\\{id\\}/([^/]+)/([^/]+)$", "$1v1/$2/{id}/$3/$4")
+            // Pattern: /v1/{resource}/{identifier}/{subresource}
+            .replaceAll("(^|/)v1/([^/]+)/\\{id\\}/([^/]+)$", "$1v1/$2/{id}/$3")
+            // Pattern: /v1/{resource}/{identifier} (single resource access)
+            .replaceAll("(^|/)v1/([^/]+)/\\{id\\}$", "$1v1/$2/{id}")
+
+            // Handle timestamp patterns
             .replaceAll("/[0-9]{10,13}", "/{timestamp}");
 
     // Ensure we don't have empty path segments

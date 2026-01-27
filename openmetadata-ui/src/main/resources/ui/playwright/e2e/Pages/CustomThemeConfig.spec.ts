@@ -12,8 +12,9 @@
  */
 import test, { expect, Request } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
-import { settingClick } from '../../utils/sidebar';
+import { settingClick, sidebarClick } from '../../utils/sidebar';
 
 const config = {
   logo: 'https://custom-logo.png',
@@ -26,8 +27,14 @@ const themeConfig = {
   primaryColor: '#6809dc',
   infoColor: '#2196f3',
   successColor: '#008376',
+  hoverColor: '#d1e9ff',
+  selectedColor: '#175cd3',
   warningColor: '#ffc34e',
   errorColor: '#ff4c3b',
+};
+const updatedColor = {
+  hoverColor: '#d1ffeb',
+  selectedColor: '#1d6713',
 };
 
 // use the admin user to login
@@ -94,6 +101,66 @@ test.describe('Custom Theme Config Page', () => {
       '/api/v1/system/settings'
     );
 
+    // Click the reset button
+    await page.locator('[data-testid="reset-button"]').click();
+
+    const defaultConfigResponse = await defaultConfigResponsePromise;
+
+    // Verify the response status code
+    expect(defaultConfigResponse.status()).toBe(200);
+
+    // Verify the default theme color
+    await expect(page.getByTestId('reset-button')).toHaveCSS(
+      'background-color',
+      'rgb(21, 112, 239)'
+    );
+  });
+
+  test('Update Hover and selected Color ', async ({ page }) => {
+    for (const colorType of Object.keys(updatedColor)) {
+      await page
+        .locator(`[data-testid="${colorType}-color-input"]`)
+        .fill(updatedColor[colorType as keyof typeof updatedColor]);
+    }
+
+    const updatedConfigResponsePromise = page.waitForResponse(
+      '/api/v1/system/settings'
+    );
+
+    // Click the save button
+    await page.locator('[data-testid="save-btn"]').click();
+
+    const updatedConfigResponse = await updatedConfigResponsePromise;
+
+    // Verify the response status code
+    expect(updatedConfigResponse.status()).toBe(200);
+
+    await page.getByTestId('sidebar-toggle').click();
+
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+
+    // check for test id background color is same as updatedColor.selectedColor
+    await expect(
+      page.locator(
+        '[data-testid="side-bar-domains-section"] .ant-menu-submenu-title'
+      )
+    ).toHaveCSS('background-color', 'rgb(29, 103, 19)');
+
+    await redirectToHomePage(page);
+
+    const menuTitle = page.locator(
+      '[data-testid="side-bar-domains-section"] .ant-menu-submenu-title'
+    );
+
+    await menuTitle.hover();
+
+    await expect(menuTitle).toHaveCSS('background-color', 'rgb(209, 255, 235)');
+
+    const defaultConfigResponsePromise = page.waitForResponse(
+      '/api/v1/system/settings'
+    );
+    await settingClick(page, GlobalSettingOptions.APPEARANCE);
     // Click the reset button
     await page.locator('[data-testid="reset-button"]').click();
 

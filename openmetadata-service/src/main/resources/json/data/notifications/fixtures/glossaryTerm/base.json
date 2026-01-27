@@ -1,0 +1,53 @@
+{
+  "id": "2d1c0b9a-8f7e-6d5c-4b3a-2f1e0d9c8b7a",
+  "name": "sample_term",
+  "displayName": "Sample Term",
+  "fullyQualifiedName": "sample_glossary.sample_term",
+  "description": "Mock glossary term for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "href": "http://localhost:8585/api/v1/glossaryTerms/2d1c0b9a-8f7e-6d5c-4b3a-2f1e0d9c8b7a",
+  "glossary": {
+    "id": "1e2d1c0b-9a8f-7e6d-5c4b-3a2f1e0d9c8b",
+    "type": "glossary",
+    "name": "sample_glossary",
+    "fullyQualifiedName": "sample_glossary",
+    "deleted": false,
+    "href": "http://localhost:8585/api/v1/glossaries/1e2d1c0b-9a8f-7e6d-5c4b-3a2f1e0d9c8b"
+  },
+  "parent": null,
+  "synonyms": [],
+  "relatedTerms": [],
+  "references": [],
+  "style": {
+    "color": "#7147E8",
+    "iconURL": "https://example.com/icons/glossary.svg"
+  },
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "domains": [
+    {
+      "id": "c3d4e5f6-7890-abcd-ef12-34567890abcd",
+      "type": "domain",
+      "name": "Engineering",
+      "fullyQualifiedName": "Engineering"
+    }
+  ],
+  "reviewers": [
+    {
+      "id": "b2c3d4e5-f678-90ab-cdef-123456789012",
+      "type": "user",
+      "name": "jane.smith",
+      "fullyQualifiedName": "jane.smith"
+    }
+  ],
+  "tags": []
+}

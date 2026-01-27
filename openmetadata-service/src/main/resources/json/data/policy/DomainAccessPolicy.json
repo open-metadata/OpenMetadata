@@ -8,8 +8,16 @@
   "provider": "user",
   "rules": [
     {
-      "name": "DomainOnlyAccessRule",
-      "description": "Domain Only Access Rule",
+      "name": "DomainAccessDenyRule",
+      "description": "Deny access when domain check fails",
+      "effect": "deny",
+      "resources": ["All"],
+      "operations": ["All"],
+      "condition": "!hasDomain()"
+    },
+    {
+      "name": "DomainAccessAllowRule",
+      "description": "Allow access when domain check passes",
       "effect": "allow",
       "resources": ["All"],
       "operations": ["All"],

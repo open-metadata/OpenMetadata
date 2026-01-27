@@ -185,6 +185,172 @@
 				"downstreamTasks": [],
 				"taskType": "HiveOperator"
 				}]
+		},
+		{
+			"name": "real_time_metrics",
+			"displayName": "Real-time Metrics Aggregation",
+			"description": "Real-time metrics aggregation pipeline running every 15 minutes",
+			"sourceUrl": "http://localhost:8080/tree?dag_id=real_time_metrics",
+			"scheduleInterval": "*/15 * * * *",
+			"tasks": [{
+				"name": "metrics_aggregation_task",
+				"displayName": "Metrics Aggregation Task",
+				"description": "Airflow operator to aggregate streaming metrics",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=metrics_aggregation_task",
+				"downstreamTasks": ["assert_table_exists"],
+				"taskType": "PythonOperator"
+				},
+				{
+				"name": "assert_table_exists",
+				"displayName": "Assert Table Exists",
+				"description": "Assert if a table exists",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+				"downstreamTasks": [],
+				"taskType": "HiveOperator"
+				}]
+		},
+		{
+			"name": "ml_feature_pipeline",
+			"displayName": "ML Feature Engineering Pipeline",
+			"description": "Machine learning feature engineering pipeline running twice daily",
+			"sourceUrl": "http://localhost:8080/tree?dag_id=ml_feature_pipeline",
+			"scheduleInterval": "0 2,14 * * *",
+			"tasks": [{
+				"name": "feature_engineering_task",
+				"displayName": "Feature Engineering Task",
+				"description": "Airflow operator to generate ML features from order data",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=feature_engineering_task",
+				"downstreamTasks": ["assert_table_exists"],
+				"taskType": "PythonOperator"
+				},
+				{
+				"name": "assert_table_exists",
+				"displayName": "Assert Table Exists",
+				"description": "Assert if a table exists",
+				"sourceUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+				"downstreamTasks": [],
+				"taskType": "HiveOperator"
+				}]
+		},
+		{
+			"name": "dbt_staging_shopify",
+			"displayName": "DBT Staging Shopify",
+			"description": "DBT pipeline for staging shopify raw data - runs daily",
+			"sourceUrl": "https://cloud.getdbt.com/deploy/123456/projects/654321/runs/dbt_staging_shopify",
+			"scheduleInterval": "0 1 * * *",
+			"service": "sample_dbtcloud",
+			"tasks": [{
+				"name": "dbt_run_staging",
+				"displayName": "DBT Run Staging Models",
+				"description": "Execute dbt run for staging models",
+				"sourceUrl": "https://cloud.getdbt.com/deploy/123456/projects/654321/runs/dbt_staging_shopify",
+				"downstreamTasks": ["dbt_test_staging"],
+				"taskType": "dbtRunTask"
+				},
+				{
+				"name": "dbt_test_staging",
+				"displayName": "DBT Test Staging Models",
+				"description": "Execute dbt tests for staging models",
+				"sourceUrl": "https://cloud.getdbt.com/deploy/123456/projects/654321/runs/dbt_staging_shopify",
+				"downstreamTasks": [],
+				"taskType": "dbtTestTask"
+				}]
+		},
+		{
+			"name": "dbt_transform_orders",
+			"displayName": "DBT Transform Orders",
+			"description": "DBT pipeline for transforming order data into fact tables - runs daily",
+			"sourceUrl": "https://cloud.getdbt.com/deploy/123456/projects/654321/runs/dbt_transform_orders",
+			"scheduleInterval": "0 3 * * *",
+			"service": "sample_dbtcloud",
+			"tasks": [{
+				"name": "dbt_run_orders",
+				"displayName": "DBT Run Order Transformations",
+				"description": "Execute dbt run for order fact tables",
+				"sourceUrl": "https://cloud.getdbt.com/deploy/123456/projects/654321/runs/dbt_transform_orders",
+				"downstreamTasks": ["dbt_test_orders"],
+				"taskType": "dbtRunTask"
+				},
+				{
+				"name": "dbt_test_orders",
+				"displayName": "DBT Test Order Models",
+				"description": "Execute dbt tests for order models",
+				"sourceUrl": "https://cloud.getdbt.com/deploy/123456/projects/654321/runs/dbt_transform_orders",
+				"downstreamTasks": [],
+				"taskType": "dbtTestTask"
+				}]
+		},
+		{
+			"name": "dbt_analytics_customers",
+			"displayName": "DBT Customer Analytics",
+			"description": "DBT pipeline for customer analytics and aggregations - runs daily",
+			"sourceUrl": "https://cloud.getdbt.com/deploy/123456/projects/654321/runs/dbt_analytics_customers",
+			"scheduleInterval": "0 4 * * *",
+			"service": "sample_dbtcloud",
+			"tasks": [{
+				"name": "dbt_build_analytics",
+				"displayName": "DBT Build Customer Analytics",
+				"description": "Execute dbt build for customer analytics models",
+				"sourceUrl": "https://cloud.getdbt.com/deploy/123456/projects/654321/runs/dbt_analytics_customers",
+				"downstreamTasks": [],
+				"taskType": "dbtBuildTask"
+				}]
+		},
+		{
+			"name": "dbt_snapshot_inventory",
+			"displayName": "DBT Snapshot Inventory",
+			"description": "DBT snapshot pipeline for tracking inventory changes - runs hourly",
+			"sourceUrl": "https://cloud.getdbt.com/deploy/123456/projects/654321/runs/dbt_snapshot_inventory",
+			"scheduleInterval": "0 * * * *",
+			"service": "sample_dbtcloud",
+			"tasks": [{
+				"name": "dbt_snapshot_task",
+				"displayName": "DBT Snapshot",
+				"description": "Execute dbt snapshot for inventory tracking",
+				"sourceUrl": "https://cloud.getdbt.com/deploy/123456/projects/654321/runs/dbt_snapshot_inventory",
+				"downstreamTasks": [],
+				"taskType": "dbtSnapshotTask"
+				}]
+		},
+		{
+			"name": "dbt_test_data_quality",
+			"displayName": "DBT Data Quality Tests",
+			"description": "DBT data quality testing pipeline - runs 4 times daily",
+			"sourceUrl": "https://cloud.getdbt.com/deploy/123456/projects/654321/runs/dbt_test_data_quality",
+			"scheduleInterval": "0 */6 * * *",
+			"service": "sample_dbtcloud",
+			"tasks": [{
+				"name": "dbt_test_all",
+				"displayName": "DBT Test All Models",
+				"description": "Execute comprehensive dbt tests across all models",
+				"sourceUrl": "https://cloud.getdbt.com/deploy/123456/projects/654321/runs/dbt_test_data_quality",
+				"downstreamTasks": [],
+				"taskType": "dbtTestTask"
+				}]
+		},
+		{
+			"name": "dbt_ml_features",
+			"displayName": "DBT ML Feature Generation",
+			"description": "DBT pipeline for generating ML features - runs twice daily",
+			"sourceUrl": "https://cloud.getdbt.com/deploy/123456/projects/654321/runs/dbt_ml_features",
+			"scheduleInterval": "0 2,14 * * *",
+			"service": "sample_dbtcloud",
+			"tasks": [{
+				"name": "dbt_run_ml_features",
+				"displayName": "DBT Run ML Features",
+				"description": "Execute dbt run for ML feature generation",
+				"sourceUrl": "https://cloud.getdbt.com/deploy/123456/projects/654321/runs/dbt_ml_features",
+				"downstreamTasks": ["dbt_test_ml_features"],
+				"taskType": "dbtRunTask"
+				},
+				{
+				"name": "dbt_test_ml_features",
+				"displayName": "DBT Test ML Features",
+				"description": "Execute dbt tests for ML feature models",
+				"sourceUrl": "https://cloud.getdbt.com/deploy/123456/projects/654321/runs/dbt_ml_features",
+				"downstreamTasks": [],
+				"taskType": "dbtTestTask"
+				}]
 		}
 	]
 }

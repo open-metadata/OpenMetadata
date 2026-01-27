@@ -24,11 +24,7 @@ export interface TableComponentProps<T> extends TableProps<T> {
   defaultVisibleColumns?: string[];
   /** Columns that will be statically visible in the Table and will not be Filtered */
   staticVisibleColumns?: string[];
-  searchProps?: SearchBarProps & {
-    onClear?: () => void;
-    value?: string;
-    searchDebounceTime?: number;
-  };
+  searchProps?: SearchBarProps;
   customPaginationProps?: NextPreviousProps & {
     showPagination: boolean;
   };

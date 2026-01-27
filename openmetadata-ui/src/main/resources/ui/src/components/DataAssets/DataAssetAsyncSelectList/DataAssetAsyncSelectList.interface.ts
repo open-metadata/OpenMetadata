@@ -38,4 +38,5 @@ export interface DataAssetAsyncSelectListProps {
   searchIndex?: SearchIndex;
   onChange?: (option: DataAssetOption | DataAssetOption[]) => void;
   filterFqns?: string[];
+  queryFilter?: Record<string, unknown>;
 }

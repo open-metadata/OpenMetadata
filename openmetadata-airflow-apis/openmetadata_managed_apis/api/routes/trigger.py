@@ -36,13 +36,27 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
-    from airflow.api_connexion import security
     from airflow.security import permissions
-    from airflow.www.app import csrf
+    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
+    from openmetadata_managed_apis.utils.security_compat import (
+        requires_access_decorator,
+    )
+
+    # CSRF protection import - different between Airflow 2.x and 3.x
+    if not is_airflow_3_or_higher():
+        from airflow.www.app import csrf
+    else:
+        # Airflow 3.x doesn't have csrf in the same location, use a no-op
+        class csrf:
+            @staticmethod
+            def exempt(f):
+                return f
 
     @blueprint.route("/trigger", methods=["POST"])
     @csrf.exempt
-    @security.requires_access([(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)])
+    @requires_access_decorator(
+        [(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)]
+    )
     def trigger_dag() -> Response:
         """
         Trigger a dag run with optional configuration

@@ -23,6 +23,7 @@ const StatusBadgeV2 = ({
   dataTestId,
   className,
   externalIcon,
+  showIcon = true,
 }: StatusBadgeProps) => {
   const StatusIcon = externalIcon ?? iconsV2[status as StatusType];
 
@@ -30,7 +31,7 @@ const StatusBadgeV2 = ({
     <div
       className={classNames('status-badge status-badge-v2', status, className)}
       data-testid={dataTestId}>
-      {StatusIcon && <Icon component={StatusIcon} />}
+      {showIcon && StatusIcon && <Icon component={StatusIcon} />}
       <span className={`status-badge-label ${status}`}>{label}</span>
     </div>
   );

@@ -36,6 +36,10 @@
       "description": "Owners of this test",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "reviewers": {
+      "description": "Reviewers of this test",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "computePassedFailedRowCount": {
       "description": "Compute the passed and failed row count for the test case.",
       "type": "boolean",
@@ -51,6 +55,14 @@
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
+      },
+      "default": []
+    },
+    "dimensionColumns": {
+      "description": "List of columns to group test results by dimensions. When specified, the test will be executed both overall and grouped by these columns to provide fine-grained data quality insights.",
+      "type": "array",
+      "items": {
+        "type": "string"
       },
       "default": []
     }

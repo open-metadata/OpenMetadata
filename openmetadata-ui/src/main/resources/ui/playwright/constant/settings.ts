@@ -19,6 +19,7 @@ export enum GlobalSettingsMenuCategory {
   SERVICES = 'services',
   BOTS = 'bots',
   APPLICATIONS = 'apps',
+  SSO = 'sso',
 }
 
 export enum ServiceTypes {
@@ -31,6 +32,7 @@ export enum ServiceTypes {
   STORAGE_SERVICES = 'storageServices',
   METADATA_SERVICES = 'metadataServices',
   SEARCH_SERVICES = 'searchServices',
+  DRIVE_SERVICES = 'driveServices',
 }
 
 export enum GlobalSettingOptions {
@@ -40,6 +42,8 @@ export enum GlobalSettingOptions {
   PERSONA = 'persona',
   ROLES = 'roles',
   POLICIES = 'policies',
+  AUDIT_LOGS = 'audit-logs',
+  LEARNING_RESOURCES = 'learning-resources',
   DATABASES = 'databases',
   DATABASE = 'database',
   DATABASE_SCHEMA = 'databaseSchemas',
@@ -89,9 +93,17 @@ export enum GlobalSettingOptions {
   LINEAGE_CONFIG = 'lineageConfig',
   OM_URL_CONFIG = 'om-url-config',
   SEARCH_SETTINGS = 'search-settings',
+  DATA_ASSET_RULES = 'dataAssetRules',
   DOMAINS = 'domains',
   ONLINE_USERS = 'online-users',
   CHARTS = 'charts',
+  DRIVES = 'drives',
+  DIRECTORIES = 'directories',
+  FILES = 'files',
+  SPREADSHEETS = 'spreadsheets',
+  WORKSHEETS = 'worksheets',
+  SSO = 'sso',
+  TABLE_COLUMNS = 'column',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -141,6 +153,10 @@ export const SETTINGS_OPTIONS_PATH = {
     GlobalSettingsMenuCategory.SERVICES,
     `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
   ],
+  [GlobalSettingOptions.DRIVES]: [
+    GlobalSettingsMenuCategory.SERVICES,
+    `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DRIVES}`,
+  ],
 
   // Applications
 
@@ -186,6 +202,10 @@ export const SETTINGS_OPTIONS_PATH = {
     GlobalSettingsMenuCategory.ACCESS,
     `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.POLICIES}`,
   ],
+  [GlobalSettingOptions.AUDIT_LOGS]: [
+    GlobalSettingsMenuCategory.ACCESS,
+    `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.AUDIT_LOGS}`,
+  ],
 
   // Open-metadata
 
@@ -225,6 +245,17 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.SEARCH_SETTINGS]: [
     GlobalSettingsMenuCategory.PREFERENCES,
     `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}`,
+  ],
+  [GlobalSettingOptions.DATA_ASSET_RULES]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.DATA_ASSET_RULES}`,
+  ],
+  [GlobalSettingOptions.SSO]: [GlobalSettingsMenuCategory.SSO],
+
+  // Learning Resources
+  [GlobalSettingOptions.LEARNING_RESOURCES]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LEARNING_RESOURCES}`,
   ],
 };
 
@@ -300,5 +331,25 @@ export const SETTING_CUSTOM_PROPERTIES_PATH = {
   [GlobalSettingOptions.CHARTS]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
     `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.CHARTS}`,
+  ],
+  [GlobalSettingOptions.DIRECTORIES]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DIRECTORIES}`,
+  ],
+  [GlobalSettingOptions.FILES]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.FILES}`,
+  ],
+  [GlobalSettingOptions.SPREADSHEETS]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.SPREADSHEETS}`,
+  ],
+  [GlobalSettingOptions.WORKSHEETS]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
+  ],
+  [GlobalSettingOptions.TABLE_COLUMNS]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TABLE_COLUMNS}`,
   ],
 };

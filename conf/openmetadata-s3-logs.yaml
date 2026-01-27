@@ -1,0 +1,63 @@
+# Example configuration for OpenMetadata with S3 log storage
+# This is an extension of the standard openmetadata.yaml configuration
+
+# Include all standard configuration from openmetadata.yaml
+# ...
+
+# Pipeline Service Client Configuration with S3 Log Storage
+pipelineServiceClientConfiguration:
+  enabled: ${PIPELINE_SERVICE_CLIENT_ENABLED:-true}
+  className: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
+  apiEndpoint: ${PIPELINE_SERVICE_CLIENT_ENDPOINT:-http://localhost:8080}
+  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
+  ingestionIpInfoEnabled: ${PIPELINE_SERVICE_IP_INFO_ENABLED:-false}
+  hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
+  healthCheckInterval: ${PIPELINE_SERVICE_CLIENT_HEALTH_CHECK_INTERVAL:-300}
+  verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"}
+  sslConfig:
+    certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""}
+  secretsManagerLoader: ${PIPELINE_SERVICE_CLIENT_SECRETS_MANAGER_LOADER:-"noop"}
+  
+  # S3 Log Storage Configuration
+  logStorageConfiguration:
+    type: ${LOG_STORAGE_TYPE:-s3}
+    bucketName: ${LOG_STORAGE_S3_BUCKET:-pipeline-logs}
+    region: ${LOG_STORAGE_S3_REGION:-us-east-1}
+    prefix: ${LOG_STORAGE_S3_PREFIX:-pipeline-logs}
+    enableServerSideEncryption: ${LOG_STORAGE_S3_SSE_ENABLED:-true}
+    storageClass: ${LOG_STORAGE_S3_STORAGE_CLASS:-STANDARD_IA}
+    expirationDays: ${LOG_STORAGE_S3_EXPIRATION_DAYS:-30}
+    
+    # AWS Credentials - multiple options
+    awsConfig:
+      # Option 1: Use IAM role (recommended for EC2/ECS/K8s)
+      # No configuration needed, uses instance profile
+      
+      # Option 2: Use access keys (for local development)
+      awsAccessKeyId: ${AWS_ACCESS_KEY_ID:-}
+      awsSecretAccessKey: ${AWS_SECRET_ACCESS_KEY:-}
+      
+      # Option 3: Assume role
+      # assumeRoleArn: ${AWS_ASSUME_ROLE_ARN:-}
+      # assumeRoleSessionName: ${AWS_ASSUME_ROLE_SESSION:-openmetadata-logs}
+      # awsRegion: ${AWS_REGION:-us-east-1}
+  
+  # Default Airflow parameters
+  parameters:
+    username: ${AIRFLOW_USERNAME:-admin}
+    password: ${AIRFLOW_PASSWORD:-admin}
+    timeout: ${AIRFLOW_TIMEOUT:-10}
+    connection_timeout: ${AIRFLOW_CONNECTION_TIMEOUT:-30}
+    truststorePath: ${AIRFLOW_TRUST_STORE_PATH:-""}
+    truststorePassword: ${AIRFLOW_TRUST_STORE_PASSWORD:-""}
+
+# Example environment variables for S3 log storage:
+# export LOG_STORAGE_TYPE=s3
+# export LOG_STORAGE_S3_BUCKET=my-openmetadata-logs
+# export LOG_STORAGE_S3_REGION=us-west-2
+# export LOG_STORAGE_S3_PREFIX=ingestion-logs
+# export LOG_STORAGE_S3_SSE_ENABLED=true
+# export LOG_STORAGE_S3_STORAGE_CLASS=INTELLIGENT_TIERING
+# export LOG_STORAGE_S3_EXPIRATION_DAYS=90
+# export AWS_ACCESS_KEY_ID=your-access-key
+# export AWS_SECRET_ACCESS_KEY=your-secret-key

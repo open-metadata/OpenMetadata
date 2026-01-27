@@ -17,6 +17,7 @@ export interface SelectionOption {
   label: string;
   description: string;
   icon: ReactNode;
+  isBeta?: boolean;
 }
 
 export interface SelectionCardGroupProps {

@@ -61,6 +61,7 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
             .withFeatures(marketPlaceDefinition.getFeatures())
             .withSourcePythonClass(marketPlaceDefinition.getSourcePythonClass())
             .withAllowConfiguration(marketPlaceDefinition.getAllowConfiguration())
+            .withAllowConcurrentExecution(marketPlaceDefinition.getAllowConcurrentExecution())
             .withSystem(marketPlaceDefinition.getSystem())
             .withSupportsInterrupt(marketPlaceDefinition.getSupportsInterrupt())
             .withFullyQualifiedName(marketPlaceDefinition.getFullyQualifiedName())

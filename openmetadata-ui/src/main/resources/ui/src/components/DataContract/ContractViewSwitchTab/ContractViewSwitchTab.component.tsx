@@ -31,18 +31,6 @@ const ContractViewSwitchTab = ({
       options={[
         {
           label: (
-            <CodeOutline
-              className="align-middle"
-              color={DE_ACTIVE_COLOR}
-              data-testid="contract-view-switch-tab-yaml"
-              height={20}
-              width={20}
-            />
-          ),
-          value: DataContractMode.YAML,
-        },
-        {
-          label: (
             <BookOutline
               className="align-middle"
               color={DE_ACTIVE_COLOR}
@@ -52,6 +40,18 @@ const ContractViewSwitchTab = ({
             />
           ),
           value: DataContractMode.UI,
+        },
+        {
+          label: (
+            <CodeOutline
+              className="align-middle"
+              color={DE_ACTIVE_COLOR}
+              data-testid="contract-view-switch-tab-yaml"
+              height={20}
+              width={20}
+            />
+          ),
+          value: DataContractMode.YAML,
         },
       ]}
       value={mode}

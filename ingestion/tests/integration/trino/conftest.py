@@ -1,5 +1,6 @@
 import os.path
 import random
+from pathlib import Path
 from time import sleep
 
 import docker
@@ -7,7 +8,7 @@ import pandas as pd
 import pytest
 import testcontainers.core.network
 from sqlalchemy import create_engine, insert
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import Engine, make_url
 from tenacity import retry, stop_after_delay, wait_fixed
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.generic import DbContainer
@@ -192,26 +193,49 @@ def create_test_data(trino_container):
     )
     data_dir = os.path.dirname(__file__) + "/data"
     for file in os.listdir(data_dir):
-        df = pd.read_parquet(f"{data_dir}/{file}")
-        for col in df.columns:
-            if pd.api.types.is_datetime64tz_dtype(df[col]):
-                df[col] = df[col].dt.tz_convert(None)
-        df.to_sql(
-            file.replace(".parquet", ""),
-            engine,
-            schema="my_schema",
-            if_exists="fail",
-            index=False,
-            method=custom_insert,
-        )
+        file_path = Path(os.path.join(data_dir, file))
+
+        if file_path.suffix == ".sql":
+            # Creating test data with complex fields with pandas breaks
+            create_test_data_from_sql(engine, file_path)
+        else:
+            create_test_data_from_parquet(engine, file_path)
+
         sleep(1)
-        engine.execute(
-            "ANALYZE " + f'minio."my_schema"."{file.replace(".parquet", "")}"'
-        )
+        engine.execute("ANALYZE " + f'minio."my_schema"."{file_path.stem}"')
     engine.execute(
         "CALL system.drop_stats(schema_name => 'my_schema', table_name => 'empty')"
     )
     return
+
+
+def create_test_data_from_parquet(engine: Engine, file_path: Path):
+    df = pd.read_parquet(file_path)
+
+    # Convert data types
+    for col in df.columns:
+        if pd.api.types.is_datetime64tz_dtype(df[col]):
+            df[col] = df[col].dt.tz_convert(None)
+
+    df.to_sql(
+        Path(file_path).stem,
+        engine,
+        schema="my_schema",
+        if_exists="fail",
+        index=False,
+        method=custom_insert,
+    )
+
+
+def create_test_data_from_sql(engine: Engine, file_path: Path):
+    with open(file_path, "r") as f:
+        sql = f.read()
+
+    sql = sql.format(catalog="minio", schema="my_schema", table_name=file_path.stem)
+    for statement in sql.split(";"):
+        if statement.strip() == "":
+            continue
+        engine.execute(statement)
 
 
 def custom_insert(self, conn, keys: list[str], data_iter):

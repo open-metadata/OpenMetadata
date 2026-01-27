@@ -425,7 +425,16 @@ public class SchemaFieldExtractor {
   }
 
   private static String determineReferenceType(String refUri) {
-    // Pattern to extract the definition name if present
+    // Handle internal schema references first (e.g., #/definitions/column,
+    // #/definitions/tableConstraint, etc.)
+    if (refUri.startsWith("#/definitions/")) {
+      String definitionName = refUri.substring("#/definitions/".length());
+      LOG.debug("Found internal schema reference: {}", definitionName);
+      // Return the definition name as the type - this preserves the actual type name
+      return definitionName;
+    }
+
+    // Pattern to extract the definition name if present from external files
     Pattern definitionPattern = Pattern.compile("^(?:.*/)?basic\\.json#/definitions/([\\w-]+)$");
     Matcher matcher = definitionPattern.matcher(refUri);
     if (matcher.find()) {
@@ -588,13 +597,17 @@ public class SchemaFieldExtractor {
 
   private static String getEntitySubdirectory(String entityType) {
     Map<String, String> entityTypeToSubdirectory =
-        Map.of(
-            "dashboard", "data",
-            "table", "data",
-            "pipeline", "data",
-            "votes", "data",
-            "dataProduct", "domains",
-            "domain", "domains");
+        Map.ofEntries(
+            Map.entry("dashboard", "data"),
+            Map.entry("table", "data"),
+            Map.entry("pipeline", "data"),
+            Map.entry("votes", "data"),
+            Map.entry("dataProduct", "domains"),
+            Map.entry("domain", "domains"),
+            Map.entry("notificationTemplate", "events"),
+            Map.entry("tag", "classification"),
+            Map.entry("classification", "classification"),
+            Map.entry("page", "data"));
     return entityTypeToSubdirectory.getOrDefault(entityType, "data");
   }
 

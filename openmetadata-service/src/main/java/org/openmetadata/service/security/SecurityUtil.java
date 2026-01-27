@@ -29,16 +29,19 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.security.Principal;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
 public final class SecurityUtil {
@@ -49,6 +52,15 @@ public final class SecurityUtil {
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
     return principal == null ? null : principal.getName().split("[/@]")[0];
+  }
+
+  public static String getImpersonatedByUser(SecurityContext securityContext) {
+    if (securityContext instanceof CatalogSecurityContext catalogSecurityContext) {
+      return catalogSecurityContext.impersonatedUser() != null
+          ? getUserName(securityContext)
+          : null;
+    }
+    return null;
   }
 
   public static LoginConfiguration getLoginConfiguration() {
@@ -163,6 +175,55 @@ public final class SecurityUtil {
     return StringUtils.EMPTY;
   }
 
+  public static List<String> findTeamsFromClaims(
+      String jwtTeamClaimMapping, Map<String, ?> claims) {
+    if (nullOrEmpty(jwtTeamClaimMapping) || claims == null) {
+      return new ArrayList<>();
+    }
+
+    if (claims.containsKey(jwtTeamClaimMapping)) {
+      return getClaimAsList(claims.get(jwtTeamClaimMapping));
+    }
+
+    return new ArrayList<>();
+  }
+
+  @SuppressWarnings("unchecked")
+  public static List<String> getClaimAsList(Object obj) {
+    List<String> result = new ArrayList<>();
+    if (obj == null) {
+      return result;
+    }
+
+    if (obj instanceof Claim claim) {
+      List<String> listValue = claim.asList(String.class);
+      if (listValue != null && !listValue.isEmpty()) {
+        result.addAll(listValue);
+      } else {
+        String stringValue = claim.asString();
+        if (!nullOrEmpty(stringValue)) {
+          result.add(stringValue);
+        }
+      }
+    } else if (obj instanceof Collection<?> collection) {
+      for (Object item : collection) {
+        if (item != null) {
+          result.add(item.toString());
+        }
+      }
+    } else if (obj instanceof String s && !nullOrEmpty(s)) {
+      result.add(s);
+    } else if (obj instanceof Object[] array) {
+      for (Object item : array) {
+        if (item != null) {
+          result.add(item.toString());
+        }
+      }
+    }
+
+    return result;
+  }
+
   public static String getFirstMatchJwtClaim(
       List<String> jwtPrincipalClaimsOrder, Map<String, ?> claims) {
     return jwtPrincipalClaimsOrder.stream()
@@ -181,9 +242,21 @@ public final class SecurityUtil {
     if (!nullOrEmpty(mapping)) {
       String username = mapping.get(USERNAME_CLAIM_KEY);
       String email = mapping.get(EMAIL_CLAIM_KEY);
+
+      // Validate that both username and email are present
       if (nullOrEmpty(username) || nullOrEmpty(email)) {
         throw new IllegalArgumentException(
             "Invalid JWT Principal Claims Mapping. Both username and email should be present");
+      }
+
+      // Validate that only username and email keys are present (no other keys allowed)
+      for (String key : mapping.keySet()) {
+        if (!USERNAME_CLAIM_KEY.equals(key) && !EMAIL_CLAIM_KEY.equals(key)) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Invalid JWT Principal Claims Mapping. Only username and email keys are allowed, but found: %s",
+                  key));
+        }
       }
     }
     // If emtpy, jwtPrincipalClaims will be used so no need to validate

@@ -56,7 +56,7 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
 
   const {
     handleCopy,
-    handlePaste,
+    handlePaste: actualHandlePaste,
     handleOnRowsChange,
     setGridContainer,
     handleAddRow,
@@ -65,6 +65,11 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
     setDataSource,
     columns: filterColumns,
   });
+
+  const handlePaste = actualHandlePaste as unknown as () => Record<
+    string,
+    string
+  >;
 
   const handleUpdate = useCallback(async () => {
     const modifiedRows = dataSource

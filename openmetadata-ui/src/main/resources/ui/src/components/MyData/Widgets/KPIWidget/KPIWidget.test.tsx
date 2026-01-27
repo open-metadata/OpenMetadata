@@ -34,6 +34,8 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   customFormatDateTime: jest.fn().mockReturnValue('Dec 05, 11:54'),
   getCurrentMillis: jest.fn().mockReturnValue(1711583974000),
   getEpochMillisForPastDays: jest.fn().mockReturnValue(1709424034000),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
 jest.mock('../../../../rest/DataInsightAPI', () => ({

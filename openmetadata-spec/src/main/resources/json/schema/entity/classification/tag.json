@@ -2,6 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/classification/tag.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Tag",
+  "$comment": "@om-entity-type",
   "description": "A `Tag` entity is used for classification or categorization. It is a term defined under `Classification` entity. Tags are used to label the entities and entity fields, such as Tables, and Columns.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.classification.Tag",
@@ -56,6 +57,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "href": {
       "description": "Link to the resource corresponding to the tag.",
@@ -114,8 +119,26 @@
     },
     "entityStatus": {
       "description": "Status of the tag.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
+    },
+    "recognizers": {
+      "description": "List of recognizers configured for automatic detection of this tag",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/recognizer.json"
+      }
+    },
+    "autoClassificationEnabled": {
+      "description": "Whether automatic classification is enabled for this tag",
+      "type": "boolean",
+      "default": false
+    },
+    "autoClassificationPriority": {
+      "description": "Priority for conflict resolution when multiple tags match (higher number = higher priority)",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 50
     }
   },
   "required": [

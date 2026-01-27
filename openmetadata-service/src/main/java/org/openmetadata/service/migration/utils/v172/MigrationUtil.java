@@ -65,7 +65,7 @@ public class MigrationUtil {
             searchClient.deleteDataStream(name);
           }
         } catch (Exception e) {
-          LOG.error(String.format("Error deleting %s Data Stream", name), e);
+          LOG.error("Error deleting {} Data Stream", name, e);
         }
       }
     } catch (Exception e) {

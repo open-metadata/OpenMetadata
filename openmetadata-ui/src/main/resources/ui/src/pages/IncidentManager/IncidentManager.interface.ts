@@ -15,6 +15,7 @@ import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResoluti
 
 export enum TestCasePageTabs {
   TEST_CASE_RESULTS = 'test-case-results',
+  DIMENSIONALITY = 'dimensionality',
   SQL_QUERY = 'sql-query',
   ISSUES = 'issues',
 }

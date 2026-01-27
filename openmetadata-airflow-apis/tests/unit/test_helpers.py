@@ -11,7 +11,7 @@
 """
 Test helper functions
 """
-from openmetadata_managed_apis.api.utils import clean_dag_id
+from openmetadata_managed_apis.api.utils import clean_dag_id, sanitize_task_id
 from openmetadata_managed_apis.workflows.ingestion.common import clean_name_tag
 
 
@@ -32,3 +32,40 @@ def test_clean_tag():
     assert clean_name_tag("hello(world)") == "hello(world)"
     assert clean_name_tag("service.pipeline") == "pipeline"
     assert clean_name_tag(f"service.{'a' * 200}") == "a" * 90
+
+
+def test_sanitize_task_id():
+    """
+    Ensure task_id is properly sanitized to prevent path traversal attacks.
+    This test validates the security fix for path traversal vulnerability.
+    """
+    # Security: Path traversal prevention
+    assert sanitize_task_id("../../../etc/passwd") == "_etc_passwd"
+    assert sanitize_task_id("../../etc/shadow") == "_etc_shadow"
+    assert sanitize_task_id("/absolute/path") == "_absolute_path"
+    assert sanitize_task_id("task/with/slash") == "task_with_slash"
+    assert sanitize_task_id("task\\with\\backslash") == "task_with_backslash"
+    assert sanitize_task_id("task\x00null") == "task_null"
+    assert sanitize_task_id("../malicious") == "_malicious"
+    assert sanitize_task_id("task/../traversal") == "task_traversal"
+
+    # Valid inputs that should pass through (with underscore for special chars)
+    assert sanitize_task_id("normal_task") == "normal_task"
+    assert sanitize_task_id("valid-task_123") == "valid-task_123"
+    assert sanitize_task_id("UPPERCASE") == "UPPERCASE"
+    assert sanitize_task_id("mixedCase123") == "mixedCase123"
+
+    # Edge cases
+    assert sanitize_task_id("") is None
+    assert sanitize_task_id(None) is None
+
+    # Consistency with clean_dag_id behavior
+    assert sanitize_task_id("task.with.dots") == "task_with_dots"
+    assert sanitize_task_id("%%&^++task__") == "_task__"
+    assert sanitize_task_id("task(with)parens") == "task_with_parens"
+
+    # Additional security cases
+    assert sanitize_task_id("task;command") == "task_command"
+    assert sanitize_task_id("task|pipe") == "task_pipe"
+    assert sanitize_task_id("task&background") == "task_background"
+    assert sanitize_task_id("task$variable") == "task_variable"

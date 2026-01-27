@@ -17,7 +17,7 @@ import { Aggregations } from '../../interface/search.interface';
 import { ExploreQuickFilterField } from './ExplorePage.interface';
 
 export interface ExploreQuickFiltersProps {
-  index: SearchIndex;
+  index: SearchIndex | SearchIndex[];
   fields: Array<ExploreQuickFilterField>;
   aggregations?: Aggregations;
   onFieldValueSelect: (field: ExploreQuickFilterField) => void;
@@ -27,4 +27,6 @@ export interface ExploreQuickFiltersProps {
   independent?: boolean; // flag to indicate if the filters are independent of aggregations
   fieldsWithNullValues?: EntityFields[];
   defaultQueryFilter?: Record<string, unknown>;
+  showSelectedCounts?: boolean; // flag to show counts instead of labels for selected filters
+  optionPageSize?: number;
 }

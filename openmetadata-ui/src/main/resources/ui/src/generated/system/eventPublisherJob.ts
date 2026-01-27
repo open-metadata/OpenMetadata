@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -64,6 +64,11 @@ export interface EventPublisherJob {
      */
     name?: string;
     /**
+     * Number of entities per partition for distributed indexing. Smaller values create more
+     * partitions for better distribution across servers. Range: 1000-50000.
+     */
+    partitionSize?: number;
+    /**
      * Payload size in bytes depending on config.
      */
     payLoadSize?: number;
@@ -98,6 +103,12 @@ export interface EventPublisherJob {
      */
     status?:    Status;
     timestamp?: number;
+    /**
+     * Enable distributed indexing across multiple servers. When enabled, reindexing work is
+     * partitioned and can be processed by multiple servers concurrently with crash recovery
+     * support.
+     */
+    useDistributedIndexing?: boolean;
 }
 
 /**
@@ -155,12 +166,24 @@ export interface Stats {
      * Stats for the job
      */
     jobStats?: StepStats;
+    /**
+     * Stats for the reader step (reading from database)
+     */
+    readerStats?: StepStats;
+    /**
+     * Stats for the sink step (writing to search index)
+     */
+    sinkStats?: StepStats;
 }
 
 /**
  * Stats for Different Steps Reader, Processor, Writer.
  *
  * Stats for the job
+ *
+ * Stats for the reader step (reading from database)
+ *
+ * Stats for the sink step (writing to search index)
  */
 export interface StepStats {
     /**
@@ -175,6 +198,10 @@ export interface StepStats {
      * Count of Total Failed Records
      */
     totalRecords?: number;
+    /**
+     * Count of Records with Warnings (e.g., stale references that were skipped)
+     */
+    warningRecords?: number;
 }
 
 /**

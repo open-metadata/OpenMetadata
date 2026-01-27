@@ -79,7 +79,7 @@ test('Glossary', async ({ page }) => {
 
     await addMultiOwner({
       page,
-      ownerNames: [user.getUserName()],
+      ownerNames: [user.getUserDisplayName()],
       activatorBtnDataTestId: 'add-owner',
       resultTestId: 'glossary-right-panel-owner-link',
       endpoint: EntityTypeEndpoint.Glossary,
@@ -108,7 +108,7 @@ test('Glossary', async ({ page }) => {
 
     await addMultiOwner({
       page,
-      ownerNames: [reviewer.getUserName()],
+      ownerNames: [reviewer.getUserDisplayName()],
       activatorBtnDataTestId: 'Add',
       resultTestId: 'glossary-reviewer-name',
       endpoint: EntityTypeEndpoint.Glossary,
@@ -178,7 +178,7 @@ test('GlossaryTerm', async ({ page }) => {
 
     await addMultiOwner({
       page,
-      ownerNames: [user.getUserName()],
+      ownerNames: [user.getUserDisplayName()],
       activatorBtnDataTestId: 'add-owner',
       resultTestId: 'glossary-right-panel-owner-link',
       endpoint: EntityTypeEndpoint.Glossary,
@@ -208,7 +208,7 @@ test('GlossaryTerm', async ({ page }) => {
 
     await addMultiOwner({
       page,
-      ownerNames: [reviewer.getUserName()],
+      ownerNames: [reviewer.getUserDisplayName()],
       activatorBtnDataTestId: 'Add',
       resultTestId: 'glossary-reviewer-name',
       endpoint: EntityTypeEndpoint.GlossaryTerm,
@@ -222,7 +222,7 @@ test('GlossaryTerm', async ({ page }) => {
     await expect(
       page
         .locator('[data-testid="glossary-reviewer-name"]')
-        .getByTestId(reviewer.getUserName())
+        .getByTestId(reviewer.getUserDisplayName())
     ).toBeVisible();
 
     await page.click('[data-testid="version-button"]');
@@ -251,4 +251,160 @@ test.afterAll(async ({ browser }) => {
   await user.delete(apiContext);
   await reviewer.delete(apiContext);
   await afterAction();
+});
+
+// V-10: Navigate between versions
+test('Navigate between versions', async ({ page }) => {
+  const glossary = new Glossary();
+  const { afterAction, apiContext } = await getApiContext(page);
+  await glossary.create(apiContext);
+
+  // Make multiple changes to create multiple versions
+  await glossary.patch(apiContext, [
+    {
+      op: 'add',
+      path: '/description',
+      value: 'First description update',
+    },
+  ]);
+
+  await glossary.patch(apiContext, [
+    {
+      op: 'replace',
+      path: '/description',
+      value: 'Second description update',
+    },
+  ]);
+
+  try {
+    await glossary.visitPage(page);
+    await page.click('[data-testid="version-button"]');
+
+    // Wait for version dialog to load
+    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+    await page.waitForLoadState('networkidle');
+
+    // Check if version selector/dropdown exists
+    const versionSelector = page.getByTestId('version-selector');
+
+    if (await versionSelector.isVisible()) {
+      // Navigate to an earlier version
+      await versionSelector.click();
+
+      // Select version 0.1 from dropdown
+      const versionOption = page.getByRole('option', { name: /0\.1/ });
+
+      if (await versionOption.isVisible()) {
+        await versionOption.click();
+        await page.waitForLoadState('networkidle');
+      }
+    }
+
+    // Verify the version dialog is still visible
+    await expect(page.locator('[role="dialog"]')).toBeVisible();
+  } finally {
+    await glossary.delete(apiContext);
+    await afterAction();
+  }
+});
+
+// V-11: Return to current version from history
+test('Return to current version from history', async ({ page }) => {
+  const glossary = new Glossary();
+  const { afterAction, apiContext } = await getApiContext(page);
+  await glossary.create(apiContext);
+  await glossary.patch(apiContext, GLOSSARY_PATCH_PAYLOAD);
+
+  try {
+    await glossary.visitPage(page);
+    await page.click('[data-testid="version-button"]');
+
+    // Wait for version dialog
+    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+
+    // Close the version dialog
+    await page.getByRole('dialog').getByRole('img').click();
+    await page.waitForLoadState('networkidle');
+
+    // Verify we're back on the main glossary page
+    await expect(page.getByTestId('entity-header-display-name')).toContainText(
+      glossary.data.displayName
+    );
+
+    // Verify version button shows current version
+    await expect(page.getByTestId('version-button')).toBeVisible();
+  } finally {
+    await glossary.delete(apiContext);
+    await afterAction();
+  }
+});
+
+// V-07: Version diff shows synonym changes
+test('Version diff shows synonym changes', async ({ page }) => {
+  const { term2, cleanup } = await setupGlossaryAndTerms(page);
+
+  try {
+    // The setupGlossaryAndTerms already patches term2 with synonyms
+    await term2.visitPage(page);
+    await page.click('[data-testid="version-button"]');
+
+    // Wait for version dialog
+    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+    await page.waitForLoadState('networkidle');
+
+    // Check for synonym diff
+    const synonymDiff = page.locator('[data-testid="test-synonym"].diff-added');
+
+    await expect(synonymDiff).toBeVisible();
+  } finally {
+    await cleanup();
+  }
+});
+
+// V-08: Version diff shows reference changes
+test('Version diff shows reference changes', async ({ page }) => {
+  const { term2, cleanup } = await setupGlossaryAndTerms(page);
+
+  try {
+    // The setupGlossaryAndTerms already patches term2 with references
+    await term2.visitPage(page);
+    await page.click('[data-testid="version-button"]');
+
+    // Wait for version dialog
+    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+    await page.waitForLoadState('networkidle');
+
+    // Check for reference diff
+    const referenceDiff = page.locator(
+      '.diff-added [data-testid="reference-link-reference1"]'
+    );
+
+    await expect(referenceDiff).toBeVisible();
+  } finally {
+    await cleanup();
+  }
+});
+
+// V-09: Version diff shows related term changes
+test('Version diff shows related term changes', async ({ page }) => {
+  const { term1, term2, cleanup } = await setupGlossaryAndTerms(page);
+
+  try {
+    // The setupGlossaryAndTerms already patches term2 with related terms
+    await term2.visitPage(page);
+    await page.click('[data-testid="version-button"]');
+
+    // Wait for version dialog
+    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+    await page.waitForLoadState('networkidle');
+
+    // Check for related term diff (term1 was added as related term to term2)
+    const relatedTermDiff = page.locator(
+      `[data-testid="${term1.data.displayName}"].diff-added`
+    );
+
+    await expect(relatedTermDiff).toBeVisible();
+  } finally {
+    await cleanup();
+  }
 });

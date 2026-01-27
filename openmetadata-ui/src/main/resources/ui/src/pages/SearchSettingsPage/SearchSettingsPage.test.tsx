@@ -61,7 +61,9 @@ jest.mock('../../utils/GlobalSettingsUtils', () => ({
 }));
 
 jest.mock('../../utils/SearchSettingsUtils', () => ({
-  getSearchSettingCategories: jest.fn().mockReturnValue(mockSettingCategories),
+  getSearchSettingCategories: jest
+    .fn()
+    .mockImplementation(() => mockSettingCategories),
 }));
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {

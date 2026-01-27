@@ -559,3 +559,148 @@ class GrafanaUnitTest(TestCase):
         )
         owner_ref = self.grafana.get_owner_ref(dashboard_response)
         self.assertIsNone(owner_ref)
+
+    def test_complete_json_parsing(self):
+        """Test complete JSON parsing from raw dict through all nested levels"""
+        complete_json = {
+            "dashboard": {
+                "id": 123,
+                "uid": "complete-test-uid",
+                "title": "Complete Test Dashboard",
+                "tags": ["test", "integration"],
+                "description": "Full integration test dashboard",
+                "version": 10,
+                "panels": [
+                    {
+                        "id": 1,
+                        "type": "graph",
+                        "title": "SQL Query Panel",
+                        "description": "Panel with SQL query",
+                        "datasource": {"uid": "postgres-ds", "type": "postgres"},
+                        "targets": [
+                            {
+                                "refId": "A",
+                                "datasource": {
+                                    "uid": "postgres-ds",
+                                    "type": "postgres",
+                                },
+                                "rawSql": "SELECT * FROM users WHERE created_at > now() - interval '1 day'",
+                                "format": "time_series",
+                            },
+                            {
+                                "refId": "B",
+                                "datasource": {
+                                    "uid": "postgres-ds",
+                                    "type": "postgres",
+                                },
+                                "rawSql": "SELECT COUNT(*) FROM orders",
+                                "format": 0,
+                            },
+                        ],
+                    },
+                    {
+                        "id": 2,
+                        "type": "stat",
+                        "title": "Prometheus Panel",
+                        "datasource": "prometheus-ds",
+                        "targets": [
+                            {
+                                "refId": "A",
+                                "datasource": "prometheus-ds",
+                                "expr": "rate(http_requests_total[5m])",
+                                "format": None,
+                            }
+                        ],
+                    },
+                ],
+            },
+            "meta": {
+                "type": "db",
+                "canSave": True,
+                "canEdit": True,
+                "canAdmin": False,
+                "canStar": True,
+                "canDelete": False,
+                "slug": "complete-test-dashboard",
+                "url": "/d/complete-test-uid/complete-test-dashboard",
+                "created": "2024-01-01T00:00:00Z",
+                "updated": "2024-02-01T12:30:00Z",
+                "updatedBy": "user@example.com",
+                "createdBy": "admin@example.com",
+                "version": 10,
+                "folderId": 5,
+                "folderUid": "test-folder",
+                "folderTitle": "Test Folder",
+                "folderUrl": "/dashboards/f/test-folder/test-folder",
+            },
+        }
+
+        expected_output = GrafanaDashboardResponse(
+            dashboard=GrafanaDashboard(
+                id=123,
+                uid="complete-test-uid",
+                title="Complete Test Dashboard",
+                tags=["test", "integration"],
+                description="Full integration test dashboard",
+                version=10,
+                panels=[
+                    GrafanaPanel(
+                        id=1,
+                        type="graph",
+                        title="SQL Query Panel",
+                        description="Panel with SQL query",
+                        datasource={"uid": "postgres-ds", "type": "postgres"},
+                        targets=[
+                            GrafanaTarget(
+                                refId="A",
+                                datasource={"uid": "postgres-ds", "type": "postgres"},
+                                rawSql="SELECT * FROM users WHERE created_at > now() - interval '1 day'",
+                                format="time_series",
+                            ),
+                            GrafanaTarget(
+                                refId="B",
+                                datasource={"uid": "postgres-ds", "type": "postgres"},
+                                rawSql="SELECT COUNT(*) FROM orders",
+                                format=0,
+                            ),
+                        ],
+                    ),
+                    GrafanaPanel(
+                        id=2,
+                        type="stat",
+                        title="Prometheus Panel",
+                        datasource="prometheus-ds",
+                        targets=[
+                            GrafanaTarget(
+                                refId="A",
+                                datasource="prometheus-ds",
+                                expr="rate(http_requests_total[5m])",
+                                format=None,
+                            )
+                        ],
+                    ),
+                ],
+            ),
+            meta=GrafanaDashboardMeta(
+                type="db",
+                canSave=True,
+                canEdit=True,
+                canAdmin=False,
+                canStar=True,
+                canDelete=False,
+                slug="complete-test-dashboard",
+                url="/d/complete-test-uid/complete-test-dashboard",
+                created="2024-01-01T00:00:00Z",
+                updated="2024-02-01T12:30:00Z",
+                updatedBy="user@example.com",
+                createdBy="admin@example.com",
+                version=10,
+                folderId=5,
+                folderUid="test-folder",
+                folderTitle="Test Folder",
+                folderUrl="/dashboards/f/test-folder/test-folder",
+            ),
+        )
+
+        parsed_response = GrafanaDashboardResponse(**complete_json)
+        self.assertEqual(parsed_response, expected_output)

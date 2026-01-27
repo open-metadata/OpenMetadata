@@ -1,7 +1,9 @@
 package org.openmetadata.service.resources.events;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.CONFLICT;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.hibernate.validator.internal.util.Contracts.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -24,6 +26,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -38,11 +41,13 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.api.events.CreateNotificationTemplate;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -50,6 +55,7 @@ import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
@@ -57,11 +63,14 @@ import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.NotificationFilterOperation;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
@@ -2310,5 +2319,387 @@ public class EventSubscriptionResourceTest
         JsonUtils.deepCopy(originalSub, EventSubscription.class).withPollInterval(pollInterval);
     return eventSubscriptionResourceTest.patchEntityUsingFqn(
         fqn, JsonUtils.pojoToJson(originalSub), updatedSub, ADMIN_AUTH_HEADERS);
+  }
+
+  private NotificationTemplate getSystemTemplate() {
+    NotificationTemplateResourceTest templateTest = new NotificationTemplateResourceTest();
+    try {
+      return templateTest.getEntityByName("system-notification-entity-default", ADMIN_AUTH_HEADERS);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  @Test
+  void test_createSubscriptionWithUserTemplate(TestInfo test) throws IOException {
+    NotificationTemplateResourceTest templateTest = new NotificationTemplateResourceTest();
+    CreateNotificationTemplate createTemplate =
+        templateTest
+            .createRequest("user-template-" + test.getDisplayName())
+            .withTemplateBody("<div>Custom template content</div>");
+    NotificationTemplate userTemplate =
+        templateTest.createEntity(createTemplate, ADMIN_AUTH_HEADERS);
+
+    EntityReference templateRef =
+        new EntityReference().withId(userTemplate.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
+
+    CreateEventSubscription createSub =
+        createRequest("sub-with-template-" + test.getDisplayName())
+            .withNotificationTemplate(templateRef);
+    EventSubscription subscription = createEntity(createSub, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(subscription.getNotificationTemplate());
+    assertEquals(userTemplate.getId(), subscription.getNotificationTemplate().getId());
+
+    EventSubscription fetched = getEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(fetched.getNotificationTemplate());
+    assertEquals(userTemplate.getId(), fetched.getNotificationTemplate().getId());
+
+    deleteEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
+    templateTest.deleteEntity(userTemplate.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_createSubscriptionWithoutTemplate(TestInfo test) throws IOException {
+    CreateEventSubscription createSub =
+        createRequest("sub-without-template-" + test.getDisplayName());
+    EventSubscription subscription = createEntity(createSub, ADMIN_AUTH_HEADERS);
+
+    assertNull(subscription.getNotificationTemplate());
+
+    deleteEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_rejectSystemTemplateOnCreate(TestInfo test) throws IOException {
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "System template must exist for this test");
+    assertEquals(ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    EntityReference systemTemplateRef =
+        new EntityReference().withId(systemTemplate.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
+
+    CreateEventSubscription createSub =
+        createRequest("sub-system-template-" + test.getDisplayName())
+            .withNotificationTemplate(systemTemplateRef);
+
+    assertResponse(
+        () -> createEntity(createSub, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "System templates cannot be assigned to EventSubscriptions. Please use a USER template or create a custom one.");
+  }
+
+  @Test
+  void test_updateSubscriptionAddTemplate(TestInfo test) throws IOException {
+    CreateEventSubscription createSub = createRequest("sub-add-template-" + test.getDisplayName());
+    EventSubscription subscription = createEntity(createSub, ADMIN_AUTH_HEADERS);
+    assertNull(subscription.getNotificationTemplate());
+
+    NotificationTemplateResourceTest templateTest = new NotificationTemplateResourceTest();
+    CreateNotificationTemplate createTemplate =
+        templateTest
+            .createRequest("template-to-add-" + test.getDisplayName())
+            .withTemplateBody("<div>Added template</div>");
+    NotificationTemplate template = templateTest.createEntity(createTemplate, ADMIN_AUTH_HEADERS);
+
+    EntityReference templateRef =
+        new EntityReference().withId(template.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
+
+    EventSubscription updated =
+        updateEntity(createSub.withNotificationTemplate(templateRef), OK, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(updated.getNotificationTemplate());
+    assertEquals(template.getId(), updated.getNotificationTemplate().getId());
+
+    EventSubscription fetched = getEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(fetched.getNotificationTemplate());
+    assertEquals(template.getId(), fetched.getNotificationTemplate().getId());
+
+    deleteEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
+    templateTest.deleteEntity(template.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_updateSubscriptionChangeTemplate(TestInfo test) throws IOException {
+    NotificationTemplateResourceTest templateTest = new NotificationTemplateResourceTest();
+    CreateNotificationTemplate createTemplate1 =
+        templateTest
+            .createRequest("template1-" + test.getDisplayName())
+            .withTemplateBody("<div>Template 1</div>");
+    NotificationTemplate template1 = templateTest.createEntity(createTemplate1, ADMIN_AUTH_HEADERS);
+
+    CreateNotificationTemplate createTemplate2 =
+        templateTest
+            .createRequest("template2-" + test.getDisplayName())
+            .withTemplateBody("<div>Template 2</div>");
+    NotificationTemplate template2 = templateTest.createEntity(createTemplate2, ADMIN_AUTH_HEADERS);
+
+    EntityReference template1Ref =
+        new EntityReference().withId(template1.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
+
+    CreateEventSubscription createSub =
+        createRequest("sub-change-template-" + test.getDisplayName())
+            .withNotificationTemplate(template1Ref);
+    EventSubscription subscription = createEntity(createSub, ADMIN_AUTH_HEADERS);
+
+    assertEquals(template1.getId(), subscription.getNotificationTemplate().getId());
+
+    EntityReference template2Ref =
+        new EntityReference().withId(template2.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
+
+    EventSubscription updated =
+        updateEntity(createSub.withNotificationTemplate(template2Ref), OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(template2.getId(), updated.getNotificationTemplate().getId());
+
+    deleteEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
+    templateTest.deleteEntity(template1.getId(), ADMIN_AUTH_HEADERS);
+    templateTest.deleteEntity(template2.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_updateSubscriptionRemoveTemplate(TestInfo test) throws IOException {
+    NotificationTemplateResourceTest templateTest = new NotificationTemplateResourceTest();
+    CreateNotificationTemplate createTemplate =
+        templateTest
+            .createRequest("template-to-remove-" + test.getDisplayName())
+            .withTemplateBody("<div>Will be removed</div>");
+    NotificationTemplate template = templateTest.createEntity(createTemplate, ADMIN_AUTH_HEADERS);
+
+    EntityReference templateRef =
+        new EntityReference().withId(template.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
+
+    CreateEventSubscription createSub =
+        createRequest("sub-remove-template-" + test.getDisplayName())
+            .withNotificationTemplate(templateRef);
+    EventSubscription subscription = createEntity(createSub, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(subscription.getNotificationTemplate());
+
+    EventSubscription updated =
+        updateEntity(createSub.withNotificationTemplate(null), OK, ADMIN_AUTH_HEADERS);
+
+    assertNull(updated.getNotificationTemplate());
+
+    deleteEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
+    templateTest.deleteEntity(template.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_rejectSystemTemplateOnUpdate(TestInfo test) throws IOException {
+    CreateEventSubscription createSub = createRequest("sub-system-update-" + test.getDisplayName());
+    EventSubscription subscription = createEntity(createSub, ADMIN_AUTH_HEADERS);
+
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate);
+    assertEquals(ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    EntityReference systemTemplateRef =
+        new EntityReference().withId(systemTemplate.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
+
+    assertResponse(
+        () ->
+            updateEntity(
+                createSub.withNotificationTemplate(systemTemplateRef),
+                BAD_REQUEST,
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "System templates cannot be assigned to EventSubscriptions. Please use a USER template or create a custom one.");
+
+    deleteEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_deleteSubscriptionPreservesTemplate(TestInfo test) throws IOException {
+    NotificationTemplateResourceTest templateTest = new NotificationTemplateResourceTest();
+    CreateNotificationTemplate createTemplate =
+        templateTest
+            .createRequest("template-preserved-" + test.getDisplayName())
+            .withTemplateBody("<div>Should survive</div>");
+    NotificationTemplate template = templateTest.createEntity(createTemplate, ADMIN_AUTH_HEADERS);
+
+    EntityReference templateRef =
+        new EntityReference().withId(template.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
+
+    CreateEventSubscription createSub =
+        createRequest("sub-to-delete-" + test.getDisplayName())
+            .withNotificationTemplate(templateRef);
+    EventSubscription subscription = createEntity(createSub, ADMIN_AUTH_HEADERS);
+
+    deleteEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
+
+    NotificationTemplate templateAfterDelete =
+        templateTest.getEntity(template.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(templateAfterDelete, "Template should exist after subscription deletion");
+
+    Map<String, String> params = new HashMap<>();
+    params.put("notificationTemplate", template.getId().toString());
+    ResultList<EventSubscription> subscriptions = listEntities(params, ADMIN_AUTH_HEADERS);
+    assertTrue(subscriptions.getData().isEmpty(), "No subscriptions should reference template");
+
+    templateTest.deleteEntity(template.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_querySubscriptionsByTemplate(TestInfo test) throws IOException {
+    NotificationTemplateResourceTest templateTest = new NotificationTemplateResourceTest();
+    CreateNotificationTemplate createTemplate1 =
+        templateTest
+            .createRequest("query-template1-" + test.getDisplayName())
+            .withTemplateBody("<div>Template 1 for query</div>");
+    NotificationTemplate template1 = templateTest.createEntity(createTemplate1, ADMIN_AUTH_HEADERS);
+
+    CreateNotificationTemplate createTemplate2 =
+        templateTest
+            .createRequest("query-template2-" + test.getDisplayName())
+            .withTemplateBody("<div>Template 2 for query</div>");
+    NotificationTemplate template2 = templateTest.createEntity(createTemplate2, ADMIN_AUTH_HEADERS);
+
+    EntityReference template1Ref =
+        new EntityReference().withId(template1.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
+    EntityReference template2Ref =
+        new EntityReference().withId(template2.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
+
+    CreateEventSubscription createSub1 =
+        createRequest("query-sub1-" + test.getDisplayName()).withNotificationTemplate(template1Ref);
+    EventSubscription sub1 = createEntity(createSub1, ADMIN_AUTH_HEADERS);
+
+    CreateEventSubscription createSub2 =
+        createRequest("query-sub2-" + test.getDisplayName()).withNotificationTemplate(template1Ref);
+    EventSubscription sub2 = createEntity(createSub2, ADMIN_AUTH_HEADERS);
+
+    CreateEventSubscription createSub3 =
+        createRequest("query-sub3-" + test.getDisplayName()).withNotificationTemplate(template2Ref);
+    EventSubscription sub3 = createEntity(createSub3, ADMIN_AUTH_HEADERS);
+
+    CreateEventSubscription createSub4 = createRequest("query-sub4-" + test.getDisplayName());
+    EventSubscription sub4 = createEntity(createSub4, ADMIN_AUTH_HEADERS);
+
+    Map<String, String> params1 = new HashMap<>();
+    params1.put("notificationTemplate", template1.getId().toString());
+    ResultList<EventSubscription> results1 = listEntities(params1, ADMIN_AUTH_HEADERS);
+
+    assertEquals(2, results1.getData().size(), "Should find 2 subscriptions with template1");
+    assertTrue(
+        results1.getData().stream()
+            .allMatch(s -> s.getNotificationTemplate().getId().equals(template1.getId())),
+        "All results should have template1");
+
+    Map<String, String> params2 = new HashMap<>();
+    params2.put("notificationTemplate", template2.getId().toString());
+    ResultList<EventSubscription> results2 = listEntities(params2, ADMIN_AUTH_HEADERS);
+
+    assertEquals(1, results2.getData().size(), "Should find 1 subscription with template2");
+    assertEquals(template2.getId(), results2.getData().get(0).getNotificationTemplate().getId());
+
+    deleteEntity(sub1.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(sub2.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(sub3.getId(), ADMIN_AUTH_HEADERS);
+    deleteEntity(sub4.getId(), ADMIN_AUTH_HEADERS);
+    templateTest.deleteEntity(template1.getId(), ADMIN_AUTH_HEADERS);
+    templateTest.deleteEntity(template2.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  private void assertSqlInjectionAttempt(Map<String, String> params) throws IOException {
+    ResultList<EventSubscription> results = null;
+    try {
+      results = listEntities(params, ADMIN_AUTH_HEADERS);
+    } catch (HttpResponseException e) {
+      // SQL injection should not crash the server with a 500 error
+      assertTrue(e.getStatusCode() != 500, "SQL injection should not cause internal server error");
+      return;
+    }
+
+    // If no exception is thrown, malicious input must not expose any data
+    assertNotNull(results, "Malicious input should not produce null results");
+    assertTrue(
+        results.getData() == null || results.getData().isEmpty(),
+        "Malicious input should return empty results");
+  }
+
+  @Test
+  void test_parameterizedQueriesPreventSqlInjection(TestInfo test) throws IOException {
+    Map<String, String> sqlInjectionAttempts = new HashMap<>();
+    sqlInjectionAttempts.put("alertType", "Observability' OR '1'='1");
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
+
+    sqlInjectionAttempts.clear();
+    sqlInjectionAttempts.put("alertType", "Observability'--");
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
+
+    sqlInjectionAttempts.clear();
+    sqlInjectionAttempts.put("alertType", "' UNION SELECT * FROM user_entity--");
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
+
+    sqlInjectionAttempts.clear();
+    sqlInjectionAttempts.put(
+        "notificationTemplate", "00000000-0000-0000-0000-000000000000' OR '1'='1");
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
+
+    Map<String, String> validParams = new HashMap<>();
+    validParams.put("alertType", "Observability");
+    ResultList<EventSubscription> validResults = listEntities(validParams, ADMIN_AUTH_HEADERS);
+    assertNotNull(validResults, "Valid alertType should work correctly");
+  }
+
+  @Test
+  void post_createWithNullDestinationConfig_400() {
+    CreateEventSubscription request = createRequest("nullConfig");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.EMAIL);
+    request.setDestinations(List.of(destination));
+
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Destination configuration is required for Email type");
+  }
+
+  @Test
+  void post_createWithEmptyEmailReceivers_400() {
+    CreateEventSubscription request = createRequest("emptyReceivers");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.EMAIL);
+    destination.setConfig(new EmailAlertConfig());
+    request.setDestinations(List.of(destination));
+
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Email destination requires at least one email address in 'receivers'");
+  }
+
+  @Test
+  void post_createWithInvalidEmailFormat_400() {
+    CreateEventSubscription request = createRequest("invalidEmail");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.EMAIL);
+    EmailAlertConfig emailConfig =
+        new EmailAlertConfig().withReceivers(new HashSet<>(List.of("invalid-email")));
+    destination.setConfig(emailConfig);
+    request.setDestinations(List.of(destination));
+
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid email format: 'invalid-email'");
+  }
+
+  @Test
+  void post_createWithMissingWebhookEndpoint_400() {
+    CreateEventSubscription request = createRequest("missingEndpoint");
+    SubscriptionDestination destination = new SubscriptionDestination();
+    destination.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
+    destination.setType(SubscriptionDestination.SubscriptionType.WEBHOOK);
+    destination.setConfig(new Webhook());
+    request.setDestinations(List.of(destination));
+
+    assertResponse(
+        () -> createEntity(request, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Webhook destination requires an 'endpoint' URL");
   }
 }

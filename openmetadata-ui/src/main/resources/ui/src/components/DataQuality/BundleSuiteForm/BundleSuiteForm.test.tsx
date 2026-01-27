@@ -28,7 +28,10 @@ import {
   addIngestionPipeline,
   deployIngestionPipelineById,
 } from '../../../rest/ingestionPipelineAPI';
-import { createTestSuites } from '../../../rest/testAPI';
+import {
+  addTestCaseToLogicalTestSuite,
+  createTestSuites,
+} from '../../../rest/testAPI';
 import BundleSuiteForm from './BundleSuiteForm';
 import { BundleSuiteFormProps } from './BundleSuiteForm.interface';
 
@@ -119,8 +122,12 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
 
 // Mock API calls
 jest.mock('../../../rest/testAPI', () => ({
-  createTestSuites: jest.fn().mockResolvedValue(mockTestSuite),
-  addTestCaseToLogicalTestSuite: jest.fn().mockResolvedValue({}),
+  createTestSuites: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockTestSuite)),
+  addTestCaseToLogicalTestSuite: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({})),
   TestCaseType: {
     all: 'all',
     table: 'table',
@@ -596,7 +603,12 @@ describe('BundleSuiteForm Component', () => {
     });
 
     it('should handle form submission errors gracefully', async () => {
-      (createTestSuites as jest.Mock).mockRejectedValueOnce(
+      const mockCreateTestSuites = createTestSuites as jest.Mock;
+      const mockAddTestCaseToLogicalTestSuite =
+        addTestCaseToLogicalTestSuite as jest.Mock;
+
+      mockCreateTestSuites.mockRejectedValueOnce(new Error('API Error'));
+      mockAddTestCaseToLogicalTestSuite.mockRejectedValueOnce(
         new Error('API Error')
       );
 
@@ -622,6 +634,10 @@ describe('BundleSuiteForm Component', () => {
 
       await waitFor(() => {
         expect(mockProps.onSuccess).not.toHaveBeenCalled();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('alert-message')).toBeInTheDocument();
       });
     });
   });

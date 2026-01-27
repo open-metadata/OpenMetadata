@@ -1,0 +1,49 @@
+{
+  "id": "7f8c3e4d-5a6b-4c9d-8e7f-6a5b4c3d2e1f",
+  "name": "sample_chart",
+  "displayName": "Sample Chart",
+  "fullyQualifiedName": "sample-dashboard-service.sample_chart",
+  "description": "Mock chart for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "chartType": "Bar",
+  "sourceUrl": "/charts/sample_chart",
+  "href": "http://localhost:8585/api/v1/charts/7f8c3e4d-5a6b-4c9d-8e7f-6a5b4c3d2e1f",
+  "service": {
+    "id": "9e8d7c6b-5a4f-3e2d-1c0b-9a8f7e6d5c4b",
+    "type": "dashboardService",
+    "name": "sample-dashboard-service",
+    "fullyQualifiedName": "sample-dashboard-service",
+    "deleted": false,
+    "href": "http://localhost:8585/api/v1/services/dashboardServices/9e8d7c6b-5a4f-3e2d-1c0b-9a8f7e6d5c4b"
+  },
+  "serviceType": "Superset",
+  "dashboards": [
+    {
+      "id": "a1b2c3d4-1111-2222-3333-444444444444",
+      "type": "dashboard",
+      "name": "sample_dashboard",
+      "fullyQualifiedName": "sample-dashboard-service.sample_dashboard",
+      "displayName": "Sample Dashboard"
+    }
+  ],
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "domains": [
+    {
+      "id": "c3d4e5f6-7890-abcd-ef12-34567890abcd",
+      "type": "domain",
+      "name": "Engineering",
+      "fullyQualifiedName": "Engineering"
+    }
+  ],
+  "tags": []
+}

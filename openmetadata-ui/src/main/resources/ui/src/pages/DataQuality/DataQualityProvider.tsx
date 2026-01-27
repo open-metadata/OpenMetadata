@@ -56,7 +56,11 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Extract only filter-related parameters, excluding pagination
   const filterParams = useMemo(() => {
-    const { currentPage, pageSize, ...filters } = params;
+    const {
+      currentPage: _currentPage,
+      pageSize: _pageSize,
+      ...filters
+    } = params;
 
     return filters;
   }, [params]);
@@ -95,6 +99,8 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
       ownerFqn: params?.owner ? JSON.parse(params.owner)?.name : undefined,
       tier: params?.tier ? [params.tier] : undefined,
       entityFQN: params?.tableFqn,
+      startTs: params?.lastRunRange?.startTs,
+      endTs: params?.lastRunRange?.endTs,
     };
 
     setIsTestCaseSummaryLoading(true);

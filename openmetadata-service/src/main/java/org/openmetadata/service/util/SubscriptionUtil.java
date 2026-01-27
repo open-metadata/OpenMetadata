@@ -37,7 +37,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.SubscriptionAction;
@@ -166,11 +166,18 @@ public class SubscriptionUtil {
   }
 
   private static Set<String> getTaskAssignees(
+      SubscriptionAction action,
       SubscriptionDestination.SubscriptionCategory category,
       SubscriptionDestination.SubscriptionType type,
       ChangeEvent event) {
     Thread thread = AlertsRuleEvaluator.getThread(event);
     Set<String> receiversList = new HashSet<>();
+
+    if (category == SubscriptionDestination.SubscriptionCategory.EXTERNAL
+        && action.getReceivers() != null) {
+      receiversList.addAll(action.getReceivers());
+    }
+
     Map<UUID, Team> teams = new HashMap<>();
     Map<UUID, User> users = new HashMap<>();
     addMentionedUsersToNotifyIfRequired(users, teams, category, thread);
@@ -264,11 +271,18 @@ public class SubscriptionUtil {
   }
 
   public static Set<String> handleConversationNotification(
+      SubscriptionAction action,
       SubscriptionDestination.SubscriptionCategory category,
       SubscriptionDestination.SubscriptionType type,
       ChangeEvent event) {
     Thread thread = AlertsRuleEvaluator.getThread(event);
     Set<String> receiversList = new HashSet<>();
+
+    if (category == SubscriptionDestination.SubscriptionCategory.EXTERNAL
+        && action.getReceivers() != null) {
+      receiversList.addAll(action.getReceivers());
+    }
+
     Map<UUID, Team> teams = new HashMap<>();
     Map<UUID, User> users = new HashMap<>();
 
@@ -391,9 +405,9 @@ public class SubscriptionUtil {
     if (event.getEntityType().equals(THREAD)) {
       Thread thread = AlertsRuleEvaluator.getThread(event);
       switch (thread.getType()) {
-        case Task -> receiverUrls.addAll(getTaskAssignees(category, type, event));
+        case Task -> receiverUrls.addAll(getTaskAssignees(action, category, type, event));
         case Conversation -> receiverUrls.addAll(
-            handleConversationNotification(category, type, event));
+            handleConversationNotification(action, category, type, event));
           // TODO: For Announcement, Immediate Consumer needs to be Notified (find information from
           // Lineage)
         case Announcement -> {
@@ -603,9 +617,28 @@ public class SubscriptionUtil {
   }
 
   public static Client getClient(int connectTimeout, int readTimeout) {
+    // Cap timeouts to prevent runaway webhook destinations from exhausting resources
+    // Minimum 5 seconds to allow reasonable connection establishment
+    // Maximum 30 seconds for connect, 120 seconds for read to prevent indefinite waits
+    int effectiveConnectTimeout = Math.min(Math.max(connectTimeout, 5), 30);
+    int effectiveReadTimeout = Math.min(Math.max(readTimeout, 10), 120);
+
+    if (connectTimeout != effectiveConnectTimeout) {
+      LOG.debug(
+          "Connect timeout {} clamped to {} (valid range: 5-30 seconds)",
+          connectTimeout,
+          effectiveConnectTimeout);
+    }
+    if (readTimeout != effectiveReadTimeout) {
+      LOG.debug(
+          "Read timeout {} clamped to {} (valid range: 10-120 seconds)",
+          readTimeout,
+          effectiveReadTimeout);
+    }
+
     ClientBuilder clientBuilder = ClientBuilder.newBuilder();
-    clientBuilder.connectTimeout(connectTimeout, TimeUnit.SECONDS);
-    clientBuilder.readTimeout(readTimeout, TimeUnit.SECONDS);
+    clientBuilder.connectTimeout(effectiveConnectTimeout, TimeUnit.SECONDS);
+    clientBuilder.readTimeout(effectiveReadTimeout, TimeUnit.SECONDS);
     return clientBuilder.build();
   }
 

@@ -1,0 +1,31 @@
+{
+  "id": "4a3f2e1d-0c9b-8a7f-6e5d-4c3b2a1f0e9d",
+  "name": "sample-database-service",
+  "displayName": "Sample Database Service",
+  "fullyQualifiedName": "sample-database-service",
+  "description": "Mock database service for notification template testing",
+  "version": 1.0,
+  "updatedAt": 1699564800000,
+  "updatedBy": "admin",
+  "deleted": false,
+  "href": "http://localhost:8585/api/v1/services/databaseServices/4a3f2e1d-0c9b-8a7f-6e5d-4c3b2a1f0e9d",
+  "serviceType": "Postgres",
+  "connection": {
+    "config": {
+      "type": "Postgres",
+      "scheme": "postgresql+psycopg2",
+      "username": "openmetadata_user",
+      "hostPort": "localhost:5432",
+      "database": "sample_database"
+    }
+  },
+  "owners": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "type": "user",
+      "name": "john.doe",
+      "fullyQualifiedName": "john.doe"
+    }
+  ],
+  "tags": []
+}

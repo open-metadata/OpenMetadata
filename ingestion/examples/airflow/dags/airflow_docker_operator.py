@@ -50,7 +50,7 @@ workflowConfig:
 
 with models.DAG(
     "ingestion-docker-operator",
-    schedule_interval="@once",
+    schedule="@once",
     start_date=datetime(2021, 1, 1),
     catchup=False,
     tags=["OpenMetadata"],

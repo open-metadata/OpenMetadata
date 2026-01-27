@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -128,6 +128,10 @@ export interface Profile {
      */
     timestamp?: number;
     /**
+     * Cardinality distribution showing top categories with an 'Others' bucket.
+     */
+    cardinalityDistribution?: CardinalityDistribution;
+    /**
      * Number of values that contain distinct values.
      */
     distinctCount?: number;
@@ -244,6 +248,29 @@ export interface Profile {
      */
     rowsAffected?: number;
     [property: string]: any;
+}
+
+/**
+ * Cardinality distribution showing top categories with an 'Others' bucket.
+ */
+export interface CardinalityDistribution {
+    /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
+     * List of category names including 'Others'.
+     */
+    categories?: string[];
+    /**
+     * List of counts corresponding to each category.
+     */
+    counts?: number[];
+    /**
+     * List of percentages corresponding to each category.
+     */
+    percentages?: number[];
 }
 
 /**

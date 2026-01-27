@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import {
   act,
   cleanup,
@@ -21,6 +19,7 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
+import '../../../../../test/unit/mocks/mui.mock';
 import ColumnProfileTable from './ColumnProfileTable';
 
 jest.mock('../../../../common/Table/Table', () =>

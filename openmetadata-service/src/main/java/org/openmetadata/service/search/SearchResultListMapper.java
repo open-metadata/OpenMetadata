@@ -9,6 +9,7 @@ public class SearchResultListMapper {
   public List<Map<String, Object>> results;
   public long total;
   public Object[] lastHitSortValues;
+  public Object[] lastDocumentsInBatch;
 
   public SearchResultListMapper(List<Map<String, Object>> results, long total) {
     this.results = results;
@@ -20,5 +21,16 @@ public class SearchResultListMapper {
     this.results = results;
     this.total = total;
     this.lastHitSortValues = lastHitSortValues;
+  }
+
+  public SearchResultListMapper(
+      List<Map<String, Object>> results,
+      long total,
+      Object[] lastHitSortValues,
+      Object[] lastDocumentsInBatch) {
+    this.results = results;
+    this.total = total;
+    this.lastHitSortValues = lastHitSortValues;
+    this.lastDocumentsInBatch = lastDocumentsInBatch;
   }
 }

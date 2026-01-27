@@ -67,7 +67,7 @@ describe('AccessTokenCard Component', () => {
   it('should render initial state with AuthMechanism', async () => {
     render(<AccessTokenCard isBot={false} />);
 
-    expect(screen.getByText('AuthMechanism')).toBeInTheDocument();
+    expect(await screen.findByText('AuthMechanism')).toBeInTheDocument();
   });
 
   it('should render AuthMechanism when isAuthMechanismEdit is false', async () => {
@@ -98,17 +98,17 @@ describe('AccessTokenCard Component', () => {
 
   it('should call onCancel when Cancel button is clicked', async () => {
     await render(<AccessTokenCard isBot={false} />);
-    const isModalClose = await screen.getByTestId('closed-confirmation-modal');
+    const isModalClose = await screen.findByTestId('closed-confirmation-modal');
 
     expect(isModalClose).toBeInTheDocument();
 
-    const openModalButton = await screen.getByTestId('open-modal-button');
+    const openModalButton = await screen.findByTestId('open-modal-button');
     await act(async () => {
       fireEvent.click(openModalButton);
     });
-    const cancelButton = await screen.getByTestId('cancel-button');
+    const cancelButton = await screen.findByTestId('cancel-button');
     fireEvent.click(cancelButton);
-    const closedModal = await screen.getByTestId('closed-confirmation-modal');
+    const closedModal = await screen.findByTestId('closed-confirmation-modal');
 
     expect(closedModal).toBeInTheDocument();
   });

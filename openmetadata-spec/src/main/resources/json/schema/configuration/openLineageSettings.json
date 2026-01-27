@@ -1,0 +1,42 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/openLineageSettings.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenLineageSettings",
+  "description": "Settings for OpenLineage HTTP API integration. Configure how OpenMetadata receives and processes lineage events from external systems like Spark, Airflow, and Flink.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.OpenLineageSettings",
+  "properties": {
+    "enabled": {
+      "description": "Enable or disable the OpenLineage HTTP API endpoint.",
+      "type": "boolean",
+      "default": true
+    },
+    "autoCreateEntities": {
+      "description": "Automatically create Table and Pipeline entities when they are referenced in OpenLineage events but don't exist in OpenMetadata.",
+      "type": "boolean",
+      "default": true
+    },
+    "eventTypeFilter": {
+      "description": "List of OpenLineage event types to process. Only events matching these types will create lineage. Default is to only process COMPLETE events.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "javaType": "org.openmetadata.schema.configuration.OpenLineageEventType",
+        "enum": ["START", "RUNNING", "COMPLETE", "ABORT", "FAIL", "OTHER"]
+      }
+    },
+    "defaultPipelineService": {
+      "description": "Name of the Pipeline Service to use when auto-creating Pipeline entities from OpenLineage jobs. This service must exist in OpenMetadata.",
+      "type": "string",
+      "default": "openlineage"
+    },
+    "namespaceToServiceMapping": {
+      "description": "Mapping of OpenLineage dataset namespaces to OpenMetadata Database Service names. Used to resolve dataset references to existing tables. Example: 'postgresql://prod-db:5432' -> 'prod-postgres'",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

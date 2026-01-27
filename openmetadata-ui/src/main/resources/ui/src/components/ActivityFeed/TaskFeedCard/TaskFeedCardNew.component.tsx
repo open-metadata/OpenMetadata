@@ -28,7 +28,6 @@ import {
   Thread,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
   formatDateTime,
   getRelativeTime,
@@ -47,6 +46,7 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import DescriptionTaskNew from '../../../pages/TasksPage/shared/DescriptionTaskNew';
 import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
 import { updateTask } from '../../../rest/feedsAPI';
+import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
 import {
@@ -127,39 +127,51 @@ const TaskFeedCard = ({
     setActiveThread(feed);
   };
 
-  const taskLinkTitleElement = useMemo(
-    () =>
-      isEntityDetailsAvailable && !isUndefined(taskDetails) ? (
-        <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-          <Button
-            className="p-0 task-feed-header"
-            data-testid="redirect-task-button-link"
-            type="link"
-            onClick={handleTaskLinkClick}>
-            <Typography.Text className="m-r-xss task-details-id">{`#${taskDetails.id} `}</Typography.Text>
+  const taskLinkTitleElement = useMemo(() => {
+    const isRecognizerFeedback =
+      taskDetails?.type === TaskType.RecognizerFeedbackApproval;
+    const entityName = getNameFromFQN(
+      isRecognizerFeedback ? taskDetails?.feedback?.tagFQN ?? '' : entityFQN
+    );
 
-            <Typography.Text className="m-r-xss  m-r-xss task-details-entity-link">
-              {TASK_TYPES[taskDetails.type]}
-            </Typography.Text>
+    return isEntityDetailsAvailable && !isUndefined(taskDetails) ? (
+      <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+        <Button
+          className="p-0 task-feed-header"
+          data-testid="redirect-task-button-link"
+          type="link"
+          onClick={handleTaskLinkClick}>
+          <Typography.Text className="m-r-xss task-details-id">{`#${taskDetails.id} `}</Typography.Text>
 
-            {taskColumnName}
+          <Typography.Text className="m-r-xss  m-r-xss task-details-entity-link">
+            {isRecognizerFeedback && entityName
+              ? `${t(TASK_TYPES[taskDetails.type])}: ${entityName}`
+              : t(TASK_TYPES[taskDetails.type])}
+          </Typography.Text>
 
+          {!isRecognizerFeedback && taskColumnName}
+
+          {!isRecognizerFeedback && (
             <Typography.Text
               className="break-all header-link text-sm"
               data-testid="entity-link">
-              {getNameFromFQN(entityFQN)}
+              {entityName}
             </Typography.Text>
+          )}
 
+          {!isRecognizerFeedback && (
             <Typography.Text className="p-l-xss text-sm entity-type">{`(${entityType})`}</Typography.Text>
-          </Button>
-        </EntityPopOverCard>
-      ) : null,
-    [isEntityDetailsAvailable, entityFQN, entityType, taskDetails]
-  );
+          )}
+        </Button>
+      </EntityPopOverCard>
+    ) : null;
+  }, [isEntityDetailsAvailable, entityFQN, entityType, taskDetails, t]);
 
   const isTaskTestCaseResult =
     taskDetails?.type === TaskType.RequestTestCaseFailureResolution;
   const isTaskGlossaryApproval = taskDetails?.type === TaskType.RequestApproval;
+  const isTaskRecognizerFeedbackApproval =
+    taskDetails?.type === TaskType.RecognizerFeedbackApproval;
 
   const updateTaskData = (data: TaskDetails | ResolveTask) => {
     if (!taskDetails?.id) {
@@ -176,7 +188,11 @@ const TaskFeedCard = ({
       );
   };
   const onTaskResolve = () => {
-    if (!isTaskGlossaryApproval && isEmpty(taskDetails?.suggestion)) {
+    if (
+      !isTaskGlossaryApproval &&
+      !isTaskRecognizerFeedbackApproval &&
+      isEmpty(taskDetails?.suggestion)
+    ) {
       showErrorToast(
         t('message.field-text-is-required', {
           fieldText: isTaskTags
@@ -194,16 +210,17 @@ const TaskFeedCard = ({
 
       updateTaskData(tagsData as TaskDetails);
     } else {
-      const newValue = isTaskGlossaryApproval
-        ? 'approved'
-        : taskDetails?.suggestion;
+      const newValue =
+        isTaskGlossaryApproval || isTaskRecognizerFeedbackApproval
+          ? 'approved'
+          : taskDetails?.suggestion;
       const data = { newValue: newValue };
       updateTaskData(data as TaskDetails);
     }
   };
   const onTaskReject = () => {
     const updatedComment = 'Rejected';
-    if (isTaskGlossaryApproval) {
+    if (isTaskGlossaryApproval || isTaskRecognizerFeedbackApproval) {
       const data = { newValue: 'Rejected' };
       updateTaskData(data as TaskDetails);
 
@@ -233,7 +250,9 @@ const TaskFeedCard = ({
     assignee.type === 'team' ? checkIfUserPartOfTeam(assignee.id) : false
   );
   const hasEditAccess =
-    (isAdminUser && !isTaskGlossaryApproval) ||
+    (isAdminUser &&
+      !isTaskGlossaryApproval &&
+      !isTaskRecognizerFeedbackApproval) ||
     isAssignee ||
     (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
@@ -359,8 +378,6 @@ const TaskFeedCard = ({
                       : ''
                   }`}>
                   <OwnerLabel
-                    isAssignee
-                    avatarSize={24}
                     isCompactView={false}
                     owners={feed?.task?.assignees}
                     showLabel={false}

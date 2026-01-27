@@ -22,12 +22,18 @@
     },
     "username": {
       "title": "Username",
-      "description": "Username to connect to Metabase. This user should have privileges to read all the metadata in Metabase.",
+      "description": "Username to connect to Metabase. Required for basic authentication.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "Password to connect to Metabase.",
+      "description": "Password to connect to Metabase. Required for basic authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "apiKey": {
+      "title": "API Token",
+      "description": "API token to connect to Metabase. Use this instead of username/password for token-based authentication.",
       "type": "string",
       "format": "password"
     },
@@ -64,5 +70,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username"]
+  "required": ["hostPort"]
 }

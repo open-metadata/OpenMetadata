@@ -9,6 +9,7 @@ import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import java.security.KeyStoreException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -19,6 +20,9 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.net.ssl.SSLContext;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.http.HttpHost;
 import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
@@ -34,6 +38,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.SSLUtil;
 
+@Slf4j
 public final class SearchUtils {
   public static final String GRAPH_AGGREGATION = "matchesPerKey";
   public static final String DOWNSTREAM_NODE_KEY = "upstreamLineage.fromEntity.fqnHash.keyword";
@@ -131,6 +136,68 @@ public final class SearchUtils {
             elasticSearchConfiguration.getTruststorePassword(),
             "ElasticSearch")
         : null;
+  }
+
+  /**
+   * Builds an array of HttpHost objects from the ElasticSearch configuration. Supports single host
+   * or comma-separated list of hosts with optional ports.
+   *
+   * @param esConfig the ElasticSearch configuration
+   * @param searchType the type of search engine (for logging purposes, e.g., "OpenSearch" or
+   *     "Elasticsearch")
+   * @return array of HttpHost objects
+   * @throws IllegalArgumentException if host configuration is missing or invalid
+   */
+  public static HttpHost[] buildHttpHosts(ElasticSearchConfiguration esConfig, String searchType) {
+    List<HttpHost> hosts = new ArrayList<>();
+    String scheme = esConfig.getScheme();
+    int defaultPort = esConfig.getPort() != null ? esConfig.getPort() : 9200;
+
+    if (StringUtils.isNotEmpty(esConfig.getHost())) {
+      String hostConfig = esConfig.getHost();
+      if (hostConfig.contains(",")) {
+        for (String hostEntry : hostConfig.split(",")) {
+          hostEntry = hostEntry.trim();
+          HttpHost httpHost = parseHostEntry(hostEntry, defaultPort, scheme, searchType);
+          hosts.add(httpHost);
+        }
+        LOG.info("Configured {} with {} hosts", searchType, hosts.size());
+      } else {
+        HttpHost httpHost = parseHostEntry(hostConfig, defaultPort, scheme, searchType);
+        hosts.add(httpHost);
+        LOG.info(
+            "Configured {} with single host: {}:{}",
+            searchType,
+            httpHost.getHostName(),
+            httpHost.getPort());
+      }
+    } else {
+      throw new IllegalArgumentException(
+          String.format("'host' must be provided in %s configuration", searchType));
+    }
+
+    return hosts.toArray(new HttpHost[0]);
+  }
+
+  private static HttpHost parseHostEntry(
+      String hostEntry, int defaultPort, String scheme, String searchType) {
+    String[] parts = hostEntry.split(":");
+    String host = parts[0].trim();
+    int port = defaultPort;
+
+    if (parts.length > 1) {
+      String portStr = parts[1].trim();
+      try {
+        port = Integer.parseInt(portStr);
+      } catch (NumberFormatException e) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid port '%s' for host '%s' in %s configuration. Port must be a valid integer.",
+                portStr, host, searchType));
+      }
+    }
+
+    return new HttpHost(host, port, scheme);
   }
 
   public static boolean isConnectedVia(String entityType) {

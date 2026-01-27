@@ -20,7 +20,7 @@ import ApplicationPage from './ApplicationPage';
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate()),
 }));
 
 jest.mock(

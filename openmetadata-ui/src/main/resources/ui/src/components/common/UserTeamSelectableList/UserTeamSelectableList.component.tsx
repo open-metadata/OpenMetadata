@@ -26,7 +26,7 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
-import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import {
   formatTeamsResponse,
   formatUsersResponse,
@@ -36,6 +36,7 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
@@ -97,26 +98,26 @@ export const UserTeamSelectableList = ({
   const fetchUserOptions = async (searchText: string, after?: string) => {
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
     try {
-      const res = await searchData(
-        searchText,
-        afterPage,
-        PAGE_SIZE_MEDIUM,
-        'isBot:false',
-        'displayName.keyword',
-        'asc',
-        SearchIndex.USER
-      );
+      const res = await searchQuery({
+        query: searchText,
+        pageNumber: afterPage,
+        pageSize: PAGE_SIZE_MEDIUM,
+        queryFilter: getTermQuery({ isBot: 'false' }),
+        sortField: 'displayName.keyword',
+        sortOrder: 'asc',
+        searchIndex: SearchIndex.USER,
+      });
 
       const data = getEntityReferenceListFromEntities(
-        formatUsersResponse(res.data.hits.hits),
+        formatUsersResponse(res.hits.hits),
         EntityType.USER
       );
-      setCount((pre) => ({ ...pre, user: res.data.hits.total.value }));
+      setCount((pre) => ({ ...pre, user: res.hits.total.value }));
 
       return {
         data,
         paging: {
-          total: res.data.hits.total.value,
+          total: res.hits.total.value,
           after: toString(afterPage + 1),
         },
       };
@@ -129,27 +130,29 @@ export const UserTeamSelectableList = ({
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
 
     try {
-      const res = await searchData(
-        searchText || '',
-        afterPage,
-        PAGE_SIZE_MEDIUM,
-        'teamType:Group',
-        'displayName.keyword',
-        'asc',
-        SearchIndex.TEAM
-      );
+      const res = await searchQuery({
+        query: searchText || '',
+        pageNumber: afterPage,
+        pageSize: PAGE_SIZE_MEDIUM,
+        queryFilter: getTermQuery({}, 'must', undefined, {
+          matchTerms: { teamType: 'Group' },
+        }),
+        sortField: 'displayName.keyword',
+        sortOrder: 'asc',
+        searchIndex: SearchIndex.TEAM,
+      });
 
       const data = getEntityReferenceListFromEntities(
-        formatTeamsResponse(res.data.hits.hits),
+        formatTeamsResponse(res.hits.hits),
         EntityType.TEAM
       );
 
-      setCount((pre) => ({ ...pre, team: res.data.hits.total.value }));
+      setCount((pre) => ({ ...pre, team: res.hits.total.value }));
 
       return {
         data,
         paging: {
-          total: res.data.hits.total.value,
+          total: res.hits.total.value,
           after: toString(afterPage + 1),
         },
       };
@@ -158,9 +161,31 @@ export const UserTeamSelectableList = ({
     }
   };
 
+  const getOwnerItemBasedOnTab = (updateItems: EntityReference[]) => {
+    const currentTabType =
+      activeTab === 'users' ? EntityType.USER : EntityType.TEAM;
+    const otherTabType =
+      activeTab === 'users' ? EntityType.TEAM : EntityType.USER;
+
+    const itemsFromOtherTab = selectedUsers.filter(
+      (item) => item.type === otherTabType
+    );
+    const itemsFromCurrentTab = updateItems.filter(
+      (item) => item.type === currentTabType
+    );
+
+    return { itemsFromOtherTab, itemsFromCurrentTab };
+  };
+
   const handleUpdate = async (updateItems: EntityReference[]) => {
     let updateData: EntityReference[] = [];
-    if (!isEmpty(updateItems)) {
+
+    if (isMultiUser && isMultiTeam) {
+      const { itemsFromOtherTab, itemsFromCurrentTab } =
+        getOwnerItemBasedOnTab(updateItems);
+
+      updateData = [...itemsFromOtherTab, ...itemsFromCurrentTab];
+    } else if (!isEmpty(updateItems)) {
       updateData = updateItems;
     }
 
@@ -173,30 +198,28 @@ export const UserTeamSelectableList = ({
 
   // Fetch and store count for Users tab
   const getUserCount = async () => {
-    const res = await searchData(
-      '',
-      1,
-      0,
-      'isBot:false',
-      '',
-      '',
-      SearchIndex.USER
-    );
+    const res = await searchQuery({
+      query: '',
+      pageNumber: 1,
+      pageSize: 0,
+      queryFilter: getTermQuery({ isBot: 'false' }),
+      searchIndex: SearchIndex.USER,
+    });
 
-    setCount((pre) => ({ ...pre, user: res.data.hits.total.value }));
+    setCount((pre) => ({ ...pre, user: res.hits.total.value }));
   };
   const getTeamCount = async () => {
-    const res = await searchData(
-      '',
-      1,
-      0,
-      'teamType:Group',
-      '',
-      '',
-      SearchIndex.TEAM
-    );
+    const res = await searchQuery({
+      query: '',
+      pageNumber: 1,
+      pageSize: 0,
+      queryFilter: getTermQuery({}, 'must', undefined, {
+        matchTerms: { teamType: 'Group' },
+      }),
+      searchIndex: SearchIndex.TEAM,
+    });
 
-    setCount((pre) => ({ ...pre, team: res.data.hits.total.value }));
+    setCount((pre) => ({ ...pre, team: res.hits.total.value }));
   };
 
   const init = async () => {
@@ -242,7 +265,14 @@ export const UserTeamSelectableList = ({
   };
 
   const handleChange = (selectedItems: EntityReference[]) => {
-    setSelectedUsers(selectedItems);
+    if (isMultiUser && isMultiTeam) {
+      const { itemsFromOtherTab, itemsFromCurrentTab } =
+        getOwnerItemBasedOnTab(selectedItems);
+
+      setSelectedUsers([...itemsFromOtherTab, ...itemsFromCurrentTab]);
+    } else {
+      setSelectedUsers(selectedItems);
+    }
   };
 
   useEffect(() => {
@@ -315,7 +345,7 @@ export const UserTeamSelectableList = ({
                     })}
                     selectedItems={defaultTeams}
                     onCancel={handleCancelSelectableList}
-                    onChange={handleChange}
+                    onChange={isMultiTeam ? handleChange : noop}
                     onUpdate={handleUpdate}
                   />
                 ),
@@ -339,7 +369,7 @@ export const UserTeamSelectableList = ({
                     })}
                     selectedItems={defaultUsers}
                     onCancel={handleCancelSelectableList}
-                    onChange={isMultiUser ? noop : handleChange}
+                    onChange={isMultiUser ? handleChange : noop}
                     onUpdate={handleUpdate}
                   />
                 ),

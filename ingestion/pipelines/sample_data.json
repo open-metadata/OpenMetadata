@@ -15,7 +15,12 @@
   },
   "sink": {
     "type": "metadata-rest",
-    "config": {}
+    "config": {
+      "api_endpoint": null,
+      "bulk_sink_batch_size": 1,
+      "enable_async_pipeline": false,
+      "async_pipeline_workers": 2
+    }
   },
   "workflowConfig": {
     "openMetadataServerConfig": {

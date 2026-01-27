@@ -17,7 +17,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -48,6 +48,7 @@ import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -68,9 +69,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public void setFullyQualifiedName(DashboardDataModel dashboardDataModel) {
+    // Use getFullyQualifiedName() instead of getName() to properly handle service names with dots
+    // Service FQN is already properly quoted (e.g., "service.with.dots" for names containing dots)
+    String serviceFqn = dashboardDataModel.getService().getFullyQualifiedName();
     dashboardDataModel.setFullyQualifiedName(
-        FullyQualifiedName.add(
-            dashboardDataModel.getService().getName() + ".model", dashboardDataModel.getName()));
+        FullyQualifiedName.add(serviceFqn + ".model", dashboardDataModel.getName()));
     ColumnUtil.setColumnFQN(
         dashboardDataModel.getFullyQualifiedName(), dashboardDataModel.getColumns());
   }
@@ -165,18 +168,41 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public void setFields(DashboardDataModel dashboardDataModel, Fields fields) {
+  public void setFields(
+      DashboardDataModel dashboardDataModel, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(dashboardDataModel);
     populateEntityFieldTags(
         entityType,
         dashboardDataModel.getColumns(),
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
+    if (fields.contains("columns") && fields.contains("extension")) {
+      if (dashboardDataModel.getColumns() != null) {
+        for (Column column : dashboardDataModel.getColumns()) {
+          column.setExtension(
+              getColumnExtension(dashboardDataModel.getId(), column.getFullyQualifiedName()));
+        }
+      }
+    }
   }
 
   private void setDefaultFields(DashboardDataModel dashboardDataModel) {
     EntityReference service = getContainer(dashboardDataModel.getId());
     dashboardDataModel.withService(service);
+  }
+
+  private Object getColumnExtension(UUID dataModelId, String columnFQN) {
+    try {
+      String extensionKey = FullyQualifiedName.buildHash(columnFQN);
+      String extensionJson =
+          daoCollection.entityExtensionDAO().getExtension(dataModelId, extensionKey);
+      if (extensionJson != null) {
+        return JsonUtils.readValue(extensionJson, Object.class);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to get extension for column {}: {}", columnFQN, e.getMessage());
+    }
+    return null;
   }
 
   // Individual field fetchers registered in constructor
@@ -191,7 +217,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
     for (DashboardDataModel dataModel : dataModels) {
       dataModel.setTags(
-          addDerivedTags(
+          addDerivedTagsGracefully(
               tagsMap.getOrDefault(dataModel.getFullyQualifiedName(), Collections.emptyList())));
     }
 
@@ -276,6 +302,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       DatabaseUtil.validateColumns(original.getColumns());
       updateColumns("columns", original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
       recordChange("sql", original.getSql(), updated.getSql());
     }
@@ -316,6 +343,12 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (fieldsParam != null && fieldsParam.contains("tags")) {
       populateEntityFieldTags(
           entityType, paginatedColumns, dataModel.getFullyQualifiedName(), true);
+    }
+
+    if (fieldsParam != null && fieldsParam.contains("extension")) {
+      for (Column column : paginatedColumns) {
+        column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
+      }
     }
 
     // Calculate pagination metadata

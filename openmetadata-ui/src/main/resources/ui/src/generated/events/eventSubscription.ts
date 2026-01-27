@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -82,6 +82,11 @@ export interface EventSubscription {
      * Name that uniquely identifies this Event Subscription.
      */
     name: string;
+    /**
+     * Optional custom notification template for this subscription. When not set, system default
+     * template will be used. Only USER templates can be assigned.
+     */
+    notificationTemplate?: EntityReference;
     /**
      * Owners of this Event Subscription.
      */
@@ -431,6 +436,9 @@ export enum SubscriptionType {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Optional custom notification template for this subscription. When not set, system default
+ * template will be used. Only USER templates can be assigned.
  */
 export interface EntityReference {
     /**

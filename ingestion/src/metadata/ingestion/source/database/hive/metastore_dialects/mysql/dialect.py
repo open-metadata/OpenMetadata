@@ -54,33 +54,28 @@ class HiveMysqlMetaStoreDialect(HiveMetaStoreDialectMixin, MySQLDialect_pymysql)
             else ""
         )
 
+        # Rewritten to avoid CTE syntax for MySQL < 8.0 compatibility
+        # Using direct UNION ALL of subqueries instead of WITH clause
         query = f"""
-            WITH regular_columns AS (
-                SELECT 
-                    col.COLUMN_NAME,
-                    col.TYPE_NAME, 
-                    col.COMMENT
-                FROM COLUMNS_V2 col
-                JOIN CDS cds ON col.CD_ID = cds.CD_ID
-                JOIN SDS sds ON sds.CD_ID = cds.CD_ID
-                JOIN TBLS tbsl ON sds.SD_ID = tbsl.SD_ID
-                    AND tbsl.TBL_NAME = '{table_name}'
-                            {schema_join}
-                        ),
-                        partition_columns AS (
-                SELECT 
-                    pk.PKEY_NAME as COLUMN_NAME,
-                    pk.PKEY_TYPE as TYPE_NAME,
-                    pk.PKEY_COMMENT as COMMENT
-                FROM PARTITION_KEYS pk
-                JOIN TBLS tbsl ON pk.TBL_ID = tbsl.TBL_ID
-                    AND tbsl.TBL_NAME = '{table_name}'
-                {schema_join}
-            )
-            -- Combine regular and partition columns
-            SELECT * FROM regular_columns
+            SELECT 
+                col.COLUMN_NAME,
+                col.TYPE_NAME, 
+                col.COMMENT
+            FROM COLUMNS_V2 col
+            JOIN CDS cds ON col.CD_ID = cds.CD_ID
+            JOIN SDS sds ON sds.CD_ID = cds.CD_ID
+            JOIN TBLS tbsl ON sds.SD_ID = tbsl.SD_ID
+                AND tbsl.TBL_NAME = '{table_name}'
+            {schema_join}
             UNION ALL
-            SELECT * FROM partition_columns
+            SELECT 
+                pk.PKEY_NAME as COLUMN_NAME,
+                pk.PKEY_TYPE as TYPE_NAME,
+                pk.PKEY_COMMENT as COMMENT
+            FROM PARTITION_KEYS pk
+            JOIN TBLS tbsl ON pk.TBL_ID = tbsl.TBL_ID
+                AND tbsl.TBL_NAME = '{table_name}'
+            {schema_join}
         """
 
         return connection.execute(query).fetchall()

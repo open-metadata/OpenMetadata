@@ -33,6 +33,7 @@ from metadata.profiler.interface.pandas.profiler_interface import (
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
+from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
@@ -158,7 +159,13 @@ class DatalakeSampleTest(TestCase):
         """
         with (
             patch.object(
-                DatalakeSampler, "raw_dataset", new_callable=lambda: [cls.df1, cls.df2]
+                DatalakeSampler,
+                "get_dataframes",
+                return_value=DatalakeColumnWrapper(
+                    dataframes=lambda: iter([cls.df1, cls.df2]),
+                    columns=None,
+                    raw_data=None,
+                ),
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
@@ -189,8 +196,12 @@ class DatalakeSampleTest(TestCase):
         with (
             patch.object(
                 DatalakeSampler,
-                "raw_dataset",
-                new_callable=lambda: [self.df1, self.df2],
+                "get_dataframes",
+                return_value=DatalakeColumnWrapper(
+                    dataframes=lambda: iter([self.df1, self.df2]),
+                    columns=None,
+                    raw_data=None,
+                ),
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
@@ -201,7 +212,7 @@ class DatalakeSampleTest(TestCase):
                 sample_config=SampleConfig(profileSample=50.0),
             )
             random_sample = sampler.get_dataset()
-            res = sum(len(r) for r in random_sample)
+            res = sum(len(r) for r in random_sample())
             assert res < 5
 
     @mock.patch(
@@ -212,10 +223,6 @@ class DatalakeSampleTest(TestCase):
         "metadata.sampler.sampler_interface.get_ssl_connection",
         return_value=FakeConnection(),
     )
-    @mock.patch(
-        "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
-        return_value=[df1, pd.concat([df2, pd.DataFrame(index=df1.index)])],
-    )
     def test_sample_property(self, *_):
         """
         Sample property should be properly generated
@@ -223,8 +230,12 @@ class DatalakeSampleTest(TestCase):
         with (
             patch.object(
                 DatalakeSampler,
-                "raw_dataset",
-                new_callable=lambda: [self.df1, self.df2],
+                "get_dataframes",
+                return_value=DatalakeColumnWrapper(
+                    dataframes=lambda: iter([self.df1, self.df2]),
+                    columns=None,
+                    raw_data=None,
+                ),
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
@@ -244,7 +255,7 @@ class DatalakeSampleTest(TestCase):
             )
 
             random_sample = datalake_profiler_interface.sampler.get_dataset()
-            res = sum(len(r) for r in random_sample)
+            res = sum(len(r) for r in random_sample())
             assert res < 5
 
     def test_table_row_count(self):
@@ -300,8 +311,12 @@ class DatalakeSampleTest(TestCase):
         with (
             patch.object(
                 DatalakeSampler,
-                "raw_dataset",
-                new_callable=lambda: [self.df1, self.df2],
+                "get_dataframes",
+                return_value=DatalakeColumnWrapper(
+                    dataframes=lambda: iter([self.df1, self.df2]),
+                    columns=None,
+                    raw_data=None,
+                ),
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
@@ -328,8 +343,12 @@ class DatalakeSampleTest(TestCase):
         with (
             patch.object(
                 DatalakeSampler,
-                "raw_dataset",
-                new_callable=lambda: [self.df1, self.df2],
+                "get_dataframes",
+                return_value=DatalakeColumnWrapper(
+                    dataframes=lambda: iter([self.df1, self.df2]),
+                    columns=None,
+                    raw_data=None,
+                ),
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):

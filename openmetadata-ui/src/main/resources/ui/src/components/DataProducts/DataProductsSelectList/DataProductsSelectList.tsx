@@ -12,7 +12,7 @@
  */
 import { Button, Select, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { debounce } from 'lodash';
+import { debounce, isString } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
@@ -150,27 +150,31 @@ const DataProductsSelectList = ({
     </>
   );
 
-  const onSelectChange = (value: string[]) => {
-    const entityObj = value.reduce((result: DataProduct[], item) => {
-      const option = options.find((option) => option.label === item);
-      if (option) {
-        result.push(option.value);
-      } else {
-        result.push({
-          fullyQualifiedName: item,
-          name: item,
-          type: EntityType.DATA_PRODUCT,
-        } as unknown as DataProduct);
-      }
+  const onSelectChange = (value: string | string[]) => {
+    const entityObj = (isString(value) ? [value] : value).reduce(
+      (result: DataProduct[], item) => {
+        const option = options.find((option) => option.label === item);
+        if (option) {
+          result.push(option.value);
+        } else {
+          result.push({
+            fullyQualifiedName: item,
+            name: item,
+            type: EntityType.DATA_PRODUCT,
+          } as unknown as DataProduct);
+        }
 
-      return result;
-    }, []);
+        return result;
+      },
+      []
+    );
 
     setSelectedValue(entityObj as DataProduct[]);
   };
 
   return (
     <Select
+      allowClear
       autoFocus
       showSearch
       className="w-full"

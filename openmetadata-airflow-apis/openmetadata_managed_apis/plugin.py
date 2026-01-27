@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 from airflow.plugins_manager import AirflowPlugin
-from airflow.www.app import cached_app
 from flask import Blueprint
 from openmetadata_managed_apis.api.app import get_blueprint
 from openmetadata_managed_apis.api.config import PLUGIN_NAME
@@ -26,21 +25,34 @@ template_blueprint = Blueprint(
     template_folder="views/templates",
 )
 
-with cached_app().app_context():
-    # Import REST API blueprint
+# Import REST API blueprint
+# In Airflow 2.x, we need cached_app context
+# In Airflow 3.x, cached_app doesn't exist, so we import directly
+try:
+    from airflow.www.app import cached_app
+
+    with cached_app().app_context():
+        api_blueprint = get_blueprint()
+except (ImportError, ModuleNotFoundError):
+    # Airflow 3.x - no cached_app needed
     api_blueprint = get_blueprint()
 
 
 class RestApiPlugin(AirflowPlugin):
     """
     Creating the RestApiPlugin which extends the AirflowPlugin to import it into Airflow
+
+    Uses Flask Blueprints for both Airflow 2.x and 3.x.
+    In Airflow 3.x, Flask blueprints are served through WSGI middleware at /pluginsv2/ prefix.
     """
 
     name = PLUGIN_NAME
     operators = []
-    appbuilder_views = [rest_api_view]
-    flask_blueprints = [template_blueprint, api_blueprint]
     hooks = []
     executors = []
-    admin_views = [rest_api_view]
     menu_links = []
+
+    # Use Flask Blueprints for both Airflow 2.x and 3.x
+    flask_blueprints = [template_blueprint, api_blueprint] if api_blueprint else []
+    appbuilder_views = [rest_api_view] if rest_api_view else []
+    admin_views = [rest_api_view] if rest_api_view else []

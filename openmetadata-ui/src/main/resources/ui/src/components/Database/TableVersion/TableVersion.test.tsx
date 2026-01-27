@@ -12,6 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { tableVersionMockProps } from '../../../mocks/TableVersion.mock';
 import TableVersion from './TableVersion.component';
 
@@ -58,6 +59,17 @@ jest.mock('react-router-dom', () => ({
   }),
   useLocation: jest.fn().mockImplementation(() => ({ pathname: 'pathname' })),
 }));
+
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
 
 describe('TableVersion tests', () => {
   it('Should render component properly if not loading', async () => {
@@ -124,5 +136,55 @@ describe('TableVersion tests', () => {
     expect(mockNavigate).toHaveBeenCalledWith(
       '/table/sample_data.ecommerce_db.shopify.raw_product_catalog/versions/0.3/custom_properties'
     );
+  });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    it('should render custom properties tab when ViewCustomFields is true', async () => {
+      await act(async () => {
+        render(
+          <TableVersion
+            {...tableVersionMockProps}
+            entityPermissions={{
+              ...ENTITY_PERMISSIONS,
+              ViewCustomFields: true,
+            }}
+          />
+        );
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      expect(customPropertyTabLabel).toBeInTheDocument();
+
+      fireEvent.click(customPropertyTabLabel);
+
+      expect(screen.getByText('CustomPropertyTable')).toBeInTheDocument();
+    });
+
+    it('should render custom properties tab when ViewCustomFields is false', async () => {
+      await act(async () => {
+        render(
+          <TableVersion
+            {...tableVersionMockProps}
+            entityPermissions={{
+              ...ENTITY_PERMISSIONS,
+              ViewCustomFields: false,
+            }}
+          />
+        );
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      expect(customPropertyTabLabel).toBeInTheDocument();
+
+      fireEvent.click(customPropertyTabLabel);
+
+      expect(screen.getByText('CustomPropertyTable')).toBeInTheDocument();
+    });
   });
 });
