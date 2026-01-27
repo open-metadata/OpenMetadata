@@ -107,6 +107,7 @@ import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.apps.AppMapper;
@@ -186,7 +187,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       // Then get the native migration info from SERVER_CHANGE_LOG and SERVER_MIGRATION_SQL_LOGS
       LOG.info("Native System Data Migrations:");
       MigrationDAO migrationDAO = jdbi.onDemand(MigrationDAO.class);
-      List<MigrationDAO.ServerChangeLog> serverChangeLogs = migrationDAO.listMetricsFromDBMigrations();
+      List<MigrationDAO.ServerChangeLog> serverChangeLogs =
+          migrationDAO.listMetricsFromDBMigrations();
 
       // Create a formatted display for native migrations
       Set<String> columns = new LinkedHashSet<>(Set.of("version", "installedOn", "status"));
@@ -198,9 +200,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
         row.add(serverChangeLog.getInstalledOn());
 
         if (serverChangeLog.getMetrics() != null) {
-          JsonObject metricsJson = new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
+          JsonObject metricsJson =
+              new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
           for (Map.Entry<String, JsonElement> entry : metricsJson.entrySet()) {
-            if (!columns.contains(entry.getKey())) { columns.add(entry.getKey()); }
+            if (!columns.contains(entry.getKey())) {
+              columns.add(entry.getKey());
+            }
             row.add(entry.getValue().toString());
           }
         }
@@ -226,8 +231,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
       // Validate native migrations
       ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
       DatasourceConfig.initialize(connType.label);
-      MigrationWorkflow workflow = new MigrationWorkflow(
-              jdbi, config.getMigrationConfiguration().getNativePath(), connType, config.getMigrationConfiguration().getExtensionPath(),  config.getMigrationConfiguration().getFlywayPath(), config, false);
+      MigrationWorkflow workflow =
+          new MigrationWorkflow(
+              jdbi,
+              config.getMigrationConfiguration().getNativePath(),
+              connType,
+              config.getMigrationConfiguration().getExtensionPath(),
+              config.getMigrationConfiguration().getFlywayPath(),
+              config,
+              false);
       workflow.loadMigrations();
       workflow.validateMigrationsForServer();
       return 0;
@@ -252,8 +264,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       // Handle repair of SERVER_MIGRATION_SQL_LOGS and SERVER_CHANGE_LOG tables
       try {
-        List<String> failedVersions = jdbi.withHandle(handle ->
-                handle.createQuery("SELECT version FROM SERVER_CHANGE_LOG WHERE status = 'FAILED'")
+        List<String> failedVersions =
+            jdbi.withHandle(
+                handle ->
+                    handle
+                        .createQuery(
+                            "SELECT version FROM SERVER_CHANGE_LOG WHERE status = 'FAILED'")
                         .mapTo(String.class)
                         .list());
 
@@ -261,16 +277,21 @@ public class OpenMetadataOperations implements Callable<Integer> {
           LOG.info("Found {} failed migrations in SERVER_CHANGE_LOG", failedVersions.size());
 
           // Remove failed migrations from SERVER_CHANGE_LOG
-          jdbi.useHandle(handle ->
-                  handle.createUpdate("DELETE FROM SERVER_CHANGE_LOG WHERE status = 'FAILED'")
-                          .execute());
+          jdbi.useHandle(
+              handle ->
+                  handle
+                      .createUpdate("DELETE FROM SERVER_CHANGE_LOG WHERE status = 'FAILED'")
+                      .execute());
 
           // Clean up related entries in SERVER_MIGRATION_SQL_LOGS
           for (String version : failedVersions) {
-            jdbi.useHandle(handle ->
-                    handle.createUpdate("DELETE FROM SERVER_MIGRATION_SQL_LOGS WHERE version = :version")
-                            .bind("version", version)
-                            .execute());
+            jdbi.useHandle(
+                handle ->
+                    handle
+                        .createUpdate(
+                            "DELETE FROM SERVER_MIGRATION_SQL_LOGS WHERE version = :version")
+                        .bind("version", version)
+                        .execute());
           }
         }
       } catch (Exception e) {
@@ -647,32 +668,36 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer checkConnection() {
     try {
       parseConfig();
-      //Check native tables
+      // Check native tables
       try {
-        jdbi.withHandle(handle -> {
-          try {
-            handle.createQuery("SELECT COUNT(*) FROM SERVER_CHANGE_LOG")
+        jdbi.withHandle(
+            handle -> {
+              try {
+                handle
+                    .createQuery("SELECT COUNT(*) FROM SERVER_CHANGE_LOG")
                     .mapTo(Integer.class)
                     .findOne();
-            return true;
-          } catch (Exception e) {
-            LOG.warn("Could not access SERVER_CHANGE_LOG table: {}", e.getMessage());
-            return false;
-          }
-        });
+                return true;
+              } catch (Exception e) {
+                LOG.warn("Could not access SERVER_CHANGE_LOG table: {}", e.getMessage());
+                return false;
+              }
+            });
 
         // querying SERVER_MIGRATION_SQL_LOGS table
-        jdbi.withHandle(handle -> {
-          try {
-            handle.createQuery("SELECT COUNT(*) FROM SERVER_MIGRATION_SQL_LOGS")
+        jdbi.withHandle(
+            handle -> {
+              try {
+                handle
+                    .createQuery("SELECT COUNT(*) FROM SERVER_MIGRATION_SQL_LOGS")
                     .mapTo(Integer.class)
                     .findOne();
-            return true;
-          } catch (Exception e) {
-            LOG.warn("Could not access SERVER_MIGRATION_SQL_LOGS table: {}", e.getMessage());
-            return false;
-          }
-        });
+                return true;
+              } catch (Exception e) {
+                LOG.warn("Could not access SERVER_MIGRATION_SQL_LOGS table: {}", e.getMessage());
+                return false;
+              }
+            });
 
       } catch (Exception e) {
         LOG.warn("Error checking migration tables: {}", e.getMessage());
@@ -2196,6 +2221,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     jdbi = JdbiUtils.createAndSetupJDBI(dataSourceFactory);
 
+    // Initialize the MigrationValidationClient, used in the Settings Repository
+    MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), config);
+    // Init repos
+    collectionDAO = jdbi.onDemand(CollectionDAO.class);
+    Entity.setJdbi(jdbi);
+    Entity.setCollectionDAO(collectionDAO);
+    Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(collectionDAO));
+    Entity.setSystemRepository(new SystemRepository());
+
     searchRepository =
         SearchRepositoryFactory.createSearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
@@ -2205,12 +2239,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         SecretsManagerFactory.createSecretsManager(
             config.getSecretsManagerConfiguration(), config.getClusterName());
 
-    collectionDAO = jdbi.onDemand(CollectionDAO.class);
     Entity.setSearchRepository(searchRepository);
-    Entity.setJdbi(jdbi);
-    Entity.setCollectionDAO(collectionDAO);
-    Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(collectionDAO));
-    Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);
     ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
     DatasourceConfig.initialize(connType.label);
