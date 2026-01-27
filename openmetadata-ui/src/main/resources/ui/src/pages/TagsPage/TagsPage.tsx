@@ -692,7 +692,7 @@ const TagsPage = () => {
             {classifications.map((category: Classification) => (
               <div
                 className={classNames(
-                  'align-center content-box cursor-pointer text-grey-body d-flex p-y-xss p-x-sm m-y-xss',
+                  'align-center content-box cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
                   {
                     activeCategory:
                       currentClassification?.name === category.name,
