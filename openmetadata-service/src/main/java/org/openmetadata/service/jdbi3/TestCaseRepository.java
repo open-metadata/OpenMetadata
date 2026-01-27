@@ -1783,10 +1783,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       if (nullOrEmpty(parameterValues)) {
         return "";
       }
-
-      return parameterValues.stream()
-          .map(pv -> JsonUtils.pojoToJson(pv))
-          .collect(Collectors.joining(";"));
+      return parameterValues.stream().map(JsonUtils::pojoToJson).collect(Collectors.joining(";"));
     }
 
     private List<TestCaseParameterValue> parseParameterValues(String parameterValuesStr) {
@@ -1794,18 +1791,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         return new ArrayList<>();
       }
 
-      String[] parts = parameterValuesStr.split(";");
-      List<TestCaseParameterValue> parameterValues = new ArrayList<>();
+      String normalized = RestUtil.normalizeQuotes(parameterValuesStr.trim());
+      List<String> jsonObjects = RestUtil.extractJsonObjects(normalized);
 
-      for (String part : parts) {
-        if (!nullOrEmpty(part.trim())) {
-          TestCaseParameterValue pv =
-              JsonUtils.readValue(part.trim(), TestCaseParameterValue.class);
-          parameterValues.add(pv);
-        }
-      }
-
-      return parameterValues;
+      return jsonObjects.stream()
+          .map(json -> JsonUtils.readValue(json, TestCaseParameterValue.class))
+          .collect(Collectors.toList());
     }
   }
 }
