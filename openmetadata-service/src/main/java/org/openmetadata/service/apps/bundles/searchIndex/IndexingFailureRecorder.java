@@ -69,6 +69,35 @@ public class IndexingFailureRecorder implements AutoCloseable {
     recordFailure(entityType, entityId, entityFqn, FailureStage.SINK, errorMessage, stackTrace);
   }
 
+  public void recordProcessFailure(
+      String entityType, String entityId, String entityFqn, String errorMessage) {
+    recordProcessFailure(entityType, entityId, entityFqn, errorMessage, null);
+  }
+
+  public void recordProcessFailure(
+      String entityType,
+      String entityId,
+      String entityFqn,
+      String errorMessage,
+      String stackTrace) {
+    recordFailure(entityType, entityId, entityFqn, FailureStage.PROCESS, errorMessage, stackTrace);
+  }
+
+  public void recordVectorFailure(
+      String entityType, String entityId, String entityFqn, String errorMessage) {
+    recordVectorFailure(entityType, entityId, entityFqn, errorMessage, null);
+  }
+
+  public void recordVectorFailure(
+      String entityType,
+      String entityId,
+      String entityFqn,
+      String errorMessage,
+      String stackTrace) {
+    recordFailure(
+        entityType, entityId, entityFqn, FailureStage.VECTOR_SINK, errorMessage, stackTrace);
+  }
+
   private void recordFailure(
       String entityType,
       String entityId,

@@ -15,6 +15,13 @@ public class StageStatsTracker {
   private static final int FLUSH_OPERATION_THRESHOLD = 100;
   private static final long FLUSH_TIME_INTERVAL_MS = 5000; // 5 seconds
 
+  public enum Stage {
+    READER,
+    PROCESS,
+    SINK,
+    VECTOR
+  }
+
   @Getter private final String jobId;
   @Getter private final String serverId;
   @Getter private final String entityType;
@@ -39,6 +46,15 @@ public class StageStatsTracker {
     this.entityType = entityType;
     this.recordId = UUID.randomUUID();
     this.statsDAO = statsDAO;
+  }
+
+  public void record(Stage stage, StatsResult result) {
+    switch (stage) {
+      case READER -> recordReader(result);
+      case PROCESS -> recordProcess(result);
+      case SINK -> recordSink(result);
+      case VECTOR -> recordVector(result);
+    }
   }
 
   public void recordReader(StatsResult result) {

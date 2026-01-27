@@ -34,6 +34,8 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
+import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.SearchRepository;
@@ -121,6 +123,9 @@ public class ElasticSearchBulkSink implements BulkSink {
 
     Boolean recreateIndex = (Boolean) contextData.getOrDefault("recreateIndex", false);
 
+    // Extract StageStatsTracker from context for stats recording
+    StageStatsTracker tracker = extractTracker(contextData);
+
     // Check if embeddings are enabled for this specific entity type
     boolean embeddingsEnabled = isVectorEmbeddingEnabledForEntity(entityType);
 
@@ -139,14 +144,14 @@ public class ElasticSearchBulkSink implements BulkSink {
       if (!entities.isEmpty() && entities.get(0) instanceof EntityTimeSeriesInterface) {
         List<EntityTimeSeriesInterface> tsEntities = (List<EntityTimeSeriesInterface>) entities;
         for (EntityTimeSeriesInterface entity : tsEntities) {
-          addTimeSeriesEntity(entity, indexName, entityType);
+          addTimeSeriesEntity(entity, indexName, entityType, tracker);
         }
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
 
         // Add entities to search index
         for (EntityInterface entity : entityInterfaces) {
-          addEntity(entity, indexName, recreateIndex);
+          addEntity(entity, indexName, recreateIndex, tracker);
         }
 
         // Process vector embeddings in batch (no-op in base class)
@@ -170,9 +175,19 @@ public class ElasticSearchBulkSink implements BulkSink {
     }
   }
 
-  private void addEntity(EntityInterface entity, String indexName, boolean recreateIndex) {
-    try {
+  protected StageStatsTracker extractTracker(Map<String, Object> contextData) {
+    if (contextData != null && contextData.containsKey(STATS_TRACKER_CONTEXT_KEY)) {
+      Object tracker = contextData.get(STATS_TRACKER_CONTEXT_KEY);
+      if (tracker instanceof StageStatsTracker stageTracker) {
+        return stageTracker;
+      }
+    }
+    return null;
+  }
 
+  private void addEntity(
+      EntityInterface entity, String indexName, boolean recreateIndex, StageStatsTracker tracker) {
+    try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
       String json = JsonUtils.pojoToJson(searchIndexDoc);
@@ -195,12 +210,18 @@ public class ElasticSearchBulkSink implements BulkSink {
                                 .id(docId)
                                 .action(a -> a.doc(EsUtils.toJsonData(json)).docAsUpsert(true))));
       }
-      bulkProcessor.add(operation, docId, entityType);
+      bulkProcessor.add(operation, docId, entityType, tracker);
+      if (tracker != null) {
+        tracker.recordProcess(StatsResult.SUCCESS);
+      }
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
       entityBuildFailures.incrementAndGet();
       totalFailed.incrementAndGet();
       updateStats();
+      if (tracker != null) {
+        tracker.recordProcess(StatsResult.FAILED);
+      }
       if (failureCallback != null) {
         String entityTypeName = Entity.getEntityTypeFromObject(entity);
         failureCallback.onFailure(
@@ -215,6 +236,9 @@ public class ElasticSearchBulkSink implements BulkSink {
       entityBuildFailures.incrementAndGet();
       totalFailed.incrementAndGet();
       updateStats();
+      if (tracker != null) {
+        tracker.recordProcess(StatsResult.FAILED);
+      }
       if (failureCallback != null) {
         String entityTypeName = Entity.getEntityTypeFromObject(entity);
         failureCallback.onFailure(
@@ -227,7 +251,10 @@ public class ElasticSearchBulkSink implements BulkSink {
   }
 
   private void addTimeSeriesEntity(
-      EntityTimeSeriesInterface entity, String indexName, String entityType) {
+      EntityTimeSeriesInterface entity,
+      String indexName,
+      String entityType,
+      StageStatsTracker tracker) {
     try {
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
       String json = JsonUtils.pojoToJson(searchIndexDoc);
@@ -239,12 +266,18 @@ public class ElasticSearchBulkSink implements BulkSink {
                   op.index(
                       idx -> idx.index(indexName).id(docId).document(EsUtils.toJsonData(json))));
 
-      bulkProcessor.add(operation, docId, entityType);
+      bulkProcessor.add(operation, docId, entityType, tracker);
+      if (tracker != null) {
+        tracker.recordProcess(StatsResult.SUCCESS);
+      }
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
       entityBuildFailures.incrementAndGet();
       totalFailed.incrementAndGet();
       updateStats();
+      if (tracker != null) {
+        tracker.recordProcess(StatsResult.FAILED);
+      }
       if (failureCallback != null) {
         failureCallback.onFailure(
             entityType,
@@ -258,6 +291,9 @@ public class ElasticSearchBulkSink implements BulkSink {
       entityBuildFailures.incrementAndGet();
       totalFailed.incrementAndGet();
       updateStats();
+      if (tracker != null) {
+        tracker.recordProcess(StatsResult.FAILED);
+      }
       if (failureCallback != null) {
         failureCallback.onFailure(
             entityType,
@@ -420,6 +456,10 @@ public class ElasticSearchBulkSink implements BulkSink {
     /** Maps docId to entityType for failure reporting */
     private final ConcurrentHashMap<String, String> docIdToEntityType = new ConcurrentHashMap<>();
 
+    /** Maps docId to StageStatsTracker for sink stats recording */
+    private final ConcurrentHashMap<String, StageStatsTracker> docIdToTracker =
+        new ConcurrentHashMap<>();
+
     private long currentBufferSize = 0;
     private final Lock lock = new ReentrantLock();
     private final int bulkActions;
@@ -470,19 +510,24 @@ public class ElasticSearchBulkSink implements BulkSink {
     }
 
     void add(BulkOperation operation) {
-      add(operation, null, null);
+      add(operation, null, null, null);
     }
 
-    void add(BulkOperation operation, String docId, String entityType) {
+    void add(BulkOperation operation, String docId, String entityType, StageStatsTracker tracker) {
       lock.lock();
       try {
         if (closed) {
           throw new IllegalStateException("Bulk processor is closed");
         }
 
-        // Track entityType for failure reporting
-        if (docId != null && entityType != null) {
-          docIdToEntityType.put(docId, entityType);
+        // Track entityType and tracker for stats reporting
+        if (docId != null) {
+          if (entityType != null) {
+            docIdToEntityType.put(docId, entityType);
+          }
+          if (tracker != null) {
+            docIdToTracker.put(docId, tracker);
+          }
         }
 
         long operationSize = estimateOperationSize(operation);
@@ -606,11 +651,15 @@ public class ElasticSearchBulkSink implements BulkSink {
                     executionId,
                     numberOfActions);
                 statsUpdater.run();
-                // Clean up docIdToEntityType for successful operations
+                // Record SINK success and clean up tracking maps
                 for (BulkOperation op : operations) {
                   String docId = getDocId(op);
                   if (docId != null) {
                     docIdToEntityType.remove(docId);
+                    StageStatsTracker tracker = docIdToTracker.remove(docId);
+                    if (tracker != null) {
+                      tracker.recordSink(StatsResult.SUCCESS);
+                    }
                   }
                 }
               }
@@ -653,15 +702,19 @@ public class ElasticSearchBulkSink implements BulkSink {
             numberOfActions,
             error);
 
-        // Report failures via callback
-        if (failureCallback != null) {
-          for (BulkOperation op : operations) {
-            String docId = getDocId(op);
-            if (docId != null) {
-              String entityType = docIdToEntityType.remove(docId);
-              if (entityType == null) {
-                entityType = extractEntityTypeFromIndex(getIndex(op));
-              }
+        // Report failures via callback and tracker
+        for (BulkOperation op : operations) {
+          String docId = getDocId(op);
+          if (docId != null) {
+            String entityType = docIdToEntityType.remove(docId);
+            if (entityType == null) {
+              entityType = extractEntityTypeFromIndex(getIndex(op));
+            }
+            StageStatsTracker tracker = docIdToTracker.remove(docId);
+            if (tracker != null) {
+              tracker.recordSink(StatsResult.FAILED);
+            }
+            if (failureCallback != null) {
               failureCallback.onFailure(entityType, docId, null, error.getMessage());
             }
           }
@@ -675,6 +728,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       int failures = 0;
       for (BulkResponseItem item : response.items()) {
         String docId = item.id();
+        StageStatsTracker tracker = docId != null ? docIdToTracker.remove(docId) : null;
         if (item.error() != null) {
           failures++;
           String failureMessage = item.error().reason();
@@ -686,17 +740,23 @@ public class ElasticSearchBulkSink implements BulkSink {
           } else {
             LOG.warn("Failed to index document {}: {}", docId, failureMessage);
           }
+          String entityType = docId != null ? docIdToEntityType.remove(docId) : null;
+          if (entityType == null) {
+            entityType = extractEntityTypeFromIndex(item.index());
+          }
+          if (tracker != null) {
+            tracker.recordSink(StatsResult.FAILED);
+          }
           if (failureCallback != null) {
-            String entityType = docId != null ? docIdToEntityType.remove(docId) : null;
-            if (entityType == null) {
-              entityType = extractEntityTypeFromIndex(item.index());
-            }
             failureCallback.onFailure(entityType, docId, null, failureMessage);
           }
         } else {
           // Clean up on success
           if (docId != null) {
             docIdToEntityType.remove(docId);
+          }
+          if (tracker != null) {
+            tracker.recordSink(StatsResult.SUCCESS);
           }
         }
       }

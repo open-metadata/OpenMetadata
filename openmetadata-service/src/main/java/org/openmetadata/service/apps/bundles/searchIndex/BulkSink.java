@@ -68,6 +68,28 @@ public interface BulkSink {
     return null;
   }
 
+  /**
+   * Wait for all pending vector embedding tasks to complete. This is important for ensuring
+   * no vector tasks are lost when the job completes. The sink's close() method should also
+   * call this, but this method allows explicit waiting before close if needed.
+   *
+   * @param timeoutSeconds Maximum time to wait for vector tasks to complete
+   * @return true if all tasks completed within timeout, false otherwise
+   */
+  default boolean awaitVectorCompletion(int timeoutSeconds) {
+    // Default: no async vector tasks, nothing to wait for
+    return true;
+  }
+
+  /**
+   * Get the count of pending vector embedding tasks.
+   *
+   * @return Number of vector tasks still in progress
+   */
+  default int getPendingVectorTaskCount() {
+    return 0;
+  }
+
   /** Key for passing StageStatsTracker through context data to the sink. */
   String STATS_TRACKER_CONTEXT_KEY = "stageStatsTracker";
 }

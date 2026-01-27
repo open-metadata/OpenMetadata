@@ -521,69 +521,79 @@ public class SearchIndexExecutor implements AutoCloseable {
     }
   }
 
+  /**
+   * Process a single indexing task.
+   *
+   * <p>Stats tracking is simplified:
+   * <ul>
+   *   <li>Reader: success/warnings/failed tracked from ResultList
+   *   <li>Process: build failures tracked internally by BulkSink
+   *   <li>Sink: success/failed tracked by BulkSink from async responses
+   *   <li>Vector: tracked separately by OpenSearchBulkSinkExt
+   * </ul>
+   *
+   * <p>StageStatsTracker records are used for distributed mode (search_index_server_stats).
+   * The BulkSink tracks sink stats internally, synced at end via syncSinkStatsFromBulkSink().
+   */
   private void processTask(IndexingTask<?> task) {
     String entityType = task.entityType();
     ResultList<?> entities = task.entities();
     Map<String, Object> contextData = createContextData(entityType);
+    StageStatsTracker tracker = getTracker(entityType);
 
     long taskStartTime = System.currentTimeMillis();
 
+    // Stage 1: Reader stats (from source read)
     int readerSuccessCount = listOrEmpty(entities.getData()).size();
     int readerFailedCount = listOrEmpty(entities.getErrors()).size();
     int readerWarningsCount = entities.getWarningsCount() != null ? entities.getWarningsCount() : 0;
+
     updateReaderStats(readerSuccessCount, readerFailedCount, readerWarningsCount);
+    recordToTracker(
+        tracker,
+        StageStatsTracker.Stage.READER,
+        readerSuccessCount,
+        readerFailedCount,
+        readerWarningsCount);
 
-    StageStatsTracker tracker = getTracker(entityType);
-    for (int i = 0; i < readerSuccessCount; i++) {
-      tracker.recordReader(StatsResult.SUCCESS);
-    }
-    for (int i = 0; i < readerFailedCount; i++) {
-      tracker.recordReader(StatsResult.FAILED);
-    }
-    for (int i = 0; i < readerWarningsCount; i++) {
-      tracker.recordReader(StatsResult.WARNING);
-    }
-
+    // Stage 2 & 3: Process + Sink
+    // BulkSink handles internally:
+    // - Build failures (entity → search doc conversion failures)
+    // - Sink failures (from bulk response listener)
+    // Stats are tracked via StageStatsTracker passed in context
     try {
-      long buildFailuresBefore =
-          searchIndexSink != null ? searchIndexSink.getEntityBuildFailures() : 0;
-
       writeEntitiesToSink(entityType, entities, contextData);
 
-      long buildFailuresAfter =
-          searchIndexSink != null ? searchIndexSink.getEntityBuildFailures() : 0;
-      int batchBuildFailures = (int) (buildFailuresAfter - buildFailuresBefore);
-
-      int actualSubmitted = readerSuccessCount - batchBuildFailures;
-      updateSinkTotalSubmitted(Math.max(0, actualSubmitted));
-
-      StepStats currentEntityStats =
-          createEntityStatsWithBuildFailures(entities, batchBuildFailures);
+      // Update entity stats for progress reporting (uses reader counts, sink synced at end)
+      StepStats currentEntityStats = createEntityStats(entities);
       handleTaskSuccess(entityType, entities, currentEntityStats);
-
-      int processSuccess = Math.max(0, readerSuccessCount - batchBuildFailures);
-      for (int i = 0; i < processSuccess; i++) {
-        tracker.recordProcess(StatsResult.SUCCESS);
-      }
-      for (int i = 0; i < batchBuildFailures; i++) {
-        tracker.recordProcess(StatsResult.FAILED);
-      }
 
       long processingTime = System.currentTimeMillis() - taskStartTime;
       totalProcessingTime.addAndGet(processingTime);
-      totalEntitiesProcessed.addAndGet(entities.getData().size());
+      totalEntitiesProcessed.addAndGet(readerSuccessCount);
 
       performAdaptiveTuning();
     } catch (SearchIndexException e) {
       handleSearchIndexException(entityType, entities, e);
-      for (int i = 0; i < readerSuccessCount; i++) {
-        tracker.recordProcess(StatsResult.FAILED);
-      }
     } catch (Exception e) {
       handleGenericException(entityType, entities, e);
-      for (int i = 0; i < readerSuccessCount; i++) {
-        tracker.recordProcess(StatsResult.FAILED);
-      }
+    }
+  }
+
+  private void recordToTracker(
+      StageStatsTracker tracker,
+      StageStatsTracker.Stage stage,
+      int successCount,
+      int failedCount,
+      int warningsCount) {
+    for (int i = 0; i < successCount; i++) {
+      tracker.record(stage, StatsResult.SUCCESS);
+    }
+    for (int i = 0; i < failedCount; i++) {
+      tracker.record(stage, StatsResult.FAILED);
+    }
+    for (int i = 0; i < warningsCount; i++) {
+      tracker.record(stage, StatsResult.WARNING);
     }
   }
 
@@ -616,15 +626,6 @@ public class SearchIndexExecutor implements AutoCloseable {
     StepStats stepStats = new StepStats();
     stepStats.setSuccessRecords(listOrEmpty(entities.getData()).size());
     stepStats.setFailedRecords(listOrEmpty(entities.getErrors()).size());
-    return stepStats;
-  }
-
-  private StepStats createEntityStatsWithBuildFailures(ResultList<?> entities, int buildFailures) {
-    StepStats stepStats = new StepStats();
-    int totalEntities = listOrEmpty(entities.getData()).size();
-    int readerErrors = listOrEmpty(entities.getErrors()).size();
-    stepStats.setSuccessRecords(Math.max(0, totalEntities - buildFailures));
-    stepStats.setFailedRecords(readerErrors + buildFailures);
     return stepStats;
   }
 
@@ -1305,7 +1306,16 @@ public class SearchIndexExecutor implements AutoCloseable {
 
   private void closeSinkIfNeeded() throws IOException {
     if (searchIndexSink != null) {
-      LOG.info("Forcing final flush of bulk processor");
+      // Check for pending vector tasks before closing
+      int pendingVectorTasks = searchIndexSink.getPendingVectorTaskCount();
+      if (pendingVectorTasks > 0) {
+        LOG.info(
+            "Waiting for {} pending vector embedding tasks to complete before closing",
+            pendingVectorTasks);
+      }
+
+      LOG.info("Forcing final flush of bulk processor and vector embeddings");
+      // close() internally calls awaitVectorCompletion() first, then flushes search index
       searchIndexSink.close();
       syncSinkStatsFromBulkSink();
     }
