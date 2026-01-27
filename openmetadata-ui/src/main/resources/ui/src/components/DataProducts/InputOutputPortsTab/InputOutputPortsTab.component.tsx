@@ -244,7 +244,6 @@ export const InputOutputPortsTab = forwardRef<
                 borderRadius: '8px',
                 overflow: 'visible',
                 boxShadow: 'none',
-                maxHeight: isLineageCollapsed ? 44 : 344,
               }}
               variant="outlined">
               <Box
@@ -387,6 +386,7 @@ export const InputOutputPortsTab = forwardRef<
                     display: 'flex',
                     flexDirection: 'column',
                     '&:last-child': { pb: 2 },
+                    maxHeight: 'calc(100vh - 400px)',
                   }}>
                   {inputPortsCount === 0 ? (
                     <ErrorPlaceHolder
@@ -487,6 +487,7 @@ export const InputOutputPortsTab = forwardRef<
                     display: 'flex',
                     flexDirection: 'column',
                     '&:last-child': { pb: 2 },
+                    maxHeight: 'calc(100vh - 400px)',
                   }}>
                   {outputPortsCount === 0 ? (
                     <ErrorPlaceHolder

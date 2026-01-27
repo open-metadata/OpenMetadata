@@ -239,6 +239,7 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                   }
                   className="m-b-sm"
                   id={port.id ?? ''}
+                  showTags={false}
                   source={port}
                   tagsLayout={LayoutType.HORIZONTAL}
                 />
