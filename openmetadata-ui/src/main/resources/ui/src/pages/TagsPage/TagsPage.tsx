@@ -692,7 +692,7 @@ const TagsPage = () => {
             {classifications.map((category: Classification) => (
               <div
                 className={classNames(
-                  'align-center content-box cursor-pointer text-grey-body text-body d-flex p-y-xss p-x-sm m-y-xss',
+                  'align-center content-box cursor-pointer text-grey-body d-flex p-y-xss p-x-sm m-y-xss',
                   {
                     activeCategory:
                       currentClassification?.name === category.name,
@@ -705,6 +705,16 @@ const TagsPage = () => {
                   noWrap
                   className="self-center m-b-0 tag-category"
                   data-testid="tag-name"
+                  sx={{
+                    fontWeight:
+                      currentClassification?.name === category.name
+                        ? theme.typography.fontWeightBold
+                        : 'inherit',
+                    color:
+                      currentClassification?.name === category.name
+                        ? 'primary.main'
+                        : 'inherit',
+                  }}
                   title={getEntityName(category)}
                   variant="body2">
                   {getEntityName(category)}
