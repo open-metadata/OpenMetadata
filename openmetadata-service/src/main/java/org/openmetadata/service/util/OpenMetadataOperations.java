@@ -182,9 +182,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer info() {
     try {
       parseConfig();
-      // First get the Flyway migration info
-      LOG.info("Database Schema Migrations:");
-      LOG.info(dumpToAsciiTable(flyway.info().all()));
 
       // Then get the native migration info from SERVER_CHANGE_LOG and SERVER_MIGRATION_SQL_LOGS
       LOG.info("Native System Data Migrations:");
@@ -199,7 +196,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
         List<String> row = new ArrayList<>();
         row.add(serverChangeLog.getVersion());
         row.add(serverChangeLog.getInstalledOn());
-        row.add(serverChangeLog.getStatus() != null ? serverChangeLog.getStatus() : "COMPLETED");
 
         if (serverChangeLog.getMetrics() != null) {
           JsonObject metricsJson = new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
@@ -227,30 +223,13 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer validate() {
     try {
       parseConfig();
-      //Validate flyway migrations
-      flyway.validate();
-
       // Validate native migrations
       ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
       DatasourceConfig.initialize(connType.label);
       MigrationWorkflow workflow = new MigrationWorkflow(
-              jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, config, false);
+              jdbi, config.getMigrationConfiguration().getNativePath(), connType, config.getMigrationConfiguration().getExtensionPath(),  config.getMigrationConfiguration().getFlywayPath(), config, false);
       workflow.loadMigrations();
-      List<String> appliedMigrations = jdbi.withHandle(handle ->
-              handle.createQuery("SELECT version FROM SERVER_CHANGE_LOG WHERE status = 'SUCCESS' ORDER BY version")
-                      .mapTo(String.class)
-                      .list());
-      List<String> pendingMigrations = workflow.getPendingMigrations();
-      if (!pendingMigrations.isEmpty()) {
-        throw new RuntimeException("Native migrations validation failed - pending migrations exist");
-      }
-      List<String> failedMigrations = jdbi.withHandle(handle ->
-              handle.createQuery("SELECT version FROM SERVER_CHANGE_LOG WHERE status = 'FAILED' ORDER BY version")
-                      .mapTo(String.class)
-                      .list());
-      if (!failedMigrations.isEmpty()) {
-        throw new RuntimeException("Native migrations validation failed - failed migrations exist");
-      }
+      workflow.validateMigrationsForServer();
       return 0;
     } catch (Exception e) {
       LOG.error("Database migration validation failed due to ", e);
@@ -267,9 +246,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer repair() {
     try {
       parseConfig();
-      // Repair Flyway migration records
-      flyway.repair();
-
       // Get the migration workflow to repair native migrations
       ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
       DatasourceConfig.initialize(connType.label);
@@ -671,9 +647,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer checkConnection() {
     try {
       parseConfig();
-      //Check flyway
-      flyway.getConfiguration().getDataSource().getConnection();
-
       //Check native tables
       try {
         jdbi.withHandle(handle -> {
@@ -703,10 +676,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       } catch (Exception e) {
         LOG.warn("Error checking migration tables: {}", e.getMessage());
-      } finally {
-        if (connection != null && !connection.isClosed()) {
-          connection.close();
-        }
       }
       jdbi.open().getConnection();
       return 0;
