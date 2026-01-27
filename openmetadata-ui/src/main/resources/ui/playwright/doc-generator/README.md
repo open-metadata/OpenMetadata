@@ -45,21 +45,24 @@ yarn generate:e2e-docs
 
 ## 🔄 Workflow Integration
 
-**⚠️ Note: CI integration is currently Work In Progress.**
-Please run the generator manually before pushing changes.
+### Automation
+A GitHub Actions workflow is available to automate the documentation update process and ensure the `main` branch always has the latest E2E docs.
 
-### Manual Generation (Required)
-See the [Usage](#-usage) section above.
-Run: `yarn generate:e2e-docs`
+*   **Workflow Name**: `Update Playwright E2E Documentation`
+*   **File**: `.github/workflows/update-playwright-e2e-docs.yml`
+*   **Trigger**: Manual trigger via `workflow_dispatch`.
+*   **Logic**:
+    1.  Runs against the `main` branch.
+    2.  Installs dependencies using `yarn install --frozen-lockfile`.
+    3.  Executes documentation generation via `yarn generate:e2e-docs`.
+    4.  **Detection**: Uses `git status` to detect if any documentation files were modified.
+    5.  **Auto PR**: If changes are found, it creates/updates the `chore/update-playwright-docs` branch and automatically opens a Pull Request to `main`.
 
-### GitHub Actions (In Progress)
-Defined in `.github/workflows/playwright-docs-check.yml`.
-*   **Trigger**: Pull Requests to `main`.
-*   **Action**: Checks if the documentation matches the code.
-*   **Auto-Fix**: If docs are outdated (e.g., if the pre-commit hook was bypassed), the CI job will:
-    1.  Fail the initial check.
-    2.  Regenerate the documentation.
-    3.  **Automatically commit and push** the fixes to your PR branch.
+### Manual Generation
+You can still run the generator manually in your local environment before pushing:
+```bash
+yarn generate:e2e-docs
+```
 
 ## 🏷️ Classification & Tagging Guide
 
