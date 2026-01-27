@@ -142,7 +142,7 @@ const CreateUser = ({
     }));
   }, [roles]);
 
-  const fetchPersonaOptions = async (searchText: string, page?: number) => {
+  const fetchPersonaOptions = async (_searchText: string, page?: number) => {
     try {
       const params: Record<string, unknown> = {
         limit: AGGREGATE_PAGE_SIZE_LARGE,
@@ -458,6 +458,14 @@ const CreateUser = ({
                   showSearch
                   api={fetchPersonaOptions}
                   data-testid="personas-dropdown"
+                  filterOption={(input, option) => {
+                    const label = String(option?.label ?? option?.value ?? '');
+
+                    return (
+                      !input ||
+                      label.toLowerCase().includes(input.toLowerCase())
+                    );
+                  }}
                   mode="multiple"
                   placeholder={t('label.please-select-entity', {
                     entity: t('label.persona-plural'),

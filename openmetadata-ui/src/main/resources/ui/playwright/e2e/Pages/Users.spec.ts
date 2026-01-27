@@ -205,6 +205,40 @@ test.describe('User with Admin Roles', () => {
     );
   });
 
+  test('Create user with personas and verify on profile', async ({
+    adminPage,
+  }) => {
+    await redirectToHomePage(adminPage);
+    await visitUserListPage(adminPage);
+
+    const userWithPersonaName = `pw-user-persona-${uuid()}`;
+    await addUser(adminPage, {
+      name: userWithPersonaName,
+      email: `${userWithPersonaName}@gmail.com`,
+      password: `User@${uuid()}`,
+      role: role.responseData.displayName,
+      personas: [persona1.responseData.displayName ?? persona1.responseData.name],
+    });
+
+    await visitUserProfilePage(adminPage, userWithPersonaName);
+    const expectedPersonaName =
+      persona1.responseData.displayName ?? persona1.responseData.name;
+    await expect(
+      adminPage
+        .getByTestId('persona-details-card')
+        .getByTestId('tag-chip')
+        .filter({ hasText: expectedPersonaName })
+    ).toBeVisible();
+
+    await visitUserListPage(adminPage);
+    await permanentDeleteUser(
+      adminPage,
+      userWithPersonaName,
+      userWithPersonaName,
+      false
+    );
+  });
+
   test('Admin soft & hard delete and restore user', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
     await visitUserListPage(adminPage);

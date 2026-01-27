@@ -13,25 +13,25 @@
 
 import { Browser, expect, Page, Response } from '@playwright/test';
 import {
-  GLOBAL_SETTING_PERMISSIONS,
-  SETTING_PAGE_ENTITY_PERMISSION,
+    GLOBAL_SETTING_PERMISSIONS,
+    SETTING_PAGE_ENTITY_PERMISSION,
 } from '../constant/permission';
 import { VISIT_SERVICE_PAGE_DETAILS } from '../constant/service';
 import {
-  GlobalSettingOptions,
-  SETTINGS_OPTIONS_PATH,
-  SETTING_CUSTOM_PROPERTIES_PATH,
+    GlobalSettingOptions,
+    SETTING_CUSTOM_PROPERTIES_PATH,
+    SETTINGS_OPTIONS_PATH,
 } from '../constant/settings';
 import { SidebarItem } from '../constant/sidebar';
 import { UserClass } from '../support/user/UserClass';
 import {
-  descriptionBox,
-  descriptionBoxReadOnly,
-  getAuthContext,
-  getToken,
-  redirectToHomePage,
-  toastNotification,
-  visitOwnProfilePage,
+    descriptionBox,
+    descriptionBoxReadOnly,
+    getAuthContext,
+    getToken,
+    redirectToHomePage,
+    toastNotification,
+    visitOwnProfilePage,
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -669,11 +669,13 @@ export const addUser = async (
     email,
     password,
     role,
+    personas,
   }: {
     name: string;
     email: string;
     password: string;
     role: string;
+    personas?: string[];
   }
 ) => {
   await page.click('[data-testid="add-user"]');
@@ -688,10 +690,31 @@ export const addUser = async (
   await page.fill('#password', password);
   await page.fill('#confirmPassword', password);
 
-  await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
-  await page.getByTestId('roles-dropdown').getByRole('combobox').fill(role);
-  await page.click('.ant-select-item-option-content');
-  await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
+    await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
+    await page.getByTestId('roles-dropdown').getByRole('combobox').fill(role);
+    await page.click('.ant-select-item-option-content');
+    await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
+
+  if (personas?.length) {
+    const personasResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/personas') &&
+        res.request().method() === 'GET'
+    );
+    await page
+      .locator('[data-testid="personas-dropdown"] .ant-select-selector')
+      .click();
+    await personasResponse;
+    await page
+      .getByTestId('personas-dropdown')
+      .getByRole('combobox')
+      .fill(personas[0]);
+    await page
+      .locator('.ant-select-item-option')
+      .first()
+      .waitFor({ state: 'visible' });
+    await page.locator('.ant-select-item-option').first().click();
+  }
 
   const saveResponse = page.waitForResponse('/api/v1/users');
   await page.click('[data-testid="save-user"]');
