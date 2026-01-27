@@ -12,12 +12,16 @@
  */
 import { expect, test } from '@playwright/test';
 import * as fs from 'fs';
-import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { uploadCSVAndWaitForGrid } from '../../utils/importUtils';
-import { sidebarClick } from '../../utils/sidebar';
+import {
+  getApiContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
+import {
+  uploadCSVAndWaitForGrid,
+  validateImportStatus,
+} from '../../utils/importUtils';
 
 const cleanupTempFile = (filePath: string | undefined): void => {
   if (filePath && fs.existsSync(filePath)) {
@@ -38,194 +42,149 @@ const CSV_WITH_QUOTES_AND_COMMAS = `parent,name*,displayName,description,synonym
 ,"Test1234","Contains a timestamp for the most recent ""login"" of this feature user, to be used for PIN expiration.","<p>Contains a timestamp for the most recent ""login"" of this feature user, to be used for PIN expiration.</p>",,,,,,user:admin,Approved,,,
 ,"TermWithComma,AndQuote","Display name with ""quoted"" text, and comma","<p>Description with ""quotes"" and, commas</p>",,,,,,user:admin,Approved,,,`;
 
-const CSV_FOR_EXPORT_IMPORT_TEST = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
-,"InitialTerm","Term with ""quotes"" and, comma","<p>Description with ""quotes"" and, commas</p>",,,,,,user:admin,Approved,,,`;
+const EXPECTED_PROCESSED = 4;
 
 test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
 
-  test('Glossary: Import CSV with commas and quotes, then export and re-import', async ({
+  test('Create glossary with CSV, export it, create new glossary and import exported data', async ({
     page,
   }) => {
     const { apiContext } = await getApiContext(page);
-    const quoteCommaGlossary = new Glossary('QuoteCommaTest');
+    const sourceGlossary = new Glossary(`QuotesCommas-${uuid()}`);
+    const targetGlossary = new Glossary(`QuotesCommas-Target-${uuid()}`);
     let exportedCsvPath: string;
 
-    await test.step(
-      'Create glossary and import CSV with quotes and commas',
-      async () => {
-        await quoteCommaGlossary.create(apiContext);
+    await test.step('Create glossary and import CSV with quotes and commas', async () => {
+      await sourceGlossary.create(apiContext);
+      await sourceGlossary.visitPage(page);
 
-        const glossaryResponse = page.waitForResponse(
-          '/api/v1/glossaries?fields=*'
+      await page.click('[data-testid="manage-button"]');
+      await page.click('[data-testid="import-button-description"]');
+
+      let tempFilePath: string | undefined;
+      try {
+        const { tempFilePath: tempFile } = await uploadCSVAndWaitForGrid(
+          page,
+          CSV_WITH_QUOTES_AND_COMMAS,
+          {
+            isContentString: true,
+            tempFileName: `temp-quotes-commas-${uuid()}.csv`,
+          }
         );
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await glossaryResponse;
-        await waitForAllLoadersToDisappear(page);
-        await page.click('[data-testid="manage-button"]');
-        await page.click('[data-testid="import-button-description"]');
+        tempFilePath = tempFile;
 
-        let tempFilePath: string | undefined;
-        try {
-          const { tempFilePath: tempFile } = await uploadCSVAndWaitForGrid(
-            page,
-            CSV_WITH_QUOTES_AND_COMMAS,
-            {
-              isContentString: true,
-              tempFileName: 'temp-quotes-commas-test.csv',
-            }
-          );
-          tempFilePath = tempFile;
+        await expect(
+          page.getByRole('gridcell', { name: 'Term1' }).first()
+        ).toBeVisible();
+        await expect(
+          page.getByRole('gridcell', { name: 'TermWithComma,AndQuote' }).first()
+        ).toBeVisible();
 
-          await expect(
-            page.getByRole('gridcell', { name: 'Term1' }).first()
-          ).toBeVisible();
-          await expect(
-            page.getByRole('gridcell', { name: 'Test1234' }).first()
-          ).toBeVisible();
-          await expect(
-            page
-              .getByRole('gridcell', { name: 'TermWithComma,AndQuote' })
-              .first()
-          ).toBeVisible();
-          const rowCount = await page.locator('.rdg-row').count();
-          expect(rowCount).toBeGreaterThanOrEqual(3);
+        const validationResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/glossaries/name/') &&
+            response.url().includes('/importAsync') &&
+            response.url().includes('dryRun=true') &&
+            response.request().method() === 'PUT'
+        );
 
-          const validationResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/glossaries/name/') &&
-              response.url().includes('/importAsync') &&
-              response.url().includes('dryRun=true') &&
-              response.request().method() === 'PUT'
-          );
+        await page.getByRole('button', { name: 'Next' }).click();
+        await validationResponse;
+        await page.waitForSelector('text=Import is in progress.', {
+          state: 'detached',
+        });
 
-          await page.getByRole('button', { name: 'Next' }).click();
-          await validationResponse;
-          await page.waitForSelector('text=Import is in progress.', {
-            state: 'detached',
-          });
+        const loader = page.locator(
+          '.inovua-react-toolkit-load-mask__background-layer'
+        );
+        await loader.waitFor({ state: 'hidden' });
 
-          const loader = page.locator(
-            '.inovua-react-toolkit-load-mask__background-layer'
-          );
-          await loader.waitFor({ state: 'hidden' });
+        await validateImportStatus(page, {
+          passed: String(EXPECTED_PROCESSED),
+          processed: String(EXPECTED_PROCESSED),
+          failed: '0',
+        });
 
-          await page.getByRole('button', { name: 'Update' }).click();
-          await loader.waitFor({ state: 'detached' });
-        } finally {
-          cleanupTempFile(tempFilePath);
-        }
+        await page.getByRole('button', { name: 'Update' }).click();
+        await loader.waitFor({ state: 'detached' });
+      } finally {
+        cleanupTempFile(tempFilePath);
       }
-    );
+    });
 
-    await test.step('Export glossary to CSV', async () => {
-      const glossaryResponse = page.waitForResponse(
-        '/api/v1/glossaries?fields=*'
-      );
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await glossaryResponse;
-      await waitForAllLoadersToDisappear(page);
+    await test.step('Export CSV and verify it contains properly escaped quotes', async () => {
+      await sourceGlossary.visitPage(page);
 
       const downloadPromise = page.waitForEvent('download');
       await page.click('[data-testid="manage-button"]');
       await page.click('[data-testid="export-button-description"]');
-      await page.fill('#fileName', quoteCommaGlossary.data.displayName);
+      await page.fill('#fileName', sourceGlossary.data.displayName);
       await page.click('#submit-button');
       const download = await downloadPromise;
 
-      exportedCsvPath = 'downloads/' + download.suggestedFilename();
+      exportedCsvPath = `downloads/exported-${uuid()}.csv`;
       await download.saveAs(exportedCsvPath);
 
       const csvContent = fs.readFileSync(exportedCsvPath, 'utf-8');
       expect(csvContent).toContain('Term1');
       expect(csvContent).toContain('TermWithComma,AndQuote');
+      expect(csvContent).toContain('""');
+      expect(csvContent).toContain('""quoted""');
+      expect(csvContent).toContain('""quotes""');
     });
-  });
 
-  test('Export and re-import CSV with commas and quotes', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
-    const exportImportGlossary = new Glossary('ExportImportTest');
-    let exportedCsvPath: string;
+    await test.step('Create new glossary and import exported CSV', async () => {
+      await targetGlossary.create(apiContext);
+      await targetGlossary.visitPage(page);
 
-    await test.step(
-      'Create glossary and import data with quotes and commas',
-      async () => {
-        await exportImportGlossary.create(apiContext);
+      await page.click('[data-testid="manage-button"]');
+      await page.click('[data-testid="import-button-description"]');
 
-        const glossaryResponse = page.waitForResponse(
-          '/api/v1/glossaries?fields=*'
+      try {
+        await uploadCSVAndWaitForGrid(page, exportedCsvPath);
+
+        await expect(
+          page.getByRole('gridcell', { name: 'Term1' }).first()
+        ).toBeVisible();
+        await expect(
+          page.getByRole('gridcell', { name: 'TermWithComma,AndQuote' }).first()
+        ).toBeVisible();
+
+        const validationResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/glossaries/name/') &&
+            response.url().includes('/importAsync') &&
+            response.url().includes('dryRun=true') &&
+            response.request().method() === 'PUT'
         );
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await glossaryResponse;
-        await waitForAllLoadersToDisappear(page);
 
-        await page.click('[data-testid="manage-button"]');
-        await page.click('[data-testid="import-button-description"]');
-        let tempFilePath: string | undefined;
-        try {
-          const { tempFilePath: tempFile } = await uploadCSVAndWaitForGrid(
-            page,
-            CSV_FOR_EXPORT_IMPORT_TEST,
-            {
-              isContentString: true,
-              tempFileName: 'temp-initial-import.csv',
-            }
-          );
-          tempFilePath = tempFile;
+        await page.getByRole('button', { name: 'Next' }).click();
+        await validationResponse;
+        await page.waitForSelector('text=Import is in progress.', {
+          state: 'detached',
+        });
 
-          const validationResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/glossaries/name/') &&
-              response.url().includes('/importAsync') &&
-              response.url().includes('dryRun=true') &&
-              response.request().method() === 'PUT'
-          );
+        const loader = page.locator(
+          '.inovua-react-toolkit-load-mask__background-layer'
+        );
+        await loader.waitFor({ state: 'hidden' });
 
-          await page.getByRole('button', { name: 'Next' }).click();
-          await validationResponse;
-          await page.waitForSelector('text=Import is in progress.', {
-            state: 'detached',
-          });
+        await validateImportStatus(page, {
+          passed: String(EXPECTED_PROCESSED),
+          processed: String(EXPECTED_PROCESSED),
+          failed: '0',
+        });
 
-          const loader = page.locator(
-            '.inovua-react-toolkit-load-mask__background-layer'
-          );
-          await loader.waitFor({ state: 'hidden' });
-
-          await page.getByRole('button', { name: 'Update' }).click();
-          await loader.waitFor({ state: 'detached' });
-        } finally {
-          cleanupTempFile(tempFilePath);
+        await page.getByRole('button', { name: 'Update' }).click();
+        await loader.waitFor({ state: 'detached' });
+      } finally {
+        if (exportedCsvPath && fs.existsSync(exportedCsvPath)) {
+          cleanupTempFile(exportedCsvPath);
         }
       }
-    );
-
-    await test.step(
-      'Export CSV and verify it contains properly escaped quotes',
-      async () => {
-        const glossaryResponse = page.waitForResponse(
-          '/api/v1/glossaries?fields=*'
-        );
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await glossaryResponse;
-        await waitForAllLoadersToDisappear(page);
-
-        const downloadPromise = page.waitForEvent('download');
-        await page.click('[data-testid="manage-button"]');
-        await page.click('[data-testid="export-button-description"]');
-        await page.fill('#fileName', exportImportGlossary.data.displayName);
-        await page.click('#submit-button');
-        const download = await downloadPromise;
-
-        exportedCsvPath = 'downloads/' + download.suggestedFilename();
-        await download.saveAs(exportedCsvPath);
-
-        const csvContent = fs.readFileSync(exportedCsvPath, 'utf-8');
-        expect(csvContent).toContain('InitialTerm');
-        expect(csvContent).toContain('Term with');
-      }
-    );
+    });
   });
 });
