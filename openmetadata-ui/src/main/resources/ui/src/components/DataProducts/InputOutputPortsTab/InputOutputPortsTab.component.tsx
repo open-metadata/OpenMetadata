@@ -228,7 +228,6 @@ export const InputOutputPortsTab = forwardRef<
         className="input-output-ports-tab"
         data-testid="input-output-ports-tab"
         sx={{
-          p: 2,
           height: '100%',
           overflow: 'hidden',
           display: 'flex',
