@@ -68,7 +68,7 @@ public class OAuthClientMetadata {
   /**
    * Validates the requested scope against the client's allowed scopes.
    * If no scopes were registered with the client (scope is null or empty),
-   * all requested scopes are allowed (for connector-based OAuth).
+   * all requested scopes are allowed.
    * @param requestedScope The scope requested by the client
    * @return List of validated scopes or null if no scope was requested
    * @throws InvalidScopeException if the requested scope is not allowed
@@ -80,7 +80,7 @@ public class OAuthClientMetadata {
 
     List<String> requestedScopes = Arrays.asList(requestedScope.split(" "));
 
-    // If client didn't register specific scopes, allow any scope (connector-based OAuth)
+    // If client didn't register specific scopes, allow any scope
     if (scope == null || scope.trim().isEmpty()) {
       return requestedScopes;
     }
