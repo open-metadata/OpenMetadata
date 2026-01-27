@@ -29,6 +29,10 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class DriveServiceResourceIT extends BaseServiceIT<DriveService, CreateDriveService> {
 
+  {
+    supportsListHistoryByTimestamp = true;
+  }
+
   @Override
   protected CreateDriveService createMinimalRequest(TestNamespace ns) {
     GCPCredentials gcpCredentials =

@@ -93,7 +93,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestCases")
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/";
   private final TestCaseMapper mapper = new TestCaseMapper();
   private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
   static final String FIELDS =
@@ -540,15 +540,23 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    // Override OperationContext to change the entity to table and operation from VIEW_ALL to
-    // VIEW_TESTS
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
+    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
     return getInternal(
-        uriInfo, securityContext, id, fields, include, operationContext, resourceContext);
+        uriInfo, securityContext, id, fields, relationIncludes, operationContext, resourceContext);
   }
 
   @GET
@@ -585,15 +593,23 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    // Override OperationContext to change the entity to table and operation from VIEW_ALL to
-    // VIEW_TESTS
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
+    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
     return getByNameInternal(
-        uriInfo, securityContext, fqn, fields, include, operationContext, resourceContext);
+        uriInfo, securityContext, fqn, fields, relationIncludes, operationContext, resourceContext);
   }
 
   @GET
@@ -1253,6 +1269,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Name parameter (currently not used, reserved for future use)",
@@ -1266,9 +1283,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
+      @Parameter(
+              description =
+                  "The entity type for which the TestCase are being added (e.g., 'testSuite' or 'table')",
+              schema = @Schema(type = "string"))
+          @QueryParam("targetEntityType")
+          String targetEntityType,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun, false);
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false, targetEntityType);
   }
 
   @PUT
@@ -1291,6 +1314,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                     schema = @Schema(implementation = Response.class)))
       })
   public Response importCsvAsync(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Name parameter (currently not used, reserved for future use)",
@@ -1304,8 +1328,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
+      @Parameter(
+              description =
+                  "The entity type for which the TestCase are being added (e.g., 'testSuite' or 'table')",
+              schema = @Schema(type = "string"))
+          @QueryParam("targetEntityType")
+          String targetEntityType,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
+    return importCsvInternalAsync(
+        uriInfo, securityContext, name, csv, dryRun, false, targetEntityType);
   }
 
   protected static ResourceContextInterface getResourceContext(

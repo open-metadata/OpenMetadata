@@ -32,6 +32,8 @@ if TYPE_CHECKING:
     import numpy as np
     import pandas as pd
 
+    from metadata.profiler.processor.runner import PandasRunner
+
 
 class MedianAccumulator(NamedTuple):
     """Accumulator holding chunked NumPy arrays for fast median computation."""
@@ -94,8 +96,10 @@ class Median(StaticMetric, PercentilMixin):
         )
         return None
 
-    def df_fn(self, dfs=None):
+    def df_fn(self, dfs: Optional["PandasRunner"] = None):
         """Dataframe function"""
+        if dfs is None:
+            return None
         computation = self.get_pandas_computation()
         accumulator = computation.create_accumulator()
         for df in dfs:

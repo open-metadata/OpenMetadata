@@ -103,6 +103,7 @@ import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -140,6 +141,10 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -266,6 +271,9 @@ import software.amazon.awssdk.utils.Either;
 @Slf4j
 @Repository()
 public abstract class EntityRepository<T extends EntityInterface> {
+
+  public static final String BULK_IMPORT = "bulkImport";
+
   public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
 
   public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
@@ -280,6 +288,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithId());
+
+  private static final LoadingCache<String, Integer> COUNT_CACHE =
+      CacheBuilder.newBuilder()
+          .maximumSize(500)
+          .expireAfterWrite(5, TimeUnit.MINUTES)
+          .recordStats()
+          .build(
+              new CacheLoader<String, Integer>() {
+                @Override
+                public Integer load(String key) throws Exception {
+                  throw new UnsupportedOperationException("Use get() method with a custom loader");
+                }
+              });
 
   private final String collectionPath;
   @Getter public final Class<T> entityClass;
@@ -1160,6 +1181,114 @@ public abstract class EntityRepository<T extends EntityInterface> {
     allVersions.add(JsonUtils.pojoToJson(latest));
     oldVersions.forEach(version -> allVersions.add(version.getEntityJson()));
     return new EntityHistory().withEntityType(entityType).withVersions(allVersions);
+  }
+
+  private int getVersionCountCached(String tableName, long startTs, long endTs, String entityType) {
+    String cacheKey = String.format("%s:%d:%d:%s", tableName, startTs, endTs, entityType);
+    try {
+      return COUNT_CACHE.get(
+          cacheKey,
+          () ->
+              daoCollection
+                  .entityExtensionDAO()
+                  .getEntityHistoryByTimestampRangeCount(tableName, startTs, endTs, entityType));
+    } catch (ExecutionException e) {
+      throw new RuntimeException("Failed to get version count from cache", e);
+    }
+  }
+
+  public final ResultList<T> listEntityHistoryByTimestamp(
+      long startTs, long endTs, String afterCursor, String beforeCursor, int limit) {
+    String tableName = dao.getTableName();
+    int fetchLimit = limit + 1;
+
+    String cursorCondition = "";
+    Long cursorUpdatedAt = null;
+    String cursorId = null;
+
+    if (beforeCursor != null) {
+      cursorCondition =
+          "AND (updatedAt > :cursorUpdatedAt OR (updatedAt = :cursorUpdatedAt AND id > :cursorId))";
+      String decodedCursor = decodeAndValidateCursor(beforeCursor);
+      String[] parts = decodedCursor.split(":");
+      cursorUpdatedAt = Long.parseLong(parts[0]);
+      cursorId = parts[1];
+    } else if (afterCursor != null) {
+      cursorCondition =
+          "AND (updatedAt < :cursorUpdatedAt OR (updatedAt = :cursorUpdatedAt AND id < :cursorId))";
+      String decodedCursor = decodeAndValidateCursor(afterCursor);
+      String[] parts = decodedCursor.split(":");
+      cursorUpdatedAt = Long.parseLong(parts[0]);
+      cursorId = parts[1];
+    }
+
+    List<String> jsons =
+        daoCollection
+            .entityExtensionDAO()
+            .getEntityHistoryByTimestampRange(
+                tableName,
+                startTs,
+                endTs,
+                cursorCondition,
+                entityType,
+                cursorUpdatedAt,
+                cursorId,
+                fetchLimit);
+
+    List<T> entities = JsonUtils.readObjects(jsons, getEntityClass());
+    setFieldsInBulk(putFields, entities);
+
+    int total = getVersionCountCached(tableName, startTs, endTs, entityType);
+
+    String beforeCursorValue = null;
+    String afterCursorValue = null;
+
+    if (!entities.isEmpty()) {
+      boolean hasMoreInCurrentDirection = entities.size() > limit;
+
+      if (hasMoreInCurrentDirection) {
+        entities = entities.subList(0, limit);
+      }
+
+      T first = entities.getFirst();
+      T last = entities.getLast();
+      String firstCursor = first.getUpdatedAt() + ":" + first.getId().toString();
+      String lastCursor = last.getUpdatedAt() + ":" + last.getId().toString();
+
+      if (beforeCursor != null) {
+        if (hasMoreInCurrentDirection) {
+          beforeCursorValue = firstCursor;
+        }
+        afterCursorValue = lastCursor;
+      } else {
+        if (hasMoreInCurrentDirection) {
+          afterCursorValue = lastCursor;
+        }
+        if (afterCursor != null) {
+          beforeCursorValue = firstCursor;
+        }
+      }
+    }
+
+    return getResultList(entities, beforeCursorValue, afterCursorValue, total);
+  }
+
+  private String decodeAndValidateCursor(String cursor) {
+    if (cursor == null) {
+      throw new RuntimeException("Cursor is null");
+    }
+    String decodedCursor = RestUtil.decodeCursor(cursor);
+    if (!decodedCursor.contains(":")) {
+      throw new RuntimeException("Cursor is not a valid cursor: " + cursor);
+    }
+    String[] parts = decodedCursor.split(":");
+    try {
+      Long.parseLong(parts[0]);
+      UUID.fromString(parts[1]);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Cursor is not a valid cursor: " + cursor);
+    }
+    return decodedCursor;
   }
 
   public final List<T> createMany(UriInfo uriInfo, List<T> entities) {
@@ -2524,7 +2653,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     validateExtension(extension, entityTypeName);
 
     // Apply property type-specific transformations (date formatting, enum sorting, etc.)
-    ObjectNode jsonNode = (ObjectNode) JsonUtils.valueToTree(extension);
+    JsonNode extensionNode = JsonUtils.valueToTree(extension);
+    if (!extensionNode.isObject()) {
+      return null;
+    }
+    ObjectNode jsonNode = (ObjectNode) extensionNode;
     Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
 
     while (customFields.hasNext()) {
@@ -2669,7 +2802,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void storeExtension(EntityInterface entity) {
+    if (entity.getExtension() == null) {
+      return;
+    }
     JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
+    if (!jsonNode.isObject()) {
+      return;
+    }
     Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
     while (customFields.hasNext()) {
       Entry<String, JsonNode> entry = customFields.next();
@@ -2697,6 +2836,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void removeExtension(EntityInterface entity) {
+    if (entity.getExtension() == null) {
+      return;
+    }
     JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
     Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
     while (customFields.hasNext()) {
@@ -2785,7 +2927,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getLabelType().ordinal(),
                 tagLabel.getState().ordinal(),
                 tagLabel.getReason(),
-                tagLabel.getAppliedBy());
+                tagLabel.getAppliedBy(),
+                tagLabel.getMetadata());
 
         // Update RDF store
         org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
@@ -3966,6 +4109,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Indicates whether this repository's bulk CSV import should create version history.
+   * Most repositories import entities into a parent entity (e.g., Glossary, Team, Table)
+   * and should version that parent. Some repositories (e.g., User) import entities without
+   * a versionable parent entity and should return false.
+   *
+   * @return true if bulk import should create version history (default), false otherwise
+   */
+  public boolean supportsBulkImportVersioning() {
+    return true; // Default: most repositories version the parent entity during bulk import
+  }
+
+  /**
    * Override this method to support downloading CSV functionality
    */
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
@@ -3977,6 +4132,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   public CsvImportResult importFromCsv(
       String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    throw new IllegalArgumentException(csvNotSupported(entityType));
+  }
+
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      String targetEntityType)
+      throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
 
@@ -4608,8 +4774,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       JsonNode origExtensionFields = JsonUtils.valueToTree(origExtension);
       JsonNode updatedExtensionFields = JsonUtils.valueToTree(updatedExtension);
       Set<String> allKeys = new HashSet<>();
-      origExtensionFields.fieldNames().forEachRemaining(allKeys::add);
-      updatedExtensionFields.fieldNames().forEachRemaining(allKeys::add);
+      if (origExtensionFields.isObject()) {
+        origExtensionFields.fieldNames().forEachRemaining(allKeys::add);
+      }
+      if (updatedExtensionFields.isObject()) {
+        updatedExtensionFields.fieldNames().forEachRemaining(allKeys::add);
+      }
 
       for (String key : allKeys) {
         JsonNode origValue = origExtensionFields.get(key);
@@ -4626,21 +4796,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       if (!consolidatingChanges) {
-        ObjectNode extensionNode = (ObjectNode) JsonUtils.valueToTree(updated.getExtension());
-        for (JsonNode node : Stream.of(addedFields, updatedFields).flatMap(List::stream).toList()) {
-          node.fields()
-              .forEachRemaining(
-                  field -> {
-                    Map<String, Object> singleField = new HashMap<>();
-                    singleField.put(
-                        field.getKey(), JsonUtils.treeToValue(field.getValue(), Object.class));
-                    Object transformedField =
-                        validateAndTransformExtension(singleField, entityType);
-                    JsonNode transformedNode = JsonUtils.valueToTree(transformedField);
-                    extensionNode.set(field.getKey(), transformedNode.get(field.getKey()));
-                  });
+        JsonNode extensionJsonNode = JsonUtils.valueToTree(updated.getExtension());
+        if (extensionJsonNode.isObject()) {
+          ObjectNode extensionNode = (ObjectNode) extensionJsonNode;
+          for (JsonNode node :
+              Stream.of(addedFields, updatedFields).flatMap(List::stream).toList()) {
+            node.fields()
+                .forEachRemaining(
+                    field -> {
+                      Map<String, Object> singleField = new HashMap<>();
+                      singleField.put(
+                          field.getKey(), JsonUtils.treeToValue(field.getValue(), Object.class));
+                      Object transformedField =
+                          validateAndTransformExtension(singleField, entityType);
+                      JsonNode transformedNode = JsonUtils.valueToTree(transformedField);
+                      if (transformedNode.isObject()) {
+                        extensionNode.set(field.getKey(), transformedNode.get(field.getKey()));
+                      }
+                    });
+          }
+          for (JsonNode node : deletedFields) {
+            node.fields().forEachRemaining(field -> extensionNode.remove(field.getKey()));
+          }
+          if (extensionNode.isEmpty()) {
+            updated.setExtension(null);
+          } else {
+            updated.setExtension(JsonUtils.treeToValue(extensionNode, Object.class));
+          }
         }
-        updated.setExtension(JsonUtils.treeToValue(extensionNode, Object.class));
       }
       if (!addedFields.isEmpty()) {
         fieldAdded(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(addedFields));
@@ -5574,8 +5757,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Delete tags related to deleted columns
       deletedColumns.forEach(
-          deleted ->
-              daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+          deleted -> {
+            daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName());
+            String extensionKey = FullyQualifiedName.buildHash(deleted.getFullyQualifiedName());
+            daoCollection.entityExtensionDAO().delete(updated.getId(), extensionKey);
+          });
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {
@@ -5609,6 +5795,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             stored.getTags(),
             updated.getTags());
         updateColumnConstraint(stored, updated);
+        updateColumnExtension(stored, updated);
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           String childrenFieldName = EntityUtil.getFieldName(fieldName, updated.getName());
@@ -5653,6 +5840,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateColumnConstraint(Column origColumn, Column updatedColumn) {
       String columnField = getColumnField(origColumn, "constraint");
       recordChange(columnField, origColumn.getConstraint(), updatedColumn.getConstraint());
+    }
+
+    private void updateColumnExtension(Column origColumn, Column updatedColumn) {
+      if (updatedColumn.getExtension() != null) {
+        String extensionKey = FullyQualifiedName.buildHash(updatedColumn.getFullyQualifiedName());
+        daoCollection
+            .entityExtensionDAO()
+            .insert(
+                updated.getId(),
+                extensionKey,
+                "columnExtension",
+                JsonUtils.pojoToJson(updatedColumn.getExtension()));
+      }
     }
 
     protected void updateColumnDataLength(Column origColumn, Column updatedColumn) {
@@ -6337,7 +6537,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   return Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
                       .filter(list -> !list.isEmpty())
                       .orElseGet(ArrayList::new);
-                }));
+                },
+                (a, b) -> a));
   }
 
   private Map<UUID, List<EntityReference>> batchFetchDomains(List<T> entities) {
@@ -6798,6 +6999,87 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public boolean isUpdateForImport(T entity) {
     return findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null;
+  }
+
+  @Transaction
+  public void createChangeEventForBulkOperation(
+      T original, CsvImportResult result, String updatedBy) {
+    // Get a complete view of the entity for history
+    setFieldsInternal(original, getPutFields());
+    setInheritedFields(original, getPutFields());
+
+    T updated = JsonUtils.deepCopy(original, entityClass);
+
+    // Create a lean version of the CsvImportResult for storage in ChangeDescription
+    CsvImportResult leanResult = createLeanCsvImportResult(result);
+
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(original.getVersion());
+    FieldChange fieldChange = new FieldChange().withName(BULK_IMPORT).withNewValue(leanResult);
+    change.getFieldsUpdated().add(fieldChange);
+
+    updated.setChangeDescription(change);
+    updated.setVersion(EntityUtil.nextVersion(original.getVersion())); // Manually bump version ONCE
+    updated.setUpdatedBy(updatedBy);
+    updated.setUpdatedAt(System.currentTimeMillis());
+
+    // Store history of the previous version
+    String extensionName = EntityUtil.getVersionExtension(entityType, original.getVersion());
+    daoCollection
+        .entityExtensionDAO()
+        .insert(original.getId(), extensionName, entityType, JsonUtils.pojoToJson(original));
+
+    // Directly update the entity in the database without calling other versioning methods
+    dao.update(updated.getId(), updated.getFullyQualifiedName(), JsonUtils.pojoToJson(updated));
+    invalidate(updated); // Invalidate cache
+
+    // Create a ChangeEvent for the feed
+    ChangeEvent changeEvent =
+        getChangeEvent(updated, change, entityType, change.getPreviousVersion());
+    daoCollection.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+  }
+
+  private CsvImportResult createLeanCsvImportResult(CsvImportResult fullResult) {
+    CsvImportResult leanResult =
+        new CsvImportResult()
+            .withDryRun(fullResult.getDryRun())
+            .withStatus(fullResult.getStatus())
+            .withNumberOfRowsProcessed(fullResult.getNumberOfRowsProcessed())
+            .withNumberOfRowsPassed(fullResult.getNumberOfRowsPassed())
+            .withNumberOfRowsFailed(fullResult.getNumberOfRowsFailed())
+            .withAbortReason(fullResult.getAbortReason());
+
+    if (nullOrEmpty(fullResult.getImportResultsCsv())) {
+      return leanResult;
+    }
+
+    StringWriter stringWriter = new StringWriter();
+    try (CSVParser parser =
+        CSVParser.parse(
+            fullResult.getImportResultsCsv(), CSVFormat.DEFAULT.withFirstRecordAsHeader())) {
+      int nameIndex = -1;
+      List<String> headerNames = parser.getHeaderNames();
+      for (int i = 0; i < headerNames.size(); i++) {
+        if (headerNames.get(i).toLowerCase().contains("name")) {
+          nameIndex = i;
+          break;
+        }
+      }
+
+      String[] leanHeaders = {"status", "details", "name"};
+      try (CSVPrinter printer =
+          new CSVPrinter(stringWriter, CSVFormat.DEFAULT.withHeader(leanHeaders))) {
+        for (CSVRecord record : parser) {
+          String name = (nameIndex != -1 && nameIndex < record.size()) ? record.get(nameIndex) : "";
+          printer.printRecord(record.get("status"), record.get("details"), name);
+        }
+      }
+      leanResult.setImportResultsCsv(stringWriter.toString());
+    } catch (IOException | IllegalArgumentException e) {
+      // If parsing fails, just return the original CSV to avoid losing data
+      LOG.warn("Failed to create lean CSV for change description, returning full CSV", e);
+      leanResult.setImportResultsCsv(fullResult.getImportResultsCsv());
+    }
+    return leanResult;
   }
 
   private static final ConcurrentHashMap<String, CompletableFuture<BulkOperationResult>> BULK_JOBS =

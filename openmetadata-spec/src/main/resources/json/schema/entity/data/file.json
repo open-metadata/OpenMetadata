@@ -98,6 +98,18 @@
       "description": "File size in bytes",
       "type": "integer"
     },
+    "columns": {
+      "description": "Column definitions for structured data files (CSV, etc.)",
+      "type": "array",
+      "items": {
+        "$ref": "../data/table.json#/definitions/column"
+      },
+      "default": null
+    },
+    "sampleData": {
+      "description": "Sample data from the file",
+      "$ref": "../data/table.json#/definitions/tableData"
+    },
     "checksum": {
       "description": "File checksum/hash",
       "type": "string"

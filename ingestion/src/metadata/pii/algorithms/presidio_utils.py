@@ -49,8 +49,16 @@ from presidio_analyzer.predefined_recognizers import (
 )
 from spacy.cli.download import download  # pyright: ignore[reportUnknownVariableType]
 
+from metadata.generated.schema.type.classificationLanguages import (
+    ClassificationLanguage,
+)
 from metadata.pii.algorithms import patterns, presidio_constants
-from metadata.pii.constants import PRESIDIO_LOGGER, SPACY_EN_MODEL, SUPPORTED_LANG
+from metadata.pii.constants import (
+    LANGUAGE_MODEL_MAPPING,
+    PRESIDIO_LOGGER,
+    SPACY_EN_MODEL,
+    SUPPORTED_LANG,
+)
 from metadata.utils.dispatch import class_register
 from metadata.utils.logger import pii_logger
 
@@ -59,9 +67,17 @@ logger = pii_logger()
 
 @cache
 def load_nlp_engine(
-    model_name: str = SPACY_EN_MODEL,
-    supported_language: str = SUPPORTED_LANG,
+    model_name: Optional[str] = None,
+    supported_language: Optional[str] = None,
+    classification_language: Optional[ClassificationLanguage] = None,
 ) -> SpacyNlpEngine:
+    if classification_language:
+        model_name = get_model_for_language(classification_language)
+        supported_language = classification_language.value
+    else:
+        model_name = model_name or SPACY_EN_MODEL
+        supported_language = supported_language or SUPPORTED_LANG
+
     _load_spacy_model(model_name)
     model = {
         "lang_code": supported_language,
@@ -70,24 +86,31 @@ def load_nlp_engine(
     return SpacyNlpEngine(models=[model])
 
 
+def get_model_for_language(language: ClassificationLanguage) -> str:
+    return LANGUAGE_MODEL_MAPPING[language]
+
+
 def build_analyzer_engine(
-    model_name: str = SPACY_EN_MODEL,
+    language: ClassificationLanguage = ClassificationLanguage.en,
 ) -> AnalyzerEngine:
     """
-    Build a Presidio analyzer engine for the model_name and tailored to our use case.
+    Build a Presidio analyzer engine for the language and tailored to our use case.
 
     If the model is not found locally, it will be downloaded.
     """
+    model_name = get_model_for_language(language)
+    supported_language = language.value
+
     nlp_engine = load_nlp_engine(
-        model_name=model_name, supported_language=SUPPORTED_LANG
+        model_name=model_name, supported_language=supported_language
     )
     recognizer_registry = RecognizerRegistry(
         recognizers=list(_get_all_pattern_recognizers()),
-        supported_languages=[SUPPORTED_LANG],
+        supported_languages=[supported_language],
     )
     analyzer_engine = AnalyzerEngine(
         nlp_engine=nlp_engine,
-        supported_languages=[SUPPORTED_LANG],
+        supported_languages=[supported_language],
         registry=recognizer_registry,
     )
 

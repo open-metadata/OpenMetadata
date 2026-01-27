@@ -192,9 +192,11 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -223,9 +225,11 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             for row in results:
                 try:
                     stored_procedure = MssqlStoredProcedure.model_validate(dict(row))
+                    if self.is_stored_procedure_filtered(stored_procedure.name):
+                        continue
                     yield stored_procedure
                 except Exception as exc:
-                    logger.error()
+                    logger.error(f"Error parsing Stored Procedure row: {row}")
                     self.status.failed(
                         error=StackTraceError(
                             name=dict(row).get("name", "UNKNOWN"),

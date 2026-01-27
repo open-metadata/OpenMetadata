@@ -67,6 +67,7 @@
         "Epic",
         "ServiceNow",
         "Dremio",
+        "MicrosoftFabric",
         "BurstIQ"
       ],
       "javaEnums": [
@@ -225,6 +226,9 @@
         },
         {
           "name": "Dremio"
+        },
+        {
+          "name": "MicrosoftFabric"
         },
         {
           "name": "BurstIQ"
@@ -390,6 +394,9 @@
             },
             {
               "$ref": "./connections/database/dremioConnection.json"
+            },
+            {
+              "$ref": "./connections/database/microsoftFabricConnection.json"
             },
             {
               "$ref": "./connections/database/burstIQConnection.json"

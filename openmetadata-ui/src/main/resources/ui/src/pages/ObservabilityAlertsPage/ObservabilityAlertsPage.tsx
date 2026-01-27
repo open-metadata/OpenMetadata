@@ -30,6 +30,7 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -294,8 +295,12 @@ const ObservabilityAlertsPage = () => {
     <PageLayoutV1 pageTitle={t('label.observability-alert')}>
       <Row gutter={[0, 16]}>
         <Col span={24}>
-          <div className="d-flex justify-between">
-            <PageHeader data={pageHeaderData} />
+          <div className="d-flex justify-between m-t-xs">
+            <PageHeader
+              data={pageHeaderData}
+              learningPageId={LEARNING_PAGE_IDS.DATA_OBSERVABILITY}
+              title={t('label.observability-alert')}
+            />
             {(alertResourcePermission?.Create ||
               alertResourcePermission?.All) && (
               <LimitWrapper resource="eventsubscription">

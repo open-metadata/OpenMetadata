@@ -108,6 +108,7 @@ import securitySafe from '../assets/svg/security-safe.svg';
 import googleDrive from '../assets/svg/service-icon-google-drive.svg';
 import hex from '../assets/svg/service-icon-hex.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
+import sftp from '../assets/svg/service-icon-sftp.svg';
 import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
 import { EntityType } from '../enums/entity.enum';
@@ -226,6 +227,7 @@ export const COCKROACH = cockroach;
 export const SECURITY_DEFAULT = securitySafe;
 export const GRAFANA = grafana;
 export const GOOGLE_DRIVE = googleDrive;
+export const SFTP = sftp;
 export const TIMESCALE = timescale;
 export const BURSTIQ = burstiq;
 export const excludedService = [
@@ -456,6 +458,8 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Dremio,
   MetadataServiceType.Collibra,
   PipelineServiceType.Mulesoft,
+  DatabaseServiceType.MicrosoftFabric,
+  PipelineServiceType.MicrosoftFabricPipeline,
   DatabaseServiceType.BurstIQ,
 ];
 
@@ -547,4 +551,6 @@ export const SERVICE_TYPE_WITH_DISPLAY_NAME = new Map<string, string>([
   [PipelineServiceType.OpenLineage, 'Open Lineage'],
   [MetadataServiceType.AlationSink, 'Alation Sink'],
   [SearchServiceType.ElasticSearch, 'Elasticsearch'],
+  [DatabaseServiceType.MicrosoftFabric, 'Microsoft Fabric'],
+  [PipelineServiceType.MicrosoftFabricPipeline, 'Microsoft Fabric Pipeline'],
 ]);

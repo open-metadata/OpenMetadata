@@ -663,6 +663,7 @@ public class DirectoryResource extends EntityResource<Directory, DirectoryReposi
                     schema = @Schema(implementation = CsvImportResult.class)))
       })
   public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Dry run when true is passed for testing the CSV",
@@ -672,7 +673,7 @@ public class DirectoryResource extends EntityResource<Directory, DirectoryReposi
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, null, csv, dryRun, false);
+    return importCsvInternal(uriInfo, securityContext, null, csv, dryRun, false);
   }
 
   @GET

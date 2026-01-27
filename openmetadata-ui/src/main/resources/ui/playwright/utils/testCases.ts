@@ -59,17 +59,26 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     state: 'detached',
   });
 
+  const { service, database, databaseSchema, displayName } =
+    table.entityResponseData;
+
+  if (!service || !database || !databaseSchema) {
+    throw new Error(
+      `Table metadata (service, database, or databaseSchema) is missing for ${table.entity.name}`
+    );
+  }
+
   await expect(page.getByTestId('breadcrumb-link').nth(0)).toHaveText(
-    `${table.entityResponseData.service.displayName}/`
+    `${service.displayName}/`
   );
   await expect(page.getByTestId('breadcrumb-link').nth(1)).toHaveText(
-    `${table.entityResponseData?.['database'].displayName}/`
+    `${database.displayName}/`
   );
   await expect(page.getByTestId('breadcrumb-link').nth(2)).toHaveText(
-    `${table.entityResponseData?.['databaseSchema'].displayName}/`
+    `${databaseSchema.displayName}/`
   );
   await expect(page.getByTestId('breadcrumb-link').nth(3)).toHaveText(
-    `${table.entityResponseData?.displayName}/`
+    `${displayName}/`
   );
 
   await page.getByTestId('breadcrumb-link').nth(3).click();
@@ -272,10 +281,14 @@ export const verifyPageAccess = async (
     expect(page.url()).toContain(url);
 
     // Verify page loaded successfully (no 404 error)
-    await expect(page.getByText('Page Not FoundThe page you')).not.toBeVisible()
+    await expect(
+      page.getByText('Page Not FoundThe page you')
+    ).not.toBeVisible();
   } else {
     // Verify user is blocked - should be redirected to 404
-    await page.getByText('Page Not FoundThe page you').waitFor({ state: 'visible' });
+    await page
+      .getByText('Page Not FoundThe page you')
+      .waitFor({ state: 'visible' });
     expect(page.url()).not.toContain(url);
 
     const currentUrl = page.url();
@@ -330,11 +343,8 @@ export const navigateToBulkEditPage = async (page: Page) => {
   await page.getByTestId('bulk-edit-button').click();
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
-    timeout: 15000,
   });
-  await expect(page.locator('.rdg-header-row')).toBeVisible({
-    timeout: 10000,
-  });
+  await expect(page.locator('.rdg-header-row')).toBeVisible();
 };
 
 /**
@@ -365,9 +375,9 @@ export const cleanupDownloadedCSV = (tableName: string): void => {
   if (!fs.existsSync(downloadsDir)) {
     return;
   }
-  const exportedFile = fs.readdirSync(downloadsDir).find((f: string) =>
-    f.includes(tableName) && f.endsWith('.csv')
-  );
+  const exportedFile = fs
+    .readdirSync(downloadsDir)
+    .find((f: string) => f.includes(tableName) && f.endsWith('.csv'));
   if (exportedFile) {
     const filePath = path.join(downloadsDir, exportedFile);
     if (fs.existsSync(filePath)) {
@@ -387,63 +397,93 @@ export const addTestCaseValidationRows = async (
   table: TableClass,
   testNamePrefix: string
 ) => {
-  const { RDG_ACTIVE_CELL_SELECTOR } = await import('../constant/bulkImportExport');
-  const { fillTestCaseDetails, firstTimeGridAddRowAction, pressKeyXTimes } = await import('./importUtils');
+  const { RDG_ACTIVE_CELL_SELECTOR } = await import(
+    '../constant/bulkImportExport'
+  );
+  const { fillTestCaseDetails, firstTimeGridAddRowAction, pressKeyXTimes } =
+    await import('./importUtils');
+
+  const fqn = table.entityResponseData.fullyQualifiedName;
+
+  if (!fqn) {
+    throw new Error(
+      `Table fullyQualifiedName is missing for ${table.entity.name}`
+    );
+  }
 
   // Row 1: Complete test case with all fields
   await page.evaluate(() => window.scrollTo(0, 0));
   await firstTimeGridAddRowAction(page);
 
-  await fillTestCaseDetails({
-    name: `e2e_${testNamePrefix}_complete_test`,
-    displayName: `E2E ${testNamePrefix} Complete Test Case`,
-    description: 'Test case with all required fields',
-    testDefinition: 'tableRowCountToBeBetween',
-    entityFQN: table.entityResponseData.fullyQualifiedName,
-    testSuite: table.entityResponseData.fullyQualifiedName + '.testSuite',
-    parameterValues: '{"name":"minValue","value":"12"};{"name":"maxValue","value":"34"}',
-    computePassedFailedRowCount: 'false',
-    useDynamicAssertion: 'false',
-  }, page);
+  await fillTestCaseDetails(
+    {
+      name: `e2e_${testNamePrefix}_complete_test`,
+      displayName: `E2E ${testNamePrefix} Complete Test Case`,
+      description: 'Test case with all required fields',
+      testDefinition: 'tableRowCountToBeBetween',
+      entityFQN: fqn,
+      testSuite: fqn + '.testSuite',
+      parameterValues:
+        '{"name":"minValue","value":"12"};{"name":"maxValue","value":"34"}',
+      computePassedFailedRowCount: 'false',
+      useDynamicAssertion: 'false',
+    },
+    page
+  );
 
   // Row 2: Missing name (required field)
   await page.click('[data-testid="add-row-btn"]');
   await page.click(RDG_ACTIVE_CELL_SELECTOR);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('ArrowDown', { delay: 100 });
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowDown', { delay: 100 });
   await pressKeyXTimes(page, 11, 'ArrowLeft');
 
-  await fillTestCaseDetails({
-    displayName: `E2E ${testNamePrefix} Missing Name Test`,
-    description: 'Test case missing required name field',
-    testDefinition: 'tableRowCountToBeBetween',
-    entityFQN: table.entityResponseData.fullyQualifiedName,
-  }, page);
+  await fillTestCaseDetails(
+    {
+      displayName: `E2E ${testNamePrefix} Missing Name Test`,
+      description: 'Test case missing required name field',
+      testDefinition: 'tableRowCountToBeBetween',
+      entityFQN: fqn,
+    },
+    page
+  );
 
   // Row 3: Missing testDefinition (required field)
   await page.click('[data-testid="add-row-btn"]');
   await page.click(RDG_ACTIVE_CELL_SELECTOR);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('ArrowDown', { delay: 100 });
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowDown', { delay: 100 });
   await pressKeyXTimes(page, 11, 'ArrowLeft');
 
-  await fillTestCaseDetails({
-    name: `e2e_${testNamePrefix}_missing_definition`,
-    displayName: `E2E ${testNamePrefix} Missing Definition Test`,
-    description: 'Test case missing required testDefinition field',
-    entityFQN: table.entityResponseData.fullyQualifiedName,
-  }, page);
+  await fillTestCaseDetails(
+    {
+      name: `e2e_${testNamePrefix}_missing_definition`,
+      displayName: `E2E ${testNamePrefix} Missing Definition Test`,
+      description: 'Test case missing required testDefinition field',
+      entityFQN: fqn,
+    },
+    page
+  );
 
   // Row 4: Missing entityFQN (required field)
   await page.click('[data-testid="add-row-btn"]');
   await page.click(RDG_ACTIVE_CELL_SELECTOR);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('ArrowDown', { delay: 100 });
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowDown', { delay: 100 });
   await pressKeyXTimes(page, 11, 'ArrowLeft');
 
-  await fillTestCaseDetails({
-    name: `e2e_${testNamePrefix}_missing_entity_fqn`,
-    displayName: `E2E ${testNamePrefix} Missing EntityFQN Test`,
-    description: 'Test case missing required entityFQN field',
-    testDefinition: 'columnValuesToBeNotNull',
-  }, page);
+  await fillTestCaseDetails(
+    {
+      name: `e2e_${testNamePrefix}_missing_entity_fqn`,
+      displayName: `E2E ${testNamePrefix} Missing EntityFQN Test`,
+      description: 'Test case missing required entityFQN field',
+      testDefinition: 'columnValuesToBeNotNull',
+    },
+    page
+  );
 };
 
 /**
@@ -477,9 +517,9 @@ export const performE2EExportImportFlow = async (
     await navigateToImportPage(page);
 
     const fileInput = await page.$('[type="file"]');
-    const exportedFile = fs.readdirSync('downloads').find((f: string) =>
-      f.includes(table.entity.name) && f.endsWith('.csv')
-    );
+    const exportedFile = fs
+      .readdirSync('downloads')
+      .find((f: string) => f.includes(table.entity.name) && f.endsWith('.csv'));
     await fileInput?.setInputFiles(['downloads/' + exportedFile]);
 
     await page.waitForTimeout(500);
@@ -508,12 +548,19 @@ export const performE2EExportImportFlow = async (
     const cellDetails = page.locator('.rdg-cell-details');
     await expect(cellDetails.nth(0)).toContainText('Entity created');
     await expect(cellDetails.nth(1)).toContainText('Entity created');
-    await expect(cellDetails.nth(2)).toContainText('#FIELD_REQUIRED: Field 1 is required');
-    await expect(cellDetails.nth(3)).toContainText('#FIELD_REQUIRED: Field 4 is required');
-    await expect(cellDetails.nth(4)).toContainText('#FIELD_REQUIRED: Field 5 is required');
+    await expect(cellDetails.nth(2)).toContainText(
+      '#FIELD_REQUIRED: Field 1 is required'
+    );
+    await expect(cellDetails.nth(3)).toContainText(
+      '#FIELD_REQUIRED: Field 4 is required'
+    );
+    await expect(cellDetails.nth(4)).toContainText(
+      '#FIELD_REQUIRED: Field 5 is required'
+    );
 
     const updateButtonResponse = page.waitForResponse(
-      (response) => response.url().includes('/api/v1/dataQuality/testCases/name') &&
+      (response) =>
+        response.url().includes('/api/v1/dataQuality/testCases/name') &&
         response.url().includes('importAsync') &&
         response.url().includes('dryRun=false') &&
         response.url().includes('recursive=true')
@@ -521,7 +568,9 @@ export const performE2EExportImportFlow = async (
 
     await page.click('[type="button"] >> text="Update"', { force: true });
     await updateButtonResponse;
-    await page.locator('.inovua-react-toolkit-load-mask__background-layer').waitFor({ state: 'detached' });
+    await page
+      .locator('.inovua-react-toolkit-load-mask__background-layer')
+      .waitFor({ state: 'detached' });
     await toastNotification(page, /updated successfully/);
   });
 
@@ -535,7 +584,6 @@ export const performE2EExportImportFlow = async (
 
   // Step 6: Bulk edit - Update display names and add tags
   await test.step('Bulk edit: Update display names and add tags', async () => {
-
     // Click Manage button and navigate to bulk edit
     await clickManageButton(page, 'table');
     await page.click('[data-testid="bulk-edit-button"]');
@@ -546,21 +594,31 @@ export const performE2EExportImportFlow = async (
 
     // Update display name for first test case (existing test case)
     await page.locator('.rdg-row').nth(0).click();
-    const displayNameCell1 = page.locator('.rdg-row').nth(0).locator('[aria-colindex="2"]');
+    const displayNameCell1 = page
+      .locator('.rdg-row')
+      .nth(0)
+      .locator('[aria-colindex="2"]');
     await displayNameCell1.dblclick();
     await page.keyboard.type(' - Updated via Bulk Edit');
     await page.keyboard.press('Enter');
 
     // Update display name for second test case (e2e_${testNamePrefix}_complete_test)
     await page.locator('.rdg-row').nth(1).click();
-    const displayNameCell2 = page.locator('.rdg-row').nth(1).locator('[aria-colindex="2"]');
+    const displayNameCell2 = page
+      .locator('.rdg-row')
+      .nth(1)
+      .locator('[aria-colindex="2"]');
     await displayNameCell2.dblclick();
     await page.keyboard.type(' - Bulk Edited');
     await page.keyboard.press('Enter');
 
     // First test case - add tag
     await page.locator('.rdg-row').nth(0).click();
-    await page.locator('.rdg-row').nth(0).locator('[aria-colindex="1"]').click(); // Click Name column to ensure focus
+    await page
+      .locator('.rdg-row')
+      .nth(0)
+      .locator('[aria-colindex="1"]')
+      .click(); // Click Name column to ensure focus
     await pressKeyXTimes(page, 9, 'ArrowRight'); // Navigate from Name (2) to Tags (11) = 9 presses
     await fillTagDetails(page, 'PII.Sensitive');
 
@@ -578,14 +636,17 @@ export const performE2EExportImportFlow = async (
 
     // Click Update button
     const bulkEditUpdateResponse = page.waitForResponse(
-      (response) => response.url().includes('/api/v1/dataQuality/testCases/name') &&
+      (response) =>
+        response.url().includes('/api/v1/dataQuality/testCases/name') &&
         response.url().includes('importAsync') &&
         response.url().includes('dryRun=false')
     );
 
     await page.click('[type="button"] >> text="Update"', { force: true });
     await bulkEditUpdateResponse;
-    await page.locator('.inovua-react-toolkit-load-mask__background-layer').waitFor({ state: 'detached' });
+    await page
+      .locator('.inovua-react-toolkit-load-mask__background-layer')
+      .waitFor({ state: 'detached' });
     await toastNotification(page, /updated successfully/);
 
     // Verify we're back on the data quality tab

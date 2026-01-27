@@ -8,13 +8,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.EntityValidation;
@@ -29,6 +33,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.util.TestUtils;
 
 /**
  * Base class for all entity integration tests.
@@ -109,6 +114,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   protected abstract String getEntityType();
 
   /**
+   * Get the resource path for this entity (e.g., "/v1/tables", "/v1/databases").
+   * Used for making raw HTTP calls to endpoints not exposed through the SDK.
+   */
+  protected String getResourcePath() {
+    return "/v1/" + TestUtils.plurializeEntityType(getEntityType()) + "/";
+  }
+
+  /**
    * Validate that the created entity matches the create request.
    * Subclasses should add entity-specific validations.
    */
@@ -140,6 +153,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       true; // Override if include=deleted query param not supported
   protected boolean supportsImportExport =
       false; // Override in subclasses that support CSV import/export
+  protected boolean supportsListHistoryByTimestamp =
+      false; // Override in subclasses that support listing all versions by timestamp
 
   // ===================================================================
   // CHANGE TYPE - Controls how version changes are validated
@@ -4226,6 +4241,268 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
           originalLines[0], reExportedLines[0], "CSV headers should match after round-trip");
     } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
       fail("Import/export round-trip failed: " + e.getMessage());
+    }
+  }
+
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  @Nested
+  class ListEntityHistoryByTimestampPaginationTest {
+    @Test
+    void test_listEntityHistoryByTimestamp_pagination(TestNamespace ns) throws Exception {
+      Assumptions.assumeTrue(
+          supportsListHistoryByTimestamp,
+          "Entity does not support listEntityHistoryByTimestamp endpoint");
+      Assumptions.assumeTrue(supportsPatch, "Entity does not support patch operations");
+
+      OpenMetadataClient client = SdkClients.adminClient();
+      long startTs = System.currentTimeMillis();
+
+      List<T> createdEntities = new ArrayList<>();
+      for (int i = 0; i < 3; i++) {
+        K createRequest = createRequest(ns.prefix("versions_test_" + i), ns);
+        T entity = createEntity(createRequest);
+        createdEntities.add(entity);
+
+        entity.setDescription("Updated description v2 - " + System.currentTimeMillis());
+        patchEntity(entity.getId().toString(), entity);
+
+        entity.setDescription("Updated description v3 - " + System.currentTimeMillis());
+        patchEntity(entity.getId().toString(), entity);
+      }
+
+      long endTs = System.currentTimeMillis();
+      String basePath = getResourcePath() + "history";
+
+      String response =
+          client
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.GET,
+                  basePath + "?startTs=" + startTs + "&endTs=" + endTs + "&limit=2",
+                  null);
+
+      assertNotNull(response, "Response should not be null");
+      JsonNode result = MAPPER.readTree(response);
+
+      assertTrue(result.has("data"), "Response should have 'data' field");
+      JsonNode data = result.get("data");
+      assertTrue(data.isArray(), "Data should be an array");
+      assertTrue(data.size() <= 2, "Data size should respect limit of 2");
+
+      if (result.has("paging") && result.get("paging").has("after")) {
+        String afterCursor = result.get("paging").get("after").asText();
+        assertNotNull(afterCursor, "After cursor should be present for paginated results");
+
+        String page2Response =
+            client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    basePath
+                        + "?startTs="
+                        + startTs
+                        + "&endTs="
+                        + endTs
+                        + "&limit=2&after="
+                        + afterCursor,
+                    null);
+
+        JsonNode page2Result = MAPPER.readTree(page2Response);
+        assertTrue(page2Result.has("data"), "Page 2 response should have 'data' field");
+        JsonNode page2Data = page2Result.get("data");
+        assertTrue(page2Data.isArray(), "Page 2 data should be an array");
+
+        if (page2Result.has("paging") && page2Result.get("paging").has("before")) {
+          String beforeCursor = page2Result.get("paging").get("before").asText();
+
+          String backResponse =
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.GET,
+                      basePath
+                          + "?startTs="
+                          + startTs
+                          + "&endTs="
+                          + endTs
+                          + "&limit=2&before="
+                          + beforeCursor,
+                      null);
+
+          JsonNode backResult = MAPPER.readTree(backResponse);
+          assertTrue(backResult.has("data"), "Back navigation response should have 'data' field");
+        }
+      }
+    }
+
+    @Test
+    void test_listEntityHistoryByTimestamp_withInvalidLimit(TestNamespace ns) throws Exception {
+      Assumptions.assumeTrue(
+          supportsListHistoryByTimestamp,
+          "Entity does not support listEntityHistoryByTimestamp endpoint");
+
+      OpenMetadataClient client = SdkClients.adminClient();
+      long now = System.currentTimeMillis();
+      String basePath = getResourcePath() + "history";
+
+      assertThrows(
+          Exception.class,
+          () ->
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.GET,
+                      basePath + "?startTs=" + (now - 1000) + "&endTs=" + now + "&limit=0",
+                      null),
+          "Limit of 0 should fail validation");
+
+      assertThrows(
+          Exception.class,
+          () ->
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.GET,
+                      basePath + "?startTs=" + (now - 1000) + "&endTs=" + now + "&limit=-1",
+                      null),
+          "Negative limit should fail validation");
+    }
+
+    @Test
+    void test_listEntityHistoryByTimestamp_emptyTimeRange(TestNamespace ns) throws Exception {
+      Assumptions.assumeTrue(
+          supportsListHistoryByTimestamp,
+          "Entity does not support listEntityHistoryByTimestamp endpoint");
+
+      OpenMetadataClient client = SdkClients.adminClient();
+      long futureStart = System.currentTimeMillis() + 86400000;
+      long futureEnd = futureStart + 1000;
+      String basePath = getResourcePath() + "history";
+
+      String response =
+          client
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.GET,
+                  basePath + "?startTs=" + futureStart + "&endTs=" + futureEnd + "&limit=10",
+                  null);
+
+      JsonNode result = MAPPER.readTree(response);
+      assertTrue(result.has("data"), "Response should have 'data' field");
+      JsonNode data = result.get("data");
+      assertTrue(data.isArray(), "Data should be an array");
+      assertEquals(0, data.size(), "Data should be empty for future time range");
+    }
+
+    @Test
+    @Timeout(180)
+    void test_listEntityHistoryByTimestamp_completePaginationCycle(TestNamespace ns)
+        throws Exception {
+      Assumptions.assumeTrue(
+          supportsListHistoryByTimestamp,
+          "Entity does not support listEntityHistoryByTimestamp endpoint");
+      Assumptions.assumeTrue(supportsPatch, "Entity does not support patch operations");
+
+      OpenMetadataClient client = SdkClients.adminClient();
+      long startTs = System.currentTimeMillis();
+
+      for (int i = 0; i < 5; i++) {
+        K createRequest = createRequest(ns.prefix("pagination_cycle_" + i), ns);
+        T entity = createEntity(createRequest);
+
+        entity.setDescription("Updated v2 - " + System.currentTimeMillis());
+        patchEntity(entity.getId().toString(), entity);
+      }
+
+      long endTs = System.currentTimeMillis();
+      String basePath = getResourcePath() + "history";
+      int limit = 3;
+
+      List<String> allIds = new ArrayList<>();
+      List<String> afterCursors = new ArrayList<>();
+      String afterCursor = null;
+      String lastPageBeforeCursor = null;
+      int forwardPageCount = 0;
+
+      do {
+        String url = basePath + "?startTs=" + startTs + "&endTs=" + endTs + "&limit=" + limit;
+        if (afterCursor != null) {
+          url += "&after=" + afterCursor;
+        }
+
+        String response = client.getHttpClient().executeForString(HttpMethod.GET, url, null);
+        JsonNode result = MAPPER.readTree(response);
+        JsonNode data = result.get("data");
+
+        for (JsonNode item : data) {
+          if (item.has("id")) {
+            allIds.add(item.get("id").asText());
+          }
+        }
+
+        forwardPageCount++;
+        afterCursor = null;
+        if (result.has("paging") && !result.get("paging").isNull()) {
+          JsonNode paging = result.get("paging");
+          if (paging.has("after") && !paging.get("after").isNull()) {
+            afterCursor = paging.get("after").asText();
+            afterCursors.add(afterCursor);
+          }
+          if (paging.has("before") && !paging.get("before").isNull()) {
+            lastPageBeforeCursor = paging.get("before").asText();
+          }
+        }
+      } while (afterCursor != null);
+
+      assertTrue(forwardPageCount > 1, "Should have paginated through multiple pages forward");
+      assertFalse(allIds.isEmpty(), "Should have collected entity version IDs");
+
+      if (!afterCursors.isEmpty() && lastPageBeforeCursor != null) {
+        String beforeCursor = lastPageBeforeCursor;
+
+        int backwardPageCount = 0;
+        while (beforeCursor != null) {
+          String backUrl =
+              basePath
+                  + "?startTs="
+                  + startTs
+                  + "&endTs="
+                  + endTs
+                  + "&limit="
+                  + limit
+                  + "&before="
+                  + beforeCursor;
+          String backResponse =
+              client.getHttpClient().executeForString(HttpMethod.GET, backUrl, null);
+          JsonNode backResult = MAPPER.readTree(backResponse);
+
+          backwardPageCount++;
+          beforeCursor = null;
+          if (backResult.has("paging") && !backResult.get("paging").isNull()) {
+            JsonNode paging = backResult.get("paging");
+            if (paging.has("before") && !paging.get("before").isNull()) {
+              beforeCursor = paging.get("before").asText();
+            }
+          }
+        }
+
+        assertTrue(
+            backwardPageCount >= 1, "Should have been able to navigate backward at least once");
+
+        String firstPageUrl =
+            basePath + "?startTs=" + startTs + "&endTs=" + endTs + "&limit=" + limit;
+        String firstPageResponse =
+            client.getHttpClient().executeForString(HttpMethod.GET, firstPageUrl, null);
+        JsonNode firstPageResult = MAPPER.readTree(firstPageResponse);
+
+        boolean hasBeforeOnFirstPage = false;
+        if (firstPageResult.has("paging") && !firstPageResult.get("paging").isNull()) {
+          JsonNode paging = firstPageResult.get("paging");
+          hasBeforeOnFirstPage = paging.has("before") && !paging.get("before").isNull();
+        }
+        assertFalse(hasBeforeOnFirstPage, "First page should not have 'before' cursor");
+      }
     }
   }
 }

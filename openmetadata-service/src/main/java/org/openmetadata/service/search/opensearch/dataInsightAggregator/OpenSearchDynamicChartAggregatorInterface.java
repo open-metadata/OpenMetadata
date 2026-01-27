@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -269,6 +270,36 @@ public interface OpenSearchDynamicChartAggregatorInterface {
     return finalResult;
   }
 
+  /**
+   * Extracts the numeric index from aggregation key names.
+   * Keys follow patterns like "filter0", "filter1", "id.keyword0", "id.keyword1",
+   * etc.
+   * The index is always the trailing digits in the key name.
+   */
+  private static int extractAggregationIndex(String key) {
+    // Extract trailing digits from the key
+    int i = key.length() - 1;
+    while (i >= 0 && Character.isDigit(key.charAt(i))) {
+      i--;
+    }
+    if (i < key.length() - 1) {
+      return Integer.parseInt(key.substring(i + 1));
+    }
+    return Integer.MAX_VALUE; // Keys without numeric suffix go last
+  }
+
+  /**
+   * Returns a sorted list of aggregation entries by their numeric index.
+   * This ensures consistent ordering regardless of the underlying map
+   * implementation.
+   */
+  private static List<Map.Entry<String, Aggregate>> getSortedAggregationEntries(
+      Map<String, Aggregate> aggregations) {
+    List<Map.Entry<String, Aggregate>> entries = new ArrayList<>(aggregations.entrySet());
+    entries.sort(Comparator.comparingInt(e -> extractAggregationIndex(e.getKey())));
+    return entries;
+  }
+
   private List<List<DataInsightCustomChartResult>> processAggregationsInternal(
       Map<String, Aggregate> aggregations, String group, String metric) {
     List<List<DataInsightCustomChartResult>> results = new ArrayList<>();
@@ -277,7 +308,10 @@ public interface OpenSearchDynamicChartAggregatorInterface {
       if (agg.isSterms()) {
         for (StringTermsBucket bucket : agg.sterms().buckets().array()) {
           List<DataInsightCustomChartResult> subResults = new ArrayList<>();
-          for (Map.Entry<String, Aggregate> subEntry : bucket.aggregations().entrySet()) {
+          // Sort entries by their numeric index to ensure correct formula substitution
+          // order
+          for (Map.Entry<String, Aggregate> subEntry :
+              getSortedAggregationEntries(bucket.aggregations())) {
             addByAggregationType(
                 subEntry.getValue(), subResults, bucket.key(), group, false, metric);
           }
@@ -286,7 +320,10 @@ public interface OpenSearchDynamicChartAggregatorInterface {
       } else if (agg.isDateHistogram()) {
         for (DateHistogramBucket bucket : agg.dateHistogram().buckets().array()) {
           List<DataInsightCustomChartResult> subResults = new ArrayList<>();
-          for (Map.Entry<String, Aggregate> subEntry : bucket.aggregations().entrySet()) {
+          // Sort entries by their numeric index to ensure correct formula substitution
+          // order
+          for (Map.Entry<String, Aggregate> subEntry :
+              getSortedAggregationEntries(bucket.aggregations())) {
             addByAggregationType(
                 subEntry.getValue(), subResults, bucket.key(), group, true, metric);
           }

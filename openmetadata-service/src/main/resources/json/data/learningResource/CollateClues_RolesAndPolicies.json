@@ -1,0 +1,17 @@
+{
+  "name": "CollateClues_RolesAndPolicies",
+  "displayName": "Collate Clues: Roles & Policies",
+  "description": "Learn how to configure access control with Roles and Policies to secure your data assets.",
+  "resourceType": "Video",
+  "categories": ["Administration", "DataGovernance"],
+  "source": {
+    "url": "https://www.youtube.com/watch?v=Qy28FaNgkgM",
+    "provider": "YouTube"
+  },
+  "contexts": [
+    {"pageId": "roles"},
+    {"pageId": "policies"},
+    {"pageId": "accessControl"}
+  ],
+  "status": "Active"
+}

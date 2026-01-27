@@ -28,6 +28,31 @@ from metadata.utils.singleton import Singleton
 logger = utils_logger()
 
 
+class ExecutionTimeMetrics(BaseModel):
+    """Execution time statistics."""
+
+    total_time: float = 0.0
+    call_count: int = 0
+    min_time: Optional[float] = None
+    max_time: Optional[float] = None
+
+    @property
+    def average_time(self) -> float:
+        """Average time per call."""
+        return self.total_time / self.call_count if self.call_count > 0 else 0.0
+
+    def update(self, elapsed: float):
+        """Update with new measurement."""
+        self.total_time += elapsed
+        self.call_count += 1
+
+        if self.min_time is None or elapsed < self.min_time:
+            self.min_time = elapsed
+
+        if self.max_time is None or elapsed > self.max_time:
+            self.max_time = elapsed
+
+
 class ExecutionTimeTrackerContext(BaseModel):
     """Small Model to hold the ExecutionTimeTracker context."""
 
@@ -56,7 +81,7 @@ class ExecutionTimeTrackerContextMap(metaclass=Singleton):
         thread_id = thread_id or threading.get_ident()
 
         stored_context = [
-            context for context in self.map.get(thread_id, {}) if context.stored
+            context for context in self.map.get(thread_id, []) if context.stored
         ]
 
         if stored_context:
@@ -81,16 +106,41 @@ class ExecutionTimeTrackerState(metaclass=Singleton):
 
     def __init__(self):
         """Initializes the state and the lock."""
-        self.state: Dict[str, float] = {}
+        self.state: Dict[str, ExecutionTimeMetrics] = {}
         self.lock = threading.Lock()
 
     def add(self, context: ExecutionTimeTrackerContext, elapsed: float):
-        """Updates the State."""
+        """Update metrics with elapsed time."""
         with self.lock:
-            self.state[context.name] = self.state.get(context.name, 0) + elapsed
+            if context.name not in self.state:
+                self.state[context.name] = ExecutionTimeMetrics()
+            self.state[context.name].update(elapsed)
+
+    def get_metrics(self, context_name: str) -> Optional[ExecutionTimeMetrics]:
+        """Get metrics by name."""
+        return self.state.get(context_name)
 
 
-class ExecutionTimeTracker(metaclass=Singleton):
+class ExecutionTimeTrackerMeta(Singleton):
+    """Custom metaclass for ExecutionTimeTracker.
+
+    Extends Singleton to also update the 'enabled' flag when __call__ is invoked
+    on an existing instance. This is needed because Singleton's __call__ returns
+    the existing instance without calling __init__.
+    """
+
+    def __call__(cls, *args, **kwargs):
+        """Override to update enabled flag on existing singleton instance."""
+        instance = super().__call__(*args, **kwargs)
+
+        enabled = kwargs.get("enabled", args[0] if args else None)
+        # Update enabled only if explicitly passed as argument
+        if enabled is not None:
+            instance.enabled = enabled
+        return instance
+
+
+class ExecutionTimeTracker(metaclass=ExecutionTimeTrackerMeta):
     """ExecutionTimeTracker is implemented as a Singleton in order to hold state globally.
 
     It works as a Context Manager in order to track and log execution times.
@@ -120,37 +170,43 @@ class ExecutionTimeTracker(metaclass=Singleton):
         self.context_map = ExecutionTimeTrackerContextMap()
         self.state = ExecutionTimeTrackerState()
 
-        self.new_context = ""
-        self.store = True
+        # Thread-local pending context storage to fix race conditions
+        # between __call__ and __enter__ in multi-threaded environments
+        self._pending_context: Dict[int, str] = {}
+        self._pending_store: Dict[int, bool] = {}
 
     def __call__(self, context: str, store: bool = True):
         """At every point we open a new Context Manager we can pass the current 'context' and
         if we want to 'store' it.
 
-        Sets the temporary attributes used within the context:
-
-            new_context: Full Context name, appending the given context to the last stored context level.
-            store: If True, it will take part of the global state. Otherwise it will only log to debug.
+        Uses thread-local storage for pending context to avoid race conditions
+        in multi-threaded environments.
         """
-        self.new_context = ".".join(
+        thread_id = threading.get_ident()
+        new_context = ".".join(
             [
                 part
                 for part in [self.context_map.get_last_stored_context_level(), context]
                 if part
             ]
         )
-        self.store = store
+        self._pending_context[thread_id] = new_context
+        self._pending_store[thread_id] = store
 
         return self
 
     def __enter__(self):
         """If enabled, when entering the context, we append a new
-        ExecutionTimeTrackerContext to the list.
+        ExecutionTimeTrackerContext to the list using thread-local pending values.
         """
         if self.enabled:
+            thread_id = threading.get_ident()
+            new_context = self._pending_context.pop(thread_id, "")
+            store = self._pending_store.pop(thread_id, True)
+
             self.context_map.append(
                 ExecutionTimeTrackerContext(
-                    name=self.new_context, start=perf_counter(), stored=self.store
+                    name=new_context, start=perf_counter(), stored=store
                 )
             )
 
@@ -167,11 +223,26 @@ class ExecutionTimeTracker(metaclass=Singleton):
             elapsed = stop - context.start
 
             logger.debug(
-                "%s executed in %s", context.name, pretty_print_time_duration(elapsed)
+                "%s executed in %s",
+                context.name,
+                pretty_print_time_duration(elapsed),
             )
 
             if context.stored:
                 self.state.add(context, elapsed)
+
+    def get_summary(self) -> Dict[str, ExecutionTimeMetrics]:
+        """Get all metrics."""
+        return dict(self.state.state)
+
+    def get_context_metrics(self, context_name: str) -> Optional[ExecutionTimeMetrics]:
+        """Get metrics by name."""
+        return self.state.get_metrics(context_name)
+
+    def reset(self) -> None:
+        """Reset all metrics."""
+        with self.state.lock:
+            self.state.state.clear()
 
 
 def calculate_execution_time(context: Optional[str] = None, store: bool = True):

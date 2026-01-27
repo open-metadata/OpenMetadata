@@ -291,7 +291,9 @@ jest.mock('../../../utils/TableColumn.util', () => ({
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
   getEntityByFqn: jest.fn(),
-  getFqnParts: jest.fn().mockImplementation((fqn) => ({ entityFqn: fqn, columnFqn: '' })),
+  getFqnParts: jest
+    .fn()
+    .mockImplementation((fqn) => ({ entityFqn: fqn, columnFqn: '' })),
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
@@ -323,7 +325,13 @@ describe('Test EntityTable Component', () => {
 
     expect(getTableColumnsByFQN).toHaveBeenCalledWith(
       MOCK_TABLE.fullyQualifiedName,
-      { fields: 'tags,customMetrics', limit: 50, offset: 0 }
+      {
+        fields: 'tags,customMetrics,extension',
+        limit: 50,
+        offset: 0,
+        sortBy: 'name',
+        sortOrder: 'asc',
+      }
     );
 
     const entityTable = await screen.findByTestId('entity-table');
@@ -342,7 +350,13 @@ describe('Test EntityTable Component', () => {
 
     expect(getTableColumnsByFQN).toHaveBeenCalledWith(
       MOCK_TABLE.fullyQualifiedName,
-      { fields: 'tags,customMetrics', limit: 50, offset: 0 }
+      {
+        fields: 'tags,customMetrics,extension',
+        limit: 50,
+        offset: 0,
+        sortBy: 'name',
+        sortOrder: 'asc',
+      }
     );
 
     const tableTags = await screen.findAllByText('TableTags');
