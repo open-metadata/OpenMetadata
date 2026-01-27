@@ -352,7 +352,9 @@ export const addMultiOwner = async (data: {
     clearAll = true,
   } = data;
   const isMultipleOwners = Array.isArray(ownerNames);
-  const owners = isMultipleOwners ? ownerNames : [ownerNames];
+  const owners = (isMultipleOwners ? ownerNames : [ownerNames]).filter(
+    (name): name is string => Boolean(name)
+  );
 
   await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
 
@@ -950,7 +952,8 @@ type GlossaryTermOption = {
 export const assignGlossaryTerm = async (
   page: Page,
   glossaryTerm: GlossaryTermOption,
-  action: 'Add' | 'Edit' = 'Add'
+  action: 'Add' | 'Edit' = 'Add',
+  entityEndpoint?: string
 ) => {
   await page
     .getByTestId('KnowledgePanel.GlossaryTerms')
@@ -978,10 +981,18 @@ export const assignGlossaryTerm = async (
     page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
   ).toBeEnabled();
 
+  const patchRequest = entityEndpoint
+    ? page.waitForResponse(`/api/v1/${entityEndpoint}/*`)
+    : undefined;
+
   await page
     .getByTestId('custom-drop-down-menu')
     .getByTestId('saveAssociatedTag')
     .click();
+
+  if (patchRequest) {
+    await patchRequest;
+  }
 
   await expect(
     page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')

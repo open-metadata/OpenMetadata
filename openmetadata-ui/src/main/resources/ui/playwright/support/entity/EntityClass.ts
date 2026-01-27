@@ -416,7 +416,7 @@ export class EntityClass {
     glossaryTerm2: GlossaryTerm['responseData'],
     entity?: EntityClass
   ) {
-    await assignGlossaryTerm(page, glossaryTerm1);
+    await assignGlossaryTerm(page, glossaryTerm1, 'Add', this.endpoint);
     if (entity) {
       await checkExploreSearchFilter(
         page,
@@ -426,7 +426,7 @@ export class EntityClass {
         entity
       );
     }
-    await assignGlossaryTerm(page, glossaryTerm2, 'Edit');
+    await assignGlossaryTerm(page, glossaryTerm2, 'Edit', this.endpoint);
     await removeGlossaryTerm(page, [glossaryTerm1, glossaryTerm2]);
 
     await page

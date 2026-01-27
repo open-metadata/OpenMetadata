@@ -3224,11 +3224,16 @@ test.describe('Domain Tree View Functionality', () => {
       });
 
       // Add only glossary term to domain (no tags)
-      await assignGlossaryTerm(page, {
-        displayName: testGlossaryTerm.data.displayName,
-        name: testGlossaryTerm.data.name,
-        fullyQualifiedName: testGlossaryTerm.responseData.fullyQualifiedName,
-      });
+      await assignGlossaryTerm(
+        page,
+        {
+          displayName: testGlossaryTerm.data.displayName,
+          name: testGlossaryTerm.data.name,
+          fullyQualifiedName: testGlossaryTerm.responseData.fullyQualifiedName,
+        },
+        'Add',
+        EntityTypeEndpoint.Domain
+      );
 
       await visitGlossaryPage(page, testGlossary.data.displayName);
       await selectActiveGlossaryTerm(page, testGlossaryTerm.data.displayName);
