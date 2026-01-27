@@ -12,13 +12,11 @@
  */
 
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
+import { Stack } from '@mui/material';
 import {
-  Button,
   Card,
-  Col,
   Form,
   Input,
-  Row,
   Select,
   Tag,
   TimePicker,
@@ -844,6 +842,34 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     }
   };
 
+  const getEntityRefLinkValue = (item: EntityReference) => (
+    <Link
+      className="entity-ref-link"
+      to={entityUtilClassBase.getEntityLink(
+        item.type,
+        item.fullyQualifiedName ?? item.name ?? ''
+      )}>
+      <div className="entity-icon m-r-xs">
+        {['user', 'team'].includes(item.type) ? (
+          <ProfilePicture
+            className="d-flex"
+            isTeam={item.type === 'team'}
+            name={item.name ?? ''}
+            type="circle"
+            width="18"
+          />
+        ) : (
+          searchClassBase.getEntityIcon(item.type)
+        )}
+      </div>
+      <Typography.Text
+        className="text-left text-primary truncate w-max-full"
+        ellipsis={{ tooltip: true }}>
+        {getEntityName(item)}
+      </Typography.Text>
+    </Link>
+  );
+
   const getPropertyValue = () => {
     if (isVersionView) {
       const isKeyAdded = versionDataKeys?.includes(propertyName);
@@ -864,7 +890,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           <>
             {isArray(value) ? (
               <div
-                className="w-full d-flex gap-2 flex-wrap"
+                className="w-max-full d-flex gap-2 flex-wrap"
                 data-testid="enum-value">
                 {value.map((val) => (
                   <Tooltip key={val} title={val} trigger="hover">
@@ -904,38 +930,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                   className="entity-reference-list-item flex items-center justify-between"
                   data-testid={getEntityName(item)}
                   key={item.id}>
-                  <div className="d-flex items-center">
-                    <Link
-                      to={entityUtilClassBase.getEntityLink(
-                        item.type,
-                        item.fullyQualifiedName ?? item.name
-                      )}>
-                      <Button
-                        className="entity-button flex-center p-0"
-                        icon={
-                          <div className="entity-button-icon m-r-xs">
-                            {['user', 'team'].includes(item.type) ? (
-                              <ProfilePicture
-                                className="d-flex"
-                                isTeam={item.type === 'team'}
-                                name={item.name ?? ''}
-                                type="circle"
-                                width="18"
-                              />
-                            ) : (
-                              searchClassBase.getEntityIcon(item.type)
-                            )}
-                          </div>
-                        }
-                        type="text">
-                        <Typography.Text
-                          className="text-left text-primary truncate w-68"
-                          ellipsis={{ tooltip: true }}>
-                          {getEntityName(item)}
-                        </Typography.Text>
-                      </Button>
-                    </Link>
-                  </div>
+                  {getEntityRefLinkValue(item)}
                 </div>
               );
             })}
@@ -951,42 +946,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         }
 
         return (
-          <div
-            className="d-flex items-center"
-            data-testid="entityReference-value">
-            <Link
-              to={entityUtilClassBase.getEntityLink(
-                item.type,
-                item.fullyQualifiedName as string
-              )}>
-              <Button
-                className="entity-button flex-center p-0"
-                icon={
-                  <div
-                    className="entity-button-icon m-r-xs"
-                    style={{ width: '20px', display: 'flex' }}>
-                    {['user', 'team'].includes(item.type) ? (
-                      <ProfilePicture
-                        className="d-flex"
-                        isTeam={item.type === 'team'}
-                        name={item.name ?? ''}
-                        type="circle"
-                        width="18"
-                      />
-                    ) : (
-                      searchClassBase.getEntityIcon(item.type)
-                    )}
-                  </div>
-                }
-                type="text">
-                <Typography.Text
-                  className="text-left text-primary truncate w-68 "
-                  data-testid="entityReference-value-name"
-                  ellipsis={{ tooltip: true }}>
-                  {getEntityName(item)}
-                </Typography.Text>
-              </Button>
-            </Link>
+          <div className="entity-list-body" data-testid="entityReference-value">
+            {getEntityRefLinkValue(item)}
           </div>
         );
       }
@@ -1105,7 +1066,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       propertyValue
     ) : (
       <span className="text-grey-muted" data-testid="no-data">
-        {t('message.no-data')}
+        {t('label.not-set')}
       </span>
     );
   };
@@ -1133,95 +1094,87 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   }, [isExpanded, showInput, isRenderedInRightPanel]);
 
   const customPropertyElement = (
-    <Row data-testid={propertyName} gutter={[0, 8]}>
-      <Col span={24}>
-        <Row gutter={[0, 2]}>
-          <Col className="d-flex justify-between items-center w-full" span={24}>
-            <div className="d-flex items-center gap-1">
-              <Typography.Text
-                className="text-grey-body property-name"
-                data-testid="property-name">
-                {getEntityName(property)}
-              </Typography.Text>
-              {property.description && (
-                <Tooltip
-                  destroyTooltipOnHide
-                  placement="top"
-                  title={getTextFromHtmlString(property.description)}>
-                  <InfoCircleOutlined
-                    className="custom-property-description-icon"
-                    data-testid="custom-property-description-icon"
-                    style={{ color: GRAYED_OUT_COLOR, fontSize: '14px' }}
-                  />
-                </Tooltip>
-              )}
-            </div>
-            {hasEditPermissions && !showInput && (
-              <Tooltip
-                placement="left"
-                title={t('label.edit-entity', {
-                  entity: getEntityName(property),
-                })}>
-                <Icon
-                  component={EditIconComponent}
-                  data-testid={`edit-icon${
-                    isRenderedInRightPanel ? '-right-panel' : ''
-                  }`}
-                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                  tabIndex={0}
-                  onClick={onShowInput}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      onShowInput();
-                    }
-                  }}
-                />
-              </Tooltip>
-            )}
-          </Col>
-        </Row>
-      </Col>
-
-      <Col span={24}>
-        <div
-          className={classNames(
-            'd-flex justify-between w-full gap-2',
-            {
-              'items-end': isExpanded,
-            },
-            {
-              'items-center': !isExpanded,
-            }
-          )}>
-          <div
-            className="w-full"
-            ref={contentRef}
-            style={{
-              height: containerStyleFlag ? 'auto' : '30px',
-              overflow: 'hidden',
-            }}>
-            {showInput ? getPropertyInput() : getValueElement()}
-          </div>
-          {isOverflowing && !showInput && (
-            <Icon
-              className={classNames('custom-property-value-toggle-btn', {
-                active: isExpanded,
-              })}
-              component={ArrowIconComponent}
-              data-testid={`toggle-${propertyName}`}
-              style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-              tabIndex={0}
-              onClick={toggleExpand}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  toggleExpand();
-                }
-              }}
+    <Stack data-testid={propertyName} spacing={2}>
+      <div className="d-flex items-center gap-1">
+        <Typography.Text
+          className="text-grey-body property-name"
+          data-testid="property-name">
+          {getEntityName(property)}
+        </Typography.Text>
+        {property.description && (
+          <Tooltip
+            destroyTooltipOnHide
+            placement="top"
+            title={getTextFromHtmlString(property.description)}>
+            <InfoCircleOutlined
+              className="custom-property-description-icon"
+              data-testid="custom-property-description-icon"
+              style={{ color: GRAYED_OUT_COLOR, fontSize: '14px' }}
             />
+          </Tooltip>
+        )}
+      </div>
+
+      <div
+        className={classNames(
+          'd-flex justify-between w-full gap-2',
+          {
+            'items-end': isExpanded,
+          },
+          {
+            'items-center': !isExpanded,
+          }
+        )}>
+        <div
+          className="value-container"
+          data-testid="property-value"
+          ref={contentRef}
+          style={{
+            height: containerStyleFlag ? 'auto' : '30px',
+          }}>
+          {showInput ? getPropertyInput() : getValueElement()}
+          {hasEditPermissions && !showInput && (
+            <Tooltip
+              placement="left"
+              title={t('label.edit-entity', {
+                entity: getEntityName(property),
+              })}>
+              <Icon
+                component={EditIconComponent}
+                data-testid={`edit-icon${
+                  isRenderedInRightPanel ? '-right-panel' : ''
+                }`}
+                style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                tabIndex={0}
+                onClick={onShowInput}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    onShowInput();
+                  }
+                }}
+              />
+            </Tooltip>
           )}
         </div>
-      </Col>
-    </Row>
+        {isOverflowing && !showInput && (
+          <Icon
+            className={classNames('custom-property-value-toggle-btn', {
+              active: isExpanded,
+            })}
+            component={ArrowIconComponent}
+            data-testid={`toggle-${propertyName}`}
+            style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+            tabIndex={0}
+            onClick={toggleExpand}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                toggleExpand();
+              }
+            }}
+          />
+        )}
+      </div>
+    </Stack>
   );
 
   if (isRenderedInRightPanel) {

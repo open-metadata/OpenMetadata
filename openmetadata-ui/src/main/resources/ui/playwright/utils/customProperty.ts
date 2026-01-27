@@ -958,6 +958,19 @@ export const verifyCustomPropertyInAdvancedSearch = async (
         `${propertyName} (End)`,
         true
       );
+    } else if (propertyType === 'Hyperlink') {
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        `${propertyName} URL`,
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        `${propertyName} Display Text`,
+        true
+      );
     } else if (propertyType === 'Table') {
       for (const column of propertyConfig ?? []) {
         await selectOption(
@@ -1013,6 +1026,8 @@ export const getTestValueForPropertyType = (propertyType: string) => {
     case 'Date Time': // Assuming customType logic
     case 'DateTime':
       return '2023-01-01 12:00:00';
+    case 'Hyperlink':
+      return 'https://example.com,Example';
     default:
       return 'value';
   }
@@ -1036,45 +1051,21 @@ export const editColumnCustomProperty = async (
     await expect(codeMirror).toBeVisible();
     await codeMirror.click();
     await page.keyboard.type(testValue);
-    await page
-      .locator('.custom-properties-section-container')
-      .getByTestId('inline-save-btn')
-      .click();
   } else if (propertyType === 'Time Interval') {
     const [start, end] = testValue.split(',');
     await page.getByTestId('start-input').fill(start);
     await page.getByTestId('end-input').fill(end);
-    await page
-      .locator('.custom-properties-section-container')
-      .getByTestId('inline-save-btn')
-      .click();
   } else if (propertyType === 'Timestamp') {
     await page.getByTestId('timestamp-input').fill(testValue);
-    await page
-      .locator('.custom-properties-section-container')
-      .getByTestId('inline-save-btn')
-      .click();
   } else if (propertyType === 'Duration') {
     await page.getByTestId('duration-input').fill(testValue);
-    await page
-      .locator('.custom-properties-section-container')
-      .getByTestId('inline-save-btn')
-      .click();
   } else if (propertyType === 'Email') {
     await page.getByTestId('email-input').fill(testValue);
-    await page
-      .locator('.custom-properties-section-container')
-      .getByTestId('inline-save-btn')
-      .click();
   } else if (propertyType === 'Enum') {
     await page.getByTestId('enum-select').click();
     await page
       .locator('.ant-select-item-option-content')
       .getByText(testValue, { exact: true })
-      .click();
-    await page
-      .locator('.custom-properties-section-container')
-      .getByTestId('inline-save-btn')
       .click();
   } else if (propertyType === 'Table') {
     await page.locator('[data-testid="add-new-row"]').click();
@@ -1114,11 +1105,6 @@ export const editColumnCustomProperty = async (
     await expect(page.getByTestId('asset-select-list')).toContainText(
       testValue
     );
-
-    await page
-      .locator('.custom-properties-section-container')
-      .getByTestId('inline-save-btn')
-      .click();
   } else if (['Date', 'Time', 'Date Time', 'DateTime'].includes(propertyType)) {
     // Ant Design Pickers
     const picker = page.getByTestId(
@@ -1127,14 +1113,21 @@ export const editColumnCustomProperty = async (
     await picker.click();
     await page.keyboard.type(testValue);
     await page.keyboard.press('Enter');
-    await page
-      .locator('.custom-properties-section-container')
-      .getByTestId('inline-save-btn')
-      .click();
   } else if (['String', 'Integer', 'Number'].includes(propertyType)) {
     const valueInput = page.getByTestId('value-input');
     await expect(valueInput).toBeVisible();
     await valueInput.fill(testValue);
+  } else if (propertyType === 'Hyperlink') {
+    const urlInput = page.getByTestId('hyperlink-url-input');
+    await expect(urlInput).toBeVisible();
+    const [url, displayText] = testValue.split(',');
+    await urlInput.fill(url);
+    const displayTextInput = page.getByTestId('hyperlink-display-text-input');
+    await expect(displayTextInput).toBeVisible();
+    await displayTextInput.fill(displayText);
+  }
+
+  if (propertyType !== 'Table' && propertyType !== 'Markdown') {
     await page
       .locator('.custom-properties-section-container')
       .getByTestId('inline-save-btn')
@@ -1148,7 +1141,7 @@ export const validateColumnCustomProperty = async (
   testValue: string,
   propertyName: string
 ) => {
-  const card = page.getByTestId(`custom-property-${propertyName}-card`);
+  const card = page.getByTestId(propertyName);
 
   if (propertyType === 'Markdown') {
     await expect(card.getByTestId('viewer-container')).toContainText(
@@ -1166,6 +1159,11 @@ export const validateColumnCustomProperty = async (
     ).toBeVisible();
   } else if (propertyType === 'Entity Reference') {
     await expect(card.getByTestId('value')).toContainText(testValue);
+  } else if (propertyType === 'Hyperlink') {
+    const [_, displayText] = testValue.split(',');
+    await expect(card.getByTestId('hyperlink-value')).toContainText(
+      displayText
+    );
   } else {
     // Generic fallback for String, Integer, Email, Duration, Timestamp, Enum, EntityRef, Date, Time
     // Enum/Date/Time/Ref now use 'value' container with text.
@@ -1212,8 +1210,8 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
   await searchbar.fill(propertyName);
 
   // 4. Edit Value
-  const card = page.getByTestId(`custom-property-${propertyName}-card`);
-  await card.getByTestId('edit-icon').click();
+  const card = page.getByTestId(propertyName);
+  await card.getByTestId('edit-icon-right-panel').click();
 
   // Define wait for response
   const updateColumnResponse = page.waitForResponse(
@@ -1289,13 +1287,11 @@ export const updateCustomPropertyInRightPanel = async (data: {
   await page.waitForTimeout(800);
   const container = page
     .locator('.entity-summary-panel-container')
-    .getByTestId(`custom-property-${propertyName}-card`);
+    .getByTestId(propertyName);
 
-  await expect(
-    container.getByTestId(`property-${propertyName}-name`)
-  ).toHaveText(propertyName);
+  await expect(container.getByTestId('property-name')).toHaveText(propertyName);
 
-  const editButton = container.getByTestId('edit-icon');
+  const editButton = container.getByTestId('edit-icon-right-panel');
   await editButton.scrollIntoViewIfNeeded();
   await editButton.click({ force: true });
 

@@ -18,7 +18,6 @@ import { ReactComponent as EmailIcon } from '../assets/svg/customproperties/emai
 import { ReactComponent as EntityReferenceListIcon } from '../assets/svg/customproperties/entity-list.svg';
 import { ReactComponent as EntityReferenceIcon } from '../assets/svg/customproperties/entity.svg';
 import { ReactComponent as EnumIcon } from '../assets/svg/customproperties/enum.svg';
-import { ReactComponent as HyperlinkIcon } from '../assets/svg/customproperties/hyperlink.svg';
 import { ReactComponent as IntegerIcon } from '../assets/svg/customproperties/integer.svg';
 import { ReactComponent as MarkDownIcon } from '../assets/svg/customproperties/markdown.svg';
 import { ReactComponent as NumberIcon } from '../assets/svg/customproperties/number.svg';
@@ -28,6 +27,7 @@ import { ReactComponent as TableIcon } from '../assets/svg/customproperties/tabl
 import { ReactComponent as TimeIntervalIcon } from '../assets/svg/customproperties/time-interval.svg';
 import { ReactComponent as TimeIcon } from '../assets/svg/customproperties/time.svg';
 import { ReactComponent as TimestampIcon } from '../assets/svg/customproperties/timestamp.svg';
+import { ReactComponent as HyperlinkIcon } from '../assets/svg/link.svg';
 
 export const PROPERTY_TYPES_WITH_FORMAT = ['date-cp', 'dateTime-cp', 'time-cp'];
 

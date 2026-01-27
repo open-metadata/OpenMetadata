@@ -90,21 +90,6 @@ test.beforeAll('Setup shared test data', async ({ browser }) => {
   await afterAction();
 });
 
-test.afterAll('Cleanup shared test data', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-
-  await testDataProduct.delete(apiContext);
-  await adminTestEntity.delete(apiContext);
-  await dataStewardTestEntity.delete(apiContext);
-  await dataConsumerTestEntity.delete(apiContext);
-
-  // Cleanup shared tags and glossary terms
-  await sharedTestClassification.delete(apiContext);
-  await sharedTestGlossary.delete(apiContext);
-
-  await afterAction();
-});
-
 test.describe('Right Entity Panel - Admin User Flow', () => {
   test.beforeAll('Setup lineage test entities', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1370,7 +1355,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     for (const propertyType of propertyTypes) {
       const { property, value } = customProperties[propertyType];
-      const propertyName = property.name as string;
+      const propertyName = property.name;
       extensionData[propertyName] = value;
     }
 
@@ -1408,14 +1393,8 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    const customPropertiesContainer = tabContent.locator(
-      '.custom-properties-list'
-    );
-
-    await expect(customPropertiesContainer).toBeVisible();
-
-    const displayedPropertyCards = customPropertiesContainer.locator(
-      '.custom-property-item'
+    const displayedPropertyCards = tabContent.getByTestId(
+      'custom-property-right-panel-card'
     );
     const displayedCount = await displayedPropertyCards.count();
 
@@ -1427,11 +1406,11 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(propertyCard).toBeVisible();
 
-      const propertyNameElement = propertyCard.locator('.property-name');
+      const propertyNameElement = propertyCard.getByTestId('property-name');
 
       await expect(propertyNameElement).toBeVisible();
 
-      const propertyValueElement = propertyCard.locator('.property-value');
+      const propertyValueElement = propertyCard.locator('.value-container');
 
       await expect(propertyValueElement).toBeVisible();
     }
@@ -1458,7 +1437,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     for (const propertyType of propertyTypes) {
       const { property, value } = customProperties[propertyType];
-      const propertyName = property.name as string;
+      const propertyName = property.name;
       extensionData[propertyName] = value;
     }
 
@@ -1501,14 +1480,15 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     await expect(searchBar).toBeVisible();
 
     // Get first property name to search for
-    const firstPropertyName = Object.values(customProperties)[0].property
-      .name as string;
+    const firstPropertyName = Object.values(customProperties)[0].property.name;
 
     // Perform search
     await searchBar.fill(firstPropertyName);
 
     // Verify filtered results
-    const visibleProperties = tabContent.locator('.custom-property-item');
+    const visibleProperties = tabContent.getByTestId(
+      'custom-property-right-panel-card'
+    );
 
     // Wait for filtered results to appear
     await expect(visibleProperties.first()).toBeVisible();
@@ -1528,7 +1508,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     // Wait for all properties to reappear
     await expect(
-      tabContent.locator('.custom-property-item').first()
+      tabContent.getByTestId('custom-property-right-panel-card').first()
     ).toBeVisible();
 
     // Test search with no results
@@ -1573,6 +1553,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       'date-cp',
       'dateTime-cp',
       'table-cp',
+      'hyperlink',
     ];
 
     // Navigate to the entity details page to set custom property values
@@ -1591,7 +1572,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     for (const type of propertyTypesToTest) {
       if (customProperties[type]) {
         const { property, value } = customProperties[type];
-        const propertyName = property.name as string;
+        const propertyName = property.name;
 
         await setValueForProperty({
           page: adminPage,
@@ -1627,26 +1608,22 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     for (const type of propertyTypesToTest) {
       if (customProperties[type]) {
         const { property } = customProperties[type];
-        const propertyName = property.name as string;
+        const propertyName = property.name;
         const propertyWithDisplay = property as CustomProperty & {
           displayName?: string;
         };
         const displayName = propertyWithDisplay.displayName || propertyName;
 
-        const propertyCard = tabContent.locator(
-          `[data-testid="custom-property-${propertyName}-card"]`
-        );
+        const propertyCard = tabContent.getByTestId(propertyName);
 
         await expect(propertyCard).toBeVisible();
 
-        const propertyNameElement = propertyCard.locator(
-          `[data-testid="property-${propertyName}-name"]`
-        );
+        const propertyNameElement = propertyCard.getByTestId('property-name');
 
         await expect(propertyNameElement).toContainText(displayName);
 
         // Verify value is displayed (not "Not set")
-        const valueElement = propertyCard.getByTestId('value');
+        const valueElement = propertyCard.getByTestId('property-value');
 
         await expect(valueElement).toBeVisible();
       }
@@ -1693,15 +1670,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         '_blank'
       );
     }
-  });
-
-  test.afterAll('Cleanup lineage test entities', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await Promise.all([
-      upstreamTable.delete(apiContext),
-      downstreamTable.delete(apiContext),
-    ]);
-    await afterAction();
   });
 });
 
