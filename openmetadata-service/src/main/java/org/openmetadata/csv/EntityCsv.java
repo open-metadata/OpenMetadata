@@ -1069,15 +1069,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
     Response.Status responseStatus;
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
       try {
-        // In case of updating entity , prepareInternal as update=True
-        boolean update = repository.isUpdateForImport(entity);
-        repository.prepareInternal(entity, update);
-        PutResponse<EntityInterface> response =
-            repository.createOrUpdateForImport(null, entity, importedBy);
-        responseStatus = response.getStatus();
-        AsyncService.getInstance()
-            .getExecutorService()
-            .submit(() -> createChangeEventAndUpdateInESForGenericEntity(response, importedBy));
+        // In case of updating entity, prepareInternal as update=True
+        boolean isUpdate = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, isUpdate);
+        // Queue for batch processing instead of immediate persist
+        pendingEntityOperations.add(new PendingEntityOperation(entity, csvRecord, type, !isUpdate));
+        responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
         importResult.setStatus(ApiStatus.FAILURE);
@@ -1105,25 +1102,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
       Object entity = changeEvent.getEntity();
       changeEvent = copyChangeEvent(changeEvent);
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
-      // Persist change event
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-      // Queue for bulk ES update instead of immediate indexing
-      pendingSearchIndexUpdates.add(response.getEntity());
-    }
-  }
-
-  private void createChangeEventAndUpdateInESForGenericEntity(
-      PutResponse<? extends EntityInterface> response, String importedBy) {
-
-    if (!response.getChangeType().equals(EventType.ENTITY_NO_CHANGE)) {
-      ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(
-              importedBy, response.getChangeType(), response.getEntity());
-
-      Object entity = changeEvent.getEntity();
-      changeEvent = copyChangeEvent(changeEvent);
-      changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
-
       // Persist change event
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
       // Queue for bulk ES update instead of immediate indexing
