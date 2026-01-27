@@ -13,7 +13,9 @@ public class IndexingFailureRecorder implements AutoCloseable {
   public enum FailureStage {
     READER,
     READER_EXCEPTION,
-    SINK
+    SINK,
+    PROCESS,
+    VECTOR_SINK
   }
 
   private static final int DEFAULT_BATCH_SIZE = 100;

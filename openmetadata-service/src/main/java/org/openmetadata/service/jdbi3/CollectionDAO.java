@@ -10041,6 +10041,12 @@ public interface CollectionDAO {
         long sinkFailed,
         long sinkWarnings,
         long entityBuildFailures,
+        long processSuccess,
+        long processFailed,
+        long processWarnings,
+        long vectorSuccess,
+        long vectorFailed,
+        long vectorWarnings,
         int partitionsCompleted,
         int partitionsFailed,
         long lastUpdatedAt) {}
@@ -10054,6 +10060,12 @@ public interface CollectionDAO {
         long sinkFailed,
         long sinkWarnings,
         long entityBuildFailures,
+        long processSuccess,
+        long processFailed,
+        long processWarnings,
+        long vectorSuccess,
+        long vectorFailed,
+        long vectorWarnings,
         int partitionsCompleted,
         int partitionsFailed) {}
 
@@ -10061,28 +10073,37 @@ public interface CollectionDAO {
         value =
             "INSERT INTO search_index_server_stats (id, jobId, serverId, readerSuccess, readerFailed, "
                 + "readerWarnings, sinkTotal, sinkSuccess, sinkFailed, sinkWarnings, entityBuildFailures, "
+                + "processSuccess, processFailed, processWarnings, vectorSuccess, vectorFailed, vectorWarnings, "
                 + "partitionsCompleted, partitionsFailed, lastUpdatedAt) "
                 + "VALUES (:id, :jobId, :serverId, :readerSuccess, :readerFailed, :readerWarnings, "
                 + ":sinkTotal, :sinkSuccess, :sinkFailed, :sinkWarnings, :entityBuildFailures, "
+                + ":processSuccess, :processFailed, :processWarnings, :vectorSuccess, :vectorFailed, :vectorWarnings, "
                 + ":partitionsCompleted, :partitionsFailed, :lastUpdatedAt) "
                 + "ON DUPLICATE KEY UPDATE readerSuccess = :readerSuccess, readerFailed = :readerFailed, "
                 + "readerWarnings = :readerWarnings, sinkTotal = :sinkTotal, sinkSuccess = :sinkSuccess, "
                 + "sinkFailed = :sinkFailed, sinkWarnings = :sinkWarnings, "
-                + "entityBuildFailures = :entityBuildFailures, partitionsCompleted = :partitionsCompleted, "
+                + "entityBuildFailures = :entityBuildFailures, processSuccess = :processSuccess, "
+                + "processFailed = :processFailed, processWarnings = :processWarnings, "
+                + "vectorSuccess = :vectorSuccess, vectorFailed = :vectorFailed, vectorWarnings = :vectorWarnings, "
+                + "partitionsCompleted = :partitionsCompleted, "
                 + "partitionsFailed = :partitionsFailed, lastUpdatedAt = :lastUpdatedAt",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_server_stats (id, jobId, serverId, readerSuccess, readerFailed, "
                 + "readerWarnings, sinkTotal, sinkSuccess, sinkFailed, sinkWarnings, entityBuildFailures, "
+                + "processSuccess, processFailed, processWarnings, vectorSuccess, vectorFailed, vectorWarnings, "
                 + "partitionsCompleted, partitionsFailed, lastUpdatedAt) "
                 + "VALUES (:id, :jobId, :serverId, :readerSuccess, :readerFailed, :readerWarnings, "
                 + ":sinkTotal, :sinkSuccess, :sinkFailed, :sinkWarnings, :entityBuildFailures, "
+                + ":processSuccess, :processFailed, :processWarnings, :vectorSuccess, :vectorFailed, :vectorWarnings, "
                 + ":partitionsCompleted, :partitionsFailed, :lastUpdatedAt) "
                 + "ON CONFLICT (jobId, serverId) DO UPDATE SET readerSuccess = :readerSuccess, "
                 + "readerFailed = :readerFailed, readerWarnings = :readerWarnings, "
                 + "sinkTotal = :sinkTotal, sinkSuccess = :sinkSuccess, sinkFailed = :sinkFailed, "
                 + "sinkWarnings = :sinkWarnings, entityBuildFailures = :entityBuildFailures, "
+                + "processSuccess = :processSuccess, processFailed = :processFailed, processWarnings = :processWarnings, "
+                + "vectorSuccess = :vectorSuccess, vectorFailed = :vectorFailed, vectorWarnings = :vectorWarnings, "
                 + "partitionsCompleted = :partitionsCompleted, partitionsFailed = :partitionsFailed, "
                 + "lastUpdatedAt = :lastUpdatedAt",
         connectionType = POSTGRES)
@@ -10098,6 +10119,12 @@ public interface CollectionDAO {
         @Bind("sinkFailed") long sinkFailed,
         @Bind("sinkWarnings") long sinkWarnings,
         @Bind("entityBuildFailures") long entityBuildFailures,
+        @Bind("processSuccess") long processSuccess,
+        @Bind("processFailed") long processFailed,
+        @Bind("processWarnings") long processWarnings,
+        @Bind("vectorSuccess") long vectorSuccess,
+        @Bind("vectorFailed") long vectorFailed,
+        @Bind("vectorWarnings") long vectorWarnings,
         @Bind("partitionsCompleted") int partitionsCompleted,
         @Bind("partitionsFailed") int partitionsFailed,
         @Bind("lastUpdatedAt") long lastUpdatedAt);
@@ -10122,6 +10149,12 @@ public interface CollectionDAO {
             + "COALESCE(SUM(sinkFailed), 0) as sinkFailed, "
             + "COALESCE(SUM(sinkWarnings), 0) as sinkWarnings, "
             + "COALESCE(SUM(entityBuildFailures), 0) as entityBuildFailures, "
+            + "COALESCE(SUM(processSuccess), 0) as processSuccess, "
+            + "COALESCE(SUM(processFailed), 0) as processFailed, "
+            + "COALESCE(SUM(processWarnings), 0) as processWarnings, "
+            + "COALESCE(SUM(vectorSuccess), 0) as vectorSuccess, "
+            + "COALESCE(SUM(vectorFailed), 0) as vectorFailed, "
+            + "COALESCE(SUM(vectorWarnings), 0) as vectorWarnings, "
             + "COALESCE(SUM(partitionsCompleted), 0) as partitionsCompleted, "
             + "COALESCE(SUM(partitionsFailed), 0) as partitionsFailed "
             + "FROM search_index_server_stats WHERE jobId = :jobId")
@@ -10146,6 +10179,12 @@ public interface CollectionDAO {
             rs.getLong("sinkFailed"),
             rs.getLong("sinkWarnings"),
             rs.getLong("entityBuildFailures"),
+            rs.getLong("processSuccess"),
+            rs.getLong("processFailed"),
+            rs.getLong("processWarnings"),
+            rs.getLong("vectorSuccess"),
+            rs.getLong("vectorFailed"),
+            rs.getLong("vectorWarnings"),
             rs.getInt("partitionsCompleted"),
             rs.getInt("partitionsFailed"),
             rs.getLong("lastUpdatedAt"));
@@ -10164,6 +10203,12 @@ public interface CollectionDAO {
             rs.getLong("sinkFailed"),
             rs.getLong("sinkWarnings"),
             rs.getLong("entityBuildFailures"),
+            rs.getLong("processSuccess"),
+            rs.getLong("processFailed"),
+            rs.getLong("processWarnings"),
+            rs.getLong("vectorSuccess"),
+            rs.getLong("vectorFailed"),
+            rs.getLong("vectorWarnings"),
             rs.getInt("partitionsCompleted"),
             rs.getInt("partitionsFailed"));
       }

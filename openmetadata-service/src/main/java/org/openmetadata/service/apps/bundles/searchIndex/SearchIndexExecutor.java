@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,11 +41,15 @@ import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
+import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.search.DefaultRecreateHandler;
+import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchClusterMetrics;
@@ -129,6 +134,10 @@ public class SearchIndexExecutor implements AutoCloseable {
   private ReindexingJobContext context;
   private long startTime;
   private IndexingFailureRecorder failureRecorder;
+  private final Map<String, StageStatsTracker> entityTrackers = new ConcurrentHashMap<>();
+  private final Map<String, AtomicInteger> entityBatchCounters = new ConcurrentHashMap<>();
+  private final Map<String, AtomicInteger> entityBatchFailures = new ConcurrentHashMap<>();
+  private final Set<String> promotedEntities = ConcurrentHashMap.newKeySet();
 
   record IndexingTask<T>(String entityType, ResultList<T> entities, int offset, int retryCount) {
     IndexingTask(String entityType, ResultList<T> entities, int offset) {
@@ -171,6 +180,25 @@ public class SearchIndexExecutor implements AutoCloseable {
     this.collectionDAO = collectionDAO;
     this.searchRepository = searchRepository;
     this.listeners = new CompositeProgressListener();
+  }
+
+  private StageStatsTracker getTracker(String entityType) {
+    return entityTrackers.computeIfAbsent(
+        entityType,
+        et ->
+            new StageStatsTracker(
+                context != null ? context.getJobId().toString() : "unknown",
+                org.openmetadata
+                    .service
+                    .apps
+                    .bundles
+                    .searchIndex
+                    .distributed
+                    .ServerIdentityResolver
+                    .getInstance()
+                    .getServerId(),
+                et,
+                collectionDAO.searchIndexServerStatsDAO()));
   }
 
   public SearchIndexExecutor addListener(ReindexingProgressListener listener) {
@@ -217,6 +245,9 @@ public class SearchIndexExecutor implements AutoCloseable {
     originalBatchSize.set(0);
     recreateContext = null;
     producersDone.set(false);
+    entityBatchCounters.clear();
+    entityBatchFailures.clear();
+    promotedEntities.clear();
   }
 
   private ExecutionResult executeSingleServer() throws Exception {
@@ -502,6 +533,17 @@ public class SearchIndexExecutor implements AutoCloseable {
     int readerWarningsCount = entities.getWarningsCount() != null ? entities.getWarningsCount() : 0;
     updateReaderStats(readerSuccessCount, readerFailedCount, readerWarningsCount);
 
+    StageStatsTracker tracker = getTracker(entityType);
+    for (int i = 0; i < readerSuccessCount; i++) {
+      tracker.recordReader(StatsResult.SUCCESS);
+    }
+    for (int i = 0; i < readerFailedCount; i++) {
+      tracker.recordReader(StatsResult.FAILED);
+    }
+    for (int i = 0; i < readerWarningsCount; i++) {
+      tracker.recordReader(StatsResult.WARNING);
+    }
+
     try {
       long buildFailuresBefore =
           searchIndexSink != null ? searchIndexSink.getEntityBuildFailures() : 0;
@@ -519,6 +561,14 @@ public class SearchIndexExecutor implements AutoCloseable {
           createEntityStatsWithBuildFailures(entities, batchBuildFailures);
       handleTaskSuccess(entityType, entities, currentEntityStats);
 
+      int processSuccess = Math.max(0, readerSuccessCount - batchBuildFailures);
+      for (int i = 0; i < processSuccess; i++) {
+        tracker.recordProcess(StatsResult.SUCCESS);
+      }
+      for (int i = 0; i < batchBuildFailures; i++) {
+        tracker.recordProcess(StatsResult.FAILED);
+      }
+
       long processingTime = System.currentTimeMillis() - taskStartTime;
       totalProcessingTime.addAndGet(processingTime);
       totalEntitiesProcessed.addAndGet(entities.getData().size());
@@ -526,8 +576,14 @@ public class SearchIndexExecutor implements AutoCloseable {
       performAdaptiveTuning();
     } catch (SearchIndexException e) {
       handleSearchIndexException(entityType, entities, e);
+      for (int i = 0; i < readerSuccessCount; i++) {
+        tracker.recordProcess(StatsResult.FAILED);
+      }
     } catch (Exception e) {
       handleGenericException(entityType, entities, e);
+      for (int i = 0; i < readerSuccessCount; i++) {
+        tracker.recordProcess(StatsResult.FAILED);
+      }
     }
   }
 
@@ -792,11 +848,19 @@ public class SearchIndexExecutor implements AutoCloseable {
       int currentBatchSize = batchSize.get();
       int loadPerThread = calculateNumberOfThreads(totalEntityRecords, currentBatchSize);
 
+      // Initialize per-entity batch tracking for promotion
+      int batchCount = totalEntityRecords > 0 ? loadPerThread : 0;
+      entityBatchCounters.put(entityType, new AtomicInteger(batchCount));
+      entityBatchFailures.put(entityType, new AtomicInteger(0));
+
       if (totalEntityRecords > 0) {
         for (int i = 0; i < loadPerThread; i++) {
           int currentOffset = i * currentBatchSize;
           producerExecutor.submit(() -> processBatch(entityType, currentOffset, producerLatch));
         }
+      } else {
+        // No records to process - promote immediately if recreating indexes
+        promoteEntityIndexIfReady(entityType);
       }
 
       StepStats entityStats =
@@ -810,6 +874,7 @@ public class SearchIndexExecutor implements AutoCloseable {
   }
 
   private void processBatch(String entityType, int currentOffset, CountDownLatch producerLatch) {
+    boolean batchHadFailure = false;
     try {
       if (stopped.get() || isBackpressureActive()) {
         return;
@@ -818,11 +883,60 @@ public class SearchIndexExecutor implements AutoCloseable {
       Source<?> source = createSource(entityType);
       processReadTask(entityType, source, currentOffset);
     } catch (Exception e) {
+      batchHadFailure = true;
       if (!stopped.get()) {
         LOG.error("Error processing batch for {}", entityType, e);
       }
     } finally {
       producerLatch.countDown();
+      // Track batch completion for per-entity promotion
+      if (batchHadFailure) {
+        AtomicInteger failures = entityBatchFailures.get(entityType);
+        if (failures != null) {
+          failures.incrementAndGet();
+        }
+      }
+      AtomicInteger remaining = entityBatchCounters.get(entityType);
+      if (remaining != null && remaining.decrementAndGet() == 0) {
+        promoteEntityIndexIfReady(entityType);
+      }
+    }
+  }
+
+  private void promoteEntityIndexIfReady(String entityType) {
+    if (recreateIndexHandler == null || recreateContext == null) {
+      return;
+    }
+    if (!config.recreateIndex()) {
+      return;
+    }
+
+    // Check if already promoted (avoid double promotion)
+    if (promotedEntities.contains(entityType)) {
+      LOG.debug("Entity '{}' already promoted, skipping.", entityType);
+      return;
+    }
+
+    // Determine success based on whether there were any batch failures
+    AtomicInteger failures = entityBatchFailures.get(entityType);
+    boolean entitySuccess = failures == null || failures.get() == 0;
+
+    // Build entity context and promote
+    Optional<String> stagedIndexOpt = recreateContext.getStagedIndex(entityType);
+    if (stagedIndexOpt.isEmpty()) {
+      LOG.debug("No staged index found for entity '{}', skipping promotion.", entityType);
+      return;
+    }
+
+    EntityReindexContext entityContext = buildEntityReindexContext(entityType);
+    if (recreateIndexHandler instanceof DefaultRecreateHandler defaultHandler) {
+      LOG.info(
+          "Promoting index for entity '{}' (success={}, stagedIndex={})",
+          entityType,
+          entitySuccess,
+          stagedIndexOpt.get());
+      defaultHandler.promoteEntityIndex(entityContext, entitySuccess);
+      promotedEntities.add(entityType);
     }
   }
 
@@ -1329,6 +1443,12 @@ public class SearchIndexExecutor implements AutoCloseable {
           .getEntities()
           .forEach(
               entityType -> {
+                // Skip entities already promoted via per-entity promotion
+                if (promotedEntities.contains(entityType)) {
+                  LOG.debug(
+                      "Skipping finalizeReindex for entity '{}' - already promoted.", entityType);
+                  return;
+                }
                 try {
                   recreateIndexHandler.finalizeReindex(buildEntityReindexContext(entityType), true);
                 } catch (Exception ex) {
@@ -1337,12 +1457,12 @@ public class SearchIndexExecutor implements AutoCloseable {
               });
     } finally {
       recreateContext = null;
+      promotedEntities.clear();
     }
   }
 
-  private org.openmetadata.service.search.EntityReindexContext buildEntityReindexContext(
-      String entityType) {
-    return org.openmetadata.service.search.EntityReindexContext.builder()
+  private EntityReindexContext buildEntityReindexContext(String entityType) {
+    return EntityReindexContext.builder()
         .entityType(entityType)
         .originalIndex(recreateContext.getOriginalIndex(entityType).orElse(null))
         .canonicalIndex(recreateContext.getCanonicalIndex(entityType).orElse(null))
@@ -1356,6 +1476,7 @@ public class SearchIndexExecutor implements AutoCloseable {
 
   @Override
   public void close() {
+    entityTrackers.values().forEach(StageStatsTracker::flush);
     stop();
     cleanup();
   }

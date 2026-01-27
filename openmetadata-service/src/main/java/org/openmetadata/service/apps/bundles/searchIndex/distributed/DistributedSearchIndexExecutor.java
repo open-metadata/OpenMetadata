@@ -803,6 +803,12 @@ public class DistributedSearchIndexExecutor {
               actualSinkFailed,
               sinkWarnings,
               entityBuildFailures,
+              0L, // processSuccess - not tracked separately in distributed mode
+              0L, // processFailed - not tracked separately in distributed mode
+              0L, // processWarnings - not tracked separately in distributed mode
+              0L, // vectorSuccess - not tracked separately in distributed mode
+              0L, // vectorFailed - not tracked separately in distributed mode
+              0L, // vectorWarnings - not tracked separately in distributed mode
               partitionsCompleted,
               partitionsFailed,
               System.currentTimeMillis());

@@ -52,6 +52,13 @@ public class OpenSearchBulkSink implements BulkSink {
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
       new JacksonJsonpMapper(OBJECT_MAPPER);
 
+  /** Callback interface for reporting sink statistics per entity type. */
+  public interface SinkStatsCallback {
+    void onSuccess(String entityType, int count);
+
+    void onFailure(String entityType, int count);
+  }
+
   private final OpenSearchClient searchClient;
   protected final SearchRepository searchRepository;
   private final CustomBulkProcessor bulkProcessor;
@@ -69,6 +76,9 @@ public class OpenSearchBulkSink implements BulkSink {
 
   // Failure callback
   private volatile FailureCallback failureCallback;
+
+  // Stats callback for per-entity-type reporting
+  private volatile SinkStatsCallback statsCallback;
 
   public OpenSearchBulkSink(
       SearchRepository searchRepository,
@@ -372,6 +382,13 @@ public class OpenSearchBulkSink implements BulkSink {
     }
   }
 
+  public void setStatsCallback(SinkStatsCallback callback) {
+    this.statsCallback = callback;
+    if (bulkProcessor != null) {
+      bulkProcessor.setStatsCallback(callback);
+    }
+  }
+
   public void updateBatchSize(int newBatchSize) {
     this.batchSize = newBatchSize;
     LOG.info("Batch size updated to: {}", newBatchSize);
@@ -415,6 +432,7 @@ public class OpenSearchBulkSink implements BulkSink {
     private final int maxRetries;
     private volatile boolean closed = false;
     private volatile FailureCallback failureCallback;
+    private volatile SinkStatsCallback statsCallback;
 
     CustomBulkProcessor(
         OpenSearchClient client,
@@ -446,6 +464,10 @@ public class OpenSearchBulkSink implements BulkSink {
 
     void setFailureCallback(FailureCallback callback) {
       this.failureCallback = callback;
+    }
+
+    void setStatsCallback(SinkStatsCallback callback) {
+      this.statsCallback = callback;
     }
 
     void add(BulkOperation operation) {
@@ -589,6 +611,7 @@ public class OpenSearchBulkSink implements BulkSink {
                     "Bulk request {} completed successfully with {} actions",
                     executionId,
                     numberOfActions);
+                reportSuccessByEntityType(operations);
                 statsUpdater.run();
               }
             } finally {
@@ -630,17 +653,24 @@ public class OpenSearchBulkSink implements BulkSink {
             numberOfActions,
             error);
 
-        // Report failures via callback
-        if (failureCallback != null) {
-          for (BulkOperation op : operations) {
-            String docId = getDocId(op);
-            if (docId != null) {
-              String entityType = docIdToEntityType.remove(docId);
-              if (entityType == null) {
-                entityType = extractEntityTypeFromIndex(getIndex(op));
-              }
+        // Report failures via callback and stats callback
+        Map<String, Integer> failuresByType = new ConcurrentHashMap<>();
+        for (BulkOperation op : operations) {
+          String docId = getDocId(op);
+          if (docId != null) {
+            String entityType = docIdToEntityType.remove(docId);
+            if (entityType == null) {
+              entityType = extractEntityTypeFromIndex(getIndex(op));
+            }
+            failuresByType.merge(entityType, 1, Integer::sum);
+            if (failureCallback != null) {
               failureCallback.onFailure(entityType, docId, null, error.getMessage());
             }
+          }
+        }
+        if (statsCallback != null) {
+          for (Map.Entry<String, Integer> entry : failuresByType.entrySet()) {
+            statsCallback.onFailure(entry.getKey(), entry.getValue());
           }
         }
         statsUpdater.run();
@@ -650,6 +680,8 @@ public class OpenSearchBulkSink implements BulkSink {
     private void handlePartialFailure(
         BulkResponse response, long executionId, int numberOfActions) {
       int failures = 0;
+      Map<String, Integer> successesByType = new ConcurrentHashMap<>();
+      Map<String, Integer> failuresByType = new ConcurrentHashMap<>();
       for (BulkResponseItem item : response.items()) {
         String docId = item.id();
         if (item.error() != null) {
@@ -663,23 +695,34 @@ public class OpenSearchBulkSink implements BulkSink {
           } else {
             LOG.warn("Failed to index document {}: {}", docId, failureMessage);
           }
+          String entityType = docId != null ? docIdToEntityType.remove(docId) : null;
+          if (entityType == null) {
+            entityType = extractEntityTypeFromIndex(item.index());
+          }
+          failuresByType.merge(entityType, 1, Integer::sum);
           if (failureCallback != null) {
-            String entityType = docId != null ? docIdToEntityType.remove(docId) : null;
-            if (entityType == null) {
-              entityType = extractEntityTypeFromIndex(item.index());
-            }
             failureCallback.onFailure(entityType, docId, null, failureMessage);
           }
         } else {
-          // Clean up on success
-          if (docId != null) {
-            docIdToEntityType.remove(docId);
+          String entityType = docId != null ? docIdToEntityType.remove(docId) : null;
+          if (entityType == null) {
+            entityType = extractEntityTypeFromIndex(item.index());
           }
+          successesByType.merge(entityType, 1, Integer::sum);
         }
       }
       int successes = numberOfActions - failures;
       totalSuccess.addAndGet(successes);
       totalFailed.addAndGet(failures);
+
+      if (statsCallback != null) {
+        for (Map.Entry<String, Integer> entry : successesByType.entrySet()) {
+          statsCallback.onSuccess(entry.getKey(), entry.getValue());
+        }
+        for (Map.Entry<String, Integer> entry : failuresByType.entrySet()) {
+          statsCallback.onFailure(entry.getKey(), entry.getValue());
+        }
+      }
 
       LOG.warn(
           "Bulk request {} completed with {} failures out of {} actions",
@@ -687,6 +730,31 @@ public class OpenSearchBulkSink implements BulkSink {
           failures,
           numberOfActions);
       statsUpdater.run();
+    }
+
+    private void reportSuccessByEntityType(List<BulkOperation> operations) {
+      if (statsCallback == null) {
+        // Clean up tracking map even if no callback
+        for (BulkOperation op : operations) {
+          String docId = getDocId(op);
+          if (docId != null) {
+            docIdToEntityType.remove(docId);
+          }
+        }
+        return;
+      }
+      Map<String, Integer> successesByType = new ConcurrentHashMap<>();
+      for (BulkOperation op : operations) {
+        String docId = getDocId(op);
+        String entityType = docId != null ? docIdToEntityType.remove(docId) : null;
+        if (entityType == null) {
+          entityType = extractEntityTypeFromIndex(getIndex(op));
+        }
+        successesByType.merge(entityType, 1, Integer::sum);
+      }
+      for (Map.Entry<String, Integer> entry : successesByType.entrySet()) {
+        statsCallback.onSuccess(entry.getKey(), entry.getValue());
+      }
     }
 
     private String getDocId(BulkOperation op) {
