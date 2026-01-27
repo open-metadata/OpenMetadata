@@ -105,6 +105,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
@@ -236,6 +237,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Initialize the IndexMapping class
     IndexMappingLoader.init(catalogConfig.getElasticSearchConfiguration());
 
+    // Initialize the MigrationValidationClient, used in the Settings Repository
+    MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
+
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
 
@@ -245,6 +249,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setEntityRelationshipRepository(
         new EntityRelationshipRepository(Entity.getCollectionDAO()));
+    Entity.setSystemRepository(new SystemRepository());
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
 
@@ -252,8 +257,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     BulkExecutor.initialize(catalogConfig.getBulkOperationConfiguration());
 
     initializeSearchRepository(catalogConfig);
-    // Initialize the MigrationValidationClient, used in the Settings Repository
-    MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     // as first step register all the repositories
     Entity.initializeRepositories(catalogConfig, jdbi);
     auditLogRepository = new AuditLogRepository(Entity.getCollectionDAO());
