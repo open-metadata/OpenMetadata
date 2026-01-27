@@ -237,15 +237,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Initialize the IndexMapping class
     IndexMappingLoader.init(catalogConfig.getElasticSearchConfiguration());
 
-    // Initialize the MigrationValidationClient, used in the Settings Repository
-    MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
-
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
 
     // Metrics initialization now handled by MicrometerBundle
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+    // Initialize the MigrationValidationClient, used in the Settings Repository
+    MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setEntityRelationshipRepository(
         new EntityRelationshipRepository(Entity.getCollectionDAO()));
