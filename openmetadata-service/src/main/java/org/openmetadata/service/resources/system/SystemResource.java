@@ -830,6 +830,45 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     try {
+      // Validate baseUrl
+      if (mcpConfig.getBaseUrl() != null && !mcpConfig.getBaseUrl().isEmpty()) {
+        try {
+          java.net.URI uri = new java.net.URI(mcpConfig.getBaseUrl());
+          if (!uri.getScheme().matches("https?")) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity("baseUrl must use HTTP or HTTPS scheme")
+                .build();
+          }
+        } catch (java.net.URISyntaxException e) {
+          return Response.status(Response.Status.BAD_REQUEST)
+              .entity("Invalid baseUrl: " + e.getMessage())
+              .build();
+        }
+      }
+
+      // Validate allowedOrigins
+      if (mcpConfig.getAllowedOrigins() != null) {
+        for (String origin : mcpConfig.getAllowedOrigins()) {
+          if (origin.contains("*") && !origin.equals("*")) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity(
+                    "Wildcard origins must be exactly '*', not partial wildcards like '"
+                        + origin
+                        + "'")
+                .build();
+          }
+          if (!origin.equals("*")) {
+            try {
+              new java.net.URI(origin);
+            } catch (java.net.URISyntaxException e) {
+              return Response.status(Response.Status.BAD_REQUEST)
+                  .entity("Invalid origin URL '" + origin + "': " + e.getMessage())
+                  .build();
+            }
+          }
+        }
+      }
+
       Settings mcpSettings =
           new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
 

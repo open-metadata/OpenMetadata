@@ -80,6 +80,7 @@ public class SSOCallbackServlet extends HttpServlet {
   private final AuthenticationCodeFlowHandler ssoHandler;
   private final McpPendingAuthRequestRepository pendingAuthRepository;
   private final SSOAuthMechanism.SsoServiceType ssoServiceType;
+  private final Object callbackUrlLock = new Object();
 
   public SSOCallbackServlet(
       UserSSOOAuthProvider userSSOProvider,
@@ -228,24 +229,28 @@ public class SSOCallbackServlet extends HttpServlet {
 
       // Set the correct callback URL on the pac4j client to match what was used in authorization
       // This prevents redirect_uri_mismatch errors during token exchange
+      // Synchronized to prevent race condition when multiple concurrent requests modify shared
+      // client
       String mcpCallbackUrl = request.getRequestURL().toString();
-      String originalCallbackUrl = ssoHandler.getClient().getCallbackUrl();
-      ssoHandler.getClient().setCallbackUrl(mcpCallbackUrl);
-      LOG.debug("Set pac4j callback URL to: {} (was: {})", mcpCallbackUrl, originalCallbackUrl);
+      synchronized (callbackUrlLock) {
+        String originalCallbackUrl = ssoHandler.getClient().getCallbackUrl();
+        ssoHandler.getClient().setCallbackUrl(mcpCallbackUrl);
+        LOG.debug("Set pac4j callback URL to: {} (was: {})", mcpCallbackUrl, originalCallbackUrl);
 
-      HttpServletResponseWrapper responseWrapper =
-          new HttpServletResponseWrapper(response) {
-            @Override
-            public void sendRedirect(String location) throws IOException {
-              LOG.debug("Capturing redirect to {} (will not execute)", location);
-            }
-          };
+        HttpServletResponseWrapper responseWrapper =
+            new HttpServletResponseWrapper(response) {
+              @Override
+              public void sendRedirect(String location) throws IOException {
+                LOG.debug("Capturing redirect to {} (will not execute)", location);
+              }
+            };
 
-      try {
-        ssoHandler.handleCallback(request, responseWrapper);
-      } finally {
-        // Restore original callback URL
-        ssoHandler.getClient().setCallbackUrl(originalCallbackUrl);
+        try {
+          ssoHandler.handleCallback(request, responseWrapper);
+        } finally {
+          // Restore original callback URL
+          ssoHandler.getClient().setCallbackUrl(originalCallbackUrl);
+        }
       }
 
       OidcCredentials credentials = (OidcCredentials) session.getAttribute(OIDC_CREDENTIAL_PROFILE);

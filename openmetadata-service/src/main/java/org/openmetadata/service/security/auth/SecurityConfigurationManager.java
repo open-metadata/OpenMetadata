@@ -76,10 +76,12 @@ public class SecurityConfigurationManager {
   }
 
   private SecurityConfiguration previousSecurityConfig;
+  private MCPConfiguration previousMcpConfig;
   private OpenMetadataApplication application;
   private Environment environment;
   private OpenMetadataApplicationConfig config;
   @Getter private AuthenticatorHandler authenticatorHandler;
+  private java.util.concurrent.ScheduledExecutorService configPollingExecutor;
 
   private SecurityConfigurationManager() {
     // Private constructor
@@ -89,15 +91,15 @@ public class SecurityConfigurationManager {
     return Holder.INSTANCE;
   }
 
-  public static AuthenticationConfiguration getCurrentAuthConfig() {
+  public static synchronized AuthenticationConfiguration getCurrentAuthConfig() {
     return getInstance().currentAuthConfig;
   }
 
-  public static AuthorizerConfiguration getCurrentAuthzConfig() {
+  public static synchronized AuthorizerConfiguration getCurrentAuthzConfig() {
     return getInstance().currentAuthzConfig;
   }
 
-  public static MCPConfiguration getCurrentMcpConfig() {
+  public static synchronized MCPConfiguration getCurrentMcpConfig() {
     return getInstance().currentMcpConfig;
   }
 
@@ -111,20 +113,125 @@ public class SecurityConfigurationManager {
     environment = env;
     this.config = config;
 
-    // Always use YAML configuration for auth during startup
-    // This ensures environment variables and YAML defaults take precedence
-    // Database settings can override this later via the Settings API
-    currentAuthConfig = config.getAuthenticationConfiguration();
-    currentAuthzConfig = config.getAuthorizerConfiguration();
-    currentMcpConfig = config.getMcpConfiguration();
-    LOG.info(
-        "Using security configuration from YAML - provider: {}, clientType: {}",
-        currentAuthConfig != null ? currentAuthConfig.getProvider() : "null",
-        currentAuthConfig != null ? currentAuthConfig.getClientType() : "null");
-    LOG.info(
-        "Using MCP configuration from YAML - enabled: {}, baseUrl: {}",
-        currentMcpConfig != null ? currentMcpConfig.getEnabled() : "null",
-        currentMcpConfig != null ? currentMcpConfig.getBaseUrl() : "null");
+    // Try loading from database first (Pure DB-driven)
+    try {
+      currentAuthConfig =
+          SettingsCache.getSetting(AUTHENTICATION_CONFIGURATION, AuthenticationConfiguration.class);
+      currentAuthzConfig =
+          SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class);
+      currentMcpConfig = SettingsCache.getSetting(MCP_CONFIGURATION, MCPConfiguration.class);
+      LOG.info(
+          "Loaded security configuration from DATABASE - provider: {}, clientType: {}",
+          currentAuthConfig != null ? currentAuthConfig.getProvider() : "null",
+          currentAuthConfig != null ? currentAuthConfig.getClientType() : "null");
+      LOG.info(
+          "Loaded MCP configuration from DATABASE - enabled: {}, baseUrl: {}",
+          currentMcpConfig != null ? currentMcpConfig.getEnabled() : "null",
+          currentMcpConfig != null ? currentMcpConfig.getBaseUrl() : "null");
+    } catch (Exception e) {
+      // Fall back to YAML if database is empty or not yet initialized
+      LOG.warn(
+          "Failed to load configuration from database, falling back to YAML: {}", e.getMessage());
+      currentAuthConfig = config.getAuthenticationConfiguration();
+      currentAuthzConfig = config.getAuthorizerConfiguration();
+      currentMcpConfig = config.getMcpConfiguration();
+      LOG.info(
+          "Using security configuration from YAML - provider: {}, clientType: {}",
+          currentAuthConfig != null ? currentAuthConfig.getProvider() : "null",
+          currentAuthConfig != null ? currentAuthConfig.getClientType() : "null");
+      LOG.info(
+          "Using MCP configuration from YAML - enabled: {}, baseUrl: {}",
+          currentMcpConfig != null ? currentMcpConfig.getEnabled() : "null",
+          currentMcpConfig != null ? currentMcpConfig.getBaseUrl() : "null");
+    }
+
+    // Start database polling for cluster cache invalidation (Issue #12)
+    startConfigurationPolling();
+  }
+
+  /**
+   * Start periodic polling of database to detect configuration changes in cluster deployments.
+   * This ensures all instances reload configuration within 10 seconds of changes.
+   */
+  private void startConfigurationPolling() {
+    if (configPollingExecutor == null) {
+      configPollingExecutor =
+          java.util.concurrent.Executors.newSingleThreadScheduledExecutor(
+              r -> {
+                Thread t = new Thread(r, "config-polling-thread");
+                t.setDaemon(true);
+                return t;
+              });
+
+      configPollingExecutor.scheduleWithFixedDelay(
+          () -> {
+            try {
+              checkForConfigurationChanges();
+            } catch (Exception e) {
+              LOG.error("Error checking for configuration changes", e);
+            }
+          },
+          10,
+          10,
+          java.util.concurrent.TimeUnit.SECONDS);
+
+      LOG.info("Started configuration polling for cluster cache invalidation (10-second interval)");
+    }
+  }
+
+  /**
+   * Check if configuration has changed in database and reload if necessary.
+   * This method polls the database to detect changes made by other instances.
+   * Uses hash comparison to detect actual configuration changes efficiently.
+   */
+  private void checkForConfigurationChanges() {
+    try {
+      // Invalidate cache to force fresh read from database
+      // This ensures we detect changes made by other instances
+      SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
+      SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
+      SettingsCache.invalidateSettings(MCP_CONFIGURATION.toString());
+
+      // Reload from database (cache now fresh)
+      AuthenticationConfiguration newAuthConfig =
+          SettingsCache.getSetting(AUTHENTICATION_CONFIGURATION, AuthenticationConfiguration.class);
+      AuthorizerConfiguration newAuthzConfig =
+          SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class);
+      MCPConfiguration newMcpConfig =
+          SettingsCache.getSetting(MCP_CONFIGURATION, MCPConfiguration.class);
+
+      // Check if configs actually changed by comparing hash codes
+      boolean configChanged = false;
+      if ((currentAuthConfig == null && newAuthConfig != null)
+          || (currentAuthConfig != null && !currentAuthConfig.equals(newAuthConfig))) {
+        configChanged = true;
+      }
+      if ((currentAuthzConfig == null && newAuthzConfig != null)
+          || (currentAuthzConfig != null && !currentAuthzConfig.equals(newAuthzConfig))) {
+        configChanged = true;
+      }
+      if ((currentMcpConfig == null && newMcpConfig != null)
+          || (currentMcpConfig != null && !currentMcpConfig.equals(newMcpConfig))) {
+        configChanged = true;
+      }
+
+      if (configChanged) {
+        LOG.info("Configuration change detected in database, reloading security system");
+        reloadSecuritySystem();
+      }
+    } catch (Exception e) {
+      LOG.warn("Error checking for configuration changes: {}", e.getMessage());
+    }
+  }
+
+  /**
+   * Shutdown the configuration polling executor.
+   */
+  public void shutdown() {
+    if (configPollingExecutor != null) {
+      configPollingExecutor.shutdownNow();
+      LOG.info("Stopped configuration polling executor");
+    }
   }
 
   public SecurityConfiguration getCurrentSecurityConfig() {
@@ -136,18 +243,14 @@ public class SecurityConfigurationManager {
   public void reloadSecuritySystem() {
     try {
       previousSecurityConfig = getCurrentSecurityConfig();
+      previousMcpConfig = currentMcpConfig;
       currentAuthConfig =
           SettingsCache.getSetting(AUTHENTICATION_CONFIGURATION, AuthenticationConfiguration.class);
       currentAuthzConfig =
           SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class);
+      currentMcpConfig = SettingsCache.getSetting(MCP_CONFIGURATION, MCPConfiguration.class);
 
-      // Reload MCP configuration from database
-      try {
-        currentMcpConfig = SettingsCache.getSetting(MCP_CONFIGURATION, MCPConfiguration.class);
-        LOG.info("Reloaded MCP configuration from database");
-      } catch (Exception e) {
-        LOG.warn("Failed to reload MCP configuration, keeping current config: {}", e.getMessage());
-      }
+      LOG.info("Reloaded MCP configuration from database");
 
       OpenMetadataApplicationConfig appConfig = this.config;
       appConfig.setAuthenticationConfiguration(currentAuthConfig);
@@ -172,7 +275,7 @@ public class SecurityConfigurationManager {
    * Register a listener to be notified of configuration changes.
    * @param listener The listener to register
    */
-  public synchronized void addConfigurationChangeListener(ConfigurationChangeListener listener) {
+  public void addConfigurationChangeListener(ConfigurationChangeListener listener) {
     if (listener != null && !listeners.contains(listener)) {
       listeners.add(listener);
       LOG.info("Registered configuration change listener: {}", listener.getClass().getSimpleName());
@@ -183,7 +286,7 @@ public class SecurityConfigurationManager {
    * Remove a previously registered listener.
    * @param listener The listener to remove
    */
-  public synchronized void removeConfigurationChangeListener(ConfigurationChangeListener listener) {
+  public void removeConfigurationChangeListener(ConfigurationChangeListener listener) {
     if (listeners.remove(listener)) {
       LOG.info("Removed configuration change listener: {}", listener.getClass().getSimpleName());
     }
@@ -192,7 +295,7 @@ public class SecurityConfigurationManager {
   /**
    * Notify all registered listeners of configuration changes.
    */
-  private synchronized void notifyListeners() {
+  private void notifyListeners() {
     for (ConfigurationChangeListener listener : listeners) {
       try {
         listener.onConfigurationChanged(currentAuthConfig, currentAuthzConfig, currentMcpConfig);
@@ -211,7 +314,8 @@ public class SecurityConfigurationManager {
     if (previousSecurityConfig != null) {
       currentAuthConfig = previousSecurityConfig.getAuthenticationConfiguration();
       currentAuthzConfig = previousSecurityConfig.getAuthorizerConfiguration();
-      LOG.info("Rolled back to previous security configuration");
+      currentMcpConfig = previousMcpConfig;
+      LOG.info("Rolled back to previous security configuration (including MCP)");
     }
   }
 

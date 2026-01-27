@@ -45,8 +45,10 @@ import org.slf4j.LoggerFactory;
  * Extended transport provider that handles both MCP messages and OAuth routes. This class
  * integrates OAuth authentication routes directly into the transport layer It also adds
  * authentication middleware to validate requests for SSE and message endpoints.
+ * Implements ConfigurationChangeListener to dynamically update CORS origins without restart.
  */
-public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatelessServerTransport {
+public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatelessServerTransport
+    implements SecurityConfigurationManager.ConfigurationChangeListener {
 
   /** Logger for this class */
   private static final Logger logger =
@@ -141,8 +143,29 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     this.allowedOrigins = allowedOrigins;
 
+    // Register as configuration change listener for dynamic CORS updates (Issue #10)
+    SecurityConfigurationManager.getInstance().addConfigurationChangeListener(this);
+    logger.info(
+        "Registered as configuration change listener for dynamic CORS origin updates without restart");
+
     logger.info("OAuthHttpServletSseServerTransportProvider initialized with base URL: " + baseUrl);
     logger.info("CORS allowed origins: " + allowedOrigins);
+  }
+
+  /**
+   * ConfigurationChangeListener implementation.
+   * Called when configuration is reloaded, updates CORS origins dynamically without restart.
+   */
+  @Override
+  public void onConfigurationChanged(
+      org.openmetadata.schema.api.security.AuthenticationConfiguration authConfig,
+      org.openmetadata.schema.api.security.AuthorizerConfiguration authzConfig,
+      org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig) {
+    if (mcpConfig != null && mcpConfig.getAllowedOrigins() != null) {
+      updateAllowedOrigins(mcpConfig.getAllowedOrigins());
+      logger.info(
+          "Updated CORS origins from configuration reload: " + mcpConfig.getAllowedOrigins());
+    }
   }
 
   /**
@@ -431,23 +454,15 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
             .setRequestContext(request, response);
       }
 
-      try {
-        AuthorizationHandler.AuthorizationResponse authResponse =
-            authorizationHandler.handle(params).join();
+      AuthorizationHandler.AuthorizationResponse authResponse =
+          authorizationHandler.handle(params).join();
 
-        String redirectUrl = authResponse.getRedirectUrl();
-        if (redirectUrl != null) {
-          response.setHeader("Location", redirectUrl);
-          response.setHeader("Cache-Control", "no-store");
-          setCorsHeaders(request, response);
-          response.sendRedirect(redirectUrl);
-        }
-      } finally {
-        if (authProvider
-            instanceof org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider) {
-          ((org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider) authProvider)
-              .clearRequestContext();
-        }
+      String redirectUrl = authResponse.getRedirectUrl();
+      if (redirectUrl != null) {
+        response.setHeader("Location", redirectUrl);
+        response.setHeader("Cache-Control", "no-store");
+        setCorsHeaders(request, response);
+        response.sendRedirect(redirectUrl);
       }
 
     } catch (Exception ex) {
@@ -463,6 +478,11 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
           "error_description",
           cause.getMessage() != null ? cause.getMessage() : ex.getClass().getSimpleName());
       getObjectMapper().writeValue(response.getOutputStream(), error);
+    } finally {
+      if (authProvider instanceof org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider) {
+        ((org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider) authProvider)
+            .clearRequestContext();
+      }
     }
   }
 
