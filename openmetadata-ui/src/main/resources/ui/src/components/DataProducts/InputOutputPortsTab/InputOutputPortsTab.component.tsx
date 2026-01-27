@@ -227,8 +227,14 @@ export const InputOutputPortsTab = forwardRef<
       <Box
         className="input-output-ports-tab"
         data-testid="input-output-ports-tab"
-        sx={{ p: 2, height: '100%', overflowY: 'auto' }}>
-        <Grid container spacing={5}>
+        sx={{
+          p: 2,
+          height: '100%',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
+        <Grid container spacing={5} sx={{ flex: 1, minHeight: 0 }}>
           {/* Lineage View Section */}
           <Grid size={12}>
             <Card
@@ -307,12 +313,17 @@ export const InputOutputPortsTab = forwardRef<
           </Grid>
 
           {/* Input Ports Section */}
-          <Grid size={{ xs: 12, md: 6 }}>
+          <Grid
+            size={{ xs: 12, md: 6 }}
+            sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <Card
               sx={{
                 border: `1px solid ${theme.palette.allShades.blueGray[100]}`,
                 borderRadius: '8px',
                 boxShadow: 'none',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
               }}
               variant="outlined">
               <Box
@@ -370,8 +381,7 @@ export const InputOutputPortsTab = forwardRef<
               <Collapse in={!isInputPortsCollapsed}>
                 <CardContent
                   sx={{
-                    height: 'calc(100vh - 450px)',
-                    minHeight: 300,
+                    maxHeight: 500,
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden',
@@ -409,12 +419,17 @@ export const InputOutputPortsTab = forwardRef<
           </Grid>
 
           {/* Output Ports Section */}
-          <Grid size={{ xs: 12, md: 6 }}>
+          <Grid
+            size={{ xs: 12, md: 6 }}
+            sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <Card
               sx={{
                 border: `1px solid ${theme.palette.allShades.blueGray[100]}`,
                 borderRadius: '8px',
                 boxShadow: 'none',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
               }}
               variant="outlined">
               <Box
@@ -472,8 +487,7 @@ export const InputOutputPortsTab = forwardRef<
               <Collapse in={!isOutputPortsCollapsed}>
                 <CardContent
                   sx={{
-                    height: 'calc(100vh - 450px)',
-                    minHeight: 300,
+                    maxHeight: 500,
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden',
