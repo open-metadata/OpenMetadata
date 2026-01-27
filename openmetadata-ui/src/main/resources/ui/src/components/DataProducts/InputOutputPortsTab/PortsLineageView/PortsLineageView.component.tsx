@@ -65,6 +65,16 @@ const PortsLineageView = ({
   const [isInitialized, setIsInitialized] = useState(false);
   const reactFlowInstance = useReactFlow();
 
+  const handleToggleFullScreen = useCallback(() => {
+    if (onToggleFullScreen) {
+      onToggleFullScreen();
+      setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.2 });
+        reactFlowInstance.zoomTo(0.4);
+      }, 100);
+    }
+  }, [onToggleFullScreen, reactFlowInstance]);
+
   const hasAnyPorts =
     dataProduct && (inputPortsData.length > 0 || outputPortsData.length > 0);
 
@@ -184,6 +194,7 @@ const PortsLineageView = ({
     if (nodes.length > 0 && !isInitialized && reactFlowInstance) {
       setTimeout(() => {
         reactFlowInstance.fitView({ padding: 0.2 });
+        reactFlowInstance.zoomTo(0.4);
         setIsInitialized(true);
       }, 100);
     }
@@ -274,7 +285,7 @@ const PortsLineageView = ({
                   backgroundColor: 'grey.100',
                 },
               }}
-              onClick={onToggleFullScreen}>
+              onClick={handleToggleFullScreen}>
               {isFullScreen ? (
                 <Minimize01 height={18} width={18} />
               ) : (
@@ -286,13 +297,10 @@ const PortsLineageView = ({
       )}
 
       <ReactFlow
-        fitView
         panOnDrag
         zoomOnScroll
         edges={edges}
         fitViewOptions={{ padding: 0.2 }}
-        maxZoom={1.5}
-        minZoom={0.3}
         nodeTypes={nodeTypes}
         nodes={nodes}
         nodesConnectable={false}
