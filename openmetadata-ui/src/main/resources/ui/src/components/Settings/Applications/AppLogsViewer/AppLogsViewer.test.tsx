@@ -33,6 +33,7 @@ class MockTextEncoder {
 global.TextEncoder = MockTextEncoder as unknown as typeof TextEncoder;
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../../utils/date-time/DateTimeUtils'),
   formatDateTimeWithTimezone: jest
     .fn()
     .mockReturnValue('formatDateTimeWithTimezone'),
@@ -69,6 +70,7 @@ jest.mock('../../../common/Badge/Badge.component', () =>
 );
 
 jest.mock('../../../../constants/constants', () => ({
+  ...jest.requireActual('../../../../constants/constants'),
   ICON_DIMENSION: {
     with: 14,
     height: 14,

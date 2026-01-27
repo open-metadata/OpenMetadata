@@ -499,7 +499,8 @@ public class SearchIndexExecutor implements AutoCloseable {
 
     int readerSuccessCount = listOrEmpty(entities.getData()).size();
     int readerFailedCount = listOrEmpty(entities.getErrors()).size();
-    updateReaderStats(readerSuccessCount, readerFailedCount);
+    int readerWarningsCount = entities.getWarningsCount() != null ? entities.getWarningsCount() : 0;
+    updateReaderStats(readerSuccessCount, readerFailedCount, readerWarningsCount);
 
     try {
       long buildFailuresBefore =
@@ -864,7 +865,7 @@ public class SearchIndexExecutor implements AutoCloseable {
             indexingError != null && indexingError.getFailedCount() != null
                 ? indexingError.getFailedCount()
                 : batchSize.get();
-        updateReaderStats(0, failedCount);
+        updateReaderStats(0, failedCount, 0);
         StepStats failedStats =
             new StepStats().withSuccessRecords(0).withFailedRecords(failedCount);
         updateStats(entityType, failedStats);
@@ -952,6 +953,7 @@ public class SearchIndexExecutor implements AutoCloseable {
     readerStats.setTotalRecords(total);
     readerStats.setSuccessRecords(0);
     readerStats.setFailedRecords(0);
+    readerStats.setWarningRecords(0);
     jobDataStats.setReaderStats(readerStats);
 
     StepStats sinkStats = new StepStats();
@@ -1041,7 +1043,7 @@ public class SearchIndexExecutor implements AutoCloseable {
     stats.set(jobDataStats);
   }
 
-  synchronized void updateReaderStats(int successCount, int failedCount) {
+  synchronized void updateReaderStats(int successCount, int failedCount, int warningsCount) {
     Stats jobDataStats = stats.get();
     if (jobDataStats == null) {
       return;
@@ -1056,9 +1058,12 @@ public class SearchIndexExecutor implements AutoCloseable {
     int currentSuccess =
         readerStats.getSuccessRecords() != null ? readerStats.getSuccessRecords() : 0;
     int currentFailed = readerStats.getFailedRecords() != null ? readerStats.getFailedRecords() : 0;
+    int currentWarnings =
+        readerStats.getWarningRecords() != null ? readerStats.getWarningRecords() : 0;
 
     readerStats.setSuccessRecords(currentSuccess + successCount);
     readerStats.setFailedRecords(currentFailed + failedCount);
+    readerStats.setWarningRecords(currentWarnings + warningsCount);
 
     stats.set(jobDataStats);
   }

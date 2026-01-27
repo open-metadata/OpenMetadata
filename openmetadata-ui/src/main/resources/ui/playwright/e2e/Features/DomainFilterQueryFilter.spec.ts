@@ -26,9 +26,13 @@ import {
   redirectToHomePage,
 } from '../../utils/common';
 import {
+  assignDomainToEntity,
   checkAssetsCount,
   navigateToSubDomain,
+  searchAndExpectEntityNotVisible,
+  searchAndExpectEntityVisible,
   selectDomain,
+  selectDomainFromNavbar,
   verifyActiveDomainIsDefault,
 } from '../../utils/domain';
 import { assignTier, waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -54,90 +58,19 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     const nonDomainTable = new TableClass();
 
     try {
-      // Create domain and tables
       await domain.create(apiContext);
       await domainTable.create(apiContext);
       await nonDomainTable.create(apiContext);
 
-      // Assign domainTable to the domain
-      await domainTable.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
+      await assignDomainToEntity(apiContext, domainTable, domain);
 
-      // Navigate to explore page first (domain dropdown not visible on home page)
       await redirectToExplorePage(page);
       await waitForAllLoadersToDisappear(page);
 
-      // Select domain from navbar
-      await page.getByTestId('domain-dropdown').click();
-      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
-        state: 'visible',
-      });
+      await selectDomainFromNavbar(page, domain.responseData);
 
-      const searchDomainRes1 = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes('domain_search_index')
-      );
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(domain.responseData.displayName);
-      await searchDomainRes1;
-
-      // Wait for the tag element to be visible before clicking
-      const tagSelector1 = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
-      );
-      await tagSelector1.waitFor({ state: 'visible' });
-      await tagSelector1.click();
-      await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
-
-      // Search for domain table - should be visible
-      const domainTableName = get(
-        domainTable,
-        'entityResponseData.displayName',
-        domainTable.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(domainTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${domainTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-
-      // Search for non-domain table - should NOT be visible
-      const nonDomainTableName = get(
-        nonDomainTable,
-        'entityResponseData.displayName',
-        nonDomainTable.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(nonDomainTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      // The non-domain table should not appear in results when domain is selected
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${nonDomainTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).not.toBeVisible();
+      await searchAndExpectEntityVisible(page, domainTable);
+      await searchAndExpectEntityNotVisible(page, nonDomainTable);
     } finally {
       await domainTable.delete(apiContext);
       await nonDomainTable.delete(apiContext);
@@ -157,109 +90,23 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     let subDomain: SubDomain | undefined;
 
     try {
-      // Create domain and subdomain
       await domain.create(apiContext);
       subDomain = new SubDomain(domain);
       await subDomain.create(apiContext);
 
-
-      // Create tables
       await parentDomainTable.create(apiContext);
       await subDomainTable.create(apiContext);
 
-      // Assign parentDomainTable to parent domain
-      await parentDomainTable.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
+      await assignDomainToEntity(apiContext, parentDomainTable, domain);
+      await assignDomainToEntity(apiContext, subDomainTable, subDomain);
 
-      await subDomainTable.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: subDomain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
-
-
-      // Navigate to explore page first (domain dropdown not visible on home page)
       await redirectToExplorePage(page);
       await waitForAllLoadersToDisappear(page);
 
-      // Select the parent domain from navbar
-      await page.getByTestId('domain-dropdown').click();
-      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
-        state: 'visible',
-      });
+      await selectDomainFromNavbar(page, domain.responseData);
 
-      const searchDomainRes3 = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes('domain_search_index')
-      );
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(domain.responseData.displayName);
-      await searchDomainRes3;
-
-      // Wait for the tag element to be visible before clicking
-      const tagSelector3 = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
-      );
-      await tagSelector3.waitFor({ state: 'visible' });
-      await tagSelector3.click();
-      await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle')
-
-      // Search for parent domain table - should be visible
-      const parentTableName = get(
-        parentDomainTable,
-        'entityResponseData.displayName',
-        parentDomainTable.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(parentTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${parentDomainTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-
-      // Search for subdomain table - should ALSO be visible (prefix matching)
-      const subTableName = get(
-        subDomainTable,
-        'entityResponseData.displayName',
-        subDomainTable.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(subTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${subDomainTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible({ timeout: 15000 });
+      await searchAndExpectEntityVisible(page, parentDomainTable);
+      await searchAndExpectEntityVisible(page, subDomainTable, 15000);
     } finally {
       await parentDomainTable.delete(apiContext);
       await subDomainTable.delete(apiContext);
@@ -280,57 +127,17 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     const nonDomainTable = new TableClass();
 
     try {
-      // Create domain and tables
       await domain.create(apiContext);
       await domainTable.create(apiContext);
       await nonDomainTable.create(apiContext);
 
-      // Assign domainTable to the domain
-      await domainTable.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
+      await assignDomainToEntity(apiContext, domainTable, domain);
 
-      // Navigate to explore page first (domain dropdown not visible on home page)
       await redirectToExplorePage(page);
       await waitForAllLoadersToDisappear(page);
 
-      // Select domain from navbar
-      await page.getByTestId('domain-dropdown').click();
-      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
-        state: 'visible',
-      });
+      await selectDomainFromNavbar(page, domain.responseData);
 
-      const searchDomainRes4 = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes('domain_search_index')
-      );
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(domain.responseData.displayName);
-      await searchDomainRes4;
-
-      // Wait for the tag element to be visible before clicking
-      const tagSelector4 = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
-      );
-      await tagSelector4.waitFor({ state: 'visible' });
-      await tagSelector4.click();
-      await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
-
-      // Navigate away to glossary, then back to explore
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await waitForAllLoadersToDisappear(page);
 
@@ -338,42 +145,9 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await waitForAllLoadersToDisappear(page);
       await page.waitForLoadState('networkidle');
 
-      // Verify the domain filter is still applied
-      // Domain table should be visible
-      const domainTableName = get(
-        domainTable,
-        'entityResponseData.displayName',
-        domainTable.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(domainTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
+      await searchAndExpectEntityVisible(page, domainTable);
+      await searchAndExpectEntityNotVisible(page, nonDomainTable);
 
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${domainTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-
-      // Non-domain table should NOT be visible
-      const nonDomainTableName = get(
-        nonDomainTable,
-        'entityResponseData.displayName',
-        nonDomainTable.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(nonDomainTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${nonDomainTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).not.toBeVisible();
-
-      // Verify domain dropdown still shows the selected domain
       await expect(page.getByTestId('domain-dropdown')).toContainText(
         domain.responseData.displayName
       );
@@ -395,121 +169,22 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     const nonDomainTable = new TableClass();
 
     try {
-      // Create domain and assets
       await domain.create(apiContext);
       await domainTable.create(apiContext);
       await domainTopic.create(apiContext);
       await nonDomainTable.create(apiContext);
 
-      // Assign assets to the domain
-      await domainTable.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
+      await assignDomainToEntity(apiContext, domainTable, domain);
+      await assignDomainToEntity(apiContext, domainTopic, domain);
 
-      await domainTopic.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
-
-      // Navigate to explore page first (domain dropdown not visible on home page)
       await redirectToExplorePage(page);
       await waitForAllLoadersToDisappear(page);
 
-      // Select domain from navbar
-      await page.getByTestId('domain-dropdown').click();
-      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
-        state: 'visible',
-      });
+      await selectDomainFromNavbar(page, domain.responseData);
 
-      const searchDomainRes5 = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes('domain_search_index')
-      );
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(domain.responseData.displayName);
-      await searchDomainRes5;
-
-      // Wait for the tag element to be visible before clicking
-      const tagSelector5 = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
-      );
-      await tagSelector5.waitFor({ state: 'visible' });
-      await tagSelector5.click();
-      await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
-
-      // Search for domain table - should be visible
-      const domainTableName = get(
-        domainTable,
-        'entityResponseData.displayName',
-        domainTable.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(domainTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${domainTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-
-      // Search for domain topic - should be visible
-      const topicName = get(
-        domainTopic,
-        'entityResponseData.displayName',
-        domainTopic.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(topicName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${domainTopic.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-
-      // Search for non-domain table - should NOT be visible
-      const nonDomainTableName = get(
-        nonDomainTable,
-        'entityResponseData.displayName',
-        nonDomainTable.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(nonDomainTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${nonDomainTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).not.toBeVisible();
+      await searchAndExpectEntityVisible(page, domainTable);
+      await searchAndExpectEntityVisible(page, domainTopic);
+      await searchAndExpectEntityNotVisible(page, nonDomainTable);
     } finally {
       await domainTable.delete(apiContext);
       await domainTopic.delete(apiContext);
@@ -527,45 +202,27 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     const domainTable = new TableClass();
 
     try {
-      // Create domain and table
       await domain.create(apiContext);
       await domainTable.create(apiContext);
 
-      // Assign table to domain
-      await domainTable.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
+      await assignDomainToEntity(apiContext, domainTable, domain);
 
       await page.reload();
       await redirectToHomePage(page);
 
-      // Navigate to domain page
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
 
-      // Go to assets tab
       await page.getByTestId('assets').click();
       await waitForAllLoadersToDisappear(page);
       await page.waitForLoadState('networkidle');
 
-      // Verify the domain table is visible in assets
       await expect(
         page.locator(
           `[data-testid="table-data-card_${domainTable.entityResponseData.fullyQualifiedName}"]`
         )
       ).toBeVisible();
 
-      // Verify the asset count is 1
       await checkAssetsCount(page, 1);
     } finally {
       await domainTable.delete(apiContext);
@@ -587,74 +244,29 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     let subSubDomain: SubDomain | undefined;
 
     try {
-      // Create 3-level domain hierarchy: Domain -> SubDomain -> SubSubDomain
       await domain.create(apiContext);
       subDomain = new SubDomain(domain);
       await subDomain.create(apiContext);
       subSubDomain = new SubDomain(subDomain);
       await subSubDomain.create(apiContext);
 
-      // Create tables
       await domainTable.create(apiContext);
       await subDomainTable.create(apiContext);
       await subSubDomainTable.create(apiContext);
 
-      // Assign domainTable to parent domain
-      await domainTable.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
+      await assignDomainToEntity(apiContext, domainTable, domain);
+      await assignDomainToEntity(apiContext, subDomainTable, subDomain);
+      await assignDomainToEntity(apiContext, subSubDomainTable, subSubDomain);
 
-      // Assign subDomainTable to subdomain
-      await subDomainTable.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: subDomain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
-
-      // Assign subSubDomainTable to sub-subdomain
-      await subSubDomainTable.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: subSubDomain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
-
-      // Navigate to explore page first (domain dropdown not visible on home page)
       await redirectToExplorePage(page);
       await waitForAllLoadersToDisappear(page);
 
-      // Select the SubDomain (middle level) from navbar
+      // Select SubDomain from navbar (requires expanding parent domain tree)
       await page.getByTestId('domain-dropdown').click();
       await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
         state: 'visible',
       });
 
-      // Search for the parent domain first to make it visible
       const searchDomainRes6 = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
@@ -666,20 +278,16 @@ test.describe('Domain Filter - User Behavior Tests', () => {
         .fill(domain.responseData.displayName);
       await searchDomainRes6;
 
-      // Find the parent domain node and expand it to show subdomain
       const parentDomainNode = page
         .locator('.ant-tree-treenode')
         .filter({ hasText: domain.responseData.displayName })
         .first();
 
-      // Click the switcher icon to expand the parent domain
       await parentDomainNode.locator('.ant-tree-switcher').click();
 
-      // Wait for child domains to load
       await waitForAllLoadersToDisappear(page);
       await page.waitForLoadState('networkidle');
 
-      // Now the SubDomain should be visible, click on its tag
       const tagSelector6 = page.getByTestId(
         `tag-${subDomain.responseData.fullyQualifiedName}`
       );
@@ -688,57 +296,9 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await waitForAllLoadersToDisappear(page);
       await page.waitForLoadState('networkidle');
 
-      // Search for SubDomain table - should be visible
-      const subDomainTableName = get(
-        subDomainTable,
-        'entityResponseData.displayName',
-        subDomainTable.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(subDomainTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${subDomainTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-
-      // Search for SubSubDomain table - should ALSO be visible (prefix matching)
-      const subSubDomainTableName = get(
-        subSubDomainTable,
-        'entityResponseData.displayName',
-        subSubDomainTable.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(subSubDomainTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${subSubDomainTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-
-      // Search for parent Domain table - should NOT be visible
-      // (SubDomain is selected, not parent Domain)
-      const domainTableName = get(
-        domainTable,
-        'entityResponseData.displayName',
-        domainTable.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(domainTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${domainTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).not.toBeVisible();
+      await searchAndExpectEntityVisible(page, subDomainTable);
+      await searchAndExpectEntityVisible(page, subSubDomainTable);
+      await searchAndExpectEntityNotVisible(page, domainTable);
     } finally {
       await domainTable.delete(apiContext);
       await subDomainTable.delete(apiContext);
@@ -767,46 +327,12 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await domainTable.create(apiContext);
       await nonDomainTable.create(apiContext);
 
-      await domainTable.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
+      await assignDomainToEntity(apiContext, domainTable, domain);
 
       await redirectToExplorePage(page);
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('domain-dropdown').click();
-      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
-        state: 'visible',
-      });
-
-      const searchDomainRes = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes('domain_search_index')
-      );
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(domain.responseData.displayName);
-      await searchDomainRes;
-
-      const tagSelector = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
-      );
-      await tagSelector.waitFor({ state: 'visible' });
-      await tagSelector.click();
-      await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
+      await selectDomainFromNavbar(page, domain.responseData);
 
       const domainTableName = get(
         domainTable,
@@ -815,12 +341,11 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       );
 
       await page.getByTestId('searchBox').click();
-
       await page.getByTestId('searchBox').fill(domainTableName);
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByText(domainTable.entityResponseData.fullyQualifiedName)
+        page.getByText(domainTable.entityResponseData.fullyQualifiedName ?? '')
       ).toBeVisible();
 
       const nonDomainTableName = get(
@@ -830,12 +355,11 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       );
 
       await page.getByTestId('searchBox').clear();
-
       await page.getByTestId('searchBox').fill(nonDomainTableName);
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByText(nonDomainTable.entityResponseData.fullyQualifiedName)
+        page.getByText(nonDomainTable.entityResponseData.fullyQualifiedName ?? '', { exact: true })
       ).not.toBeVisible();
     } finally {
       await domainTable.delete(apiContext);
@@ -870,122 +394,18 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await engineering123Table.create(apiContext);
       await engineeringDataTable.create(apiContext);
 
-      await engineeringTable.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: engineeringDomain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
-
-      await engineering123Table.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: engineering123Domain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
-
-      await engineeringDataTable.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: engineeringDataSubDomain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
+      await assignDomainToEntity(apiContext, engineeringTable, engineeringDomain);
+      await assignDomainToEntity(apiContext, engineering123Table, engineering123Domain);
+      await assignDomainToEntity(apiContext, engineeringDataTable, engineeringDataSubDomain);
 
       await redirectToExplorePage(page);
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('domain-dropdown').click();
-      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
-        state: 'visible',
-      });
+      await selectDomainFromNavbar(page, engineeringDomain.responseData);
 
-      const searchDomainRes = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes('domain_search_index')
-      );
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(engineeringDomain.responseData.displayName);
-      await searchDomainRes;
-
-      const tagSelector = page.getByTestId(
-        `tag-${engineeringDomain.responseData.fullyQualifiedName}`
-      );
-      await tagSelector.waitFor({ state: 'visible' });
-      await tagSelector.click();
-      await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
-
-      const engineeringTableName = get(
-        engineeringTable,
-        'entityResponseData.displayName',
-        engineeringTable.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(engineeringTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${engineeringTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-
-      const engineeringDataTableName = get(
-        engineeringDataTable,
-        'entityResponseData.displayName',
-        engineeringDataTable.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(engineeringDataTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${engineeringDataTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-
-      const engineering123TableName = get(
-        engineering123Table,
-        'entityResponseData.displayName',
-        engineering123Table.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(engineering123TableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${engineering123Table.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).not.toBeVisible();
+      await searchAndExpectEntityVisible(page, engineeringTable);
+      await searchAndExpectEntityVisible(page, engineeringDataTable);
+      await searchAndExpectEntityNotVisible(page, engineering123Table);
     } finally {
       await engineeringTable.delete(apiContext);
       await engineering123Table.delete(apiContext);
@@ -1009,42 +429,14 @@ test.describe('Domain Filter - User Behavior Tests', () => {
     const nonDomainTable = new TableClass();
 
     try {
-      // Setup: Create 1 domain and 3 tables
       await domain.create(apiContext);
       await domainTable1.create(apiContext);
       await domainTable2.create(apiContext);
       await nonDomainTable.create(apiContext);
 
-      // Assign 2 tables to the domain
-      await domainTable1.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
+      await assignDomainToEntity(apiContext, domainTable1, domain);
+      await assignDomainToEntity(apiContext, domainTable2, domain);
 
-      await domainTable2.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
-
-      // Assign Tier1 to all 3 tables
       await domainTable1.visitEntityPage(page);
       await page.waitForLoadState('networkidle');
       await assignTier(page, 'Tier1', domainTable1.endpoint);
@@ -1057,7 +449,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.waitForLoadState('networkidle');
       await assignTier(page, 'Tier1', nonDomainTable.endpoint);
 
-      // Navigate to explore page
       await redirectToExplorePage(page);
       await waitForAllLoadersToDisappear(page);
 
@@ -1065,7 +456,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.getByTestId('search-dropdown-Tier').click();
       await waitForAllLoadersToDisappear(page);
       const tier1Option = page.getByTestId('Tier.Tier1');
-      await tier1Option.waitFor({ state: 'visible'});
+      await tier1Option.waitFor({ state: 'visible' });
       await tier1Option.click();
 
       const quickFilterApplyRes = page.waitForResponse(
@@ -1077,113 +468,17 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.waitForLoadState('networkidle');
 
       // Verify all 3 tables are visible with tier filter applied
-      const domainTable1Name = get(
-        domainTable1,
-        'entityResponseData.displayName',
-        domainTable1.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(domainTable1Name);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${domainTable1.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-
-      const domainTable2Name = get(
-        domainTable2,
-        'entityResponseData.displayName',
-        domainTable2.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(domainTable2Name);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${domainTable2.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-
-      const nonDomainTableName = get(
-        nonDomainTable,
-        'entityResponseData.displayName',
-        nonDomainTable.entityResponseData.name
-      );
-      await page.getByTestId('searchBox').fill(nonDomainTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${nonDomainTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
+      await searchAndExpectEntityVisible(page, domainTable1);
+      await searchAndExpectEntityVisible(page, domainTable2);
+      await searchAndExpectEntityVisible(page, nonDomainTable);
 
       // Step 2: Apply domain filter from navbar
-      await page.getByTestId('domain-dropdown').click();
-      await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
-        state: 'visible',
-      });
-
-      const searchDomainRes = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes('domain_search_index')
-      );
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(domain.responseData.displayName);
-      await searchDomainRes;
-
-      const tagSelector = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
-      );
-      await tagSelector.waitFor({ state: 'visible' });
-      await tagSelector.click();
-      await waitForAllLoadersToDisappear(page);
-      await page.waitForLoadState('networkidle');
+      await selectDomainFromNavbar(page, domain.responseData);
 
       // Verify only 2 domain tables are visible (tier filter + domain filter)
-      await page.getByTestId('searchBox').fill(domainTable1Name);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${domainTable1.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-
-      await page.getByTestId('searchBox').fill(domainTable2Name);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${domainTable2.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-
-      // Non-domain table should NOT be visible
-      await page.getByTestId('searchBox').fill(nonDomainTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${nonDomainTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).not.toBeVisible();
+      await searchAndExpectEntityVisible(page, domainTable1);
+      await searchAndExpectEntityVisible(page, domainTable2);
+      await searchAndExpectEntityNotVisible(page, nonDomainTable);
 
       // Step 3: Clear domain filter by selecting "All Domains"
       await page.getByTestId('domain-dropdown').click();
@@ -1194,42 +489,12 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await waitForAllLoadersToDisappear(page);
       await page.waitForLoadState('networkidle');
 
-      // Verify domain is cleared
       await verifyActiveDomainIsDefault(page);
 
       // Verify all 3 tables are visible again (tier filter persists)
-      await page.getByTestId('searchBox').fill(domainTable1Name);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${domainTable1.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-
-      await page.getByTestId('searchBox').fill(domainTable2Name);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${domainTable2.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
-
-      await page.getByTestId('searchBox').fill(nonDomainTableName);
-      await page.getByTestId('searchBox').press('Enter');
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page.locator(
-          `[data-testid="table-data-card_${nonDomainTable.entityResponseData.fullyQualifiedName}"]`
-        )
-      ).toBeVisible();
+      await searchAndExpectEntityVisible(page, domainTable1);
+      await searchAndExpectEntityVisible(page, domainTable2);
+      await searchAndExpectEntityVisible(page, nonDomainTable);
     } finally {
       await domainTable1.delete(apiContext);
       await domainTable2.delete(apiContext);
@@ -1244,19 +509,16 @@ test.describe('Domain Filter - User Behavior Tests', () => {
   }) => {
     const { afterAction, apiContext } = await getApiContext(page);
 
-    // Create two separate domains where domainA has a subdomain
     const domainA = new Domain();
     const domainB = new Domain();
 
     let subDomainA: SubDomain | undefined;
 
-    // Create one table for each domain/subdomain
     const tableInDomainA = new TableClass();
     const tableInSubDomainA = new TableClass();
     const tableInDomainB = new TableClass();
 
     try {
-      // Setup: Create both domains, subdomain, and tables
       await domainA.create(apiContext);
       await domainB.create(apiContext);
       subDomainA = new SubDomain(domainA);
@@ -1266,83 +528,36 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await tableInSubDomainA.create(apiContext);
       await tableInDomainB.create(apiContext);
 
-      // Assign tableInDomainA to domainA
-      await tableInDomainA.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domainA.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
+      await assignDomainToEntity(apiContext, tableInDomainA, domainA);
+      await assignDomainToEntity(apiContext, tableInSubDomainA, subDomainA);
+      await assignDomainToEntity(apiContext, tableInDomainB, domainB);
 
-      // Assign tableInSubDomainA to subDomainA
-      await tableInSubDomainA.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: subDomainA.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
-
-      // Assign tableInDomainB to domainB
-      await tableInDomainB.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domainB.responseData.id,
-              type: 'domain',
-            },
-          },
-        ],
-      });
-
-      // Navigate to domainA's page
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domainA.data);
 
-      // Go to Assets tab
       await page.getByTestId('assets').click();
       await waitForAllLoadersToDisappear(page);
       await page.waitForLoadState('networkidle');
 
-      // Verify domainA's table IS visible
       await expect(
         page.locator(
           `[data-testid="table-data-card_${tableInDomainA.entityResponseData.fullyQualifiedName}"]`
         )
       ).toBeVisible();
 
-      // Verify subDomainA's table IS visible (subdomain assets should be included)
       await expect(
         page.locator(
           `[data-testid="table-data-card_${tableInSubDomainA.entityResponseData.fullyQualifiedName}"]`
         )
       ).toBeVisible();
 
-      // Verify domainB's table is NOT visible (this is the bug - it should NOT appear)
       await expect(
         page.locator(
           `[data-testid="table-data-card_${tableInDomainB.entityResponseData.fullyQualifiedName}"]`
         )
       ).not.toBeVisible();
 
-      // Verify asset count is exactly 2 (domainA + subDomainA assets)
       await checkAssetsCount(page, 2);
     } finally {
       await tableInDomainA.delete(apiContext);
@@ -1382,7 +597,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       dataProductInDomainA = new DataProduct([domainA]);
       await dataProductInDomainA.create(apiContext);
 
-      dataProductInSubDomainA = new DataProduct([subDomainA]);
+      dataProductInSubDomainA = new DataProduct([], undefined, [subDomainA]);
       await dataProductInSubDomainA.create(apiContext);
 
       dataProductInDomainB = new DataProduct([domainB]);
@@ -1581,7 +796,6 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       subSubDomain = new SubDomain(subDomain1);
       await subSubDomain.create(apiContext);
 
-      // Create all tables
       await rootTable.create(apiContext);
       await subDomain1Table1.create(apiContext);
       await subDomain1Table2.create(apiContext);
@@ -1590,53 +804,12 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await subDomain2Table.create(apiContext);
 
       // === SETUP: Assign tables to domains ===
-      // rootTable -> RootDomain
-      await rootTable.patch({
-        apiContext,
-        patchData: [
-          { op: 'add', path: '/domains/0', value: { id: rootDomain.responseData.id, type: 'domain' } },
-        ],
-      });
-
-      // subDomain1Table1 -> SubDomain1
-      await subDomain1Table1.patch({
-        apiContext,
-        patchData: [
-          { op: 'add', path: '/domains/0', value: { id: subDomain1.responseData.id, type: 'domain' } },
-        ],
-      });
-
-      // subDomain1Table2 -> SubDomain1
-      await subDomain1Table2.patch({
-        apiContext,
-        patchData: [
-          { op: 'add', path: '/domains/0', value: { id: subDomain1.responseData.id, type: 'domain' } },
-        ],
-      });
-
-      // subSubDomainTable1 -> SubSubDomain
-      await subSubDomainTable1.patch({
-        apiContext,
-        patchData: [
-          { op: 'add', path: '/domains/0', value: { id: subSubDomain.responseData.id, type: 'domain' } },
-        ],
-      });
-
-      // subSubDomainTable2 -> SubSubDomain
-      await subSubDomainTable2.patch({
-        apiContext,
-        patchData: [
-          { op: 'add', path: '/domains/0', value: { id: subSubDomain.responseData.id, type: 'domain' } },
-        ],
-      });
-
-      // subDomain2Table -> SubDomain2 (sibling)
-      await subDomain2Table.patch({
-        apiContext,
-        patchData: [
-          { op: 'add', path: '/domains/0', value: { id: subDomain2.responseData.id, type: 'domain' } },
-        ],
-      });
+      await assignDomainToEntity(apiContext, rootTable, rootDomain);
+      await assignDomainToEntity(apiContext, subDomain1Table1, subDomain1);
+      await assignDomainToEntity(apiContext, subDomain1Table2, subDomain1);
+      await assignDomainToEntity(apiContext, subSubDomainTable1, subSubDomain);
+      await assignDomainToEntity(apiContext, subSubDomainTable2, subSubDomain);
+      await assignDomainToEntity(apiContext, subDomain2Table, subDomain2);
 
       // === SETUP: Assign tags ===
       // rootTable: Tier1
