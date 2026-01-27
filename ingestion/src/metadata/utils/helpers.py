@@ -444,17 +444,37 @@ def is_safe_sql_query(sql_query: str) -> bool:
         "ROLLBACK",
         "SAVEPOINT",
         "SET TRANSACTION",
+        "INTO OUTFILE",
+        "INTO DUMPFILE",
+        "LOAD_FILE",
+        "COPY",
+        "PG_READ_FILE",
+        "PG_WRITE_FILE",
+        "PG_READ_BINARY_FILE",
+        "LO_IMPORT",
+        "LO_EXPORT",
+        "LO_FROM_BYTEA",
+        "LO_GET",
+        "EXEC",
+        "EXECUTE",
+        "XP_CMDSHELL",
+        "XP_REGREAD",
+        "XP_REGWRITE",
+        "XP_SERVICECONTROL",
+        "SP_OACREATE",
+        "SP_OAMETHOD",
     }
 
     if sql_query is None:
         return True
 
     parsed_queries: Tuple[Statement] = sqlparse.parse(sql_query)
+    # We split the tokens by "(" to capture cases like "INSERT(...)", "UPDATE(...), etc."
     for parsed_query in parsed_queries:
-        validation = [
-            token.normalized in forbiden_token for token in parsed_query.tokens
-        ]
-        if any(validation):
+        if any(
+            token.normalized.upper().split("(")[0] in forbiden_token
+            for token in parsed_query.tokens
+        ):
             return False
     return True
 

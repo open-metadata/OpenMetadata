@@ -16,6 +16,7 @@
     ],
     "provider": "system",
   "enabled": true,
-    "dataQualityDimension": "Integrity"
+    "dataQualityDimension": "Integrity",
+    "validatorClass": "TableColumnNameToExistValidator"
   }
   
