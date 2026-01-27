@@ -44,7 +44,7 @@ test('Should show error toast when adding mutually exclusive tags to column', as
 
   // Add PII.Sensitive tag to the first column
   await page.click(
-    `${columnRowSelector} [data-testid="classification-tags-0"] [data-testid="add-tag"]`
+    `${columnRowSelector} [data-testid*="classification-tags"] [data-testid="add-tag"]`
   );
 
   const tagSearchResponse = page.waitForResponse(
@@ -68,14 +68,14 @@ test('Should show error toast when adding mutually exclusive tags to column', as
   // Verify the tag was added successfully
   await expect(
     page.locator(
-      `${columnRowSelector} [data-testid="classification-tags-0"] [data-testid="tags-container"]`
+      `${columnRowSelector} [data-testid*="classification-tags"] [data-testid="tags-container"]`
     )
   ).toContainText('Sensitive');
 
   // Now try to add a mutually exclusive tag (PII.NonSensitive) to the same column
   // The edit button is inside tags-container
   await page.click(
-    `${columnRowSelector} [data-testid="classification-tags-0"] [data-testid="tags-container"] [data-testid="edit-button"]`
+    `${columnRowSelector} [data-testid*="classification-tags"] [data-testid="tags-container"] [data-testid="edit-button"]`
   );
 
   const tagSearchResponse2 = page.waitForResponse(
@@ -113,14 +113,14 @@ test('Should show error toast when adding mutually exclusive tags to column', as
   // Verify that the original tag is still present
   await expect(
     page.locator(
-      `${columnRowSelector} [data-testid="classification-tags-0"] [data-testid="tags-container"]`
+      `${columnRowSelector} [data-testid*="classification-tags"] [data-testid="tags-container"]`
     )
   ).toContainText('Sensitive');
 
   // Verify that the mutually exclusive tag was NOT added
   await expect(
     page.locator(
-      `${columnRowSelector} [data-testid="classification-tags-0"] [data-testid="tags-container"]`
+      `${columnRowSelector} [data-testid*="classification-tags"] [data-testid="tags-container"]`
     )
   ).not.toContainText('NonSensitive');
 });

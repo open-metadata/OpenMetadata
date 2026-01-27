@@ -94,10 +94,11 @@
         "type": "string",
         "enum": [
           "PROFILE",
-          "TEST_CASE_RESULTS"
+          "TEST_CASE_RESULTS",
+          "ENTITY_HISTORY"
         ]
       },
-      "default": ["PROFILE", "TEST_CASE_RESULTS"]
+      "default": ["PROFILE", "TEST_CASE_RESULTS", "ENTITY_HISTORY"]
     },
     "backfill": {
       "description": "Enable backfill for the exporter to process historical data. This will only work on the very first run of the exporter.",

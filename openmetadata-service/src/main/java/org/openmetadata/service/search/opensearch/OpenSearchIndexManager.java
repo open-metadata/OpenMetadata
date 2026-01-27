@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.stream.JsonParser;
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -25,6 +27,7 @@ import os.org.opensearch.client.opensearch.indices.IndexSettings;
 import os.org.opensearch.client.opensearch.indices.PutMappingRequest;
 import os.org.opensearch.client.opensearch.indices.UpdateAliasesRequest;
 import os.org.opensearch.client.opensearch.indices.UpdateAliasesResponse;
+import os.org.opensearch.client.opensearch.indices.stats.IndicesStats;
 import os.org.opensearch.client.transport.endpoints.BooleanResponse;
 
 /**
@@ -231,6 +234,76 @@ public class OpenSearchIndexManager implements IndexManagementClient {
     deleteIndexInternal(indexName);
   }
 
+  @Override
+  public void deleteIndexWithBackoff(String indexName) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot delete index.");
+      return;
+    }
+
+    int maxRetries = 5;
+    long initialDelayMs = 1000; // 1 second
+    long maxDelayMs = 60000; // 60 seconds
+
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        DeleteIndexRequest request = DeleteIndexRequest.of(builder -> builder.index(indexName));
+        DeleteIndexResponse response = client.indices().delete(request);
+
+        if (response.acknowledged()) {
+          LOG.info(
+              "Successfully deleted index: {} (attempt {}/{})",
+              indexName,
+              attempt + 1,
+              maxRetries + 1);
+          return;
+        } else {
+          LOG.warn(
+              "Index deletion for {} was not acknowledged (attempt {}/{})",
+              indexName,
+              attempt + 1,
+              maxRetries + 1);
+        }
+      } catch (OpenSearchException osEx) {
+        // Check if it's a snapshot-related error (status 400 or 503)
+        if (osEx.status() == 400 || osEx.status() == 503) {
+          if (attempt < maxRetries) {
+            long delayMs = Math.min(initialDelayMs * (long) Math.pow(2, attempt), maxDelayMs);
+            LOG.warn(
+                "Failed to delete index {} due to snapshot or temporary issue (attempt {}/{}). "
+                    + "Retrying in {} ms. Error: {}",
+                indexName,
+                attempt + 1,
+                maxRetries + 1,
+                delayMs,
+                osEx.getMessage());
+            try {
+              Thread.sleep(delayMs);
+            } catch (InterruptedException ie) {
+              Thread.currentThread().interrupt();
+              LOG.error("Interrupted while waiting to retry index deletion for {}", indexName, ie);
+              return;
+            }
+          } else {
+            LOG.error(
+                "Failed to delete index {} after {} attempts due to snapshot or temporary issue",
+                indexName,
+                maxRetries + 1,
+                osEx);
+            return;
+          }
+        } else {
+          // Non-retryable error
+          LOG.error("Failed to delete index {} due to non-retryable error", indexName, osEx);
+          return;
+        }
+      } catch (Exception e) {
+        LOG.error("Failed to delete index {} due to unexpected error", indexName, e);
+        return;
+      }
+    }
+  }
+
   private void deleteIndexInternal(String indexName) {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot delete index.");
@@ -408,5 +481,48 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       LOG.error("Failed to list indices by prefix {} due to", prefix, e);
     }
     return indices;
+  }
+
+  @Override
+  public List<IndexStats> getAllIndexStats() throws IOException {
+    List<IndexStats> result = new ArrayList<>();
+    var statsResponse = client.indices().stats(s -> s.index("*"));
+    var indices = statsResponse.indices();
+    for (var entry : indices.entrySet()) {
+      String indexName = entry.getKey();
+      if (indexName.startsWith(".")) {
+        continue;
+      }
+      IndicesStats stats = entry.getValue();
+      long docs = 0;
+      long sizeBytes = 0;
+      int primaryShards = 0;
+      int replicaShards = 0;
+      if (stats.primaries() != null) {
+        if (stats.primaries().docs() != null) {
+          docs = stats.primaries().docs().count();
+        }
+        if (stats.primaries().store() != null) {
+          sizeBytes = stats.primaries().store().sizeInBytes();
+        }
+      }
+      if (stats.shards() != null) {
+        for (var shardEntry : stats.shards().entrySet()) {
+          for (var shardStats : shardEntry.getValue()) {
+            if (shardStats.routing() != null && shardStats.routing().primary()) {
+              primaryShards++;
+            } else {
+              replicaShards++;
+            }
+          }
+        }
+      }
+      String health = "GREEN";
+      Set<String> aliases = getAliases(indexName);
+      result.add(
+          new IndexStats(
+              indexName, docs, primaryShards, replicaShards, sizeBytes, health, aliases));
+    }
+    return result;
   }
 }

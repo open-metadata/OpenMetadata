@@ -94,7 +94,7 @@ class ColumnValuesToNotMatchRegexValidator(
                 BaseColumnValuesToNotMatchRegexValidator.FORBIDDEN_REGEX
             ]
 
-            dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            dfs = self.runner
             not_regex_count_impl = add_props(expression=forbidden_regex)(
                 Metrics.NOT_REGEX_COUNT.value
             )(column).get_pandas_computation()

@@ -94,6 +94,10 @@ SNOWFLAKE_QUERY_EXPRESSION_KW = "Value.NativeQuery(Snowflake.Databases("
 DATABRICKS_QUERY_EXPRESSION_KW = "Value.NativeQuery(Databricks.Catalogs("
 MAX_PROJECT_FILTER_SIZE = 20
 
+DEFAULT_REPORTS_PREFIX = "reports"
+RDL_REPORT_FORMAT = "RDL"
+RDL_REPORTS_PREFIX = "rdlreports"
+
 
 class PowerbiSource(DashboardServiceSource):
     """PowerBi Source Class"""
@@ -352,11 +356,20 @@ class PowerbiSource(DashboardServiceSource):
             f"{workspace_id}/dashboards/{dashboard_id}?experience=power-bi"
         )
 
-    def _get_report_url(self, workspace_id: str, dashboard_id: str) -> str:
+    def _get_report_url(
+        self, workspace_id: str, dashboard_details: PowerBIReport
+    ) -> str:
         """
         Method to build the dashboard url
         """
         page_id = ""
+        dashboard_id = dashboard_details.id
+        reports_prefix = DEFAULT_REPORTS_PREFIX
+        if (
+            isinstance(dashboard_details.format, str)
+            and dashboard_details.format == RDL_REPORT_FORMAT
+        ):
+            reports_prefix = RDL_REPORTS_PREFIX
         try:
             pages: Optional[
                 List[ReportPage]
@@ -372,7 +385,7 @@ class PowerbiSource(DashboardServiceSource):
         # https://app.powerbi.com/groups/4e57dcbb-***/reports/a2902011-***/098b***?experience=power-bi
         return (
             f"{clean_uri(self.service_connection.hostPort)}/groups/"
-            f"{workspace_id}/reports/{dashboard_id}{page_id}?experience=power-bi"
+            f"{workspace_id}/{reports_prefix}/{dashboard_id}{page_id}?experience=power-bi"
         )
 
     def _get_dataset_url(self, workspace_id: str, dataset_id: str) -> str:
@@ -445,20 +458,18 @@ class PowerbiSource(DashboardServiceSource):
                         owners=self.get_owner_ref(dashboard_details=dashboard_details),
                     )
                 else:
-                    report_details = self.client.api_client.fetch_report_details(
-                        group_id=self.context.get().workspace.id,
-                        report_id=dashboard_details.id,
+                    description = (
+                        Markdown(dashboard_details.description)
+                        if dashboard_details.description
+                        else None
                     )
-                    description = None
-                    if report_details and report_details.description:
-                        description = Markdown(report_details.description)
                     dashboard_request = CreateDashboardRequest(
                         name=EntityName(dashboard_details.id),
                         dashboardType=DashboardType.Report,
                         sourceUrl=SourceUrl(
                             self._get_report_url(
                                 workspace_id=self.context.get().workspace.id,
-                                dashboard_id=dashboard_details.id,
+                                dashboard_details=dashboard_details,
                             )
                         ),
                         project=self.get_project_name(dashboard_details),

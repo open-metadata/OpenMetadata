@@ -288,7 +288,7 @@ const SearchIndexFieldsTable = ({
         }),
         render: (_, record: SearchIndexField) => (
           <div className="d-inline-flex items-center gap-2 hover-icon-group w-max-90">
-            <span className="break-word">
+            <span className="break-word text-link-color">
               {stringToHTML(
                 highlightSearchText(getEntityName(record), searchText)
               )}
@@ -381,7 +381,7 @@ const SearchIndexFieldsTable = ({
 
   const expandableConfig: ExpandableConfig<SearchIndexField> = useMemo(
     () => ({
-      ...getTableExpandableConfig<SearchIndexField>(),
+      ...getTableExpandableConfig<SearchIndexField>(false, 'text-link-color'),
       rowExpandable: (record) => !isEmpty(record.children),
       expandedRowKeys,
       onExpand: (expanded, record) => {

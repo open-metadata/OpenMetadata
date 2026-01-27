@@ -77,7 +77,7 @@ import org.openmetadata.service.util.RestUtil;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestSuites")
 public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteRepository> {
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testSuites";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testSuites/";
   private final TestSuiteMapper mapper = new TestSuiteMapper();
   public static final String BASIC_TEST_SUITE_DELETION_ERROR =
       "Cannot delete logical test suite. To delete logical test suite, use DELETE /v1/dataQuality/testSuites/<...>";

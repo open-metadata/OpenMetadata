@@ -33,6 +33,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.services.drives.SpreadsheetService;
 import org.openmetadata.sdk.services.drives.WorksheetService;
 import org.openmetadata.sdk.services.services.DriveServiceService;
+import org.openmetadata.service.resources.drives.WorksheetResource;
 
 /**
  * Integration tests for Worksheet entity operations.
@@ -52,6 +53,12 @@ public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet
     supportsDataProducts = false;
     supportsCustomExtension = false;
     supportsDomains = false;
+    supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return WorksheetResource.COLLECTION_PATH;
   }
 
   @Override

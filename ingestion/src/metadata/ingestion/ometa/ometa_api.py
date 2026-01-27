@@ -68,6 +68,7 @@ from metadata.ingestion.ometa.mixins.data_contract_mixin import OMetaDataContrac
 from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInsightMixin
 from metadata.ingestion.ometa.mixins.domain_mixin import OMetaDomainMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
+from metadata.ingestion.ometa.mixins.file_mixin import OMetaFileMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
 )
@@ -263,6 +264,7 @@ class OpenMetadata(
     OMetaPipelineMixin,
     OMetaMlModelMixin,
     OMetaTableMixin,
+    OMetaFileMixin,
     OMetaTopicMixin,
     OMetaVersionMixin,
     OMetaServiceMixin,

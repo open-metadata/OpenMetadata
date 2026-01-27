@@ -95,6 +95,20 @@
       "description": "Enable automatic performance tuning based on cluster capabilities and database entity count",
       "type": "boolean",
       "default": false
+    },
+    "useDistributedIndexing": {
+      "title": "Use Distributed Indexing",
+      "description": "Enable distributed indexing to scale reindexing across multiple servers with fault tolerance and parallel processing",
+      "type": "boolean",
+      "default": true
+    },
+    "partitionSize": {
+      "title": "Partition Size",
+      "description": "Number of entities per partition for distributed indexing. Smaller values create more partitions for better distribution across servers. Range: 1000-50000.",
+      "type": "integer",
+      "default": 10000,
+      "minimum": 1000,
+      "maximum": 50000
     }
   },
   "additionalProperties": false

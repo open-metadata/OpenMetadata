@@ -21,6 +21,7 @@ from metadata.data_quality.validations.base_test_handler import BaseTestValidato
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.type.basic import Timestamp
+from metadata.profiler.processor.runner import PandasRunner
 from metadata.sdk.data_quality.dataframes.validation_results import (
     FailureMode,
     ValidationResult,
@@ -77,7 +78,7 @@ class DataFrameValidationEngine:
         validator_class = self._get_validator_class(test_case)
 
         validator = validator_class(
-            runner=[df],
+            runner=PandasRunner.from_dataframe(df),
             test_case=test_case,
             execution_date=Timestamp(root=int(datetime.now().timestamp() * 1000)),
         )

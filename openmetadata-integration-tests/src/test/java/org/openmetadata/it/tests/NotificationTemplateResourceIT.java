@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.events.NotificationTemplateResource;
 
 /**
  * Integration tests for NotificationTemplate entity operations.
@@ -53,6 +54,12 @@ public class NotificationTemplateResourceIT
     supportsPatch = true;
     supportsOwners = false; // NotificationTemplate doesn't support owners
     supportsSearchIndex = false; // NotificationTemplate doesn't have a search index
+    supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return NotificationTemplateResource.COLLECTION_PATH;
   }
 
   @Override

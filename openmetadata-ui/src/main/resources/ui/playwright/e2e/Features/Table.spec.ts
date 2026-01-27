@@ -552,16 +552,11 @@ test.describe(
 
       // Wait for page to be fully loaded
       await columnsResponse;
-      await page.waitForSelector(
-        '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-        {
-          state: 'detached',
-        }
-      );
+      await waitForAllLoadersToDisappear(page);
 
       // Check if add button exists and is visible
       const rowSelector =
-        '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"] [data-testid="glossary-tags-0"]';
+        '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"] [data-testid*="glossary-tags"]';
 
       const addButton = await page.$(`${rowSelector} [data-testid="add-tag"]`);
       if (addButton && (await addButton.isVisible())) {
@@ -657,16 +652,11 @@ test.describe(
 
       // Wait for page to be fully loaded
       await columnsResponse;
-      await page.waitForSelector(
-        '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-        {
-          state: 'detached',
-        }
-      );
+      await waitForAllLoadersToDisappear(page);
 
       // Check if add button exists and is visible
       const rowSelector =
-        '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid="classification-tags-1"]';
+        '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid*="classification-tags"]';
 
       const addButton = await page.$(`${rowSelector} [data-testid="add-tag"]`);
       if (addButton && (await addButton.isVisible())) {
@@ -862,8 +852,11 @@ test.describe('Large Table Column Search & Copy Link', () => {
     expect(clipboardText).toContain(targetColumnName);
 
     // 5. Visit the copied Link
+    const visitLinkResponse = page.waitForResponse((response) =>
+      response.url().includes(`/table/${createdTable.fullyQualifiedName}`)
+    );
     await page.goto(clipboardText);
-    await page.waitForLoadState('networkidle');
+    await visitLinkResponse;
     await waitForAllLoadersToDisappear(page);
 
     // 6. Verify Side Panel is open

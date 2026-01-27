@@ -105,7 +105,7 @@ const mockEntityPermissionByFqn = jest
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
 const COMMON_API_FIELDS =
-  'followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domains,dataProducts,votes,extension';
+  'columns,followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domains,dataProducts,votes,extension';
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
@@ -121,10 +121,17 @@ jest.mock('../../rest/tableAPI', () => ({
       columns: [],
     })
   ),
+  getTableColumnsByFQN: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: [],
+      paging: { total: 0 },
+    })
+  ),
   addFollower: jest.fn(),
   patchTableDetails: jest.fn(),
   removeFollower: jest.fn(),
   restoreTable: jest.fn(),
+  updateTablesVotes: jest.fn(),
 }));
 
 jest.mock('../../rest/suggestionsAPI', () => ({

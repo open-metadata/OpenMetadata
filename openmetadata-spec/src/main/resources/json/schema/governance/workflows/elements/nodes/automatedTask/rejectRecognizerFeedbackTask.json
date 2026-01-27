@@ -1,0 +1,76 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/rejectRecognizerFeedbackTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RejectRecognizerFeedbackTaskDefinition",
+  "description": "Rejects RecognizerFeedback, updating its status to REJECTED without modifying the tag or entity.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTaskDefinition",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "automatedTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "rejectRecognizerFeedbackTask"
+    },
+    "name": {
+      "title": "Name",
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["relatedEntity", "updatedBy", "triggeringObjectId"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 3
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        },
+        "updatedBy": {
+          "type": "string",
+          "default": "global"
+        },
+        "triggeringObjectId": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity", "updatedBy", "triggeringObjectId"]
+    },
+    "output": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "additionalItems": false,
+      "minItems": 0,
+      "maxItems": 0
+    }
+  }
+}
