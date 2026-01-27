@@ -38,6 +38,8 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -74,6 +76,13 @@ public class DatabaseServiceRepository
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     DatabaseService databaseService =
         getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS); // Validate database name
     DatabaseRepository repository = (DatabaseRepository) Entity.getEntityRepository(DATABASE);
@@ -84,12 +93,24 @@ public class DatabaseServiceRepository
 
     databases.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new DatabaseServiceCsv(databaseService, user, recursive)
-        .exportAllCsv(databases, recursive);
+        .exportAllCsv(databases, recursive, callback);
   }
 
   @Override
   public CsvImportResult importFromCsv(
       String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    return importFromCsv(name, csv, dryRun, user, recursive, (CsvImportProgressCallback) null);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
     // Validate database service
     DatabaseService databaseService =
         getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS); // Validate glossary name
@@ -101,7 +122,7 @@ public class DatabaseServiceRepository
     } else {
       records = databaseServiceCsv.parse(csv);
     }
-    return databaseServiceCsv.importCsv(records, dryRun);
+    return databaseServiceCsv.importCsv(records, dryRun, callback);
   }
 
   public static class DatabaseServiceCsv extends EntityCsv<Database> {
@@ -121,11 +142,17 @@ public class DatabaseServiceRepository
     /**
      * Export all databases with their child entities (schema, tables, stored procedures, columns)
      */
-    public String exportAllCsv(List<Database> databases, boolean recursive) throws IOException {
+    public String exportAllCsv(
+        List<Database> databases, boolean recursive, CsvExportProgressCallback callback)
+        throws IOException {
       if (!recursive) {
-        return this.exportCsv(databases);
+        return this.exportCsv(databases, callback);
       }
       CsvFile csvFile = new CsvFile().withHeaders(HEADERS);
+      int total = databases.size();
+      int exported = 0;
+      int batchNumber = 0;
+
       for (Database database : databases) {
         addEntityToCSV(csvFile, database, DATABASE);
         DatabaseRepository databaseRepository =
@@ -147,6 +174,17 @@ public class DatabaseServiceRepository
             }
           } catch (Exception e) {
             LOG.error("Error parsing database CSV: {}", e.getMessage());
+          }
+        }
+
+        exported++;
+        if (exported % DEFAULT_BATCH_SIZE == 0 || exported == total) {
+          batchNumber++;
+          if (callback != null) {
+            String message =
+                String.format(
+                    "Exported %d of %d databases (batch %d)", exported, total, batchNumber);
+            callback.onProgress(exported, total, message);
           }
         }
       }

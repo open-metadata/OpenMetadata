@@ -48,6 +48,8 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
@@ -204,6 +206,13 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   /** Export glossary as CSV */
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     Glossary glossary = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
     GlossaryTermRepository repository =
         (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
@@ -212,16 +221,22 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
             repository.getFields("owners,reviewers,tags,relatedTerms,synonyms,extension,parent"),
             glossary.getFullyQualifiedName());
     terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
-    return new GlossaryCsv(glossary, user).exportCsv(terms);
+    return new GlossaryCsv(glossary, user).exportCsv(terms, callback);
   }
 
   /** Load CSV provided for bulk upload */
   @Override
   public CsvImportResult importFromCsv(
-      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
-    Glossary glossary = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
+    Glossary glossary = getByName(null, name, Fields.EMPTY_FIELDS);
     GlossaryCsv glossaryCsv = new GlossaryCsv(glossary, user);
-    return glossaryCsv.importCsv(csv, dryRun);
+    return glossaryCsv.importCsv(csv, dryRun, callback);
   }
 
   public static class GlossaryCsv extends EntityCsv<GlossaryTerm> {

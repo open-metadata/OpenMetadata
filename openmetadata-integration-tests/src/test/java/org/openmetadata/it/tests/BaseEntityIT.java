@@ -27,8 +27,11 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.it.util.UpdateType;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Users;
@@ -4194,6 +4197,20 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       // Import with dry run (should not actually modify data)
       String result = service.importCsv(containerName, exportedCsv, true);
       assertNotNull(result, "Import dry run should return a result");
+
+      // Verify CsvImportResult values
+      CsvImportResult importResult = JsonUtils.readValue(result, CsvImportResult.class);
+      assertNotNull(importResult, "Should parse CsvImportResult from response");
+      assertTrue(importResult.getDryRun(), "Should be a dry run");
+      assertNotNull(importResult.getStatus(), "Status should not be null");
+      assertTrue(
+          importResult.getNumberOfRowsProcessed() >= 0, "Rows processed should be non-negative");
+      assertTrue(importResult.getNumberOfRowsPassed() >= 0, "Rows passed should be non-negative");
+      assertTrue(importResult.getNumberOfRowsFailed() >= 0, "Rows failed should be non-negative");
+      assertEquals(
+          importResult.getNumberOfRowsProcessed(),
+          importResult.getNumberOfRowsPassed() + importResult.getNumberOfRowsFailed(),
+          "Rows processed should equal passed + failed");
     } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
       fail("Import/export failed: " + e.getMessage());
     }
@@ -4226,6 +4243,18 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       // Import the exported data (should succeed without changes)
       String result = service.importCsv(containerName, exportedCsv, false);
       assertNotNull(result, "Import should return a result");
+
+      // Verify CsvImportResult values
+      CsvImportResult importResult = JsonUtils.readValue(result, CsvImportResult.class);
+      assertNotNull(importResult, "Should parse CsvImportResult from response");
+      assertFalse(importResult.getDryRun(), "Should not be a dry run");
+      assertEquals(
+          ApiStatus.SUCCESS,
+          importResult.getStatus(),
+          "Import should succeed: " + importResult.getImportResultsCsv());
+      assertTrue(
+          importResult.getNumberOfRowsProcessed() >= 0, "Rows processed should be non-negative");
+      assertEquals(0, importResult.getNumberOfRowsFailed(), "No rows should fail on round-trip");
 
       // Export again and verify consistency
       String reExportedCsv = service.exportCsv(containerName);

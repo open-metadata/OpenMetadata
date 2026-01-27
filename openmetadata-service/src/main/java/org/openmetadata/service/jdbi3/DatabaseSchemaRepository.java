@@ -41,6 +41,8 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
@@ -458,6 +460,13 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     DatabaseSchema schema = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database schema
 
     // Get tables under this schema
@@ -481,15 +490,21 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
     // Export all entities using a single CSV
     return new DatabaseSchemaCsv(schema, user, recursive)
-        .exportAllCsv(tables, storedProcedures, recursive);
+        .exportAllCsv(tables, storedProcedures, recursive, callback);
   }
 
   @Override
   public CsvImportResult importFromCsv(
-      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
     DatabaseSchema schema = null;
     try {
-      schema = getByName(null, name, getFields("database,service")); // Fetch with container context
+      schema = getByName(null, name, getFields("database,service"));
     } catch (EntityNotFoundException e) {
       if (!dryRun) {
         throw e;
@@ -507,7 +522,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     } else {
       records = schemaCsv.parse(csv);
     }
-    return schemaCsv.importCsv(records, dryRun);
+    return schemaCsv.importCsv(records, dryRun, callback);
   }
 
   public class DatabaseSchemaUpdater extends EntityUpdater {
@@ -585,26 +600,54 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
      * Export tables and stored procedures under this schema
      */
     public String exportAllCsv(
-        List<Table> tables, List<StoredProcedure> storedProcedures, boolean recursive)
+        List<Table> tables,
+        List<StoredProcedure> storedProcedures,
+        boolean recursive,
+        CsvExportProgressCallback callback)
         throws IOException {
       // Create CSV file
       CsvFile csvFile = new CsvFile().withHeaders(HEADERS);
+
+      int total = tables.size() + storedProcedures.size();
+      int exported = 0;
+      int batchNumber = 0;
 
       // Add tables with entityType = table and include columns
       TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
       for (Table table : tables) {
         // Export the table entity
         addEntityToCSV(csvFile, table, TABLE);
-        if (!recursive) {
-          continue;
+        if (recursive) {
+          // Export all columns as separate rows with entityType = COLUMN
+          tableRepository.exportColumnsRecursively(table, csvFile);
         }
-        // Export all columns as separate rows with entityType = COLUMN
-        tableRepository.exportColumnsRecursively(table, csvFile);
+        exported++;
+
+        if (exported % DEFAULT_BATCH_SIZE == 0 || exported == total) {
+          batchNumber++;
+          if (callback != null) {
+            String message =
+                String.format(
+                    "Exported %d of %d entities (batch %d)", exported, total, batchNumber);
+            callback.onProgress(exported, total, message);
+          }
+        }
       }
 
       // Add stored procedures with entityType = storedProcedure
       for (StoredProcedure sp : storedProcedures) {
         addEntityToCSV(csvFile, sp, STORED_PROCEDURE);
+        exported++;
+
+        if (exported % DEFAULT_BATCH_SIZE == 0 || exported == total) {
+          batchNumber++;
+          if (callback != null) {
+            String message =
+                String.format(
+                    "Exported %d of %d entities (batch %d)", exported, total, batchNumber);
+            callback.onProgress(exported, total, message);
+          }
+        }
       }
 
       return CsvUtil.formatCsv(csvFile);

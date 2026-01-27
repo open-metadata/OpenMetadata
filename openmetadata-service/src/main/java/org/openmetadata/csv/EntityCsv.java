@@ -57,6 +57,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -125,6 +126,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
   public static final String FIELD_ENTITY_TYPE = "entityType";
   public static final String FIELD_FULLY_QUALIFIED_NAME = "fullyQualifiedName";
 
+  public static final int DEFAULT_BATCH_SIZE = 100;
+
   private final String entityType;
   private final List<CsvHeader> csvHeaders;
   private final List<String> expectedHeaders;
@@ -133,6 +136,29 @@ public abstract class EntityCsv<T extends EntityInterface> {
   protected final Map<String, T> dryRunCreatedEntities = new HashMap<>();
   protected final String importedBy;
   protected int recordIndex = 0;
+
+  // Queue for batching OpenSearch updates - processed after each batch of CSV records
+  protected final ConcurrentLinkedQueue<PendingSearchUpdate> pendingSearchUpdates =
+      new ConcurrentLinkedQueue<>();
+
+  /** Holder for pending search index updates */
+  protected record PendingSearchUpdate(
+      EntityReference entityRef, ChangeEvent changeEvent, String importedBy) {}
+
+  /** Cache for tables being modified during column imports - enables batching column updates */
+  protected final Map<String, TableUpdateContext> pendingTableUpdates = new HashMap<>();
+
+  /** Context for batched table column updates */
+  protected static class TableUpdateContext {
+    Table originalTable;
+    Table updatedTable;
+    List<CSVRecord> csvRecords = new ArrayList<>();
+
+    TableUpdateContext(Table original, Table updated) {
+      this.originalTable = original;
+      this.updatedTable = updated;
+    }
+  }
 
   protected EntityCsv(String entityType, List<CsvHeader> csvHeaders, String importedBy) {
     this.entityType = entityType;
@@ -143,6 +169,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   /** Import entities from a CSV file */
   public final CsvImportResult importCsv(String csv, boolean dryRun) throws IOException {
+    return importCsv(csv, dryRun, null);
+  }
+
+  /** Import entities from a CSV file with progress callback */
+  public final CsvImportResult importCsv(
+      String csv, boolean dryRun, CsvImportProgressCallback callback) throws IOException {
     importResult.withDryRun(dryRun);
     StringWriter writer = new StringWriter();
     CSVPrinter resultsPrinter = getResultsCsv(csvHeaders, writer);
@@ -162,10 +194,34 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
 
-    // Validate and load each record
+    int totalRows = records.size() - 1; // Exclude header row
+    int batchNumber = 0;
+    int rowsInBatch = 0;
+
+    // Validate and load each record with batch progress tracking
     while (recordIndex < records.size()) {
       processRecord(resultsPrinter, records);
+      rowsInBatch++;
+
+      // Send progress notification after each batch
+      if (rowsInBatch >= DEFAULT_BATCH_SIZE || recordIndex >= records.size()) {
+        // Flush any pending batched updates (e.g., column updates for tables)
+        flushPendingTableUpdates(resultsPrinter);
+
+        batchNumber++;
+        int rowsProcessed = recordIndex - 1; // Exclude header row from count
+        if (callback != null) {
+          String message =
+              String.format(
+                  "Processed %d of %d rows (batch %d)", rowsProcessed, totalRows, batchNumber);
+          callback.onProgress(rowsProcessed, totalRows, batchNumber, message);
+        }
+        rowsInBatch = 0;
+      }
     }
+
+    // Flush any remaining pending table updates
+    flushPendingTableUpdates(resultsPrinter);
 
     // Finally, create the entities parsed from the record
     setFinalStatus();
@@ -184,9 +240,29 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   public final String exportCsv(List<T> entities) throws IOException {
+    return exportCsv(entities, null);
+  }
+
+  public final String exportCsv(List<T> entities, CsvExportProgressCallback callback)
+      throws IOException {
     CsvFile csvFile = new CsvFile().withHeaders(csvHeaders);
+    int total = entities.size();
+    int exported = 0;
+    int batchNumber = 0;
+
     for (T entity : entities) {
       addRecord(csvFile, entity);
+      exported++;
+
+      // Send progress notification after each batch
+      if (exported % DEFAULT_BATCH_SIZE == 0 || exported == total) {
+        batchNumber++;
+        if (callback != null) {
+          String message =
+              String.format("Exported %d of %d entities (batch %d)", exported, total, batchNumber);
+          callback.onProgress(exported, total, message);
+        }
+      }
     }
     return CsvUtil.formatCsv(csvFile);
   }
@@ -1410,58 +1486,112 @@ public abstract class EntityCsv<T extends EntityInterface> {
     String tableFQN = FullyQualifiedName.getTableFQN(entityFQN);
     String schemaFQN = FullyQualifiedName.getParentFQN(tableFQN);
 
-    Table table;
-    DatabaseSchema schema;
-    try {
-      table =
-          Entity.getEntityByName(
-              TABLE, tableFQN, "name,displayName,fullyQualifiedName,columns", Include.NON_DELETED);
-    } catch (EntityNotFoundException ex) {
-      try {
-        schema =
-            Entity.getEntityByName(
-                DATABASE_SCHEMA,
-                schemaFQN,
-                "name,displayName,service,database",
-                Include.NON_DELETED);
-      } catch (EntityNotFoundException exception) {
-        LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
+    // Check if we have a cached table context for batching
+    TableUpdateContext tableContext = pendingTableUpdates.get(tableFQN);
 
-        if (importResult.getDryRun()) {
-          // Simulate a schema for dry run
+    if (tableContext == null) {
+      // First column for this table - fetch and cache it
+      Table table;
+      DatabaseSchema schema;
+      try {
+        table =
+            Entity.getEntityByName(
+                TABLE,
+                tableFQN,
+                "name,displayName,fullyQualifiedName,columns",
+                Include.NON_DELETED);
+      } catch (EntityNotFoundException ex) {
+        try {
           schema =
-              new DatabaseSchema()
-                  .withName(schemaFQN)
-                  .withDatabase(null)
-                  .withService(null)
-                  .withId(UUID.randomUUID());
+              Entity.getEntityByName(
+                  DATABASE_SCHEMA,
+                  schemaFQN,
+                  "name,displayName,service,database",
+                  Include.NON_DELETED);
+        } catch (EntityNotFoundException exception) {
+          LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
+
+          if (importResult.getDryRun()) {
+            schema =
+                new DatabaseSchema()
+                    .withName(schemaFQN)
+                    .withDatabase(null)
+                    .withService(null)
+                    .withId(UUID.randomUUID());
+          } else {
+            throw new IllegalArgumentException(
+                "Schema not found for the column table: " + schemaFQN);
+          }
+        }
+        if (importResult.getDryRun()) {
+          table =
+              new Table()
+                  .withId(UUID.randomUUID())
+                  .withName(tableFQN)
+                  .withFullyQualifiedName(tableFQN)
+                  .withDatabaseSchema(schema.getEntityReference())
+                  .withColumns(new ArrayList<>());
         } else {
-          throw new IllegalArgumentException("Schema not found for the column table: " + schemaFQN);
+          throw new IllegalArgumentException("Table not found: " + entityFQN);
         }
       }
-      if (importResult.getDryRun()) {
-        // Dry run mode: Simulate a schema for validation without persisting it
-        table =
-            new Table()
-                .withId(UUID.randomUUID())
-                .withName(tableFQN)
-                .withFullyQualifiedName(tableFQN)
-                .withDatabaseSchema(schema.getEntityReference())
-                .withColumns(new ArrayList<>());
+
+      Table originalEntity = JsonUtils.deepCopy(table, Table.class);
+      tableContext = new TableUpdateContext(originalEntity, table);
+      pendingTableUpdates.put(tableFQN, tableContext);
+    }
+
+    // Update the column in the cached table
+    updateColumnsFromCsvRecursive(tableContext.updatedTable, csvRecord, printer);
+
+    if (processRecord) {
+      // Track the CSV record for this column
+      tableContext.csvRecords.add(csvRecord);
+      // Mark as success for now - actual patch will happen in flushPendingTableUpdates
+      importSuccess(printer, csvRecord, ENTITY_UPDATED);
+    }
+  }
+
+  /** Flush all pending table updates - applies batched column changes with a single patch per table */
+  protected void flushPendingTableUpdates(CSVPrinter printer) throws IOException {
+    if (pendingTableUpdates.isEmpty()) {
+      return;
+    }
+
+    TableRepository tableRepo = (TableRepository) Entity.getEntityRepository(TABLE);
+
+    for (Map.Entry<String, TableUpdateContext> entry : pendingTableUpdates.entrySet()) {
+      TableUpdateContext context = entry.getValue();
+      String tableFQN = entry.getKey();
+
+      if (context.csvRecords.isEmpty()) {
+        continue;
+      }
+
+      if (Boolean.FALSE.equals(importResult.getDryRun())) {
+        try {
+          JsonPatch jsonPatch = JsonUtils.getJsonPatch(context.originalTable, context.updatedTable);
+          tableRepo.patch(null, context.updatedTable.getId(), importedBy, jsonPatch);
+          LOG.info(
+              "Batch patched table {} with {} column updates", tableFQN, context.csvRecords.size());
+        } catch (Exception ex) {
+          LOG.error("Failed to batch patch table {}: {}", tableFQN, ex.getMessage());
+          // Update the import result to reflect failures
+          for (CSVRecord record : context.csvRecords) {
+            importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() - 1);
+            importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
+          }
+          importResult.setStatus(ApiStatus.PARTIAL_SUCCESS);
+        }
       } else {
-        throw new IllegalArgumentException("Table not found: " + entityFQN);
+        // Dry run mode: track the updated table
+        tableRepo.setFullyQualifiedName(context.updatedTable);
+        dryRunCreatedEntities.put(
+            context.updatedTable.getFullyQualifiedName(), (T) context.updatedTable);
       }
     }
 
-    Table originalEntity = JsonUtils.deepCopy(table, Table.class);
-
-    // Delegate parsing and in-memory update to a shared method
-    updateColumnsFromCsvRecursive(table, csvRecord, printer);
-
-    if (processRecord) {
-      // Patch only the changes (like TableCsv does)
-      patchColumns(originalEntity, table, csvRecord, printer);
-    }
+    pendingTableUpdates.clear();
   }
 
   private void updateColumnsFromCsvRecursive(Table table, CSVRecord csvRecord, CSVPrinter printer)
@@ -1554,35 +1684,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
         if (parent.getChildren() == null) parent.setChildren(new ArrayList<>());
         parent.getChildren().add(column);
       }
-    }
-  }
-
-  private void patchColumns(Table original, Table updated, CSVRecord csvRecord, CSVPrinter printer)
-      throws IOException {
-
-    TableRepository tableRepo = (TableRepository) Entity.getEntityRepository(TABLE);
-
-    if (Boolean.FALSE.equals(importResult.getDryRun())) {
-      // Actual patch logic
-      try {
-        JsonPatch jsonPatch = JsonUtils.getJsonPatch(original, updated);
-        tableRepo.patch(null, updated.getId(), importedBy, jsonPatch);
-        importSuccess(printer, csvRecord, ENTITY_UPDATED);
-      } catch (Exception ex) {
-        importFailure(printer, ex.getMessage(), csvRecord);
-        importResult.setStatus(ApiStatus.FAILURE);
-      }
-    } else {
-      // Dry run mode: simulate patch and add to dryRunCreatedEntities
-      tableRepo.setFullyQualifiedName(updated);
-      Table existing =
-          tableRepo.findByNameOrNull(updated.getFullyQualifiedName(), Include.NON_DELETED);
-
-      // Track dry run entity if it doesn't already exist
-      if (existing == null) {
-        dryRunCreatedEntities.put(updated.getFullyQualifiedName(), (T) updated);
-      }
-      importSuccess(printer, csvRecord, ENTITY_UPDATED);
     }
   }
 
@@ -1742,6 +1843,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+    return importCsv(records, dryRun, null);
+  }
+
+  public CsvImportResult importCsv(
+      List<CSVRecord> records, boolean dryRun, CsvImportProgressCallback callback)
+      throws IOException {
     importResult.withDryRun(dryRun);
     StringWriter writer = new StringWriter();
     CSVPrinter resultsPrinter = getResultsCsv(csvHeaders, writer);
@@ -1759,10 +1866,34 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
 
-    // Validate and load each record
+    int totalRows = records.size() - 1; // Exclude header row
+    int batchNumber = 0;
+    int rowsInBatch = 0;
+
+    // Validate and load each record with batch progress tracking
     while (recordIndex < records.size()) {
       processRecord(resultsPrinter, records);
+      rowsInBatch++;
+
+      // Send progress notification after each batch
+      if (rowsInBatch >= DEFAULT_BATCH_SIZE || recordIndex >= records.size()) {
+        // Flush any pending batched updates (e.g., column updates for tables)
+        flushPendingTableUpdates(resultsPrinter);
+
+        batchNumber++;
+        int rowsProcessed = recordIndex - 1; // Exclude header row from count
+        if (callback != null) {
+          String message =
+              String.format(
+                  "Processed %d of %d rows (batch %d)", rowsProcessed, totalRows, batchNumber);
+          callback.onProgress(rowsProcessed, totalRows, batchNumber, message);
+        }
+        rowsInBatch = 0;
+      }
     }
+
+    // Flush any remaining pending table updates
+    flushPendingTableUpdates(resultsPrinter);
 
     // Finally, create the entities parsed from the record
     setFinalStatus();

@@ -34,6 +34,7 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.services.DriveService;
@@ -290,8 +291,15 @@ public class DirectoryRepository extends EntityRepository<Directory> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     Directory directory = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
-    return new DirectoryCsv(directory, user, recursive).exportCsv(List.of(directory));
+    return new DirectoryCsv(directory, user, recursive).exportCsv(List.of(directory), callback);
   }
 
   @Override

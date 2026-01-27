@@ -63,6 +63,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
@@ -1236,9 +1238,16 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     // Validate table
     Table table = getByName(null, name, new Fields(allowedFields, "owners,domains,tags,columns"));
-    return new TableCsv(table, user).exportCsv(listOf(table));
+    return new TableCsv(table, user).exportCsv(listOf(table), callback);
   }
 
   /**
@@ -1321,15 +1330,20 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public CsvImportResult importFromCsv(
-      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
-    // Validate table
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
     Table table =
         getByName(
             null,
             name,
             new Fields(
                 allowedFields, "owners,domains,tags,columns,database,service,databaseSchema"));
-    return new TableCsv(table, user).importCsv(csv, dryRun);
+    return new TableCsv(table, user).importCsv(csv, dryRun, callback);
   }
 
   static class ColumnDescriptionWorkflow extends DescriptionTaskWorkflow {

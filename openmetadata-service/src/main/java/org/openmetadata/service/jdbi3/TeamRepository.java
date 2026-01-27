@@ -64,6 +64,8 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
@@ -572,16 +574,35 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public String exportToCsv(String parentTeam, String user, boolean recursive) throws IOException {
+    return exportToCsv(parentTeam, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String parentTeam, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     Team team = getByName(null, parentTeam, Fields.EMPTY_FIELDS); // Validate team name
-    return new TeamCsv(team, user).exportCsv();
+    return new TeamCsv(team, user).exportCsv(callback);
   }
 
   @Override
   public CsvImportResult importFromCsv(
       String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    return importFromCsv(name, csv, dryRun, user, recursive, (CsvImportProgressCallback) null);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
     Team team = getByName(null, name, Fields.EMPTY_FIELDS); // Validate team name
     TeamCsv teamCsv = new TeamCsv(team, user);
-    return teamCsv.importCsv(csv, dryRun);
+    return teamCsv.importCsv(csv, dryRun, callback);
   }
 
   private List<EntityReference> getInheritedRoles(Team team) {
@@ -1129,10 +1150,14 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     public String exportCsv() throws IOException {
+      return exportCsv((CsvExportProgressCallback) null);
+    }
+
+    public String exportCsv(CsvExportProgressCallback callback) throws IOException {
       TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
       final Fields fields = repository.getFields("owners,defaultRoles,parents,policies");
       return exportCsv(
-          listTeams(repository, team.getFullyQualifiedName(), new ArrayList<>(), fields));
+          listTeams(repository, team.getFullyQualifiedName(), new ArrayList<>(), fields), callback);
     }
   }
 

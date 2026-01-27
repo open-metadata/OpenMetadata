@@ -149,6 +149,8 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
@@ -4124,6 +4126,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Override this method to support downloading CSV functionality
    */
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
 
@@ -4132,6 +4140,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   public CsvImportResult importFromCsv(
       String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    return importFromCsv(name, csv, dryRun, user, recursive, (CsvImportProgressCallback) null);
+  }
+
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
 
@@ -4142,6 +4161,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String user,
       boolean recursive,
       String targetEntityType)
+      throws IOException {
+    return importFromCsv(name, csv, dryRun, user, recursive, targetEntityType, null);
+  }
+
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      String targetEntityType,
+      CsvImportProgressCallback callback)
       throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }

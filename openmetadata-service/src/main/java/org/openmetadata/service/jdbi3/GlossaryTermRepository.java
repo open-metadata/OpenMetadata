@@ -68,6 +68,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
@@ -1815,6 +1816,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     Fields fields =
         getFields("owners,reviewers,tags,relatedTerms,synonyms,references,extension,parent");
     GlossaryTerm glossaryTerm = getByName(null, name, fields);
@@ -1826,7 +1834,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     List<GlossaryTerm> terms = listAllForCSV(fields, glossaryTerm.getFullyQualifiedName());
 
     terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
-    return new GlossaryRepository.GlossaryCsv(glossary, user).exportCsv(terms);
+    return new GlossaryRepository.GlossaryCsv(glossary, user).exportCsv(terms, callback);
   }
 
   @Override

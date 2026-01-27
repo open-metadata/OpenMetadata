@@ -40,6 +40,8 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.text.StringEscapeUtils;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
@@ -144,6 +146,13 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     Database database = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database name
 
     // Get schemas
@@ -156,12 +165,18 @@ public class DatabaseRepository extends EntityRepository<Database> {
     schemas.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
 
     // Export schemas and all their child entities
-    return new DatabaseCsv(database, user, recursive).exportAllCsv(schemas, recursive);
+    return new DatabaseCsv(database, user, recursive).exportAllCsv(schemas, recursive, callback);
   }
 
   @Override
   public CsvImportResult importFromCsv(
-      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
     Database database = null;
     try {
       database = getByName(null, name, getFields("service"));
@@ -181,7 +196,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     } else {
       records = databaseCsv.parse(csv);
     }
-    return databaseCsv.importCsv(records, dryRun);
+    return databaseCsv.importCsv(records, dryRun, callback);
   }
 
   @Override
@@ -490,13 +505,27 @@ public class DatabaseRepository extends EntityRepository<Database> {
      * Export database schemas and all their child entities (tables, views, stored procedures)
      */
     public String exportAllCsv(List<DatabaseSchema> schemas, boolean recursive) throws IOException {
+      return exportAllCsv(schemas, recursive, null);
+    }
+
+    public String exportAllCsv(
+        List<DatabaseSchema> schemas, boolean recursive, CsvExportProgressCallback callback)
+        throws IOException {
       // Create CSV file with schemas
       CsvFile csvFile = new CsvFile().withHeaders(HEADERS);
+
+      int total = schemas.size();
+      int exported = 0;
 
       // Add schemas
       for (DatabaseSchema schema : schemas) {
         addEntityToCSV(csvFile, schema, DATABASE_SCHEMA);
         if (!recursive) {
+          exported++;
+          if (callback != null) {
+            String message = String.format("Exported %d of %d schemas", exported, total);
+            callback.onProgress(exported, total, message);
+          }
           continue;
         }
 
@@ -527,6 +556,12 @@ public class DatabaseRepository extends EntityRepository<Database> {
         // Add stored procedures
         for (StoredProcedure sp : storedProcedures) {
           addEntityToCSV(csvFile, sp, STORED_PROCEDURE);
+        }
+
+        exported++;
+        if (callback != null) {
+          String message = String.format("Exported %d of %d schemas", exported, total);
+          callback.onProgress(exported, total, message);
         }
       }
 

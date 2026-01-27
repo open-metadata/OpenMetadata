@@ -29,10 +29,13 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -898,11 +901,19 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     String csvContent = buildGlossaryTermsCsv(glossary.getFullyQualifiedName(), ns);
 
     // Step 3: Import CSV using SYNC method (now also creates version history!)
+    CsvImportResult importResult = null;
     try {
       String result =
           client.glossaries().importCsv(glossary.getFullyQualifiedName(), csvContent, false);
       assertNotNull(result, "Import should return result");
-      // Result is a JSON string of CsvImportResult
+
+      importResult = JsonUtils.readValue(result, CsvImportResult.class);
+      assertNotNull(importResult, "Should parse CsvImportResult from response");
+      assertEquals(ApiStatus.SUCCESS, importResult.getStatus(), "Import should succeed");
+      assertEquals(3, importResult.getNumberOfRowsProcessed(), "Should process 3 rows");
+      assertEquals(3, importResult.getNumberOfRowsPassed(), "All 3 rows should pass");
+      assertEquals(0, importResult.getNumberOfRowsFailed(), "No rows should fail");
+      assertFalse(importResult.getDryRun(), "Should not be a dry run");
     } catch (Exception e) {
       fail("CSV import failed: " + e.getMessage());
     }

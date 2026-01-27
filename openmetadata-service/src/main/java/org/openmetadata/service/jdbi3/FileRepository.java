@@ -35,6 +35,7 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.File;
@@ -282,8 +283,15 @@ public class FileRepository extends EntityRepository<File> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     File file = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
-    return new FileCsv(file, user).exportCsv(listOf(file));
+    return new FileCsv(file, user).exportCsv(listOf(file), callback);
   }
 
   @Override
