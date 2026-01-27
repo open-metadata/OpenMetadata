@@ -13,7 +13,7 @@ Client to interact with Kafka Connect REST APIs
 """
 
 import traceback
-from typing import List, Optional
+from typing import Iterable, List, Optional
 from urllib.parse import urlparse
 
 from kafka_connect import KafkaConnect
@@ -21,9 +21,11 @@ from kafka_connect import KafkaConnect
 from metadata.generated.schema.entity.services.connections.pipeline.kafkaConnectConnection import (
     KafkaConnectConnection,
 )
+from metadata.ingestion.source.pipeline.kafkaconnect.constants import (
+    ConnectorConfigKeys,
+)
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     KafkaConnectColumnMapping,
-    KafkaConnectDatasetDetails,
     KafkaConnectPipelineDetails,
     KafkaConnectTopics,
 )
@@ -85,7 +87,7 @@ def parse_cdc_topic_name(topic_name: str, database_server_name: str = None) -> d
 
     # Pattern: {prefix}.{database}.{table} (3 parts)
     if len(parts) == 3:
-        prefix, database, table = parts
+        _, database, table = parts
         return {"database": database, "table": table}
 
     # Pattern: {database}.{table} (2 parts)
@@ -101,87 +103,6 @@ def parse_cdc_topic_name(topic_name: str, database_server_name: str = None) -> d
         return {}
 
     return {}
-
-
-class ConnectorConfigKeys:
-    """Configuration keys for various Kafka Connect connectors"""
-
-    TABLE_KEYS = [
-        "table",
-        "collection",
-        "snowflake.schema.name",
-        "table.whitelist",
-        "fields.whitelist",
-        "table.include.list",
-        "table.name.format",
-        "tables.include",
-        "table.exclude.list",
-        "snowflake.schema",
-        "snowflake.topic2table.map",
-        "fields.included",
-    ]
-
-    DATABASE_KEYS = [
-        "database",
-        "db.name",
-        "snowflake.database.name",
-        "database.include.list",
-        # "database.hostname",
-        # "connection.url",
-        "database.dbname",
-        "topic.prefix",
-        # "database.server.name",  # This maps the server name, not the actual database
-        "databases.include",
-        "database.names",
-        "snowflake.database",
-        # "connection.host",
-        # "database.exclude.list",
-    ]
-
-    CONTAINER_KEYS = [
-        "s3.bucket.name",
-        "s3.bucket",
-        "gcs.bucket.name",
-        "azure.container.name",
-        "topics.dir",  # Directory path within storage container for sink connectors
-    ]
-
-    TOPIC_KEYS = ["kafka.topic", "topics", "topic"]
-
-
-SUPPORTED_DATASETS = {
-    "table": ConnectorConfigKeys.TABLE_KEYS,
-    "database": ConnectorConfigKeys.DATABASE_KEYS,
-    "container_name": ConnectorConfigKeys.CONTAINER_KEYS,
-}
-
-# Map Kafka Connect connector class names to OpenMetadata service types
-CONNECTOR_CLASS_TO_SERVICE_TYPE = {
-    "MySqlCdcSource": "Mysql",
-    "MySqlCdcSourceV2": "Mysql",
-    "PostgresCdcSource": "Postgres",
-    "PostgresSourceConnector": "Postgres",
-    "SqlServerCdcSource": "Mssql",
-    "MongoDbCdcSource": "MongoDB",
-    "OracleCdcSource": "Oracle",
-    "Db2CdcSource": "Db2",
-}
-
-# Map service types to hostname config keys
-SERVICE_TYPE_HOSTNAME_KEYS = {
-    "Mysql": ["database.hostname", "connection.host"],
-    "Postgres": ["database.hostname", "connection.host"],
-    "Mssql": ["database.hostname"],
-    "MongoDB": ["mongodb.connection.uri", "connection.uri"],
-    "Oracle": ["database.hostname"],
-}
-
-# Map service types to broker/endpoint config keys for messaging services
-MESSAGING_ENDPOINT_KEYS = [
-    "kafka.endpoint",
-    "bootstrap.servers",
-    "kafka.bootstrap.servers",
-]
 
 
 class KafkaConnectClient:
@@ -242,9 +163,6 @@ class KafkaConnectClient:
             connector_details.description = connector_details.config.get(
                 "description", None
             )
-            connector_details.dataset = self.get_connector_dataset_info(
-                connector_details.config
-            )
 
             # For CDC connectors without explicit topics, try to infer from server name
             if (
@@ -255,8 +173,9 @@ class KafkaConnectClient:
                     "database.server.name"
                 ) or connector_details.config.get("topic.prefix")
                 if database_server_name:
-                    inferred_topics = self._infer_cdc_topics_from_server_name(
-                        database_server_name
+                    inferred_topics = (
+                        self._infer_cdc_topics_from_server_name(database_server_name)
+                        or None
                     )
                     if inferred_topics:
                         connector_details.topics = inferred_topics
@@ -428,47 +347,6 @@ class KafkaConnectClient:
 
         return None
 
-    def get_connector_dataset_info(
-        self, connector_config: dict
-    ) -> Optional[KafkaConnectDatasetDetails]:
-        """
-        Get the details of dataset of connector if there is any.
-        Checks in the connector configurations for dataset fields
-        if any related field is found returns the result
-        Args:
-            connector_config: The connector configuration dictionary
-        Returns:
-            Optional[KafkaConnectDatasetDetails]: Dataset information including
-                table, database, or container_name if found, or None otherwise
-        """
-        if not connector_config or not isinstance(connector_config, dict):
-            logger.debug("Invalid connector_config: expected dict")
-            return None
-
-        try:
-            result = {}
-            for dataset_type, config_keys in SUPPORTED_DATASETS.items():
-                for key in config_keys:
-                    if connector_config.get(key):
-                        result[dataset_type] = connector_config[key]
-
-            # Only create dataset details if we have meaningful dataset information
-            # For CDC connectors, database.server.name/topic.prefix are captured
-            # but don't represent actual table names, so skip dataset creation
-            # We need either: table name OR container name
-            if result and (result.get("table") or result.get("container_name")):
-                dataset_details = KafkaConnectDatasetDetails(**result)
-                dataset_details.column_mappings = (
-                    self.extract_column_mappings(connector_config) or []
-                )
-                return dataset_details
-
-        except (KeyError, ValueError, TypeError) as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get connector dataset details: {exc}")
-
-        return None
-
     def get_connector_topics(
         self, connector: str
     ) -> Optional[List[KafkaConnectTopics]]:
@@ -530,7 +408,7 @@ class KafkaConnectClient:
 
         return None
 
-    def get_connector_list(self) -> Optional[List[KafkaConnectPipelineDetails]]:
+    def get_connector_list(self) -> Optional[Iterable[KafkaConnectPipelineDetails]]:
         """
         Get the information of all connectors.
         Returns:

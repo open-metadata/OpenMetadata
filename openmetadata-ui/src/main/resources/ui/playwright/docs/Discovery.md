@@ -2,7 +2,7 @@
 
 # Discovery
 
-> **7 Components** | **26 Files** | **368 Tests** | **380 Scenarios** 🚀
+> **7 Components** | **27 Files** | **369 Tests** | **384 Scenarios** 🚀
 
 ## Table of Contents
 - [Feed](#feed)
@@ -303,11 +303,8 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Data Asset Rules Disabled Bulk Edit Actions** - Database service | Database service |
-| | ↳ *Perform bulk edit action* | |
 | 2 | **Data Asset Rules Disabled Bulk Edit Actions** - Database | Database |
-| | ↳ *Perform bulk edit action* | |
 | 3 | **Data Asset Rules Disabled Bulk Edit Actions** - Database Schema | Database Schema |
-| | ↳ *Perform bulk edit action* | |
 
 ### GlossaryTerm Domain Entity Rules Disabled
 
@@ -493,7 +490,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>SchemaTable.spec.ts</b> (5 tests, 6 scenarios)</summary>
+<summary>📄 <b>SchemaTable.spec.ts</b> (5 tests, 5 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/SchemaTable.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/SchemaTable.spec.ts)
 
@@ -502,8 +499,6 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | schema table test | Schema table test |
-| | ↳ *set owner* | |
-| | ↳ *set the description* | |
 | 2 | Schema Table Pagination should work Properly | Schema Table Pagination should work Properly |
 | 3 | Copy column link button should copy the column URL to clipboard | Copy column link button should copy the column URL to clipboard |
 | 4 | Copy column link should have valid URL format | Copy column link should have valid URL format |
@@ -584,6 +579,24 @@
 | | ↳ *Add Constraints* | |
 | | ↳ *Verify Constraints Data* | |
 | | ↳ *Remove Constraints* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>PipelineExecution.spec.ts</b> (1 tests, 5 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/PipelineExecution.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/PipelineExecution.spec.ts)
+
+### Pipeline Execution Tab
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pipeline Execution Tab** - Execution tab should display start time, end time, and duration columns | Execution tab should display start time, end time, and duration columns |
+| | ↳ *Navigate to pipeline entity page* | |
+| | ↳ *Navigate to Executions tab* | |
+| | ↳ *Verify ListView displays timing columns* | |
+| | ↳ *Verify execution data rows are present* | |
+| | ↳ *Verify duration is 10 minutes for both tasks* | |
 
 </details>
 

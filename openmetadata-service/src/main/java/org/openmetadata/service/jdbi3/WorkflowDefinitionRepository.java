@@ -22,6 +22,7 @@ import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefinition> {
@@ -60,7 +61,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   @Override
-  protected void setFields(WorkflowDefinition entity, EntityUtil.Fields fields) {
+  protected void setFields(
+      WorkflowDefinition entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     if (WorkflowHandler.isInitialized()) {
       entity.withDeployed(WorkflowHandler.getInstance().isDeployed(entity));
     } else {

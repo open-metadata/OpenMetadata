@@ -425,7 +425,7 @@ function WorksheetDetails({
             onVersionClick={versionHandler}
           />
         </Col>
-      <GenericProvider<Worksheet>
+        <GenericProvider<Worksheet>
           columnFqn={activeColumnFqn}
           customizedPage={customizedPage}
           data={worksheetDetails}

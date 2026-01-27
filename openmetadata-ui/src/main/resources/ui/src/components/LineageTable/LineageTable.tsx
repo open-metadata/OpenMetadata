@@ -73,6 +73,7 @@ import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
 import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
+import EntityPopOverCard from '../common/PopOverCard/EntityPopOverCard';
 import Table from '../common/Table/Table';
 import TierTag from '../common/TierTag';
 import TableTags from '../Database/TableTags/TableTags.component';
@@ -487,17 +488,23 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     );
   }, [searchValue, lineagePagingInfo, nodeDepthOptions, filterNodeIds]);
 
-  // Render function for column names with search highlighting
+  // Render function for column names with search highlighting and popover
   const renderName = useCallback(
     (_: string, record: SearchSourceAlias) => (
-      <Link
-        to={getEntityLinkFromType(
-          record.fullyQualifiedName ?? '',
-          record.entityType as EntityType,
-          record
-        )}>
-        {stringToHTML(highlightSearchText(getEntityName(record), searchValue))}
-      </Link>
+      <EntityPopOverCard
+        entityFQN={record.fullyQualifiedName ?? ''}
+        entityType={record.entityType ?? ''}>
+        <Link
+          to={getEntityLinkFromType(
+            record.fullyQualifiedName ?? '',
+            record.entityType as EntityType,
+            record
+          )}>
+          {stringToHTML(
+            highlightSearchText(getEntityName(record), searchValue)
+          )}
+        </Link>
+      </EntityPopOverCard>
     ),
     [searchValue]
   );
@@ -789,7 +796,11 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   return (
     <Card
-      className={classNames({ isFullScreen }, 'lineage-card')}
+      className={classNames(
+        { isFullScreen },
+        'lineage-card lineage-card-table'
+      )}
+      data-testid="lineage-card-table"
       title={cardHeader}>
       <Table
         bordered

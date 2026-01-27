@@ -63,7 +63,7 @@ from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils import fqn
 from metadata.utils.datalake.datalake_utils import (
     DataFrameColumnParser,
-    fetch_dataframe,
+    fetch_dataframe_first_chunk,
     get_file_format_type,
 )
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
@@ -270,13 +270,14 @@ class DatalakeSource(DatabaseServiceSource):
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
-        Prepare a table request and pass it to the sink
+        Prepare a table request and pass it to the sink.
+        Uses first chunk only for schema inference to avoid loading entire file.
         """
         table_name, table_type, table_extension = table_name_and_type
         schema_name = self.context.get().database_schema
         try:
             table_constraints = None
-            data_frame, raw_data = fetch_dataframe(
+            data_frame, raw_data = fetch_dataframe_first_chunk(
                 config_source=self.config_source,
                 client=self.client._client,
                 file_fqn=DatalakeTableSchemaWrapper(
@@ -287,8 +288,9 @@ class DatalakeSource(DatabaseServiceSource):
                 fetch_raw_data=True,
             )
             if data_frame:
+                data_frame = next(data_frame)
                 column_parser = DataFrameColumnParser.create(
-                    data_frame[0], table_extension, raw_data=raw_data
+                    data_frame, table_extension, raw_data=raw_data
                 )
                 columns = column_parser.get_columns()
             else:

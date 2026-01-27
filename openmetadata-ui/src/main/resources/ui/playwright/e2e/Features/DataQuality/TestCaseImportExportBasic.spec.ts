@@ -34,7 +34,7 @@ import {
   verifyButtonVisibility,
   verifyPageAccess,
   visitDataQualityTab,
-  waitForImportAsyncResponse
+  waitForImportAsyncResponse,
 } from '../../../utils/testCases';
 import { test as base } from '../../fixtures/pages';
 
@@ -90,6 +90,18 @@ const cleanupTempFile = (filePath: string): void => {
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
   }
+};
+
+// Helper function to get FQN with error check
+const getFqn = (table: TableClass): string => {
+  const fqn = table.entityResponseData.fullyQualifiedName;
+  if (!fqn) {
+    throw new Error(
+      `Table fullyQualifiedName is missing for ${table.entity.name}`
+    );
+  }
+
+  return fqn;
 };
 
 test.describe(
@@ -150,6 +162,10 @@ test.describe(
     test('should export all test cases from global data quality page', async ({
       page,
     }) => {
+      if (!process.env.PLAYWRIGHT_IS_OSS) {
+        test.slow();
+      }
+
       await redirectToHomePage(page);
       await navigateToGlobalDataQuality(page);
       await clickManageButton(page, 'global');
@@ -205,12 +221,10 @@ test.describe(
             failed: '0',
           });
         });
-
       } finally {
         cleanupTempFile(csvFilePath);
       }
     });
-
 
     /**
      * @description Test Case Description:
@@ -247,9 +261,9 @@ test.describe(
             state: 'hidden',
             timeout: 10000,
           });
-          await expect(
-            page.getByText(/INVALID_HEADER/i).first()
-          ).toBeVisible({ timeout: 15000 });
+          await expect(page.getByText(/INVALID_HEADER/i).first()).toBeVisible({
+            timeout: 15000,
+          });
         });
       } finally {
         cleanupTempFile(csvFilePath);
@@ -362,9 +376,7 @@ test.describe(
     }) => {
       await redirectToHomePage(dataConsumerPage);
 
-      const encodedFqn = encodeURIComponent(
-        table.entityResponseData.fullyQualifiedName
-      );
+      const encodedFqn = encodeURIComponent(getFqn(table));
       const url = `/bulk/import/testCase/${encodedFqn}?sourceEntityType=table`;
       await verifyPageAccess(dataConsumerPage, url, false);
     });
@@ -378,9 +390,7 @@ test.describe(
     }) => {
       await redirectToHomePage(dataConsumerPage);
 
-      const encodedFqn = encodeURIComponent(
-        table.entityResponseData.fullyQualifiedName
-      );
+      const encodedFqn = encodeURIComponent(getFqn(table));
       const url = `/bulk/edit/testCase/${encodedFqn}?sourceEntityType=table`;
       await verifyPageAccess(dataConsumerPage, url, false);
     });
@@ -445,9 +455,7 @@ test.describe(
     }) => {
       await redirectToHomePage(dataStewardPage);
 
-      const encodedFqn = encodeURIComponent(
-        table.entityResponseData.fullyQualifiedName
-      );
+      const encodedFqn = encodeURIComponent(getFqn(table));
       const url = `/bulk/import/testCase/${encodedFqn}?sourceEntityType=table`;
       await verifyPageAccess(dataStewardPage, url, false);
     });
@@ -461,9 +469,7 @@ test.describe(
     }) => {
       await redirectToHomePage(dataStewardPage);
 
-      const encodedFqn = encodeURIComponent(
-        table.entityResponseData.fullyQualifiedName
-      );
+      const encodedFqn = encodeURIComponent(getFqn(table));
       const url = `/bulk/edit/testCase/${encodedFqn}?sourceEntityType=table`;
       await verifyPageAccess(dataStewardPage, url, false);
     });
@@ -528,9 +534,7 @@ test.describe(
     }) => {
       await redirectToHomePage(testCaseEditPage);
 
-      const encodedFqn = encodeURIComponent(
-        table.entityResponseData.fullyQualifiedName
-      );
+      const encodedFqn = encodeURIComponent(getFqn(table));
       const url = `/bulk/import/testCase/${encodedFqn}?sourceEntityType=table`;
       await verifyPageAccess(testCaseEditPage, url, true);
     });
@@ -545,13 +549,10 @@ test.describe(
     }) => {
       await redirectToHomePage(testCaseEditPage);
 
-      const encodedFqn = encodeURIComponent(
-        table.entityResponseData.fullyQualifiedName
-      );
+      const encodedFqn = encodeURIComponent(getFqn(table));
       const url = `/bulk/edit/testCase/${encodedFqn}?sourceEntityType=table`;
       await verifyPageAccess(testCaseEditPage, url, true);
     });
-
   }
 );
 
@@ -647,7 +648,9 @@ test.describe(
       );
       await page.goto(`/test-suites/${testSuiteName}`);
       await testCaseListResponse;
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await clickManageButton(page, 'testSuite');
       const download = await performTestCaseExport(page);
@@ -668,7 +671,9 @@ test.describe(
       );
       await page.goto(`/test-suites/${testSuiteName}`);
       await testCaseListResponse;
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await clickManageButton(page, 'testSuite');
       await navigateToImportPage(page, /\/bulk\/import\/testCase/);
@@ -688,7 +693,9 @@ test.describe(
       );
       await page.goto(`/test-suites/${testSuiteName}`);
       await testCaseListResponse;
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await clickManageButton(page, 'testSuite');
       await navigateToBulkEditPage(page);
@@ -711,7 +718,9 @@ test.describe(
       );
       await page.goto(`/test-suites/${testSuiteName}`);
       await testCaseListResponse;
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await clickManageButton(page, 'testSuite');
       await navigateToBulkEditPage(page);

@@ -859,3 +859,25 @@ export const clickLineageNode = async (page: Page, nodeFqn: string) => {
     .locator(`[data-testid="entity-header-display-name"]`)
     .click();
 };
+
+export const updateLineageConfigFromModal = async (
+  page: Page,
+  config: { upstreamDepth: number; downstreamDepth: number }
+) => {
+  await page.getByTestId('lineage-config').click();
+
+  await page.waitForSelector('.ant-modal-content', {
+    state: 'visible',
+  });
+
+  await page
+    .getByTestId('field-upstream')
+    .fill(config.upstreamDepth.toString());
+  await page
+    .getByTestId('field-downstream')
+    .fill(config.downstreamDepth.toString());
+
+  const saveRes = page.waitForResponse('/api/v1/lineage/getLineage?**');
+  await page.getByText('OK').click();
+  await saveRes;
+};

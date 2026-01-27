@@ -165,7 +165,7 @@ describe('Test CustomEdge Component', () => {
     expect(edgePath).toHaveStyle({ display: 'block' });
   });
 
-  it('should hide edge when nodes are traced but current edge nodes are not in traced list', () => {
+  it('should gray out edge when nodes are traced but current edge nodes are not in traced list', () => {
     mockLineageProvider({ tracedNodes: ['other-node-1', 'other-node-2'] });
 
     render(<CustomEdge {...mockCustomEdgeProp} />, {
@@ -175,7 +175,7 @@ describe('Test CustomEdge Component', () => {
     const edgePath = screen.getByTestId('edge-id1');
 
     expect(edgePath).toBeInTheDocument();
-    expect(edgePath).toHaveStyle({ display: 'none' });
+    expect(edgePath).toHaveStyle({ display: 'block', opacity: 0.3 });
   });
 
   it('should display edge when both edge nodes are in traced nodes list', () => {

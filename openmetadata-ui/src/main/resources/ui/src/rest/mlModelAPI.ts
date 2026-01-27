@@ -48,7 +48,12 @@ export const getMlModelByFQN = async (fqn: string, params?: ListParams) => {
   const response = await APIClient.get<Mlmodel>(
     `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
     {
-      params: { ...params, include: params?.include ?? Include.All },
+      params: {
+        ...params,
+        include: params?.include ?? Include.All,
+        includeRelations:
+          params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
+      },
     }
   );
 

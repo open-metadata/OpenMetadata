@@ -29,6 +29,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -56,6 +57,7 @@ import Loader from '../../common/Loader/Loader';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../common/Table/Table';
+import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
 
@@ -274,7 +276,7 @@ const TestDefinitionList = () => {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 250,
+        width: '30%',
         render: (name: string, record: TestDefinition) => (
           <Typography.Text data-testid={name}>
             {getEntityName(record)}
@@ -285,6 +287,7 @@ const TestDefinitionList = () => {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: '45%',
         ellipsis: true,
         render: (description: string) => (
           <RichTextEditorPreviewerNew markdown={description} />
@@ -328,13 +331,15 @@ const TestDefinitionList = () => {
               title={
                 !hasEditPermission && t('message.no-permission-for-action')
               }>
-              <Switch
-                checked={enabled ?? true}
-                data-testid={`enable-switch-${record.name}`}
-                disabled={!hasEditPermission}
-                size="small"
-                onChange={(checked) => handleEnableToggle(record, checked)}
-              />
+              <div className="new-form-style d-inline-flex">
+                <Switch
+                  checked={enabled ?? true}
+                  data-testid={`enable-switch-${record.name}`}
+                  disabled={!hasEditPermission}
+                  size="small"
+                  onChange={(checked) => handleEnableToggle(record, checked)}
+                />
+              </div>
             </Tooltip>
           );
         },
@@ -356,17 +361,23 @@ const TestDefinitionList = () => {
             );
           }
 
-          const editTooltip = isSystemProvider
-            ? t('message.system-test-definition-edit-warning')
-            : !hasEditPermission
-            ? t('message.no-permission-for-action')
-            : t('label.edit');
+          let editTooltip;
+          if (isSystemProvider) {
+            editTooltip = t('message.system-test-definition-edit-warning');
+          } else if (hasEditPermission) {
+            editTooltip = t('label.edit');
+          } else {
+            editTooltip = t('message.no-permission-for-action');
+          }
 
-          const deleteTooltip = isSystemProvider
-            ? t('message.system-test-definition-delete-warning')
-            : !hasDeletePermission
-            ? t('message.no-permission-for-action')
-            : t('label.delete');
+          let deleteTooltip;
+          if (isSystemProvider) {
+            deleteTooltip = t('message.system-test-definition-delete-warning');
+          } else if (hasDeletePermission) {
+            deleteTooltip = t('label.delete');
+          } else {
+            deleteTooltip = t('message.no-permission-for-action');
+          }
 
           return (
             <Space size={0}>
@@ -447,9 +458,15 @@ const TestDefinitionList = () => {
           <Card>
             <Row justify="space-between">
               <Col>
-                <Typography.Title level={5}>
-                  {t('label.test-definition-plural')}
-                </Typography.Title>
+                <div className="flex gap-2 items-center m-b-xss">
+                  <Typography.Title className="m-b-0" level={5}>
+                    {t('label.data-quality-rule-plural')}
+                  </Typography.Title>
+                  <LearningIcon
+                    pageId={LEARNING_PAGE_IDS.RULES_LIBRARY}
+                    title={t('label.data-quality-rule-plural')}
+                  />
+                </div>
                 <Typography.Text type="secondary">
                   {t('message.page-sub-header-for-test-definitions')}
                 </Typography.Text>

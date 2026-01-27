@@ -23,8 +23,10 @@ import io.fabric8.kubernetes.api.model.OwnerReference;
 import io.fabric8.kubernetes.api.model.OwnerReferenceBuilder;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodBuilder;
+import io.fabric8.kubernetes.api.model.PodSecurityContext;
 import io.fabric8.kubernetes.api.model.PodSpecBuilder;
 import io.fabric8.kubernetes.api.model.PodStatus;
+import io.fabric8.kubernetes.api.model.SecurityContext;
 import io.fabric8.kubernetes.api.model.SecurityContextBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import java.util.ArrayList;
@@ -326,41 +328,8 @@ public class PodManager {
       OMJobResource omJob, OMJobSpec.OMJobPodSpec podSpec, List<EnvVar> envOverride) {
     List<EnvVar> envVars = envOverride != null ? envOverride : podSpec.getEnv();
 
-    // Log env vars before sanitization
-    if (envVars != null) {
-      LOG.debug("Building container with {} env vars", envVars.size());
-      envVars.forEach(
-          env -> {
-            if ("config".equals(env.getName())) {
-              LOG.info(
-                  "Config env var before sanitization: value={}, valueFrom={}",
-                  env.getValue(),
-                  env.getValueFrom());
-              if (env.getValueFrom() != null) {
-                LOG.info("  ConfigMapKeyRef: {}", env.getValueFrom().getConfigMapKeyRef());
-              }
-            }
-          });
-    }
-
     // Sanitize environment variables to remove empty valueFrom fields
     List<EnvVar> sanitizedEnvVars = EnvVarUtils.sanitizeEnvVars(envVars);
-
-    // Log env vars after sanitization
-    if (sanitizedEnvVars != null) {
-      sanitizedEnvVars.forEach(
-          env -> {
-            if ("config".equals(env.getName())) {
-              LOG.info(
-                  "Config env var after sanitization: value={}, valueFrom={}",
-                  env.getValue(),
-                  env.getValueFrom());
-              if (env.getValueFrom() != null) {
-                LOG.info("  ConfigMapKeyRef: {}", env.getValueFrom().getConfigMapKeyRef());
-              }
-            }
-          });
-    }
 
     return new ContainerBuilder()
         .withName("main")
@@ -369,14 +338,39 @@ public class PodManager {
         .withCommand(podSpec.getCommand())
         .withEnv(sanitizedEnvVars)
         .withResources(podSpec.getResources())
-        .withSecurityContext(
-            new SecurityContextBuilder()
-                .withRunAsNonRoot(false) // Allow root user for ingestion image
-                .withAllowPrivilegeEscalation(false)
-                .withReadOnlyRootFilesystem(false)
-                .withCapabilities(new CapabilitiesBuilder().withDrop("ALL").build())
-                .build())
+        .withSecurityContext(buildContainerSecurityContext(podSpec))
         .build();
+  }
+
+  /**
+   * Build container security context from pod spec.
+   * Uses settings from the CR's pod security context, with secure defaults for
+   * container-specific settings not specified at the pod level.
+   */
+  private SecurityContext buildContainerSecurityContext(OMJobSpec.OMJobPodSpec podSpec) {
+    SecurityContextBuilder builder = new SecurityContextBuilder();
+
+    // Use runAsNonRoot and runAsUser from pod security context if available
+    if (podSpec.getSecurityContext() != null) {
+      PodSecurityContext podSecurity = podSpec.getSecurityContext();
+      if (podSecurity.getRunAsNonRoot() != null) {
+        builder.withRunAsNonRoot(podSecurity.getRunAsNonRoot());
+      }
+      if (podSecurity.getRunAsUser() != null) {
+        builder.withRunAsUser(podSecurity.getRunAsUser());
+      }
+      if (podSecurity.getRunAsGroup() != null) {
+        builder.withRunAsGroup(podSecurity.getRunAsGroup());
+      }
+    }
+
+    // Always apply secure container-specific defaults
+    builder
+        .withAllowPrivilegeEscalation(false)
+        .withReadOnlyRootFilesystem(false) // Ingestion may need to write temp files
+        .withCapabilities(new CapabilitiesBuilder().withDrop("ALL").build());
+
+    return builder.build();
   }
 
   private List<OwnerReference> buildOwnerReference(OMJobResource omJob) {

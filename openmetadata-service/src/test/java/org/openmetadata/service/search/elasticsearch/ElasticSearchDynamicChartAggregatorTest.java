@@ -518,4 +518,121 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
             "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100",
             resultListLineFormula));
   }
+
+  /**
+   * Test that verifies the aggregation ordering fix works correctly.
+   * This test uses a response where id.keyword1 (total count) appears BEFORE
+   * filter0 (filtered count)
+   * in the JSON, simulating the HashMap ordering issue that caused the 162300%
+   * bug.
+   *
+   * <p>
+   * The formula is: (count(k='id.keyword',q='hasDescription:
+   * 1')/count(k='id.keyword'))*100
+   * With values: (171/455)*100 = 37.58%
+   *
+   * <p>
+   * Without the sorting fix, if id.keyword1 (455) is processed before filter0
+   * (171),
+   * the result would be calculated as: (455/171)*100 = 266% (WRONG!)
+   */
+  @Test
+  public void testAggregationOrderingWithReversedKeys() {
+    // Response with id.keyword1 appearing BEFORE filter0 in the aggregation keys
+    // This simulates the HashMap ordering issue
+    String responseWithReversedOrder =
+        "{\"took\":15,\"timed_out\":false,\"_shards\":{\"failed\":0.0,\"successful\":17.0,\"total\":17.0,\"skipped\":0.0},"
+            + "\"hits\":{\"total\":{\"relation\":\"eq\",\"value\":720},\"hits\":[],\"max_score\":null},"
+            + "\"aggregations\":{\"sterms#0\":{\"buckets\":["
+            + "{\"date_histogram#metric_1\":{\"buckets\":["
+            + "{\"value_count#id.keyword1\":{\"value\":455.0}," // Total count comes FIRST
+            + "\"filter#filter0\":{\"value_count#id.keyword0\":{\"value\":171.0},\"doc_count\":171}," // Filtered
+            // count comes
+            // SECOND
+            + "\"doc_count\":455,\"key_as_string\":\"2026-01-19T00:00:00.000Z\",\"key\":1768780800000}]},"
+            + "\"doc_count\":455,\"key\":\"table\"},"
+            + "{\"date_histogram#metric_1\":{\"buckets\":["
+            + "{\"value_count#id.keyword1\":{\"value\":90.0}," // Total count comes FIRST
+            + "\"filter#filter0\":{\"value_count#id.keyword0\":{\"value\":20.0},\"doc_count\":20}," // Filtered
+            // count comes
+            // SECOND
+            + "\"doc_count\":90,\"key_as_string\":\"2026-01-19T00:00:00.000Z\",\"key\":1768780800000}]},"
+            + "\"doc_count\":90,\"key\":\"pipeline\"}],"
+            + "\"doc_count_error_upper_bound\":0,\"sum_other_doc_count\":0}}}";
+
+    Map<String, Object> lineChartFormula = new LinkedHashMap<>();
+    lineChartFormula.put("type", "LineChart");
+    Map<String, Object> metricsFormula = new LinkedHashMap<>();
+    metricsFormula.put(
+        "formula", "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100");
+    lineChartFormula.put("metrics", List.of(metricsFormula));
+    lineChartFormula.put("groupBy", "entityType.keyword");
+
+    // Expected results: (171/455)*100 ≈ 37.58% for table, (20/90)*100 ≈ 22.22% for
+    // pipeline
+    List<DataInsightCustomChartResult> expectedResults = new ArrayList<>();
+    expectedResults.add(
+        new DataInsightCustomChartResult()
+            .withCount(37.582417582417584) // (171/455)*100
+            .withDay(1.7687808E12)
+            .withGroup("table"));
+    expectedResults.add(
+        new DataInsightCustomChartResult()
+            .withCount(22.22222222222222) // (20/90)*100
+            .withDay(1.7687808E12)
+            .withGroup("pipeline"));
+
+    assertTrue(
+        compareResponse(
+            responseWithReversedOrder,
+            lineChartFormula,
+            "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100",
+            expectedResults));
+  }
+
+  /**
+   * Test that verifies the aggregation ordering fix for a simple division
+   * formula.
+   * Uses response where the total count key appears before the filtered count
+   * key.
+   */
+  @Test
+  public void testAggregationOrderingSimpleDivision() {
+    // Response where id.keyword1 comes before filter0 - this is the ordering that
+    // caused the bug
+    String responseWithReversedOrder =
+        "{\"took\":10,\"timed_out\":false,\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},"
+            + "\"hits\":{\"total\":{\"value\":100,\"relation\":\"eq\"},\"max_score\":null,\"hits\":[]},"
+            + "\"aggregations\":{\"date_histogram#metric_1\":{\"buckets\":["
+            + "{\"key_as_string\":\"2024-07-20T00:00:00.000Z\",\"key\":1721433600000,\"doc_count\":100,"
+            + "\"value_count#id.keyword1\":{\"value\":1623.0}," // Total count (large number) first
+            + "\"filter#filter0\":{\"doc_count\":1,\"value_count#id.keyword0\":{\"value\":1.0}}}]}}}"; // Filtered
+    // count
+    // (small
+    // number)
+    // second
+
+    Map<String, Object> lineChart = new LinkedHashMap<>();
+    lineChart.put("type", "LineChart");
+    Map<String, Object> metrics = new LinkedHashMap<>();
+    // The formula where the bug manifested: should be (1/1623)*100 = 0.0616% not
+    // (1623/1)*100 = 162300%
+    metrics.put(
+        "formula", "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100");
+    lineChart.put("metrics", List.of(metrics));
+
+    // Expected: (1/1623)*100 = 0.0616... NOT 162300
+    List<DataInsightCustomChartResult> expectedResults = new ArrayList<>();
+    expectedResults.add(
+        new DataInsightCustomChartResult()
+            .withCount(0.06161429451632779) // (1/1623)*100 - the CORRECT value
+            .withDay(1.7214336E12));
+
+    assertTrue(
+        compareResponse(
+            responseWithReversedOrder,
+            lineChart,
+            "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100",
+            expectedResults));
+  }
 }

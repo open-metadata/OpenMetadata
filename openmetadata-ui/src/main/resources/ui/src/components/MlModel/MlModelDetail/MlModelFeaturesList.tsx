@@ -42,10 +42,7 @@ const MlModelFeaturesList = () => {
     useGenericContext<Mlmodel>();
 
   // Extract base FQN and column part from URL
-  const {
-    columnFqn: columnPart,
-    fqn,
-  } = useFqn({
+  const { columnFqn: columnPart, fqn } = useFqn({
     type: EntityType.MLMODEL,
   });
   const { mlFeatures, isDeleted, entityFqn } = useMemo(() => {

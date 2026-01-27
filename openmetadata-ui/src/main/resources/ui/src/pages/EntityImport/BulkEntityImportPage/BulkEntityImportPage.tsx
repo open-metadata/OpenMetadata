@@ -326,7 +326,13 @@ const BulkEntityImportPage = () => {
         setActiveAsyncImportJob(initialLoadJobData);
         activeAsyncImportJobRef.current = initialLoadJobData;
 
-        await validateCsvString(result, entityType, fqn, isBulkEdit);
+        await validateCsvString(
+          result,
+          entityType,
+          fqn,
+          isBulkEdit,
+          effectiveSourceEntityType
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -369,6 +375,7 @@ const BulkEntityImportPage = () => {
         data: csvData,
         dryRun: activeStep === VALIDATION_STEP.EDIT_VALIDATE,
         recursive: !isBulkEdit,
+        targetEntityType: effectiveSourceEntityType,
       });
     } catch (error) {
       showErrorToast(error as AxiosError);

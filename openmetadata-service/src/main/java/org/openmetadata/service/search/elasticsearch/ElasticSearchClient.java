@@ -221,6 +221,11 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void deleteIndexWithBackoff(String indexName) {
+    indexManager.deleteIndexWithBackoff(indexName);
+  }
+
+  @Override
   public Set<String> getAliases(String indexName) {
     return indexManager.getAliases(indexName);
   }
@@ -243,6 +248,11 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public Set<String> listIndicesByPrefix(String prefix) {
     return indexManager.listIndicesByPrefix(prefix);
+  }
+
+  @Override
+  public List<IndexStats> getAllIndexStats() throws IOException {
+    return indexManager.getAllIndexStats();
   }
 
   @Override
