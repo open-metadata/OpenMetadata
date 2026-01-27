@@ -113,7 +113,7 @@ test.describe.serial('Description Suggestions Table Entity', () => {
       });
 
       // since we accepted one suggestion, the badge count should be total-1
-      await expect(page.locator(`.ant-badge [title="${table.entityLinkColumnsName.length - 1}"]`)).toBeVisible();
+      await expect(page.getByTestId('asset-description-container').locator(`.ant-badge [title="${table.entityLinkColumnsName.length - 1}"]`)).toBeVisible();
 
       await expect(
         page.locator(
@@ -149,7 +149,7 @@ test.describe.serial('Description Suggestions Table Entity', () => {
       });
 
       // since we accepted two suggestions, the badge count should be total-2
-      await expect(page.locator(`.ant-badge [title="${table.entityLinkColumnsName.length - 2}"]`)).toBeVisible();
+      await expect(page.getByTestId('asset-description-container').locator(`.ant-badge [title="${table.entityLinkColumnsName.length - 2}"]`)).toBeVisible();
 
       await expect(
         page.locator(
@@ -179,7 +179,7 @@ test.describe.serial('Description Suggestions Table Entity', () => {
       await singleResolveResponse;
 
       // since we accepted two suggestions and rejected one, the badge count should be total-3
-      await expect(page.locator(`.ant-badge [title="${table.entityLinkColumnsName.length - 3}"]`)).toBeVisible();
+      await expect(page.getByTestId('asset-description-container').locator(`.ant-badge [title="${table.entityLinkColumnsName.length - 3}"]`)).toBeVisible();
 
       await expect(
         page.locator(

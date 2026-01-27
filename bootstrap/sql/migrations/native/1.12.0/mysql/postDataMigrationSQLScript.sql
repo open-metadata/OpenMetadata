@@ -56,3 +56,9 @@ SET json = JSON_ARRAY_APPEND(
 )
 WHERE name = 'tableDataToBeFresh'
   AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), '"timezone"');
+
+-- Add validatorClass to all system test definitions (set to PascalCase name + 'Validator' if not present)
+UPDATE test_definition
+SET json = JSON_SET(json, '$.validatorClass', CONCAT(UPPER(SUBSTRING(JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')), 1, 1)), SUBSTRING(JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')), 2), 'Validator'))
+WHERE JSON_EXTRACT(json, '$.validatorClass') IS NULL
+  AND JSON_EXTRACT(json, '$.provider') = 'system';

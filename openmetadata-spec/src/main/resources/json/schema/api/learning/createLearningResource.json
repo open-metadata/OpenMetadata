@@ -1,0 +1,90 @@
+{
+  "$id": "https://open-metadata.org/schema/api/learning/createLearningResource.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateLearningResourceRequest",
+  "description": "Create Learning Resource API request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.learning.CreateLearningResource",
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
+  "properties": {
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "resourceType": {
+      "$ref": "../../entity/learning/learningResource.json#/definitions/resourceType"
+    },
+    "categories": {
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/learning/learningResource.json#/definitions/resourceCategory"
+      },
+      "minItems": 1
+    },
+    "difficulty": {
+      "$ref": "../../entity/learning/learningResource.json#/definitions/resourceDifficulty"
+    },
+    "source": {
+      "$ref": "../../entity/learning/learningResource.json#/definitions/resourceSource"
+    },
+    "estimatedDuration": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "completionThreshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "contexts": {
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/learning/learningResource.json#/definitions/resourceContext"
+      },
+      "minItems": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Active",
+        "Deprecated"
+      ],
+      "default": "Active"
+    },
+    "owners": {
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "reviewers": {
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "extension": {
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    }
+  },
+  "required": [
+    "name",
+    "resourceType",
+    "categories",
+    "source",
+    "contexts"
+  ],
+  "additionalProperties": false
+}
