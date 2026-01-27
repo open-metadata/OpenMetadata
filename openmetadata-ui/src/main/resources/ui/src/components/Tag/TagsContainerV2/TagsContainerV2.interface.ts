@@ -13,7 +13,7 @@
 
 import { EntityTags } from 'Models';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
-import { DisplayType, LayoutType } from '../TagsViewer/TagsViewer.interface';
+import { DisplayType } from '../TagsViewer/TagsViewer.interface';
 
 export interface TagsContainerV2Props {
   permission: boolean;
@@ -30,7 +30,6 @@ export interface TagsContainerV2Props {
   showInlineEditButton?: boolean;
   children?: React.ReactNode;
   displayType?: DisplayType;
-  layoutType?: LayoutType;
   onSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
   defaultState?: State;
   defaultLabelType?: LabelType;

@@ -22,7 +22,6 @@ export interface TagsViewerProps {
   tagType?: TagSource;
   newLook?: boolean;
   entityFqn?: string;
-  layout?: LayoutType;
 }
 
 export enum DisplayType {
