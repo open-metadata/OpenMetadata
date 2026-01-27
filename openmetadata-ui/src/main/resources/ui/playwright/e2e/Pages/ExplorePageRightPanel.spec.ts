@@ -170,7 +170,6 @@ test.describe('Right Panel Page Objects Test Suite', () => {
         await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
         await rightPanel.waitForPanelVisible();
 
-        const tagToUpdate = testTag.responseData?.displayName ?? testTag.data.displayName
         await overview.editTags(tagToUpdate);
         await overview.shouldShowTagsSection();
         await overview.shouldShowTag(tagToUpdate);
@@ -181,7 +180,6 @@ test.describe('Right Panel Page Objects Test Suite', () => {
         await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
         await rightPanel.waitForPanelVisible();
 
-        const testTier = 'Tier1';
         await overview.assignTier(testTier);
         await overview.shouldShowTierSection();
         await overview.shouldShowTier(testTier);
@@ -192,20 +190,8 @@ test.describe('Right Panel Page Objects Test Suite', () => {
         await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
         await rightPanel.waitForPanelVisible();
 
-        const glossaryTermToUpdate = testGlossaryTerm.responseData?.displayName ?? testGlossaryTerm.data.displayName
         await overview.editGlossaryTerms(glossaryTermToUpdate);
         await overview.shouldShowGlossaryTermsSection();
-      })
-
-      test(`Should update domain for ${entityType}`, async ({ adminPage }) => {
-        await navigateToExploreAndSelectEntity(adminPage, entityType);
-        await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
-        await rightPanel.waitForPanelVisible();
-
-        const domainToUpdate = EntityDataClass.domain1.responseData?.displayName ?? EntityDataClass.domain1.data.displayName;
-        await overview.editDomain(domainToUpdate);
-        await overview.shouldShowDomainsSection();
-        await overview.shouldShowDomain(domainToUpdate);
       })
 
       test(`Should update owners for ${entityType}`, async ({ adminPage }) => {
@@ -222,11 +208,11 @@ test.describe('Right Panel Page Objects Test Suite', () => {
         await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
         await rightPanel.waitForPanelVisible();
 
-        const domainToUpdate = EntityDataClass.domain1.responseData?.displayName ?? EntityDataClass.domain1.data.displayName;
         await overview.editDomain(domainToUpdate);
         await overview.shouldShowDomainsSection();
         await overview.shouldShowDomain(domainToUpdate);
       })
+    });
 
       // ============ SCHEMA PAGE OBJECT TESTS ============
 
@@ -370,4 +356,3 @@ test.describe('Right Panel Page Objects Test Suite', () => {
       });
     });
   });
-});
