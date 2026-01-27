@@ -9985,6 +9985,29 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM search_index_failures WHERE jobId = :jobId")
     int deleteByJobId(@Bind("jobId") String jobId);
 
+    @SqlUpdate("DELETE FROM search_index_failures")
+    int deleteAll();
+
+    @SqlQuery("SELECT COUNT(*) FROM search_index_failures")
+    int countAll();
+
+    @SqlQuery(
+        "SELECT * FROM search_index_failures ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(SearchIndexFailureMapper.class)
+    List<SearchIndexFailureRecord> findAll(@Bind("limit") int limit, @Bind("offset") int offset);
+
+    @SqlQuery("SELECT COUNT(*) FROM search_index_failures WHERE entityType = :entityType")
+    int countByEntityType(@Bind("entityType") String entityType);
+
+    @SqlQuery(
+        "SELECT * FROM search_index_failures WHERE entityType = :entityType "
+            + "ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(SearchIndexFailureMapper.class)
+    List<SearchIndexFailureRecord> findByEntityType(
+        @Bind("entityType") String entityType,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
     class SearchIndexFailureMapper implements RowMapper<SearchIndexFailureRecord> {
       @Override
       public SearchIndexFailureRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
@@ -10012,9 +10035,11 @@ public interface CollectionDAO {
         String serverId,
         long readerSuccess,
         long readerFailed,
+        long readerWarnings,
         long sinkTotal,
         long sinkSuccess,
         long sinkFailed,
+        long sinkWarnings,
         long entityBuildFailures,
         int partitionsCompleted,
         int partitionsFailed,
@@ -10023,9 +10048,11 @@ public interface CollectionDAO {
     record AggregatedServerStats(
         long readerSuccess,
         long readerFailed,
+        long readerWarnings,
         long sinkTotal,
         long sinkSuccess,
         long sinkFailed,
+        long sinkWarnings,
         long entityBuildFailures,
         int partitionsCompleted,
         int partitionsFailed) {}
@@ -10033,27 +10060,29 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_server_stats (id, jobId, serverId, readerSuccess, readerFailed, "
-                + "sinkTotal, sinkSuccess, sinkFailed, entityBuildFailures, partitionsCompleted, "
-                + "partitionsFailed, lastUpdatedAt) "
-                + "VALUES (:id, :jobId, :serverId, :readerSuccess, :readerFailed, :sinkTotal, "
-                + ":sinkSuccess, :sinkFailed, :entityBuildFailures, :partitionsCompleted, "
-                + ":partitionsFailed, :lastUpdatedAt) "
+                + "readerWarnings, sinkTotal, sinkSuccess, sinkFailed, sinkWarnings, entityBuildFailures, "
+                + "partitionsCompleted, partitionsFailed, lastUpdatedAt) "
+                + "VALUES (:id, :jobId, :serverId, :readerSuccess, :readerFailed, :readerWarnings, "
+                + ":sinkTotal, :sinkSuccess, :sinkFailed, :sinkWarnings, :entityBuildFailures, "
+                + ":partitionsCompleted, :partitionsFailed, :lastUpdatedAt) "
                 + "ON DUPLICATE KEY UPDATE readerSuccess = :readerSuccess, readerFailed = :readerFailed, "
-                + "sinkTotal = :sinkTotal, sinkSuccess = :sinkSuccess, sinkFailed = :sinkFailed, "
+                + "readerWarnings = :readerWarnings, sinkTotal = :sinkTotal, sinkSuccess = :sinkSuccess, "
+                + "sinkFailed = :sinkFailed, sinkWarnings = :sinkWarnings, "
                 + "entityBuildFailures = :entityBuildFailures, partitionsCompleted = :partitionsCompleted, "
                 + "partitionsFailed = :partitionsFailed, lastUpdatedAt = :lastUpdatedAt",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_server_stats (id, jobId, serverId, readerSuccess, readerFailed, "
-                + "sinkTotal, sinkSuccess, sinkFailed, entityBuildFailures, partitionsCompleted, "
-                + "partitionsFailed, lastUpdatedAt) "
-                + "VALUES (:id, :jobId, :serverId, :readerSuccess, :readerFailed, :sinkTotal, "
-                + ":sinkSuccess, :sinkFailed, :entityBuildFailures, :partitionsCompleted, "
-                + ":partitionsFailed, :lastUpdatedAt) "
+                + "readerWarnings, sinkTotal, sinkSuccess, sinkFailed, sinkWarnings, entityBuildFailures, "
+                + "partitionsCompleted, partitionsFailed, lastUpdatedAt) "
+                + "VALUES (:id, :jobId, :serverId, :readerSuccess, :readerFailed, :readerWarnings, "
+                + ":sinkTotal, :sinkSuccess, :sinkFailed, :sinkWarnings, :entityBuildFailures, "
+                + ":partitionsCompleted, :partitionsFailed, :lastUpdatedAt) "
                 + "ON CONFLICT (jobId, serverId) DO UPDATE SET readerSuccess = :readerSuccess, "
-                + "readerFailed = :readerFailed, sinkTotal = :sinkTotal, sinkSuccess = :sinkSuccess, "
-                + "sinkFailed = :sinkFailed, entityBuildFailures = :entityBuildFailures, "
+                + "readerFailed = :readerFailed, readerWarnings = :readerWarnings, "
+                + "sinkTotal = :sinkTotal, sinkSuccess = :sinkSuccess, sinkFailed = :sinkFailed, "
+                + "sinkWarnings = :sinkWarnings, entityBuildFailures = :entityBuildFailures, "
                 + "partitionsCompleted = :partitionsCompleted, partitionsFailed = :partitionsFailed, "
                 + "lastUpdatedAt = :lastUpdatedAt",
         connectionType = POSTGRES)
@@ -10063,9 +10092,11 @@ public interface CollectionDAO {
         @Bind("serverId") String serverId,
         @Bind("readerSuccess") long readerSuccess,
         @Bind("readerFailed") long readerFailed,
+        @Bind("readerWarnings") long readerWarnings,
         @Bind("sinkTotal") long sinkTotal,
         @Bind("sinkSuccess") long sinkSuccess,
         @Bind("sinkFailed") long sinkFailed,
+        @Bind("sinkWarnings") long sinkWarnings,
         @Bind("entityBuildFailures") long entityBuildFailures,
         @Bind("partitionsCompleted") int partitionsCompleted,
         @Bind("partitionsFailed") int partitionsFailed,
@@ -10085,9 +10116,11 @@ public interface CollectionDAO {
         "SELECT "
             + "COALESCE(SUM(readerSuccess), 0) as readerSuccess, "
             + "COALESCE(SUM(readerFailed), 0) as readerFailed, "
+            + "COALESCE(SUM(readerWarnings), 0) as readerWarnings, "
             + "COALESCE(SUM(sinkTotal), 0) as sinkTotal, "
             + "COALESCE(SUM(sinkSuccess), 0) as sinkSuccess, "
             + "COALESCE(SUM(sinkFailed), 0) as sinkFailed, "
+            + "COALESCE(SUM(sinkWarnings), 0) as sinkWarnings, "
             + "COALESCE(SUM(entityBuildFailures), 0) as entityBuildFailures, "
             + "COALESCE(SUM(partitionsCompleted), 0) as partitionsCompleted, "
             + "COALESCE(SUM(partitionsFailed), 0) as partitionsFailed "
@@ -10107,9 +10140,11 @@ public interface CollectionDAO {
             rs.getString("serverId"),
             rs.getLong("readerSuccess"),
             rs.getLong("readerFailed"),
+            rs.getLong("readerWarnings"),
             rs.getLong("sinkTotal"),
             rs.getLong("sinkSuccess"),
             rs.getLong("sinkFailed"),
+            rs.getLong("sinkWarnings"),
             rs.getLong("entityBuildFailures"),
             rs.getInt("partitionsCompleted"),
             rs.getInt("partitionsFailed"),
@@ -10123,9 +10158,11 @@ public interface CollectionDAO {
         return new AggregatedServerStats(
             rs.getLong("readerSuccess"),
             rs.getLong("readerFailed"),
+            rs.getLong("readerWarnings"),
             rs.getLong("sinkTotal"),
             rs.getLong("sinkSuccess"),
             rs.getLong("sinkFailed"),
+            rs.getLong("sinkWarnings"),
             rs.getLong("entityBuildFailures"),
             rs.getInt("partitionsCompleted"),
             rs.getInt("partitionsFailed"));

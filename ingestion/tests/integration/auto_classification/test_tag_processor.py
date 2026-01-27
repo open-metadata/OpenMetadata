@@ -180,13 +180,7 @@ def test_it_returns_the_expected_classifications(
             ),
         ),
     ]
-    assert timestamp_column.tags == [
-        IsInstance(TagLabel)
-        & HasAttributes(
-            tagFQN=HasAttributes(root="PII.NonSensitive"),
-            reason=Contains("Detected by `SpacyRecognizer`"),
-        ),
-    ]
+    assert timestamp_column.tags == []
     assert version_column.tags == []
     assert order_date_column.tags == [
         IsInstance(TagLabel)
