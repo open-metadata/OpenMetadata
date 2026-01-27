@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
@@ -188,7 +189,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                                 .id(docId)
                                 .action(a -> a.doc(EsUtils.toJsonData(json)).docAsUpsert(true))));
       }
-      bulkProcessor.add(operation);
+      bulkProcessor.add(operation, docId, entityType);
 
       if (embeddingsEnabled) {
         addEntityToVectorIndex(bulkProcessor, entity, recreateIndex);
@@ -237,7 +238,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                   op.index(
                       idx -> idx.index(indexName).id(docId).document(EsUtils.toJsonData(json))));
 
-      bulkProcessor.add(operation);
+      bulkProcessor.add(operation, docId, entityType);
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
       entityBuildFailures.incrementAndGet();
@@ -401,6 +402,10 @@ public class ElasticSearchBulkSink implements BulkSink {
   public static class CustomBulkProcessor {
     private final ElasticsearchAsyncClient asyncClient;
     private final List<BulkOperation> buffer = new ArrayList<>();
+
+    /** Maps docId to entityType for failure reporting */
+    private final ConcurrentHashMap<String, String> docIdToEntityType = new ConcurrentHashMap<>();
+
     private long currentBufferSize = 0;
     private final Lock lock = new ReentrantLock();
     private final int bulkActions;
@@ -451,10 +456,19 @@ public class ElasticSearchBulkSink implements BulkSink {
     }
 
     void add(BulkOperation operation) {
+      add(operation, null, null);
+    }
+
+    void add(BulkOperation operation, String docId, String entityType) {
       lock.lock();
       try {
         if (closed) {
           throw new IllegalStateException("Bulk processor is closed");
+        }
+
+        // Track entityType for failure reporting
+        if (docId != null && entityType != null) {
+          docIdToEntityType.put(docId, entityType);
         }
 
         long operationSize = estimateOperationSize(operation);
@@ -578,6 +592,13 @@ public class ElasticSearchBulkSink implements BulkSink {
                     executionId,
                     numberOfActions);
                 statsUpdater.run();
+                // Clean up docIdToEntityType for successful operations
+                for (BulkOperation op : operations) {
+                  String docId = getDocId(op);
+                  if (docId != null) {
+                    docIdToEntityType.remove(docId);
+                  }
+                }
               }
             } finally {
               if (error != null && shouldRetry(attemptNumber, error)) {
@@ -617,6 +638,20 @@ public class ElasticSearchBulkSink implements BulkSink {
             attemptNumber + 1,
             numberOfActions,
             error);
+
+        // Report failures via callback
+        if (failureCallback != null) {
+          for (BulkOperation op : operations) {
+            String docId = getDocId(op);
+            if (docId != null) {
+              String entityType = docIdToEntityType.remove(docId);
+              if (entityType == null) {
+                entityType = extractEntityTypeFromIndex(getIndex(op));
+              }
+              failureCallback.onFailure(entityType, docId, null, error.getMessage());
+            }
+          }
+        }
         statsUpdater.run();
       }
     }
@@ -625,20 +660,29 @@ public class ElasticSearchBulkSink implements BulkSink {
         BulkResponse response, long executionId, int numberOfActions) {
       int failures = 0;
       for (BulkResponseItem item : response.items()) {
+        String docId = item.id();
         if (item.error() != null) {
           failures++;
           String failureMessage = item.error().reason();
           if (failureMessage != null && failureMessage.contains("document_missing_exception")) {
             LOG.warn(
                 "Document missing error for {}: {} - This may occur during concurrent reindexing",
-                item.id(),
+                docId,
                 failureMessage);
           } else {
-            LOG.warn("Failed to index document {}: {}", item.id(), failureMessage);
+            LOG.warn("Failed to index document {}: {}", docId, failureMessage);
           }
           if (failureCallback != null) {
-            String entityType = extractEntityTypeFromIndex(item.index());
-            failureCallback.onFailure(entityType, item.id(), null, failureMessage);
+            String entityType = docId != null ? docIdToEntityType.remove(docId) : null;
+            if (entityType == null) {
+              entityType = extractEntityTypeFromIndex(item.index());
+            }
+            failureCallback.onFailure(entityType, docId, null, failureMessage);
+          }
+        } else {
+          // Clean up on success
+          if (docId != null) {
+            docIdToEntityType.remove(docId);
           }
         }
       }
@@ -654,15 +698,30 @@ public class ElasticSearchBulkSink implements BulkSink {
       statsUpdater.run();
     }
 
+    private String getDocId(BulkOperation op) {
+      if (op.isIndex()) return op.index().id();
+      if (op.isUpdate()) return op.update().id();
+      if (op.isDelete()) return op.delete().id();
+      return null;
+    }
+
+    private String getIndex(BulkOperation op) {
+      if (op.isIndex()) return op.index().index();
+      if (op.isUpdate()) return op.update().index();
+      if (op.isDelete()) return op.delete().index();
+      return null;
+    }
+
     private String extractEntityTypeFromIndex(String indexName) {
       if (indexName == null || indexName.isEmpty()) {
         return "unknown";
       }
-      // Index names are like "table_search_index" or "dashboard_search_index"
-      // Extract entity type by removing "_search_index" suffix
-      String suffix = "_search_index";
-      if (indexName.endsWith(suffix)) {
-        return indexName.substring(0, indexName.length() - suffix.length());
+      // Index names may be like "table_search_index" or "mlmodel_search_index_rebuild_123456"
+      // Remove "_search_index" suffix and any rebuild timestamp
+      String searchIndexSuffix = "_search_index";
+      int searchIndexPos = indexName.indexOf(searchIndexSuffix);
+      if (searchIndexPos > 0) {
+        return indexName.substring(0, searchIndexPos);
       }
       return indexName;
     }
