@@ -35,6 +35,7 @@ import { Worksheet } from '../../../generated/entity/data/worksheet';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
+import { Hyperlink } from '../../../generated/type/customProperties/complexTypes';
 import { CustomProperty } from '../../../generated/type/customProperty';
 
 export type ExtentionEntities = {
@@ -94,11 +95,6 @@ export type TableTypePropertyValueType = {
   rows: Record<string, string>[];
 };
 
-export type HyperlinkType = {
-  url: string;
-  displayText?: string;
-};
-
 export type PropertyValueType =
   | string
   | number
@@ -107,4 +103,4 @@ export type PropertyValueType =
   | EntityReference[]
   | TimeIntervalType
   | TableTypePropertyValueType
-  | HyperlinkType;
+  | Hyperlink;

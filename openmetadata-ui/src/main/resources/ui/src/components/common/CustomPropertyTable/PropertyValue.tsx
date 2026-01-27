@@ -58,6 +58,7 @@ import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.c
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { Hyperlink } from '../../../generated/type/customProperties/complexTypes';
 import { Config } from '../../../generated/type/customProperty';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
 import { getCustomPropertyLuxonFormat } from '../../../utils/CustomProperty.utils';
@@ -75,7 +76,6 @@ import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import {
-  HyperlinkType,
   PropertyValueProps,
   PropertyValueType,
   TimeIntervalType,
@@ -748,7 +748,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       }
 
       case HYPERLINK_TYPE_CUSTOM_PROPERTY: {
-        const hyperlinkValue = value as HyperlinkType | undefined;
+        const hyperlinkValue = value as Hyperlink | undefined;
         const initialValues = {
           url: hyperlinkValue?.url ?? '',
           displayText: hyperlinkValue?.displayText ?? '',
@@ -791,7 +791,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
               onFinish={(values: { url: string; displayText: string }) => {
-                const hyperlinkData: HyperlinkType = {
+                const hyperlinkData: Hyperlink = {
                   url: values.url,
                   ...(values.displayText
                     ? { displayText: values.displayText }
@@ -1006,7 +1006,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       }
 
       case HYPERLINK_TYPE_CUSTOM_PROPERTY: {
-        const hyperlinkValue = value as HyperlinkType | undefined;
+        const hyperlinkValue = value as Hyperlink | undefined;
 
         if (!hyperlinkValue?.url) {
           return null;
