@@ -99,6 +99,7 @@ import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumb
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
 
 import { DRAWER_HEADER_STYLING } from '../../../constants/DomainsListPage.constants';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
@@ -111,6 +112,7 @@ import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
+import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import '../domain.less';
@@ -907,6 +909,7 @@ const DomainDetails = ({
               isFollowing={isFollowing}
               isFollowingLoading={isFollowingLoading}
               serviceName=""
+              suffix={<LearningIcon pageId={LEARNING_PAGE_IDS.DOMAIN} />}
               titleColor={domain.style?.color}
             />
           </Box>
