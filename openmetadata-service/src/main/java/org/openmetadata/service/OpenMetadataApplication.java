@@ -82,9 +82,12 @@ import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedJobParticipant;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.audit.AuditLogEventPublisher;
 import org.openmetadata.service.audit.AuditLogRepository;
+import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
@@ -102,6 +105,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
@@ -233,6 +237,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Initialize the IndexMapping class
     IndexMappingLoader.init(catalogConfig.getElasticSearchConfiguration());
 
+    // Initialize the MigrationValidationClient, used in the Settings Repository
+    MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
+
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
 
@@ -242,6 +249,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setEntityRelationshipRepository(
         new EntityRelationshipRepository(Entity.getCollectionDAO()));
+    Entity.setSystemRepository(new SystemRepository());
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
 
@@ -249,8 +257,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     BulkExecutor.initialize(catalogConfig.getBulkOperationConfiguration());
 
     initializeSearchRepository(catalogConfig);
-    // Initialize the MigrationValidationClient, used in the Settings Repository
-    MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     // as first step register all the repositories
     Entity.initializeRepositories(catalogConfig, jdbi);
     auditLogRepository = new AuditLogRepository(Entity.getCollectionDAO());
@@ -347,6 +353,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment
         .lifecycle()
         .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
+
+    // Register Distributed Job Participant for distributed search indexing
+    registerDistributedJobParticipant(environment, jdbi, catalogConfig.getCacheConfig());
 
     // Register Event publishers
     registerEventPublisher(catalogConfig);
@@ -1017,6 +1026,29 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
+    }
+  }
+
+  protected void registerDistributedJobParticipant(
+      Environment environment, Jdbi jdbi, CacheConfig cacheConfig) {
+    try {
+      CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
+      SearchRepository searchRepository = Entity.getSearchRepository();
+      String serverId = ServerIdentityResolver.getInstance().getServerId();
+
+      DistributedJobParticipant participant =
+          new DistributedJobParticipant(collectionDAO, searchRepository, serverId, cacheConfig);
+      environment.lifecycle().manage(participant);
+
+      String notifierType =
+          (cacheConfig != null && cacheConfig.provider == CacheConfig.Provider.redis)
+              ? "Redis Pub/Sub"
+              : "database polling";
+      LOG.info(
+          "Registered DistributedJobParticipant for distributed search indexing using {}",
+          notifierType);
+    } catch (Exception e) {
+      LOG.warn("Failed to register DistributedJobParticipant: {}", e.getMessage());
     }
   }
 

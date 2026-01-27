@@ -799,3 +799,64 @@ class TestAirflow(TestCase):
 
         # Verify only 2 tasks remain (not 3)
         self.assertEqual(len(filtered_tasks), 2)
+
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.inspect")
+    def test_execution_date_column_detection_airflow_3(self, mock_inspect):
+        """
+        Test that logical_date is detected when present (Airflow 3.x)
+        """
+        # Mock inspector and columns
+        mock_inspector = mock_inspect.return_value
+        mock_inspector.get_columns.return_value = [
+            {"name": "logical_date"},
+            {"name": "dag_id"},
+        ]
+
+        # Create a new AirflowSource instance (or use self.airflow if safe)
+        # We need to reset the property cache first if using shared instance
+        self.airflow._execution_date_column = None
+
+        # Access property
+        column = self.airflow.execution_date_column
+
+        # Verify
+        self.assertEqual(column, "logical_date")
+        mock_inspector.get_columns.assert_called_with("dag_run")
+
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.inspect")
+    def test_execution_date_column_detection_airflow_2(self, mock_inspect):
+        """
+        Test that execution_date is used when logical_date is missing (Airflow 2.x)
+        """
+        # Mock inspector and columns
+        mock_inspector = mock_inspect.return_value
+        mock_inspector.get_columns.return_value = [
+            {"name": "execution_date"},
+            {"name": "dag_id"},
+        ]
+
+        # Reset cache
+        self.airflow._execution_date_column = None
+
+        # Access property
+        column = self.airflow.execution_date_column
+
+        # Verify
+        self.assertEqual(column, "execution_date")
+
+    @patch("metadata.ingestion.source.pipeline.airflow.metadata.inspect")
+    def test_execution_date_column_error_fallback(self, mock_inspect):
+        """
+        Test fallback to execution_date when inspection fails
+        """
+        # Mock inspector to raise exception
+        mock_inspect.side_effect = Exception("DB Error")
+
+        # Reset cache
+        self.airflow._execution_date_column = None
+
+        # Access property
+        column = self.airflow.execution_date_column
+
+        # Verify fallback
+        self.assertEqual(column, "execution_date")

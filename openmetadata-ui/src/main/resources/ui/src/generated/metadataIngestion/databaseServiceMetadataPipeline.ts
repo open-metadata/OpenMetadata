@@ -19,6 +19,12 @@ export interface DatabaseServiceMetadataPipeline {
      */
     databaseFilterPattern?: FilterPattern;
     /**
+     * Extract JSON schema from JSON columns by sampling data. This requires SELECT permission
+     * on the tables. If disabled or if SELECT fails, JSON columns will be ingested without
+     * schema information.
+     */
+    extractJsonSchema?: boolean;
+    /**
      * Optional configuration to toggle the DDL Statements ingestion.
      */
     includeDDL?: boolean;
@@ -50,6 +56,11 @@ export interface DatabaseServiceMetadataPipeline {
      * getting the changes from Audit tables on the supporting databases.
      */
     incremental?: IncrementalMetadataExtractionConfiguration;
+    /**
+     * Number of rows to sample for inferring JSON schema. A larger sample size provides more
+     * accurate schema inference but increases query time.
+     */
+    jsonSchemaSampleSize?: number;
     /**
      * Optional configuration to soft delete databases in OpenMetadata if the source databases
      * are deleted. Also, if the database is deleted, all the associated entities like schemas,
@@ -104,6 +115,10 @@ export interface DatabaseServiceMetadataPipeline {
      */
     schemaFilterPattern?: FilterPattern;
     /**
+     * Regex to only include/exclude stored procedures that matches the pattern.
+     */
+    storedProcedureFilterPattern?: FilterPattern;
+    /**
      * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
@@ -128,6 +143,8 @@ export interface DatabaseServiceMetadataPipeline {
  * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude stored procedures that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
  */

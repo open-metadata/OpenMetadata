@@ -108,6 +108,7 @@ public class CreateIngestionPipelineImpl {
   public static final String DATABASE_FILTER_PATTERN = "databaseFilterPattern";
   public static final String SCHEMA_FILTER_PATTERN = "schemaFilterPattern";
   public static final String TABLE_FILTER_PATTERN = "tableFilterPattern";
+  public static final String STORED_PROCEDURE_FILTER_PATTERN = "storedProcedureFilterPattern";
   public static final String TOPIC_FILTER_PATTERN = "topicFilterPattern";
   public static final String DASHBOARD_FILTER_PATTERN = "dashboardFilterPattern";
   public static final String CHART_FILTER_PATTERN = "chartFilterPattern";
@@ -122,7 +123,11 @@ public class CreateIngestionPipelineImpl {
   static {
     SERVICE_FILTERS_MAP.put(
         DATABASE_SERVICE,
-        List.of(DATABASE_FILTER_PATTERN, SCHEMA_FILTER_PATTERN, TABLE_FILTER_PATTERN));
+        List.of(
+            DATABASE_FILTER_PATTERN,
+            SCHEMA_FILTER_PATTERN,
+            TABLE_FILTER_PATTERN,
+            STORED_PROCEDURE_FILTER_PATTERN));
     SERVICE_FILTERS_MAP.put(MESSAGING_SERVICE, List.of(TOPIC_FILTER_PATTERN));
     SERVICE_FILTERS_MAP.put(
         DASHBOARD_SERVICE,
@@ -330,7 +335,8 @@ public class CreateIngestionPipelineImpl {
     return new DatabaseServiceMetadataPipeline()
         .withDatabaseFilterPattern(defaultFilters.get(DATABASE_FILTER_PATTERN))
         .withSchemaFilterPattern(defaultFilters.get(SCHEMA_FILTER_PATTERN))
-        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN));
+        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN))
+        .withStoredProcedureFilterPattern(defaultFilters.get(STORED_PROCEDURE_FILTER_PATTERN));
   }
 
   private static DatabaseServiceQueryUsagePipeline getDatabaseServiceQueryUsagePipeline(
@@ -343,7 +349,8 @@ public class CreateIngestionPipelineImpl {
     return new DatabaseServiceQueryLineagePipeline()
         .withDatabaseFilterPattern(defaultFilters.get(DATABASE_FILTER_PATTERN))
         .withSchemaFilterPattern(defaultFilters.get(SCHEMA_FILTER_PATTERN))
-        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN));
+        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN))
+        .withStoredProcedureFilterPattern(defaultFilters.get(STORED_PROCEDURE_FILTER_PATTERN));
   }
 
   private static DatabaseServiceProfilerPipeline getDatabaseServiceProfilerPipeline(

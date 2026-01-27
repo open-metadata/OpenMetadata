@@ -22,7 +22,7 @@ interface QuickFiltersWithComponentConfig {
   defaultFilters: ExploreQuickFilterField[];
   aggregations?: Aggregations;
   parsedFilters?: ExploreQuickFilterField[];
-  searchIndex: SearchIndex;
+  searchIndex: SearchIndex | SearchIndex[];
   assetType: AssetsOfEntity;
   onFilterChange: (filters: ExploreQuickFilterField[]) => void;
 }

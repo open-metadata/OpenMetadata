@@ -104,13 +104,18 @@
       "type": "string"
     },
     "aws": {
-      "description": "AWS IAM authentication configuration for OpenSearch. IAM auth is automatically enabled when region is configured. Uses standard AWS environment variables (AWS_DEFAULT_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).",
+      "description": "AWS IAM authentication configuration for OpenSearch. IAM auth must be explicitly enabled. When enabled, uses standard AWS environment variables or configured credentials.",
       "type": "object",
       "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.AwsConfiguration",
       "extends": {
         "$ref": "../security/credentials/awsBaseConfig.json"
       },
       "properties": {
+        "enabled": {
+          "description": "Enable AWS IAM authentication for OpenSearch. When enabled, requires region to be configured. Defaults to false for backward compatibility.",
+          "type": "boolean",
+          "default": false
+        },
         "serviceName": {
           "description": "AWS service name for signing (es for Elasticsearch/OpenSearch, aoss for OpenSearch Serverless)",
           "type": "string",
@@ -171,6 +176,41 @@
             "embeddingModel": {
               "description": "DJL model name for embedding generation",
               "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "openai": {
+          "description": "OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI endpoints.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.Openai",
+          "properties": {
+            "apiKey": {
+              "description": "API key for authenticating with OpenAI or Azure OpenAI.",
+              "type": "string"
+            },
+            "embeddingModelId": {
+              "description": "OpenAI embedding model identifier (e.g., text-embedding-3-small, text-embedding-ada-002).",
+              "type": "string",
+              "default": "text-embedding-3-small"
+            },
+            "embeddingDimension": {
+              "description": "Dimension of the embedding vector. Default is 1536 for text-embedding-3-small.",
+              "type": "integer",
+              "default": 1536
+            },
+            "endpoint": {
+              "description": "Custom endpoint URL. For Azure OpenAI, use the Azure resource endpoint (e.g., https://your-resource.openai.azure.com). Leave empty for standard OpenAI API.",
+              "type": "string"
+            },
+            "deploymentName": {
+              "description": "Azure OpenAI deployment name. Required when using Azure OpenAI.",
+              "type": "string"
+            },
+            "apiVersion": {
+              "description": "Azure OpenAI API version. Only used with Azure OpenAI.",
+              "type": "string",
+              "default": "2024-02-01"
             }
           },
           "additionalProperties": false
