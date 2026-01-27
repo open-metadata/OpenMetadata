@@ -13,25 +13,25 @@
 
 import { Browser, expect, Page, Response } from '@playwright/test';
 import {
-    GLOBAL_SETTING_PERMISSIONS,
-    SETTING_PAGE_ENTITY_PERMISSION,
+  GLOBAL_SETTING_PERMISSIONS,
+  SETTING_PAGE_ENTITY_PERMISSION,
 } from '../constant/permission';
 import { VISIT_SERVICE_PAGE_DETAILS } from '../constant/service';
 import {
-    GlobalSettingOptions,
-    SETTING_CUSTOM_PROPERTIES_PATH,
-    SETTINGS_OPTIONS_PATH,
+  GlobalSettingOptions,
+  SETTING_CUSTOM_PROPERTIES_PATH,
+  SETTINGS_OPTIONS_PATH,
 } from '../constant/settings';
 import { SidebarItem } from '../constant/sidebar';
 import { UserClass } from '../support/user/UserClass';
 import {
-    descriptionBox,
-    descriptionBoxReadOnly,
-    getAuthContext,
-    getToken,
-    redirectToHomePage,
-    toastNotification,
-    visitOwnProfilePage,
+  descriptionBox,
+  descriptionBoxReadOnly,
+  getAuthContext,
+  getToken,
+  redirectToHomePage,
+  toastNotification,
+  visitOwnProfilePage,
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -689,11 +689,6 @@ export const addUser = async (
   await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
   await page.fill('#password', password);
   await page.fill('#confirmPassword', password);
-
-    await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
-    await page.getByTestId('roles-dropdown').getByRole('combobox').fill(role);
-    await page.click('.ant-select-item-option-content');
-    await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
 
   if (personas?.length) {
     const personasResponse = page.waitForResponse(
