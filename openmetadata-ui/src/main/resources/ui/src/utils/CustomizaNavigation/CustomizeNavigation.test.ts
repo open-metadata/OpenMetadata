@@ -550,6 +550,174 @@ describe('CustomizeNavigation Utils', () => {
       expect(result).toHaveLength(3);
       expect(result[2].key).toBe('plugin1');
     });
+
+    it('should exclude plugin items that are marked as hidden in navigationItems', () => {
+      const pluginItems = [
+        {
+          key: 'plugin1',
+          title: 'Plugin 1',
+          icon: 'plugin-icon',
+          dataTestId: 'plugin1',
+          index: 1,
+        },
+      ];
+
+      const navItems: NavigationItem[] = [
+        {
+          id: 'plugin1',
+          title: 'Plugin 1',
+          isHidden: true,
+          pageId: 'plugin1',
+        },
+      ];
+
+      const result = mergePluginSidebarItems(
+        mockBaseItems,
+        pluginItems,
+        navItems
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result.some((item) => item.key === 'plugin1')).toBe(false);
+    });
+
+    it('should include plugin items that are marked as not hidden in navigationItems', () => {
+      const pluginItems = [
+        {
+          key: 'plugin1',
+          title: 'Plugin 1',
+          icon: 'plugin-icon',
+          dataTestId: 'plugin1',
+          index: 1,
+        },
+      ];
+
+      const navItems: NavigationItem[] = [
+        {
+          id: 'plugin1',
+          title: 'Plugin 1',
+          isHidden: false,
+          pageId: 'plugin1',
+        },
+      ];
+
+      const result = mergePluginSidebarItems(
+        mockBaseItems,
+        pluginItems,
+        navItems
+      );
+
+      expect(result).toHaveLength(3);
+      expect(result[1].key).toBe('plugin1');
+    });
+
+    it('should include plugin items when navigationItems is not provided', () => {
+      const pluginItems = [
+        {
+          key: 'plugin1',
+          title: 'Plugin 1',
+          icon: 'plugin-icon',
+          dataTestId: 'plugin1',
+          index: 1,
+        },
+      ];
+
+      const result = mergePluginSidebarItems(mockBaseItems, pluginItems);
+
+      expect(result).toHaveLength(3);
+      expect(result[1].key).toBe('plugin1');
+    });
+
+    it('should include plugin items when they do not exist in navigationItems', () => {
+      const pluginItems = [
+        {
+          key: 'plugin1',
+          title: 'Plugin 1',
+          icon: 'plugin-icon',
+          dataTestId: 'plugin1',
+          index: 1,
+        },
+      ];
+
+      const navItems: NavigationItem[] = [
+        {
+          id: 'other-item',
+          title: 'Other Item',
+          isHidden: false,
+          pageId: 'other-item',
+        },
+      ];
+
+      const result = mergePluginSidebarItems(
+        mockBaseItems,
+        pluginItems,
+        navItems
+      );
+
+      expect(result).toHaveLength(3);
+      expect(result[1].key).toBe('plugin1');
+    });
+
+    it('should handle multiple plugin items with mixed visibility states', () => {
+      const pluginItems = [
+        {
+          key: 'plugin1',
+          title: 'Plugin 1',
+          icon: 'plugin-icon-1',
+          dataTestId: 'plugin1',
+          index: 0,
+        },
+        {
+          key: 'plugin2',
+          title: 'Plugin 2',
+          icon: 'plugin-icon-2',
+          dataTestId: 'plugin2',
+          index: 1,
+        },
+        {
+          key: 'plugin3',
+          title: 'Plugin 3',
+          icon: 'plugin-icon-3',
+          dataTestId: 'plugin3',
+          index: 2,
+        },
+      ];
+
+      const navItems: NavigationItem[] = [
+        {
+          id: 'plugin1',
+          title: 'Plugin 1',
+          isHidden: false,
+          pageId: 'plugin1',
+        },
+        {
+          id: 'plugin2',
+          title: 'Plugin 2',
+          isHidden: true,
+          pageId: 'plugin2',
+        },
+        {
+          id: 'plugin3',
+          title: 'Plugin 3',
+          isHidden: false,
+          pageId: 'plugin3',
+        },
+      ];
+
+      const result = mergePluginSidebarItems(
+        mockBaseItems,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pluginItems as any,
+        navItems
+      );
+
+      expect(result).toHaveLength(4);
+      expect(result[0].key).toBe('plugin1');
+      expect(result[1].key).toBe('home');
+      expect(result[2].key).toBe('plugin3');
+      expect(result[3].key).toBe('explore');
+      expect(result.some((item) => item.key === 'plugin2')).toBe(false);
+    });
   });
 
   describe('getSidebarItemsWithPlugins', () => {

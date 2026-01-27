@@ -818,9 +818,9 @@ const ContractDetail: React.FC<{
                   />
                 </Col>
               );
-              })()}
+            })()}
 
-              {/* SLA Component */}
+            {/* SLA Component */}
             <ContractSLA contract={contract} />
 
             {/* Schema Component */}
@@ -879,9 +879,9 @@ const ContractDetail: React.FC<{
                     <ContractSecurityCard security={contract.security} />
                   </Col>
                 );
-                })()}
+              })()}
 
-              {/* Semantics Component */}
+            {/* Semantics Component */}
             {contract?.semantics && contract?.semantics.length > 0 && (
               <Col
                 className="contract-card-items"

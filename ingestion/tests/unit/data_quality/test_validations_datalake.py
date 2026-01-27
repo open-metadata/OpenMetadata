@@ -1228,10 +1228,13 @@ def test_suite_validation_datalake(
     if test_case_type in TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED:
         test_case.computePassedFailedRowCount = True
 
+    validator_class = f"{test_case_type[0].upper()}{test_case_type[1:]}Validator"
+
     test_handler_obj = import_test_case_class(
         test_type,
         "pandas",
         test_case_type,
+        validator_class,
     )
 
     test_handler = test_handler_obj(
