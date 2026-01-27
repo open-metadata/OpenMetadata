@@ -21,7 +21,10 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
-import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
+import {
+  DEFAULT_SORT_ORDER,
+  TEST_CASE_STATUS_LABELS,
+} from '../../../constants/profiler.constant';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { TestCaseType } from '../../../enums/TestSuite.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
@@ -142,7 +145,7 @@ export const ContractQualityFormTab: React.FC<{
           return result?.testCaseStatus ? (
             <StatusBadge
               dataTestId={`status-badge-${record.name}`}
-              label={result.testCaseStatus}
+              label={TEST_CASE_STATUS_LABELS[result.testCaseStatus]}
               status={toLower(result.testCaseStatus) as StatusType}
             />
           ) : (

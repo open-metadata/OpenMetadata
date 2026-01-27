@@ -14,7 +14,10 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { CreateNotificationTemplate } from '../../src/generated/api/events/createNotificationTemplate';
-import { NotificationTemplate } from '../../src/generated/entity/events/notificationTemplate';
+import {
+  NotificationTemplate,
+  ProviderType,
+} from '../../src/generated/entity/events/notificationTemplate';
 import { Paging } from '../../src/generated/type/paging';
 import { ListParams } from '../../src/interface/API.interface';
 import APIClient from '../../src/rest/index';
@@ -65,7 +68,9 @@ export const deleteNotificationTemplate = (id: string) => {
   return APIClient.delete(`${BASE_URL}/${id}`);
 };
 
-export const getAllNotificationTemplates = async (params?: ListParams) => {
+export const getAllNotificationTemplates = async (
+  params?: ListParams & { provider?: ProviderType }
+) => {
   const response = await APIClient.get<{
     data: NotificationTemplate[];
     paging: Paging;

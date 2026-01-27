@@ -99,3 +99,6 @@ WHERE json->>'$.name' IN ('CollateAITierAgentApplication', 'CollateAIQualityAgen
   
 -- Remove bot form App entity    
 UPDATE installed_apps SET json = JSON_REMOVE(json, '$.bot') WHERE JSON_CONTAINS_PATH(json, 'one', '$.bot');
+
+-- Remove SearchIndexingApplication past runs
+delete from apps_extension_time_series where appname = 'SearchIndexingApplication';

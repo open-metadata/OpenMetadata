@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Bucket } from 'Models';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { DataInsightIndex } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -407,31 +408,10 @@ export type DataInsightSearchResponse = {
   aggregations: Aggregations;
 };
 
-/**
- * Because we are using an older version of typescript-eslint, defining
- * ```ts
- * export type AggregationEntry = [string, { buckets: Bucket[] };
- * ```
- * causes the error: Cannot read property of 'map' undefined
- * This is a workaround to get this type working correctly by using the ReturnType of Object.entries
- */
-const wrapperAggregationsEntries = () => Object.entries({} as Aggregations);
-
-export type AggregationEntry = ReturnType<
-  typeof wrapperAggregationsEntries
->[number];
-
 export type AggregationType = {
   title: string;
   buckets: Bucket[];
 };
-
-export interface Bucket {
-  key: string;
-  doc_count: number;
-  label?: string;
-}
-
 export interface SuggestOption<SI extends SearchIndex, T> {
   text: string;
   _index: SI;

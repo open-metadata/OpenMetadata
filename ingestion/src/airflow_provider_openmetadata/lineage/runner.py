@@ -177,6 +177,7 @@ class AirflowLineageRunner:
         return [
             Task(
                 name=task.task_id,
+                description=getattr(task, "description", None),
                 sourceUrl=self.get_task_url(task),
                 taskType=task.task_type,
                 startDate=task.start_date.isoformat() if task.start_date else None,

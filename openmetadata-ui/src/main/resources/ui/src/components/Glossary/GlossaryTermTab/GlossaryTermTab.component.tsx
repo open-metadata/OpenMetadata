@@ -790,7 +790,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             return null;
           }
 
-          return description.trim() ? (
+          return description?.trim() ? (
             <RichTextEditorPreviewerNew
               enableSeeMoreVariant
               markdown={description}
@@ -1122,7 +1122,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const handleEditGlossary = () => {
     navigate({
       pathname: getEntityBulkEditPath(
-        EntityType.GLOSSARY_TERM,
+        isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM,
         activeGlossary?.fullyQualifiedName ?? ''
       ),
     });
@@ -1152,6 +1152,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       <>
         <Input
           allowClear
+          data-testid="search-glossary-terms-input"
           placeholder={t('label.search-entity', {
             entity: t('label.term-plural'),
           })}

@@ -1,5 +1,6 @@
 package org.openmetadata.sdk.services.dataassets;
 
+import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -20,5 +21,14 @@ public class QueryService extends EntityServiceBase<Query> {
   // Create query using CreateQuery request
   public Query create(CreateQuery request) throws OpenMetadataException {
     return httpClient.execute(HttpMethod.POST, basePath, request, Query.class);
+  }
+
+  // Update/upsert query using CreateQuery request
+  public Query update(UUID id, CreateQuery request) throws OpenMetadataException {
+    return httpClient.execute(HttpMethod.PUT, basePath, request, Query.class);
+  }
+
+  public Query update(String id, CreateQuery request) throws OpenMetadataException {
+    return httpClient.execute(HttpMethod.PUT, basePath, request, Query.class);
   }
 }

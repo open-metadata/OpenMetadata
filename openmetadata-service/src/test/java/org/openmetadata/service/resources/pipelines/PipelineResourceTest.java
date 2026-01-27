@@ -823,6 +823,22 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     return TestUtils.get(target, PipelineResource.PipelineStatusList.class, authHeaders);
   }
 
+  public ResultList<org.openmetadata.schema.type.PipelineSummary> listPipelineSummaries(
+      String status, Long startTs, Long endTs, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("pipelines/summary");
+    if (status != null) {
+      target = target.queryParam("status", status);
+    }
+    if (startTs != null) {
+      target = target.queryParam("startTs", startTs);
+    }
+    if (endTs != null) {
+      target = target.queryParam("endTs", endTs);
+    }
+    return TestUtils.get(target, PipelineResource.PipelineSummaryList.class, authHeaders);
+  }
+
   // Check that the inserted status are properly stored
   private void verifyPipelineStatuses(
       ResultList<PipelineStatus> actualStatuses,
@@ -1207,5 +1223,126 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
     // Cleanup
     deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_listPipelineSummaries_statusFilter(TestInfo test) throws IOException, ParseException {
+    // Setup: Create 3 pipelines with different status histories
+    CreatePipeline create1 =
+        createRequest(test, 1).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
+    Pipeline pipeline1 = createEntity(create1, ADMIN_AUTH_HEADERS);
+
+    CreatePipeline create2 =
+        createRequest(test, 2).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
+    Pipeline pipeline2 = createEntity(create2, ADMIN_AUTH_HEADERS);
+
+    CreatePipeline create3 =
+        createRequest(test, 3).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
+    Pipeline pipeline3 = createEntity(create3, ADMIN_AUTH_HEADERS);
+
+    // Create timestamps: 2 hours ago, 1 hour ago, now
+    long now = System.currentTimeMillis();
+    long twoHoursAgo = now - (2 * 60 * 60 * 1000);
+    long oneHourAgo = now - (60 * 60 * 1000);
+
+    // Pipeline 1: Failed (oldest) -> Successful (latest)
+    PipelineStatus status1Old =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Failed)
+            .withTimestamp(twoHoursAgo)
+            .withTaskStatus(Collections.emptyList());
+    putPipelineStatusData(pipeline1.getFullyQualifiedName(), status1Old, ADMIN_AUTH_HEADERS);
+
+    PipelineStatus status1New =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withTimestamp(oneHourAgo)
+            .withTaskStatus(Collections.emptyList());
+    putPipelineStatusData(pipeline1.getFullyQualifiedName(), status1New, ADMIN_AUTH_HEADERS);
+
+    // Pipeline 2: Successful (oldest) -> Failed (latest)
+    PipelineStatus status2Old =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withTimestamp(twoHoursAgo)
+            .withTaskStatus(Collections.emptyList());
+    putPipelineStatusData(pipeline2.getFullyQualifiedName(), status2Old, ADMIN_AUTH_HEADERS);
+
+    PipelineStatus status2New =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Failed)
+            .withTimestamp(oneHourAgo)
+            .withTaskStatus(Collections.emptyList());
+    putPipelineStatusData(pipeline2.getFullyQualifiedName(), status2New, ADMIN_AUTH_HEADERS);
+
+    // Pipeline 3: Successful (only status)
+    PipelineStatus status3 =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withTimestamp(oneHourAgo)
+            .withTaskStatus(Collections.emptyList());
+    putPipelineStatusData(pipeline3.getFullyQualifiedName(), status3, ADMIN_AUTH_HEADERS);
+
+    // Test Case 1: Filter by status="Successful" only
+    // Expected: Pipeline 1 and Pipeline 3 (latest status = Successful)
+    ResultList<org.openmetadata.schema.type.PipelineSummary> successfulPipelines =
+        listPipelineSummaries("Successful", null, null, ADMIN_AUTH_HEADERS);
+
+    List<UUID> successfulIds =
+        successfulPipelines.getData().stream()
+            .map(org.openmetadata.schema.type.PipelineSummary::getPipelineId)
+            .collect(Collectors.toList());
+
+    assertTrue(
+        successfulIds.contains(pipeline1.getId()),
+        "Pipeline 1 should be included (latest status is Successful)");
+    assertTrue(
+        successfulIds.contains(pipeline3.getId()),
+        "Pipeline 3 should be included (latest status is Successful)");
+    assertFalse(
+        successfulIds.contains(pipeline2.getId()),
+        "Pipeline 2 should NOT be included (latest status is Failed)");
+
+    // Test Case 2: Filter by status="Failed" only
+    // Expected: Pipeline 2 (latest status = Failed)
+    ResultList<org.openmetadata.schema.type.PipelineSummary> failedPipelines =
+        listPipelineSummaries("Failed", null, null, ADMIN_AUTH_HEADERS);
+
+    List<UUID> failedIds =
+        failedPipelines.getData().stream()
+            .map(org.openmetadata.schema.type.PipelineSummary::getPipelineId)
+            .collect(Collectors.toList());
+
+    assertTrue(
+        failedIds.contains(pipeline2.getId()),
+        "Pipeline 2 should be included (latest status is Failed)");
+    assertFalse(
+        failedIds.contains(pipeline1.getId()),
+        "Pipeline 1 should NOT be included (latest status is Successful)");
+    assertFalse(
+        failedIds.contains(pipeline3.getId()),
+        "Pipeline 3 should NOT be included (latest status is Successful)");
+
+    // Test Case 3: Filter by status + time range
+    // Filter for Failed status in the time range that includes the old statuses
+    ResultList<org.openmetadata.schema.type.PipelineSummary> failedInRange =
+        listPipelineSummaries("Failed", twoHoursAgo - 1000, twoHoursAgo + 1000, ADMIN_AUTH_HEADERS);
+
+    List<UUID> failedInRangeIds =
+        failedInRange.getData().stream()
+            .map(org.openmetadata.schema.type.PipelineSummary::getPipelineId)
+            .collect(Collectors.toList());
+
+    assertTrue(
+        failedInRangeIds.contains(pipeline1.getId()),
+        "Pipeline 1 should be included (latest status in range is Failed)");
+    assertFalse(
+        failedInRangeIds.contains(pipeline2.getId()),
+        "Pipeline 2 should NOT be included (latest status in range is Successful)");
+
+    // Cleanup
+    deleteEntity(pipeline1.getId(), false, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(pipeline2.getId(), false, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(pipeline3.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
 }

@@ -74,7 +74,11 @@ const addRule = async (
   await page.locator('[data-testid="condition"]').click();
 
   // Select condition
+  const conditionResponse = page.waitForResponse(
+    '/api/v1/policies/validation/condition/*'
+  );
   await page.locator(`[title="${RULE_DETAILS.condition}"]`).click();
+  await conditionResponse;
 
   // Verify condition success
   await expect(page.locator('[data-testid="condition-success"]')).toContainText(

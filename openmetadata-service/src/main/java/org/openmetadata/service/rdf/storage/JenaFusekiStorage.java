@@ -29,7 +29,7 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 @Slf4j
 public class JenaFusekiStorage implements RdfStorageInterface {
 
-  private static final String DEFAULT_GRAPH = "https://open-metadata.org/graph/default";
+  private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
   private static final String METADATA_GRAPH = "https://open-metadata.org/graph/metadata";
 
   private final RDFConnection connection;
@@ -97,17 +97,15 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   @Override
   public void storeEntity(String entityType, UUID entityId, Model entityModel) {
-    String graphUri = baseUri + "graph/" + entityType;
-
     try {
       String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
       String deleteQuery =
-          String.format("DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }", graphUri, entityUri);
+          String.format("DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }", KNOWLEDGE_GRAPH, entityUri);
 
       UpdateRequest deleteRequest = UpdateFactory.create(deleteQuery);
       connection.update(deleteRequest);
-      connection.load(graphUri, entityModel);
-      LOG.debug("Stored entity {} in graph {}", entityId, graphUri);
+      connection.load(KNOWLEDGE_GRAPH, entityModel);
+      LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
     } catch (Exception e) {
       LOG.error("Failed to store entity in Fuseki", e);
       throw new RuntimeException("Failed to store entity in RDF", e);
@@ -118,16 +116,30 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   public void storeRelationship(
       String fromType, UUID fromId, String toType, UUID toId, String relationshipType) {
 
-    String updateQuery =
+    // Use DELETE/INSERT pattern for idempotency - deletes existing triple before inserting
+    String deleteInsertQuery =
         String.format(
             "PREFIX om: <%sontology/> "
+                + "DELETE DATA { "
+                + "  GRAPH <%s> { "
+                + "    <%sentity/%s/%s> om:%s <%sentity/%s/%s> . "
+                + "  } "
+                + "}; "
                 + "INSERT DATA { "
                 + "  GRAPH <%s> { "
                 + "    <%sentity/%s/%s> om:%s <%sentity/%s/%s> . "
                 + "  } "
                 + "}",
             baseUri,
-            DEFAULT_GRAPH,
+            KNOWLEDGE_GRAPH,
+            baseUri,
+            fromType,
+            fromId,
+            relationshipType,
+            baseUri,
+            toType,
+            toId,
+            KNOWLEDGE_GRAPH,
             baseUri,
             fromType,
             fromId,
@@ -142,10 +154,10 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
     while (retryCount < maxRetries) {
       try {
-        LOG.debug("SPARQL Update Query: {}", updateQuery);
-        UpdateRequest request = UpdateFactory.create(updateQuery);
+        LOG.debug("SPARQL Update Query: {}", deleteInsertQuery);
+        UpdateRequest request = UpdateFactory.create(deleteInsertQuery);
         connection.update(request);
-        LOG.debug("Stored relationship: {} -{}- {}", fromId, relationshipType, toId);
+        LOG.debug("Stored relationship (idempotent): {} -{}- {}", fromId, relationshipType, toId);
         return; // Success
       } catch (org.apache.jena.atlas.web.HttpException e) {
         if (e.getMessage() != null
@@ -166,26 +178,53 @@ public class JenaFusekiStorage implements RdfStorageInterface {
             throw new RuntimeException("Interrupted while retrying", ie);
           }
         } else {
-          LOG.error("Failed to store relationship in Fuseki. Query was: {}", updateQuery, e);
+          LOG.error("Failed to store relationship in Fuseki. Query was: {}", deleteInsertQuery, e);
           throw new RuntimeException("Failed to store relationship in RDF", e);
         }
       } catch (Exception e) {
-        LOG.error("Failed to store relationship in Fuseki. Query was: {}", updateQuery, e);
+        LOG.error("Failed to store relationship in Fuseki. Query was: {}", deleteInsertQuery, e);
         throw new RuntimeException("Failed to store relationship in RDF", e);
       }
     }
 
     // If we get here, all retries failed
     LOG.error(
-        "Failed to store relationship after {} retries. Query was: {}", maxRetries, updateQuery);
+        "Failed to store relationship after {} retries. Query was: {}",
+        maxRetries,
+        deleteInsertQuery);
     throw new RuntimeException("Failed to store relationship in RDF after retries", lastException);
   }
 
   @Override
   public void bulkStoreRelationships(List<RelationshipData> relationships) {
+    if (relationships.isEmpty()) {
+      return;
+    }
+
+    // First, delete existing relationships to ensure idempotency
+    // This prevents duplicate triples when reindexing
+    StringBuilder deleteData = new StringBuilder();
+    deleteData.append("PREFIX om: <").append(baseUri).append("ontology/> ");
+    deleteData.append("DELETE DATA { GRAPH <").append(KNOWLEDGE_GRAPH).append("> { ");
+
+    for (RelationshipData rel : relationships) {
+      deleteData.append(
+          String.format(
+              "<%sentity/%s/%s> om:%s <%sentity/%s/%s> . ",
+              baseUri,
+              rel.getFromType(),
+              rel.getFromId(),
+              rel.getRelationshipType(),
+              baseUri,
+              rel.getToType(),
+              rel.getToId()));
+    }
+    deleteData.append("} }");
+
+    // Then insert the new relationships
     StringBuilder insertData = new StringBuilder();
     insertData.append("PREFIX om: <").append(baseUri).append("ontology/> ");
-    insertData.append("INSERT DATA { GRAPH <").append(DEFAULT_GRAPH).append("> { ");
+    insertData.append("INSERT DATA { GRAPH <").append(KNOWLEDGE_GRAPH).append("> { ");
 
     for (RelationshipData rel : relationships) {
       insertData.append(
@@ -203,9 +242,19 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     insertData.append("} }");
 
     try {
-      UpdateRequest request = UpdateFactory.create(insertData.toString());
-      connection.update(request);
-      LOG.info("Bulk stored {} relationships", relationships.size());
+      // Execute delete first (ignore errors if triples don't exist)
+      try {
+        UpdateRequest deleteRequest = UpdateFactory.create(deleteData.toString());
+        connection.update(deleteRequest);
+      } catch (Exception e) {
+        // Ignore delete errors - triples may not exist on first indexing
+        LOG.debug("Delete before insert completed (some triples may not have existed)");
+      }
+
+      // Then execute insert
+      UpdateRequest insertRequest = UpdateFactory.create(insertData.toString());
+      connection.update(insertRequest);
+      LOG.info("Bulk stored {} relationships (idempotent)", relationships.size());
     } catch (Exception e) {
       LOG.error("Failed to bulk store relationships in Fuseki", e);
       throw new RuntimeException("Failed to bulk store relationships in RDF", e);
@@ -214,13 +263,12 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   @Override
   public Model getEntity(String entityType, UUID entityId) {
-    String graphUri = baseUri + "graph/" + entityType;
     String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
 
     String query =
         String.format(
             "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH <%s> { <%s> ?p ?o . BIND(<%s> as ?s) } }",
-            graphUri, entityUri, entityUri);
+            KNOWLEDGE_GRAPH, entityUri, entityUri);
 
     try {
       Query q = QueryFactory.create(query);
@@ -234,16 +282,14 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   @Override
   public void deleteEntity(String entityType, UUID entityId) {
-    String graphUri = baseUri + "graph/" + entityType;
     String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
 
-    // Delete entity from its graph and all relationships
+    // Delete entity and all its relationships from the knowledge graph
     String deleteQuery =
         String.format(
             "DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }; "
-                + "DELETE WHERE { GRAPH ?g { ?s ?p <%s> } }; "
-                + "DELETE WHERE { GRAPH ?g { <%s> ?p ?o } }",
-            graphUri, entityUri, entityUri, entityUri);
+                + "DELETE WHERE { GRAPH <%s> { ?s ?p <%s> } }",
+            KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri);
 
     try {
       UpdateRequest request = UpdateFactory.create(deleteQuery);

@@ -140,7 +140,7 @@ class BaseModel(PydanticBaseModel):
         *,
         mask_secrets: bool = False,
         warnings: Union[bool, Literal["none", "warn", "error"]] = "none",
-        **kwargs,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         if mask_secrets:
             context = kwargs.pop("context", None) or {}

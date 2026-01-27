@@ -198,13 +198,40 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
 - **Example:** ["cognito:username", "email", "sub"]
 - **Why it matters:** Determines which claim from the JWT token identifies the user.
 - **Note:** Common Cognito claims: cognito:username, email, sub, preferred_username
+  - Order matters - first matching claim is used
 
 ## <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
 
-- **Definition:** Maps JWT claims to OpenMetadata user attributes.
-- **Example:** ["email:email", "name:name", "firstName:given_name"]
+- **Definition:** Maps JWT claims to OpenMetadata user attributes. (Overrides JWT Principal Claims if set)
+- **Example:** ["email:email", "username:preferred_username"]
 - **Why it matters:** Controls how user information from AWS Cognito maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:jwt_claim"
+- **Validation Requirements:**
+  - Both `username` and `email` mappings must be present when this field is used
+  - Only `username` and `email` keys are allowed; no other keys are permitted
+  - If validation fails, errors will be displayed on this specific field
+
+## <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
+
+- **Definition:** AWS Cognito claim or attribute containing team/department information for automatic team assignment.
+- **Example:** "custom:department", "custom:organization", "cognito:groups"
+- **Why it matters:** Automatically assigns users to existing OpenMetadata teams based on their Cognito user attributes during login.
+- **How it works:**
+  - Extracts the value(s) from the specified Cognito claim (e.g., if set to "custom:department", reads user's department from Cognito)
+  - For array claims (like "cognito:groups"), processes all values in the array
+  - Matches the extracted value(s) against existing team names in OpenMetadata
+  - Assigns the user to all matching teams that are of type "Group"
+  - If a team doesn't exist or is not of type "Group", a warning is logged but authentication continues
+- **AWS Cognito Configuration:**
+  - Custom attributes must be prefixed with "custom:" (e.g., "custom:department")
+  - Configure custom attributes in Cognito User Pool → Attributes
+  - For group-based teams, use "cognito:groups" claim (requires user pool groups configured)
+  - Ensure custom attributes are included in the ID token
+- **Note:** 
+  - The team must already exist in OpenMetadata for assignment to work
+  - Only teams of type "Group" can be auto-assigned (not "Organization" or "BusinessUnit" teams)
+  - Team names are case-sensitive and must match exactly
+  - Multiple team assignments are supported for array claims (e.g., "cognito:groups")
 
 ## <span data-id="tokenValidation">Token Validation Algorithm</span>
 

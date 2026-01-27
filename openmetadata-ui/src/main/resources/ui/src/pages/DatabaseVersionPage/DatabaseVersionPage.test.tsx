@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { EntityTabs } from '../../enums/entity.enum';
 import DatabaseVersionPage from './DatabaseVersionPage';
 
@@ -27,6 +28,7 @@ const CUSTOM_PROPERTY_TAB_NAME = 'label.custom-property-plural';
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   useParams: jest.fn(() => ({
     version: '1.2',
     tab: EntityTabs.SCHEMA,
@@ -152,7 +154,11 @@ jest.mock(
 describe('DatabaseVersionPage', () => {
   it('should render all necessary components', async () => {
     await act(async () => {
-      render(<DatabaseVersionPage />);
+      render(
+        <MemoryRouter>
+          <DatabaseVersionPage />
+        </MemoryRouter>
+      );
     });
 
     expect(screen.getByText(DATA_ASSET_VERSION_HEADER)).toBeInTheDocument();
@@ -165,7 +171,11 @@ describe('DatabaseVersionPage', () => {
 
   it('tab change, version handler, back handler should work', async () => {
     await act(async () => {
-      render(<DatabaseVersionPage />);
+      render(
+        <MemoryRouter>
+          <DatabaseVersionPage />
+        </MemoryRouter>
+      );
     });
 
     // for tab change
@@ -198,7 +208,11 @@ describe('DatabaseVersionPage', () => {
     mockGetEntityPermissionByFqn.mockResolvedValueOnce({});
 
     await act(async () => {
-      render(<DatabaseVersionPage />);
+      render(
+        <MemoryRouter>
+          <DatabaseVersionPage />
+        </MemoryRouter>
+      );
     });
 
     expect(screen.getByText(ERROR_PLACEHOLDER)).toBeInTheDocument();

@@ -53,6 +53,14 @@
       "type": "integer",
       "default": 0,
       "description": "Total count of tables impacted by this pipeline"
+    },
+    "impactedAssets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "List of fully qualified names of tables impacted by this pipeline"
     }
   },
   "required": ["pipelineId", "pipelineName", "pipelineFqn", "serviceType", "impactedAssetsCount"],

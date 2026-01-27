@@ -88,7 +88,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     );
     await page.getByTestId('explore-asset-with-no-description').click();
 
-    await page.waitForURL('**/explore?**');
+    await page.waitForURL('/explore/tables?*');
 
     await expect(page.getByTestId('advance-search-filter-text')).toContainText(
       "descriptionStatus = 'INCOMPLETE'"
@@ -100,7 +100,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     );
 
     await page.getByTestId('explore-asset-with-no-owner').click();
-    await page.waitForURL('**/explore?**');
+    await page.waitForURL('/explore/tables?*');
 
     await expect(page.getByTestId('advance-search-filter-text')).toContainText(
       'owners.displayName.keyword IS NULL'

@@ -97,7 +97,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
 
           try {
             if (searchClient.indexExists(oldIndex)) {
-              searchClient.deleteIndex(oldIndex);
+              searchClient.deleteIndexWithBackoff(oldIndex);
               LOG.info("Cleaned up old index '{}' for entity '{}'.", oldIndex, entityType);
             }
           } catch (Exception deleteEx) {
@@ -107,7 +107,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         }
 
         if (activeIndex != null && searchClient.indexExists(activeIndex)) {
-          searchClient.deleteIndex(activeIndex);
+          searchClient.deleteIndexWithBackoff(activeIndex);
           LOG.info(
               "Deleted previously active index '{}' for entity '{}'.", activeIndex, entityType);
         }
@@ -127,7 +127,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     } else {
       try {
         if (searchClient.indexExists(stagedIndex)) {
-          searchClient.deleteIndex(stagedIndex);
+          searchClient.deleteIndexWithBackoff(stagedIndex);
           LOG.info(
               "Deleted staged index '{}' after unsuccessful reindex for entity '{}'.",
               stagedIndex,

@@ -341,5 +341,4 @@ const Table = <T extends Record<string, unknown>>(
   );
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default forwardRef<HTMLDivElement, TableProps<any>>(Table);

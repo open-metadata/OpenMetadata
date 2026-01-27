@@ -11,30 +11,68 @@
  *  limitations under the License.
  */
 
-import { expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
+import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import {
+  CERT_FILE,
   lookerFormDetails,
   supersetFormDetails1,
   supersetFormDetails2,
   supersetFormDetails3,
   supersetFormDetails4,
 } from '../../constant/serviceForm';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import { UserClass } from '../../support/user/UserClass';
+import {
+  createNewPage,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { fillSupersetFormDetails } from '../../utils/serviceFormUtils';
-import { test } from '../fixtures/pages';
 
 const SERVICE_NAMES = {
   service1: `PlaywrightService_${uuid()}`,
   service2: `PlaywrightService_${uuid()}`,
 };
 
+const adminUser = new UserClass();
+
+// use the admin user to login
+test.use({ storageState: 'playwright/.auth/admin.json' });
+
 test.describe('Service form functionality', async () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
 
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
+    await afterAction();
+  });
+
   test.describe('Superset', () => {
+    // Create the Certificate file for upload
+    const testCertPath = path.join(__dirname, '..', 'output', CERT_FILE);
+
+    test.beforeAll(() => {
+      const fixturesDir = path.dirname(testCertPath);
+      if (!fs.existsSync(fixturesDir)) {
+        fs.mkdirSync(fixturesDir, { recursive: true });
+      }
+
+      fs.writeFileSync(testCertPath, CERT_FILE);
+    });
+
+    test.afterAll(() => {
+      // Clean up the test file after upload
+      fs.unlinkSync(testCertPath);
+    });
+
     test('Verify form selects are working properly', async ({ page }) => {
       test.slow();
 
@@ -68,10 +106,16 @@ test.describe('Service form functionality', async () => {
         testConnection1.request.connection.config.connection.provider
       ).toEqual(supersetFormDetails1.connection.provider);
 
+      const endTestConnection1 = page.waitForResponse(
+        '/api/v1/automations/workflows/*?hardDelete=true'
+      );
+
       await page
         .getByTestId('test-connection-modal')
-        .getByRole('button', { name: 'OK' })
+        .getByRole('button', { name: 'Cancel' })
         .click();
+
+      await endTestConnection1;
 
       await page.waitForSelector(
         '[data-testid="test-connection-modal"] .ant-modal-mask',
@@ -102,10 +146,16 @@ test.describe('Service form functionality', async () => {
         testConnection2.request.connection.config.connection.provider
       ).toEqual(supersetFormDetails2.connection.provider);
 
+      const endTestConnection2 = page.waitForResponse(
+        '/api/v1/automations/workflows/*?hardDelete=true'
+      );
+
       await page
         .getByTestId('test-connection-modal')
-        .getByRole('button', { name: 'OK' })
+        .getByRole('button', { name: 'Cancel' })
         .click();
+
+      await endTestConnection2;
 
       await page.waitForSelector(
         '[data-testid="test-connection-modal"] .ant-modal-mask',
@@ -142,10 +192,16 @@ test.describe('Service form functionality', async () => {
         testConnection3.request.connection.config.connection.scheme
       ).toEqual(supersetFormDetails3.connection.scheme);
 
+      const endTestConnection3 = page.waitForResponse(
+        '/api/v1/automations/workflows/*?hardDelete=true'
+      );
+
       await page
         .getByTestId('test-connection-modal')
-        .getByRole('button', { name: 'OK' })
+        .getByRole('button', { name: 'Cancel' })
         .click();
+
+      await endTestConnection3;
 
       await page.waitForSelector(
         '[data-testid="test-connection-modal"] .ant-modal-mask',
@@ -178,6 +234,92 @@ test.describe('Service form functionality', async () => {
       expect(
         testConnection4.request.connection.config.connection.scheme
       ).toEqual(supersetFormDetails4.connection.scheme);
+    });
+
+    test('Verify SSL cert upload with long filename and UI overflow handling', async ({
+      page,
+    }) => {
+      await page.goto('/dashboardServices/add-service');
+      await waitForAllLoadersToDisappear(page);
+      await page.click(`[data-testid="Superset"]`);
+      await page.click('[data-testid="next-button"]');
+
+      await page.fill('[data-testid="service-name"]', 'test-superset');
+      await page.click('[data-testid="next-button"]');
+
+      await fillSupersetFormDetails({ page, ...supersetFormDetails1 });
+
+      await page.getByText('SupersetApiConnection Advanced Config').click();
+
+      // Upload the test certificate file
+      const fileInput1 = page
+        .getByTestId(
+          'password-input-radio-group-root/connection/sslConfig/caCertificate'
+        )
+        .getByTestId('upload-file-widget');
+      await fileInput1.setInputFiles(testCertPath);
+
+      // Wait for file upload to complete
+      await page.waitForSelector(`[title="${CERT_FILE}"]`, {
+        state: 'visible',
+      });
+
+      await page
+        .getByTitle('Remove file')
+        .locator('[data-icon="delete"]')
+        .click();
+
+      // Wait for file removal to complete
+      await page.waitForSelector(`[title="${CERT_FILE}"]`, {
+        state: 'hidden',
+      });
+
+      // Verify the certificate content is sent correctly.
+
+      // Re-upload the certificate file
+      const fileInput2 = page
+        .getByTestId(
+          'password-input-radio-group-root/connection/sslConfig/caCertificate'
+        )
+        .getByTestId('upload-file-widget');
+      await fileInput2.setInputFiles(testCertPath);
+
+      // Wait for file upload to complete
+      await page.waitForSelector(`[title="${CERT_FILE}"]`, {
+        state: 'visible',
+      });
+
+      const testConnectionResponse1 = page.waitForResponse(
+        'api/v1/automations/workflows'
+      );
+
+      await page.getByTestId('test-connection-btn').click();
+
+      const testConnection1 = await (await testConnectionResponse1).json();
+
+      // Verify form details submission - 1
+      expect(
+        testConnection1.request.connection.config.connection.sslConfig
+          .caCertificate
+      ).toEqual(CERT_FILE);
+
+      const endTestConnection1 = page.waitForResponse(
+        '/api/v1/automations/workflows/*?hardDelete=true'
+      );
+
+      await page
+        .getByTestId('test-connection-modal')
+        .getByRole('button', { name: 'Cancel' })
+        .click();
+
+      await endTestConnection1;
+
+      await page.waitForSelector(
+        '[data-testid="test-connection-modal"] .ant-modal-mask',
+        {
+          state: 'detached',
+        }
+      );
     });
   });
 
@@ -232,11 +374,17 @@ test.describe('Service form functionality', async () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
       await page.getByTestId('confirmation-text-input').fill('DELETE');
-      await page.getByTestId('confirm-button').click();
-      await page.waitForLoadState('networkidle');
 
-      await expect(page.getByTestId('alert-message')).toContainText(
-        `Delete operation initiated for ${SERVICE_NAMES.service1}`
+      const deleteResponse = page.waitForResponse(
+        `/api/v1/services/databaseServices/async/*?hardDelete=false&recursive=true`
+      );
+      await page.getByTestId('confirm-button').click();
+      await deleteResponse;
+
+      await toastNotification(
+        page,
+        /(deleted successfully!|Delete operation initiated)/,
+        BIG_ENTITY_DELETE_TIMEOUT
       );
     });
   });

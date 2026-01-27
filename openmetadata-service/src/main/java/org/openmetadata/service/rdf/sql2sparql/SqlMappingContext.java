@@ -21,14 +21,14 @@ public class SqlMappingContext {
   public static SqlMappingContext createDefault() {
     SqlMappingContext context = SqlMappingContext.builder().build();
 
-    // Add default prefixes
     context.addPrefix("om", "https://open-metadata.org/ontology/");
+    context.addPrefix("prov", "http://www.w3.org/ns/prov#");
     context.addPrefix("dcat", "http://www.w3.org/ns/dcat#");
     context.addPrefix("dct", "http://purl.org/dc/terms/");
     context.addPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#");
     context.addPrefix("xsd", "http://www.w3.org/2001/XMLSchema#");
+    context.addPrefix("skos", "http://www.w3.org/2004/02/skos/core#");
 
-    // Add OpenMetadata entity mappings
     context.addTableMapping(
         "tables",
         TableMapping.builder()
@@ -36,11 +36,42 @@ public class SqlMappingContext {
             .subjectPattern("om:table/{id}")
             .build()
             .addColumnMapping("id", "om:id", "xsd:string")
-            .addColumnMapping("name", "om:name", "xsd:string")
-            .addColumnMapping("displayName", "om:displayName", "xsd:string")
-            .addColumnMapping("description", "om:description", "xsd:string")
+            .addColumnMapping("name", "rdfs:label", "xsd:string")
+            .addColumnMapping("displayName", "skos:prefLabel", "xsd:string")
+            .addColumnMapping("description", "dct:description", "xsd:string")
             .addColumnMapping("database", "om:database", "@id")
-            .addColumnMapping("fullyQualifiedName", "om:fullyQualifiedName", "xsd:string"));
+            .addColumnMapping("fullyQualifiedName", "om:fullyQualifiedName", "xsd:string")
+            .addColumnMapping("owners", "om:hasOwner", "@id")
+            .addColumnMapping("tags", "om:hasTag", "@id")
+            .addColumnMapping("domain", "om:belongsToDomain", "@id")
+            .addNestedMapping(
+                "votes",
+                NestedMapping.builder()
+                    .parentProperty("om:hasVotes")
+                    .nestedClass("om:Votes")
+                    .build()
+                    .addField("upVotes", "om:upVotes", "xsd:integer")
+                    .addField("downVotes", "om:downVotes", "xsd:integer")
+                    .addField("upVoters", "om:upVoters", "@id"))
+            .addNestedMapping(
+                "changeDescription",
+                NestedMapping.builder()
+                    .parentProperty("om:hasChangeDescription")
+                    .nestedClass("om:ChangeDescription")
+                    .build()
+                    .addField("previousVersion", "om:previousVersion", "xsd:decimal")
+                    .addField("fieldsAdded", "om:fieldsAdded", "@id")
+                    .addField("fieldsUpdated", "om:fieldsUpdated", "@id")
+                    .addField("fieldsDeleted", "om:fieldsDeleted", "@id"))
+            .addNestedMapping(
+                "lifeCycle",
+                NestedMapping.builder()
+                    .parentProperty("om:hasLifeCycle")
+                    .nestedClass("om:LifeCycle")
+                    .build()
+                    .addField("created", "om:lifecycleCreated", "@id")
+                    .addField("updated", "om:lifecycleUpdated", "@id")
+                    .addField("accessed", "om:lifecycleAccessed", "@id")));
 
     context.addTableMapping(
         "columns",
@@ -49,7 +80,7 @@ public class SqlMappingContext {
             .subjectPattern("om:column/{id}")
             .build()
             .addColumnMapping("id", "om:id", "xsd:string")
-            .addColumnMapping("name", "om:name", "xsd:string")
+            .addColumnMapping("name", "rdfs:label", "xsd:string")
             .addColumnMapping("dataType", "om:dataType", "xsd:string")
             .addColumnMapping("tableId", "om:table", "@id"));
 
@@ -60,7 +91,7 @@ public class SqlMappingContext {
             .subjectPattern("om:database/{id}")
             .build()
             .addColumnMapping("id", "om:id", "xsd:string")
-            .addColumnMapping("name", "om:name", "xsd:string")
+            .addColumnMapping("name", "rdfs:label", "xsd:string")
             .addColumnMapping("service", "om:service", "@id"));
 
     context.addTableMapping(
@@ -70,7 +101,7 @@ public class SqlMappingContext {
             .subjectPattern("om:user/{id}")
             .build()
             .addColumnMapping("id", "om:id", "xsd:string")
-            .addColumnMapping("name", "om:name", "xsd:string")
+            .addColumnMapping("name", "rdfs:label", "xsd:string")
             .addColumnMapping("email", "om:email", "xsd:string"));
 
     context.addTableMapping(
@@ -80,8 +111,41 @@ public class SqlMappingContext {
             .subjectPattern("om:team/{id}")
             .build()
             .addColumnMapping("id", "om:id", "xsd:string")
-            .addColumnMapping("name", "om:name", "xsd:string")
-            .addColumnMapping("displayName", "om:displayName", "xsd:string"));
+            .addColumnMapping("name", "rdfs:label", "xsd:string")
+            .addColumnMapping("displayName", "skos:prefLabel", "xsd:string"));
+
+    context.addTableMapping(
+        "lineage",
+        TableMapping.builder()
+            .rdfClass("om:LineageDetails")
+            .subjectPattern("om:lineage/{id}")
+            .build()
+            .addColumnMapping("sqlQuery", "om:sqlQuery", "xsd:string")
+            .addColumnMapping("source", "om:lineageSource", "xsd:string")
+            .addColumnMapping("pipeline", "prov:wasGeneratedBy", "@id")
+            .addColumnMapping("description", "dct:description", "xsd:string")
+            .addColumnMapping("upstream", "prov:wasDerivedFrom", "@id")
+            .addColumnMapping("downstream", "prov:wasInfluencedBy", "@id")
+            .addNestedMapping(
+                "columnsLineage",
+                NestedMapping.builder()
+                    .parentProperty("om:hasColumnLineage")
+                    .nestedClass("om:ColumnLineage")
+                    .build()
+                    .addField("fromColumns", "om:fromColumn", "xsd:string")
+                    .addField("toColumn", "om:toColumn", "xsd:string")
+                    .addField("function", "om:transformFunction", "xsd:string")));
+
+    context.addTableMapping(
+        "pipelines",
+        TableMapping.builder()
+            .rdfClass("om:Pipeline")
+            .subjectPattern("om:pipeline/{id}")
+            .build()
+            .addColumnMapping("id", "om:id", "xsd:string")
+            .addColumnMapping("name", "rdfs:label", "xsd:string")
+            .addColumnMapping("displayName", "skos:prefLabel", "xsd:string")
+            .addColumnMapping("description", "dct:description", "xsd:string"));
 
     return context;
   }
@@ -113,6 +177,7 @@ public class SqlMappingContext {
     private final String subjectPattern;
 
     @Builder.Default private final Map<String, ColumnMapping> columnMappings = new HashMap<>();
+    @Builder.Default private final Map<String, NestedMapping> nestedMappings = new HashMap<>();
 
     public TableMapping addColumnMapping(String columnName, String rdfProperty, String dataType) {
       columnMappings.put(
@@ -120,8 +185,42 @@ public class SqlMappingContext {
       return this;
     }
 
+    public TableMapping addNestedMapping(String fieldName, NestedMapping mapping) {
+      nestedMappings.put(fieldName.toLowerCase(), mapping);
+      return this;
+    }
+
     public Optional<ColumnMapping> getColumnMapping(String columnName) {
       return Optional.ofNullable(columnMappings.get(columnName.toLowerCase()));
+    }
+
+    public Optional<NestedMapping> getNestedMapping(String fieldName) {
+      return Optional.ofNullable(nestedMappings.get(fieldName.toLowerCase()));
+    }
+
+    public boolean hasNestedField(String path) {
+      if (!path.contains(".")) {
+        return nestedMappings.containsKey(path.toLowerCase());
+      }
+      String[] parts = path.split("\\.", 2);
+      return nestedMappings.containsKey(parts[0].toLowerCase());
+    }
+  }
+
+  @Getter
+  @Builder
+  public static class NestedMapping {
+    private final String parentProperty;
+    private final String nestedClass;
+    @Builder.Default private final Map<String, ColumnMapping> fields = new HashMap<>();
+
+    public NestedMapping addField(String fieldName, String rdfProperty, String dataType) {
+      fields.put(fieldName.toLowerCase(), new ColumnMapping(fieldName, rdfProperty, dataType));
+      return this;
+    }
+
+    public Optional<ColumnMapping> getField(String fieldName) {
+      return Optional.ofNullable(fields.get(fieldName.toLowerCase()));
     }
   }
 
@@ -130,11 +229,18 @@ public class SqlMappingContext {
     private final String columnName;
     private final String rdfProperty;
     private final String dataType;
+    private final boolean transitive;
 
     public ColumnMapping(String columnName, String rdfProperty, String dataType) {
+      this(columnName, rdfProperty, dataType, false);
+    }
+
+    public ColumnMapping(
+        String columnName, String rdfProperty, String dataType, boolean transitive) {
       this.columnName = columnName;
       this.rdfProperty = rdfProperty;
       this.dataType = dataType;
+      this.transitive = transitive;
     }
 
     public boolean isObjectProperty() {

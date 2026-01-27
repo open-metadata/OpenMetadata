@@ -60,7 +60,7 @@ SERVICE_CONNECTION_CONFIG = MysqlConnection(
         password="test",
     ),
     hostPort="localhost:5432",
-    databaseSchema="mysql_db",
+    databaseSchema="schema",
 )
 
 
@@ -92,7 +92,7 @@ SERVICE_CONNECTION_CONFIG = MysqlConnection(
                 connection=DatabaseConnection(config=SERVICE_CONNECTION_CONFIG),
                 serviceType=DatabaseServiceType.Mysql,
             ),
-            "mysql://test:test@localhost:5432/mysql_db",
+            "mysql://test:test@localhost:5432/schema",
         ),
         (
             DatabaseService(
@@ -110,6 +110,44 @@ SERVICE_CONNECTION_CONFIG = MysqlConnection(
                 serviceType=DatabaseServiceType.Postgres,
             ),
             "snowflake://test:test@sf-account/database/schema?account=sf-account&warehouse=SF_DH",
+        ),
+        pytest.param(
+            DatabaseService(
+                id="85811038-099a-11ed-861d-0242ac120002",
+                name="postgres_special_chars",
+                connection=DatabaseConnection(
+                    config=PostgresConnection(
+                        username="test",
+                        authType=BasicAuth(
+                            password="pass]word[test",
+                        ),
+                        hostPort="localhost:5432",
+                        database="dvdrental",
+                    )
+                ),
+                serviceType=DatabaseServiceType.Postgres,
+            ),
+            "postgresql://test:pass]word[test@localhost:5432/database",
+            id="postgres_special_chars_in_password",
+        ),
+        pytest.param(
+            DatabaseService(
+                id="85811038-099a-11ed-861d-0242ac120002",
+                name="mysql_special_chars",
+                connection=DatabaseConnection(
+                    config=MysqlConnection(
+                        username="test",
+                        authType=BasicAuth(
+                            password="p@ss]w#rd!",
+                        ),
+                        hostPort="localhost:3306",
+                        databaseSchema="schema",
+                    )
+                ),
+                serviceType=DatabaseServiceType.Mysql,
+            ),
+            "mysql://test:p%40ss]w#rd!@localhost:3306/schema",
+            id="mysql_special_chars_in_password",
         ),
     ],
 )

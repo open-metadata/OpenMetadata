@@ -82,6 +82,7 @@ import spark from '../assets/img/service-icon-spark.png';
 import spline from '../assets/img/service-icon-spline.png';
 import mysql from '../assets/img/service-icon-sql.png';
 import sqlite from '../assets/img/service-icon-sqlite.png';
+import starrocks from '../assets/img/service-icon-starrocks.png';
 import superset from '../assets/img/service-icon-superset.png';
 import synapse from '../assets/img/service-icon-synapse.png';
 import tableau from '../assets/img/service-icon-tableau.png';
@@ -106,6 +107,7 @@ import securitySafe from '../assets/svg/security-safe.svg';
 import googleDrive from '../assets/svg/service-icon-google-drive.svg';
 import hex from '../assets/svg/service-icon-hex.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
+import sftp from '../assets/svg/service-icon-sftp.svg';
 import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
 import { EntityType } from '../enums/entity.enum';
@@ -127,7 +129,6 @@ import { PipelineServiceType } from '../generated/entity/services/pipelineServic
 import { SearchServiceType } from '../generated/entity/services/searchService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
-import i18n from '../utils/i18next/LocalUtil';
 import { SERVICE_FILTER_PATTERN_FIELDS } from './ServiceConnection.constants';
 
 export const MYSQL = mysql;
@@ -163,6 +164,7 @@ export const DATABRICK = databrick;
 export const UNITYCATALOG = unitycatalog;
 export const IBMDB2 = ibmdb2;
 export const DORIS = doris;
+export const STARROCKS = starrocks;
 export const DRUID = druid;
 export const DYNAMODB = dynamodb;
 export const SIGMA = sigma;
@@ -224,6 +226,7 @@ export const COCKROACH = cockroach;
 export const SECURITY_DEFAULT = securitySafe;
 export const GRAFANA = grafana;
 export const GOOGLE_DRIVE = googleDrive;
+export const SFTP = sftp;
 export const TIMESCALE = timescale;
 export const excludedService = [
   MlModelServiceType.Sklearn,
@@ -258,43 +261,25 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   drives: ServiceCategory.DRIVE_SERVICES,
 };
 
-export const servicesDisplayName: { [key: string]: string } = {
-  databaseServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.database'),
-  }),
-  messagingServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.messaging'),
-  }),
-  dashboardServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.dashboard'),
-  }),
-  pipelineServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.pipeline'),
-  }),
-  mlmodelServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.ml-model'),
-  }),
-  metadataServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.metadata'),
-  }),
-  storageServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.storage'),
-  }),
-  searchServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.search'),
-  }),
-  dashboardDataModel: i18n.t('label.entity-service', {
-    entity: i18n.t('label.data-model'),
-  }),
-  apiServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.api-uppercase'),
-  }),
-  securityServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.security'),
-  }),
-  driveServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.drive'),
-  }),
+export const servicesDisplayName: Record<
+  string,
+  { key: string; entity: string }
+> = {
+  databaseServices: { key: 'label.entity-service', entity: 'label.database' },
+  messagingServices: { key: 'label.entity-service', entity: 'label.messaging' },
+  dashboardServices: { key: 'label.entity-service', entity: 'label.dashboard' },
+  pipelineServices: { key: 'label.entity-service', entity: 'label.pipeline' },
+  mlmodelServices: { key: 'label.entity-service', entity: 'label.ml-model' },
+  metadataServices: { key: 'label.entity-service', entity: 'label.metadata' },
+  storageServices: { key: 'label.entity-service', entity: 'label.storage' },
+  searchServices: { key: 'label.entity-service', entity: 'label.search' },
+  dashboardDataModel: {
+    key: 'label.entity-service',
+    entity: 'label.data-model',
+  },
+  apiServices: { key: 'label.entity-service', entity: 'label.api-uppercase' },
+  securityServices: { key: 'label.entity-service', entity: 'label.security' },
+  driveServices: { key: 'label.entity-service', entity: 'label.drive' },
 };
 
 export const DEF_UI_SCHEMA = {
@@ -371,38 +356,34 @@ export const SERVICE_CATEGORY_OPTIONS = map(ServiceCategory, (value) => ({
 
 export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
   {
-    name: i18n.t('label.select-field', {
-      field: i18n.t('label.service-type'),
-    }),
+    name: 'label.select-field',
+    nameData: { field: 'label.service-type' },
     step: 1,
   },
   {
-    name: i18n.t('label.configure-entity', {
-      entity: i18n.t('label.service'),
-    }),
+    name: 'label.configure-entity',
+    nameData: { entity: 'label.service' },
     step: 2,
   },
   {
-    name: i18n.t('label.connection-entity', {
-      entity: i18n.t('label.detail-plural'),
-    }),
+    name: 'label.connection-entity',
+    nameData: { entity: 'label.detail-plural' },
     step: 3,
   },
   {
-    name: i18n.t('label.set-default-filters'),
+    name: 'label.set-default-filters',
     step: 4,
   },
 ];
 
 export const STEPS_FOR_EDIT_SERVICE: Array<StepperStepType> = [
   {
-    name: i18n.t('label.connection-entity', {
-      entity: i18n.t('label.detail-plural'),
-    }),
+    name: 'label.connection-entity',
+    nameData: { entity: 'label.detail-plural' },
     step: 1,
   },
   {
-    name: i18n.t('label.set-default-filters'),
+    name: 'label.set-default-filters',
     step: 2,
   },
 ];
@@ -410,8 +391,10 @@ export const STEPS_FOR_EDIT_SERVICE: Array<StepperStepType> = [
 export const SERVICE_DEFAULT_ERROR_MAP = {
   serviceType: false,
 };
-// 2 minutes
-export const FETCHING_EXPIRY_TIME = 2 * 60 * 1000;
+// 3 minutes timeout to wait for test connection status
+// Increasing it temporarily while we investigate test connection delays
+// @pmbrull
+export const FETCHING_EXPIRY_TIME = 3 * 60 * 1000;
 export const FETCH_INTERVAL = 2000;
 export const WORKFLOW_COMPLETE_STATUS = [
   WorkflowStatus.Failed,
@@ -470,28 +453,26 @@ export const BETA_SERVICES = [
   DashboardServiceType.Hex,
   DatabaseServiceType.ServiceNow,
   DatabaseServiceType.Timescale,
+  DatabaseServiceType.Dremio,
   MetadataServiceType.Collibra,
+  PipelineServiceType.Mulesoft,
+  DatabaseServiceType.MicrosoftFabric,
+  PipelineServiceType.MicrosoftFabricPipeline,
 ];
 
-export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
-  'message.test-your-connection-before-creating-service'
-);
+export const TEST_CONNECTION_INITIAL_MESSAGE =
+  'message.test-your-connection-before-creating-service';
 
-export const TEST_CONNECTION_SUCCESS_MESSAGE = i18n.t(
-  'message.connection-test-successful'
-);
+export const TEST_CONNECTION_SUCCESS_MESSAGE =
+  'message.connection-test-successful';
 
-export const TEST_CONNECTION_FAILURE_MESSAGE = i18n.t(
-  'message.connection-test-failed'
-);
+export const TEST_CONNECTION_FAILURE_MESSAGE = 'message.connection-test-failed';
 
-export const TEST_CONNECTION_TESTING_MESSAGE = i18n.t(
-  'message.testing-your-connection-may-take-two-minutes'
-);
+export const TEST_CONNECTION_TESTING_MESSAGE =
+  'message.testing-your-connection-may-take-two-minutes';
 
-export const TEST_CONNECTION_WARNING_MESSAGE = i18n.t(
-  'message.connection-test-warning'
-);
+export const TEST_CONNECTION_WARNING_MESSAGE =
+  'message.connection-test-warning';
 
 export const ADVANCED_PROPERTIES = [
   'connectionArguments',
@@ -567,4 +548,6 @@ export const SERVICE_TYPE_WITH_DISPLAY_NAME = new Map<string, string>([
   [PipelineServiceType.OpenLineage, 'Open Lineage'],
   [MetadataServiceType.AlationSink, 'Alation Sink'],
   [SearchServiceType.ElasticSearch, 'Elasticsearch'],
+  [DatabaseServiceType.MicrosoftFabric, 'Microsoft Fabric'],
+  [PipelineServiceType.MicrosoftFabricPipeline, 'Microsoft Fabric Pipeline'],
 ]);

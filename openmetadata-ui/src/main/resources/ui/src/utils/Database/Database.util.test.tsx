@@ -11,15 +11,12 @@
  *  limitations under the License.
  */
 import { useNavigate } from 'react-router-dom';
-import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../enums/entity.enum';
-import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import {
   DatabaseFields,
   ExtraDatabaseDropdownOptions,
   getQueryFilterForDatabase,
-  schemaTableColumns,
 } from './Database.util';
 
 jest.mock(
@@ -44,26 +41,6 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const mockNavigate = jest.fn();
-
-jest.mock('../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue([
-    {
-      title: 'label.owner-plural',
-      dataIndex: 'owners',
-      key: 'owners',
-      width: 180,
-      filterIcon: () => <div>FilterIcon</div>,
-      render: () => (
-        <OwnerLabel
-          isCompactView={false}
-          maxVisibleOwners={4}
-          owners={[{ id: '1', name: 'John Doe', type: 'user' }]}
-          showLabel={false}
-        />
-      ),
-    },
-  ]),
-}));
 
 describe('Database Util', () => {
   beforeEach(() => {
@@ -110,92 +87,6 @@ describe('Database Util', () => {
       const expectedFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS}, ${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
 
       expect(DatabaseFields).toEqual(expectedFields);
-    });
-  });
-
-  describe.skip('Database Util - schemaTableColumns', () => {
-    it('should render the correct columns', () => {
-      const record = {
-        name: 'schema1',
-        fullyQualifiedName: 'database.schema1',
-        description: 'Schema 1 description',
-        owners: [{ id: '1', type: 'user', name: 'John Doe' }],
-        usageSummary: {
-          weeklyStats: { percentileRank: 80, count: 10 },
-          dailyStats: { count: 10 },
-          date: new Date(),
-        },
-        database: { name: 'database', id: 'database', type: 'database' },
-        service: { name: 'service1', id: 'service1', type: 'service' },
-      } as DatabaseSchema;
-
-      const expectedColumns = [
-        {
-          title: 'label.schema-name',
-          dataIndex: 'name',
-          key: 'name',
-          width: 250,
-          render: expect.any(Function),
-        },
-        {
-          title: 'label.description',
-          dataIndex: 'description',
-          key: 'description',
-          render: expect.any(Function),
-        },
-        {
-          title: 'label.owner-plural',
-          dataIndex: 'owners',
-          key: 'owners',
-          width: 180,
-          render: expect.any(Function),
-          filterIcon: expect.any(Function),
-        },
-        {
-          title: 'label.usage',
-          dataIndex: 'usageSummary',
-          key: 'usageSummary',
-          width: 120,
-          render: expect.any(Function),
-        },
-      ];
-
-      const columns = schemaTableColumns;
-
-      expect(columns).toEqual(expectedColumns);
-
-      // Test render functions
-      const nameColumn = columns[0];
-      const descriptionColumn = columns[1];
-      const ownerColumn = columns[2];
-      const usageColumn = columns[3];
-
-      // Test render function for name column
-      const nameRender = nameColumn.render;
-      const nameRenderResult = nameRender && nameRender(record.name, record, 0);
-
-      expect(nameRenderResult).toMatchSnapshot();
-
-      // Test render function for description column
-      const descriptionRender = descriptionColumn.render;
-      const descriptionRenderResult =
-        descriptionRender && descriptionRender(record.description, record, 0);
-
-      expect(descriptionRenderResult).toMatchSnapshot();
-
-      // Test render function for owner column
-      const ownerRender = ownerColumn.render;
-      const ownerRenderResult =
-        ownerRender && ownerRender(record.owners, record, 0);
-
-      expect(ownerRenderResult).toMatchSnapshot();
-
-      // Test render function for usage column
-      const usageRender = usageColumn.render;
-      const usageRenderResult =
-        usageRender && usageRender(record.usageSummary, record, 0);
-
-      expect(usageRenderResult).toMatchSnapshot();
     });
   });
 

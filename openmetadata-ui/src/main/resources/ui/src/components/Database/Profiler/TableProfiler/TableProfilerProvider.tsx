@@ -47,6 +47,7 @@ import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../../rest/testAPI';
+import { formatNumberWithComma } from '../../../../utils/CommonUtils';
 import {
   aggregateTestResultsByEntity,
   TestCaseCountByStatus,
@@ -137,7 +138,7 @@ export const TableProfilerProvider = ({
           entity: t('label.row'),
         }),
         key: 'row-count',
-        value: profile?.rowCount ?? 0,
+        value: formatNumberWithComma(profile?.rowCount ?? 0),
         icon: RowCountIcon,
       },
       {
@@ -145,7 +146,9 @@ export const TableProfilerProvider = ({
           entity: t('label.count'),
         }),
         key: 'column-count',
-        value: profile?.columnCount ?? tableProfiler?.columns?.length ?? 0,
+        value: formatNumberWithComma(
+          profile?.columnCount ?? tableProfiler?.columns?.length ?? 0
+        ),
         icon: ColumnCountIcon,
       },
       {
@@ -169,14 +172,14 @@ export const TableProfilerProvider = ({
               .toLocaleString(DateTime.DATE_MED)
           : '--',
         extra: profile?.timestamp
-          ? `Last updated: ${DateTime.fromJSDate(
+          ? `${t('label.last-updated')}: ${DateTime.fromJSDate(
               new Date(profile?.timestamp)
             ).toLocaleString(DateTime.DATETIME_MED)}`
           : undefined,
         icon: CreatedDateIcon,
       },
     ];
-  }, [tableProfiler]);
+  }, [tableProfiler, t]);
 
   const handleOpenTestCaseDrawer = (type: TestLevel) => {
     setIsTestCaseDrawerOpen(true);

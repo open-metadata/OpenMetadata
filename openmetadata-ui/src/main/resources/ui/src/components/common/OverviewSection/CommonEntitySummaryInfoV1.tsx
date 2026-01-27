@@ -30,6 +30,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
   componentType,
   isDomainVisible = false,
   excludedItems = [],
+  onLinkClick,
 }) => {
   const { t } = useTranslation();
 
@@ -41,7 +42,15 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
 
       const isDomain =
         isDomainVisible && info.name === t('label.domain-plural');
-      const isVisibleInComponent = (info.visible ?? []).includes(componentType);
+
+      // If componentType is empty and item has no visible field, show it
+      // Otherwise, check if componentType is included in visible array
+      const hasVisibleField =
+        info.visible !== undefined && info.visible.length > 0;
+      const isVisibleInComponent =
+        componentType === '' && !hasVisibleField
+          ? true
+          : (info.visible ?? []).includes(componentType);
 
       return isVisibleInComponent || isDomain;
     });
@@ -67,7 +76,10 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
     }
 
     return (
-      <Link className="summary-item-link" to={info.linkProps ?? info.url ?? ''}>
+      <Link
+        className="summary-item-link"
+        to={info.linkProps ?? info.url ?? ''}
+        onClick={onLinkClick}>
         {info.value}
       </Link>
     );

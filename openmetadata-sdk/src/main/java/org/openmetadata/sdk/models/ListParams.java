@@ -59,9 +59,125 @@ public class ListParams {
     return this;
   }
 
+  public ListParams setService(String service) {
+    filters.put("service", service);
+    return this;
+  }
+
+  public ListParams setDatabase(String database) {
+    filters.put("database", database);
+    return this;
+  }
+
+  public ListParams setDatabaseSchema(String databaseSchema) {
+    filters.put("databaseSchema", databaseSchema);
+    return this;
+  }
+
+  public ListParams setParent(String parent) {
+    filters.put("parent", parent);
+    return this;
+  }
+
+  public ListParams setDomain(String domain) {
+    filters.put("domain", domain);
+    return this;
+  }
+
+  public ListParams withDomain(String domain) {
+    return setDomain(domain);
+  }
+
+  public ListParams setDomains(String domains) {
+    filters.put("domains", domains);
+    return this;
+  }
+
+  public ListParams withService(String service) {
+    return setService(service);
+  }
+
+  public ListParams setDirectory(String directory) {
+    filters.put("directory", directory);
+    return this;
+  }
+
+  public ListParams withDirectory(String directory) {
+    return setDirectory(directory);
+  }
+
+  public ListParams setRoot(String root) {
+    filters.put("root", root);
+    return this;
+  }
+
+  public ListParams withRoot(String root) {
+    return setRoot(root);
+  }
+
+  public ListParams setProvider(String provider) {
+    filters.put("provider", provider);
+    return this;
+  }
+
+  public ListParams withProvider(String provider) {
+    return setProvider(provider);
+  }
+
+  public ListParams setServiceType(String serviceType) {
+    filters.put("serviceType", serviceType);
+    return this;
+  }
+
+  public ListParams withServiceType(String serviceType) {
+    return setServiceType(serviceType);
+  }
+
+  public ListParams setPipelineType(String pipelineType) {
+    filters.put("pipelineType", pipelineType);
+    return this;
+  }
+
+  public ListParams withPipelineType(String pipelineType) {
+    return setPipelineType(pipelineType);
+  }
+
+  public ListParams withLimit(Integer limit) {
+    return setLimit(limit);
+  }
+
+  public ListParams withAfter(String after) {
+    return setAfter(after);
+  }
+
+  public ListParams addQueryParam(String key, String value) {
+    queryParams.put(key, value);
+    return this;
+  }
+
+  public ListParams setQueryParams(Map<String, String> params) {
+    if (params != null) {
+      queryParams.putAll(params);
+    }
+    return this;
+  }
+
   public Map<String, String> toQueryParams() {
-    Map<String, String> params = new HashMap<>(queryParams);
-    params.putAll(filters);
+    Map<String, String> params = new HashMap<>();
+
+    // Add queryParams, filtering out null values
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      if (entry.getValue() != null) {
+        params.put(entry.getKey(), entry.getValue());
+      }
+    }
+
+    // Add filters, filtering out null values
+    for (Map.Entry<String, String> entry : filters.entrySet()) {
+      if (entry.getValue() != null) {
+        params.put(entry.getKey(), entry.getValue());
+      }
+    }
 
     if (limit != null) {
       params.put("limit", limit.toString());

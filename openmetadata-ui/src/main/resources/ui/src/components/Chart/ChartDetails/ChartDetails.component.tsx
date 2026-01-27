@@ -37,6 +37,7 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -75,7 +76,8 @@ const ChartDetails = ({
     tab: EntityTabs;
   }>();
   const { customizedPage, isLoading } = useCustomPages('Chart' as PageType);
-  const { fqn: decodedChartFQN } = useFqn();
+  const { entityFqn: decodedChartFQN } = useFqn({ type: EntityType.CHART });
+
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -284,11 +286,7 @@ const ChartDetails = ({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.chart'),
-      })}
-      title="Table details">
+    <PageLayoutV1 pageTitle={getEntityName(chartDetails)} title="Table details">
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

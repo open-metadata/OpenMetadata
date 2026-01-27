@@ -27,7 +27,7 @@ export interface ChartData {
 export interface SummaryPieChartCardProps {
   title: string;
   value: number;
-  percentage: number;
+  percentage: number | string;
   chartData: ChartData[];
   isLoading?: boolean;
   showLegends?: boolean;

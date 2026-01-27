@@ -38,8 +38,11 @@ const TagSelectForm = ({
     tags: DefaultOptionType | DefaultOptionType[];
   }) => {
     setIsSubmitLoading(true);
-    await onSubmit(data.tags);
-    setIsSubmitLoading(false);
+    try {
+      await onSubmit(data.tags);
+    } finally {
+      setIsSubmitLoading(false);
+    }
   };
 
   return (

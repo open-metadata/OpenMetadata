@@ -53,9 +53,14 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'retain-on-failure',
+    trace: 'on-first-retry',
     /* Screenshot on failure. */
     screenshot: 'only-on-failure',
+
+    /* Add navigation timeout to prevent infinite hangs on networkidle waits.
+     * This ensures page.goto() and waitForLoadState() calls timeout after 60s
+     * instead of hanging indefinitely under resource pressure. */
+    navigationTimeout: 60000,
   },
 
   /* Configure projects for major browsers */
@@ -81,6 +86,7 @@ export default defineConfig({
         '**/nightly/**',
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
+        '**/SystemCertificationTags.spec.ts',
       ],
     },
     {
@@ -112,6 +118,15 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['DataAssetRulesEnabled'],
       fullyParallel: true,
+    },
+    // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)
+    // They must run in isolation after the main chromium project to avoid flakiness
+    {
+      name: 'SystemCertificationTags',
+      testMatch: '**/SystemCertificationTags.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'chromium'],
+      fullyParallel: false,
     },
   ],
 

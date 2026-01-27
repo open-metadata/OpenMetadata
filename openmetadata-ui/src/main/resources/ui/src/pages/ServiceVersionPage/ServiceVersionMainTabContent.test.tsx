@@ -82,6 +82,16 @@ jest.mock('../../utils/TableColumn.util', () => ({
   domainTableObject: jest.fn().mockReturnValue([]),
   dataProductTableObject: jest.fn().mockReturnValue([]),
   tagTableObject: jest.fn().mockReturnValue([]),
+  descriptionTableObject: jest.fn().mockReturnValue([
+    {
+      title: 'label.description',
+      dataIndex: 'description',
+      key: 'description',
+      render: () => (
+        <div data-testid="viewer-container">DescriptionContainer</div>
+      ),
+    },
+  ]),
 }));
 
 const mockPagingHandler = jest.fn();

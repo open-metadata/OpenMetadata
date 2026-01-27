@@ -143,7 +143,7 @@ describe('FieldCard', () => {
     render(<FieldCard {...baseProps} />);
 
     expect(getDataTypeString).toHaveBeenCalled();
-    expect(screen.getByText(/^DT:/)).toBeInTheDocument();
+    expect(screen.getByText(/^DT /)).toBeInTheDocument();
   });
 
   it('renders constraint icon when columnConstraint provided', () => {

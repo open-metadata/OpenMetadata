@@ -2,6 +2,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.schema.type.EventType.THREAD_CREATED;
+import static org.openmetadata.schema.type.EventType.THREAD_UPDATED;
 import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
 
@@ -31,7 +33,10 @@ import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TaskDetails;
@@ -44,6 +49,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.IncidentManagerException;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
+import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
@@ -52,13 +58,12 @@ import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverity
 
 public class TestCaseResolutionStatusRepository
     extends EntityTimeSeriesRepository<TestCaseResolutionStatus> {
-  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseIncidentStatus";
   public static final String TIME_TO_RESPONSE = "timeToResponse";
   public static final String TIME_TO_RESOLUTION = "timeToResolution";
 
   public TestCaseResolutionStatusRepository() {
     super(
-        COLLECTION_PATH,
+        TestCaseResolutionStatusResource.COLLECTION_PATH,
         Entity.getCollectionDAO().testCaseResolutionStatusTimeSeriesDao(),
         TestCaseResolutionStatus.class,
         Entity.TEST_CASE_RESOLUTION_STATUS);
@@ -309,6 +314,41 @@ public class TestCaseResolutionStatusRepository
     newIncidentStatus.setTestCaseReference(testCaseReference);
   }
 
+  /**
+   * Creates a ChangeEvent for when a task is automatically created or updated during incident management.
+   *
+   * <p>This method is ONLY called from internal code paths (not REST endpoints).
+   * REST endpoints have their ChangeEvents created by ChangeEventHandler.process().
+   *
+   * @param thread The Thread entity (task) that was just created or updated
+   * @param userName The user who triggered the incident status change
+   * @param eventType The type of event: THREAD_CREATED for new tasks, THREAD_UPDATED for reassignments
+   * @param changeDescription Optional description of changes (for THREAD_UPDATED events)
+   */
+  private void createAndPersistThreadChangeEvent(
+      Thread thread, String userName, EventType eventType, ChangeDescription changeDescription) {
+    // Create the ChangeEvent for the newly created or updated task
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(eventType)
+            .withEntityId(thread.getId())
+            .withEntityType(Entity.THREAD)
+            .withEntityFullyQualifiedName(thread.getId().toString())
+            .withUserName(userName)
+            .withTimestamp(System.currentTimeMillis())
+            .withEntity(thread);
+
+    // Include change description if provided (tracks what changed in the update)
+    if (changeDescription != null) {
+      changeEvent.withChangeDescription(changeDescription);
+    }
+
+    // Persist the ChangeEvent to the database
+    // This triggers the notification pipeline to process the event
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+  }
+
   private void createTask(
       TestCaseResolutionStatus incidentStatus, List<EntityReference> assignees) {
 
@@ -354,6 +394,11 @@ public class TestCaseResolutionStatusRepository
     FeedRepository feedRepository = Entity.getFeedRepository();
     feedRepository.create(thread);
 
+    // Create explicit ChangeEvent for the auto-created task
+    // No ChangeDescription needed for task creation (null)
+    createAndPersistThreadChangeEvent(
+        thread, incidentStatus.getUpdatedBy().getName(), THREAD_CREATED, null);
+
     // Send WebSocket Notification
     WebsocketNotificationHandler.handleTaskNotification(thread);
   }
@@ -369,9 +414,15 @@ public class TestCaseResolutionStatusRepository
     FeedRepository feedRepository = Entity.getFeedRepository();
     RestUtil.PatchResponse<Thread> thread =
         feedRepository.patchThread(null, originalTask.getId(), user, patch);
+    Thread updatedThread = thread.entity();
+
+    // Create explicit ChangeEvent for the assignee update with ChangeDescription
+    // The ChangeDescription from patchThread() tracks the assignee field change
+    createAndPersistThreadChangeEvent(
+        updatedThread, user, THREAD_UPDATED, updatedThread.getChangeDescription());
 
     // Send WebSocket Notification
-    WebsocketNotificationHandler.handleTaskNotification(thread.entity());
+    WebsocketNotificationHandler.handleTaskNotification(updatedThread);
   }
 
   public void inferIncidentSeverity(TestCaseResolutionStatus incident) {

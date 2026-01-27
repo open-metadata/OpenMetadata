@@ -13,6 +13,13 @@
 import cronstrue from 'cronstrue';
 import { capitalize, isNaN, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
+import {
+  DAY_SECONDS,
+  HOUR_SECONDS,
+  MINUTE_SECONDS,
+  MONTH_SECONDS,
+  YEAR_SECONDS,
+} from '../../constants/Date.constants';
 import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
 import { getCurrentLocaleForConstrue } from '../i18next/i18nextUtil';
 import i18next from '../i18next/LocalUtil';
@@ -20,6 +27,7 @@ import i18next from '../i18next/LocalUtil';
 export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
 export const DATE_TIME_WITH_OFFSET_FORMAT = "MMMM dd, yyyy, h:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 12:00 AM (UTC+05:30)
 export const DATE_TIME_WEEKDAY_WITH_ORDINAL = "ccc d'th' MMMM, yyyy, hh:mm a"; // e.g. Mon 1st January, 2025, 12:00 AM
+export const DATE_TIME_WITH_OFFSET_SHORT = "MMM dd, yyyy, hh:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 2025, 12:00 AM (UTC+05:30)
 /**
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM
@@ -31,7 +39,7 @@ export const formatDateTime = (date?: number) => {
 
   const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
 
-  return dateTime.toLocaleString(DateTime.DATETIME_MED);
+  return dateTime.toFormat(DATE_TIME_WITH_OFFSET_SHORT);
 };
 
 /**
@@ -361,6 +369,89 @@ export const convertMillisecondsToHumanReadableFormat = (
   }
 
   // Prepend minus sign for negative values
+  return isNegative
+    ? `${prependForNegativeValue}${formattedResult}`
+    : formattedResult;
+};
+
+/**
+ * Convert backend-provided seconds into a compact human-readable string.
+ * Uses fixed units (1Y=31104000s, 1M=2592000s, 1d=86400s, 1h=3600s, 1m=60s)
+ * matching backend freshness calculations.
+ * @param seconds Seconds (can be negative)
+ * @param length Optional max number of units to include
+ * @param prependForNegativeValue Prefix for negative values (default: '-')
+ * @returns Compact string like "1Y 2M 5d 3h 15m 30s"
+ */
+export const convertSecondsToHumanReadableFormat = (
+  seconds: number,
+  length?: number,
+  prependForNegativeValue = '-'
+): string => {
+  // Handle zero
+  if (seconds === 0) {
+    return '0s';
+  }
+
+  // Handle negative values
+  const isNegative = seconds < 0;
+  let remainingSeconds = Math.abs(seconds);
+
+  const result: string[] = [];
+
+  // Extract years first (using 360 days per year: 12 months × 30 days)
+  const years = Math.floor(remainingSeconds / YEAR_SECONDS);
+  if (years > 0) {
+    result.push(`${years}Y`);
+    remainingSeconds -= years * YEAR_SECONDS;
+  }
+
+  // Extract months (only from what remains after years)
+  const months = Math.floor(remainingSeconds / MONTH_SECONDS);
+  if (months > 0) {
+    result.push(`${months}M`);
+    remainingSeconds -= months * MONTH_SECONDS;
+  }
+
+  // Extract days
+  const days = Math.floor(remainingSeconds / DAY_SECONDS);
+  if (days > 0) {
+    result.push(`${days}d`);
+    remainingSeconds -= days * DAY_SECONDS;
+  }
+
+  // Extract hours
+  const hours = Math.floor(remainingSeconds / HOUR_SECONDS);
+  if (hours > 0) {
+    result.push(`${hours}h`);
+    remainingSeconds -= hours * HOUR_SECONDS;
+  }
+
+  // Extract minutes
+  const minutes = Math.floor(remainingSeconds / MINUTE_SECONDS);
+  if (minutes > 0) {
+    result.push(`${minutes}m`);
+    remainingSeconds -= minutes * MINUTE_SECONDS;
+  }
+
+  // Extract seconds
+  const secs = Math.floor(remainingSeconds);
+  if (secs > 0) {
+    result.push(`${secs}s`);
+  }
+
+  // If no units found, return 0s
+  if (result.length === 0) {
+    return '0s';
+  }
+
+  let formattedResult = result.join(' ');
+
+  if (length && result.length > length) {
+    formattedResult = result.slice(0, length).join(' ');
+  }
+
+  // Prepend prefix for negative values
   return isNegative
     ? `${prependForNegativeValue}${formattedResult}`
     : formattedResult;

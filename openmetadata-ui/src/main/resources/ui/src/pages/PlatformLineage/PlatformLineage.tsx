@@ -42,6 +42,7 @@ import {
   ExportTypes,
   LINEAGE_EXPORT_SELECTOR,
 } from '../../constants/Export.constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../context/LineageProvider/LineageProvider.interface';
@@ -338,11 +339,13 @@ const PlatformLineage = () => {
               <Card>
                 <PageHeader
                   data={{
-                    ...PAGE_HEADERS.PLATFORM_LINEAGE,
                     header: t('label.platform-type-lineage', {
                       platformType: startCase(platformView),
                     }),
+                    subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
                   }}
+                  learningPageId={LEARNING_PAGE_IDS.LINEAGE}
+                  title={t('label.lineage')}
                 />
               </Card>
             </Grid>

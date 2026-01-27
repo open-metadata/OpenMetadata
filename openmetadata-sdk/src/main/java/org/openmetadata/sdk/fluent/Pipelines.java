@@ -68,6 +68,57 @@ public final class Pipelines {
     return getClient().pipelines().create(request);
   }
 
+  // ==================== Direct Access Methods ====================
+
+  public static Pipeline get(String id) {
+    return getClient().pipelines().get(id);
+  }
+
+  public static Pipeline get(String id, String fields) {
+    return getClient().pipelines().get(id, fields);
+  }
+
+  public static Pipeline get(String id, String fields, String include) {
+    return getClient().pipelines().get(id, fields, include);
+  }
+
+  public static Pipeline getByName(String fqn) {
+    return getClient().pipelines().getByName(fqn);
+  }
+
+  public static Pipeline getByName(String fqn, String fields) {
+    return getClient().pipelines().getByName(fqn, fields);
+  }
+
+  public static Pipeline update(String id, Pipeline entity) {
+    return getClient().pipelines().update(id, entity);
+  }
+
+  public static void delete(String id) {
+    getClient().pipelines().delete(id);
+  }
+
+  public static void delete(String id, java.util.Map<String, String> params) {
+    getClient().pipelines().delete(id, params);
+  }
+
+  public static void restore(String id) {
+    getClient().pipelines().restore(id);
+  }
+
+  public static org.openmetadata.sdk.models.ListResponse<Pipeline> list(
+      org.openmetadata.sdk.models.ListParams params) {
+    return getClient().pipelines().list(params);
+  }
+
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(java.util.UUID id) {
+    return getClient().pipelines().getVersionList(id);
+  }
+
+  public static Pipeline getVersion(String id, Double version) {
+    return getClient().pipelines().getVersion(id, version);
+  }
+
   // ==================== Finding/Retrieval ====================
 
   public static PipelineFinder find(String id) {

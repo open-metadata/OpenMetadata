@@ -10,9 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Select, Space, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Popover,
+  RefSelectProps,
+  Select,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import classNames from 'classnames';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona-new.svg';
@@ -62,12 +70,17 @@ export const PersonaSelectableList = ({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const [currentlySelectedPersonas, setCurrentlySelectedPersonas] =
-    useState<any>([]);
+  const [currentlySelectedPersonas, setCurrentlySelectedPersonas] = useState<
+    EntityReference[]
+  >([]);
   const [popoverHeight, setPopoverHeight] = useState<number>(
     isDefaultPersona ? 116 : 156
   );
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<RefSelectProps | null>(null);
+
+  useEffect(() => {
+    setIsDropdownOpen(popupVisible);
+  }, [popupVisible]);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -92,7 +105,7 @@ export const PersonaSelectableList = ({
     }
 
     return () => observer.disconnect();
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, isDefaultPersona]);
 
   const fetchOptions = async (searchText: string, after?: string) => {
     if (searchText) {
@@ -156,6 +169,18 @@ export const PersonaSelectableList = ({
     });
   };
 
+  const handleChange = useCallback(
+    (selectedPersonas: string[]) => {
+      const selectedPersonasList = selectOptions.filter(
+        (persona) =>
+          persona.fullyQualifiedName &&
+          selectedPersonas?.includes(persona.fullyQualifiedName)
+      );
+      setCurrentlySelectedPersonas(selectedPersonasList);
+    },
+    [selectOptions]
+  );
+
   if (!hasPermission) {
     return null;
   }
@@ -193,9 +218,11 @@ export const PersonaSelectableList = ({
               data-testid={`${
                 isDefaultPersona ? 'default-' : ''
               }persona-select-list`}
-              defaultValue={selectedPersonas.map((persona) => persona.id)}
+              defaultValue={selectedPersonas.map(
+                (persona) => persona.fullyQualifiedName as string
+              )}
               dropdownStyle={{
-                maxHeight: '200px',
+                maxHeight: 'fit-content',
                 overflow: 'auto',
               }}
               maxTagCount={3}
@@ -205,23 +232,17 @@ export const PersonaSelectableList = ({
                 </span>
               )}
               mode={!isDefaultPersona ? 'multiple' : undefined}
+              open={isDropdownOpen}
               options={selectOptions?.map((persona) => ({
-                label: persona.displayName || persona.name,
-                value: persona.id,
-                className: 'font-normal',
-                'data-testid': `${persona.displayName || persona.name}-option`,
+                label: getEntityName(persona),
+                value: persona.fullyQualifiedName,
               }))}
               placeholder="Please select"
               popupClassName="persona-custom-dropdown-class"
-              ref={dropdownRef as any}
+              ref={dropdownRef}
               style={{ width: '100%' }}
               tagRender={TagRenderer}
-              onChange={(selectedIds) => {
-                const selectedPersonasList = selectOptions.filter((persona) =>
-                  selectedIds?.includes(persona.id)
-                );
-                setCurrentlySelectedPersonas(selectedPersonasList);
-              }}
+              onChange={handleChange}
               onDropdownVisibleChange={(open) => {
                 setIsDropdownOpen(open);
               }}

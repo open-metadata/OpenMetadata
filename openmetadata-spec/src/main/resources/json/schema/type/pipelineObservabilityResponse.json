@@ -20,6 +20,10 @@
       "items": {
         "$ref": "#/definitions/tableObservabilityData"
       }
+    },
+    "paging": {
+      "$ref": "../type/paging.json",
+      "description": "Pagination information for table observability data"
     }
   },
   "required": ["pipelineId", "pipelineFqn", "tableObservabilityData"],

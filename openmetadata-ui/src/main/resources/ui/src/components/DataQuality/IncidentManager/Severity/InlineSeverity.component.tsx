@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  KeyboardArrowDown as ArrowDownIcon,
-  KeyboardArrowUp as ArrowUpIcon,
-} from '@mui/icons-material';
 import { Box, Chip, Divider, Menu, MenuItem } from '@mui/material';
+import {
+  ChevronDown as ArrowDownIcon,
+  ChevronUp as ArrowUpIcon,
+} from '@untitledui/icons';
 import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SEVERITY_COLORS } from '../../../../constants/Color.constants';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
@@ -72,20 +72,20 @@ const InlineSeverity = ({
     [onSubmit]
   );
 
+  const dropdownIcon = useMemo(() => {
+    if (!hasEditPermission) {
+      return undefined;
+    }
+
+    return showMenu ? <ArrowUpIcon /> : <ArrowDownIcon />;
+  }, [hasEditPermission, showMenu]);
+
   return (
     <Box ref={chipRef} sx={{ display: 'inline-flex', alignItems: 'center' }}>
       <Chip
         className={classNames('severity', severity && toLower(severity))}
-        deleteIcon={
-          hasEditPermission ? (
-            showMenu ? (
-              <ArrowUpIcon />
-            ) : (
-              <ArrowDownIcon />
-            )
-          ) : undefined
-        }
-        disabled={!hasEditPermission || isLoading}
+        deleteIcon={dropdownIcon}
+        disabled={isLoading}
         label={severity ? startCase(severity) : 'No Severity'}
         sx={{
           px: 1,
@@ -103,17 +103,17 @@ const InlineSeverity = ({
             color: severityColor.color,
             fontSize: '16px',
             margin: '0 4px 0 -4px',
+            height: '16px',
+            width: '16px',
           },
-          '&:hover': hasEditPermission
-            ? {
-                backgroundColor: severityColor.bg,
-                color: severityColor.color,
-                opacity: 0.8,
-              }
-            : {},
+          '&:hover': {
+            backgroundColor: severityColor.bg,
+            color: severityColor.color,
+            opacity: 0.8,
+          },
         }}
         onClick={handleSeverityClick}
-        onDelete={handleSeverityClick}
+        onDelete={hasEditPermission ? handleSeverityClick : undefined}
       />
 
       <Menu
@@ -137,7 +137,7 @@ const InlineSeverity = ({
           selected={!severity}
           sx={{
             minWidth: 150,
-            fontWeight: !severity ? 600 : 400,
+            fontWeight: severity ? 400 : 600,
             '&.Mui-selected': {
               backgroundColor: 'primary.main',
               color: 'primary.contrastText',

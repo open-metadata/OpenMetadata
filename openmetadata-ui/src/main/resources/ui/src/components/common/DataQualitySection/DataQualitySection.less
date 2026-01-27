@@ -46,6 +46,7 @@
     .stat-count {
       font-size: 13px;
       font-weight: 600;
+      color: @grey-600;
       display: block;
     }
 
@@ -53,53 +54,81 @@
       font-size: 13px;
       font-weight: 400;
       display: block;
+      color: @grey-600;
     }
 
     &.success-card {
-      .stat-count.success {
-        color: @green-10;
-        font-weight: 600;
-      }
+      &:hover {
+        .stat-count.success {
+          color: @green-10;
+          font-weight: 600;
+        }
 
-      .stat-label.success {
-        color: @green-10;
+        .stat-label.success {
+          color: @green-10;
+        }
       }
-
       &.active {
         background-color: @green-9;
         border-radius: 6px;
+        .stat-count.success {
+          color: @green-10;
+          font-weight: 600;
+        }
+
+        .stat-label.success {
+          color: @green-10;
+        }
       }
     }
 
     &.aborted-card {
-      .stat-count.aborted {
-        color: @yellow-11;
-        font-weight: 600;
-      }
+      &:hover {
+        .stat-count.aborted {
+          color: @yellow-11;
+          font-weight: 600;
+        }
 
-      .stat-label.aborted {
-        color: @yellow-11;
+        .stat-label.aborted {
+          color: @yellow-11;
+        }
       }
-
       &.active {
         background-color: @yellow-10;
         border-radius: 6px;
+        .stat-count.aborted {
+          color: @yellow-11;
+          font-weight: 600;
+        }
+
+        .stat-label.aborted {
+          color: @yellow-11;
+        }
       }
     }
 
     &.failed-card {
-      .stat-count.failed {
-        color: @red-10;
-        font-weight: 600;
-      }
+      &:hover {
+        .stat-count.failed {
+          color: @red-10;
+          font-weight: 600;
+        }
 
-      .stat-label.failed {
-        color: @red-10;
+        .stat-label.failed {
+          color: @red-10;
+        }
       }
-
       &.active {
         background-color: @red-9;
         border-radius: 6px;
+        .stat-count.failed {
+          color: @red-10;
+          font-weight: 600;
+        }
+
+        .stat-label.failed {
+          color: @red-10;
+        }
       }
     }
   }
@@ -234,6 +263,7 @@
       .legend-text-value {
         color: @grey-900;
         font-size: 13px;
+        margin-left: 2px;
       }
     }
   }

@@ -288,6 +288,17 @@ EXPTECTED_TABLE = [
 ]
 
 
+MOCK_DELTA_UNIFORM_ICEBERG_COLUMNS = [
+    ("id", "bigint", "unique identifier"),
+    ("name", "string", "user name"),
+    ("amount", "decimal(10,2)", "transaction amount"),
+    ("# Delta Uniform Iceberg", "", ""),
+    ("metadata_col", "string", "should not be included"),
+]
+
+EXPECTED_DELTA_UNIFORM_ICEBERG_COLUMNS = 3
+
+
 class DatabricksUnitTest(TestCase):
     """
     Databricks unit tests
@@ -370,6 +381,30 @@ class DatabricksUnitTest(TestCase):
 
         for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE_2, table_list)):
             self.assertEqual(expected, original)
+
+    @patch("metadata.ingestion.source.database.databricks.metadata._get_column_rows")
+    def test_get_columns_delta_uniform_iceberg(self, mock_get_column_rows):
+        from metadata.ingestion.source.database.databricks.metadata import get_columns
+
+        mock_connection = Mock()
+        mock_dialect = Mock()
+        mock_get_column_rows.return_value = MOCK_DELTA_UNIFORM_ICEBERG_COLUMNS
+
+        result = get_columns(
+            mock_dialect,
+            mock_connection,
+            table_name="delta_iceberg_table",
+            schema="test_schema",
+            db_name="test_catalog",
+        )
+
+        self.assertEqual(len(result), EXPECTED_DELTA_UNIFORM_ICEBERG_COLUMNS)
+        self.assertEqual(result[0]["name"], "id")
+        self.assertEqual(result[1]["name"], "name")
+        self.assertEqual(result[2]["name"], "amount")
+
+        for col in result:
+            self.assertNotEqual(col["name"], "metadata_col")
 
 
 class DatabricksConnectionTest(TestCase):
@@ -886,3 +921,121 @@ class DatabricksConnectionTest(TestCase):
             )
             # Should fall back to the first schema when all are system schemas
             self.assertEqual(wrapper.first_schema, "information_schema")
+
+    def test_inspector_get_table_names_with_db_name(self):
+        """Test that Inspector.get_table_names properly forwards db_name parameter"""
+        from metadata.ingestion.source.database.databricks.metadata import (
+            get_table_names_reflection,
+        )
+
+        # Create a mock inspector
+        mock_inspector = Mock()
+        mock_connection = Mock()
+        mock_context_manager = MagicMock()
+        mock_context_manager.__enter__.return_value = mock_connection
+        mock_context_manager.__exit__.return_value = None
+        mock_inspector._operation_context.return_value = mock_context_manager
+
+        # Create a mock dialect with get_table_names method
+        mock_dialect = Mock()
+        mock_dialect.get_table_names.return_value = ["table1", "table2"]
+        mock_inspector.dialect = mock_dialect
+        mock_inspector.info_cache = {}
+
+        # Call the reflection wrapper
+        result = get_table_names_reflection(
+            mock_inspector, schema="test_schema", db_name="test_catalog"
+        )
+
+        # Verify the dialect method was called with correct parameters
+        mock_dialect.get_table_names.assert_called_once_with(
+            mock_connection,
+            schema="test_schema",
+            info_cache={},
+            db_name="test_catalog",
+        )
+        self.assertEqual(result, ["table1", "table2"])
+
+    def test_inspector_get_view_names_with_db_name(self):
+        """Test that Inspector.get_view_names properly forwards db_name parameter"""
+        from metadata.ingestion.source.database.databricks.metadata import (
+            get_view_names_reflection,
+        )
+
+        # Create a mock inspector
+        mock_inspector = Mock()
+        mock_connection = Mock()
+        mock_context_manager = MagicMock()
+        mock_context_manager.__enter__.return_value = mock_connection
+        mock_context_manager.__exit__.return_value = None
+        mock_inspector._operation_context.return_value = mock_context_manager
+
+        # Create a mock dialect with get_view_names method
+        mock_dialect = Mock()
+        mock_dialect.get_view_names.return_value = ["view1", "view2"]
+        mock_inspector.dialect = mock_dialect
+        mock_inspector.info_cache = {}
+
+        # Call the reflection wrapper
+        result = get_view_names_reflection(
+            mock_inspector, schema="test_schema", db_name="test_catalog"
+        )
+
+        # Verify the dialect method was called with correct parameters
+        mock_dialect.get_view_names.assert_called_once_with(
+            mock_connection,
+            schema="test_schema",
+            info_cache={},
+            db_name="test_catalog",
+        )
+        self.assertEqual(result, ["view1", "view2"])
+
+    @patch(
+        "metadata.ingestion.source.database.databricks.metadata.get_table_comment_result"
+    )
+    def test_get_table_names_forwards_kwargs_to_get_view_names(
+        self, mock_get_table_comment_result
+    ):
+        """Test that get_table_names forwards **kw to get_view_names"""
+        from metadata.ingestion.source.database.databricks.metadata import (
+            get_table_names,
+        )
+
+        # Create a mock dialect instance
+        mock_dialect = Mock()
+        mock_connection = Mock()
+
+        # Mock identifier_preparer
+        mock_identifier_preparer = Mock()
+        mock_identifier_preparer.quote_identifier.side_effect = lambda x: f"`{x}`"
+        mock_dialect.identifier_preparer = mock_identifier_preparer
+
+        # Mock connection.execute for SHOW TABLES
+        mock_show_tables_result = [
+            ("schema", "table1", False),
+            ("schema", "table2", False),
+        ]
+        mock_connection.execute.return_value = mock_show_tables_result
+
+        # Mock get_view_names to return empty list
+        mock_dialect.get_view_names = Mock(return_value=[])
+
+        # Mock get_table_comment_result to return iterable rows
+        mock_get_table_comment_result.return_value = [
+            {"col_name": "Type", "data_type": "MANAGED"},
+            {"col_name": "Provider", "data_type": "hive"},
+        ]
+
+        # Call get_table_names with db_name
+        result = get_table_names(
+            mock_dialect,
+            mock_connection,
+            schema="test_schema",
+            db_name="test_catalog",
+        )
+
+        # Verify get_view_names was called with db_name
+        mock_dialect.get_view_names.assert_called_once_with(
+            mock_connection, "test_schema", db_name="test_catalog"
+        )
+        self.assertEqual(result, ["table1", "table2"])

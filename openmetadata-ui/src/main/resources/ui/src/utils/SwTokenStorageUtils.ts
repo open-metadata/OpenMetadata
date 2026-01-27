@@ -67,6 +67,21 @@ const setAppState = async (state: AppState): Promise<void> => {
   }
 };
 
+const clearAppState = async (): Promise<void> => {
+  try {
+    if (isServiceWorkerAvailable()) {
+      await swTokenStorage.removeItem(APP_STATE_KEY);
+    } else {
+      // Fallback for browsers that don't support SW/IndexedDB
+      localStorage.removeItem(APP_STATE_KEY);
+    }
+  } catch {
+    // Storage failures are intentionally ignored to prevent auth flows from breaking.
+    // Token persistence is treated as "best effort" - if storage fails, the user
+    // may need to re-authenticate, but core functionality continues working.
+  }
+};
+
 export const getOidcToken = async (): Promise<string> => {
   try {
     const state = await getAppState();
@@ -104,6 +119,16 @@ export const setRefreshToken = async (token: string): Promise<void> => {
     const state = await getAppState();
     state[REFRESH_TOKEN_KEY] = token;
     await setAppState(state);
+  } catch {
+    // Storage failures are intentionally ignored to prevent auth flows from breaking.
+    // Token persistence is treated as "best effort" - if storage fails, the user
+    // may need to re-authenticate, but core functionality continues working.
+  }
+};
+
+export const clearOidcToken = async (): Promise<void> => {
+  try {
+    await clearAppState();
   } catch {
     // Storage failures are intentionally ignored to prevent auth flows from breaking.
     // Token persistence is treated as "best effort" - if storage fails, the user

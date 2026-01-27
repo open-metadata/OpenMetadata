@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,6 +49,7 @@ import { useApplicationStore } from '../hooks/useApplicationStore';
 import { FeedCounts } from '../interface/feed.interface';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getFeedCount } from '../rest/feedsAPI';
+import brandClassBase from './BrandData/BrandClassBase';
 import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
 import i18n, { t } from './i18next/LocalUtil';
@@ -667,6 +667,7 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
     return t('message.permanently-delete-metadata-and-dependents', {
       entityName: entity,
       dependents,
+      brandName: brandClassBase.getPageTitle(),
     });
   } else {
     return (
@@ -677,6 +678,7 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
         }
         values={{
           entityName: entity,
+          brandName: brandClassBase.getPageTitle(),
         }}
       />
     );
@@ -835,21 +837,6 @@ export const removeOuterEscapes = (input: string) => {
 };
 
 /**
- * Generate a color with decreasing opacity after the first 24 colors.
- * @param index - The index of the label
- * @returns {string} - RGBA color string
- */
-export const entityChartColor = (index: number): string => {
-  const baseColor = BASE_COLORS[index % BASE_COLORS.length]; // Cycle through base colors
-  const opacity =
-    index < BASE_COLORS.length
-      ? 1 // Full opacity for the first 24 labels
-      : Math.max(1 - Math.floor(index / BASE_COLORS.length) * 0.1, 0.1); // Decrease opacity for subsequent labels
-
-  return hexToRgba(baseColor, opacity);
-};
-
-/**
  * Convert hex color to RGBA
  * @param hex - Hex color string
  * @param opacity - Opacity value (0-1)
@@ -862,6 +849,21 @@ const hexToRgba = (hex: string, opacity: number): string => {
   const b = bigint & 255;
 
   return `rgba(${r}, ${g}, ${b}, ${opacity.toFixed(2)})`;
+};
+
+/**
+ * Generate a color with decreasing opacity after the first 24 colors.
+ * @param index - The index of the label
+ * @returns {string} - RGBA color string
+ */
+export const entityChartColor = (index: number): string => {
+  const baseColor = BASE_COLORS[index % BASE_COLORS.length]; // Cycle through base colors
+  const opacity =
+    index < BASE_COLORS.length
+      ? 1 // Full opacity for the first 24 labels
+      : Math.max(1 - Math.floor(index / BASE_COLORS.length) * 0.1, 0.1); // Decrease opacity for subsequent labels
+
+  return hexToRgba(baseColor, opacity);
 };
 
 /**
@@ -882,22 +884,34 @@ export const calculatePercentageFromValue = (
  * @param numerator - The numerator value
  * @param denominator - The denominator value
  * @param precision - Number of decimal places to round to (default: 1)
- * @returns Calculated percentage rounded to specified precision, or 0 if denominator is 0
+ * @param format - If true, returns formatted string with % symbol (default: false)
+ * @returns Calculated percentage rounded to precision, or 0 if denominator is 0.
+ *          Returns string if format is true.
  * @example
  * calculatePercentage(25, 100) // returns 25.0
  * calculatePercentage(1, 3, 2) // returns 33.33
  * calculatePercentage(5, 0) // returns 0 (safe division)
+ * calculatePercentage(25, 100, 2, true) // returns "25%"
+ * calculatePercentage(1, 3, 2, true) // returns "33.33%"
  */
 export const calculatePercentage = (
   numerator: number,
   denominator: number,
-  precision = 1
-): number => {
+  precision = 1,
+  format = false
+): number | string => {
   if (denominator === 0) {
-    return 0;
+    return format ? '0%' : 0;
   }
 
-  return round((numerator / denominator) * 100, precision);
+  const percentageValue = round((numerator / denominator) * 100, precision);
+
+  if (format) {
+    // Convert to string and remove trailing zeros
+    return `${parseFloat(percentageValue.toFixed(precision))}%`;
+  }
+
+  return percentageValue;
 };
 
 /**

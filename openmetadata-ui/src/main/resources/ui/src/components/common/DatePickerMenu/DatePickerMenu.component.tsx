@@ -34,6 +34,7 @@ import {
   getTimestampLabel,
 } from '../../../utils/DatePickerMenuUtils';
 import { getPopupContainer } from '../../../utils/formUtils';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import MyDatePicker from '../DatePicker/DatePicker';
 import './date-picker-menu.less';
 
@@ -56,8 +57,30 @@ const DatePickerMenu = ({
   allowCustomRange = true,
   size,
 }: DatePickerMenuProps) => {
+  const { t } = useTranslation();
+  const translatedProfileFilterRange = useMemo(() => {
+    return Object.fromEntries(
+      Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => [
+        key,
+        {
+          ...value,
+          title: translateWithNestedKeys(value.title, value.titleData),
+        },
+      ])
+    );
+  }, [t]);
+
+  const translatedDefaultRange = useMemo(() => {
+    return {
+      ...DEFAULT_SELECTED_RANGE,
+      title: translateWithNestedKeys(
+        DEFAULT_SELECTED_RANGE.title,
+        DEFAULT_SELECTED_RANGE.titleData
+      ),
+    };
+  }, [t]);
   const { menuOptions, defaultOptions } = useMemo(() => {
-    const defaultOptions = pick(DEFAULT_SELECTED_RANGE, ['title', 'key']);
+    const defaultOptions = pick(translatedDefaultRange, ['title', 'key']);
 
     if (defaultDateRange?.key) {
       defaultOptions.key = defaultDateRange.key;
@@ -69,20 +92,19 @@ const DatePickerMenu = ({
       ) {
         defaultOptions.title = options[defaultDateRange.key].title;
       } else if (
-        !isUndefined(PROFILER_FILTER_RANGE[defaultDateRange.key]?.title)
+        !isUndefined(translatedProfileFilterRange[defaultDateRange.key]?.title)
       ) {
         defaultOptions.title =
-          PROFILER_FILTER_RANGE[defaultDateRange.key].title;
+          translatedProfileFilterRange[defaultDateRange.key].title;
       }
     }
 
     return {
-      menuOptions: options ?? PROFILER_FILTER_RANGE,
+      menuOptions: options ?? translatedProfileFilterRange,
       defaultOptions,
     };
   }, [options]);
 
-  const { t } = useTranslation();
   // State to display the label for selected range value
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
     defaultOptions.title

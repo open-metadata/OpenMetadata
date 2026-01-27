@@ -23,7 +23,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../../assets/svg/folder-empty.svg';
-import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
+import { ENTITY_PATH, PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -32,7 +32,7 @@ import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { useFqn } from '../../../../hooks/useFqn';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
-import { getTermQuery } from '../../../../utils/SearchUtils';
+import { getQueryFilterForDataProducts } from '../../../../utils/DomainUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
@@ -63,9 +63,9 @@ const DataProductsTab = forwardRef(
           query: '',
           pageNumber: 1,
           pageSize: PAGE_SIZE_LARGE,
-          queryFilter: getTermQuery({
-            'domains.fullyQualifiedName': urlDomainFqn || domainFqn || '',
-          }),
+          queryFilter: getQueryFilterForDataProducts(
+            urlDomainFqn || domainFqn || ''
+          ),
           searchIndex: SearchIndex.DATA_PRODUCT,
         });
 
@@ -163,6 +163,7 @@ const DataProductsTab = forwardRef(
                 },
               }}
               handleClosePanel={() => setSelectedCard(undefined)}
+              panelPath={ENTITY_PATH.dataProductsTab}
             />
           ),
           ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,

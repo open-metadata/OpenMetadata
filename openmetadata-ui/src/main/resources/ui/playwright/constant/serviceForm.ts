@@ -62,3 +62,10 @@ export const lookerFormDetails = {
   gitCredentials: 'local/path',
   type: 'Looker',
 };
+
+// Sample certificate file content as well as file name to test the overflow issue in file upload field
+// This is derived from actual scenario where the certificate file content is large enough
+// to cause overflow issue in the file upload field
+export const CERT_FILE =
+  // eslint-disable-next-line max-len
+  '-----BEGIN ENCRYPTED PRIVATE KEY-----OEMIIFJDBWBEIEOELRKEIREOROJKELOQMDKDKDOPWWMKSLLSMDHMFRQXBHQTREFrlpPELhGbNAICCAAwDAYIKoZIhvcNAgkFADAUBggqhkiG9w0DBWTEYEWEIWOWEIUEUWIWIEUEEHEIEOEKELEPOWKWPOQPEKEOEKEPWKWOWPKEOEOEKOEKEOKWKFPLKPFLKPLKPLKPLKPKPLKPLKPLKP.crt';

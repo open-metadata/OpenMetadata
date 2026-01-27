@@ -16,7 +16,7 @@ import { Col, Divider, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase, toString } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -32,8 +32,12 @@ import {
   TagLabel,
   TestCaseParameterValue,
 } from '../../../../generated/tests/testCase';
+import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import { updateTestCaseById } from '../../../../rest/testAPI';
+import {
+  getTestDefinitionById,
+  updateTestCaseById,
+} from '../../../../rest/testAPI';
 import {
   getComputeRowCountDiffDisplay,
   getEntityVersionByField,
@@ -68,8 +72,36 @@ const TestCaseResultTab = () => {
   const { version } = useParams<{ version: string }>();
   const isVersionPage = !isUndefined(version);
   const additionalComponent =
-    testCaseResultTabClassBase.getAdditionalComponents();
+    testCaseResultTabClassBase.getAdditionalComponents(testCaseData);
   const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
+  const [testDefinition, setTestDefinition] = useState<TestDefinition>();
+
+  const fetchTestDefinition = useCallback(async () => {
+    if (testCaseData?.testDefinition?.id) {
+      try {
+        const definition = await getTestDefinitionById(
+          testCaseData.testDefinition.id
+        );
+        setTestDefinition(definition);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  }, [testCaseData?.testDefinition?.id]);
+
+  useEffect(() => {
+    fetchTestDefinition();
+  }, [fetchTestDefinition]);
+
+  const showComputeRowCount = useMemo(() => {
+    return (
+      !isUndefined(testCaseData?.computePassedFailedRowCount) &&
+      (testDefinition?.supportsRowLevelPassedFailed ?? false)
+    );
+  }, [
+    testCaseData?.computePassedFailedRowCount,
+    testDefinition?.supportsRowLevelPassedFailed,
+  ]);
 
   const {
     hasEditPermission,
@@ -314,7 +346,7 @@ const TestCaseResultTab = () => {
               {testCaseParams}
             </Space>
           </Col>
-          {!isUndefined(testCaseData?.computePassedFailedRowCount) && (
+          {showComputeRowCount && (
             <Col data-testid="computed-row-count-container" span={24}>
               <Space direction="vertical" size="small">
                 <Space align="center" size={8}>

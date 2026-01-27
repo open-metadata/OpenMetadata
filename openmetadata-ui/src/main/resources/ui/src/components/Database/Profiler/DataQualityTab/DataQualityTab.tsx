@@ -34,6 +34,7 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
 import { ReactComponent as MenuIcon } from '../../../../assets/svg/menu.svg';
 import { DATA_QUALITY_PROFILER_DOCS } from '../../../../constants/docs.constants';
+import { TEST_CASE_STATUS_LABELS } from '../../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../../../enums/common.enum';
@@ -199,7 +200,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           return result?.testCaseStatus ? (
             <StatusBadge
               dataTestId={`status-badge-${record.name}`}
-              label={result.testCaseStatus}
+              label={TEST_CASE_STATUS_LABELS[result.testCaseStatus]}
               status={toLower(result.testCaseStatus) as StatusType}
             />
           ) : (
@@ -269,7 +270,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             pathname: getTestCaseDetailPagePath(
               record.fullyQualifiedName ?? ''
             ),
-            state: { breadcrumbData },
           };
 
           return (
@@ -277,7 +277,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               className="m-0"
               data-testid={name}
               style={{ maxWidth: 280 }}>
-              <Link to={urlData}>{getEntityName(record)}</Link>
+              <Link state={{ breadcrumbData }} to={urlData}>
+                {getEntityName(record)}
+              </Link>
             </Typography.Paragraph>
           );
         },

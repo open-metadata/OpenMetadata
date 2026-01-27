@@ -1,13 +1,17 @@
 package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
 
 import java.util.Map;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -168,5 +172,74 @@ public abstract class ExternalSecretsManagerTest {
                 .getAuthType(),
             basicAuth.class)
         .getPassword();
+  }
+
+  @Test
+  void testCleanNullOrEmptyWithNull() {
+    String result = secretsManager.cleanNullOrEmpty(null);
+    assertEquals(
+        ExternalSecretsManager.NULL_SECRET_STRING,
+        result,
+        "Null value should be converted to 'null' string");
+  }
+
+  @Test
+  void testCleanNullOrEmptyWithEmptyString() {
+    String result = secretsManager.cleanNullOrEmpty(StringUtils.EMPTY);
+    assertEquals(
+        ExternalSecretsManager.NULL_SECRET_STRING,
+        result,
+        "Empty string should be converted to 'null' string");
+  }
+
+  @Test
+  void testCleanNullOrEmptyWithValidValue() {
+    String validValue = "my-secret-password";
+    String result = secretsManager.cleanNullOrEmpty(validValue);
+    assertEquals(validValue, result, "Valid values should pass through unchanged");
+  }
+
+  @Test
+  void testEncryptBotAuthMechanismWithEmptyToken() {
+    JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(StringUtils.EMPTY);
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(jwtAuthMechanism);
+
+    Object result = secretsManager.encryptAuthenticationMechanism("test-bot", authMechanism);
+
+    assertNotNull(result, "Encryption should succeed even with empty token");
+  }
+
+  @Test
+  void testEncryptBotAuthMechanismWithNullToken() {
+    JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(null);
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(jwtAuthMechanism);
+
+    Object result = secretsManager.encryptAuthenticationMechanism("test-bot", authMechanism);
+
+    assertNotNull(result, "Encryption should succeed even with null token");
+  }
+
+  @Test
+  void testEncryptDatabaseConnectionWithEmptyPassword() {
+    Map<String, Map<String, String>> mysqlConnection =
+        Map.of("authType", Map.of("password", StringUtils.EMPTY));
+
+    MysqlConnection actualConnection =
+        (MysqlConnection)
+            secretsManager.encryptServiceConnectionConfig(
+                mysqlConnection, Mysql.value(), "test-empty-password", ServiceType.DATABASE);
+
+    assertNotNull(actualConnection, "Encryption should succeed even with empty password");
+    assertFalse(
+        JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class)
+            .getPassword()
+            .isEmpty(),
+        "Empty password should be converted to non-empty encrypted value");
   }
 }

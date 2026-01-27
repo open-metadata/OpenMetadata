@@ -60,7 +60,7 @@ import org.openmetadata.service.security.Authorizer;
 @Collection(name = "containers")
 public class ContainerResource extends EntityResource<Container, ContainerRepository> {
   private final ContainerMapper mapper = new ContainerMapper();
-  public static final String COLLECTION_PATH = "v1/containers/";
+  public static final String COLLECTION_PATH = "/v1/containers/";
   static final String FIELDS =
       "parent,children,dataModel,owners,tags,followers,extension,domains,sourceHash";
 
@@ -183,8 +183,17 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -217,8 +226,17 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
   }
 
   @POST

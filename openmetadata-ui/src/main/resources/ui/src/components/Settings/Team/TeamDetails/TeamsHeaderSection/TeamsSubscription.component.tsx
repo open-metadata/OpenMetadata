@@ -130,6 +130,15 @@ const TeamsSubscription = ({
     }
   }, [subscription, editSubscription]);
 
+  const subscriptionWebhookTranslated = useMemo(
+    () =>
+      SUBSCRIPTION_WEBHOOK_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   return (
     <Space
       align="start"
@@ -213,7 +222,7 @@ const TeamsSubscription = ({
               onFinish={handleSave}>
               <Form.Item label={t('label.webhook')} name="webhook">
                 <Select
-                  options={SUBSCRIPTION_WEBHOOK_OPTIONS}
+                  options={subscriptionWebhookTranslated}
                   placeholder={t('label.select-field', {
                     field: t('label.condition'),
                   })}

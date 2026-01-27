@@ -96,7 +96,12 @@ const LoginConfigurationPage = () => {
         <Col span={24}>
           <Row align="middle" justify="space-between">
             <Col>
-              <PageHeader data={PAGE_HEADERS.LOGIN_CONFIGURATION} />
+              <PageHeader
+                data={{
+                  header: t(PAGE_HEADERS.LOGIN_CONFIGURATION.header),
+                  subHeader: t(PAGE_HEADERS.LOGIN_CONFIGURATION.subHeader),
+                }}
+              />
             </Col>
             <Col>
               <Button

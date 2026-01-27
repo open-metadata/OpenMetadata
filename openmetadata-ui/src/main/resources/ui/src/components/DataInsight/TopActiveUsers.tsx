@@ -22,7 +22,7 @@ import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUser
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import {
-  formatDateTimeWithTimezone,
+  formatDateTime,
   formatTimeDurationFromSeconds,
 } from '../../utils/date-time/DateTimeUtils';
 import { getColumnSorter } from '../../utils/EntityUtils';
@@ -90,9 +90,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         dataIndex: 'lastSession',
         key: 'lastSession',
         render: (lastSession: number) => (
-          <Typography.Text>
-            {formatDateTimeWithTimezone(lastSession)}
-          </Typography.Text>
+          <Typography.Text>{formatDateTime(lastSession)}</Typography.Text>
         ),
       },
       {

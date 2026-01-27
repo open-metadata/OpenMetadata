@@ -70,7 +70,7 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
   if (isInputTypeFileOrInput) {
     return (
       <Radio.Group
-        className="password-widget"
+        className="password-widget m-t-sm"
         data-testid={`password-input-radio-group-${props.id}`}
         value={inputType}
         onChange={onRadioChange}>

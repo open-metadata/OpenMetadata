@@ -18,6 +18,6 @@ export interface OwnersSectionProps {
   showEditButton?: boolean;
   hasPermission?: boolean;
   entityId?: string;
-  entityType?: EntityType;
+  entityType: EntityType;
   onOwnerUpdate?: (updatedOwners: EntityReference[]) => void;
 }

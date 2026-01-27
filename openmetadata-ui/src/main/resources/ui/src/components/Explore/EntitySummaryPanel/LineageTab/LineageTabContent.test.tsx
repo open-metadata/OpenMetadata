@@ -255,9 +255,9 @@ describe('LineageTabContent', () => {
     it('should render without crashing', () => {
       render(<LineageTabContent {...defaultProps} />);
 
-      const buttons = screen.getAllByTestId('button');
+      const buttons = screen.getAllByTestId('upstream-button-active');
 
-      expect(buttons).toHaveLength(2);
+      expect(buttons).toHaveLength(1);
     });
 
     it('should render with correct CSS classes', () => {
@@ -279,15 +279,11 @@ describe('LineageTabContent', () => {
     it('should render upstream and downstream filter buttons', () => {
       render(<LineageTabContent {...defaultProps} />);
 
-      const buttons = screen.getAllByTestId('button');
+      const upstreamButton = screen.getByTestId('upstream-button-active');
+      const downstreamButton = screen.getByTestId('downstream-button-');
 
-      expect(buttons).toHaveLength(2);
-      expect(
-        screen.getByText('label.upstream', { selector: 'button' })
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText('label.downstream', { selector: 'button' })
-      ).toBeInTheDocument();
+      expect(upstreamButton).toBeInTheDocument();
+      expect(downstreamButton).toBeInTheDocument();
     });
 
     it('should show correct counts in filter buttons', () => {
@@ -301,21 +297,15 @@ describe('LineageTabContent', () => {
     it('should highlight active filter button', () => {
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
-      const upstreamButton = screen.getByText('label.upstream', {
-        selector: 'button',
-      });
-
-      expect(upstreamButton).toHaveClass('active');
+      expect(screen.getByTestId('upstream-button-active')).toBeInTheDocument();
     });
 
     it('should highlight downstream filter when active', () => {
       render(<LineageTabContent {...defaultProps} filter="downstream" />);
 
-      const downstreamButton = screen.getByText('label.downstream', {
-        selector: 'button',
-      });
-
-      expect(downstreamButton).toHaveClass('active');
+      expect(
+        screen.getByTestId('downstream-button-active')
+      ).toBeInTheDocument();
     });
 
     it('should call onFilterChange when upstream button is clicked', () => {
@@ -328,7 +318,7 @@ describe('LineageTabContent', () => {
       );
 
       const upstreamButton = screen.getByText('label.upstream', {
-        selector: 'button',
+        selector: 'span',
       });
       fireEvent.click(upstreamButton);
 
@@ -344,21 +334,10 @@ describe('LineageTabContent', () => {
         />
       );
 
-      const downstreamButton = screen.getByText('label.downstream', {
-        selector: 'button',
-      });
+      const downstreamButton = screen.getByTestId('downstream-button-');
       fireEvent.click(downstreamButton);
 
       expect(mockOnFilterChange).toHaveBeenCalledWith('downstream');
-    });
-
-    it('should render buttons with correct size', () => {
-      render(<LineageTabContent {...defaultProps} />);
-
-      const buttons = screen.getAllByTestId('button');
-      buttons.forEach((button) => {
-        expect(button).toHaveAttribute('data-size', 'small');
-      });
     });
   });
 

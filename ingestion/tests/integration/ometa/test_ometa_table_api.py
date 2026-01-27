@@ -377,6 +377,72 @@ class OMetaTableTest(TestCase):
         res_sample = self.metadata.get_sample_data(table=res).sampleData
         assert res_sample == sample_data
 
+    def test_patch_table_certification(self):
+        """
+        We can patch a Table with certification data
+        """
+        from metadata.generated.schema.type.assetCertification import AssetCertification
+        from metadata.generated.schema.type.tagLabel import (
+            LabelType,
+            State,
+            TagFQN,
+            TagLabel,
+            TagSource,
+        )
+
+        self.metadata.create_or_update(data=self.create)
+
+        # First pick up by name
+        res = self.metadata.get_by_name(
+            entity=Table, fqn=self.entity.fullyQualifiedName
+        )
+
+        # Create certification
+        certification = AssetCertification(
+            tagLabel=TagLabel(
+                tagFQN=TagFQN("Certification.Bronze"),
+                name="Bronze",
+                description="Bronze certification indicates the asset meets basic quality standards",
+                source=TagSource.Classification,
+                labelType=LabelType.Manual,
+                state=State.Confirmed,
+            ),
+            appliedDate=1704153600000,  # 2024-01-02
+            expiryDate=1735689600000,  # 2025-01-01
+        )
+
+        # Patch the table with certification
+        destination = res.model_copy(deep=True)
+        destination.certification = certification
+        patched_table = self.metadata.patch(
+            entity=Table, source=res, destination=destination
+        )
+
+        # Verify certification was applied
+        assert patched_table.certification is not None
+        assert (
+            patched_table.certification.tagLabel.tagFQN.root == "Certification.Bronze"
+        )
+        assert patched_table.certification.tagLabel.name == "Bronze"
+        # The server sets appliedDate to current time, not the provided value
+        # Allow 60 seconds tolerance for test execution time
+        current_time_ms = int(datetime.now().timestamp() * 1000)
+        assert (
+            abs(patched_table.certification.appliedDate.root - current_time_ms) < 60000
+        )
+        # expiryDate is calculated by the server based on certification settings
+        assert patched_table.certification.expiryDate is not None
+
+        # Retrieve the table again and verify certification persists
+        # Note: certification is not a default field, so we need to request it explicitly
+        retrieved_table = self.metadata.get_by_name(
+            entity=Table, fqn=self.entity.fullyQualifiedName, fields=["certification"]
+        )
+        assert retrieved_table.certification is not None
+        assert (
+            retrieved_table.certification.tagLabel.tagFQN.root == "Certification.Bronze"
+        )
+
     def test_ingest_table_profile_data(self):
         """
         We can ingest profile data TableProfile

@@ -71,6 +71,28 @@ Custom OIDC authentication enables integration with any OpenID Connect compliant
 - **Example:** ["email", "username", "sub"]
 - **Why it matters:** Maps JWT claims to OpenMetadata user identities.
 
+## <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
+
+- **Definition:** JWT claim or attribute containing team/department information for automatic team assignment.
+- **Example:** "department", "groups", "organization", "team"
+- **Why it matters:** Automatically assigns users to existing OpenMetadata teams based on their OIDC provider attributes during login.
+- **How it works:**
+  - Extracts the value(s) from the specified JWT claim (e.g., if set to "department", reads user's department from the ID token)
+  - For array claims (like "groups"), processes all values in the array
+  - Matches the extracted value(s) against existing team names in OpenMetadata
+  - Assigns the user to all matching teams that are of type "Group"
+  - If a team doesn't exist or is not of type "Group", a warning is logged but authentication continues
+- **OIDC Provider Configuration:**
+  - Ensure the claim/attribute is included in the ID token by your OIDC provider
+  - Common attributes: "department", "organization", "groups", "roles"
+  - Configure custom claims in your OIDC provider's claim mapping settings
+  - For group-based teams, include "groups" scope in the OIDC request
+- **Note:** 
+  - The team must already exist in OpenMetadata for assignment to work
+  - Only teams of type "Group" can be auto-assigned (not "Organization" or "BusinessUnit" teams)
+  - Team names are case-sensitive and must match exactly
+  - Multiple team assignments are supported for array claims (e.g., "groups")
+
 ## <span data-id="principalDomain">Principal Domain</span>
 
 - **Definition:** Domain to append to usernames if not present in claims.

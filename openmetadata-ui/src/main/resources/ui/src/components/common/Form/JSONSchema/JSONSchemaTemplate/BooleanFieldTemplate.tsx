@@ -25,7 +25,7 @@ const BooleanFieldTemplate = (props: FieldProps) => {
           onClick={() => props.formContext?.handleFocus?.(props.idSchema.$id)}
         />
         <label className="cursor-pointer" htmlFor={props.idSchema.$id}>
-          {startCase(props.name)}
+          {props.schema.title ?? startCase(props.name)}
         </label>
       </div>
     </Form.Item>

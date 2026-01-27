@@ -25,12 +25,14 @@ import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ApplicationCard from '../../components/Settings/Applications/ApplicationCard/ApplicationCard.component';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getMarketPlaceApplicationList } from '../../rest/applicationMarketPlaceAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
@@ -135,7 +137,17 @@ const MarketPlacePage = () => {
           <Row className="marketplace-header-row" justify="center">
             <Col span={18}>
               <div className="d-flex items-center justify-between h-full">
-                <PageHeader data={PAGE_HEADERS.APPLICATION} />
+                <PageHeader
+                  data={{
+                    header: translateWithNestedKeys(
+                      PAGE_HEADERS.APPLICATION.header,
+                      PAGE_HEADERS.APPLICATION.headerParams
+                    ),
+                    subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
+                  }}
+                  learningPageId={LEARNING_PAGE_IDS.AUTOMATIONS}
+                  title={t('label.market-place')}
+                />
                 <HeadingIcon />
               </div>
             </Col>

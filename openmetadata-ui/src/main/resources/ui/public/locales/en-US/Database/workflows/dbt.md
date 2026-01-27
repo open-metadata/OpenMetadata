@@ -124,7 +124,16 @@ $$
 $$section
 #### dbt Cloud URL $(id="dbtCloudUrl")
 
-URL to connect to your dbt cloud instance. E.g., `https://cloud.getdbt.com` or `https://emea.dbt.com/`.
+URL to connect to your dbt cloud instance. This is a required field.
+
+Common dbt Cloud URLs:
+- **Multi-tenant (US)**: `https://cloud.getdbt.com`
+- **Multi-tenant (EMEA)**: `https://emea.dbt.com`
+- **Single-tenant**: Your custom dbt Cloud URL
+
+Please verify your dbt Cloud URL from your browser's address bar when logged into dbt Cloud.
+
+For a complete list of dbt Cloud access URLs by region, refer to the <a href="https://docs.getdbt.com/docs/cloud/about-cloud/access-regions-ip-addresses" target="_blank">dbt Cloud Regions & IP Addresses</a> documentation.
 $$
 
 ---
@@ -338,7 +347,7 @@ $$
 
 
 $$section
-### Search Tables Across Databases $(id="searchAcrossDatabases")
+### Search Tables Across Databases Services $(id="searchAcrossDatabases")
 
 Option to search across database services for tables or not for processing dbt metadata ingestion.
 If this option is enabled, OpenMetadata will first search for tables within the same database service if tables are not found it will search across all database services.

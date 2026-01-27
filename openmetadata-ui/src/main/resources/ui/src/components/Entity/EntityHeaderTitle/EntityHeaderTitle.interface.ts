@@ -25,6 +25,7 @@ export interface EntityHeaderTitleProps {
   deleted?: boolean;
   serviceName: string;
   badge?: React.ReactNode;
+  suffix?: React.ReactNode;
   isDisabled?: boolean;
   showName?: boolean;
   excludeEntityService?: boolean;
@@ -36,4 +37,5 @@ export interface EntityHeaderTitleProps {
   nameClassName?: string;
   displayNameClassName?: string;
   isCustomizedView?: boolean;
+  entityUrl?: string;
 }

@@ -33,7 +33,7 @@ export class Glossary extends EntityClass {
     const randomName = getRandomFirstName();
     const randomId = uuid();
     this.data = {
-      name: name ?? `PW%${randomId}.${randomName}`,
+      name: name ?? `PW%'${randomId}.${randomName}`,
       displayName: `PW % ${randomId} ${randomName}`,
       description:
         'Glossary terms that describe general conceptual terms. Note that these conceptual terms are used for automatically labeling the data.',
@@ -43,7 +43,7 @@ export class Glossary extends EntityClass {
       terms: [],
       owners: [],
       // eslint-disable-next-line no-useless-escape
-      fullyQualifiedName: `\"PW%${randomId}.${randomName}\"`,
+      fullyQualifiedName: `\"PW%'${randomId}.${randomName}\"`,
     };
   }
 
@@ -99,6 +99,14 @@ export class Glossary extends EntityClass {
         fqn
       )}?recursive=true&hardDelete=true`
     );
+
+    if (!response.ok()) {
+      const errorText = await response.text();
+
+      throw new Error(
+        `Failed to delete glossary "${fqn}": ${response.status()} ${response.statusText()} - ${errorText}`
+      );
+    }
 
     return await response.json();
   }

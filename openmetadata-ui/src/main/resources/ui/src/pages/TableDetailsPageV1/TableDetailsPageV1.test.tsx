@@ -12,7 +12,9 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TableType } from '../../generated/entity/data/table';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
@@ -103,7 +105,7 @@ const mockEntityPermissionByFqn = jest
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
 const COMMON_API_FIELDS =
-  'followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domains,dataProducts,votes,extension';
+  'columns,followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domains,dataProducts,votes,extension';
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
@@ -119,10 +121,17 @@ jest.mock('../../rest/tableAPI', () => ({
       columns: [],
     })
   ),
+  getTableColumnsByFQN: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: [],
+      paging: { total: 0 },
+    })
+  ),
   addFollower: jest.fn(),
   patchTableDetails: jest.fn(),
   removeFollower: jest.fn(),
   restoreTable: jest.fn(),
+  updateTablesVotes: jest.fn(),
 }));
 
 jest.mock('../../rest/suggestionsAPI', () => ({
@@ -260,10 +269,18 @@ jest.mock(
 );
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   useParams: jest
     .fn()
     .mockImplementation(() => ({ fqn: 'fqn', tab: 'schema' })),
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: 'mockPath',
+    search: '',
+    hash: '',
+    state: null,
+    key: 'default',
+  })),
 }));
 
 jest.mock('../../context/TourProvider/TourProvider', () => ({
@@ -290,10 +307,6 @@ jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
   GenericTab: jest.fn().mockImplementation(() => <>GenericTab</>),
 }));
 
-jest.mock('../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue([{}]),
-}));
-
 jest.mock(
   '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
   () => ({
@@ -307,13 +320,21 @@ jest.mock(
 
 describe('TestDetailsPageV1 component', () => {
   it('TableDetailsPageV1 should fetch permissions', () => {
-    render(<TableDetailsPageV1 />);
+    render(
+      <MemoryRouter>
+        <TableDetailsPageV1 />
+      </MemoryRouter>
+    );
 
     expect(mockEntityPermissionByFqn).toHaveBeenCalledWith('table', 'fqn');
   });
 
   it('TableDetailsPageV1 should not fetch table details if permission is there', () => {
-    render(<TableDetailsPageV1 />);
+    render(
+      <MemoryRouter>
+        <TableDetailsPageV1 />
+      </MemoryRouter>
+    );
 
     expect(getTableDetailsByFQN).not.toHaveBeenCalled();
   });
@@ -326,7 +347,11 @@ describe('TestDetailsPageV1 component', () => {
     }));
 
     await act(async () => {
-      render(<TableDetailsPageV1 />);
+      render(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
@@ -344,7 +369,11 @@ describe('TestDetailsPageV1 component', () => {
     }));
 
     await act(async () => {
-      render(<TableDetailsPageV1 />);
+      render(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
@@ -360,7 +389,11 @@ describe('TestDetailsPageV1 component', () => {
     }));
 
     await act(async () => {
-      render(<TableDetailsPageV1 />);
+      render(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
@@ -402,7 +435,11 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(<TableDetailsPageV1 />);
+      render(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
@@ -427,7 +464,11 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(<TableDetailsPageV1 />);
+      render(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
@@ -452,7 +493,11 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(<TableDetailsPageV1 />);
+      render(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
@@ -476,7 +521,11 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(<TableDetailsPageV1 />);
+      render(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(screen.getByText('label.schema-definition')).toBeInTheDocument();
@@ -501,7 +550,11 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(<TableDetailsPageV1 />);
+      render(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(screen.getByText('label.view-definition')).toBeInTheDocument();
@@ -515,7 +568,11 @@ describe('TestDetailsPageV1 component', () => {
     }));
 
     await act(async () => {
-      render(<TableDetailsPageV1 />);
+      render(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
     });
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
@@ -524,5 +581,38 @@ describe('TestDetailsPageV1 component', () => {
 
     expect(await screen.findByText('GenericTab')).toBeInTheDocument();
     expect(GenericTab).toHaveBeenCalledWith({ type: 'Table' }, {});
+  });
+
+  it('should pass entity name as pageTitle to PageLayoutV1', async () => {
+    const mockTableData = {
+      name: 'test-table',
+      id: '123',
+      columns: [],
+    };
+
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockTableData)
+    );
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+    });
+
+    expect(PageLayoutV1).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: 'test-table',
+      }),
+      expect.anything()
+    );
   });
 });

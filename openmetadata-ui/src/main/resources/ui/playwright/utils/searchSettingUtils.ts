@@ -68,7 +68,7 @@ export const mockEntitySearchConfig = {
     },
     {
       field: 'usageSummary.monthlyStats.percentileRank',
-      factor: 0.1,
+      factor: 1.0,
       modifier: 'none',
       missing: 0.0,
     },

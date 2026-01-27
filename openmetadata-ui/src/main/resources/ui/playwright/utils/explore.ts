@@ -13,8 +13,8 @@
 import { expect } from '@playwright/test';
 import { Page } from 'playwright';
 import { EXPECTED_BUCKETS } from '../constant/explore';
-import { getApiContext } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
+import { getApiContext, redirectToExplorePage } from './common';
+import { openEntitySummaryPanel } from './entityPanel';
 
 export interface Bucket {
   key: string;
@@ -38,8 +38,6 @@ export const searchAndClickOnOption = async (
   } else {
     testId = filter.value ?? '';
   }
-
-  await waitForAllLoadersToDisappear(page);
 
   await page.getByTestId(testId).click();
 
@@ -299,4 +297,18 @@ export const verifyEntitiesAreSorted = async (page: Page) => {
   });
 
   expect(entityNames).toEqual(sortedEntityNames);
+};
+
+export const navigateToExploreAndSelectEntity = async (
+  page: Page,
+  entityName: string
+) => {
+  await redirectToExplorePage(page);
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+    timeout: 15000,
+  });
+
+  await openEntitySummaryPanel(page, entityName);
 };

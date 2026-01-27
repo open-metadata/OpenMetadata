@@ -17,12 +17,13 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
-import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -39,6 +40,8 @@ import org.openmetadata.service.formatter.decorators.MSTeamsMessageDecorator;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
+import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 
 @Slf4j
 public class MSTeamsPublisher implements Destination<ChangeEvent> {
@@ -67,21 +70,29 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
   }
 
   @Override
-  public void sendMessage(ChangeEvent event) throws EventPublisherException {
+  public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
+      throws EventPublisherException {
     try {
-      // Generate message using new Handlebars pipeline
+      // Generate message using Handlebars
       NotificationMessage message =
           messageEngine.generateMessage(event, eventSubscription, subscriptionDestination);
       TeamsMessage teamsMessage = (TeamsMessage) message;
 
-      // Send using existing webhook utilities
-      String eventJson = JsonUtils.pojoToJson(teamsMessage);
-      List<Invocation.Builder> targets =
-          getTargetsForWebhookAlert(webhook, subscriptionDestination, client, event, eventJson);
-      targets.add(getTarget(client, webhook, eventJson));
+      // Convert to JSON
+      String json = JsonUtils.pojoToJson(teamsMessage);
 
+      // Convert type-agnostic Recipient objects to configured webhook requests
+      List<Invocation.Builder> targets =
+          recipients.stream()
+              .filter(WebhookRecipient.class::isInstance)
+              .map(WebhookRecipient.class::cast)
+              .map(r -> r.getConfiguredRequest(client, json))
+              .filter(Objects::nonNull)
+              .toList();
+
+      // Send Teams message to each webhook target
       for (Invocation.Builder actionTarget : targets) {
-        postWebhookMessage(this, actionTarget, teamsMessage);
+        postWebhookMessage(this, actionTarget, json);
       }
     } catch (Exception e) {
       String message =

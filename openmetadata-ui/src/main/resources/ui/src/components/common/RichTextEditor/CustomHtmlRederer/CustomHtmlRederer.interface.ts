@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type TokenAttrs = Record<string, string | any>;
 export interface TagToken {
   tagName: string;

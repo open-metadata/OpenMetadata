@@ -58,6 +58,8 @@ const Lineage = ({
     onEdgesChange,
     onPaneClick,
     onConnect,
+    onConnectStart,
+    onConnectEnd,
     onInitReactFlow,
     updateEntityData,
   } = useLineageProvider();
@@ -150,6 +152,8 @@ const Lineage = ({
               nodesConnectable={isEditMode}
               selectNodesOnDrag={false}
               onConnect={onConnect}
+              onConnectEnd={onConnectEnd}
+              onConnectStart={onConnectStart}
               onDragOver={onDragOver}
               onDrop={handleNodeDrop}
               onEdgeClick={handleEdgeClick}

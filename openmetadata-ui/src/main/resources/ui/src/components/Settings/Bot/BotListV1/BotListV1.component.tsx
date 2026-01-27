@@ -145,21 +145,14 @@ const BotListV1 = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        render: (_, record) =>
-          record?.description ? (
-            <RichTextEditorPreviewerNew
-              markdown={highlightSearchText(
-                record?.description || '',
-                searchTerm
-              )}
-            />
-          ) : (
-            <span data-testid="no-description">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </span>
-          ),
+        render: (_, record) => (
+          <RichTextEditorPreviewerNew
+            markdown={highlightSearchText(
+              record?.description || '',
+              searchTerm
+            )}
+          />
+        ),
       },
       {
         title: t('label.action-plural'),
@@ -241,6 +234,10 @@ const BotListV1 = ({
     } else {
       setSearchedData(botUsers);
     }
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
   };
 
   const handleShowDeletedBots = (checked: boolean) => {
@@ -299,7 +296,12 @@ const BotListV1 = ({
       </Col>
 
       <Col span={12}>
-        <PageHeader data={PAGE_HEADERS.BOTS} />
+        <PageHeader
+          data={{
+            header: t(PAGE_HEADERS.BOTS.header),
+            subHeader: t(PAGE_HEADERS.BOTS.subHeader),
+          }}
+        />
       </Col>
 
       <Col span={12}>

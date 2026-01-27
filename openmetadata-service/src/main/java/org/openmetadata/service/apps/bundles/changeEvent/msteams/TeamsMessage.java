@@ -127,6 +127,9 @@ public class TeamsMessage implements NotificationMessage {
 
     @JsonProperty("fontType")
     private String fontType;
+
+    @JsonProperty("isSubtle")
+    private Boolean isSubtle;
   }
 
   @Getter
@@ -143,6 +146,12 @@ public class TeamsMessage implements NotificationMessage {
 
     @JsonProperty("items")
     private List<TeamsMessage.BodyItem> items;
+
+    @JsonProperty("bleed")
+    private Boolean bleed;
+
+    @JsonProperty("spacing")
+    private String spacing;
   }
 
   @Getter
@@ -171,6 +180,117 @@ public class TeamsMessage implements NotificationMessage {
     private String value;
   }
 
+  @Getter
+  @Setter
+  @AllArgsConstructor
+  @NoArgsConstructor
+  @Builder
+  public static class Table implements TeamsMessage.BodyItem {
+    @JsonProperty("type")
+    private String type;
+
+    @JsonProperty("gridStyle")
+    private String gridStyle;
+
+    @JsonProperty("firstRowAsHeader")
+    private Boolean firstRowAsHeader;
+
+    @JsonProperty("columns")
+    private List<TeamsMessage.TableColumnDefinition> columns;
+
+    @JsonProperty("rows")
+    private List<TeamsMessage.TableRow> rows;
+
+    @JsonProperty("spacing")
+    private String spacing;
+
+    @JsonProperty("showGridLines")
+    private Boolean showGridLines;
+
+    @JsonProperty("separator")
+    private Boolean separator;
+
+    @JsonProperty("horizontalCellContentAlignment")
+    private String horizontalCellContentAlignment;
+  }
+
+  @Getter
+  @Setter
+  @AllArgsConstructor
+  @NoArgsConstructor
+  @Builder
+  public static class TableColumnDefinition {
+    @JsonProperty("width")
+    private Integer width;
+  }
+
+  @Getter
+  @Setter
+  @AllArgsConstructor
+  @NoArgsConstructor
+  @Builder
+  public static class TableRow {
+    @JsonProperty("type")
+    private String type;
+
+    @JsonProperty("cells")
+    private List<TeamsMessage.TableCell> cells;
+
+    @JsonProperty("style")
+    private String style;
+  }
+
+  @Getter
+  @Setter
+  @AllArgsConstructor
+  @NoArgsConstructor
+  @Builder
+  public static class TableCell {
+    @JsonProperty("type")
+    private String type;
+
+    @JsonProperty("items")
+    private List<TeamsMessage.BodyItem> items;
+  }
+
   // Interface for Body Items
   public interface BodyItem {}
+
+  // Interface for Actions
+  public interface Action {}
+
+  @Getter
+  @Setter
+  @AllArgsConstructor
+  @NoArgsConstructor
+  @Builder
+  public static class ActionSet implements TeamsMessage.BodyItem {
+    @JsonProperty("type")
+    private String type;
+
+    @JsonProperty("actions")
+    private List<TeamsMessage.Action> actions;
+
+    @JsonProperty("spacing")
+    private String spacing;
+  }
+
+  @Getter
+  @Setter
+  @AllArgsConstructor
+  @NoArgsConstructor
+  @Builder
+  public static class ActionOpenUrl implements TeamsMessage.Action {
+    @JsonProperty("type")
+    private String type;
+
+    @JsonProperty("title")
+    private String title;
+
+    @JsonProperty("url")
+    private String url;
+
+    @JsonProperty("style")
+    private String style;
+  }
 }

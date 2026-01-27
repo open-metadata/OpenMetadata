@@ -92,6 +92,7 @@ class DatabaseServiceBuilderPy:
                 schemaFilterPattern=None,
                 tableFilterPattern=None,
                 databaseFilterPattern=None,
+                storedProcedureFilterPattern=None,
                 supportsMetadataExtraction=None,
                 supportsDBTExtraction=None,
                 supportsProfiler=None,
@@ -269,6 +270,7 @@ class TableBuilderPy:
             children=None,
             profile=None,
             customMetrics=None,
+            extension=None,
         )
         self.columns_val.append(col)
         return self

@@ -1,0 +1,30 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/dremio/cloudAuth.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Dremio Cloud Authentication",
+  "description": "Authentication configuration for Dremio Cloud using Personal Access Token (PAT). Dremio Cloud is a fully managed SaaS platform.",
+  "javaType": "org.openmetadata.schema.services.connections.database.dremio.CloudAuth",
+  "type": "object",
+  "properties": {
+    "region": {
+      "title": "Cloud Region",
+      "description": "Dremio Cloud region where your organization is hosted. Choose 'US' for United States region or 'EU' for European region.",
+      "type": "string",
+      "enum": ["US", "EU"],
+      "default": "US"
+    },
+    "personalAccessToken": {
+      "title": "Personal Access Token (PAT)",
+      "description": "Personal Access Token for authenticating with Dremio Cloud. Generate this token from your Dremio Cloud account settings under Settings -> Personal Access Tokens.",
+      "type": "string",
+      "format": "password"
+    },
+    "projectId": {
+      "title": "Project ID",
+      "description": "Dremio Cloud Project ID (required). This unique identifier can be found in your Dremio Cloud project URL or project settings.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["region", "personalAccessToken", "projectId"]
+}

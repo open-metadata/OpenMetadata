@@ -13,6 +13,7 @@
 
 import { Button, Tag, Typography } from 'antd';
 import { TFunction } from 'i18next';
+import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
@@ -122,11 +123,9 @@ export const renderIntervalValue = (
 };
 
 const renderEntityReferenceList = (entityRefs: EntityReference[]) => (
-  <div className="d-flex flex-column gap-2">
+  <div className="d-flex flex-column">
     {entityRefs.map((item: EntityReference) => (
-      <div className="entity-ref-item" key={item.id}>
-        {renderEntityReferenceButton(item)}
-      </div>
+      <div key={item.id}>{renderEntityReferenceButton(item)}</div>
     ))}
   </div>
 );
@@ -165,11 +164,39 @@ const renderObjectValue = (
     return String(objVal.name || objVal.displayName);
   }
 
-  if (objVal.value) {
-    return String(objVal.value);
+  if (objVal.value !== undefined) {
+    return typeof objVal.value === 'object' && objVal.value !== null
+      ? JSON.stringify(objVal.value)
+      : String(objVal.value);
   }
 
   return JSON.stringify(objVal);
+};
+
+const renderObjectPropertyValue = (
+  val: unknown,
+  propertyTypeName: string | undefined,
+  t: TFunction
+) => {
+  const objVal = val as Record<string, unknown>;
+
+  if (propertyTypeName === 'entityReferenceList' && Array.isArray(val)) {
+    return renderEntityReferenceList(val as EntityReference[]);
+  }
+
+  if (propertyTypeName === 'entityReference' && isEntityReference(objVal)) {
+    return renderEntityReferenceSingle(val as EntityReference);
+  }
+
+  if (propertyTypeName === 'enum' && Array.isArray(val)) {
+    return renderEnumValues(val as string[]);
+  }
+
+  if (Array.isArray(val)) {
+    return val.join(', ');
+  }
+
+  return renderObjectValue(objVal, propertyTypeName, t);
 };
 
 interface CustomPropertyValueRendererProps {
@@ -181,8 +208,13 @@ export const CustomPropertyValueRenderer: React.FC<CustomPropertyValueRendererPr
   ({ value: val, property }) => {
     const { t } = useTranslation();
     const propertyTypeName = property.propertyType?.name;
+    const isEmptyValue =
+      val === null ||
+      val === undefined ||
+      val === '' ||
+      (typeof val === 'object' && isEmpty(val));
 
-    if (!val) {
+    if (isEmptyValue) {
       return (
         <Typography.Text className="no-data-text">
           {t('label.not-set')}
@@ -195,25 +227,7 @@ export const CustomPropertyValueRenderer: React.FC<CustomPropertyValueRendererPr
     }
 
     if (typeof val === 'object') {
-      const objVal = val as Record<string, unknown>;
-
-      if (propertyTypeName === 'entityReferenceList' && Array.isArray(val)) {
-        return renderEntityReferenceList(val as EntityReference[]);
-      }
-
-      if (propertyTypeName === 'entityReference' && isEntityReference(objVal)) {
-        return renderEntityReferenceSingle(val as EntityReference);
-      }
-
-      if (propertyTypeName === 'enum' && Array.isArray(val)) {
-        return renderEnumValues(val as string[]);
-      }
-
-      if (Array.isArray(val)) {
-        return val.join(', ');
-      }
-
-      return renderObjectValue(objVal, propertyTypeName, t);
+      return renderObjectPropertyValue(val, propertyTypeName, t);
     }
 
     return <>{String(val)}</>;

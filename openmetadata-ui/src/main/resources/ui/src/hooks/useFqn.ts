@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import entityUtilClassBase from '../utils/EntityUtilClassBase';
 import { useRequiredParams } from '../utils/useRequiredParams';
 
 type Fqn = { fqn: string; ingestionFQN: string; ruleName: string };
@@ -18,12 +20,22 @@ type Fqn = { fqn: string; ingestionFQN: string; ruleName: string };
  * @description Hook to get the decoded fqn and ingestionFQN from the url
  * @returns {fqn: string, ingestionFQN: string} - fqn and ingestionFQN from the url
  */
-export const useFqn = (): Fqn => {
+export const useFqn = ({ type }: { type?: string } = {}): Fqn & {
+  entityFqn: string;
+  columnFqn?: string;
+} => {
   const { fqn, ingestionFQN, ruleName } = useRequiredParams<Fqn>();
+
+  const { entityFqn, columnFqn } = entityUtilClassBase.getFqnParts(
+    fqn ?? '',
+    type
+  );
 
   return {
     fqn: fqn ?? '',
     ingestionFQN: ingestionFQN ?? '',
     ruleName: ruleName ?? '',
+    entityFqn,
+    columnFqn,
   };
 };

@@ -34,7 +34,6 @@ import {
   DAY_IN_MONTH_OPTIONS,
   DAY_OPTIONS,
   PERIOD_OPTIONS,
-  SCHEDULAR_OPTIONS,
 } from '../../../../../constants/Schedular.constants';
 import { LOADING_STATE } from '../../../../../enums/common.enum';
 import {
@@ -80,7 +79,7 @@ const ScheduleInterval = <T,>({
   defaultSchedule,
   topChildren,
   showActionButtons = true,
-  schedularOptions = SCHEDULAR_OPTIONS,
+  schedularOptions,
 }: ScheduleIntervalProps<T>) => {
   const { t } = useTranslation();
   // Since includePeriodOptions can limit the schedule options
@@ -199,14 +198,17 @@ const ScheduleInterval = <T,>({
   };
 
   const filteredPeriodOptions = useMemo(() => {
-    if (includePeriodOptions) {
-      return PERIOD_OPTIONS.filter((option) =>
-        includePeriodOptions.includes(option.value)
-      );
-    } else {
-      return PERIOD_OPTIONS;
-    }
-  }, [includePeriodOptions]);
+    const options = includePeriodOptions
+      ? PERIOD_OPTIONS.filter((option) =>
+          includePeriodOptions.includes(option.value)
+        )
+      : PERIOD_OPTIONS;
+
+    return options.map((option) => ({
+      ...option,
+      label: t(option.label),
+    }));
+  }, [includePeriodOptions, t]);
 
   return (
     <Form

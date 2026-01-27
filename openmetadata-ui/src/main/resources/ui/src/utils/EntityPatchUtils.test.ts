@@ -144,6 +144,237 @@ describe('EntityPatchUtils', () => {
       expect(typeof patchAPI).toBe('function');
     });
 
+    it('should return patch API for METRIC entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.METRIC
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for GLOSSARY entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.GLOSSARY
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for GLOSSARY_TERM entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.GLOSSARY_TERM
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for DOMAIN entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.DOMAIN
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for TAG entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(EntityType.TAG);
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for CLASSIFICATION entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.CLASSIFICATION
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for DIRECTORY entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.DIRECTORY
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for FILE entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(EntityType.FILE);
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for SPREADSHEET entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.SPREADSHEET
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for WORKSHEET entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.WORKSHEET
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for DATABASE_SERVICE entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.DATABASE_SERVICE
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for DASHBOARD_SERVICE entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.DASHBOARD_SERVICE
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for MESSAGING_SERVICE entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.MESSAGING_SERVICE
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for PIPELINE_SERVICE entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.PIPELINE_SERVICE
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for MLMODEL_SERVICE entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.MLMODEL_SERVICE
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for METADATA_SERVICE entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.METADATA_SERVICE
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for STORAGE_SERVICE entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.STORAGE_SERVICE
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for SEARCH_SERVICE entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.SEARCH_SERVICE
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for API_SERVICE entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.API_SERVICE
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for SECURITY_SERVICE entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.SECURITY_SERVICE
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for DRIVE_SERVICE entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.DRIVE_SERVICE
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for KPI entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(EntityType.KPI);
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for APPLICATION entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.APPLICATION
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for QUERY entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(EntityType.QUERY);
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for ROLE entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(EntityType.ROLE);
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for POLICY entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(
+        EntityType.POLICY
+      );
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
+    it('should return patch API for TEAM entity type', () => {
+      const patchAPI = entityPatchClassBase.getEntityPatchAPI(EntityType.TEAM);
+
+      expect(patchAPI).toBeDefined();
+      expect(typeof patchAPI).toBe('function');
+    });
+
     it('should throw error when entity type is undefined', () => {
       expect(() => entityPatchClassBase.getEntityPatchAPI(undefined)).toThrow(
         'Entity type is required'

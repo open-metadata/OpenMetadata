@@ -12,6 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import * as reactI18next from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { getPolicies } from '../../../rest/rolesAPIV1';
@@ -69,6 +70,13 @@ jest.mock('../../../utils/CommonUtils', () => ({
   getIsErrorMatch: jest.fn(),
 }));
 
+jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
+  __esModule: true,
+  default: {
+    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
+  },
+}));
+
 const mockProps = {
   pageTitle: i18n.t('label.add-new-entity', {
     entity: i18n.t('label.role'),
@@ -121,5 +129,43 @@ describe('Test Add Role Page', () => {
     expect(policiesSelect).toBeInTheDocument();
     expect(cancelButton).toBeInTheDocument();
     expect(submitButton).toBeInTheDocument();
+  });
+
+  it('should render with correct brandName (OpenMetadata or Collate)', async () => {
+    const mockT = jest.fn((key: string, params?: Record<string, string>) => {
+      if (key === 'message.add-role-message' && params?.brandName) {
+        return (
+          `Roles are assigned to Users. In ${params.brandName}, Roles are a collection of Policies. ` +
+          `Each Role must have at least one policy attached to it. A Role supports multiple policies ` +
+          `with a one to many relationship. Ensure that the necessary policies are created before ` +
+          `creating a new role. Build rich access control roles with well-defined policies based on ` +
+          `conditional rules.`
+        );
+      }
+
+      return key;
+    });
+
+    jest.spyOn(reactI18next, 'useTranslation').mockReturnValue({
+      t: mockT,
+      i18n: { language: 'en-US' },
+      ready: true,
+    } as any);
+
+    const { container } = render(<AddRolePage {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const roleContainer = await screen.findByTestId('add-role-container');
+
+    expect(roleContainer).toBeInTheDocument();
+    // Verify actual brand name is rendered
+    expect(container.textContent).toMatch(/OpenMetadata|Collate/);
+    expect(container.textContent).not.toContain('{{brandName}}');
+
+    // Verify translation was called with brandName
+    expect(mockT).toHaveBeenCalledWith('message.add-role-message', {
+      brandName: 'OpenMetadata',
+    });
   });
 });

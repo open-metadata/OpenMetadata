@@ -107,6 +107,10 @@ const TagChip: FC<TagChipProps> = ({
         ...ellipsisStyles,
         ...colorBarStyles,
         ...heightStyles,
+        '& .MuiChip-icon': {
+          flexShrink: 0,
+          marginLeft: 0,
+        },
         ...sx,
       }}
       variant={variant as 'filled' | 'outlined'}

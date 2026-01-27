@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { findByText, render } from '@testing-library/react';
+import { findByText, render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { getTopicByFqn } from '../../rest/topicsAPI';
 import TopicDetailsPageComponent from './TopicDetailsPage.component';
 
 jest.mock('../../components/Topic/TopicDetails/TopicDetails.component', () => {
@@ -35,6 +36,13 @@ jest.mock('../../utils/useRequiredParams', () => ({
     topicFQN: 'sample_kafka.sales',
     tab: 'schema',
   })),
+}));
+
+jest.mock('../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({
+    fqn: 'sample_kafka.sales',
+    entityFqn: 'sample_kafka.sales',
+  }),
 }));
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
@@ -93,6 +101,10 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 }));
 
 describe('Test TopicDetailsPage component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('TopicDetailsPage component should render properly', async () => {
     const { container } = render(<TopicDetailsPageComponent />, {
       wrapper: MemoryRouter,
@@ -104,5 +116,28 @@ describe('Test TopicDetailsPage component', () => {
     );
 
     expect(topicDetailComponent).toBeInTheDocument();
+  });
+
+  it('Should extract topic FQN from field-level deep link URL', async () => {
+    (getTopicByFqn as jest.Mock).mockImplementation((fqn) => {
+      if (fqn === 'sample_kafka.sales') {
+        return Promise.resolve({});
+      }
+
+      return Promise.reject({
+        response: { status: 404 },
+      });
+    });
+
+    render(<TopicDetailsPageComponent />, {
+      wrapper: MemoryRouter,
+    });
+
+    await waitFor(() => {
+      expect(getTopicByFqn).toHaveBeenCalledWith(
+        'sample_kafka.sales',
+        expect.any(Object)
+      );
+    });
   });
 });

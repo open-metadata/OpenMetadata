@@ -25,6 +25,7 @@ export interface DeleteWidgetAsyncFormFields {
   prepareType: boolean;
   isRecursiveDelete: boolean;
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
+  onDeleteFailure?: () => void;
 }
 
 export interface AsyncDeleteContextType {

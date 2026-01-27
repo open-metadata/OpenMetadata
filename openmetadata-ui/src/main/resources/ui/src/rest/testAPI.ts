@@ -17,6 +17,7 @@ import { PagingResponse } from 'Models';
 import { SORT_ORDER } from '../enums/common.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
+import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
 import {
@@ -36,6 +37,7 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
+import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
@@ -78,8 +80,10 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
 
 export type ListTestDefinitionsParams = ListParams & {
   entityType?: EntityType;
-  testPlatform: TestPlatform;
+  testPlatform?: TestPlatform;
   supportedDataType?: string;
+  enabled?: boolean;
+  supportedService?: string;
 };
 
 export type ListTestCaseResultsParams = Omit<
@@ -279,6 +283,49 @@ export const getTestDefinitionById = async (
   return response.data;
 };
 
+export const createTestDefinition = async (data: CreateTestDefinition) => {
+  const response = await APIClient.post<TestDefinition>(
+    testDefinitionUrl,
+    data
+  );
+
+  return response.data;
+};
+
+export const updateTestDefinition = async (data: TestDefinition) => {
+  const response = await APIClient.put<TestDefinition>(testDefinitionUrl, data);
+
+  return response.data;
+};
+
+export const patchTestDefinition = async (id: string, patch: Operation[]) => {
+  const response = await APIClient.patch<TestDefinition>(
+    `${testDefinitionUrl}/${id}`,
+    patch
+  );
+
+  return response.data;
+};
+
+export const deleteTestDefinitionByFqn = async (
+  fqn: string,
+  paramsValue?: { hardDelete?: boolean; recursive?: boolean }
+) => {
+  const params = {
+    hardDelete: true,
+    recursive: true,
+    ...paramsValue,
+  };
+  const response = await APIClient.delete<TestDefinition>(
+    `${testDefinitionUrl}/name/${fqn}`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
 // testSuite Section
 export const getListTestSuites = async (params?: ListTestSuitePrams) => {
   const response = await APIClient.get<{
@@ -375,6 +422,18 @@ export const listTestCases = async (params: ListTestCasesParams) => {
     {
       params,
     }
+  );
+
+  return response.data;
+};
+
+export const exportTestCasesInCSV = async (
+  name: string,
+  params?: { recursive?: boolean }
+): Promise<CSVImportAsyncResponse> => {
+  const response = await APIClient.get(
+    `/dataQuality/testCases/name/${getEncodedFqn(name)}/exportAsync`,
+    { params }
   );
 
   return response.data;

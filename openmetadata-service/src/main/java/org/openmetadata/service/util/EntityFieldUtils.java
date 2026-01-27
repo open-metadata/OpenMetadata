@@ -36,11 +36,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 
-/**
- * Shared utility class for setting entity fields across different workflow components.
- * This provides a unified approach to field setting used by both ApprovalTaskWorkflow
- * and SetEntityAttributeImpl.
- */
 @Slf4j
 public class EntityFieldUtils {
 
@@ -77,61 +72,38 @@ public class EntityFieldUtils {
     // Store original state for patch creation
     String originalJson = applyPatch ? JsonUtils.pojoToJson(entity) : null;
 
-    // Handle different field types
     switch (fieldName) {
       case "description":
       case "displayName":
       case "name":
-        // Simple string fields
         setSimpleStringField(entity, fieldName, fieldValue);
         break;
-
       case "tags":
-        // Fetch Tag entities and append to existing tags
         appendTags(entity, fieldValue);
         break;
-
       case "glossaryTerms":
-        // Fetch GlossaryTerm entities and append to existing glossaryTerms
         appendGlossaryTerms(entity, fieldValue);
         break;
-
       case "certification":
-        // Set certification (replaces existing)
         setCertification(entity, fieldValue);
         break;
-
       case "tier":
-        // Set tier (replaces existing tier tag)
         setTier(entity, fieldValue);
         break;
-
       case "owners":
-        // Fetch User/Team entities and set as owners
         setOwners(entity, fieldValue);
         break;
-
       case "reviewers":
-        // Fetch User/Team entities and set as reviewers
         setReviewers(entity, fieldValue);
         break;
-
       case "status":
       case "entityStatus":
-        // Set entity status - handle different entity types appropriately
         setEntityStatus(entity, fieldValue);
         break;
-
       default:
-        // For other simple fields, try direct setting
         setSimpleStringField(entity, fieldName, fieldValue);
         break;
     }
-
-    // Update entity metadata
-    updateEntityMetadata(entity, user);
-
-    // Create and apply patch if requested
     if (applyPatch) {
       String updatedJson = JsonUtils.pojoToJson(entity);
       JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
@@ -155,9 +127,6 @@ public class EntityFieldUtils {
     }
   }
 
-  /**
-   * Sets a simple string field using reflection.
-   */
   public static void setSimpleStringField(
       EntityInterface entity, String fieldName, String fieldValue) {
     try {
@@ -283,8 +252,6 @@ public class EntityFieldUtils {
     if (termFQNs == null || termFQNs.isEmpty()) {
       return;
     }
-
-    // Get existing tags (glossary terms are stored as tags with source=GLOSSARY)
     List<TagLabel> existingTags = entity.getTags() != null ? entity.getTags() : new ArrayList<>();
     List<TagLabel> newTermsToAdd = new ArrayList<>();
     String[] fqns = termFQNs.contains(",") ? termFQNs.split(",") : new String[] {termFQNs};
@@ -326,10 +293,8 @@ public class EntityFieldUtils {
     // Check for mutual exclusivity
     try {
       TagLabelUtil.checkMutuallyExclusive(combinedTags);
-      // If no exception, we can safely append
       entity.setTags(combinedTags);
     } catch (IllegalArgumentException e) {
-      // Mutual exclusivity conflict detected - remove conflicting tags/terms and add new ones
       LOG.debug(
           "Mutual exclusivity conflict detected. Replacing conflicting glossary terms: {}",
           e.getMessage());
@@ -353,11 +318,7 @@ public class EntityFieldUtils {
           filteredTags.add(existingTag);
         }
       }
-
-      // Add the new terms
       filteredTags.addAll(newTermsToAdd);
-
-      // Final validation
       try {
         TagLabelUtil.checkMutuallyExclusive(filteredTags);
         entity.setTags(filteredTags);
@@ -527,38 +488,11 @@ public class EntityFieldUtils {
   }
 
   /**
-   * Update entity metadata (updatedBy, updatedAt) using reflection
-   */
-  public static void updateEntityMetadata(EntityInterface entity, String user) {
-    try {
-      // Set updatedBy if method exists
-      try {
-        Method setUpdatedBy = entity.getClass().getMethod("setUpdatedBy", String.class);
-        setUpdatedBy.invoke(entity, user);
-      } catch (NoSuchMethodException e) {
-        // Not all entities have updatedBy field
-      }
-
-      // Set updatedAt if method exists
-      try {
-        Method setUpdatedAt = entity.getClass().getMethod("setUpdatedAt", Long.class);
-        setUpdatedAt.invoke(entity, System.currentTimeMillis());
-      } catch (NoSuchMethodException e) {
-        // Not all entities have updatedAt field
-      }
-    } catch (Exception e) {
-      LOG.debug("Failed to update entity metadata: {}", e.getMessage());
-    }
-  }
-
-  /**
    * Sets the status field on various entity types using appropriate enum values.
    * Handles both legacy 'status' field and new 'entityStatus' field.
    */
   public static void setEntityStatus(EntityInterface entity, String statusValue) {
     try {
-      // Try to parse as EntityStatus enum and use the EntityInterface method
-      // This works for all entities that support entityStatus field
       try {
         EntityStatus status = EntityStatus.fromValue(statusValue);
         entity.setEntityStatus(status);
@@ -579,9 +513,6 @@ public class EntityFieldUtils {
             "Entity type {} doesn't support entityStatus field, trying legacy status field",
             entity.getClass().getSimpleName());
       }
-
-      // Fallback: Try to set legacy "status" field for entities that don't support entityStatus
-      // This maintains backward compatibility with older entities
       try {
         setSimpleStringField(entity, "status", statusValue);
         LOG.debug(

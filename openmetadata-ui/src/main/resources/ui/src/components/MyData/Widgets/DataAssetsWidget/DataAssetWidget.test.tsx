@@ -76,18 +76,11 @@ describe('DataAssetsWidget', () => {
     );
   };
 
-  it('should fetch dataAssets initially', () => {
+  it('should fetch dataAssets initially using DATA_ASSET index', () => {
     renderDataAssetsWidget();
 
     expect(searchData).toHaveBeenCalledWith('', 0, 0, '', 'updatedAt', 'desc', [
-      SearchIndex.TABLE,
-      SearchIndex.TOPIC,
-      SearchIndex.DASHBOARD,
-      SearchIndex.PIPELINE,
-      SearchIndex.MLMODEL,
-      SearchIndex.CONTAINER,
-      SearchIndex.SEARCH_INDEX,
-      SearchIndex.API_ENDPOINT_INDEX,
+      SearchIndex.DATA_ASSET,
     ]);
   });
 

@@ -123,17 +123,16 @@ def get_dagbag():
     """
     Load the dagbag from Airflow settings
     """
-    airflow_semver = version.parse(airflow_version)
+    airflow_server = version.parse(airflow_version)
 
     dagbag_kwargs = {"dag_folder": settings.DAGS_FOLDER}
-    if airflow_semver < version.parse("3.0.0"):
+    if airflow_server < version.parse("3.0.0"):
         dagbag_kwargs["read_dags_from_db"] = True
 
     dagbag = DagBag(**dagbag_kwargs)
     dagbag.collect_dags()
 
-    # Airflow < 3.0 still exposes collect_dags_from_db
-    if airflow_semver < version.parse("3.0.0") and hasattr(
+    if airflow_server < version.parse("3.0.0") and hasattr(
         dagbag, "collect_dags_from_db"
     ):
         dagbag.collect_dags_from_db()
@@ -143,15 +142,37 @@ def get_dagbag():
 
 class ScanDagsTask(Process):
     def run(self):
-        if version.parse(airflow_version) >= version.parse("2.6"):
+        airflow_server = version.parse(airflow_version)
+        if airflow_server >= version.parse("3.0.0"):
+            self._run_dag_processor()
+        elif airflow_server >= version.parse("2.6"):
             scheduler_job = self._run_new_scheduler_job()
+            self._kill_job(scheduler_job)
         else:
             scheduler_job = self._run_old_scheduler_job()
+            self._kill_job(scheduler_job)
+
+    def _kill_job(self, job):
+        """Kill the scheduler job after completion"""
         try:
-            scheduler_job.kill()
+            job.kill()
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.info(f"Rescan Complete: Killed Job: {exc}")
+
+    @staticmethod
+    def _run_dag_processor():
+        """
+        Run the DAG processor for Airflow 3.0+
+
+        In Airflow 3.0, DAG parsing logic moved from the scheduler to a
+        dedicated DAG processor. We use the DagFileProcessorManager to
+        trigger a single parsing run.
+        """
+        from airflow.dag_processing.manager import DagFileProcessorManager
+
+        processor_manager = DagFileProcessorManager(max_runs=1)
+        processor_manager.run()
 
     @staticmethod
     def _run_new_scheduler_job() -> "Job":

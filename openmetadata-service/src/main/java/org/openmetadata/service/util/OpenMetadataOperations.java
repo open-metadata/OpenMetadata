@@ -13,6 +13,7 @@ import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -61,6 +62,7 @@ import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
@@ -76,6 +78,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
@@ -91,6 +94,7 @@ import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -103,6 +107,7 @@ import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.apps.AppMapper;
@@ -162,10 +167,142 @@ public class OpenMetadataOperations implements Callable<Integer> {
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'reindexdi', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes', "
             + "'setOpenMetadataUrl', 'configureEmailSettings', 'install-app', 'delete-app', 'create-user', 'reset-password', "
-            + "'syncAlertOffset', 'analyze-tables'");
+            + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
+    LOG.info(
+        "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
     return 0;
+  }
+
+  @Command(
+      name = "info",
+      description =
+          "Shows the list of migrations applied and the pending migration "
+              + "waiting to be applied on the target database")
+  public Integer info() {
+    try {
+      parseConfig();
+
+      // Then get the native migration info from SERVER_CHANGE_LOG and SERVER_MIGRATION_SQL_LOGS
+      LOG.info("Native System Data Migrations:");
+      MigrationDAO migrationDAO = jdbi.onDemand(MigrationDAO.class);
+      List<MigrationDAO.ServerChangeLog> serverChangeLogs =
+          migrationDAO.listMetricsFromDBMigrations();
+
+      // Create a formatted display for native migrations
+      Set<String> columns = new LinkedHashSet<>(Set.of("version", "installedOn", "status"));
+      List<List<String>> rows = new ArrayList<>();
+
+      for (MigrationDAO.ServerChangeLog serverChangeLog : serverChangeLogs) {
+        List<String> row = new ArrayList<>();
+        row.add(serverChangeLog.getVersion());
+        row.add(serverChangeLog.getInstalledOn());
+
+        if (serverChangeLog.getMetrics() != null) {
+          JsonObject metricsJson =
+              new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
+          for (Map.Entry<String, JsonElement> entry : metricsJson.entrySet()) {
+            if (!columns.contains(entry.getKey())) {
+              columns.add(entry.getKey());
+            }
+            row.add(entry.getValue().toString());
+          }
+        }
+        rows.add(row);
+      }
+
+      printToAsciiTable(columns.stream().toList(), rows, "No Native Migrations Found");
+
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "validate",
+      description =
+          "Checks if the all the migrations haven been applied " + "on the target database.")
+  public Integer validate() {
+    try {
+      parseConfig();
+      // Validate native migrations
+      ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+      DatasourceConfig.initialize(connType.label);
+      MigrationWorkflow workflow =
+          new MigrationWorkflow(
+              jdbi,
+              config.getMigrationConfiguration().getNativePath(),
+              connType,
+              config.getMigrationConfiguration().getExtensionPath(),
+              config.getMigrationConfiguration().getFlywayPath(),
+              config,
+              false);
+      workflow.loadMigrations();
+      workflow.validateMigrationsForServer();
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Database migration validation failed due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "repair",
+      description =
+          "Repairs the SERVER_MIGRATION_SQL_LOGS and SERVER_CHANGE_LOG tables which are used to track "
+              + "all the migrations on the target database This involves removing entries for the failed migrations and update"
+              + "the checksum of migrations already applied on the target database")
+  public Integer repair() {
+    try {
+      parseConfig();
+      // Get the migration workflow to repair native migrations
+      ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+      DatasourceConfig.initialize(connType.label);
+
+      // Handle repair of SERVER_MIGRATION_SQL_LOGS and SERVER_CHANGE_LOG tables
+      try {
+        List<String> failedVersions =
+            jdbi.withHandle(
+                handle ->
+                    handle
+                        .createQuery(
+                            "SELECT version FROM SERVER_CHANGE_LOG WHERE status = 'FAILED'")
+                        .mapTo(String.class)
+                        .list());
+
+        if (!failedVersions.isEmpty()) {
+          LOG.info("Found {} failed migrations in SERVER_CHANGE_LOG", failedVersions.size());
+
+          // Remove failed migrations from SERVER_CHANGE_LOG
+          jdbi.useHandle(
+              handle ->
+                  handle
+                      .createUpdate("DELETE FROM SERVER_CHANGE_LOG WHERE status = 'FAILED'")
+                      .execute());
+
+          // Clean up related entries in SERVER_MIGRATION_SQL_LOGS
+          for (String version : failedVersions) {
+            jdbi.useHandle(
+                handle ->
+                    handle
+                        .createUpdate(
+                            "DELETE FROM SERVER_MIGRATION_SQL_LOGS WHERE version = :version")
+                        .bind("version", version)
+                        .execute());
+          }
+        }
+      } catch (Exception e) {
+        LOG.error("Error repairing SERVER_CHANGE_LOG and SERVER_MIGRATION_SQL_LOGS tables", e);
+        throw e;
+      }
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Repair of migration tables failed due to ", e);
+      return 1;
+    }
   }
 
   @Command(
@@ -531,6 +668,40 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer checkConnection() {
     try {
       parseConfig();
+      // Check native tables
+      try {
+        jdbi.withHandle(
+            handle -> {
+              try {
+                handle
+                    .createQuery("SELECT COUNT(*) FROM SERVER_CHANGE_LOG")
+                    .mapTo(Integer.class)
+                    .findOne();
+                return true;
+              } catch (Exception e) {
+                LOG.warn("Could not access SERVER_CHANGE_LOG table: {}", e.getMessage());
+                return false;
+              }
+            });
+
+        // querying SERVER_MIGRATION_SQL_LOGS table
+        jdbi.withHandle(
+            handle -> {
+              try {
+                handle
+                    .createQuery("SELECT COUNT(*) FROM SERVER_MIGRATION_SQL_LOGS")
+                    .mapTo(Integer.class)
+                    .findOne();
+                return true;
+              } catch (Exception e) {
+                LOG.warn("Could not access SERVER_MIGRATION_SQL_LOGS table: {}", e.getMessage());
+                return false;
+              }
+            });
+
+      } catch (Exception e) {
+        LOG.warn("Error checking migration tables: {}", e.getMessage());
+      }
       jdbi.open().getConnection();
       return 0;
     } catch (Exception e) {
@@ -641,6 +812,44 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } catch (Exception e) {
       LOG.error("Failed to db migration due to ", e);
       return 1;
+    }
+  }
+
+  @Command(
+      name = "recover",
+      description =
+          "Recover data lost due to Flyway migration issue (roles, policies, bot relationships). "
+              + "Use this if you ran migrations with --force after upgrading from pre-1.11.0 and lost data.")
+  public Integer recover() {
+    try {
+      LOG.info("Running data recovery for Flyway migration issue...");
+      parseConfig();
+      runDataRecovery();
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to recover data due to ", e);
+      return 1;
+    }
+  }
+
+  private void runDataRecovery() {
+    try (Handle handle = jdbi.open()) {
+      ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+
+      org.openmetadata.service.migration.utils.v1114.MigrationUtil.checkAndLogDataLossSymptoms(
+          handle);
+      org.openmetadata.service.migration.utils.v1114.MigrationUtil.reseedRolesAndPoliciesIfMissing(
+          handle, connType);
+      org.openmetadata.service.migration.utils.v1114.MigrationUtil
+          .restoreRolePolicyRelationshipsIfMissing(handle, connType);
+      org.openmetadata.service.migration.utils.v1114.MigrationUtil.restoreBotRelationshipsIfMissing(
+          handle, connType);
+      org.openmetadata.service.migration.utils.v1114.MigrationUtil.restoreBotUserRolesIfMissing(
+          handle, connType);
+
+      LOG.info("Data recovery completed.");
+    } catch (Exception e) {
+      LOG.error("Error during data recovery: {}", e.getMessage(), e);
     }
   }
 
@@ -931,6 +1140,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
       TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
       TypeRegistry.instance().initialize(typeRepository);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
+
+      // Prepare search repository for reindexing (e.g., initialize vector services)
+      searchRepository.prepareForReindex();
+
       String appName = "SearchIndexingApplication";
       // Handle entityStr with or without quotes
       String cleanEntityStr = entityStr;
@@ -1410,6 +1623,16 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
 
       printToAsciiTable(columns, pipelineStatuses, "No Pipelines Found");
+
+      // Check if any pipeline deployments failed by examining the status column
+      boolean hasFailures =
+          pipelineStatuses.stream().anyMatch(status -> status.get(3).startsWith("FAILED"));
+
+      if (hasFailures) {
+        LOG.error("Some pipeline deployments failed. Check the table above for details.");
+        return 1;
+      }
+
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to deploy pipelines due to ", e);
@@ -1661,6 +1884,58 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  @Command(
+      name = "cleanup-flowable-history",
+      description =
+          "Cleans up old workflow deployments and history. "
+              + "For Periodic Batch workflows: cleans up both deployments and history. "
+              + "For Event Based workflows: cleans up only history. "
+              + "By default, runs in dry-run mode to only analyze what would be cleaned.")
+  public Integer cleanupFlowableHistory(
+      @Option(
+              names = {"--delete"},
+              defaultValue = "false",
+              description =
+                  "Actually perform the cleanup. Without this flag, the command only analyzes what would be cleaned (dry-run mode).")
+          boolean delete,
+      @Option(
+              names = {"--runtime-batch-size"},
+              defaultValue = "1000",
+              description = "Batch size for runtime instance cleanup.")
+          int runtimeBatchSize,
+      @Option(
+              names = {"--history-batch-size"},
+              defaultValue = "1000",
+              description = "Batch size for history instance cleanup.")
+          int historyBatchSize) {
+    try {
+      boolean dryRun = !delete;
+      LOG.info("Running Flowable workflow cleanup. Dry run: {}", dryRun);
+
+      parseConfig();
+      initializeCollectionRegistry();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
+      WorkflowHandler.initialize(config);
+
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      FlowableCleanup cleanup = new FlowableCleanup(workflowHandler, dryRun);
+      FlowableCleanup.FlowableCleanupResult result =
+          cleanup.performCleanup(historyBatchSize, runtimeBatchSize);
+
+      if (dryRun && !result.getCleanedWorkflows().isEmpty()) {
+        LOG.info("Dry run completed. To actually perform the cleanup, run with --delete");
+        return 1;
+      }
+
+      LOG.info("Flowable cleanup completed successfully.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to cleanup Flowable history due to ", e);
+      return 1;
+    }
+  }
+
   private void analyzeEntityTable(String entity) {
     try {
       EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entity);
@@ -1828,7 +2103,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       // Decrypt the JWT token - this is the crucial step that was missing
       secretsManager.decryptJWTAuthMechanism(jwtAuthMechanism);
-
+      String token = jwtAuthMechanism.getJWTToken();
+      if (secretsManager.isSecret(token)) {
+        return secretsManager.getSecretValue(token);
+      }
       return jwtAuthMechanism.getJWTToken();
     } catch (Exception e) {
       LOG.error("Failed to retrieve ingestion-bot token", e);
@@ -1845,27 +2123,48 @@ public class OpenMetadataOperations implements Callable<Integer> {
     return null;
   }
 
-  @SuppressWarnings("unchecked")
   private void updatePipelineStatuses(
       List<IngestionPipeline> pipelines, String responseBody, List<List<String>> pipelineStatuses) {
     try {
-      // Parse the bulk deploy response
-      List<Map<String, Object>> responses = JsonUtils.readValue(responseBody, List.class);
+      // Parse the bulk deploy response to typed PipelineServiceClientResponse objects
+      List<PipelineServiceClientResponse> responses =
+          JsonUtils.readValue(
+              responseBody, new TypeReference<List<PipelineServiceClientResponse>>() {});
 
-      // Create a map for quick lookup
-      Map<UUID, String> statusMap =
-          responses.stream()
-              .collect(
-                  Collectors.toMap(
-                      response -> UUID.fromString((String) response.get("pipelineId")),
-                      response -> {
-                        Integer code = (Integer) response.get("code");
-                        return code != null && code == 200 ? "DEPLOYED" : "FAILED";
-                      }));
+      // Log the parsed responses for debugging
+      LOG.info("Received {} deployment responses", responses.size());
+      for (int i = 0; i < responses.size(); i++) {
+        PipelineServiceClientResponse response = responses.get(i);
+        String pipelineName = i < pipelines.size() ? pipelines.get(i).getName() : "unknown";
+        LOG.info(
+            "Pipeline {}: code={}, platform={}, reason={}",
+            pipelineName,
+            response.getCode(),
+            response.getPlatform(),
+            response.getReason() != null ? response.getReason() : "N/A");
+      }
 
-      // Update status table for display
-      for (IngestionPipeline pipeline : pipelines) {
-        String status = statusMap.getOrDefault(pipeline.getId(), "UNKNOWN");
+      // Correlate responses with pipelines by position (assuming same order)
+      for (int i = 0; i < pipelines.size(); i++) {
+        IngestionPipeline pipeline = pipelines.get(i);
+        String status;
+
+        if (i < responses.size()) {
+          PipelineServiceClientResponse response = responses.get(i);
+          Integer code = response.getCode();
+          String reason = response.getReason();
+
+          if (code != null && (code == 200 || code == 201)) {
+            status = "DEPLOYED";
+          } else if (code != null) {
+            status = "FAILED - " + code + (reason != null ? ": " + reason : "");
+          } else {
+            status = "UNKNOWN";
+          }
+        } else {
+          status = "NO_RESPONSE";
+        }
+
         pipelineStatuses.add(
             Arrays.asList(
                 pipeline.getName(),
@@ -1887,7 +2186,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
-  private void parseConfig() throws Exception {
+  public void parseConfig() throws Exception {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
     Validator validator = Validators.newValidator();
@@ -1922,6 +2221,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     jdbi = JdbiUtils.createAndSetupJDBI(dataSourceFactory);
 
+    // Initialize the MigrationValidationClient, used in the Settings Repository
+    MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), config);
+    // Init repos
+    collectionDAO = jdbi.onDemand(CollectionDAO.class);
+    Entity.setJdbi(jdbi);
+    Entity.setCollectionDAO(collectionDAO);
+    Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(collectionDAO));
+    Entity.setSystemRepository(new SystemRepository());
+
     searchRepository =
         SearchRepositoryFactory.createSearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
@@ -1931,14 +2239,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
         SecretsManagerFactory.createSecretsManager(
             config.getSecretsManagerConfiguration(), config.getClusterName());
 
-    collectionDAO = jdbi.onDemand(CollectionDAO.class);
     Entity.setSearchRepository(searchRepository);
-    Entity.setJdbi(jdbi);
-    Entity.setCollectionDAO(collectionDAO);
-    Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);
     ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
     DatasourceConfig.initialize(connType.label);
+    OpenMetadataApplicationConfigHolder.initialize(config);
   }
 
   // This was before handled via flyway's clean command.

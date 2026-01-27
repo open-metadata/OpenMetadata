@@ -87,7 +87,7 @@ class ColumnValuesToBeNotNullValidator(
         dimension_results = []
 
         try:
-            dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            dfs = self.runner
             null_count_impl = Metrics.NULL_COUNT(column).get_pandas_computation()
             row_count_impl = Metrics.ROW_COUNT().get_pandas_computation()
 

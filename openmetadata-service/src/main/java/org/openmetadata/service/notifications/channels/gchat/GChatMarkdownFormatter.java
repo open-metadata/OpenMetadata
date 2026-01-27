@@ -173,8 +173,7 @@ final class GChatMarkdownFormatter extends AbstractVisitor {
 
   private String safeText(String s) {
     if (s == null) return "";
-    if (s.length() <= 4096) return s;
-    return s.substring(0, 4095) + "…";
+    return s;
   }
 
   private static String extractPlainText(Node node) {

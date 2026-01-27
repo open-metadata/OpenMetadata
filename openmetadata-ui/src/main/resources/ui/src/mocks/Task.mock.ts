@@ -16,7 +16,9 @@ import {
   DataType,
 } from '../generated/entity/data/container';
 import {
+  FeedbackType,
   Post,
+  RecognizerFeedback,
   TaskType,
   Thread,
   ThreadTaskStatus,
@@ -328,4 +330,54 @@ export const MOCK_TASK_3 = {
   ],
   status: ThreadTaskStatus.Open,
   oldValue: '[]',
+};
+
+export const MOCK_RECOGNIZER_FEEDBACK: RecognizerFeedback = {
+  entityLink:
+    '<#E::table::sample_data.ecommerce_db.shopify."dim.shop"::columns::email>',
+  feedbackType: FeedbackType.FalsePositive,
+  tagFQN: 'PII.Sensitive',
+  userComments: 'This is not a sensitive field',
+  createdBy: {
+    id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+    type: 'user',
+    name: 'admin',
+    displayName: 'Admin User',
+    deleted: false,
+  },
+  createdAt: 1701686127533,
+};
+
+export const MOCK_TASK_RECOGNIZER_FEEDBACK = {
+  id: 4,
+  type: TaskType.RecognizerFeedbackApproval,
+  assignees: [
+    {
+      id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
+      type: 'team',
+      name: 'DataGovernance',
+      fullyQualifiedName: 'DataGovernance',
+      deleted: false,
+    },
+  ],
+  status: ThreadTaskStatus.Open,
+  feedback: MOCK_RECOGNIZER_FEEDBACK,
+};
+
+export const TASK_FEED_RECOGNIZER_FEEDBACK: Thread = {
+  id: 'feedback-8b5076bb-8284-46b0-b00d-5e43a184ba9b',
+  type: ThreadType.Task,
+  href: 'http://localhost:8585/api/v1/feed/feedback-8b5076bb-8284-46b0-b00d-5e43a184ba9b',
+  threadTs: 1701686127533,
+  about:
+    '<#E::table::sample_data.ecommerce_db.shopify."dim.shop"::columns::email>',
+  createdBy: 'admin',
+  updatedAt: 1701686127534,
+  updatedBy: 'admin',
+  resolved: false,
+  message: 'Review feedback for tag PII.Sensitive',
+  postsCount: 0,
+  posts: [],
+  reactions: [],
+  task: MOCK_TASK_RECOGNIZER_FEEDBACK,
 };

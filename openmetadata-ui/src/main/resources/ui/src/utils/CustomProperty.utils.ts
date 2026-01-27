@@ -16,6 +16,7 @@ import {
   DEFAULT_DATE_TIME_FORMAT,
   DEFAULT_TIME_FORMAT,
   SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING,
+  SUPPORTED_DATE_TIME_FORMATS_LUXON_FORMAT_MAPPING,
 } from '../constants/CustomProperty.constants';
 import { PAGE_HEADERS } from '../constants/PageHeaders.constant';
 import { CustomPropertyConfig } from '../generated/entity/type';
@@ -40,6 +41,20 @@ export const getCustomPropertyDateTimeDefaultFormat = (type: string) => {
   }
 };
 
+export const getCustomPropertyLuxonFormat = (
+  type: string,
+  backendFormat: CustomPropertyConfig['config']
+) => {
+  const format =
+    SUPPORTED_DATE_TIME_FORMATS_LUXON_FORMAT_MAPPING[
+      backendFormat as string as keyof typeof SUPPORTED_DATE_TIME_FORMATS_LUXON_FORMAT_MAPPING
+    ] ??
+    backendFormat ??
+    getCustomPropertyDateTimeDefaultFormat(type);
+
+  return format;
+};
+
 export const getCustomPropertyMomentFormat = (
   type: string,
   backendFormat: CustomPropertyConfig['config']
@@ -58,7 +73,15 @@ export const getCustomPropertyMomentFormat = (
   return format;
 };
 
-export const getCustomPropertyPageHeaderFromEntity = (entityType: string) => {
+interface PageHeader {
+  header: string;
+  subHeader: string;
+  subHeaderParams?: Record<string, string>;
+}
+
+export const getCustomPropertyPageHeaderFromEntity = (
+  entityType: string
+): PageHeader => {
   switch (entityType) {
     case ENTITY_PATH.tables:
       return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
@@ -125,6 +148,9 @@ export const getCustomPropertyPageHeaderFromEntity = (entityType: string) => {
 
     case ENTITY_PATH.worksheets:
       return PAGE_HEADERS.WORKSHEET_CUSTOM_ATTRIBUTES;
+
+    case ENTITY_PATH.column:
+      return PAGE_HEADERS.COLUMN_CUSTOM_ATTRIBUTES;
 
     default:
       return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;

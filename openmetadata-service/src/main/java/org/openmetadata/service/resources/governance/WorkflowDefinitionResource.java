@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowTransactionManager;
@@ -68,7 +69,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 @Slf4j
 public class WorkflowDefinitionResource
     extends EntityResource<WorkflowDefinition, WorkflowDefinitionRepository> {
-  public static final String COLLECTION_PATH = "v1/governance/workflowDefinitions/";
+  public static final String COLLECTION_PATH = "/v1/governance/workflowDefinitions/";
   static final String FIELDS = "owners";
   private final WorkflowDefinitionMapper mapper = new WorkflowDefinitionMapper();
 
@@ -192,8 +193,17 @@ public class WorkflowDefinitionResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
   @POST
@@ -265,8 +275,17 @@ public class WorkflowDefinitionResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
   }
 
   @GET
@@ -622,8 +641,11 @@ public class WorkflowDefinitionResource
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Workflow trigger status code",
+            description = "Workflow triggered successfully",
             content = @Content(mediaType = "application/json")),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Workflow is suspended or cannot be triggered"),
         @ApiResponse(
             responseCode = "404",
             description = "Workflow Definition named '{fqn}' is not found")
@@ -634,11 +656,55 @@ public class WorkflowDefinitionResource
       @Parameter(description = "Name of the Workflow Definition", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    boolean triggerResponse = WorkflowHandler.getInstance().triggerWorkflow(fqn);
-    if (triggerResponse) {
-      return Response.status(Response.Status.OK).entity("Workflow Triggered").build();
-    } else {
-      return Response.status(Response.Status.NOT_FOUND).entity(fqn).build();
+    try {
+      WorkflowDefinition workflow =
+          repository.getByName(uriInfo, fqn, repository.getFields("suspended"));
+      if (workflow.getSuspended() != null && workflow.getSuspended()) {
+        return Response.status(Response.Status.BAD_REQUEST)
+            .entity(
+                Map.of(
+                    "status", "error",
+                    "workflow", fqn,
+                    "message",
+                        "Cannot trigger suspended workflow. Please resume the workflow first.",
+                    "code", "WORKFLOW_SUSPENDED"))
+            .build();
+      }
+
+      boolean triggerResponse = WorkflowHandler.getInstance().triggerWorkflow(fqn);
+      if (triggerResponse) {
+        return Response.status(Response.Status.OK)
+            .entity(
+                Map.of(
+                    "status",
+                    "success",
+                    "workflow",
+                    fqn,
+                    "message",
+                    "Workflow triggered successfully",
+                    "triggeredAt",
+                    System.currentTimeMillis()))
+            .build();
+      } else {
+        return Response.status(Response.Status.BAD_REQUEST)
+            .entity(
+                Map.of(
+                    "status", "error",
+                    "workflow", fqn,
+                    "message",
+                        "Failed to trigger workflow. The workflow may not be deployed or may have configuration issues.",
+                    "code", "TRIGGER_FAILED"))
+            .build();
+      }
+    } catch (EntityNotFoundException e) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(
+              Map.of(
+                  "status", "error",
+                  "workflow", fqn,
+                  "message", "Workflow Definition not found",
+                  "code", "WORKFLOW_NOT_FOUND"))
+          .build();
     }
   }
 

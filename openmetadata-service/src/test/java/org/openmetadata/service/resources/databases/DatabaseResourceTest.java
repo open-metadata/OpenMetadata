@@ -417,7 +417,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     assertNotNull(database.getServiceType());
     assertReference(createRequest.getService(), database.getService());
     assertEquals(
-        FullyQualifiedName.build(database.getService().getName(), database.getName()),
+        FullyQualifiedName.add(database.getService().getFullyQualifiedName(), database.getName()),
         database.getFullyQualifiedName());
   }
 
@@ -426,8 +426,27 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
       Database expected, Database updated, Map<String, String> authHeaders) {
     assertReference(expected.getService(), updated.getService());
     assertEquals(
-        FullyQualifiedName.build(updated.getService().getName(), updated.getName()),
+        FullyQualifiedName.add(updated.getService().getFullyQualifiedName(), updated.getName()),
         updated.getFullyQualifiedName());
+  }
+
+  @Override
+  protected EntityReference createContainerWithDotsInName(String name) throws IOException {
+    DatabaseServiceResourceTest serviceTest = new DatabaseServiceResourceTest();
+    CreateDatabaseService createService = serviceTest.createRequest(name);
+    DatabaseService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+    return service.getEntityReference();
+  }
+
+  @Override
+  protected CreateDatabase createRequestUnderContainer(String name, EntityReference container) {
+    return new CreateDatabase().withName(name).withService(container.getFullyQualifiedName());
+  }
+
+  @Override
+  protected void deleteContainerWithDotsInName(EntityReference container) throws IOException {
+    DatabaseServiceResourceTest serviceTest = new DatabaseServiceResourceTest();
+    serviceTest.deleteEntity(container.getId(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Override

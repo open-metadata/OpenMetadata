@@ -30,7 +30,7 @@ import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 
 export const userCellRenderer = (user: EntityReference | User) => {
   return user.name ? (
-    <div className="w-fit-content">
+    <div className="w-max-full">
       <UserPopOverCard showUserName profileWidth={16} userName={user.name} />
     </div>
   ) : (
@@ -45,12 +45,14 @@ export const commonUserDetailColumns = (
     title: t('label.username'),
     dataIndex: 'username',
     key: 'username',
+    ellipsis: { showTitle: false },
     render: (_, record) => userCellRenderer(record),
   },
   {
     title: t('label.name'),
     dataIndex: 'name',
     key: 'name',
+    ellipsis: { showTitle: false },
     render: (_, record) => getEntityName(record),
   },
   {

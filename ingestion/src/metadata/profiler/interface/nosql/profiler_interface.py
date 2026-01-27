@@ -143,9 +143,13 @@ class NoSQLProfilerInterface(ProfilerInterface):
             row = None
         if metric_func.column is not None:
             column = metric_func.column.name
-            self.status.scanned(f"{metric_func.table.name.root}.{column}")
+            self.status.scanned(
+                f"{metric_func.table.name.root}.{column}__{metric_func.metric_type.value}"
+            )
         else:
-            self.status.scanned(metric_func.table.name.root)
+            self.status.scanned(
+                f"{metric_func.table.name.root}__{metric_func.metric_type.value}"
+            )
             column = None
         return row, column, metric_func.metric_type.value
 

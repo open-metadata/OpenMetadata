@@ -106,6 +106,12 @@
           "name": "CollateAI"
         },
         {
+          "name": "CollateAITierAgent"
+        },
+        {
+          "name": "CollateAIQualityAgent"
+        },
+        {
           "name": "Metadata"
         }
       ]

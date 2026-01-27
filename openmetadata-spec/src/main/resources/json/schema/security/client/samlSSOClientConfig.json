@@ -19,17 +19,18 @@
           "description": "SSO Login URL.",
           "type": "string"
         },
+        "authorityUrl": {
+          "description": "Authority URL (deprecated, use entityId instead).",
+          "type": "string",
+          "deprecated": true
+        },
         "idpX509Certificate": {
           "description": "X509 Certificate ",
           "type": "string",
           "format": "password"
         },
-        "authorityUrl": {
-          "description": "Authority URL to redirect the users on Sign In page",
-          "type": "string"
-        },
         "nameId": {
-          "description": "Authority URL to redirect the users on Sign In page",
+          "description": "Name ID format for SAML assertions",
           "type": "string",
           "default": "urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"
         }

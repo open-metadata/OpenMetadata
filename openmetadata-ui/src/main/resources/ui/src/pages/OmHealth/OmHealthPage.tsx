@@ -70,7 +70,12 @@ const OmHealthPage = () => {
         <Col span={24}>
           <Row align="middle" justify="space-between">
             <Col>
-              <PageHeader data={PAGE_HEADERS.OM_HEALTH} />
+              <PageHeader
+                data={{
+                  header: t(PAGE_HEADERS.OM_HEALTH.header),
+                  subHeader: t(PAGE_HEADERS.OM_HEALTH.subHeader),
+                }}
+              />
             </Col>
             <Col>
               <Button type="primary" onClick={getHealthData}>

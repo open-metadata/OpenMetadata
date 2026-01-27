@@ -27,10 +27,6 @@ import WorksheetColumnsTable from './WorksheetColumnsTable';
 jest.mock('../../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn((entity) => entity?.displayName || entity?.name),
 }));
-jest.mock('../../../../utils/TableColumn.util', () => ({
-  columnFilterIcon: jest.fn(() => null),
-  ownerTableObject: jest.fn(() => []),
-}));
 jest.mock('../../../../utils/TableTags/TableTags.utils', () => ({
   getAllTags: jest.fn(() => []),
   searchTagInData: jest.fn(() => true),

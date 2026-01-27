@@ -38,4 +38,5 @@ export interface DomainDetailsProps {
    */
   onNavigate?: (path: string) => void;
   refreshDomains?: () => void;
+  isTreeView?: boolean;
 }

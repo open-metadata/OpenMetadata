@@ -23,7 +23,6 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useFqn } from '../../../hooks/useFqn';
@@ -39,6 +38,7 @@ import { getDomainPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
+import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import '../domain.less';
 import DomainDetails from '../DomainDetails/DomainDetails.component';
 
@@ -83,6 +83,8 @@ const DomainDetailPage = () => {
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        throw error as AxiosError;
       }
     }
   };
@@ -213,15 +215,17 @@ const DomainDetailPage = () => {
   }
 
   return (
-    <DomainDetails
-      domain={activeDomain}
-      handleFollowingClick={handleFollowingClick}
-      isFollowing={isFollowing}
-      isFollowingLoading={isFollowingLoading}
-      onDelete={handleDomainDelete}
-      onUpdate={handleDomainUpdate}
-    />
+    <PageLayoutV1 pageTitle={getEntityName(activeDomain)}>
+      <DomainDetails
+        domain={activeDomain}
+        handleFollowingClick={handleFollowingClick}
+        isFollowing={isFollowing}
+        isFollowingLoading={isFollowingLoading}
+        onDelete={handleDomainDelete}
+        onUpdate={handleDomainUpdate}
+      />
+    </PageLayoutV1>
   );
 };
 
-export default withPageLayout(DomainDetailPage);
+export default DomainDetailPage;

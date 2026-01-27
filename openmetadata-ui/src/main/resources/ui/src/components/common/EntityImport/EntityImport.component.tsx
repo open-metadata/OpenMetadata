@@ -12,7 +12,7 @@
  */
 import { Affix, Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as SuccessBadgeIcon } from '../../../assets/svg/success-badge.svg';
@@ -66,6 +66,15 @@ export const EntityImport = ({
       isAborted,
     };
   }, [csvImportResult]);
+
+  const translatedSteps = useMemo(
+    () =>
+      STEPS_FOR_IMPORT_ENTITY.map((step) => ({
+        ...step,
+        name: startCase(t(step.name)),
+      })),
+    [t]
+  );
 
   const handleLoadData = async (e: ProgressEvent<FileReader>) => {
     try {
@@ -206,7 +215,7 @@ export const EntityImport = ({
   return (
     <Row className="entity-import-container" gutter={[16, 16]}>
       <Col span={24}>
-        <Stepper activeStep={activeStep} steps={STEPS_FOR_IMPORT_ENTITY} />
+        <Stepper activeStep={activeStep} steps={translatedSteps} />
       </Col>
       <>
         {activeStep === 1 && (

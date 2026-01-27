@@ -26,10 +26,8 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.Entity.getEntities;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
@@ -47,6 +45,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -71,7 +70,6 @@ import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
-import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.tests.CustomMetric;
@@ -120,6 +118,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidatorUtil;
@@ -166,7 +165,6 @@ public class TableRepository extends EntityRepository<Table> {
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
     fieldFetchers.put("testSuite", this::fetchAndSetTestSuites);
-    fieldFetchers.put("queries", this::fetchAndSetQueries);
     fieldFetchers.put(TABLE_PROFILER_CONFIG, this::fetchAndSetTableProfilerConfigs);
     fieldFetchers.put("joins", this::fetchAndSetJoins);
     fieldFetchers.put(CUSTOM_METRICS, this::fetchAndSetCustomMetrics);
@@ -175,7 +173,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public void setFields(Table table, Fields fields) {
+  public void setFields(Table table, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(table);
     if (table.getUsageSummary() == null) {
       table.setUsageSummary(
@@ -201,6 +199,13 @@ public class TableRepository extends EntityRepository<Table> {
     if ((fields.contains(COLUMN_FIELD)) && (fields.contains(CUSTOM_METRICS))) {
       for (Column column : table.getColumns()) {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
+      }
+    }
+    if ((fields.contains(COLUMN_FIELD)) && (fields.contains("extension"))) {
+      if (table.getColumns() != null) {
+        for (Column column : table.getColumns()) {
+          column.setExtension(getColumnExtension(table.getId(), column.getFullyQualifiedName()));
+        }
       }
     }
   }
@@ -245,13 +250,6 @@ public class TableRepository extends EntityRepository<Table> {
       return;
     }
     setFieldFromMap(true, tables, batchFetchTestSuites(tables), Table::setTestSuite);
-  }
-
-  private void fetchAndSetQueries(List<Table> tables, Fields fields) {
-    if (!fields.contains("queries") || tables == null || tables.isEmpty()) {
-      return;
-    }
-    setFieldFromMap(true, tables, batchFetchQueries(tables), Table::setQueries);
   }
 
   private void fetchAndSetTableProfilerConfigs(List<Table> tables, Fields fields) {
@@ -1624,6 +1622,19 @@ public class TableRepository extends EntityRepository<Table> {
         CustomMetric.class);
   }
 
+  private Object getColumnExtension(UUID tableId, String columnFQN) {
+    try {
+      String extensionKey = FullyQualifiedName.buildHash(columnFQN);
+      String extensionJson = daoCollection.entityExtensionDAO().getExtension(tableId, extensionKey);
+      if (extensionJson != null) {
+        return JsonUtils.readValue(extensionJson, Object.class);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to get extension for column {}: {}", columnFQN, e.getMessage());
+    }
+    return null;
+  }
+
   private List<CustomMetric> getCustomMetrics(Table table, String columnName) {
     String extension = columnName != null ? TABLE_COLUMN_EXTENSION : TABLE_EXTENSION;
     extension = CUSTOM_METRICS_EXTENSION + extension;
@@ -1737,9 +1748,17 @@ public class TableRepository extends EntityRepository<Table> {
       List<TableConstraint> updatedConstraints = listOrEmpty(updatedTable.getTableConstraints());
       origConstraints.sort(EntityUtil.compareTableConstraint);
       origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
+      origConstraints.stream()
+          .filter(c -> c.getReferredColumns() != null)
+          .map(TableConstraint::getReferredColumns)
+          .forEach(Collections::sort);
 
       updatedConstraints.sort(EntityUtil.compareTableConstraint);
       updatedConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
+      updatedConstraints.stream()
+          .filter(c -> c.getReferredColumns() != null)
+          .map(TableConstraint::getReferredColumns)
+          .forEach(Collections::sort);
 
       List<TableConstraint> added = new ArrayList<>();
       List<TableConstraint> deleted = new ArrayList<>();
@@ -1858,7 +1877,8 @@ public class TableRepository extends EntityRepository<Table> {
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       // Headers: column.fullyQualifiedName, column.displayName, column.description,
-      // column.dataTypeDisplay,column.dataType, column.arrayDataType, column.dataLength,
+      // column.dataTypeDisplay,column.dataType, column.arrayDataType,
+      // column.dataLength,
       // column.tags, column.glossaryTerms
       Table originalEntity = JsonUtils.deepCopy(table, Table.class);
       while (recordIndex < csvRecords.size()) {
@@ -1898,7 +1918,8 @@ public class TableRepository extends EntityRepository<Table> {
       } else { // Dry run don't create the entity
         repository.setFullyQualifiedName(entity);
         repository.findByNameOrNull(entity.getFullyQualifiedName(), NON_DELETED);
-        // Track the dryRun created entities, as they may be referred by other entities being
+        // Track the dryRun created entities, as they may be referred by other entities
+        // being
         // created
         // during import
         dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
@@ -1982,7 +2003,8 @@ public class TableRepository extends EntityRepository<Table> {
     @Override
     protected void addRecord(CsvFile csvFile, Table entity) {
       // Headers: column.fullyQualifiedName, column.displayName, column.description,
-      // column.dataTypeDisplay,column.dataType, column.arrayDataType, column.dataLength,
+      // column.dataTypeDisplay,column.dataType, column.arrayDataType,
+      // column.dataLength,
       // column.tags, column.glossaryTerms
       for (int i = 0; i < listOrEmpty(entity.getColumns()).size(); i++) {
         addRecord(csvFile, new ArrayList<>(), table.getColumns().get(i));
@@ -2032,9 +2054,36 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       Authorizer authorizer,
       SecurityContext securityContext) {
+    return getTableColumns(
+        tableId, limit, offset, fieldsParam, include, null, authorizer, securityContext);
+  }
+
+  public ResultList<Column> getTableColumns(
+      UUID tableId,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    return getTableColumns(
+        tableId, limit, offset, fieldsParam, include, sortBy, "asc", authorizer, securityContext);
+  }
+
+  public ResultList<Column> getTableColumns(
+      UUID tableId,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = find(tableId, include);
     return getTableColumnsInternal(
-        table, limit, offset, fieldsParam, include, authorizer, securityContext);
+        table, limit, offset, fieldsParam, include, sortBy, sortOrder, authorizer, securityContext);
   }
 
   public ResultList<Column> getTableColumnsByFQN(
@@ -2045,9 +2094,36 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       Authorizer authorizer,
       SecurityContext securityContext) {
+    return getTableColumnsByFQN(
+        fqn, limit, offset, fieldsParam, include, null, authorizer, securityContext);
+  }
+
+  public ResultList<Column> getTableColumnsByFQN(
+      String fqn,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    return getTableColumnsByFQN(
+        fqn, limit, offset, fieldsParam, include, sortBy, "asc", authorizer, securityContext);
+  }
+
+  public ResultList<Column> getTableColumnsByFQN(
+      String fqn,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = findByName(fqn, include);
     return getTableColumnsInternal(
-        table, limit, offset, fieldsParam, include, authorizer, securityContext);
+        table, limit, offset, fieldsParam, include, sortBy, sortOrder, authorizer, securityContext);
   }
 
   private ResultList<Column> getTableColumnsInternal(
@@ -2056,6 +2132,8 @@ public class TableRepository extends EntityRepository<Table> {
       int offset,
       String fieldsParam,
       Include include,
+      String sortBy,
+      String sortOrder,
       Authorizer authorizer,
       SecurityContext securityContext) {
     // For paginated column access, we need to load the table with columns
@@ -2067,12 +2145,32 @@ public class TableRepository extends EntityRepository<Table> {
       return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
     }
 
+    // Sort columns based on sortBy and sortOrder parameters
+    List<Column> sortedColumns = new ArrayList<>(allColumns);
+    Comparator<Column> comparator;
+    if ("ordinalPosition".equals(sortBy)) {
+      comparator =
+          Comparator.comparing(
+              Column::getOrdinalPosition, Comparator.nullsLast(Comparator.naturalOrder()));
+    } else {
+      // Default: sort by name
+      comparator =
+          Comparator.comparing(
+              Column::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+    }
+
+    // Apply sort order (desc reverses the comparator)
+    if ("desc".equalsIgnoreCase(sortOrder)) {
+      comparator = comparator.reversed();
+    }
+    sortedColumns.sort(comparator);
+
     // Apply pagination
-    int total = allColumns.size();
+    int total = sortedColumns.size();
     int fromIndex = Math.min(offset, total);
     int toIndex = Math.min(offset + limit, total);
 
-    List<Column> paginatedColumns = allColumns.subList(fromIndex, toIndex);
+    List<Column> paginatedColumns = sortedColumns.subList(fromIndex, toIndex);
 
     // Apply field processing if needed
     if (fieldsParam != null && fieldsParam.contains("tags")) {
@@ -2082,6 +2180,12 @@ public class TableRepository extends EntityRepository<Table> {
     if (fieldsParam != null && fieldsParam.contains("customMetrics")) {
       for (Column column : paginatedColumns) {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
+      }
+    }
+
+    if (fieldsParam != null && fieldsParam.contains("extension")) {
+      for (Column column : paginatedColumns) {
+        column.setExtension(getColumnExtension(table.getId(), column.getFullyQualifiedName()));
       }
     }
 
@@ -2217,40 +2321,6 @@ public class TableRepository extends EntityRepository<Table> {
     return testSuiteMap;
   }
 
-  private Map<UUID, List<String>> batchFetchQueries(List<Table> tables) {
-    Map<UUID, List<String>> queriesMap = new HashMap<>();
-    if (tables == null || tables.isEmpty()) {
-      return queriesMap;
-    }
-
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(entityListToStrings(tables), Relationship.MENTIONED_IN.ordinal(), QUERY);
-
-    Map<UUID, List<EntityReference>> queryRefsMap = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject relRecord : records) {
-      UUID tableId = UUID.fromString(relRecord.getFromId());
-      EntityReference queryRef =
-          getEntityReferenceById(QUERY, UUID.fromString(relRecord.getToId()), NON_DELETED);
-      queryRefsMap.computeIfAbsent(tableId, k -> new ArrayList<>()).add(queryRef);
-    }
-
-    for (UUID tableId : queryRefsMap.keySet()) {
-      List<Query> queriesEntity = getEntities(queryRefsMap.get(tableId), "id", ALL);
-      List<String> queries = queriesEntity.stream().map(Query::getQuery).toList();
-      queriesMap.put(tableId, queries);
-    }
-
-    for (Table table : tables) {
-      if (!queriesMap.containsKey(table.getId())) {
-        queriesMap.put(table.getId(), List.of());
-      }
-    }
-
-    return queriesMap;
-  }
-
   private Map<UUID, TableJoins> batchFetchJoins(List<Table> tables) {
     Map<UUID, TableJoins> joinsMap = new HashMap<>();
     if (tables == null || tables.isEmpty()) {
@@ -2293,9 +2363,24 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       Authorizer authorizer,
       SecurityContext securityContext) {
+    return searchTableColumnsById(
+        id, query, limit, offset, fieldsParam, include, "name", "asc", authorizer, securityContext);
+  }
+
+  public ResultList<Column> searchTableColumnsById(
+      UUID id,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = get(null, id, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, authorizer, securityContext);
+        table, query, limit, offset, fieldsParam, sortBy, sortOrder, authorizer, securityContext);
   }
 
   public ResultList<Column> searchTableColumnsByFQN(
@@ -2307,9 +2392,33 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       Authorizer authorizer,
       SecurityContext securityContext) {
+    return searchTableColumnsByFQN(
+        fqn,
+        query,
+        limit,
+        offset,
+        fieldsParam,
+        include,
+        "name",
+        "asc",
+        authorizer,
+        securityContext);
+  }
+
+  public ResultList<Column> searchTableColumnsByFQN(
+      String fqn,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = getByName(null, fqn, getFields(fieldsParam), include, false);
     return searchTableColumnsInternal(
-        table, query, limit, offset, fieldsParam, authorizer, securityContext);
+        table, query, limit, offset, fieldsParam, sortBy, sortOrder, authorizer, securityContext);
   }
 
   private ResultList<Column> searchTableColumnsInternal(
@@ -2318,6 +2427,8 @@ public class TableRepository extends EntityRepository<Table> {
       int limit,
       int offset,
       String fieldsParam,
+      String sortBy,
+      String sortOrder,
       Authorizer authorizer,
       SecurityContext securityContext) {
     List<Column> allColumns = table.getColumns();
@@ -2330,22 +2441,42 @@ public class TableRepository extends EntityRepository<Table> {
 
     List<Column> matchingColumns;
     if (query == null || query.trim().isEmpty()) {
-      matchingColumns = flattenedColumns;
+      matchingColumns = new ArrayList<>(flattenedColumns);
     } else {
       String searchTerm = query.toLowerCase().trim();
       matchingColumns =
-          flattenedColumns.stream()
-              .filter(
-                  column -> {
-                    if (column.getName() != null
-                        && column.getName().toLowerCase().contains(searchTerm)) {
-                      return true;
-                    }
-                    return column.getDisplayName() != null
-                        && column.getDisplayName().toLowerCase().contains(searchTerm);
-                  })
-              .toList();
+          new ArrayList<>(
+              flattenedColumns.stream()
+                  .filter(
+                      column -> {
+                        if (column.getName() != null
+                            && column.getName().toLowerCase().contains(searchTerm)) {
+                          return true;
+                        }
+                        return column.getDisplayName() != null
+                            && column.getDisplayName().toLowerCase().contains(searchTerm);
+                      })
+                  .toList());
     }
+
+    // Sort matching columns based on sortBy and sortOrder parameters
+    Comparator<Column> comparator;
+    if ("ordinalPosition".equals(sortBy)) {
+      comparator =
+          Comparator.comparing(
+              Column::getOrdinalPosition, Comparator.nullsLast(Comparator.naturalOrder()));
+    } else {
+      // Default: sort by name
+      comparator =
+          Comparator.comparing(
+              Column::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+    }
+
+    // Apply sort order (desc reverses the comparator)
+    if ("desc".equalsIgnoreCase(sortOrder)) {
+      comparator = comparator.reversed();
+    }
+    matchingColumns.sort(comparator);
 
     int total = matchingColumns.size();
     int startIndex = Math.min(offset, total);

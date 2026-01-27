@@ -47,6 +47,7 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DatePickerMenu from '../../common/DatePickerMenu/DatePickerMenu.component';
 import Loader from '../../common/Loader/Loader';
@@ -64,7 +65,10 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
         endTs: getCurrentMillis(),
       },
       key: 'last30days',
-      title: PROFILER_FILTER_RANGE.last30days.title,
+      title: translateWithNestedKeys(
+        PROFILER_FILTER_RANGE.last30days.title,
+        PROFILER_FILTER_RANGE.last30days.titleData
+      ),
     }),
     []
   );

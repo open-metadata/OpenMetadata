@@ -32,10 +32,20 @@ public class LineageAPI {
   }
 
   public String deleteLineage(String fromEntity, String toEntity) throws OpenMetadataException {
-    RequestOptions options =
-        RequestOptions.builder().queryParam("edge", fromEntity + "," + toEntity).build();
+    // Expects format: "entityType:entityId" for both fromEntity and toEntity
+    // API endpoint: DELETE /v1/lineage/{fromType}/{fromId}/{toType}/{toId}
+    String[] fromParts = fromEntity.split(":", 2);
+    String[] toParts = toEntity.split(":", 2);
 
-    return httpClient.executeForString(HttpMethod.DELETE, "/v1/lineage", null, options);
+    if (fromParts.length != 2 || toParts.length != 2) {
+      throw new OpenMetadataException("Invalid entity format. Expected 'entityType:entityId'");
+    }
+
+    String path =
+        String.format(
+            "/v1/lineage/%s/%s/%s/%s", fromParts[0], fromParts[1], toParts[0], toParts[1]);
+
+    return httpClient.executeForString(HttpMethod.DELETE, path, null);
   }
 
   public String getEntityLineage(String entityType, String entityId) throws OpenMetadataException {
@@ -61,5 +71,28 @@ public class LineageAPI {
   public String exportLineage(String entityType, String entityId) throws OpenMetadataException {
     return httpClient.executeForString(
         HttpMethod.GET, String.format("/v1/lineage/%s/%s/export", entityType, entityId), null);
+  }
+
+  public String getLineageByName(
+      String entityType, String fqn, String upstreamDepth, String downstreamDepth)
+      throws OpenMetadataException {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+
+    if (upstreamDepth != null) optionsBuilder.queryParam("upstreamDepth", upstreamDepth);
+    if (downstreamDepth != null) optionsBuilder.queryParam("downstreamDepth", downstreamDepth);
+
+    return httpClient.executeForString(
+        HttpMethod.GET,
+        String.format("/v1/lineage/%s/name/%s", entityType, encodePathSegment(fqn)),
+        null,
+        optionsBuilder.build());
+  }
+
+  private String encodePathSegment(String segment) {
+    try {
+      return java.net.URLEncoder.encode(segment, "UTF-8").replace("+", "%20");
+    } catch (java.io.UnsupportedEncodingException e) {
+      return segment;
+    }
   }
 }

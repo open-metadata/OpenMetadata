@@ -100,7 +100,6 @@ test.describe('Entity Summary Panel', () => {
         .first();
       if (await entityLink.isVisible()) {
         await expect(entityLink).toHaveAttribute('href', /.+/);
-        await expect(entityLink).toHaveAttribute('target', '_blank');
       }
     }
   });

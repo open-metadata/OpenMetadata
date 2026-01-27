@@ -58,7 +58,7 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
         <SearchBarComponent
           containerClassName="searchbar-container"
           placeholder={t('label.search-for-type', {
-            type: t('label.schema'),
+            type: t('label.column-plural'),
           })}
           searchValue={searchText}
           typingInterval={350}
