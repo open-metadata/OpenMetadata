@@ -92,13 +92,6 @@ SET json = jsonb_set(
 )
 WHERE name = 'tableRowInsertedCountToBeBetween';
 
--- Set authType to 'basic' for existing Snowflake connections that don't have it
--- This ensures backward compatibility after adding OAuth support to Snowflake connector
-UPDATE database_service
-SET json = jsonb_set(json, '{connection,config,authType}', '"basic"'::jsonb, true)
-WHERE serviceType = 'Snowflake'
-  AND json->'connection'->'config'->>'authType' IS NULL;
-
 -- Add validatorClass to all system test definitions (set to PascalCase name + 'Validator' if not present)
 UPDATE test_definition
 SET json = jsonb_set(json::jsonb, '{validatorClass}', to_jsonb(INITCAP(SUBSTRING(json->>'name', 1, 1)) || SUBSTRING(json->>'name', 2) || 'Validator'))

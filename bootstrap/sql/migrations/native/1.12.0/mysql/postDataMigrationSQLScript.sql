@@ -57,13 +57,6 @@ SET json = JSON_ARRAY_APPEND(
 WHERE name = 'tableDataToBeFresh'
   AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), '"timezone"');
 
--- Set authType to 'basic' for existing Snowflake connections that don't have it
--- This ensures backward compatibility after adding OAuth support to Snowflake connector
-UPDATE database_service
-SET json = JSON_SET(json, '$.connection.config.authType', 'basic')
-WHERE serviceType = 'Snowflake'
-  AND JSON_EXTRACT(json, '$.connection.config.authType') IS NULL;
-
 -- Add validatorClass to all system test definitions (set to PascalCase name + 'Validator' if not present)
 UPDATE test_definition
 SET json = JSON_SET(json, '$.validatorClass', CONCAT(UPPER(SUBSTRING(JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')), 1, 1)), SUBSTRING(JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')), 2), 'Validator'))
