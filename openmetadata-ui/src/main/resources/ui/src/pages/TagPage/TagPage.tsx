@@ -58,6 +58,7 @@ import AssetsTabs, {
   AssetsTabRef,
 } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
 import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
 import IconColorModal from '../../components/Modals/IconColorModal';
@@ -70,6 +71,7 @@ import {
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { TAGS_DOCS } from '../../constants/docs.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -716,6 +718,12 @@ const TagPage = () => {
                 entityType={EntityType.TAG}
                 icon={icon}
                 serviceName={tagItem.name}
+                suffix={
+                  <LearningIcon
+                    className="m-t-xss"
+                    pageId={LEARNING_PAGE_IDS.TAGS}
+                  />
+                }
                 titleColor={tagItem.style?.color ?? BLACK_COLOR}
               />
             </Col>

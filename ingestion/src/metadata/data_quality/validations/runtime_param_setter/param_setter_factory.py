@@ -16,14 +16,23 @@ based on the test case.
 import sys
 from typing import Dict, Set, Type
 
+from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressionValidator import (
+    ColumnRuleLibrarySqlExpressionValidator,
+)
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
+)
+from metadata.data_quality.validations.runtime_param_setter.rule_library_sql_expression_params_setter import (
+    RuleLibrarySqlExpressionParamsSetter,
 )
 from metadata.data_quality.validations.runtime_param_setter.table_custom_sql_query_params_setter import (
     TableCustomSQLQueryParamsSetter,
 )
 from metadata.data_quality.validations.runtime_param_setter.table_diff_params_setter import (
     TableDiffParamsSetter,
+)
+from metadata.data_quality.validations.table.base.tableRuleLibrarySqlExpressionValidator import (
+    TableRuleLibrarySqlExpressionValidator,
 )
 from metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery import (
     TableCustomSQLQueryValidator,
@@ -32,8 +41,12 @@ from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
     TableDiffValidator,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.logger import test_suite_logger
+
+logger = test_suite_logger()
 
 
 def removesuffix(s: str, suffix: str) -> str:
@@ -64,10 +77,20 @@ class RuntimeParameterSetterFactory:
 
     def __init__(self) -> None:
         """Set"""
+        # Map test definition FQN to param setters (for built-in validators)
         self._setter_map: Dict[str, Set[Type[RuntimeParameterSetter]]] = {
             validator_name(TableDiffValidator): {TableDiffParamsSetter},
             validator_name(TableCustomSQLQueryValidator): {
                 TableCustomSQLQueryParamsSetter
+            },
+        }
+        # Map validatorClass names to param setters (for rule library validators)
+        self._validator_class_map: Dict[str, Set[Type[RuntimeParameterSetter]]] = {
+            ColumnRuleLibrarySqlExpressionValidator.__name__: {
+                RuleLibrarySqlExpressionParamsSetter
+            },
+            TableRuleLibrarySqlExpressionValidator.__name__: {
+                RuleLibrarySqlExpressionParamsSetter
             },
         }
 
@@ -79,7 +102,29 @@ class RuntimeParameterSetterFactory:
         table_entity: Table,
         sampler: SamplerInterface,
     ) -> Set[RuntimeParameterSetter]:
-        """Get the runtime parameter setter"""
+        """Get the runtime parameter setter.
+
+        First checks if the test definition FQN matches a built-in validator.
+        If not found, fetches the test definition and checks the validatorClass
+        field for rule library validators.
+        """
+        # Check built-in validators by FQN
+        setter_classes = self._setter_map.get(name, set())
+
+        # If not found, check if it's a rule library validator by validatorClass
+        if not setter_classes:
+            try:
+                test_definition = ometa.get_by_name(
+                    entity=TestDefinition,
+                    fqn=name,
+                )
+                if test_definition and test_definition.validatorClass:
+                    setter_classes = self._validator_class_map.get(
+                        test_definition.validatorClass, set()
+                    )
+            except Exception as exc:
+                logger.debug(f"Could not fetch test definition {name}: {exc}")
+
         return {
             setter(
                 ometa,
@@ -87,5 +132,5 @@ class RuntimeParameterSetterFactory:
                 table_entity,
                 sampler,
             )
-            for setter in self._setter_map.get(name, set())
+            for setter in setter_classes
         }
