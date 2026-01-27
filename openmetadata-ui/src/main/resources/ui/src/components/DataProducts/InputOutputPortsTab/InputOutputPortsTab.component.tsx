@@ -233,9 +233,10 @@ export const InputOutputPortsTab = forwardRef<
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
+          alignItems: 'flex-start',
+          gap: 5,
         }}>
-        <Grid container spacing={5} sx={{ flex: 1, minHeight: 0 }}>
-          {/* Lineage View Section */}
+        <Grid container spacing={2} sx={{ width: '100%', flexShrink: 0 }}>
           <Grid size={12}>
             <Card
               sx={{
@@ -243,6 +244,7 @@ export const InputOutputPortsTab = forwardRef<
                 borderRadius: '8px',
                 overflow: 'visible',
                 boxShadow: 'none',
+                maxHeight: isLineageCollapsed ? 44 : 344,
               }}
               variant="outlined">
               <Box
@@ -311,17 +313,18 @@ export const InputOutputPortsTab = forwardRef<
               </Collapse>
             </Card>
           </Grid>
+        </Grid>
 
-          {/* Input Ports Section */}
-          <Grid
-            size={{ xs: 12, md: 6 }}
-            sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <Grid
+          container
+          spacing={2}
+          sx={{ width: '100%', flex: 1, minHeight: 0 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card
               sx={{
                 border: `1px solid ${theme.palette.allShades.blueGray[100]}`,
                 borderRadius: '8px',
                 boxShadow: 'none',
-                height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
               }}
@@ -381,10 +384,8 @@ export const InputOutputPortsTab = forwardRef<
               <Collapse in={!isInputPortsCollapsed}>
                 <CardContent
                   sx={{
-                    maxHeight: 500,
                     display: 'flex',
                     flexDirection: 'column',
-                    overflow: 'hidden',
                     '&:last-child': { pb: 2 },
                   }}>
                   {inputPortsCount === 0 ? (
@@ -418,16 +419,12 @@ export const InputOutputPortsTab = forwardRef<
             </Card>
           </Grid>
 
-          {/* Output Ports Section */}
-          <Grid
-            size={{ xs: 12, md: 6 }}
-            sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card
               sx={{
                 border: `1px solid ${theme.palette.allShades.blueGray[100]}`,
                 borderRadius: '8px',
                 boxShadow: 'none',
-                height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
               }}
@@ -487,10 +484,8 @@ export const InputOutputPortsTab = forwardRef<
               <Collapse in={!isOutputPortsCollapsed}>
                 <CardContent
                   sx={{
-                    maxHeight: 500,
                     display: 'flex',
                     flexDirection: 'column',
-                    overflow: 'hidden',
                     '&:last-child': { pb: 2 },
                   }}>
                   {outputPortsCount === 0 ? (
