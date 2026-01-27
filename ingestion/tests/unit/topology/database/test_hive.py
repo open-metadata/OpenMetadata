@@ -61,7 +61,9 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.database.hive.connection import (
     get_connection,
     get_connection_url,
-    test_connection,
+)
+from metadata.ingestion.source.database.hive.connection import (
+    test_connection as hive_test_connection,
 )
 from metadata.ingestion.source.database.hive.metadata import HiveSource
 
@@ -877,7 +879,7 @@ class HiveUnitTest(TestCase):
             metastoreConnection=postgres_conn,
         )
 
-        test_connection(mock_metadata, mock_engine, hive_conn)
+        hive_test_connection(mock_metadata, mock_engine, hive_conn)
 
         mock_get_metastore.assert_called_once_with(postgres_conn)
         mock_test_db_schema.assert_called_once()
@@ -914,7 +916,7 @@ class HiveUnitTest(TestCase):
             metastoreConnection=mysql_conn,
         )
 
-        test_connection(mock_metadata, mock_engine, hive_conn)
+        hive_test_connection(mock_metadata, mock_engine, hive_conn)
 
         mock_get_metastore.assert_called_once_with(mysql_conn)
         mock_test_db_schema.assert_called_once()
@@ -952,7 +954,7 @@ class HiveUnitTest(TestCase):
             metastoreConnection=postgres_dict,
         )
 
-        test_connection(mock_metadata, mock_engine, hive_conn)
+        hive_test_connection(mock_metadata, mock_engine, hive_conn)
 
         mock_get_metastore.assert_called_once()
         self.assertIsInstance(hive_conn.metastoreConnection, PostgresConnection)
@@ -988,7 +990,7 @@ class HiveUnitTest(TestCase):
             metastoreConnection=mysql_dict,
         )
 
-        test_connection(mock_metadata, mock_engine, hive_conn)
+        hive_test_connection(mock_metadata, mock_engine, hive_conn)
 
         mock_get_metastore.assert_called_once()
         self.assertIsInstance(hive_conn.metastoreConnection, MysqlConnection)
@@ -1015,7 +1017,7 @@ class HiveUnitTest(TestCase):
         )
 
         with self.assertRaises(ValueError) as context:
-            test_connection(mock_metadata, mock_engine, hive_conn)
+            hive_test_connection(mock_metadata, mock_engine, hive_conn)
 
         self.assertEqual(str(context.exception), "Invalid metastore connection")
 
@@ -1041,7 +1043,7 @@ class HiveUnitTest(TestCase):
             metastoreConnection={},
         )
 
-        test_connection(mock_metadata, mock_engine, hive_conn)
+        hive_test_connection(mock_metadata, mock_engine, hive_conn)
 
         mock_get_metastore.assert_not_called()
         mock_test_db_schema.assert_called_once()
@@ -1070,7 +1072,7 @@ class HiveUnitTest(TestCase):
             metastoreConnection=None,
         )
 
-        test_connection(mock_metadata, mock_engine, hive_conn)
+        hive_test_connection(mock_metadata, mock_engine, hive_conn)
 
         mock_get_metastore.assert_not_called()
         mock_test_db_schema.assert_called_once()
