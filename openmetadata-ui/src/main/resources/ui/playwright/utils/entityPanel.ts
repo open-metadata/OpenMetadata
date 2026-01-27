@@ -582,20 +582,5 @@ export async function navigateToExploreAndSelectEntity(
     timeout: 10000,
   });
 
-  // Click on the asset type in the left panel
-  const assetTypeElement = page.getByTestId(`explore-tree-title-${assetTypeTitle}`);
-  await assetTypeElement.waitFor({ state: 'visible', timeout: 10000 });
-  await assetTypeElement.click();
-
-  // Wait for the search results to load after selecting the asset type
-  const searchResponsePromise = page.waitForResponse((response) =>
-    response.url().includes('/api/v1/search/query')
-  );
-
-  await searchResponsePromise;
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
-  await page.waitForLoadState('networkidle');
-
+  
 }
