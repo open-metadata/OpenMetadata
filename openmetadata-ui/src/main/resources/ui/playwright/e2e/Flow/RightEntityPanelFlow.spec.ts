@@ -75,7 +75,6 @@ const sharedTestGlossaryTerm = new GlossaryTerm(sharedTestGlossary);
 test.beforeAll('Setup shared test data', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
-  await adminTestEntity.create(apiContext);
   await dataStewardTestEntity.create(apiContext);
   await dataConsumerTestEntity.create(apiContext);
   await testDataProduct.create(apiContext);
@@ -94,7 +93,6 @@ test.afterAll('Cleanup shared test data', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
   await testDataProduct.delete(apiContext);
-  await adminTestEntity.delete(apiContext);
   await dataStewardTestEntity.delete(apiContext);
   await dataConsumerTestEntity.delete(apiContext);
 
@@ -116,10 +114,21 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
   });
 
   test.beforeEach('Navigate to explore page', async ({ adminPage }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    await adminTestEntity.create(apiContext);
     await navigateToExploreAndSelectTable(
       adminPage,
       adminTestEntity.entity.name
     );
+
+    await afterAction();
+  });
+
+  test.afterEach('Cleanup test entity', async ({ adminPage }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    await adminTestEntity.delete(apiContext);
+
+    await afterAction();
   });
 
   test('Admin - Overview Tab - Description Section - Add and Update', async ({
