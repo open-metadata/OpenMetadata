@@ -40,7 +40,7 @@ VERSIONS = {
     "pyodbc": "pyodbc>=4.0.35,<5",
     "numpy": "numpy<2",
     "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
-    "packaging": "packaging",
+    "packaging": "packaging<26.0",
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
     "sqlalchemy-databricks": "sqlalchemy-databricks~=0.1",
