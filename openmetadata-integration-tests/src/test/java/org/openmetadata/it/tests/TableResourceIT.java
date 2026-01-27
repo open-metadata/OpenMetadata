@@ -31,6 +31,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -1193,6 +1195,59 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         Exception.class,
         () -> client.tables().updateSampleData(table.getId(), invalidData),
         "Invalid sample data should fail");
+  }
+
+  // ===================================================================
+  // PIPELINE OBSERVABILITY TESTS
+  // ===================================================================
+
+  @Test
+  void pipelineObservability_excludesDeletedPipelines(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable createTableRequest = createRequest(ns.prefix("observability_table"), ns);
+    Table table = createEntity(createTableRequest);
+
+    CreatePipeline createPipelineRequest =
+        new CreatePipeline()
+            .withName(ns.prefix("test_pipeline"))
+            .withService(
+                org.openmetadata.it.factories.PipelineServiceTestFactory.createAirflow(ns)
+                    .getFullyQualifiedName())
+            .withDescription("Test pipeline for observability");
+    Pipeline pipeline = client.pipelines().create(createPipelineRequest);
+
+    EntityReference pipelineRef =
+        new EntityReference()
+            .withId(pipeline.getId())
+            .withType("pipeline")
+            .withFullyQualifiedName(pipeline.getFullyQualifiedName());
+
+    org.openmetadata.schema.type.PipelineObservability observability =
+        new org.openmetadata.schema.type.PipelineObservability()
+            .withPipeline(pipelineRef)
+            .withStartTime(System.currentTimeMillis())
+            .withEndTime(System.currentTimeMillis() + 10000);
+
+    client.tables().addPipelineObservability(table.getId(), Arrays.asList(observability));
+
+    List<org.openmetadata.schema.type.PipelineObservability> fetchedObservability =
+        client.tables().getPipelineObservability(table.getId());
+    assertNotNull(fetchedObservability);
+    assertEquals(1, fetchedObservability.size());
+    assertEquals(pipeline.getId(), fetchedObservability.get(0).getPipeline().getId());
+
+    java.util.Map<String, String> deleteParams = new java.util.HashMap<>();
+    deleteParams.put("hardDelete", "true");
+    client.pipelines().delete(pipeline.getId().toString(), deleteParams);
+
+    List<org.openmetadata.schema.type.PipelineObservability> observabilityAfterDelete =
+        client.tables().getPipelineObservability(table.getId());
+    assertNotNull(observabilityAfterDelete);
+    assertEquals(
+        0,
+        observabilityAfterDelete.size(),
+        "Pipeline observability should be empty after pipeline is deleted");
   }
 
   // ===================================================================
