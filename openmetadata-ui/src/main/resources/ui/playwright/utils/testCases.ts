@@ -59,17 +59,26 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     state: 'detached',
   });
 
+  const { service, database, databaseSchema, displayName } =
+    table.entityResponseData;
+
+  if (!service || !database || !databaseSchema) {
+    throw new Error(
+      `Table metadata (service, database, or databaseSchema) is missing for ${table.entity.name}`
+    );
+  }
+
   await expect(page.getByTestId('breadcrumb-link').nth(0)).toHaveText(
-    `${table.entityResponseData.service.displayName}/`
+    `${service.displayName}/`
   );
   await expect(page.getByTestId('breadcrumb-link').nth(1)).toHaveText(
-    `${table.entityResponseData?.['database'].displayName}/`
+    `${database.displayName}/`
   );
   await expect(page.getByTestId('breadcrumb-link').nth(2)).toHaveText(
-    `${table.entityResponseData?.['databaseSchema'].displayName}/`
+    `${databaseSchema.displayName}/`
   );
   await expect(page.getByTestId('breadcrumb-link').nth(3)).toHaveText(
-    `${table.entityResponseData?.displayName}/`
+    `${displayName}/`
   );
 
   await page.getByTestId('breadcrumb-link').nth(3).click();
@@ -394,6 +403,14 @@ export const addTestCaseValidationRows = async (
   const { fillTestCaseDetails, firstTimeGridAddRowAction, pressKeyXTimes } =
     await import('./importUtils');
 
+  const fqn = table.entityResponseData.fullyQualifiedName;
+
+  if (!fqn) {
+    throw new Error(
+      `Table fullyQualifiedName is missing for ${table.entity.name}`
+    );
+  }
+
   // Row 1: Complete test case with all fields
   await page.evaluate(() => window.scrollTo(0, 0));
   await firstTimeGridAddRowAction(page);
@@ -404,8 +421,8 @@ export const addTestCaseValidationRows = async (
       displayName: `E2E ${testNamePrefix} Complete Test Case`,
       description: 'Test case with all required fields',
       testDefinition: 'tableRowCountToBeBetween',
-      entityFQN: table.entityResponseData.fullyQualifiedName,
-      testSuite: table.entityResponseData.fullyQualifiedName + '.testSuite',
+      entityFQN: fqn,
+      testSuite: fqn + '.testSuite',
       parameterValues:
         '{"name":"minValue","value":"12"};{"name":"maxValue","value":"34"}',
       computePassedFailedRowCount: 'false',
@@ -427,7 +444,7 @@ export const addTestCaseValidationRows = async (
       displayName: `E2E ${testNamePrefix} Missing Name Test`,
       description: 'Test case missing required name field',
       testDefinition: 'tableRowCountToBeBetween',
-      entityFQN: table.entityResponseData.fullyQualifiedName,
+      entityFQN: fqn,
     },
     page
   );
@@ -445,7 +462,7 @@ export const addTestCaseValidationRows = async (
       name: `e2e_${testNamePrefix}_missing_definition`,
       displayName: `E2E ${testNamePrefix} Missing Definition Test`,
       description: 'Test case missing required testDefinition field',
-      entityFQN: table.entityResponseData.fullyQualifiedName,
+      entityFQN: fqn,
     },
     page
   );
