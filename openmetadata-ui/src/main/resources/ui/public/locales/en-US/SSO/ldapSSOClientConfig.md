@@ -113,7 +113,11 @@ LDAP authentication enables users to log in with their LDAP directory credential
 - **Definition:** LDAP attribute that contains user email addresses.
 - **Example:** mail
 - **Why it matters:** OpenMetadata searches LDAP for users by email and uses this attribute as the primary identifier.
-- **Critical:** If this is wrong, users cannot be found in LDAP and authentication will fail.
+- **Critical:**
+  - This is the most important LDAP field - if wrong, authentication will fail
+  - The email address determines the OpenMetadata username
+  - Username is automatically derived as the part before @ (e.g., john.doe@company.com → username: john.doe)
+  - **The LDAP CN or UID attribute is NOT used** - only the email matters
 - **Common values:**
   - Active Directory: `mail`, `userPrincipalName`
   - OpenLDAP: `mail`, `email`
@@ -122,12 +126,15 @@ LDAP authentication enables users to log in with their LDAP directory credential
 
 ## <span data-id="usernameAttributeName">Username Attribute Name</span>
 
-- **Definition:** LDAP attribute containing the username (currently not actively used in authentication flow).
+- **Definition:** LDAP attribute containing the username (NOT currently used in OpenMetadata).
 - **Example:** uid or sAMAccountName
-- **Note:**
-  - This field is currently not used during LDAP authentication
-  - Username is extracted from JWT claims after authentication
-  - You can leave this with a default value
+- **Current Status:** This field is defined but NOT used during LDAP authentication
+- **How Username is Determined:**
+  - Username is **automatically derived from the email address**
+  - Formula: `username = email.split("@")[0]`
+  - Example: `john.doe@company.com` → username will be `john.doe`
+  - LDAP CN, UID, or other attributes are ignored
+- **Note:** You can leave this field with any value - it has no effect on authentication
 
 ## <span data-id="groupAttributeName">Group Attribute Name</span>
 
@@ -209,9 +216,10 @@ The following settings control authorization and access control across OpenMetad
 - **Example:** ["john.doe", "jane.admin", "admin"]
 - **Why it matters:** These users will have full administrative privileges in OpenMetadata.
 - **Note:**
-  - Use usernames (NOT email addresses) that match your LDAP username attribute
+  - Use usernames (NOT full email addresses) - these are derived from the email prefix (part before @)
   - At least one admin principal is required
-  - **Critical:** Ensure these usernames match exactly how users appear after LDAP authentication
+  - **Critical:** If a user's email is `john.doe@company.com`, their username will be `john.doe`
+  - The username is NOT derived from LDAP CN or UID attributes - only from the email address
 
 ### <span data-id="principalDomain">Principal Domain</span>
 
@@ -227,6 +235,27 @@ The following settings control authorization and access control across OpenMetad
 - **Example:** true
 - **Why it matters:** Adds an extra layer of security by restricting access to users from specific domains.
 - **Note:** When enabled, only users from the configured principal domain can access OpenMetadata
+
+### <span data-id="principalDomainLdap">Principal Domain Validation for LDAP</span>
+
+- **Definition:** Controls whether users must have email addresses from specific domains to access OpenMetadata.
+- **How it works:**
+  - After successful LDAP authentication, the email domain (part after @) is validated
+  - If `enforcePrincipalDomain` is enabled, users must be from allowed domains
+  - Validation happens during API requests, not during login
+- **Configuration:**
+  - **Single Domain**: Set `principalDomain` to your company domain (e.g., "company.com")
+  - **Multiple Domains**: Leave `principalDomain` as default and add domains to `allowedDomains` list
+- **Example Scenario:**
+  - Your LDAP has users from `company.com` and `partner.com`
+  - Set `enforcePrincipalDomain` to `true`
+  - Add both domains to `allowedDomains`: `["company.com", "partner.com"]`
+  - Users from other domains will be blocked even if they exist in LDAP
+- **Important:**
+  - Users from non-allowed domains can authenticate against LDAP but will be blocked on first API call
+  - This provides an extra security layer beyond LDAP group membership
+  - Disable enforcement if your LDAP contains users from many different domains
+- **Error Message:** If a user from a non-allowed domain tries to access, they'll see: "Not Authorized! Email does not match the principal domain"
 
 ---
 
