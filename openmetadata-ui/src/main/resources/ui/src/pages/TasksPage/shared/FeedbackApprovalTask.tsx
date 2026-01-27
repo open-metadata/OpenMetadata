@@ -33,6 +33,7 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 
 interface FeedbackApprovalTaskProps {
@@ -174,10 +175,9 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
           </Typography>
           <UserPopOverCard
             showUserName
+            displayName={getEntityName(feedback.createdBy)}
             profileWidth={22}
-            userName={
-              feedback.createdBy.displayName || feedback.createdBy.name || '-'
-            }
+            userName={feedback.createdBy.name || '-'}
           />
         </Box>
       )}
