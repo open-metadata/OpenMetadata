@@ -76,6 +76,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
+import LdapRoleMappingWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
 import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -93,6 +94,7 @@ import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayF
 
 const widgets = {
   SelectWidget: SelectWidget,
+  LdapRoleMappingWidget: LdapRoleMappingWidget,
 };
 
 const SSOConfigurationFormRJSF = ({
@@ -307,8 +309,31 @@ const SSOConfigurationFormRJSF = ({
 
     // Provider-specific schema modifications
     if (provider === AuthProvider.Saml) {
-      removeSchemaFields(authSchema, ['callbackUrl']);
-      removeRequiredFields(authSchema, ['callbackUrl']);
+      removeSchemaFields(authSchema, [
+        'callbackUrl',
+        'clientId',
+        'authority',
+        'publicKeyUrls',
+      ]);
+      removeRequiredFields(authSchema, [
+        'callbackUrl',
+        'clientId',
+        'authority',
+        'publicKeyUrls',
+      ]);
+    } else if (provider === AuthProvider.LDAP) {
+      removeSchemaFields(authSchema, [
+        'callbackUrl',
+        'clientId',
+        'authority',
+        'publicKeyUrls',
+      ]);
+      removeRequiredFields(authSchema, [
+        'callbackUrl',
+        'clientId',
+        'authority',
+        'publicKeyUrls',
+      ]);
     } else if (provider === AuthProvider.CustomOidc) {
       removeSchemaFields(authSchema, [
         'ldapConfiguration',

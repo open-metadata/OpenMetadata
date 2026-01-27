@@ -176,7 +176,9 @@ export const LDAP_UI_SCHEMA = {
     groupMemberAttributeName: { 'ui:title': 'Group Member Attribute Name' },
     authRolesMapping: {
       'ui:title': 'Auth Roles Mapping',
-      'ui:placeholder': 'Enter JSON string for role mappings',
+      'ui:widget': 'LdapRoleMappingWidget',
+      'ui:help':
+        'Map LDAP groups to OpenMetadata roles. Users in mapped LDAP groups will automatically be assigned the corresponding roles.',
     },
     authReassignRoles: {
       'ui:title': 'Auth Reassign Roles',
@@ -246,6 +248,16 @@ export const LDAP_UI_SCHEMA = {
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
   // Hide clientType for LDAP as it defaults to public
   clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide jwtPrincipalClaims for LDAP - default value auto-filled to prevent lockouts
+  jwtPrincipalClaims: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide jwtPrincipalClaimsMapping for LDAP - not needed
+  jwtPrincipalClaimsMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide jwtTeamClaimMapping for LDAP - uses LDAP group mapping instead
+  jwtTeamClaimMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide publicKeyUrls for LDAP - uses internal LocalJwkProvider
+  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide tokenValidationAlgorithm for LDAP - global setting, default RS256 works correctly
+  tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // SAML Configuration UI Schema
@@ -310,7 +322,8 @@ export const SAML_UI_SCHEMA = {
   authority: { 'ui:widget': 'hidden', 'ui:hideError': true },
   clientId: COMMON_UI_FIELDS.clientId,
   callbackUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  publicKeyUrls: { 'ui:title': 'Public Key URLs' },
+  // Hide publicKeyUrls for SAML - uses internal LocalJwkProvider
+  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // OIDC Configuration UI Schema
@@ -514,6 +527,12 @@ export const AUTHORIZER_FIELD_TITLES = {
   enableSecureSocketConnection: {
     'ui:title': 'Enable Secure Socket Connection',
   },
+  useRolesFromProvider: { 'ui:title': 'Use Roles From Provider' },
+  allowedEmailRegistrationDomains: {
+    'ui:title': 'Allowed Email Registration Domains',
+    'ui:placeholder':
+      'Enter domain (e.g. example.com) and press ENTER. Use "all" to allow all domains.',
+  },
 };
 
 // Type definitions for UI Schema
@@ -551,6 +570,20 @@ export const BOT_PRINCIPALS_VISIBILITY: Record<string, UISchemaField> = {
   ldap: { 'ui:widget': 'hidden', 'ui:hideError': true },
   saml: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'custom-oidc': { 'ui:widget': 'hidden', 'ui:hideError': true },
+};
+
+export const USE_ROLES_FROM_PROVIDER_VISIBILITY: Record<string, UISchemaField> =
+  {
+    ldap: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    saml: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  };
+
+export const ALLOWED_EMAIL_REGISTRATION_DOMAINS_VISIBILITY: Record<
+  string,
+  UISchemaField
+> = {
+  ldap: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  saml: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Provider-specific field removal mapping for cleanup
@@ -654,6 +687,12 @@ export const getSSOUISchema = (
       botPrincipals:
         BOT_PRINCIPALS_VISIBILITY[provider] ||
         AUTHORIZER_FIELD_TITLES.botPrincipals,
+      useRolesFromProvider:
+        USE_ROLES_FROM_PROVIDER_VISIBILITY[provider] ||
+        AUTHORIZER_FIELD_TITLES.useRolesFromProvider,
+      allowedEmailRegistrationDomains:
+        ALLOWED_EMAIL_REGISTRATION_DOMAINS_VISIBILITY[provider] ||
+        AUTHORIZER_FIELD_TITLES.allowedEmailRegistrationDomains,
     },
   };
 

@@ -305,6 +305,7 @@ export const getDefaultsForProvider = (
 ): FormData => {
   const isGoogle = provider === AuthProvider.Google;
   const isSaml = provider === AuthProvider.Saml;
+  const isLdap = provider === AuthProvider.LDAP;
 
   const {
     discoveryUri = '',
@@ -324,7 +325,7 @@ export const getDefaultsForProvider = (
     callbackUrl: '',
     publicKeyUrls: [],
     tokenValidationAlgorithm: 'RS256',
-    jwtPrincipalClaims: [],
+    jwtPrincipalClaims: isLdap ? ['email', 'preferred_username', 'sub'] : [],
     jwtPrincipalClaimsMapping: [],
     // Always include authority and publicKeyUrls for Google (required by backend)
     ...(isGoogle
