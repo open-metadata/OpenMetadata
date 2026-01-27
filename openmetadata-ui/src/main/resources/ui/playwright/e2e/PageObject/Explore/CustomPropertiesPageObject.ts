@@ -47,7 +47,7 @@ export class CustomPropertiesPageObject {
    * @returns CustomPropertiesPageObject for method chaining
    */
   async navigateToCustomPropertiesTab(): Promise<CustomPropertiesPageObject> {
-    await this.rightPanel.navigateToTab('custom properties');
+    await this.rightPanel.navigateToTab('Custom Property');
     await this.rightPanel.waitForLoadersToDisappear();
     return this;
   }
