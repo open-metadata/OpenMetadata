@@ -66,7 +66,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     String acceptEncoding = req.getHeader("Accept-Encoding");
 
     // 1. Check for Brotli (br)
-    if (acceptEncoding != null && supportsEncoding(acceptEncoding, "br")) {
+    if (supportsEncoding(acceptEncoding, "br")) {
       try {
         String fullResourcePath = getPathToCheck(req, requestUri, ".br");
         if (fullResourcePath != null) {
@@ -77,12 +77,12 @@ public class OpenMetadataAssetServlet extends AssetServlet {
           }
         }
       } catch (Exception e) {
-        log.debug("Failed to serve Brotli compressed asset for {}: {}", requestUri, e.getMessage());
+        LOG.debug("Failed to serve Brotli compressed asset for {}: {}", requestUri, e.getMessage());
       }
     }
 
     // 2. Check for Gzip
-    if (acceptEncoding != null && supportsEncoding(acceptEncoding, "gzip")) {
+    if (supportsEncoding(acceptEncoding, "gzip")) {
       try {
         String fullResourcePath = getPathToCheck(req, requestUri, ".gz");
         if (fullResourcePath != null) {
@@ -94,7 +94,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
           }
         }
       } catch (Exception e) {
-        log.debug("Failed to serve Gzip compressed asset for {}: {}", requestUri, e.getMessage());
+        LOG.debug("Failed to serve Gzip compressed asset for {}: {}", requestUri, e.getMessage());
       }
     }
 
@@ -130,10 +130,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       // Check if this encoding matches
       if (enc.startsWith(encoding)) {
         // Check for q=0 which explicitly disables the encoding
-        if (enc.contains("q=0")) {
-          return false;
-        }
-        return true;
+        return !enc.contains("q=0");
       }
     }
     return false;
@@ -148,7 +145,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
 
     // Reject path traversal attempts early
     if (pathToCheck.contains("..")) {
-      log.warn("Path traversal attempt detected in request: {}", requestUri);
+      LOG.warn("Path traversal attempt detected in request: {}", requestUri);
       return null;
     }
 
@@ -162,17 +159,17 @@ public class OpenMetadataAssetServlet extends AssetServlet {
 
       // Check path is within resource directory
       if (!normalizedPath.startsWith(baseResourcePath)) {
-        log.warn("Path traversal attempt detected: {} escaped resource directory", requestUri);
+        LOG.warn("Path traversal attempt detected: {} escaped resource directory", requestUri);
         return null;
       }
 
       // Additional check: normalized path should not go backwards
       if (normalizedPath.toString().contains("..")) {
-        log.warn("Path contains .. after normalization: {}", requestUri);
+        LOG.warn("Path contains .. after normalization: {}", requestUri);
         return null;
       }
     } catch (Exception e) {
-      log.debug("Path validation failed for {}: {}", requestUri, e.getMessage());
+      LOG.debug("Path validation failed for {}: {}", requestUri, e.getMessage());
       return null;
     }
 
@@ -219,10 +216,10 @@ public class OpenMetadataAssetServlet extends AssetServlet {
   }
 
   /**
-   * Check if the request URI looks like a SPA route (not a static asset)
+   * Check if the request URI looks like an SPA route (not a static asset)
    * Static assets typically have file extensions, SPA routes don't
    * @param requestUri The request URI to check
-   * @return true if this should be treated as a SPA route, false if it's a static asset
+   * @return true if this should be treated as an SPA route, false if it's a static asset
    */
   private boolean isSpaRoute(String requestUri) {
     // Remove base path if present
@@ -239,11 +236,8 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     // If path has a file extension, it's likely a static asset
     // Don't serve index.html for these
     String fileName = pathToCheck.substring(pathToCheck.lastIndexOf('/') + 1);
-    if (fileName.contains(".")) {
-      return false; // Has extension, likely a static asset
-    }
+    return !fileName.contains("."); // Has extension, likely a static asset
 
     // No file extension, treat as SPA route
-    return true;
   }
 }
