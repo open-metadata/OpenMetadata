@@ -475,6 +475,17 @@ const SSOConfigurationFormRJSF = ({
         'ui:title': 'Callback URL',
         'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
       } as UISchemaObject;
+      // Ensure publicKeyUrls is visible for public clients (not auto-populated)
+      authConfig.publicKeyUrls = {
+        'ui:title': 'Public Key URLs',
+        'ui:placeholder':
+          'Enter value (e.g. https://www.googleapis.com/oauth2/v3/certs) and press ENTER',
+      } as UISchemaObject;
+      // Ensure authority is visible for public clients
+      authConfig.authority = {
+        'ui:title': 'Authority',
+        'ui:placeholder': 'e.g. https://accounts.google.com',
+      } as UISchemaObject;
     } else if (currentClientType === ClientType.Confidential) {
       // The schema will be shown with OIDC prefixed labels from the constants
       authConfig['oidcConfiguration'] ??= {
