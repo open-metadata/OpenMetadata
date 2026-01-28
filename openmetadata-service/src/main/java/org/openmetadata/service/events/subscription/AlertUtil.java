@@ -360,10 +360,10 @@ public final class AlertUtil {
     }
 
     StringBuilder result = new StringBuilder();
-    result.append("'").append(valueList.get(0)).append("'");
+    result.append("'").append(valueList.get(0).replace("'", "''")).append("'");
 
     for (int i = 1; i < valueList.size(); i++) {
-      result.append(",'").append(valueList.get(i)).append("'");
+      result.append(",'").append(valueList.get(i).replace("'", "''")).append("'");
     }
 
     return result.toString();
