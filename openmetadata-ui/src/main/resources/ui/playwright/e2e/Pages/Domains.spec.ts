@@ -86,6 +86,7 @@ import {
   SettingOptionsType,
   sidebarClick,
 } from '../../utils/sidebar';
+import { selectTagInMUITagSuggestion } from '../../utils/tag';
 import { performUserLogin, visitUserProfilePage } from '../../utils/user';
 const user = new UserClass();
 
@@ -1193,6 +1194,110 @@ test.describe('Domains', () => {
       ).toBeVisible();
     } finally {
       await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Create domain with tags using MUITagSuggestion', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const testDomain = new Domain();
+
+    try {
+      await test.step('Navigate to add domain', async () => {
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await waitForAllLoadersToDisappear(page);
+        await page.click('[data-testid="add-domain"]');
+        await page.waitForSelector('h6:has-text("Add Domain")', {
+          timeout: 5000,
+        });
+      });
+
+      await test.step('Fill domain form', async () => {
+        await fillDomainForm(page, testDomain.data);
+      });
+
+      await test.step('Search and select tag via MUITagSuggestion', async () => {
+        await selectTagInMUITagSuggestion(page, {
+          searchTerm: tag.data.displayName,
+          tagFqn: tag.responseData.fullyQualifiedName,
+        });
+
+        await expect(page.locator('[data-testid="tag-suggestion"]')).toContainText(
+          tag.data.displayName
+        );
+      });
+
+      await test.step('Save domain and verify tag is applied', async () => {
+        const domainRes = page.waitForResponse('/api/v1/domains');
+        await page.getByRole('button', { name: 'Save' }).click();
+        await domainRes;
+
+        await toastNotification(page, /Domain created successfully/);
+
+        await selectDomain(page, testDomain.data);
+
+        await expect(
+          page.locator(
+            `[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`
+          )
+        ).toBeVisible();
+      });
+    } finally {
+      await testDomain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Create subdomain with tags using MUITagSuggestion', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const parentDomain = new Domain();
+    const subDomain = new SubDomain(parentDomain);
+
+    try {
+      await parentDomain.create(apiContext);
+      await page.reload();
+
+      await test.step('Navigate to domain and open subdomain modal', async () => {
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await waitForAllLoadersToDisappear(page);
+        await selectDomain(page, parentDomain.data);
+
+        await page.getByTestId('domain-details-add-button').click();
+        await page.getByRole('menuitem', { name: 'Sub Domains' }).click();
+        await expect(page.getByText('Add Sub Domain')).toBeVisible();
+      });
+
+      await test.step('Fill subdomain form', async () => {
+        await fillDomainForm(page, subDomain.data, false);
+      });
+
+      await test.step('Search and select tag via MUITagSuggestion', async () => {
+        await selectTagInMUITagSuggestion(page, {
+          searchTerm: tag.data.displayName,
+          tagFqn: tag.responseData.fullyQualifiedName,
+        });
+
+        await expect(
+          page.locator('[data-testid="tag-suggestion"]')
+        ).toContainText(tag.data.displayName);
+      });
+
+      await test.step('Save subdomain and verify tag is applied', async () => {
+        const saveRes = page.waitForResponse('/api/v1/domains');
+        await page.getByTestId('save-btn').click();
+        await saveRes;
+
+        await navigateToSubDomain(page, subDomain.data);
+
+        await expect(
+          page.locator(
+            `[data-testid="tag-${tag.responseData.fullyQualifiedName}"]`
+          )
+        ).toBeVisible();
+      });
+    } finally {
+      await subDomain.delete(apiContext);
+      await parentDomain.delete(apiContext);
       await afterAction();
     }
   });
