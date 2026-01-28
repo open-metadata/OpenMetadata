@@ -16,7 +16,7 @@
     <description>Model Context Protocol implementation for OpenMetadata</description>
     
     <properties>
-        <assertj-core.version>3.26.3</assertj-core.version>
+        <assertj-core.version>3.27.7</assertj-core.version>
         <okhttp.version>4.12.0</okhttp.version>
         <awaitility.version>4.2.2</awaitility.version>
         <testcontainers.version>1.20.4</testcontainers.version>
