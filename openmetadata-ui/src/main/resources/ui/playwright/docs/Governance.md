@@ -2,7 +2,7 @@
 
 # Governance
 
-> **6 Components** | **53 Files** | **814 Tests** | **1014 Scenarios** 🚀
+> **6 Components** | **53 Files** | **814 Tests** | **1397 Scenarios** 🚀
 
 ## Table of Contents
 - [Custom Properties](#custom-properties)
@@ -1331,7 +1331,7 @@
 ## Glossary
 
 <details open>
-<summary>📄 <b>Glossary.spec.ts</b> (45 tests, 46 scenarios)</summary>
+<summary>📄 <b>Glossary.spec.ts</b> (45 tests, 70 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts)
 
@@ -1340,19 +1340,38 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Glossary tests** - Glossary & terms creation for reviewer as user | Glossary & terms creation for reviewer as user |
+| | ↳ *Create Glossary* | |
+| | ↳ *Create Glossary Terms* | |
+| | ↳ *Approve Glossary Term from Glossary Listing for reviewer user* | |
 | 2 | **Glossary tests** - Glossary & terms creation for reviewer as team | Glossary & terms creation for reviewer as team |
+| | ↳ *Create Glossary* | |
+| | ↳ *Create Glossary Terms* | |
+| | ↳ *Approve Glossary Term from Glossary Listing for reviewer team* | |
 | 3 | **Glossary tests** - Update Glossary and Glossary Term | Update Glossary and Glossary Term |
-| 4 | **Glossary tests** - Add, Update and Verify Data Glossary Term | Add, Update and Verify Data Glossary Term |
 | | ↳ *Update Glossary* | |
 | | ↳ *Update Glossary Term* | |
+| 4 | **Glossary tests** - Add, Update and Verify Data Glossary Term | Add, Update and Verify Data Glossary Term |
 | 5 | **Glossary tests** - Approve and reject glossary term from Glossary Listing | Approve and reject glossary term from Glossary Listing |
+| | ↳ *Create Glossary and Terms* | |
+| | ↳ *Approve and Reject Glossary Term* | |
 | 6 | **Glossary tests** - Add and Remove Assets | Add and Remove Assets |
+| | ↳ *Add asset to glossary term using entity* | |
 | 7 | **Glossary tests** - Rename Glossary Term and verify assets | Rename Glossary Term and verify assets |
+| | ↳ *Assign Glossary Term to table column* | |
+| | ↳ *Rename Glossary Term* | |
+| | ↳ *Verify the entity page by clicking on asset* | |
+| | ↳ *Rename the same entity again* | |
 | 8 | **Glossary tests** - Verify asset selection modal filters are shown upfront | Asset selection modal filters are shown upfront |
+| | ↳ *Verify filters are visible upfront and can be applied* | |
 | 9 | **Glossary tests** - Drag and Drop Glossary Term | Drag and Drop Glossary Term |
+| | ↳ *Drag and Drop Glossary Term* | |
+| | ↳ *Drag and Drop Glossary Term back at parent level* | |
 | 10 | **Glossary tests** - Drag and Drop Glossary Term Approved Terms having reviewer | Drag and Drop Glossary Term Approved Terms having reviewer |
+| | ↳ *Update Glossary Term Reviewer* | |
+| | ↳ *Drag and Drop Glossary Term* | |
 | 11 | **Glossary tests** - Change glossary term hierarchy using menu options | Change glossary term hierarchy using menu options |
 | 12 | **Glossary tests** - Change glossary term hierarchy using menu options across glossary | Change glossary term hierarchy using menu options across glossary |
+| | ↳ *Delete glossary to verify broken relation* | |
 | 13 | **Glossary tests** - Assign Glossary Term to entity and check assets | Assign Glossary Term to entity and check assets |
 | 14 | **Glossary tests** - Request description task for Glossary | Request description task for Glossary |
 | 15 | **Glossary tests** - Request description task for Glossary Term | Request description task for Glossary Term |
@@ -1364,18 +1383,39 @@
 | 21 | **Glossary tests** - Async Delete - multiple deletes with mixed results | Async Delete - multiple deletes with mixed results |
 | 22 | **Glossary tests** - Verify Expand All For Nested Glossary Terms | Expand All For Nested Glossary Terms |
 | 23 | **Glossary tests** - Column selection and visibility for Glossary Terms table | Column selection and visibility for Glossary Terms table |
+| | ↳ *Open column dropdown and select columns and check if they are visible* | |
+| | ↳ *Open column dropdown and deselect columns and check if they are hidden* | |
+| | ↳ *View All columns selection* | |
+| | ↳ *Hide All columns selection* | |
 | 24 | **Glossary tests** - Glossary Terms Table Status filtering | Glossary Terms Table Status filtering |
+| | ↳ *Deselect status and check if the table has filtered rows* | |
+| | ↳ *Re-select the status and check if it appears again* | |
 | 25 | **Glossary tests** - Column dropdown drag-and-drop functionality for Glossary Terms table | Column dropdown drag-and-drop functionality for Glossary Terms table |
 | 26 | **Glossary tests** - Glossary Term Update in Glossary Page should persist tree | Glossary Term Update in Glossary Page should persist tree |
 | 27 | **Glossary tests** - Add Glossary Term inside another Term | Add Glossary Term inside another Term |
 | 28 | **Glossary tests** - Check for duplicate Glossary Term | For duplicate Glossary Term |
+| | ↳ *Create Glossary Term One* | |
+| | ↳ *Create Glossary Term Two* | |
 | 29 | **Glossary tests** - Check for duplicate Glossary Term with Glossary having dot in name | For duplicate Glossary Term with Glossary having dot in name |
+| | ↳ *Create Glossary Term One* | |
+| | ↳ *Create Glossary Term Two* | |
 | 30 | **Glossary tests** - Verify Glossary Deny Permission | Glossary Deny Permission |
 | 31 | **Glossary tests** - Verify Glossary Term Deny Permission | Glossary Term Deny Permission |
 | 32 | **Glossary tests** - Term should stay approved when changes made by reviewer | Term should stay approved when changes made by reviewer |
+| | ↳ *Navigate to glossary and verify workflow widget* | |
+| | ↳ *Perform Changes by reviewer* | |
 | 33 | **Glossary tests** - Glossary creation with domain selection | Glossary creation with domain selection |
+| | ↳ *Create domain* | |
+| | ↳ *Navigate to Glossary page* | |
+| | ↳ *Open Add Glossary form* | |
+| | ↳ *Save glossary and verify creation with domain* | |
 | 34 | **Glossary tests** - Create glossary, change language to Dutch, and delete glossary | Create glossary, change language to Dutch, and delete glossary |
-| 35 | **Glossary tests** - should handle glossary after description is deleted | Handle glossary after description is deleted |
+| | ↳ *Create Glossary via API* | |
+| | ↳ *Navigate to Glossary page* | |
+| | ↳ *Change application language to German* | |
+| | ↳ *Open delete modal and verify delete confirmation* | |
+| | ↳ *Change language back to English* | |
+| 35 | **Glossary tests** - should handle glossary after description is deleted | Tests that verify UI handles entities with deleted descriptions gracefully. The issue occurs when: 1. An entity is created with a description 2. The description is later deleted/cleared via API patch 3. The API returns the entity without a description field (due to @JsonInclude(NON_NULL)) 4. UI should handle this gracefully instead of crashing |
 | 36 | **Glossary tests** - should handle glossary term after description is deleted | Handle glossary term after description is deleted |
 | 37 | **Glossary tests** - Create glossary with all optional fields (tags, owners, reviewers, domain) | Create glossary with all optional fields (tags, owners, reviewers, domain) |
 | 38 | **Glossary tests** - Create glossary term via row action (+) button | Create glossary term via row action (+) button |
@@ -1890,7 +1930,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>Tags.spec.ts</b> (5 tests, 5 scenarios)</summary>
+<summary>📄 <b>Tags.spec.ts</b> (5 tests, 13 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Tags.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Tags.spec.ts)
 
@@ -1899,6 +1939,15 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | Classification Page | Classification Page |
+| | ↳ *Should render basic elements on page* | |
+| | ↳ *Disabled system tags should not render* | |
+| | ↳ *Create classification with validation checks* | |
+| | ↳ *Create tag with validation checks* | |
+| | ↳ *Verify classification term count* | |
+| | ↳ *Assign tag to table* | |
+| | ↳ *Assign tag using Task & Suggestion flow to DatabaseSchema* | |
+| | ↳ *Delete tag* | |
+| | ↳ *Remove classification* | |
 | 2 | Search tag using classification display name should work | Search tag using classification display name should work |
 | 3 | Verify system classification term counts | System classification term counts |
 | 4 | Verify Owner Add Delete | Owner Add Delete |
@@ -1986,7 +2035,7 @@
 ## Data Contracts
 
 <details open>
-<summary>📄 <b>DataContracts.spec.ts</b> (48 tests, 48 scenarios)</summary>
+<summary>📄 <b>DataContracts.spec.ts</b> (48 tests, 369 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/DataContracts.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataContracts.spec.ts)
 
@@ -1995,24 +2044,356 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Data Contracts** - Create Data Contract and validate for Table | Create Data Contract and validate for Table |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 2 | **Data Contracts** - Create Data Contract and validate for Topic | Create Data Contract and validate for Topic |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 3 | **Data Contracts** - Create Data Contract and validate for Dashboard | Create Data Contract and validate for Dashboard |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 4 | **Data Contracts** - Create Data Contract and validate for DashboardDataModel | Create Data Contract and validate for DashboardDataModel |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 5 | **Data Contracts** - Create Data Contract and validate for Pipeline | Create Data Contract and validate for Pipeline |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 6 | **Data Contracts** - Create Data Contract and validate for MlModel | Create Data Contract and validate for MlModel |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 7 | **Data Contracts** - Create Data Contract and validate for Container | Create Data Contract and validate for Container |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 8 | **Data Contracts** - Create Data Contract and validate for SearchIndex | Create Data Contract and validate for SearchIndex |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 9 | **Data Contracts** - Create Data Contract and validate for Store Procedure | Create Data Contract and validate for Store Procedure |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 10 | **Data Contracts** - Create Data Contract and validate for ApiEndpoint | Create Data Contract and validate for ApiEndpoint |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 11 | **Data Contracts** - Create Data Contract and validate for Api Collection | Create Data Contract and validate for Api Collection |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 12 | **Data Contracts** - Create Data Contract and validate for Chart | Create Data Contract and validate for Chart |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 13 | **Data Contracts** - Create Data Contract and validate for Directory | Create Data Contract and validate for Directory |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 14 | **Data Contracts** - Create Data Contract and validate for File | Create Data Contract and validate for File |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 15 | **Data Contracts** - Create Data Contract and validate for Spreadsheet | Create Data Contract and validate for Spreadsheet |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 16 | **Data Contracts** - Create Data Contract and validate for Worksheet | Create Data Contract and validate for Worksheet |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 17 | **Data Contracts** - Create Data Contract and validate for Database | Create Data Contract and validate for Database |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 18 | **Data Contracts** - Create Data Contract and validate for Database Schema | Create Data Contract and validate for Database Schema |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill the Terms of Service Detail* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Fill first Contract Semantics form* | |
+| | ↳ *Add second semantic and delete it* | |
+| | ↳ *Save contract and validate for semantics* | |
+| | ↳ *Add table test case and validate for quality* | |
+| | ↳ *Validate inside the Observability, bundle test suites, that data contract test suite is present* | |
+| | ↳ *Edit quality expectations from the data contract and validate* | |
+| | ↳ *Verify YAML view* | |
+| | ↳ *Export YAML* | |
+| | ↳ *Export ODCS YAML* | |
+| | ↳ *Edit and Validate Contract data* | |
+| | ↳ *Delete contract* | |
+| | ↳ *Import contract from ODCS YAML* | |
+| | ↳ *Delete imported contract* | |
 | 19 | **Data Contracts** - Pagination in Schema Tab with Selection Persistent | Pagination in Schema Tab with Selection Persistent |
+| | ↳ *Redirect to Home Page and visit entity* | |
+| | ↳ *Open contract section and start adding contract* | |
+| | ↳ *Fill Contract Details form* | |
+| | ↳ *Fill Contract Schema form* | |
+| | ↳ *Save contract and validate for schema* | |
+| | ↳ *Update the Schema and Validate* | |
+| | ↳ *Re-select some columns on page 1, save and validate* | |
+| | ↳ *Delete contract* | |
 | 20 | **Data Contracts** - Semantic with Contains Operator should work for Tier, Tag and Glossary | Semantic with Contains Operator should work for Tier, Tag and Glossary |
 | 21 | **Data Contracts** - Semantic with Not_Contains Operator should work for Tier, Tag and Glossary | Semantic with Not_Contains Operator should work for Tier, Tag and Glossary |
 | 22 | **Data Contracts** - Nested Column should not be selectable | Nested Column should not be selectable |
@@ -2022,8 +2403,19 @@
 | 26 | **Data Contracts** - should allow editing a semantic and reflect changes | Allow editing a semantic and reflect changes |
 | 27 | **Data Contracts** - should allow deleting a semantic and remove it from the list | Allow deleting a semantic and remove it from the list |
 | 28 | **Data Contracts** - Add and update Security and SLA tabs | Add and update Security and SLA tabs |
+| | ↳ *Add Security and SLA Details* | |
+| | ↳ *Validate Security and SLA Details* | |
+| | ↳ *Update Security and SLA Details* | |
+| | ↳ *Validate the updated values Security and SLA Details* | |
+| | ↳ *Validate after removing security policies* | |
 | 29 | **Data Contracts** - ODCS Import Modal with Merge Mode should preserve existing contract ID | ODCS Import Modal with Merge Mode should preserve existing contract ID |
+| | ↳ *Create initial contract via ODCS import* | |
+| | ↳ *Import again via modal with merge mode (default)* | |
+| | ↳ *Cleanup: Delete contract* | |
 | 30 | **Data Contracts** - ODCS Import Modal with Replace Mode should overwrite all fields | ODCS Import Modal with Replace Mode should overwrite all fields |
+| | ↳ *Create initial contract with SLA via ODCS import* | |
+| | ↳ *Import again via modal with replace mode* | |
+| | ↳ *Cleanup: Delete contract* | |
 
 ### Data Contracts With Persona Table
 
@@ -2338,7 +2730,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>DataContractInheritance.spec.ts</b> (8 tests, 26 scenarios)</summary>
+<summary>📄 <b>DataContractInheritance.spec.ts</b> (8 tests, 56 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/DataContractInheritance.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataContractInheritance.spec.ts)
 
@@ -2347,7 +2739,6 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Data Contract Inheritance** - Full Contract Inheritance - Asset inherits full contract from Data Product | Full Contract Inheritance - Asset inherits full contract from Data Product |
-| 2 | **Data Contract Inheritance** - Partial Contract Inheritance - Asset contract merges with Data Product contract | Partial Contract Inheritance - Asset contract merges with Data Product contract |
 | | ↳ *Navigate to Data Product and add contract* | |
 | | ↳ *Fill Data Product contract details* | |
 | | ↳ *Fill Terms of Service* | |
@@ -2356,7 +2747,7 @@
 | | ↳ *Save contract* | |
 | | ↳ *Add asset to Data Product* | |
 | | ↳ *Navigate to asset and verify inherited contract* | |
-| 3 | **Data Contract Inheritance** - Edit Asset Contract - Add SLA when inheriting SLA from Data Product (PATCH should use /add not /replace) | Edit Asset Contract - Add SLA when inheriting SLA from Data Product (PATCH should use /add not /replace) |
+| 2 | **Data Contract Inheritance** - Partial Contract Inheritance - Asset contract merges with Data Product contract | Partial Contract Inheritance - Asset contract merges with Data Product contract |
 | | ↳ *Navigate to asset and add contract with semantics* | |
 | | ↳ *Fill asset contract details* | |
 | | ↳ *Fill asset semantics* | |
@@ -2369,11 +2760,48 @@
 | | ↳ *Save Data Product contract* | |
 | | ↳ *Add asset with contract to Data Product* | |
 | | ↳ *Navigate to asset and verify merged contract* | |
+| 3 | **Data Contract Inheritance** - Edit Asset Contract - Add SLA when inheriting SLA from Data Product (PATCH should use /add not /replace) | Edit Asset Contract - Add SLA when inheriting SLA from Data Product (PATCH should use /add not /replace) |
+| | ↳ *Navigate to Data Product and add contract with SLA* | |
+| | ↳ *Fill Data Product contract with SLA* | |
+| | ↳ *Fill Data Product SLA* | |
+| | ↳ *Save Data Product contract* | |
+| | ↳ *Add asset to Data Product* | |
+| | ↳ *Navigate to asset and add contract WITHOUT SLA* | |
+| | ↳ *Fill asset contract details (without SLA initially)* | |
+| | ↳ *Save asset contract without SLA - should be POST (create new)* | |
+| | ↳ *Edit contract again to ADD its own SLA* | |
+| | ↳ *Fill asset own SLA (this tests PATCH uses /add not /replace)* | |
+| | ↳ *Save contract with own SLA - PATCH should succeed* | |
+| | ↳ *Verify asset now has its own SLA (no inherited icon)* | |
 | 4 | **Data Contract Inheritance** - Edit Inherited Contract - Creates new asset contract instead of modifying parent | Edit Inherited Contract - Creates new asset contract instead of modifying parent |
+| | ↳ *Create Data Product with contract* | |
+| | ↳ *Add asset to Data Product* | |
+| | ↳ *Navigate to asset and verify inherited contract* | |
+| | ↳ *Click Edit on inherited contract - should open ADD form, not EDIT* | |
+| | ↳ *Fill new asset contract details* | |
+| | ↳ *Save new asset contract - should create, not update* | |
+| | ↳ *Verify asset now has its own contract (non-inherited)* | |
+| | ↳ *Verify Data Product contract was NOT modified* | |
 | 5 | **Data Contract Inheritance** - Delete Button Disabled - Fully inherited contracts cannot be deleted | Delete Button Disabled - Fully inherited contracts cannot be deleted |
+| | ↳ *Create Data Product with contract* | |
+| | ↳ *Add asset to Data Product* | |
+| | ↳ *Navigate to asset and verify delete is disabled for inherited contract* | |
 | 6 | **Data Contract Inheritance** - Run Validation - Inherited contract validation uses entity-based validation | Run Validation - Inherited contract validation uses entity-based validation |
+| | ↳ *Create Data Product with contract* | |
+| | ↳ *Add asset to Data Product* | |
+| | ↳ *Navigate to asset and run validation on inherited contract* | |
 | 7 | **Data Contract Inheritance** - Remove Asset - Inherited contract no longer shown when asset is removed from Data Product | Remove Asset - Inherited contract no longer shown when asset is removed from Data Product |
+| | ↳ *Create Data Product with contract* | |
+| | ↳ *Add asset to Data Product* | |
+| | ↳ *Verify asset shows inherited contract* | |
+| | ↳ *Remove asset from Data Product* | |
+| | ↳ *Verify asset no longer shows inherited contract* | |
 | 8 | **Data Contract Inheritance** - Delete Asset Contract - Falls back to showing inherited contract from Data Product | Delete Asset Contract - Falls back to showing inherited contract from Data Product |
+| | ↳ *Create Data Product with contract* | |
+| | ↳ *Add asset to Data Product* | |
+| | ↳ *Create asset own contract* | |
+| | ↳ *Delete asset own contract* | |
+| | ↳ *Verify asset now shows inherited contract from Data Product* | |
 
 </details>
 
