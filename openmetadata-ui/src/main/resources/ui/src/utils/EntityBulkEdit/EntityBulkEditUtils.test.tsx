@@ -12,6 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { Column } from 'react-data-grid';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -19,6 +20,8 @@ import {
   getBulkEditButton,
   getBulkEditCSVExportEntityApi,
   getBulkEntityNavigationPath,
+  getColumnsWithUpdatedFlag,
+  getUpdatedFields,
   isBulkEditRoute,
 } from './EntityBulkEditUtils';
 
@@ -343,6 +346,278 @@ describe('EntityBulkEditUtils', () => {
       const result = getBulkEntityNavigationPath(EntityType.TABLE, '');
 
       expect(result).toBe('/table/');
+    });
+  });
+
+  describe('getUpdatedFields', () => {
+    it('should return empty set when changeDescription is not present', () => {
+      const row = { id: '1', name: 'test' };
+      const result = getUpdatedFields(row);
+
+      expect(result.size).toBe(0);
+    });
+
+    it('should return empty set when changeDescription is empty string', () => {
+      const row = { id: '1', changeDescription: '' };
+      const result = getUpdatedFields(row);
+
+      expect(result.size).toBe(0);
+    });
+
+    it('should return empty set when changeDescription is invalid JSON', () => {
+      const row = { id: '1', changeDescription: 'invalid json' };
+      const result = getUpdatedFields(row);
+
+      expect(result.size).toBe(0);
+    });
+
+    it('should return empty set when fieldsUpdated is not present', () => {
+      const row = { id: '1', changeDescription: '{}' };
+      const result = getUpdatedFields(row);
+
+      expect(result.size).toBe(0);
+    });
+
+    it('should return empty set when fieldsUpdated is empty array', () => {
+      const row = {
+        id: '1',
+        changeDescription: JSON.stringify({ fieldsUpdated: [] }),
+      };
+      const result = getUpdatedFields(row);
+
+      expect(result.size).toBe(0);
+    });
+
+    it('should return field names and prefixed versions for single field', () => {
+      const row = {
+        id: '1',
+        changeDescription: JSON.stringify({
+          fieldsUpdated: [{ name: 'description' }],
+        }),
+      };
+      const result = getUpdatedFields(row);
+
+      expect(result.has('description')).toBe(true);
+      expect(result.has('column.description')).toBe(true);
+      expect(result.size).toBe(2);
+    });
+
+    it('should return field names and prefixed versions for multiple fields', () => {
+      const row = {
+        id: '1',
+        changeDescription: JSON.stringify({
+          fieldsUpdated: [
+            { name: 'description' },
+            { name: 'displayName' },
+            { name: 'tags' },
+          ],
+        }),
+      };
+      const result = getUpdatedFields(row);
+
+      expect(result.has('description')).toBe(true);
+      expect(result.has('column.description')).toBe(true);
+      expect(result.has('displayName')).toBe(true);
+      expect(result.has('column.displayName')).toBe(true);
+      expect(result.has('tags')).toBe(true);
+      expect(result.has('column.tags')).toBe(true);
+      expect(result.size).toBe(6);
+    });
+
+    it('should handle changeDescription with additional properties', () => {
+      const row = {
+        id: '1',
+        changeDescription: JSON.stringify({
+          fieldsUpdated: [
+            { name: 'description', oldValue: 'old', newValue: 'new' },
+          ],
+          fieldsAdded: [{ name: 'tags' }],
+        }),
+      };
+      const result = getUpdatedFields(row);
+
+      expect(result.has('description')).toBe(true);
+      expect(result.has('column.description')).toBe(true);
+      expect(result.size).toBe(2);
+    });
+  });
+
+  describe('getColumnsWithUpdatedFlag', () => {
+    const mockColumns: Column<Record<string, string>>[] = [
+      { key: 'name', name: 'Name' },
+      { key: 'description', name: 'Description' },
+      { key: 'tags', name: 'Tags' },
+      { key: 'changeDescription', name: 'Change Description' },
+    ];
+
+    it('should return undefined when columns is undefined', () => {
+      const result = getColumnsWithUpdatedFlag(undefined, new Set());
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should filter out changeDescription column', () => {
+      const result = getColumnsWithUpdatedFlag(mockColumns, new Set());
+
+      expect(result).toHaveLength(3);
+      expect(
+        result?.find((col) => col.key === 'changeDescription')
+      ).toBeUndefined();
+    });
+
+    it('should return cell-updated class for all cells in new rows', () => {
+      const newRowIds = new Set(['row-1']);
+      const result = getColumnsWithUpdatedFlag(mockColumns, newRowIds);
+
+      const row = { id: 'row-1', name: 'Test', description: 'Desc', tags: '' };
+
+      result?.forEach((col) => {
+        const cellClass =
+          typeof col.cellClass === 'function'
+            ? col.cellClass(row)
+            : col.cellClass;
+
+        expect(cellClass).toBe('cell-updated');
+      });
+    });
+
+    it('should return empty string for cells in rows that are not new and not updated', () => {
+      const newRowIds = new Set<string>();
+      const result = getColumnsWithUpdatedFlag(mockColumns, newRowIds);
+
+      const row = { id: 'row-1', name: 'Test', description: 'Desc', tags: '' };
+
+      result?.forEach((col) => {
+        const cellClass =
+          typeof col.cellClass === 'function'
+            ? col.cellClass(row)
+            : col.cellClass;
+
+        expect(cellClass).toBe('');
+      });
+    });
+
+    it('should return cell-updated class only for updated fields', () => {
+      const newRowIds = new Set<string>();
+      const result = getColumnsWithUpdatedFlag(mockColumns, newRowIds);
+
+      const row = {
+        id: 'row-1',
+        name: 'Test',
+        description: 'Updated Desc',
+        tags: '',
+        changeDescription: JSON.stringify({
+          fieldsUpdated: [{ name: 'description' }],
+        }),
+      };
+
+      const nameCol = result?.find((col) => col.key === 'name');
+      const descCol = result?.find((col) => col.key === 'description');
+      const tagsCol = result?.find((col) => col.key === 'tags');
+
+      const nameCellClass =
+        typeof nameCol?.cellClass === 'function'
+          ? nameCol.cellClass(row)
+          : nameCol?.cellClass;
+      const descCellClass =
+        typeof descCol?.cellClass === 'function'
+          ? descCol.cellClass(row)
+          : descCol?.cellClass;
+      const tagsCellClass =
+        typeof tagsCol?.cellClass === 'function'
+          ? tagsCol.cellClass(row)
+          : tagsCol?.cellClass;
+
+      expect(nameCellClass).toBe('');
+      expect(descCellClass).toBe('cell-updated');
+      expect(tagsCellClass).toBe('');
+    });
+
+    it('should handle column keys with column prefix', () => {
+      const columnsWithPrefix: Column<Record<string, string>>[] = [
+        { key: 'column.description', name: 'Column Description' },
+        { key: 'column.tags', name: 'Column Tags' },
+      ];
+      const newRowIds = new Set<string>();
+      const result = getColumnsWithUpdatedFlag(columnsWithPrefix, newRowIds);
+
+      const row = {
+        id: 'row-1',
+        'column.description': 'Desc',
+        'column.tags': 'tag1',
+        changeDescription: JSON.stringify({
+          fieldsUpdated: [{ name: 'description' }],
+        }),
+      };
+
+      const descCol = result?.find((col) => col.key === 'column.description');
+      const tagsCol = result?.find((col) => col.key === 'column.tags');
+
+      const descCellClass =
+        typeof descCol?.cellClass === 'function'
+          ? descCol.cellClass(row)
+          : descCol?.cellClass;
+      const tagsCellClass =
+        typeof tagsCol?.cellClass === 'function'
+          ? tagsCol.cellClass(row)
+          : tagsCol?.cellClass;
+
+      expect(descCellClass).toBe('cell-updated');
+      expect(tagsCellClass).toBe('');
+    });
+
+    it('should preserve existing column properties', () => {
+      const columnsWithProps: Column<Record<string, string>>[] = [
+        { key: 'name', name: 'Name', width: 200, resizable: true },
+        { key: 'description', name: 'Description', frozen: true },
+      ];
+      const result = getColumnsWithUpdatedFlag(columnsWithProps, new Set());
+
+      expect(result?.[0].width).toBe(200);
+      expect(result?.[0].resizable).toBe(true);
+      expect(result?.[1].frozen).toBe(true);
+    });
+
+    it('should handle empty columns array', () => {
+      const result = getColumnsWithUpdatedFlag([], new Set());
+
+      expect(result).toHaveLength(0);
+    });
+
+    it('should handle multiple updated fields in same row', () => {
+      const newRowIds = new Set<string>();
+      const result = getColumnsWithUpdatedFlag(mockColumns, newRowIds);
+
+      const row = {
+        id: 'row-1',
+        name: 'Test',
+        description: 'Updated',
+        tags: 'tag1,tag2',
+        changeDescription: JSON.stringify({
+          fieldsUpdated: [{ name: 'description' }, { name: 'tags' }],
+        }),
+      };
+
+      const nameCol = result?.find((col) => col.key === 'name');
+      const descCol = result?.find((col) => col.key === 'description');
+      const tagsCol = result?.find((col) => col.key === 'tags');
+
+      const nameCellClass =
+        typeof nameCol?.cellClass === 'function'
+          ? nameCol.cellClass(row)
+          : nameCol?.cellClass;
+      const descCellClass =
+        typeof descCol?.cellClass === 'function'
+          ? descCol.cellClass(row)
+          : descCol?.cellClass;
+      const tagsCellClass =
+        typeof tagsCol?.cellClass === 'function'
+          ? tagsCol.cellClass(row)
+          : tagsCol?.cellClass;
+
+      expect(nameCellClass).toBe('');
+      expect(descCellClass).toBe('cell-updated');
+      expect(tagsCellClass).toBe('cell-updated');
     });
   });
 });
