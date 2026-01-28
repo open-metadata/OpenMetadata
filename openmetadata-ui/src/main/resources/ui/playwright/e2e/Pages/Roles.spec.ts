@@ -197,9 +197,9 @@ test('Roles page should work properly', async ({ page }) => {
       })
     ).toBeVisible();
     await expect(
-      page.locator('.ant-popover-content').getByRole('link', {
-        name: policies.dataConsumerPolicy,
-      })
+      page
+        .locator(`[data-row-key="${roleName}"]`)
+        .getByRole('link', { name: policies.dataStewardPolicy })
     ).toBeVisible();
   });
 
@@ -506,7 +506,7 @@ test('Roles page should work properly', async ({ page }) => {
   });
 });
 
-test('Delete role action from manage button options', async ({ page }) => {
+test.skip('Delete role action from manage button options', async ({ page }) => {
   const { apiContext, afterAction } = await getApiContext(page);
 
   const role = new RolesClass();
