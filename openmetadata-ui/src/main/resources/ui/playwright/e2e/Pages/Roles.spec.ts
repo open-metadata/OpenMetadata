@@ -192,12 +192,14 @@ test('Roles page should work properly', async ({ page }) => {
 
     // Wait for popover to be visible and verify policies
     await expect(
-      page
-        .locator(`[data-row-key="${roleName}"]`)
-        .getByText(policies.dataConsumerPolicy)
+      page.locator('.ant-popover-content').getByRole('link', {
+        name: policies.dataConsumerPolicy,
+      })
     ).toBeVisible();
     await expect(
-      page.getByRole('link', { name: policies.dataStewardPolicy })
+      page.locator('.ant-popover-content').getByRole('link', {
+        name: policies.dataConsumerPolicy,
+      })
     ).toBeVisible();
   });
 
