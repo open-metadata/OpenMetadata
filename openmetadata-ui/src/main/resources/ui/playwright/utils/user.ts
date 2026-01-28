@@ -25,6 +25,7 @@ import {
 import { SidebarItem } from '../constant/sidebar';
 import { UserClass } from '../support/user/UserClass';
 import {
+  clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
   getAuthContext,
@@ -692,28 +693,36 @@ export const addUser = async (
 
   await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
   await page.getByTestId('roles-dropdown').getByRole('combobox').fill(role);
-  await page.click('.ant-select-item-option-content');
-  await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
+  await page.waitForSelector('.ant-select-dropdown:visible', {
+    state: 'visible',
+  });
+  const roleOption = page
+    .locator('.ant-select-dropdown:visible')
+    .locator('.ant-select-item-option')
+    .filter({ hasText: role })
+    .first();
+  await roleOption.waitFor({ state: 'visible' });
+  await clickOutside(page);
 
   if (personas?.length) {
-    const personasResponse = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/personas') &&
-        res.request().method() === 'GET'
-    );
     await page
       .locator('[data-testid="personas-dropdown"] .ant-select-selector')
       .click();
-    await personasResponse;
     await page
       .getByTestId('personas-dropdown')
       .getByRole('combobox')
       .fill(personas[0]);
-    await page
+    await page.waitForSelector('.ant-select-dropdown:visible', {
+      state: 'visible',
+    });
+    const personaOption = page
+      .locator('.ant-select-dropdown:visible')
       .locator('.ant-select-item-option')
-      .first()
-      .waitFor({ state: 'visible' });
-    await page.locator('.ant-select-item-option').first().click();
+      .filter({ hasText: personas[0] })
+      .first();
+    await personaOption.waitFor({ state: 'visible' });
+    await personaOption.click();
+    await clickOutside(page);
   }
 
   const saveResponse = page.waitForResponse('/api/v1/users');

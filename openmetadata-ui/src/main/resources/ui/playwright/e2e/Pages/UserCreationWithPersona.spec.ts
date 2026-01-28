@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { DATA_STEWARD_RULES } from '../../constant/permission';
+import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -27,14 +29,16 @@ import { test } from '../fixtures/pages';
 
 const adminUser = new UserClass();
 const persona1 = new PersonaClass();
+const policy = new PolicyClass();
 const role = new RolesClass();
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
+  await policy.create(apiContext, DATA_STEWARD_RULES);
+  await role.create(apiContext, [policy.responseData.name]);
   await persona1.create(apiContext, [adminUser.responseData.id]);
-  await role.create(apiContext, [adminUser.responseData.id]);
   await afterAction();
 });
 
