@@ -152,7 +152,7 @@ export class DataProduct extends EntityClass {
     assets: { id: string; type: string }[]
   ) {
     const response = await apiContext.put(
-      `/api/v1/dataProducts/name/${encodeURIComponent(
+      `/api/v1/dataProducts/${encodeURIComponent(
         this.getFqn()
       )}/inputPorts/add`,
       {
@@ -168,7 +168,7 @@ export class DataProduct extends EntityClass {
     assets: { id: string; type: string }[]
   ) {
     const response = await apiContext.put(
-      `/api/v1/dataProducts/name/${encodeURIComponent(
+      `/api/v1/dataProducts/${encodeURIComponent(
         this.getFqn()
       )}/outputPorts/add`,
       {
