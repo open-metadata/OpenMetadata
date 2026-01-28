@@ -464,8 +464,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
       readerStats.setTotalRecords((int) distributedJob.getTotalRecords());
       long readerFailed = serverStatsAggr != null ? serverStatsAggr.readerFailed() : 0;
       long readerWarnings = serverStatsAggr != null ? serverStatsAggr.readerWarnings() : 0;
-      // readerSuccess = total - readerFailed (entities that were successfully read)
-      long readerSuccess = distributedJob.getTotalRecords() - readerFailed;
+      long readerSuccess =
+          serverStatsAggr != null
+              ? serverStatsAggr.readerSuccess()
+              : distributedJob.getTotalRecords() - readerFailed - readerWarnings;
       readerStats.setSuccessRecords((int) readerSuccess);
       readerStats.setFailedRecords((int) readerFailed);
       readerStats.setWarningRecords((int) readerWarnings);
