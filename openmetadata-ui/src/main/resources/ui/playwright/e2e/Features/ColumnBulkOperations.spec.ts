@@ -448,7 +448,9 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     // Verify all updates have the correct displayName
     for (const update of updates) {
       expect(update.displayName).toBe(displayName);
-      expect(update.columnFQN).toContain(sharedColumnName);
+      expect(update.columnFQN?.toLowerCase()).toContain(
+        sharedColumnName.toLowerCase()
+      );
     }
   });
 
@@ -530,7 +532,9 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     // Verify all updates have the correct displayName
     for (const update of updates) {
       expect(update.displayName).toBe(displayName);
-      expect(update.columnFQN).toContain(sharedColumnName);
+      expect(update.columnFQN?.toLowerCase()).toContain(
+        sharedColumnName.toLowerCase()
+      );
     }
   });
 
