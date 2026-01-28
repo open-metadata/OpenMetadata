@@ -29,6 +29,7 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +38,7 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getDataProductPortsView } from '../../../rest/dataProductAPI';
+import { getQueryFilterForDataProductPorts } from '../../../utils/DataProductUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -90,6 +92,12 @@ export const InputOutputPortsTab = forwardRef<
     const [inputPortsCount, setInputPortsCount] = useState(0);
     const [outputPortsCount, setOutputPortsCount] = useState(0);
 
+    // Compute query filter for port selection drawer
+    // Only show assets that belong to the DataProduct
+    const portQueryFilter = useMemo(() => {
+      return getQueryFilterForDataProductPorts(dataProductFqn);
+    }, [dataProductFqn]);
+
     // Fetch lineage data and counts (only when lineage section is expanded, or on initial load for counts)
     const fetchLineageData = useCallback(async () => {
       if (lineageLoaded || !dataProductFqn) {
@@ -124,7 +132,7 @@ export const InputOutputPortsTab = forwardRef<
       }
     }, [dataProductFqn, lineageLoaded]);
 
-    // Fetch just counts on initial load
+    // Fetch counts on initial load
     const fetchPortCounts = useCallback(async () => {
       if (!dataProductFqn) {
         return;
@@ -523,6 +531,7 @@ export const InputOutputPortsTab = forwardRef<
         <AssetSelectionDrawer
           entityFqn={dataProductFqn}
           open={isAddingInputPort}
+          queryFilter={portQueryFilter}
           title={t('label.add-entity', {
             entity: t('label.entity-port-plural', { entity: t('label.input') }),
           })}
@@ -534,6 +543,7 @@ export const InputOutputPortsTab = forwardRef<
         <AssetSelectionDrawer
           entityFqn={dataProductFqn}
           open={isAddingOutputPort}
+          queryFilter={portQueryFilter}
           title={t('label.add-entity', {
             entity: t('label.entity-port-plural', { entity: t('label.output') }),
           })}
