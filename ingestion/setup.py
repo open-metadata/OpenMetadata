@@ -135,7 +135,7 @@ base_requirements = {
     "azure-keyvault-secrets",  # Azure Key Vault SM
     VERSIONS["boto3"],  # Required in base for the secrets manager
     "cached-property==1.5.2",  # LineageParser
-    "chardet==4.0.0",  # Used in the profiler
+    "chardet==5.2.0",  # Used in the profiler
     "cryptography>=42.0.0",
     "google-cloud-secret-manager==2.22.1",
     "google-crc32c",
