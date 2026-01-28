@@ -346,7 +346,7 @@ def get_view_definition(
     # we need to get the view definition from the view ddl
 
     schema = schema or self.default_schema_name
-    view_name = f"{schema}.{table_name}" if schema else table_name
+    view_name = f'"{schema}"."{table_name}"' if schema else table_name
     cursor = connection.execute(SNOWFLAKE_GET_VIEW_DDL.format(view_name=view_name))
     try:
         result = cursor.fetchone()
