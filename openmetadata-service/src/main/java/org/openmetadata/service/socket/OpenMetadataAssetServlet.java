@@ -26,10 +26,12 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.resources.system.IndexResource;
 
+@Slf4j
 public class OpenMetadataAssetServlet extends AssetServlet {
   private final OMWebConfiguration webConfiguration;
   private final String basePath;
@@ -64,7 +66,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     String acceptEncoding = req.getHeader("Accept-Encoding");
 
     // 1. Check for Brotli (br)
-    if (acceptEncoding != null && acceptEncoding.contains("br")) {
+    if (acceptEncoding != null && supportsEncoding(acceptEncoding, "br")) {
       try {
         String fullResourcePath = getPathToCheck(req, requestUri, ".br");
         if (fullResourcePath != null) {
@@ -75,12 +77,12 @@ public class OpenMetadataAssetServlet extends AssetServlet {
           }
         }
       } catch (Exception e) {
-        // Ignore and try next
+        log.debug("Failed to serve Brotli compressed asset for {}: {}", requestUri, e.getMessage());
       }
     }
 
     // 2. Check for Gzip
-    if (acceptEncoding != null && acceptEncoding.contains("gzip")) {
+    if (acceptEncoding != null && supportsEncoding(acceptEncoding, "gzip")) {
       try {
         String fullResourcePath = getPathToCheck(req, requestUri, ".gz");
         if (fullResourcePath != null) {
@@ -92,7 +94,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
           }
         }
       } catch (Exception e) {
-        // Fallback to default behavior
+        log.debug("Failed to serve Gzip compressed asset for {}: {}", requestUri, e.getMessage());
       }
     }
 
@@ -111,11 +113,43 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     }
   }
 
+  /**
+   * Check if the Accept-Encoding header supports the given encoding with non-zero quality value.
+   * Handles q-values properly (e.g., "br;q=0" means encoding is explicitly disabled).
+   */
+  private boolean supportsEncoding(String acceptEncoding, String encoding) {
+    if (acceptEncoding == null || acceptEncoding.isEmpty()) {
+      return false;
+    }
+
+    // Split by comma to handle multiple encodings
+    String[] encodings = acceptEncoding.toLowerCase().split(",");
+    for (String enc : encodings) {
+      enc = enc.trim();
+
+      // Check if this encoding matches
+      if (enc.startsWith(encoding)) {
+        // Check for q=0 which explicitly disables the encoding
+        if (enc.contains("q=0")) {
+          return false;
+        }
+        return true;
+      }
+    }
+    return false;
+  }
+
   private String getPathToCheck(HttpServletRequest req, String requestUri, String extension) {
     String pathToCheck = requestUri;
     String contextPath = req.getContextPath();
     if (contextPath != null && requestUri.startsWith(contextPath)) {
       pathToCheck = requestUri.substring(contextPath.length());
+    }
+
+    // Reject path traversal attempts early
+    if (pathToCheck.contains("..")) {
+      log.warn("Path traversal attempt detected in request: {}", requestUri);
+      return null;
     }
 
     String fullPath =
@@ -126,10 +160,19 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       Path normalizedPath = Paths.get(fullPath).normalize();
       Path baseResourcePath = Paths.get(this.resourcePath).normalize();
 
+      // Check path is within resource directory
       if (!normalizedPath.startsWith(baseResourcePath)) {
+        log.warn("Path traversal attempt detected: {} escaped resource directory", requestUri);
+        return null;
+      }
+
+      // Additional check: normalized path should not go backwards
+      if (normalizedPath.toString().contains("..")) {
+        log.warn("Path contains .. after normalization: {}", requestUri);
         return null;
       }
     } catch (Exception e) {
+      log.debug("Path validation failed for {}: {}", requestUri, e.getMessage());
       return null;
     }
 
