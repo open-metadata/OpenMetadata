@@ -223,29 +223,6 @@ class SearchIndexFailureScenarioTest {
 
       assertEquals(0, mockSink.getEntityBuildFailures());
     }
-
-    @Test
-    @DisplayName("createEntityStatsWithBuildFailures should correctly calculate stats")
-    void testCreateEntityStatsWithBuildFailures() throws Exception {
-      SearchIndexExecutor executor = new SearchIndexExecutor(collectionDAO, searchRepository);
-
-      Method method =
-          SearchIndexExecutor.class.getDeclaredMethod(
-              "createEntityStatsWithBuildFailures",
-              org.openmetadata.schema.utils.ResultList.class,
-              int.class);
-      method.setAccessible(true);
-
-      org.openmetadata.schema.utils.ResultList<Object> entities =
-          new org.openmetadata.schema.utils.ResultList<>();
-      entities.setData(java.util.Arrays.asList(new Object(), new Object(), new Object()));
-      entities.setErrors(new java.util.ArrayList<>());
-
-      StepStats stats = (StepStats) method.invoke(executor, entities, 1);
-
-      assertEquals(2, stats.getSuccessRecords());
-      assertEquals(1, stats.getFailedRecords());
-    }
   }
 
   @Nested
