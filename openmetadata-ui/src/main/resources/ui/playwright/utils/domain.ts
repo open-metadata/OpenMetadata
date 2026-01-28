@@ -287,7 +287,9 @@ export const verifyAssetsInDomain = async (
 
   for (const table of tables) {
     const tableFqn = table.entityResponseData.fullyQualifiedName;
-    const tableCard = page.locator(`[data-testid="table-data-card_${tableFqn}"]`);
+    const tableCard = page.locator(
+      `[data-testid="table-data-card_${tableFqn}"]`
+    );
     if (expectedVisible) {
       await expect(tableCard).toBeVisible({ timeout: 10000 });
     } else {
@@ -343,32 +345,27 @@ export const checkAssetsCount = async (page: Page, count: number) => {
   );
 };
 
-export const checkAssetsCountWithRetry = async (
+export const verifyDomainOnAssetPages = async (
   page: Page,
-  count: number,
-  maxRetries = 5,
-  retryIntervalMs = 30000
+  assets: EntityClass[],
+  domainDisplayName: string,
+  renamedDomainName?: string
 ) => {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      await expect(
-        page.getByTestId('assets').getByTestId('count')
-      ).toContainText(count.toString(), { timeout: 5000 });
+  for (const asset of assets) {
+    await asset.visitEntityPage(page);
+    await expect(page.getByTestId('domain-link')).toContainText(
+      domainDisplayName
+    );
+  }
 
-      return;
-    } catch {
-      if (attempt === maxRetries) {
-        throw new Error(
-          `Assets count did not match expected value ${count} after ${maxRetries} retries`
-        );
-      }
-      await page.waitForTimeout(retryIntervalMs);
-      await page.reload();
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-    }
+  if (renamedDomainName) {
+    const domainRes = page.waitForResponse('/api/v1/domains/name/*');
+    await page.getByTestId('domain-link').click();
+    await domainRes;
+    await waitForAllLoadersToDisappear(page);
+    await expect(page.getByTestId('entity-header-name')).toContainText(
+      renamedDomainName
+    );
   }
 };
 
@@ -1307,11 +1304,27 @@ export const verifyPortCounts = async (
   expectedInputCount: number,
   expectedOutputCount: number
 ) => {
-  const inputPortsSection = page.locator('[data-testid="input-output-ports-tab"]').locator('text=Input Ports').first();
-  const outputPortsSection = page.locator('[data-testid="input-output-ports-tab"]').locator('text=Output Ports').first();
+  const inputPortsSection = page
+    .locator('[data-testid="input-output-ports-tab"]')
+    .locator('text=Input Ports')
+    .first();
+  const outputPortsSection = page
+    .locator('[data-testid="input-output-ports-tab"]')
+    .locator('text=Output Ports')
+    .first();
 
-  await expect(inputPortsSection.locator('..').locator('span').filter({ hasText: `(${expectedInputCount})` })).toBeVisible();
-  await expect(outputPortsSection.locator('..').locator('span').filter({ hasText: `(${expectedOutputCount})` })).toBeVisible();
+  await expect(
+    inputPortsSection
+      .locator('..')
+      .locator('span')
+      .filter({ hasText: `(${expectedInputCount})` })
+  ).toBeVisible();
+  await expect(
+    outputPortsSection
+      .locator('..')
+      .locator('span')
+      .filter({ hasText: `(${expectedOutputCount})` })
+  ).toBeVisible();
 };
 
 /**
@@ -1347,8 +1360,7 @@ export const addInputPortToDataProduct = async (
 
   const addRes = page.waitForResponse(
     (res) =>
-      res.url().includes('/inputPorts/add') &&
-      res.request().method() === 'PUT'
+      res.url().includes('/inputPorts/add') && res.request().method() === 'PUT'
   );
   await page.getByTestId('save-btn').click();
   await addRes;
@@ -1387,8 +1399,7 @@ export const addOutputPortToDataProduct = async (
 
   const addRes = page.waitForResponse(
     (res) =>
-      res.url().includes('/outputPorts/add') &&
-      res.request().method() === 'PUT'
+      res.url().includes('/outputPorts/add') && res.request().method() === 'PUT'
   );
   await page.getByTestId('save-btn').click();
   await addRes;
@@ -1472,7 +1483,13 @@ export const selectDomainFromNavbar = async (
  */
 export const searchAndExpectEntityVisible = async (
   page: Page,
-  entity: { entityResponseData: { name: string; displayName?: string; fullyQualifiedName?: string } },
+  entity: {
+    entityResponseData: {
+      name: string;
+      displayName?: string;
+      fullyQualifiedName?: string;
+    };
+  },
   timeout?: number
 ) => {
   const name = get(
@@ -1497,7 +1514,13 @@ export const searchAndExpectEntityVisible = async (
  */
 export const searchAndExpectEntityNotVisible = async (
   page: Page,
-  entity: { entityResponseData: { name: string; displayName?: string; fullyQualifiedName?: string } }
+  entity: {
+    entityResponseData: {
+      name: string;
+      displayName?: string;
+      fullyQualifiedName?: string;
+    };
+  }
 ) => {
   const name = get(
     entity,
@@ -1522,7 +1545,12 @@ export const searchAndExpectEntityNotVisible = async (
 export const assignDomainToEntity = async (
   apiContext: APIRequestContext,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entity: { patch: (options: { apiContext: APIRequestContext; patchData: any[] }) => Promise<any> },
+  entity: {
+    patch: (options: {
+      apiContext: APIRequestContext;
+      patchData: any[];
+    }) => Promise<any>;
+  },
   domain: { responseData: { id?: string } }
 ) => {
   await entity.patch({
