@@ -349,7 +349,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     CountDownLatch completionLatch = new CountDownLatch(1);
     ScheduledExecutorService monitor =
         Executors.newSingleThreadScheduledExecutor(
-            Thread.ofVirtual().name("distributed--monitor-virtual").factory());
+            Thread.ofPlatform().name("distributed-monitor").factory());
 
     try {
       monitor.scheduleAtFixedRate(
