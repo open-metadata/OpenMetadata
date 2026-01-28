@@ -35,6 +35,7 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
@@ -86,6 +87,7 @@ import org.openmetadata.service.security.auth.validator.AzureAuthValidator;
 import org.openmetadata.service.security.auth.validator.CognitoAuthValidator;
 import org.openmetadata.service.security.auth.validator.CustomOidcValidator;
 import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
+import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
 import org.openmetadata.service.util.EntityUtil;
@@ -379,6 +381,7 @@ public class SystemRepository {
       } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
         AuthenticationConfiguration authConfig =
             JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
+
         setting.setConfigValue(authConfig);
       } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
         AuthorizerConfiguration authorizerConfig =
@@ -883,7 +886,11 @@ public class SystemRepository {
               || authConfig.getProvider() == AuthProvider.SAML;
 
       if (!isLdapOrSaml) {
-        if (authConfig.getPublicKeyUrls() == null || authConfig.getPublicKeyUrls().isEmpty()) {
+        // For confidential clients, publicKeyUrls is auto-populated from discovery document
+        // Only require it for public clients
+        boolean isConfidentialClient = authConfig.getClientType() == ClientType.CONFIDENTIAL;
+        if (!isConfidentialClient
+            && (authConfig.getPublicKeyUrls() == null || authConfig.getPublicKeyUrls().isEmpty())) {
           return ValidationErrorBuilder.createFieldError(
               FieldPaths.AUTH_PUBLIC_KEY_URLS, "Public key URLs are required");
         }
@@ -1044,6 +1051,54 @@ public class SystemRepository {
       return null; // No errors - validation passed
     } catch (Exception e) {
       return ValidationErrorBuilder.createFieldError("", e.getMessage());
+    }
+  }
+
+  /**
+   * Auto-populates publicKeyUrls from OIDC discovery document for confidential clients
+   * This is called during save operation to ensure publicKeyUrls is populated before persisting
+   */
+  public void autoPopulatePublicKeyUrlsIfNeeded(AuthenticationConfiguration authConfig) {
+    if (authConfig == null) {
+      return;
+    }
+
+    // Only auto-populate for OIDC providers with confidential client type
+    boolean isOidcProvider =
+        authConfig.getProvider() == AuthProvider.CUSTOM_OIDC
+            || authConfig.getProvider() == AuthProvider.GOOGLE
+            || authConfig.getProvider() == AuthProvider.AZURE
+            || authConfig.getProvider() == AuthProvider.OKTA
+            || authConfig.getProvider() == AuthProvider.AUTH_0
+            || authConfig.getProvider() == AuthProvider.AWS_COGNITO;
+
+    boolean isConfidentialClient = authConfig.getClientType() == ClientType.CONFIDENTIAL;
+
+    if (!isOidcProvider || !isConfidentialClient) {
+      LOG.debug("Skipping publicKeyUrls auto-population - not OIDC confidential client");
+      return;
+    }
+
+    // Skip if already populated
+    if (authConfig.getPublicKeyUrls() != null && !authConfig.getPublicKeyUrls().isEmpty()) {
+      LOG.debug("publicKeyUrls already populated, skipping auto-population");
+      return;
+    }
+
+    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+    if (oidcConfig == null || nullOrEmpty(oidcConfig.getDiscoveryUri())) {
+      LOG.warn("Cannot auto-populate publicKeyUrls - missing oidcConfiguration or discoveryUri");
+      return;
+    }
+
+    try {
+      LOG.info(
+          "Auto-populating publicKeyUrls from discovery document for provider: {}",
+          authConfig.getProvider());
+      OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
+      discoveryValidator.autoPopulatePublicKeyUrls(oidcConfig.getDiscoveryUri(), authConfig);
+    } catch (Exception e) {
+      LOG.error("Failed to auto-populate publicKeyUrls: {}", e.getMessage(), e);
     }
   }
 

@@ -380,6 +380,8 @@ export const OIDC_UI_SCHEMA = {
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
+  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Standard OAuth/OIDC providers (Auth0, AWS Cognito) - hides clientAuthenticationMethod and tenant
@@ -415,6 +417,8 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
+  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Azure-specific UI schema with required tenant for confidential client
@@ -450,6 +454,8 @@ export const AZURE_OAUTH_UI_SCHEMA = {
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
+  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Okta-specific UI schema - keeps clientAuthenticationMethod visible, hides tenant
@@ -485,6 +491,8 @@ export const OKTA_OAUTH_UI_SCHEMA = {
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
+  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Google-specific UI schema
@@ -531,10 +539,8 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
     'ui:title': 'Authority',
     'ui:placeholder': GOOGLE_SSO_DEFAULTS.authority,
   },
-  publicKeyUrls: {
-    'ui:title': 'Public Key URLs',
-    'ui:placeholder': `Enter value (default: ${GOOGLE_SSO_DEFAULTS.publicKeyUrls[0]}) and press ENTER`,
-  },
+  // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
+  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
 };

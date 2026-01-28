@@ -325,4 +325,52 @@ public class OidcDiscoveryValidator {
     // Default to discovery URI for general OIDC configuration errors
     return ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI;
   }
+
+  /**
+   * Auto-populates publicKeyUrls from OIDC discovery document if not already set
+   *
+   * @param discoveryUri The OIDC discovery URI
+   * @param authConfig The authentication configuration to populate
+   * @throws Exception if discovery document cannot be fetched or parsed
+   */
+  public void autoPopulatePublicKeyUrls(String discoveryUri, AuthenticationConfiguration authConfig)
+      throws Exception {
+
+    // Skip if publicKeyUrls already populated
+    if (authConfig.getPublicKeyUrls() != null && !authConfig.getPublicKeyUrls().isEmpty()) {
+      LOG.debug("publicKeyUrls already set, skipping auto-population");
+      return;
+    }
+
+    if (nullOrEmpty(discoveryUri)) {
+      throw new IllegalArgumentException(
+          "Discovery URI is required for auto-populating publicKeyUrls");
+    }
+
+    // Fetch discovery document
+    ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUri);
+    if (response.getStatusCode() != 200) {
+      throw new IllegalArgumentException(
+          "Cannot fetch discovery document from: "
+              + discoveryUri
+              + " (HTTP "
+              + response.getStatusCode()
+              + ")");
+    }
+
+    // Parse and extract jwks_uri
+    JsonNode discoveryDoc = OBJECT_MAPPER.readTree(response.getBody());
+    if (!discoveryDoc.has("jwks_uri")) {
+      throw new IllegalArgumentException("Discovery document missing 'jwks_uri' field");
+    }
+
+    String jwksUri = discoveryDoc.get("jwks_uri").asText();
+    if (nullOrEmpty(jwksUri)) {
+      throw new IllegalArgumentException("Discovery document has empty 'jwks_uri' field");
+    }
+
+    // Auto-populate publicKeyUrls
+    authConfig.setPublicKeyUrls(List.of(jwksUri));
+    LOG.debug("Auto-populated publicKeyUrls from discovery document: {}", jwksUri);
+  }
 }

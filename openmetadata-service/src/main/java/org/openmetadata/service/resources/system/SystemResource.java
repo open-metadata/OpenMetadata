@@ -642,6 +642,10 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     try {
+      // Auto-populate publicKeyUrls for OIDC confidential clients before saving
+      systemRepository.autoPopulatePublicKeyUrlsIfNeeded(
+          securityConfig.getAuthenticationConfiguration());
+
       // Update both configurations in a transaction
       Settings authSettings =
           new Settings()

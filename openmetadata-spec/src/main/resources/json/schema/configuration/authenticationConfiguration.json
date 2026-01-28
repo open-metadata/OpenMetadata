@@ -150,14 +150,44 @@
     },
     {
       "if": {
-        "properties": {
-          "provider": {
-            "enum": ["google", "azure", "okta", "auth0", "aws-cognito", "custom-oidc"]
+        "allOf": [
+          {
+            "properties": {
+              "provider": {
+                "enum": ["google", "azure", "okta", "auth0", "aws-cognito", "custom-oidc"]
+              }
+            }
+          },
+          {
+            "properties": {
+              "clientType": { "const": "public" }
+            }
           }
-        }
+        ]
       },
       "then": {
         "required": ["publicKeyUrls", "authority", "callbackUrl", "clientId"]
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "properties": {
+              "provider": {
+                "enum": ["google", "azure", "okta", "auth0", "aws-cognito", "custom-oidc"]
+              }
+            }
+          },
+          {
+            "properties": {
+              "clientType": { "const": "confidential" }
+            }
+          }
+        ]
+      },
+      "then": {
+        "required": ["authority", "callbackUrl", "clientId", "oidcConfiguration"]
       }
     }
   ],
