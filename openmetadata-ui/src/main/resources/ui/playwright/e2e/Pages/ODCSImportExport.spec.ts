@@ -29,6 +29,7 @@ import {
   ODCS_VALID_FULL_YAML,
   ODCS_VALID_MULTI_OBJECT_YAML,
   ODCS_VALID_QUALITY_RULES_BETWEEN_YAML,
+  ODCS_VALID_WITH_MARKDOWN_DESCRIPTION_YAML,
   ODCS_WITH_QUALITY_RULES_YAML,
   ODCS_VALID_WITH_TEAM_YAML,
   ODCS_VALID_WITH_TIMESTAMPS_YAML,
@@ -1744,6 +1745,326 @@ version: "1.0.0"`;
         .getByTestId('cancel-button')
         .filter({ hasText: /cancel/i })
         .click();
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Import ODCS, modify via UI, export and verify changes', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      // Step 1: Import a basic ODCS contract (no SLA)
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await importODCSYaml(page, ODCS_VALID_BASIC_YAML, 'basic-for-modify.yaml');
+
+      await expect(page.getByTestId('contract-title')).toBeVisible();
+      await expect(page.getByTestId('contract-title')).toContainText(
+        'Orders Basic Contract'
+      );
+
+      // Verify NO SLA card initially (basic contract has no SLA)
+      await expect(page.getByTestId('contract-sla-card')).not.toBeVisible();
+
+      // Step 2: Edit the contract via UI - add SLA
+      await page.getByTestId('manage-contract-actions').click();
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
+      await page.getByTestId('contract-edit-button').click();
+
+      // Wait for edit mode
+      await expect(page.getByTestId('save-contract-btn')).toBeVisible();
+
+      // Navigate to SLA tab and add SLA details
+      await page.getByRole('tab', { name: 'SLA' }).click();
+
+      // Add refresh frequency
+      await page.getByTestId('refresh-frequency-interval-input').fill('24');
+      await page.getByTestId('refresh-frequency-unit-select').click();
+      await page.locator('.refresh-frequency-unit-select [title=Hour]').click();
+
+      // Add max latency
+      await page.getByTestId('max-latency-value-input').fill('2');
+      await page.getByTestId('max-latency-unit-select').click();
+      await page.locator('.max-latency-unit-select [title=Hour]').click();
+
+      // Save the contract
+      const saveContractResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*'
+      );
+      await page.getByTestId('save-contract-btn').click();
+      await saveContractResponse;
+
+      await page.waitForLoadState('networkidle');
+
+      // Verify SLA card is now visible after adding SLA
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Step 3: Export as ODCS YAML
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByTestId('manage-contract-actions').click();
+      await page.getByTestId('export-odcs-contract-button').click();
+
+      const download = await downloadPromise;
+      const tempPath = `/tmp/import-modify-export-${Date.now()}.yaml`;
+      await download.saveAs(tempPath);
+
+      // Step 4: Verify the UI changes are reflected in the export
+      const fsModule = await import('fs');
+      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
+
+      // Verify basic ODCS structure
+      expect(exportedYaml).toContain('apiVersion');
+      expect(exportedYaml).toContain('v3.1.0');
+      expect(exportedYaml).toContain('Orders Basic Contract');
+
+      // Verify SLA properties added via UI are in the export
+      expect(exportedYaml).toContain('slaProperties');
+      expect(exportedYaml).toContain('freshness');
+      expect(exportedYaml).toContain('24');
+      expect(exportedYaml).toContain('latency');
+      expect(exportedYaml).toContain('2');
+
+      // Cleanup
+      fsModule.unlinkSync(tempPath);
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Import ODCS draft, change status via UI, export and verify status change', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      // Step 1: Import a draft ODCS contract
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await importODCSYaml(
+        page,
+        ODCS_VALID_DRAFT_STATUS_YAML,
+        'draft-for-approve.yaml'
+      );
+
+      await expect(page.getByTestId('contract-title')).toBeVisible();
+      await expect(page.getByTestId('contract-title')).toContainText(
+        'Draft ODCS Contract'
+      );
+
+      // Step 2: Change status from draft to approved via UI
+      await page.getByTestId('manage-contract-actions').click();
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
+      await page.getByTestId('contract-edit-button').click();
+
+      // Wait for edit mode
+      await expect(page.getByTestId('save-contract-btn')).toBeVisible();
+
+      // Change status to approved
+      await page.getByTestId('contract-status-select').click();
+      await page.locator('[data-testid="status-option-Approved"]').click();
+
+      // Save the contract
+      const saveContractResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*'
+      );
+      await page.getByTestId('save-contract-btn').click();
+      await saveContractResponse;
+
+      await page.waitForLoadState('networkidle');
+
+      // Step 3: Export as ODCS YAML
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByTestId('manage-contract-actions').click();
+      await page.getByTestId('export-odcs-contract-button').click();
+
+      const download = await downloadPromise;
+      const tempPath = `/tmp/draft-to-approved-${Date.now()}.yaml`;
+      await download.saveAs(tempPath);
+
+      // Step 4: Verify status change is reflected in the export
+      const fsModule = await import('fs');
+      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
+
+      // Verify status changed from draft to active (APPROVED maps to active in ODCS)
+      expect(exportedYaml).toContain('status: active');
+      expect(exportedYaml).not.toContain('status: draft');
+
+      // Cleanup
+      fsModule.unlinkSync(tempPath);
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Import ODCS with SLA, modify SLA via UI, export and verify SLA changes', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      // Step 1: Import an ODCS contract with existing SLA (freshness: 12 hours)
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await importODCSYaml(page, ODCS_VALID_FULL_YAML, 'full-for-sla-edit.yaml');
+
+      await expect(page.getByTestId('contract-title')).toBeVisible();
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Step 2: Edit the contract via UI - modify SLA values
+      await page.getByTestId('manage-contract-actions').click();
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
+      await page.getByTestId('contract-edit-button').click();
+
+      // Wait for edit mode
+      await expect(page.getByTestId('save-contract-btn')).toBeVisible();
+
+      // Navigate to SLA tab
+      await page.getByRole('tab', { name: 'SLA' }).click();
+
+      // Update refresh frequency from 12 to 48 hours
+      await page.getByTestId('refresh-frequency-interval-input').clear();
+      await page.getByTestId('refresh-frequency-interval-input').fill('48');
+
+      // Update max latency from 2 to 4 hours
+      await page.getByTestId('max-latency-value-input').clear();
+      await page.getByTestId('max-latency-value-input').fill('4');
+
+      // Save the contract
+      const saveContractResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*'
+      );
+      await page.getByTestId('save-contract-btn').click();
+      await saveContractResponse;
+
+      await page.waitForLoadState('networkidle');
+
+      // Step 3: Export as ODCS YAML
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByTestId('manage-contract-actions').click();
+      await page.getByTestId('export-odcs-contract-button').click();
+
+      const download = await downloadPromise;
+      const tempPath = `/tmp/sla-modified-${Date.now()}.yaml`;
+      await download.saveAs(tempPath);
+
+      // Step 4: Verify SLA modifications are reflected in the export
+      const fsModule = await import('fs');
+      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
+
+      // Verify updated SLA values
+      expect(exportedYaml).toContain('slaProperties');
+      expect(exportedYaml).toContain('freshness');
+      expect(exportedYaml).toContain('"48"');
+      expect(exportedYaml).toContain('latency');
+      expect(exportedYaml).toContain('"4"');
+
+      // Cleanup
+      fsModule.unlinkSync(tempPath);
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Import ODCS with markdown description and verify proper rendering', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      // Import an ODCS contract with markdown content in description
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await importODCSYaml(
+        page,
+        ODCS_VALID_WITH_MARKDOWN_DESCRIPTION_YAML,
+        'markdown-description.yaml'
+      );
+
+      // Verify contract was created
+      await expect(page.getByTestId('contract-title')).toBeVisible();
+      await expect(page.getByTestId('contract-title')).toContainText(
+        'Markdown Description Contract'
+      );
+
+      // Verify description section is visible
+      const descriptionSection = page.locator('.contract-card-items').first();
+      await expect(descriptionSection).toBeVisible();
+
+      // Verify markdown elements are rendered properly
+      // Check for H1 header (rendered as heading element)
+      await expect(
+        page.locator('h1:has-text("Data Contract Overview")')
+      ).toBeVisible();
+
+      // Check for H2 header
+      await expect(page.locator('h2:has-text("Key Features")')).toBeVisible();
+
+      // Check for H3 header
+      await expect(page.locator('h3:has-text("Data Sources")')).toBeVisible();
+
+      // Check for bold text (rendered as <strong>)
+      await expect(
+        page.locator('strong:has-text("quality standards")')
+      ).toBeVisible();
+      await expect(
+        page.locator('strong:has-text("Real-time updates")')
+      ).toBeVisible();
+
+      // Check for italic text (rendered as <em>)
+      await expect(
+        page.locator('em:has-text("customer analytics")')
+      ).toBeVisible();
+      await expect(
+        page.locator('em:has-text("Historical data")')
+      ).toBeVisible();
+
+      // Check for inline code (rendered as <code>)
+      await expect(page.locator('code:has-text("SQL")')).toBeVisible();
+      await expect(page.locator('code:has-text("Python")')).toBeVisible();
+
+      // Check for list items
+      await expect(
+        page.locator('li:has-text("Customer transactions")')
+      ).toBeVisible();
+      await expect(
+        page.locator('li:has-text("User behavior logs")')
+      ).toBeVisible();
+      await expect(
+        page.locator('li:has-text("Product catalog")')
+      ).toBeVisible();
+
+      // Check for blockquote
+      await expect(
+        page.locator('blockquote:has-text("Note: This data is subject to GDPR")')
+      ).toBeVisible();
+
+      // Check for link
+      await expect(page.locator('a:has-text("documentation")')).toBeVisible();
+      await expect(page.locator('a:has-text("documentation")')).toHaveAttribute(
+        'href',
+        'https://example.com/docs'
+      );
     } finally {
       await table.delete(apiContext);
     }

@@ -855,3 +855,32 @@ status: ${status}
 
   return yaml;
 };
+
+export const ODCS_VALID_WITH_MARKDOWN_DESCRIPTION_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: markdown-description-contract
+name: Markdown Description Contract
+version: "1.0.0"
+status: active
+description:
+  purpose: |
+    # Data Contract Overview
+
+    This contract defines the **quality standards** for our _customer analytics_ data.
+
+    ## Key Features
+
+    - **Real-time updates** every 15 minutes
+    - *Historical data* retention for 365 days
+    - Supports \`SQL\` and \`Python\` queries
+
+    ### Data Sources
+
+    1. Customer transactions
+    2. User behavior logs
+    3. Product catalog
+
+    > Note: This data is subject to GDPR compliance requirements.
+
+    For more details, see the [documentation](https://example.com/docs).
+`;
