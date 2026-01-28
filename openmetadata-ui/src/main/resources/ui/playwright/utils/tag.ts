@@ -621,5 +621,7 @@ export const selectTagInMUITagSuggestion = async (
   await tagSearchResponse;
 
   await page.waitForSelector('[role="listbox"]', { state: 'visible' });
-  await page.getByTestId(`tag-option-${tagFqn}`).click();
+  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
+  await tagOption.waitFor({ state: 'visible' });
+  await tagOption.click();
 };
