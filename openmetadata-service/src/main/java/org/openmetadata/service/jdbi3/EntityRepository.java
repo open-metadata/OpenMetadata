@@ -1569,7 +1569,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  private List<T> createManyEntitiesForImport(List<T> entities) {
+  public List<T> createManyEntitiesForImport(List<T> entities) {
     storeEntities(entities);
     storeExtensions(entities);
     storeRelationshipsInternal(entities);
@@ -1579,8 +1579,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  private List<T> updateManyEntitiesForImport(
-      List<T> originals, List<T> updates, String updatedBy) {
+  public List<T> updateManyEntitiesForImport(List<T> originals, List<T> updates, String updatedBy) {
     List<T> updatedEntities = new ArrayList<>();
     for (int i = 0; i < originals.size(); i++) {
       T original = originals.get(i);
@@ -1596,7 +1595,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updateMany(updatedEntities);
     // Update relationships
     for (T entity : updatedEntities) {
-      storeRelationships(entity);
+      // For imports, delete existing tags before applying new ones to match single entity behavior
+      if (supportsTags) {
+        daoCollection.tagUsageDAO().deleteTagsByTarget(entity.getFullyQualifiedName());
+      }
+      storeRelationshipsInternal(entity);
     }
     return updatedEntities;
   }
