@@ -114,7 +114,7 @@ public class DistributedJobStatsAggregator {
     if (running.compareAndSet(false, true)) {
       scheduler =
           Executors.newSingleThreadScheduledExecutor(
-              Thread.ofPlatform()
+              Thread.ofVirtual()
                   .name("stats-aggregator-" + jobId.toString().substring(0, 8))
                   .factory());
 
