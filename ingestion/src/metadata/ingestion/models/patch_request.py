@@ -13,9 +13,8 @@ Pydantic definition for storing entities for patching
 """
 import json
 import logging
-import re
 import traceback
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import jsonpatch
 from pydantic import BaseModel
@@ -23,43 +22,9 @@ from pydantic import BaseModel
 from metadata.ingestion.api.models import Entity, T
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import PatchOperation
 from metadata.ingestion.ometa.utils import model_str
+from metadata.utils.time_utils import normalize_datetime_strings
 
 logger = logging.getLogger("metadata")
-
-# Regex pattern to match ISO 8601 datetime strings without microseconds
-# Matches: 2026-01-19T18:08:41Z or 2026-01-19T18:08:41+00:00
-ISO_DATETIME_WITHOUT_MICROSECONDS = re.compile(
-    r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})([Z]|[+-]\d{2}:\d{2})$"
-)
-
-
-def _normalize_datetime_strings(obj: Any) -> Any:
-    """
-    Recursively process a JSON-like object to ensure all ISO 8601 datetime
-    strings include microseconds (.000000).
-
-    This fixes compatibility with Java's SimpleDateFormat which requires
-    microseconds in the format: yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'
-
-    Args:
-        obj: A JSON-like object (dict, list, or primitive)
-
-    Returns:
-        The object with datetime strings normalized to include microseconds
-    """
-    if isinstance(obj, dict):
-        return {k: _normalize_datetime_strings(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [_normalize_datetime_strings(item) for item in obj]
-    elif isinstance(obj, str):
-        # Check if it's a datetime string without microseconds
-        match = ISO_DATETIME_WITHOUT_MICROSECONDS.match(obj)
-        if match:
-            # Insert .000000 before the timezone suffix
-            return f"{match.group(1)}.000000{match.group(2)}"
-        return obj
-    else:
-        return obj
 
 
 class PatchRequest(BaseModel):
@@ -420,7 +385,7 @@ def build_patch(
         # to ensure compatibility with Java's SimpleDateFormat which requires them
         if allowed_fields:
             patch = jsonpatch.make_patch(
-                _normalize_datetime_strings(
+                normalize_datetime_strings(
                     json.loads(
                         source.model_dump_json(
                             exclude_unset=True,
@@ -429,7 +394,7 @@ def build_patch(
                         )
                     )
                 ),
-                _normalize_datetime_strings(
+                normalize_datetime_strings(
                     json.loads(
                         destination.model_dump_json(
                             exclude_unset=True,
@@ -441,12 +406,12 @@ def build_patch(
             )
         else:
             patch: jsonpatch.JsonPatch = jsonpatch.make_patch(
-                _normalize_datetime_strings(
+                normalize_datetime_strings(
                     json.loads(
                         source.model_dump_json(exclude_unset=True, exclude_none=True)
                     )
                 ),
-                _normalize_datetime_strings(
+                normalize_datetime_strings(
                     json.loads(
                         destination.model_dump_json(
                             exclude_unset=True, exclude_none=True
