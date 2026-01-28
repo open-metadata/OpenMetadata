@@ -209,6 +209,9 @@ public class ElasticSearchBulkSink implements BulkSink {
                                 .id(docId)
                                 .action(a -> a.doc(EsUtils.toJsonData(json)).docAsUpsert(true))));
       }
+      if (tracker != null) {
+        tracker.incrementPendingSink();
+      }
       bulkProcessor.add(operation, docId, entityType, tracker);
       if (tracker != null) {
         tracker.recordProcess(StatsResult.SUCCESS);
@@ -263,6 +266,9 @@ public class ElasticSearchBulkSink implements BulkSink {
                   op.index(
                       idx -> idx.index(indexName).id(docId).document(EsUtils.toJsonData(json))));
 
+      if (tracker != null) {
+        tracker.incrementPendingSink();
+      }
       bulkProcessor.add(operation, docId, entityType, tracker);
       if (tracker != null) {
         tracker.recordProcess(StatsResult.SUCCESS);

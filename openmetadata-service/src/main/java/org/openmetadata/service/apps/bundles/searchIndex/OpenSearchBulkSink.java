@@ -232,6 +232,9 @@ public class OpenSearchBulkSink implements BulkSink {
                                 .document(OsUtils.toJsonData(json))
                                 .docAsUpsert(true)));
       }
+      if (tracker != null) {
+        tracker.incrementPendingSink();
+      }
       bulkProcessor.add(operation, docId, entityType, tracker);
       if (tracker != null) {
         tracker.recordProcess(StatsResult.SUCCESS);
@@ -286,6 +289,9 @@ public class OpenSearchBulkSink implements BulkSink {
                   op.index(
                       idx -> idx.index(indexName).id(docId).document(OsUtils.toJsonData(json))));
 
+      if (tracker != null) {
+        tracker.incrementPendingSink();
+      }
       bulkProcessor.add(operation, docId, entityType, tracker);
       if (tracker != null) {
         tracker.recordProcess(StatsResult.SUCCESS);

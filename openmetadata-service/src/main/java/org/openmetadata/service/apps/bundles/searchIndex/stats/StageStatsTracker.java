@@ -36,6 +36,9 @@ public class StageStatsTracker {
   private final AtomicLong operationCount = new AtomicLong(0);
   private volatile long lastFlushTime = System.currentTimeMillis();
 
+  /** Tracks pending sink operations that have been submitted but not yet completed */
+  private final AtomicLong pendingSinkOps = new AtomicLong(0);
+
   public StageStatsTracker(
       String jobId,
       String serverId,
@@ -69,7 +72,57 @@ public class StageStatsTracker {
 
   public void recordSink(StatsResult result) {
     sink.record(result);
+    pendingSinkOps.decrementAndGet();
     checkFlush();
+  }
+
+  /**
+   * Increment the pending sink operations counter. Call this when a document is submitted to the
+   * async bulk sink, before the actual write completes.
+   */
+  public void incrementPendingSink() {
+    pendingSinkOps.incrementAndGet();
+  }
+
+  /**
+   * Increment pending sink operations by a batch count.
+   *
+   * @param count Number of documents being submitted
+   */
+  public void incrementPendingSink(int count) {
+    pendingSinkOps.addAndGet(count);
+  }
+
+  /**
+   * Wait for all pending sink operations to complete.
+   *
+   * @param timeoutMs Maximum time to wait in milliseconds
+   * @return true if all operations completed, false if timed out
+   */
+  public boolean awaitSinkCompletion(long timeoutMs) {
+    long deadline = System.currentTimeMillis() + timeoutMs;
+    while (pendingSinkOps.get() > 0) {
+      if (System.currentTimeMillis() >= deadline) {
+        LOG.warn(
+            "Timed out waiting for {} pending sink operations for job {} entity {}",
+            pendingSinkOps.get(),
+            jobId,
+            entityType);
+        return false;
+      }
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** Get the count of pending sink operations. */
+  public long getPendingSinkOps() {
+    return pendingSinkOps.get();
   }
 
   public void recordVector(StatsResult result) {

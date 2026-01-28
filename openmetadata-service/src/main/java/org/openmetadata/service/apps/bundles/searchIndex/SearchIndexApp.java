@@ -471,21 +471,29 @@ public class SearchIndexApp extends AbstractNativeApplication {
       readerStats.setWarningRecords((int) readerWarnings);
     }
 
+    // Process stats - document building stage
+    StepStats processStats = stats.getProcessStats();
+    if (processStats != null && serverStatsAggr != null) {
+      long processSuccess = serverStatsAggr.processSuccess();
+      long processFailed = serverStatsAggr.processFailed();
+      processStats.setTotalRecords((int) (processSuccess + processFailed));
+      processStats.setSuccessRecords((int) processSuccess);
+      processStats.setFailedRecords((int) processFailed);
+    }
+
     StepStats sinkStats = stats.getSinkStats();
     if (sinkStats != null) {
       if (serverStatsAggr != null) {
         // Use actual sink stats from the database
         long sinkSuccess = serverStatsAggr.sinkSuccess();
         long sinkFailed = serverStatsAggr.sinkFailed();
-        long processFailed = serverStatsAggr.processFailed();
 
-        // sinkTotal = processSuccess (submitted to ES) = sinkSuccess + sinkFailed
+        // sinkTotal = docs submitted to ES = sinkSuccess + sinkFailed
         long actualSinkTotal = sinkSuccess + sinkFailed;
 
         sinkStats.setTotalRecords((int) actualSinkTotal);
         sinkStats.setSuccessRecords((int) sinkSuccess);
-        // Include processFailed - docs that failed to build before sending to ES
-        sinkStats.setFailedRecords((int) (sinkFailed + processFailed));
+        sinkStats.setFailedRecords((int) sinkFailed);
       } else {
         // Fallback: derive from reader stats (less accurate)
         long readerFailed = 0;
@@ -494,6 +502,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
         sinkStats.setSuccessRecords((int) successRecords);
         sinkStats.setFailedRecords((int) failedRecords);
       }
+    }
+
+    // Vector stats - embedding generation stage
+    StepStats vectorStats = stats.getVectorStats();
+    if (vectorStats != null && serverStatsAggr != null) {
+      long vectorSuccess = serverStatsAggr.vectorSuccess();
+      long vectorFailed = serverStatsAggr.vectorFailed();
+      vectorStats.setTotalRecords((int) (vectorSuccess + vectorFailed));
+      vectorStats.setSuccessRecords((int) vectorSuccess);
+      vectorStats.setFailedRecords((int) vectorFailed);
     }
 
     if (distributedJob.getEntityStats() != null && stats.getEntityStats() != null) {
