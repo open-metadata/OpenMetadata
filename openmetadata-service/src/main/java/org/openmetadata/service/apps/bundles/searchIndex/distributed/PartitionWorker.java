@@ -158,8 +158,7 @@ public class PartitionWorker {
           successCount.addAndGet(batchResult.successCount());
           failedCount.addAndGet(batchResult.failedCount());
           warningsCount.addAndGet(batchResult.warningsCount());
-          processedCount.addAndGet(
-              batchResult.successCount() + batchResult.failedCount() + batchResult.warningsCount());
+          processedCount.addAndGet(batchResult.successCount() + batchResult.failedCount());
 
           currentOffset += currentBatchSize;
 
