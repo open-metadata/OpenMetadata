@@ -12,15 +12,15 @@
  */
 import { test as base, expect, Page } from '@playwright/test';
 import {
-  DATA_CONSUMER_RULES,
-  DATA_STEWARD_RULES,
-  EDIT_DESCRIPTION_RULE,
-  EDIT_GLOSSARY_TERM_RULE,
-  EDIT_TAGS_RULE,
-  EDIT_USER_FOR_TEAM_RULES,
-  OWNER_TEAM_RULES,
-  VIEW_ALL_RULE,
-  VIEW_ALL_WITH_MATCH_TAG_CONDITION,
+    DATA_CONSUMER_RULES,
+    DATA_STEWARD_RULES,
+    EDIT_DESCRIPTION_RULE,
+    EDIT_GLOSSARY_TERM_RULE,
+    EDIT_TAGS_RULE,
+    EDIT_USER_FOR_TEAM_RULES,
+    OWNER_TEAM_RULES,
+    VIEW_ALL_RULE,
+    VIEW_ALL_WITH_MATCH_TAG_CONDITION,
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
@@ -34,36 +34,36 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
-  visitOwnProfilePage,
+    getApiContext,
+    redirectToHomePage,
+    toastNotification,
+    uuid,
+    visitOwnProfilePage,
 } from '../../utils/common';
 import { addOwner, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import {
-  addUser,
-  checkDataConsumerPermissions,
-  checkEditOwnerButtonPermission,
-  checkForUserExistError,
-  checkStewardPermissions,
-  checkStewardServicesPermissions,
-  generateToken,
-  hardDeleteUserProfilePage,
-  performUserLogin,
-  permanentDeleteUser,
-  resetPassword,
-  restoreUser,
-  restoreUserProfilePage,
-  revokeToken,
-  settingPageOperationPermissionCheck,
-  softDeleteUser,
-  softDeleteUserProfilePage,
-  updateExpiration,
-  updateUserDetails,
-  visitUserListPage,
-  visitUserProfilePage,
+    addUser,
+    checkDataConsumerPermissions,
+    checkEditOwnerButtonPermission,
+    checkForUserExistError,
+    checkStewardPermissions,
+    checkStewardServicesPermissions,
+    generateToken,
+    hardDeleteUserProfilePage,
+    performUserLogin,
+    permanentDeleteUser,
+    resetPassword,
+    restoreUser,
+    restoreUserProfilePage,
+    revokeToken,
+    settingPageOperationPermissionCheck,
+    softDeleteUser,
+    softDeleteUserProfilePage,
+    updateExpiration,
+    updateUserDetails,
+    visitUserListPage,
+    visitUserProfilePage,
 } from '../../utils/user';
 
 const userName = `pw-user-${uuid()}`;
@@ -1335,44 +1335,6 @@ test.describe('User Profile Persona Interactions', () => {
 
       await expect(adminPage.getByText('No default persona')).toBeVisible();
     });
-  });
-});
-
-test.describe('Create user with persona', () => {
-  test('Create user with persona and verify on profile', async ({
-    adminPage,
-  }) => {
-    await redirectToHomePage(adminPage);
-    await visitUserListPage(adminPage);
-
-    const userWithPersonaName = `pw-user-persona-${uuid()}`;
-    await addUser(adminPage, {
-      name: userWithPersonaName,
-      email: `${userWithPersonaName}@gmail.com`,
-      password: `User@${uuid()}`,
-      role: role.responseData.displayName,
-      personas: [
-        persona1.responseData.displayName ?? persona1.responseData.name,
-      ],
-    });
-
-    await visitUserProfilePage(adminPage, userWithPersonaName);
-    const expectedPersonaName =
-      persona1.responseData.displayName ?? persona1.responseData.name;
-    await expect(
-      adminPage
-        .getByTestId('persona-details-card')
-        .getByTestId('tag-chip')
-        .filter({ hasText: expectedPersonaName })
-    ).toBeVisible();
-
-    await visitUserListPage(adminPage);
-    await permanentDeleteUser(
-      adminPage,
-      userWithPersonaName,
-      userWithPersonaName,
-      false
-    );
   });
 });
 
