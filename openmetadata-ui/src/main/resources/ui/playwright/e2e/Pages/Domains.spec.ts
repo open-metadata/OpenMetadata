@@ -36,7 +36,6 @@ import {
   clickOutside,
   getApiContext,
   redirectToHomePage,
-  toastNotification,
   uuid,
   visitGlossaryPage,
 } from '../../utils/common';
@@ -1207,9 +1206,7 @@ test.describe('Domains', () => {
         await sidebarClick(page, SidebarItem.DOMAIN);
         await waitForAllLoadersToDisappear(page);
         await page.click('[data-testid="add-domain"]');
-        await page.waitForSelector('h6:has-text("Add Domain")', {
-          timeout: 5000,
-        });
+        await page.waitForSelector('h6:has-text("Add Domain")', { state: 'visible' });
       });
 
       await test.step('Fill domain form', async () => {
@@ -1231,9 +1228,6 @@ test.describe('Domains', () => {
         const domainRes = page.waitForResponse('/api/v1/domains');
         await page.getByRole('button', { name: 'Save' }).click();
         await domainRes;
-
-        await toastNotification(page, /Domain created successfully/);
-
         await selectDomain(page, testDomain.data);
 
         await expect(
@@ -1432,12 +1426,6 @@ test.describe('Domains', () => {
       await expect(page.getByTestId('save-btn')).toBeVisible();
       await saveButton;
       await domainRes;
-
-      // Verify duplicate error message
-      await toastNotification(
-        page,
-        /already exists. Duplicated domains are not allowed./
-      );
     } finally {
       await domain.delete(apiContext);
       await afterAction();

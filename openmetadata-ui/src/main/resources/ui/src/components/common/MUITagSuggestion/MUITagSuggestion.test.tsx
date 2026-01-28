@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
+import { MOCK_TAG_OPTIONS } from './MUITagSuggestion.mock';
 import MUITagSuggestion from './MUITagSuggestion';
 
 const mockGetTags = jest.fn();
@@ -44,42 +44,6 @@ jest.mock('../atoms/TagChip', () => ({
     </span>
   ),
 }));
-
-const MOCK_TAG_OPTIONS = [
-  {
-    label: 'Personal',
-    value: 'PersonalData.Personal',
-    data: {
-      tagFQN: 'PersonalData.Personal',
-      name: 'Personal',
-      displayName: 'Personal Data',
-      description: 'Personal data tag',
-      source: 'Classification',
-    },
-  },
-  {
-    label: 'PII',
-    value: 'PersonalData.PII',
-    data: {
-      tagFQN: 'PersonalData.PII',
-      name: 'PII',
-      displayName: 'Personally Identifiable Information',
-      description: 'PII data tag',
-      source: 'Classification',
-    },
-  },
-  {
-    label: 'Sensitive',
-    value: 'SecurityData.Sensitive',
-    data: {
-      tagFQN: 'SecurityData.Sensitive',
-      name: 'Sensitive',
-      displayName: 'Sensitive Data',
-      description: 'Sensitive data tag',
-      source: 'Classification',
-    },
-  },
-];
 
 describe('MUITagSuggestion', () => {
   const mockOnChange = jest.fn();

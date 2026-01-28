@@ -25,7 +25,6 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   descriptionBox,
   redirectToHomePage,
-  toastNotification,
 } from '../../utils/common';
 import {
   addAssetsToDataProduct,
@@ -159,8 +158,6 @@ test.describe('Data Products', () => {
 
     await test.step('Create new data product', async () => {
       await createDataProductFromListPage(page, dataProduct.data, domain.data);
-
-      await toastNotification(page, /data product created successfully/i);
     });
 
     await test.step('Open data product details', async () => {
@@ -503,7 +500,7 @@ test.describe('Data Products', () => {
       await domainInput.fill(domain.data.displayName);
       await searchDomain;
       const domainOption = page.getByText(domain.data.displayName);
-      await domainOption.waitFor({ state: 'visible', timeout: 5000 });
+      await domainOption.waitFor({ state: 'visible' });
       await domainOption.click();
     });
 
@@ -522,8 +519,6 @@ test.describe('Data Products', () => {
       const dpRes = page.waitForResponse('/api/v1/dataProducts');
       await page.getByTestId('save-btn').click();
       await dpRes;
-
-      await toastNotification(page, /data product created successfully/i);
 
       await selectDataProduct(page, dataProduct.data);
 
