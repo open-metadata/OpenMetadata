@@ -35,6 +35,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { CreateTestDefinition } from '../../../generated/api/tests/createTestDefinition';
+import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import {
   DataQualityDimensions,
   DataType,
@@ -48,6 +49,7 @@ import {
   patchTestDefinition,
 } from '../../../rest/testAPI';
 import { createScrollToErrorHandler } from '../../../utils/formUtils';
+import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import FormItemLabel from '../../common/Form/FormItemLabel';
@@ -70,6 +72,21 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
   const [errorMessage, setErrorMessage] = useState<string>('');
   const isEditMode = Boolean(initialValues);
   const scrollToError = useMemo(() => createScrollToErrorHandler(), []);
+
+  const isExternalTest = useMemo(() => {
+    if (!initialValues) {
+      return false;
+    }
+
+    return isExternalTestDefinition(initialValues);
+  }, [initialValues]);
+
+  const databaseServiceTypes = useMemo(() => {
+    return Object.values(DatabaseServiceType).map((service) => ({
+      label: service,
+      value: service,
+    }));
+  }, []);
 
   const handleSubmit = async (values: TestDefinition) => {
     setIsSubmitting(true);
@@ -99,6 +116,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           testPlatforms: values.testPlatforms,
           dataQualityDimension: values.dataQualityDimension,
           supportedDataTypes: values.supportedDataTypes,
+          supportedServices: values.supportedServices,
           parameterDefinition: values.parameterDefinition,
           validatorClass: values.sqlExpression
             ? values.entityType === EntityType.Column
@@ -184,6 +202,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           testPlatforms: initialValues?.testPlatforms || [
             TestPlatform.OpenMetadata,
           ],
+          supportedServices: initialValues?.supportedServices || [],
         }}
         layout="vertical"
         onFinish={handleSubmit}
@@ -234,25 +253,36 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           />
         </Form.Item>
 
-        <Form.Item name="sqlExpression">
-          <CodeEditor
-            refreshEditor
-            showCopyButton
-            className="custom-query-editor query-editor-h-200"
-            mode={{ name: CSMode.SQL }}
-            title={
-              <div className="ant-form-item-label">
-                <label className="d-flex align-items-center">
-                  <Typography.Text className="form-label-title">
-                    {t('label.sql-query')}
-                  </Typography.Text>
-                  <Tooltip title={t('message.test-definition-sql-query-help')}>
-                    <QuestionCircleOutlined className="ant-form-item-tooltip" />
-                  </Tooltip>
-                </label>
-              </div>
-            }
-          />
+        <Form.Item
+          label={
+            <div className="d-flex align-items-center">
+              <Typography.Text className="form-label-title">
+                {t('label.sql-query')}
+              </Typography.Text>
+              <Tooltip title={t('message.test-definition-sql-query-help')}>
+                <QuestionCircleOutlined
+                  className="ant-form-item-tooltip"
+                  style={{ marginLeft: 4 }}
+                />
+              </Tooltip>
+            </div>
+          }
+          name="sqlExpression">
+          {isEditMode && isExternalTest ? (
+            <Input.TextArea
+              disabled
+              rows={8}
+              style={{ fontFamily: 'monospace', fontSize: '12px' }}
+              value={initialValues?.sqlExpression}
+            />
+          ) : (
+            <CodeEditor
+              refreshEditor
+              showCopyButton
+              className="custom-query-editor query-editor-h-200"
+              mode={{ name: CSMode.SQL }}
+            />
+          )}
         </Form.Item>
 
         <Form.Item
@@ -266,17 +296,21 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
               }),
             },
           ]}>
-          <Select
-            disabled={isEditMode}
-            id="entityType"
-            options={Object.values(EntityType).map((type) => ({
-              label: type,
-              value: type,
-            }))}
-            placeholder={t('label.select-field', {
-              field: t('label.entity-type'),
-            })}
-          />
+          {isEditMode && isExternalTest ? (
+            <Input disabled value={initialValues?.entityType} />
+          ) : (
+            <Select
+              disabled={isEditMode}
+              id="entityType"
+              options={Object.values(EntityType).map((type) => ({
+                label: type,
+                value: type,
+              }))}
+              placeholder={t('label.select-field', {
+                field: t('label.entity-type'),
+              })}
+            />
+          )}
         </Form.Item>
 
         <Form.Item
@@ -290,17 +324,21 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
               }),
             },
           ]}>
-          <Select
-            id="testPlatforms"
-            mode="multiple"
-            options={Object.values(TestPlatform).map((platform) => ({
-              label: platform,
-              value: platform,
-            }))}
-            placeholder={t('label.select-field', {
-              field: t('label.test-platform-plural'),
-            })}
-          />
+          {isEditMode && isExternalTest ? (
+            <Input disabled value={initialValues?.testPlatforms?.join(', ')} />
+          ) : (
+            <Select
+              id="testPlatforms"
+              mode="multiple"
+              options={Object.values(TestPlatform).map((platform) => ({
+                label: platform,
+                value: platform,
+              }))}
+              placeholder={t('label.select-field', {
+                field: t('label.test-platform-plural'),
+              })}
+            />
+          )}
         </Form.Item>
 
         <Form.Item
@@ -318,9 +356,26 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
         </Form.Item>
 
         <Form.Item
+          label={
+            <FormItemLabel
+              helperText={t('message.supported-services-help')}
+              label={t('label.supported-service-plural')}
+            />
+          }
+          name="supportedServices">
+          <Select
+            disabled={isEditMode && isExternalTest}
+            mode="multiple"
+            options={databaseServiceTypes}
+            placeholder={t('message.empty-means-all-services')}
+          />
+        </Form.Item>
+
+        <Form.Item
           label={t('label.supported-data-type-plural')}
           name="supportedDataTypes">
           <Select
+            disabled={isEditMode && isExternalTest}
             mode="multiple"
             options={Object.values(DataType).map((dataType) => ({
               label: dataType,
@@ -344,7 +399,11 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
               <>
                 {fields.map(({ key, name, ...restField }) => (
                   <Card
-                    extra={<MinusCircleOutlined onClick={() => remove(name)} />}
+                    extra={
+                      !(isEditMode && isExternalTest) && (
+                        <MinusCircleOutlined onClick={() => remove(name)} />
+                      )
+                    }
                     key={key}
                     size="small"
                     style={{ marginTop: 16 }}
@@ -361,14 +420,20 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                           }),
                         },
                       ]}>
-                      <Input placeholder={t('label.parameter-name')} />
+                      <Input
+                        disabled={isEditMode && isExternalTest}
+                        placeholder={t('label.parameter-name')}
+                      />
                     </Form.Item>
 
                     <Form.Item
                       {...restField}
                       label={t('label.display-name')}
                       name={[name, 'displayName']}>
-                      <Input placeholder={t('label.parameter-display-name')} />
+                      <Input
+                        disabled={isEditMode && isExternalTest}
+                        placeholder={t('label.parameter-display-name')}
+                      />
                     </Form.Item>
 
                     <Form.Item
@@ -376,6 +441,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                       label={t('label.description')}
                       name={[name, 'description']}>
                       <Input.TextArea
+                        disabled={isEditMode && isExternalTest}
                         placeholder={t('label.parameter-description')}
                         rows={2}
                       />
@@ -394,6 +460,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                         },
                       ]}>
                       <Select
+                        disabled={isEditMode && isExternalTest}
                         options={Object.values(TestDataType).map((type) => ({
                           label: type,
                           value: type,
@@ -409,18 +476,20 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                       label={t('label.required')}
                       name={[name, 'required']}
                       valuePropName="checked">
-                      <Switch />
+                      <Switch disabled={isEditMode && isExternalTest} />
                     </Form.Item>
                   </Card>
                 ))}
-                <Button
-                  block
-                  icon={<PlusOutlined />}
-                  style={{ marginTop: 16 }}
-                  type="dashed"
-                  onClick={() => add()}>
-                  {t('label.add-entity', { entity: t('label.parameter') })}
-                </Button>
+                {!(isEditMode && isExternalTest) && (
+                  <Button
+                    block
+                    icon={<PlusOutlined />}
+                    style={{ marginTop: 16 }}
+                    type="dashed"
+                    onClick={() => add()}>
+                    {t('label.add-entity', { entity: t('label.parameter') })}
+                  </Button>
+                )}
               </>
             )}
           </Form.List>

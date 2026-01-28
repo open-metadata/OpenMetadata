@@ -47,9 +47,31 @@ const mockTestDefinitions = {
       enabled: false,
       provider: ProviderType.System,
     },
+    {
+      id: 'test-def-3',
+      name: 'dbtSchemaTest',
+      fullyQualifiedName: 'dbtSchemaTest',
+      displayName: 'DBT Schema Test',
+      description: 'External test managed by DBT',
+      entityType: 'TABLE',
+      testPlatforms: ['dbt'],
+      enabled: true,
+      provider: ProviderType.User,
+    },
+    {
+      id: 'test-def-4',
+      name: 'greatExpectationsTest',
+      fullyQualifiedName: 'greatExpectationsTest',
+      displayName: 'Great Expectations Test',
+      description: 'External test managed by Great Expectations',
+      entityType: 'COLUMN',
+      testPlatforms: ['GreatExpectations'],
+      enabled: false,
+      provider: ProviderType.User,
+    },
   ],
   paging: {
-    total: 2,
+    total: 4,
   },
 };
 
@@ -133,7 +155,11 @@ jest.mock('../../Modals/EntityDeleteModal/EntityDeleteModal', () => ({
 
 describe('TestDefinitionList Component', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    (getListTestDefinitions as jest.Mock).mockClear();
+    (patchTestDefinition as jest.Mock).mockClear();
+    (deleteTestDefinitionByFqn as jest.Mock).mockClear();
+    (showSuccessToast as jest.Mock).mockClear();
+    (showErrorToast as jest.Mock).mockClear();
   });
 
   it('should render component with test definitions table', async () => {
@@ -184,7 +210,7 @@ describe('TestDefinitionList Component', () => {
 
     const switches = await screen.findAllByRole('switch');
 
-    expect(switches).toHaveLength(2);
+    expect(switches).toHaveLength(4);
   });
 
   it('should call patchTestDefinition when enable switch is toggled', async () => {
@@ -211,8 +237,8 @@ describe('TestDefinitionList Component', () => {
       /delete-test-definition-/
     );
 
-    expect(editButtons).toHaveLength(2);
-    expect(deleteButtons).toHaveLength(2);
+    expect(editButtons).toHaveLength(4);
+    expect(deleteButtons).toHaveLength(4);
   });
 
   it('should open form drawer when edit button is clicked', async () => {
@@ -365,8 +391,8 @@ describe('TestDefinitionList Component', () => {
     render(<TestDefinitionList />, { wrapper: MemoryRouter });
 
     await waitFor(() => {
-      // Permissions fetched for all definitions (including system)
-      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(2);
+      // Permissions fetched for all definitions (including system and external)
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(4);
       expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
         ResourceEntity.TEST_DEFINITION,
         'columnValuesToBeNotNull'
@@ -375,71 +401,207 @@ describe('TestDefinitionList Component', () => {
         ResourceEntity.TEST_DEFINITION,
         'tableRowCountToBeBetween'
       );
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+        ResourceEntity.TEST_DEFINITION,
+        'dbtSchemaTest'
+      );
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+        ResourceEntity.TEST_DEFINITION,
+        'greatExpectationsTest'
+      );
     });
   });
 
-  it('should disable enabled switch when user lacks EditAll permission', async () => {
-    const { usePermissionProvider } = jest.requireMock(
-      '../../../context/PermissionProvider/PermissionProvider'
-    );
+  it('should enable switch when user has EditAll permission', async () => {
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
 
-    (usePermissionProvider as jest.Mock).mockReturnValue({
-      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+    const switches = await screen.findAllByRole('switch');
+
+    // First two OpenMetadata test definitions should be enabled with EditAll permission
+    // External tests (indexes 2 and 3) remain disabled regardless of permissions
+    expect(switches[0]).not.toBeDisabled();
+    expect(switches[1]).not.toBeDisabled();
+    expect(switches[2]).toBeDisabled();
+    expect(switches[3]).toBeDisabled();
+  });
+
+  describe('External Test Definition Handling', () => {
+    it('should disable toggle switch for external test definitions', async () => {
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      const switches = await screen.findAllByRole('switch');
+
+      // Third definition (dbt) should be disabled (external)
+      expect(switches[2]).toBeDisabled();
+
+      // Fourth definition (GreatExpectations) should be disabled (external)
+      expect(switches[3]).toBeDisabled();
+    });
+
+    it('should show correct tooltip for external test toggle', async () => {
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      const switches = await screen.findAllByRole('switch');
+      const externalSwitch = switches[2];
+
+      // External test switches should be disabled (tooltip explains why when hovered)
+      expect(externalSwitch).toBeDisabled();
+    });
+
+    it('should not call patchTestDefinition when external test toggle is clicked', async () => {
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      const switches = await screen.findAllByRole('switch');
+      const externalSwitch = switches[2];
+
+      const initialCallCount = (patchTestDefinition as jest.Mock).mock.calls
+        .length;
+
+      fireEvent.click(externalSwitch);
+
+      await waitFor(() => {
+        expect(patchTestDefinition).toHaveBeenCalledTimes(initialCallCount);
+      });
+    });
+
+    it('should allow toggling OpenMetadata test definitions', async () => {
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      const switches = await screen.findAllByRole('switch');
+      const omSwitch = switches[0];
+
+      expect(omSwitch).not.toBeDisabled();
+
+      fireEvent.click(omSwitch);
+
+      await waitFor(() => {
+        expect(patchTestDefinition).toHaveBeenCalled();
+        expect(showSuccessToast).toHaveBeenCalled();
+      });
+    });
+
+    it('should display all test definitions including external ones', async () => {
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Column Values To Be Not Null')
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText('Table Row Count To Be Between')
+        ).toBeInTheDocument();
+        expect(screen.getByText('DBT Schema Test')).toBeInTheDocument();
+        expect(screen.getByText('Great Expectations Test')).toBeInTheDocument();
+      });
+    });
+
+    it('should show correct test platforms for external tests', async () => {
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      await waitFor(() => {
+        expect(screen.getByText('dbt')).toBeInTheDocument();
+        expect(screen.getByText('GreatExpectations')).toBeInTheDocument();
+      });
+    });
+
+    it('should render 4 test definitions with correct switch states', async () => {
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      const switches = await screen.findAllByRole('switch');
+
+      expect(switches).toHaveLength(4);
+
+      // OpenMetadata tests - enabled, not disabled
+      expect(switches[0]).toBeChecked();
+      expect(switches[0]).not.toBeDisabled();
+
+      // System OpenMetadata test - not checked, not disabled (has EditAll)
+      expect(switches[1]).not.toBeChecked();
+      expect(switches[1]).not.toBeDisabled();
+
+      // External DBT test - checked, but disabled
+      expect(switches[2]).toBeChecked();
+      expect(switches[2]).toBeDisabled();
+
+      // External GE test - not checked, and disabled
+      expect(switches[3]).not.toBeChecked();
+      expect(switches[3]).toBeDisabled();
+    });
+
+    it('should disable toggle for external tests even with EditAll permission', async () => {
+      const { usePermissionProvider } = jest.requireMock(
+        '../../../context/PermissionProvider/PermissionProvider'
+      );
+
+      (usePermissionProvider as jest.Mock).mockReturnValue({
+        getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+          Create: true,
+          Delete: true,
+          ViewAll: true,
+          ViewBasic: true,
+          EditAll: true,
+        }),
+        permissions: {
+          testDefinition: {
+            Create: true,
+            Delete: true,
+            ViewAll: true,
+            ViewBasic: true,
+            EditAll: true,
+          },
+        },
+      });
+
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      const switches = await screen.findAllByRole('switch');
+
+      // External tests should remain disabled even with EditAll permission
+      expect(switches[2]).toBeDisabled();
+      expect(switches[3]).toBeDisabled();
+    });
+  });
+
+  describe('Permission-based Toggle Behavior', () => {
+    it('should disable enabled switch when user lacks EditAll permission', async () => {
+      const mockGetEntityPermission = jest.fn().mockResolvedValue({
         Create: false,
         Delete: false,
         ViewAll: true,
         ViewBasic: true,
         EditAll: false,
-      }),
-      permissions: {
-        testDefinition: {
-          Create: true,
-          Delete: true,
-          ViewAll: true,
-          ViewBasic: true,
-          EditAll: true,
+      });
+
+      const { usePermissionProvider } = jest.requireMock(
+        '../../../context/PermissionProvider/PermissionProvider'
+      );
+
+      (usePermissionProvider as jest.Mock).mockReturnValue({
+        getEntityPermissionByFqn: mockGetEntityPermission,
+        permissions: {
+          testDefinition: {
+            Create: true,
+            Delete: true,
+            ViewAll: true,
+            ViewBasic: true,
+            EditAll: true,
+          },
         },
-      },
+      });
+
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      await waitFor(() => {
+        expect(mockGetEntityPermission).toHaveBeenCalled();
+      });
+
+      const switches = await screen.findAllByRole('switch');
+
+      // All switches should be disabled due to lack of EditAll permission
+      expect(switches[0]).toBeDisabled();
+      expect(switches[1]).toBeDisabled();
+      expect(switches[2]).toBeDisabled();
+      expect(switches[3]).toBeDisabled();
     });
-
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
-
-    const switches = await screen.findAllByRole('switch');
-
-    // First definition should be disabled due to lack of EditAll permission
-    expect(switches[0]).toBeDisabled();
-  });
-
-  it('should enable switch when user has EditAll permission', async () => {
-    const { usePermissionProvider } = jest.requireMock(
-      '../../../context/PermissionProvider/PermissionProvider'
-    );
-
-    (usePermissionProvider as jest.Mock).mockReturnValue({
-      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-        Create: true,
-        Delete: true,
-        ViewAll: true,
-        ViewBasic: true,
-        EditAll: true,
-      }),
-      permissions: {
-        testDefinition: {
-          Create: true,
-          Delete: true,
-          ViewAll: true,
-          ViewBasic: true,
-          EditAll: true,
-        },
-      },
-    });
-
-    render(<TestDefinitionList />, { wrapper: MemoryRouter });
-
-    const switches = await screen.findAllByRole('switch');
-
-    // Both definitions should be enabled with EditAll permission
-    expect(switches[0]).not.toBeDisabled();
-    expect(switches[1]).not.toBeDisabled();
   });
 });
