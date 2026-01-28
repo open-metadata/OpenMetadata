@@ -12,7 +12,7 @@
  */
 import test, { expect } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
-import { redirectToHomePage, uuid } from '../../../utils/common';
+import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
 import { findSystemTestDefinition } from '../../../utils/testCases';
 
 const TEST_DEFINITION_NAME = `AaroCustomTestDefinition${uuid()}`;
@@ -491,7 +491,8 @@ test.describe(
         await page.goto('/rules-library');
 
         await page.getByTestId('add-test-definition-button').click();
-        await page.waitForSelector('.ant-drawer', { state: 'visible' });
+
+        await expect(page.locator('.ant-drawer')).toBeVisible();
 
         await page.locator('#name').fill(EXTERNAL_TEST_NAME);
         await page.locator('#displayName').fill(EXTERNAL_TEST_DISPLAY_NAME);
@@ -500,20 +501,32 @@ test.describe(
           .fill('External test for read-only validation');
 
         await page.locator('#entityType').click();
-        await page
-          .locator('.ant-select-item-option-content:has-text("TABLE")')
-          .first()
-          .click();
+        const tableOption = page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('TABLE');
+        await expect(tableOption).toBeVisible();
+        await tableOption.click();
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
         await page.locator('#testPlatforms').click();
-        await page
-          .locator('.ant-select-item-option-content:has-text("OpenMetadata")')
-          .first()
-          .click();
-        await page
-          .locator('.ant-select-item-option-content:has-text("dbt")')
-          .first()
-          .click();
+        const openMetadataOption = page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('OpenMetadata');
+        await expect(openMetadataOption).toBeVisible();
+        await openMetadataOption.click();
+
+        const dbtOption = page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('dbt');
+        await expect(dbtOption).toBeVisible();
+        await dbtOption.click();
+
+        await page.getByRole('dialog').getByText('Add Test Definition').click();
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
         const createResponse = page.waitForResponse(
           (response) =>
@@ -531,17 +544,22 @@ test.describe(
       });
 
       await test.step('Verify fields are read-only in edit mode', async () => {
+        await expect(page.getByTestId('test-definition-table')).toBeVisible();
+
         const editButton = page.getByTestId(
           `edit-test-definition-${EXTERNAL_TEST_NAME}`
         );
         await editButton.click();
 
-        await page.waitForSelector('.ant-drawer', { state: 'visible' });
+        await expect(page.locator('.ant-drawer')).toBeVisible();
 
         await expect(page.getByLabel('Entity Type')).toBeDisabled();
         await expect(page.getByLabel('Test Platforms')).toBeDisabled();
         await expect(page.getByLabel('SQL Query')).toBeDisabled();
         await expect(page.getByLabel('Supported Data Types')).toBeDisabled();
+        await expect(
+          page.getByLabel('Supported Service', { exact: false })
+        ).toBeDisabled();
 
         await expect(page.getByLabel('Display Name')).not.toBeDisabled();
         await expect(page.getByLabel('Description')).not.toBeDisabled();
@@ -573,16 +591,14 @@ test.describe(
       });
 
       await test.step('Delete external test definition', async () => {
-        await page.waitForSelector('[data-testid="test-definition-table"]', {
-          state: 'visible',
-        });
+        await expect(page.getByTestId('test-definition-table')).toBeVisible();
 
         const deleteButton = page.getByTestId(
           `delete-test-definition-${EXTERNAL_TEST_NAME}`
         );
         await deleteButton.click();
 
-        await page.waitForSelector('.ant-modal', { state: 'visible' });
+        await expect(page.locator('.ant-modal')).toBeVisible();
 
         await expect(
           page.getByText(`Delete ${createdTestDisplayName}`)
@@ -602,7 +618,328 @@ test.describe(
         expect(response.status()).toBe(200);
 
         await expect(page.getByText(/deleted successfully/i)).toBeVisible();
-        await expect(page.getByText(EXTERNAL_TEST_NAME)).not.toBeVisible();
+        await expect(page.getByTestId(EXTERNAL_TEST_NAME)).not.toBeVisible();
+      });
+    });
+
+    test('should handle supported services field correctly', async ({
+      page,
+    }) => {
+      const SUPPORTED_SERVICES_TEST_NAME = `AaaaServiceFilterTest${uuid()}`;
+      const SUPPORTED_SERVICES_DISPLAY_NAME = `Aaaa Service Filter Test ${uuid()}`;
+      let createdTestId: string;
+
+      await test.step(
+        'Create test definition with specific supported services',
+        async () => {
+          await page.goto('/rules-library');
+
+          await page.getByTestId('add-test-definition-button').click();
+
+          await expect(page.locator('.ant-drawer')).toBeVisible();
+
+          await page.locator('#name').fill(SUPPORTED_SERVICES_TEST_NAME);
+          await page
+            .locator('#displayName')
+            .fill(SUPPORTED_SERVICES_DISPLAY_NAME);
+          await page
+            .locator('#description')
+            .fill('Test definition to validate supported services filtering');
+
+          await page.locator('#entityType').click();
+          const entityTypeOption = page
+            .locator('.ant-select-dropdown:visible')
+            .getByTitle('TABLE');
+          await expect(entityTypeOption).toBeVisible();
+          await entityTypeOption.click();
+          await expect(
+            page.locator('.ant-select-dropdown:visible')
+          ).not.toBeVisible();
+
+          await page.locator('#supportedServices').click();
+          await page.locator('#supportedServices').fill('MySql');
+          const mysqlOption = page
+            .locator('.ant-select-dropdown:visible')
+            .getByTitle('MySql');
+          await expect(mysqlOption).toBeVisible();
+          await mysqlOption.click();
+          await page.locator('#supportedServices').clear();
+          await page.locator('#supportedServices').fill('Postgres');
+
+          const postgresOption = page
+            .locator('.ant-select-dropdown:visible')
+            .getByTitle('Postgres');
+          await expect(postgresOption).toBeVisible();
+          await postgresOption.click();
+
+          await page
+            .getByRole('dialog')
+            .getByText('Add Test Definition')
+            .click();
+          await expect(
+            page.locator('.ant-select-dropdown:visible')
+          ).not.toBeVisible();
+
+          const createResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+              response.request().method() === 'POST'
+          );
+
+          await page.getByTestId('save-test-definition').click();
+
+          const responseData = await createResponse;
+          expect(responseData.status()).toBe(201);
+
+          const createdData = await responseData.json();
+          createdTestId = createdData.id;
+
+          await expect(page.getByText(/created successfully/i)).toBeVisible();
+          await expect(
+            page.getByTestId(SUPPORTED_SERVICES_TEST_NAME)
+          ).toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Verify supported services are saved correctly',
+        async () => {
+          await expect(page.getByTestId('test-definition-table')).toBeVisible();
+
+          const editButton = page.getByTestId(
+            `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
+          );
+          await editButton.click();
+
+          await expect(page.locator('.ant-drawer')).toBeVisible();
+
+          const supportedServicesField = page.locator('#supportedServices');
+          await expect(supportedServicesField).toBeVisible();
+
+          await expect(
+            page.locator('.ant-select-selection-item[title="Mysql"]')
+          ).toBeVisible();
+          await expect(
+            page.locator('.ant-select-selection-item[title="Postgres"]')
+          ).toBeVisible();
+
+          await page.getByRole('button', { name: /Cancel/i }).click();
+          await expect(page.locator('.ant-drawer')).not.toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Verify test definition appears when filtering by supported services',
+        async () => {
+          const { apiContext } = await getApiContext(page);
+          const mysqlFilterResponse = await apiContext.get(
+            '/api/v1/dataQuality/testDefinitions?limit=50&entityType=TABLE&testPlatform=OpenMetadata&supportedService=Mysql'
+          );
+          expect(mysqlFilterResponse.status()).toBe(200);
+
+          const mysqlData = await mysqlFilterResponse.json();
+          const foundInMySql = mysqlData.data.find(
+            (def: { id: string }) => def.id === createdTestId
+          );
+          expect(foundInMySql).toBeDefined();
+          expect(foundInMySql.supportedServices).toContain('Mysql');
+
+          const postgresFilterResponse = await apiContext.get(
+            '/api/v1/dataQuality/testDefinitions?limit=50&entityType=TABLE&testPlatform=OpenMetadata&supportedService=Postgres'
+          );
+          expect(postgresFilterResponse.status()).toBe(200);
+
+          const postgresData = await postgresFilterResponse.json();
+          const foundInPostgres = postgresData.data.find(
+            (def: { id: string }) => def.id === createdTestId
+          );
+          expect(foundInPostgres).toBeDefined();
+          expect(foundInPostgres.supportedServices).toContain('Postgres');
+
+          const bigQueryFilterResponse = await apiContext.get(
+            '/api/v1/dataQuality/testDefinitions?limit=50&entityType=TABLE&testPlatform=OpenMetadata&supportedService=BigQuery'
+          );
+          expect(bigQueryFilterResponse.status()).toBe(200);
+
+          const bigQueryData = await bigQueryFilterResponse.json();
+          const foundInBigQuery = bigQueryData.data.find(
+            (def: { id: string }) => def.id === createdTestId
+          );
+          expect(foundInBigQuery).toBeUndefined();
+        }
+      );
+
+      await test.step('Edit and change supported services', async () => {
+        await expect(page.getByTestId('test-definition-table')).toBeVisible();
+
+        const editButton = page.getByTestId(
+          `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
+        );
+        await editButton.click();
+
+        await expect(page.locator('.ant-drawer')).toBeVisible();
+
+        const mysqlTag = page.locator(
+          '.ant-select-selection-item[title="Mysql"]'
+        );
+        await expect(mysqlTag).toBeVisible();
+
+        const mysqlRemove = mysqlTag.locator(
+          '.ant-select-selection-item-remove'
+        );
+        await mysqlRemove.click();
+
+        await expect(mysqlTag).not.toBeVisible();
+
+        await page.locator('#supportedServices').click();
+        await page.locator('#supportedServices').fill('BigQuery');
+        const bigQueryOption = page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('BigQuery');
+        await expect(bigQueryOption).toBeVisible();
+        await bigQueryOption.click();
+
+        await page
+          .getByRole('dialog')
+          .getByText('Edit Test Definition')
+          .click();
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        const patchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'PATCH'
+        );
+
+        await page.getByTestId('save-test-definition').click();
+
+        const updateResponse = await patchResponse;
+        expect(updateResponse.status()).toBe(200);
+
+        const updatedData = await updateResponse.json();
+        expect(updatedData.supportedServices).toContain('Postgres');
+        expect(updatedData.supportedServices).toContain('BigQuery');
+        expect(updatedData.supportedServices).not.toContain('MySql');
+
+        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+      });
+
+      await test.step(
+        'Verify updated supported services are persisted',
+        async () => {
+          await expect(page.getByTestId('test-definition-table')).toBeVisible();
+
+          const editButton = page.getByTestId(
+            `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
+          );
+          await editButton.click();
+
+          await expect(page.locator('.ant-drawer')).toBeVisible();
+
+          await expect(
+            page.locator('.ant-select-selection-item[title="Postgres"]')
+          ).toBeVisible();
+
+          await expect(
+            page.locator('.ant-select-selection-item[title="BigQuery"]')
+          ).toBeVisible();
+
+          await expect(
+            page.locator('.ant-select-selection-item[title="MySql"]')
+          ).not.toBeVisible();
+
+          await page.getByRole('button', { name: /Cancel/i }).click();
+          await expect(page.locator('.ant-drawer')).not.toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Clear all supported services (should apply to all services)',
+        async () => {
+          await expect(page.getByTestId('test-definition-table')).toBeVisible();
+
+          const editButton = page.getByTestId(
+            `edit-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
+          );
+          await editButton.click();
+
+          await expect(page.locator('.ant-drawer')).toBeVisible();
+
+          const postgresTag = page.locator(
+            '.ant-select-selection-item[title="Postgres"]'
+          );
+          await expect(postgresTag).toBeVisible();
+
+          const postgresRemove = postgresTag.locator(
+            '.ant-select-selection-item-remove'
+          );
+          await postgresRemove.click();
+
+          await expect(postgresTag).not.toBeVisible();
+
+          const bigQueryTag = page.locator(
+            '.ant-select-selection-item[title="BigQuery"]'
+          );
+          await expect(bigQueryTag).toBeVisible();
+
+          const bigQueryRemove = bigQueryTag.locator(
+            '.ant-select-selection-item-remove'
+          );
+          await bigQueryRemove.click();
+
+          await expect(bigQueryTag).not.toBeVisible();
+
+          const patchResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+              response.request().method() === 'PATCH'
+          );
+
+          await page.getByTestId('save-test-definition').click();
+
+          const updateResponse = await patchResponse;
+          expect(updateResponse.status()).toBe(200);
+
+          const updatedData = await updateResponse.json();
+          expect(
+            updatedData.supportedServices === null ||
+              updatedData.supportedServices === undefined ||
+              updatedData.supportedServices.length === 0
+          ).toBeTruthy();
+
+          await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        }
+      );
+
+      await test.step('Delete test definition', async () => {
+        await expect(page.getByTestId('test-definition-table')).toBeVisible();
+
+        const deleteButton = page.getByTestId(
+          `delete-test-definition-${SUPPORTED_SERVICES_TEST_NAME}`
+        );
+        await deleteButton.click();
+
+        await expect(page.locator('.ant-modal')).toBeVisible();
+
+        await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+        const deleteResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'DELETE'
+        );
+
+        await page.getByTestId('confirm-button').click();
+
+        const response = await deleteResponse;
+        expect(response.status()).toBe(200);
+
+        await expect(page.getByText(/deleted successfully/i)).toBeVisible();
+        await expect(
+          page.getByTestId(SUPPORTED_SERVICES_TEST_NAME)
+        ).not.toBeVisible();
       });
     });
   }

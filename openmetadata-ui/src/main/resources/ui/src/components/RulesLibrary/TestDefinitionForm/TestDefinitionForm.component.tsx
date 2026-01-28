@@ -11,23 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  MinusCircleOutlined,
-  PlusOutlined,
-  QuestionCircleOutlined,
-} from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Drawer,
-  Form,
-  Input,
-  Select,
-  Space,
-  Switch,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Drawer, Form, Input, Select, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useMemo, useState } from 'react';
@@ -48,6 +33,7 @@ import {
   createTestDefinition,
   patchTestDefinition,
 } from '../../../rest/testAPI';
+import { handleSearchFilterOption } from '../../../utils/CommonUtils';
 import { createScrollToErrorHandler } from '../../../utils/formUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
@@ -73,13 +59,15 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
   const isEditMode = Boolean(initialValues);
   const scrollToError = useMemo(() => createScrollToErrorHandler(), []);
 
-  const isExternalTest = useMemo(() => {
+  const isReadOnlyField = useMemo(() => {
     if (!initialValues) {
       return false;
     }
 
-    return isExternalTestDefinition(initialValues);
-  }, [initialValues]);
+    const isExternalTest = isExternalTestDefinition(initialValues);
+
+    return isExternalTest && isEditMode;
+  }, [initialValues, isEditMode]);
 
   const databaseServiceTypes = useMemo(() => {
     return Object.values(DatabaseServiceType).map((service) => ({
@@ -255,20 +243,13 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
 
         <Form.Item
           label={
-            <div className="d-flex align-items-center">
-              <Typography.Text className="form-label-title">
-                {t('label.sql-query')}
-              </Typography.Text>
-              <Tooltip title={t('message.test-definition-sql-query-help')}>
-                <QuestionCircleOutlined
-                  className="ant-form-item-tooltip"
-                  style={{ marginLeft: 4 }}
-                />
-              </Tooltip>
-            </div>
+            <FormItemLabel
+              helperText={t('message.test-definition-sql-query-help')}
+              label={t('label.sql-query')}
+            />
           }
           name="sqlExpression">
-          {isEditMode && isExternalTest ? (
+          {isReadOnlyField ? (
             <Input.TextArea
               disabled
               rows={8}
@@ -296,21 +277,17 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
               }),
             },
           ]}>
-          {isEditMode && isExternalTest ? (
-            <Input disabled value={initialValues?.entityType} />
-          ) : (
-            <Select
-              disabled={isEditMode}
-              id="entityType"
-              options={Object.values(EntityType).map((type) => ({
-                label: type,
-                value: type,
-              }))}
-              placeholder={t('label.select-field', {
-                field: t('label.entity-type'),
-              })}
-            />
-          )}
+          <Select
+            disabled={isReadOnlyField}
+            id="entityType"
+            options={Object.values(EntityType).map((type) => ({
+              label: type,
+              value: type,
+            }))}
+            placeholder={t('label.select-field', {
+              field: t('label.entity-type'),
+            })}
+          />
         </Form.Item>
 
         <Form.Item
@@ -324,21 +301,18 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
               }),
             },
           ]}>
-          {isEditMode && isExternalTest ? (
-            <Input disabled value={initialValues?.testPlatforms?.join(', ')} />
-          ) : (
-            <Select
-              id="testPlatforms"
-              mode="multiple"
-              options={Object.values(TestPlatform).map((platform) => ({
-                label: platform,
-                value: platform,
-              }))}
-              placeholder={t('label.select-field', {
-                field: t('label.test-platform-plural'),
-              })}
-            />
-          )}
+          <Select
+            disabled={isReadOnlyField}
+            id="testPlatforms"
+            mode="multiple"
+            options={Object.values(TestPlatform).map((platform) => ({
+              label: platform,
+              value: platform,
+            }))}
+            placeholder={t('label.select-field', {
+              field: t('label.test-platform-plural'),
+            })}
+          />
         </Form.Item>
 
         <Form.Item
@@ -364,7 +338,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           }
           name="supportedServices">
           <Select
-            disabled={isEditMode && isExternalTest}
+            disabled={isReadOnlyField}
             mode="multiple"
             options={databaseServiceTypes}
             placeholder={t('message.empty-means-all-services')}
@@ -375,7 +349,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           label={t('label.supported-data-type-plural')}
           name="supportedDataTypes">
           <Select
-            disabled={isEditMode && isExternalTest}
+            disabled={isReadOnlyField}
             mode="multiple"
             options={Object.values(DataType).map((dataType) => ({
               label: dataType,
@@ -400,7 +374,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                 {fields.map(({ key, name, ...restField }) => (
                   <Card
                     extra={
-                      !(isEditMode && isExternalTest) && (
+                      !isReadOnlyField && (
                         <MinusCircleOutlined onClick={() => remove(name)} />
                       )
                     }
@@ -421,7 +395,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                         },
                       ]}>
                       <Input
-                        disabled={isEditMode && isExternalTest}
+                        disabled={isReadOnlyField}
                         placeholder={t('label.parameter-name')}
                       />
                     </Form.Item>
@@ -431,7 +405,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                       label={t('label.display-name')}
                       name={[name, 'displayName']}>
                       <Input
-                        disabled={isEditMode && isExternalTest}
+                        disabled={isReadOnlyField}
                         placeholder={t('label.parameter-display-name')}
                       />
                     </Form.Item>
@@ -441,7 +415,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                       label={t('label.description')}
                       name={[name, 'description']}>
                       <Input.TextArea
-                        disabled={isEditMode && isExternalTest}
+                        disabled={isReadOnlyField}
                         placeholder={t('label.parameter-description')}
                         rows={2}
                       />
@@ -460,7 +434,8 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                         },
                       ]}>
                       <Select
-                        disabled={isEditMode && isExternalTest}
+                        showSearch
+                        disabled={isReadOnlyField}
                         options={Object.values(TestDataType).map((type) => ({
                           label: type,
                           value: type,
@@ -468,6 +443,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                         placeholder={t('label.select-field', {
                           field: t('label.data-type'),
                         })}
+                        onSearch={handleSearchFilterOption}
                       />
                     </Form.Item>
 
@@ -476,11 +452,11 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                       label={t('label.required')}
                       name={[name, 'required']}
                       valuePropName="checked">
-                      <Switch disabled={isEditMode && isExternalTest} />
+                      <Switch disabled={isReadOnlyField} />
                     </Form.Item>
                   </Card>
                 ))}
-                {!(isEditMode && isExternalTest) && (
+                {!isReadOnlyField && (
                   <Button
                     block
                     icon={<PlusOutlined />}
