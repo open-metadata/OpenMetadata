@@ -12,8 +12,8 @@
  */
 import { expect, test } from '@playwright/test';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
@@ -21,7 +21,7 @@ import {
   setValueForProperty,
   validateValueForProperty,
 } from '../../utils/customProperty';
-import { settingClick } from '../../utils/sidebar';
+import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -37,7 +37,7 @@ test.describe('Hyperlink Custom Property Tests', () => {
   }) => {
     const propertyName = `pwhyperlinkxss${uuid()}`;
 
-    await settingClick(page, entity.entityApiType as 'containers', true);
+    await settingClick(page, entity.entityApiType as SettingOptionsType, true);
 
     await addCustomPropertiesForEntity({
       page,
@@ -66,7 +66,11 @@ test.describe('Hyperlink Custom Property Tests', () => {
 
       await page.locator('[data-testid="inline-cancel-btn"]').click();
     } finally {
-      await settingClick(page, entity.entityApiType as 'containers', true);
+      await settingClick(
+        page,
+        entity.entityApiType as SettingOptionsType,
+        true
+      );
       await deleteCreatedProperty(page, propertyName);
     }
   });
@@ -74,7 +78,7 @@ test.describe('Hyperlink Custom Property Tests', () => {
   test('should accept valid http and https URLs', async ({ page }) => {
     const propertyName = `pwhyperlinkvalid${uuid()}`;
 
-    await settingClick(page, entity.entityApiType as 'containers', true);
+    await settingClick(page, entity.entityApiType as SettingOptionsType, true);
 
     await addCustomPropertiesForEntity({
       page,
@@ -115,7 +119,11 @@ test.describe('Hyperlink Custom Property Tests', () => {
         'noopener noreferrer'
       );
     } finally {
-      await settingClick(page, entity.entityApiType as 'containers', true);
+      await settingClick(
+        page,
+        entity.entityApiType as SettingOptionsType,
+        true
+      );
       await deleteCreatedProperty(page, propertyName);
     }
   });
@@ -125,7 +133,7 @@ test.describe('Hyperlink Custom Property Tests', () => {
   }) => {
     const propertyName = `pwhyperlinknotext${uuid()}`;
 
-    await settingClick(page, entity.entityApiType as 'containers', true);
+    await settingClick(page, entity.entityApiType as SettingOptionsType, true);
 
     await addCustomPropertiesForEntity({
       page,
@@ -152,7 +160,11 @@ test.describe('Hyperlink Custom Property Tests', () => {
         propertyType: 'hyperlink-cp',
       });
     } finally {
-      await settingClick(page, entity.entityApiType as 'containers', true);
+      await settingClick(
+        page,
+        entity.entityApiType as SettingOptionsType,
+        true
+      );
       await deleteCreatedProperty(page, propertyName);
     }
   });
@@ -162,7 +174,7 @@ test.describe('Hyperlink Custom Property Tests', () => {
   }) => {
     const propertyName = `pwhyperlinkempty${uuid()}`;
 
-    await settingClick(page, entity.entityApiType as 'containers', true);
+    await settingClick(page, entity.entityApiType as SettingOptionsType, true);
 
     await addCustomPropertiesForEntity({
       page,
@@ -181,10 +193,14 @@ test.describe('Hyperlink Custom Property Tests', () => {
 
       await expect(containerLocator.getByTestId('no-data')).toBeVisible();
       await expect(containerLocator.getByTestId('no-data')).toContainText(
-        'No data'
+        'Not set'
       );
     } finally {
-      await settingClick(page, entity.entityApiType as 'containers', true);
+      await settingClick(
+        page,
+        entity.entityApiType as SettingOptionsType,
+        true
+      );
       await deleteCreatedProperty(page, propertyName);
     }
   });
