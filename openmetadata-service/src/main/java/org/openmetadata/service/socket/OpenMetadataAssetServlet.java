@@ -13,20 +13,19 @@
 
 package org.openmetadata.service.socket;
 
-import java.net.URL;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
-import jakarta.servlet.http.HttpServletRequestWrapper;
-import jakarta.servlet.http.HttpServletResponseWrapper;
-
 import static org.openmetadata.service.exception.OMErrorPageHandler.setSecurityHeader;
 
 import io.dropwizard.servlets.assets.AssetServlet;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponseWrapper;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.resources.system.IndexResource;
@@ -66,27 +65,31 @@ public class OpenMetadataAssetServlet extends AssetServlet {
 
     // 1. Check for Brotli (br)
     if (acceptEncoding != null && acceptEncoding.contains("br")) {
-       try {
-         String fullResourcePath = getPathToCheck(req, requestUri, ".br");
-         URL url = this.getClass().getResource(fullResourcePath);
-         if (url != null) {
-           serveCompressed(req, resp, requestUri, "br", "br");
-           return;
-         }
-       } catch (Exception e) {
-         // Ignore and try next
-       }
+      try {
+        String fullResourcePath = getPathToCheck(req, requestUri, ".br");
+        if (fullResourcePath != null) {
+          URL url = this.getClass().getResource(fullResourcePath);
+          if (url != null) {
+            serveCompressed(req, resp, requestUri, "br", "br");
+            return;
+          }
+        }
+      } catch (Exception e) {
+        // Ignore and try next
+      }
     }
 
     // 2. Check for Gzip
     if (acceptEncoding != null && acceptEncoding.contains("gzip")) {
       try {
         String fullResourcePath = getPathToCheck(req, requestUri, ".gz");
-        URL url = this.getClass().getResource(fullResourcePath);
-        
-        if (url != null) {
-          serveCompressed(req, resp, requestUri, "gzip", "gz");
-          return;
+        if (fullResourcePath != null) {
+          URL url = this.getClass().getResource(fullResourcePath);
+
+          if (url != null) {
+            serveCompressed(req, resp, requestUri, "gzip", "gz");
+            return;
+          }
         }
       } catch (Exception e) {
         // Fallback to default behavior
@@ -109,43 +112,67 @@ public class OpenMetadataAssetServlet extends AssetServlet {
   }
 
   private String getPathToCheck(HttpServletRequest req, String requestUri, String extension) {
-      String pathToCheck = requestUri;
-      String contextPath = req.getContextPath();
-      if (contextPath != null && requestUri.startsWith(contextPath)) {
-        pathToCheck = requestUri.substring(contextPath.length());
+    String pathToCheck = requestUri;
+    String contextPath = req.getContextPath();
+    if (contextPath != null && requestUri.startsWith(contextPath)) {
+      pathToCheck = requestUri.substring(contextPath.length());
+    }
+
+    String fullPath =
+        this.resourcePath + (pathToCheck.startsWith("/") ? "" : "/") + pathToCheck + extension;
+
+    // Validate against path traversal attacks
+    try {
+      Path normalizedPath = Paths.get(fullPath).normalize();
+      Path baseResourcePath = Paths.get(this.resourcePath).normalize();
+
+      if (!normalizedPath.startsWith(baseResourcePath)) {
+        return null;
       }
-      return this.resourcePath + (pathToCheck.startsWith("/") ? "" : "/") + pathToCheck + extension;
+    } catch (Exception e) {
+      return null;
+    }
+
+    return fullPath;
   }
 
-  private void serveCompressed(HttpServletRequest req, HttpServletResponse resp, String requestUri, String contentEncoding, String extension) throws ServletException, IOException {
-      resp.setHeader("Content-Encoding", contentEncoding);
-      String mimeType = req.getServletContext().getMimeType(requestUri);
+  private void serveCompressed(
+      HttpServletRequest req,
+      HttpServletResponse resp,
+      String requestUri,
+      String contentEncoding,
+      String extension)
+      throws ServletException, IOException {
+    resp.setHeader("Content-Encoding", contentEncoding);
+    String mimeType = req.getServletContext().getMimeType(requestUri);
 
-      HttpServletRequestWrapper compressedReq = new HttpServletRequestWrapper(req) {
-        @Override
-        public String getPathInfo() {
-           String pathInfo = super.getPathInfo();
-           return pathInfo != null ? pathInfo + "." + extension : null;
-        }
+    HttpServletRequestWrapper compressedReq =
+        new HttpServletRequestWrapper(req) {
+          @Override
+          public String getPathInfo() {
+            String pathInfo = super.getPathInfo();
+            return pathInfo != null ? pathInfo + "." + extension : null;
+          }
 
-        @Override
-        public String getRequestURI() {
-          return super.getRequestURI() + "." + extension;
-        }
-      };
+          @Override
+          public String getRequestURI() {
+            return super.getRequestURI() + "." + extension;
+          }
+        };
 
-      HttpServletResponseWrapper compressedResp = new HttpServletResponseWrapper(resp) {
-        @Override
-        public void setContentType(String type) {
-           if (mimeType != null) {
+    HttpServletResponseWrapper compressedResp =
+        new HttpServletResponseWrapper(resp) {
+          @Override
+          public void setContentType(String type) {
+            if (mimeType != null) {
               super.setContentType(mimeType);
-           } else {
+            } else {
               super.setContentType(type);
-           }
-        }
-      };
+            }
+          }
+        };
 
-      super.doGet(compressedReq, compressedResp);
+    super.doGet(compressedReq, compressedResp);
   }
 
   /**

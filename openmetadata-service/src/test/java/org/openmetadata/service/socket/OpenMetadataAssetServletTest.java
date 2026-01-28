@@ -8,8 +8,6 @@ import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.net.URL;
-import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -31,7 +29,7 @@ public class OpenMetadataAssetServletTest {
     MockitoAnnotations.openMocks(this);
     when(request.getServletContext()).thenReturn(servletContext);
     when(response.getOutputStream()).thenReturn(outputStream);
-    
+
     // Initialize servlet with /assets as resource path
     servlet = new OpenMetadataAssetServlet("/", "/assets", "/", "index.html", webConfiguration);
   }
@@ -122,8 +120,8 @@ public class OpenMetadataAssetServletTest {
     try {
       servlet.doGet(request, response);
     } catch (Exception e) {
-       e.printStackTrace();
-       throw e;
+      e.printStackTrace();
+      throw e;
     }
 
     // Verify Content-Encoding is br
