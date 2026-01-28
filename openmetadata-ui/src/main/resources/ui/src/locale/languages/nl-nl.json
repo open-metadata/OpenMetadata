@@ -2843,7 +2843,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0> is {{entityStatus}} en succesvol ingezet",
     "successful-events-description": "Aantal succesvolle gebeurtenissen voor specifieke alert.",
     "successfully-completed-the-tour": "Je hebt de tour succesvol afgerond.",
-    "supported-services-help": "Select the services where this test definition should be available. Leave empty to support all services.",
+    "supported-services-help": "Selecteer de services waarvoor deze testdefinitie beschikbaar moet zijn. Laat dit veld leeg om alle services te ondersteunen.",
     "synonym-placeholder": "Voeg een synoniem toe door het gewoon in te typen en op Enter te drukken",
     "system-alert-edit-message": "Het bewerken van een door het systeem gegenereerde alert is niet toegestaan.",
     "system-tag-delete-disable-message": "Het verwijderen van door het systeem gegenereerde tags is niet toegestaan. Je kunt proberen de tag uit te schakelen.",

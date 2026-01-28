@@ -2843,7 +2843,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0>이(가) {{entityStatus}}되고 성공적으로 배포되었습니다",
     "successful-events-description": "특정 알림에 대한 성공한 이벤트 수입니다.",
     "successfully-completed-the-tour": "투어를 성공적으로 완료했습니다.",
-    "supported-services-help": "Select the services where this test definition should be available. Leave empty to support all services.",
+    "supported-services-help": "이 테스트 정의를 사용할 수 있도록 할 서비스를 선택합니다. 비워 두면 모든 서비스를 지원합니다.",
     "synonym-placeholder": "동의어를 추가하려면 입력하고 Enter 키를 누르세요",
     "system-alert-edit-message": "시스템에서 생성된 알림은 편집할 수 없습니다.",
     "system-tag-delete-disable-message": "시스템에서 생성된 태그를 삭제하는 것은 허용되지 않습니다. 대신 태그를 비활성화할 수 있습니다.",

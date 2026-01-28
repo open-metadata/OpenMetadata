@@ -2843,7 +2843,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0> se ha {{entityStatus}} y desplegado con éxito",
     "successful-events-description": "Cuenta de los eventos exitosos para una alerta en específico.",
     "successfully-completed-the-tour": "Has completado el recorrido con éxito.",
-    "supported-services-help": "Select the services where this test definition should be available. Leave empty to support all services.",
+    "supported-services-help": "Selecciona los servicios donde esta definición de prueba debe estar disponible. Dejar vacío para admitir todos los servicios.",
     "synonym-placeholder": "Para agregar un sinónimo, simplemente escríbelo y presiona Enter",
     "system-alert-edit-message": "No está permitido editar una alerta generada por el sistema.",
     "system-tag-delete-disable-message": "No se permite eliminar una etiqueta generada por el sistema. Puedes intentar desactivar la etiqueta en su lugar.",

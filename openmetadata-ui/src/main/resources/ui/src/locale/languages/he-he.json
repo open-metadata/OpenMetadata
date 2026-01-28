@@ -2843,7 +2843,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0> הושקע בהצלחה והוצב בהצלחה",
     "successful-events-description": "ספירת אירועים מוצלחים עבור התראה ספציפית.",
     "successfully-completed-the-tour": "סיימת בהצלחה את הסיור.",
-    "supported-services-help": "Select the services where this test definition should be available. Leave empty to support all services.",
+    "supported-services-help": "בחר את השירותים שבהם הגדרת בדיקה זו תהיה זמינה. השאר ריק כדי לתמוך בכל השירותים.",
     "synonym-placeholder": "כדי להוסיף שם נרדף, פשוט הקלד אותו ולחץ Enter",
     "system-alert-edit-message": "עריכת התראה שנוצרה על ידי המערכת אינה מותרת.",
     "system-tag-delete-disable-message": "מחיקת תגיות שנוצרו באופן מערכתי אינה מותרת. ניתן לנסות לנטרל את התג במקום.",

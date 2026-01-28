@@ -2843,7 +2843,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0> {{entityStatus}} oldu ve başarıyla dağıtıldı",
     "successful-events-description": "Belirli bir uyarı için başarılı olay sayısı.",
     "successfully-completed-the-tour": "Turu başarıyla tamamladınız.",
-    "supported-services-help": "Select the services where this test definition should be available. Leave empty to support all services.",
+    "supported-services-help": "Bu test tanımının kullanılabilir olması gereken servisleri seçin. Tüm servisleri desteklemek için boş bırakın.",
     "synonym-placeholder": "Bir eş anlamlı eklemek için yazın ve Enter tuşuna basın",
     "system-alert-edit-message": "Sistem tarafından oluşturulan bir uyarıyı düzenlemeye izin verilmez.",
     "system-tag-delete-disable-message": "Sistem tarafından oluşturulan etiketleri silmeye izin verilmez. Bunun yerine etiketi devre dışı bırakmayı deneyebilirsiniz.",

@@ -155,11 +155,7 @@ jest.mock('../../Modals/EntityDeleteModal/EntityDeleteModal', () => ({
 
 describe('TestDefinitionList Component', () => {
   beforeEach(() => {
-    (getListTestDefinitions as jest.Mock).mockClear();
-    (patchTestDefinition as jest.Mock).mockClear();
-    (deleteTestDefinitionByFqn as jest.Mock).mockClear();
-    (showSuccessToast as jest.Mock).mockClear();
-    (showErrorToast as jest.Mock).mockClear();
+    jest.clearAllMocks();
   });
 
   it('should render component with test definitions table', async () => {
