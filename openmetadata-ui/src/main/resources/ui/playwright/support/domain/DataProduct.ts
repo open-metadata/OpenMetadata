@@ -25,6 +25,16 @@ type UserTeamRef = {
   type: string;
 };
 
+export type AssetReference = {
+  id: string;
+  type: string;
+  name?: string;
+  displayName?: string;
+  fullyQualifiedName?: string;
+  description?: string;
+  deleted?: boolean;
+};
+
 type ResponseDataType = {
   name: string;
   displayName: string;
@@ -116,6 +126,25 @@ export class DataProduct extends EntityClass {
 
   private getFqn() {
     return this.responseData?.fullyQualifiedName ?? this.data.name;
+  }
+
+  async addAssets(
+    apiContext: APIRequestContext,
+    assets: AssetReference[]
+  ) {
+    const response = await apiContext.put(
+      `/api/v1/dataProducts/${encodeURIComponent(
+        this.getFqn()
+      )}/assets/add`,
+      {
+        data: { assets },
+      }
+    );
+
+    const data = await response.json();
+    this.responseData = data;
+
+    return data;
   }
 
   async addInputPorts(

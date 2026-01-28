@@ -14,7 +14,7 @@
 import base, { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
-import { DataProduct } from '../../support/domain/DataProduct';
+import { AssetReference, DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -34,6 +34,18 @@ import {
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
+
+const createAssetRef = (
+  entity: TableClass | TopicClass | DashboardClass,
+  type: string
+): AssetReference => ({
+  id: entity.entityResponseData.id,
+  type,
+  name: entity.entityResponseData.name,
+  displayName: entity.entityResponseData.displayName,
+  fullyQualifiedName: entity.entityResponseData.fullyQualifiedName,
+  description: entity.entityResponseData.description,
+});
 
 const domain = new Domain();
 
@@ -131,7 +143,7 @@ test.describe('Input Output Ports', () => {
   });
 
   test.describe('Section 1: Tab Initialization & Empty States', () => {
-    test('Tab renders with empty state when no ports exist', async ({
+    test('Add buttons disabled when no assets attached to Data Product', async ({
       page,
     }) => {
       const dataProduct = new DataProduct([domain]);
@@ -139,6 +151,41 @@ test.describe('Input Output Ports', () => {
       await test.step('Create data product via API', async () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
+        await afterAction();
+      });
+
+      await test.step('Navigate to data product ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Verify add buttons are disabled', async () => {
+        await expect(page.getByTestId('add-input-port-button')).toBeDisabled();
+        await expect(page.getByTestId('add-output-port-button')).toBeDisabled();
+      });
+
+      await test.step('Cleanup', async () => {
+        const { apiContext, afterAction } = await getApiContext(page);
+        await dataProduct.delete(apiContext);
+        await afterAction();
+      });
+    });
+
+    test('Tab renders with empty state when no ports exist', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with assets via API', async () => {
+        const { apiContext, afterAction } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
         await afterAction();
       });
 
@@ -166,6 +213,8 @@ test.describe('Input Output Ports', () => {
 
         await expect(page.getByTestId('add-input-port-button')).toBeVisible();
         await expect(page.getByTestId('add-output-port-button')).toBeVisible();
+        await expect(page.getByTestId('add-input-port-button')).toBeEnabled();
+        await expect(page.getByTestId('add-output-port-button')).toBeEnabled();
       });
 
       await test.step('Verify lineage section shows zero counts', async () => {
@@ -190,6 +239,14 @@ test.describe('Input Output Ports', () => {
       await test.step('Create data product with ports via API', async () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+          createAssetRef(dashboards[0], 'dashboard'),
+          createAssetRef(dashboards[1], 'dashboard'),
+          createAssetRef(topics[0], 'topic'),
+        ]);
 
         await dataProduct.addInputPorts(apiContext, [
           {
@@ -280,6 +337,11 @@ test.describe('Input Output Ports', () => {
       await test.step('Setup', async () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
         await afterAction();
       });
 
@@ -312,6 +374,11 @@ test.describe('Input Output Ports', () => {
       await test.step('Setup', async () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
+        ]);
+
         await afterAction();
       });
 
@@ -343,6 +410,12 @@ test.describe('Input Output Ports', () => {
       await test.step('Setup', async () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+        ]);
+
         await afterAction();
       });
 
@@ -415,6 +488,13 @@ test.describe('Input Output Ports', () => {
       await test.step('Setup', async () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[2], 'table'),
+          createAssetRef(topics[1], 'topic'),
+          createAssetRef(dashboards[0], 'dashboard'),
+        ]);
+
         await afterAction();
       });
 
@@ -455,6 +535,11 @@ test.describe('Input Output Ports', () => {
       await test.step('Setup', async () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[3], 'table'),
+        ]);
+
         await afterAction();
       });
 
@@ -498,10 +583,16 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+          createAssetRef(tables[2], 'table'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
-          { id: tables[1].entityResponseData.id, type: 'table' },
-          { id: tables[2].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+          createAssetRef(tables[2], 'table'),
         ]);
 
         await afterAction();
@@ -540,9 +631,14 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
+          createAssetRef(dashboards[1], 'dashboard'),
+        ]);
+
         await dataProduct.addOutputPorts(apiContext, [
-          { id: dashboards[0].entityResponseData.id, type: 'dashboard' },
-          { id: dashboards[1].entityResponseData.id, type: 'dashboard' },
+          createAssetRef(dashboards[0], 'dashboard'),
+          createAssetRef(dashboards[1], 'dashboard'),
         ]);
 
         await afterAction();
@@ -591,8 +687,12 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
         ]);
 
         await afterAction();
@@ -633,9 +733,14 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
-          { id: tables[1].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
         ]);
 
         await afterAction();
@@ -686,9 +791,14 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
+          createAssetRef(dashboards[1], 'dashboard'),
+        ]);
+
         await dataProduct.addOutputPorts(apiContext, [
-          { id: dashboards[0].entityResponseData.id, type: 'dashboard' },
-          { id: dashboards[1].entityResponseData.id, type: 'dashboard' },
+          createAssetRef(dashboards[0], 'dashboard'),
+          createAssetRef(dashboards[1], 'dashboard'),
         ]);
 
         await afterAction();
@@ -734,8 +844,12 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
         ]);
 
         await afterAction();
@@ -780,8 +894,12 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
         ]);
 
         await afterAction();
@@ -833,11 +951,16 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(dashboards[0], 'dashboard'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
         ]);
         await dataProduct.addOutputPorts(apiContext, [
-          { id: dashboards[0].entityResponseData.id, type: 'dashboard' },
+          createAssetRef(dashboards[0], 'dashboard'),
         ]);
 
         await afterAction();
@@ -872,8 +995,12 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
         ]);
 
         await afterAction();
@@ -908,14 +1035,21 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+          createAssetRef(dashboards[0], 'dashboard'),
+          createAssetRef(dashboards[1], 'dashboard'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
-          { id: tables[1].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
         ]);
 
         await dataProduct.addOutputPorts(apiContext, [
-          { id: dashboards[0].entityResponseData.id, type: 'dashboard' },
-          { id: dashboards[1].entityResponseData.id, type: 'dashboard' },
+          createAssetRef(dashboards[0], 'dashboard'),
+          createAssetRef(dashboards[1], 'dashboard'),
         ]);
 
         await afterAction();
@@ -969,8 +1103,12 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
         ]);
 
         await afterAction();
@@ -1004,8 +1142,12 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
+        ]);
+
         await dataProduct.addOutputPorts(apiContext, [
-          { id: dashboards[0].entityResponseData.id, type: 'dashboard' },
+          createAssetRef(dashboards[0], 'dashboard'),
         ]);
 
         await afterAction();
@@ -1044,8 +1186,12 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
         ]);
 
         await afterAction();
@@ -1081,8 +1227,12 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
         ]);
 
         await afterAction();
@@ -1123,8 +1273,12 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
         ]);
 
         await afterAction();
@@ -1170,8 +1324,12 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
+        ]);
+
         await dataProduct.addOutputPorts(apiContext, [
-          { id: dashboards[0].entityResponseData.id, type: 'dashboard' },
+          createAssetRef(dashboards[0], 'dashboard'),
         ]);
 
         await afterAction();
@@ -1219,11 +1377,16 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(dashboards[0], 'dashboard'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
         ]);
         await dataProduct.addOutputPorts(apiContext, [
-          { id: dashboards[0].entityResponseData.id, type: 'dashboard' },
+          createAssetRef(dashboards[0], 'dashboard'),
         ]);
 
         await afterAction();
@@ -1265,8 +1428,12 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
         ]);
 
         await afterAction();
@@ -1301,8 +1468,12 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
         ]);
 
         await afterAction();
@@ -1340,8 +1511,12 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
         ]);
 
         await afterAction();
@@ -1356,7 +1531,7 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Enter fullscreen and exit with Escape', async () => {
-        await page.getByTestId('toggle-fullscreen-btn').click();
+      await page.getByTestId('toggle-fullscreen-btn').click();
 
         const lineageView = page.getByTestId('ports-lineage-view');
         await expect(lineageView).toHaveCSS('position', 'fixed');
@@ -1379,8 +1554,12 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
         ]);
 
         await afterAction();
@@ -1416,11 +1595,9 @@ test.describe('Input Output Ports', () => {
         const { apiContext, afterAction } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        const portAssets = tables.map((table) => ({
-          id: table.entityResponseData.id,
-          type: 'table',
-        }));
+        const portAssets = tables.map((table) => createAssetRef(table, 'table'));
 
+        await dataProduct.addAssets(apiContext, portAssets);
         await dataProduct.addInputPorts(apiContext, portAssets);
 
         await afterAction();

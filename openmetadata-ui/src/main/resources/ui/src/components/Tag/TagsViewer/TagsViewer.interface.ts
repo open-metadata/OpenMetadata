@@ -28,3 +28,8 @@ export enum DisplayType {
   READ_MORE = 'read-more',
   POPOVER = 'popover',
 }
+
+export enum LayoutType {
+  HORIZONTAL = 'horizontal',
+  VERTICAL = 'vertical',
+}

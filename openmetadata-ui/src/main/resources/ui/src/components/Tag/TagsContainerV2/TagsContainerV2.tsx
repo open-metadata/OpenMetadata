@@ -53,7 +53,6 @@ import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/Sug
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';
-import { LayoutType } from '../TagsViewer/TagsViewer.interface';
 import './tags-container.style.less';
 import { TagsContainerV2Props } from './TagsContainerV2.interface';
 
@@ -65,7 +64,6 @@ const TagsContainerV2 = ({
   entityFqn,
   tagType,
   displayType,
-  layoutType,
   showBottomEditButton,
   showInlineEditButton,
   columnData,
@@ -129,7 +127,6 @@ const TagsContainerV2 = ({
     isGlossaryType,
     showAddTagButton,
     selectedTagsInternal,
-    isHoriZontalLayout,
     initialOptions,
   } = useMemo(
     () => ({
@@ -141,9 +138,8 @@ const TagsContainerV2 = ({
         value: data.tagFQN,
         data,
       })) as SelectOption[],
-      isHoriZontalLayout: layoutType === LayoutType.HORIZONTAL,
     }),
-    [tagType, permission, tags?.[tagType], tags, layoutType]
+    [tagType, permission, tags?.[tagType], tags]
   );
 
   const fetchAPI = useCallback(
@@ -243,13 +239,7 @@ const TagsContainerV2 = ({
           />
         </Col>
       ),
-    [
-      displayType,
-      showNoDataPlaceholder,
-      tags?.[tagType],
-      layoutType,
-      columnData?.fqn,
-    ]
+    [displayType, showNoDataPlaceholder, tags?.[tagType], columnData?.fqn]
   );
 
   const tagsSelectContainer = useMemo(() => {
@@ -387,7 +377,7 @@ const TagsContainerV2 = ({
     [permission, tags, tagType, handleAddClick, newLook]
   );
 
-  const horizontalLayout = useMemo(() => {
+  const tagsContainer = useMemo(() => {
     return (
       <Space>
         {showAddTagButton ? (
@@ -413,7 +403,6 @@ const TagsContainerV2 = ({
   }, [
     showAddTagButton,
     displayType,
-    layoutType,
     showNoDataPlaceholder,
     tags?.[tagType],
     showInlineEditButton,
@@ -424,10 +413,6 @@ const TagsContainerV2 = ({
   const tagBody = useMemo(() => {
     if (isEditTags) {
       return tagsSelectContainer;
-    }
-
-    if (isHoriZontalLayout) {
-      return horizontalLayout;
     }
 
     const shouldShowVerticalLayout =
@@ -456,8 +441,6 @@ const TagsContainerV2 = ({
     isEditTags,
     tagsSelectContainer,
     addTagButton,
-    isHoriZontalLayout,
-    horizontalLayout,
     renderTags,
     editTagButton,
   ]);
@@ -512,7 +495,7 @@ const TagsContainerV2 = ({
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
       {suggestionDataRender ?? (
         <>
-          {tagBody}
+          {tagsContainer}
           {(children || showBottomEditButton) && (
             <div className="m-t-xs w-full d-flex items-baseline">
               {showBottomEditButton && !showInlineEditButton && (
