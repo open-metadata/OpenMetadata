@@ -1,0 +1,2 @@
+-- Remove table constraints with referredColumns from table_entity JSON
+-- This is handled by the Java migration code
