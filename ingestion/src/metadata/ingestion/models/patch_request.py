@@ -15,7 +15,7 @@ import json
 import logging
 import re
 import traceback
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import jsonpatch
 from pydantic import BaseModel
@@ -448,7 +448,9 @@ def build_patch(
                 ),
                 _normalize_datetime_strings(
                     json.loads(
-                        destination.model_dump_json(exclude_unset=True, exclude_none=True)
+                        destination.model_dump_json(
+                            exclude_unset=True, exclude_none=True
+                        )
                     )
                 ),
             )
