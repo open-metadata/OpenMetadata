@@ -524,7 +524,7 @@ export const InputOutputPortsTab = forwardRef<
           entityFqn={dataProductFqn}
           open={isAddingInputPort}
           title={t('label.add-entity', {
-            entity: t('label.entity-port', { entity: t('label.input') }),
+            entity: t('label.entity-port-plural', { entity: t('label.input') }),
           })}
           type={AssetsOfEntity.DATA_PRODUCT_INPUT_PORT}
           onCancel={() => setIsAddingInputPort(false)}
@@ -535,7 +535,7 @@ export const InputOutputPortsTab = forwardRef<
           entityFqn={dataProductFqn}
           open={isAddingOutputPort}
           title={t('label.add-entity', {
-            entity: t('label.entity-port', { entity: t('label.output') }),
+            entity: t('label.entity-port-plural', { entity: t('label.output') }),
           })}
           type={AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT}
           onCancel={() => setIsAddingOutputPort(false)}
