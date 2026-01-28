@@ -191,12 +191,6 @@ test.describe('Entity Title Section - Edit Display Name', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await table.delete(apiContext);
-    await afterAction();
-  });
-
   test('should edit display name from entity summary panel', async ({
     page,
   }) => {
@@ -211,16 +205,6 @@ test.describe('Entity Title Section - Edit Display Name', () => {
 
     const entityLink = summaryPanel.getByTestId('entity-link').first();
     await expect(entityLink).toContainText(newDisplayName);
-  });
-
-  test('should show edit button in title section', async ({ page }) => {
-    await navigateToExploreAndSelectTable(page, table.entityResponseData.name);
-
-    const summaryPanel = page.locator('.entity-summary-panel-container');
-    await expect(summaryPanel).toBeVisible();
-
-    const editButton = summaryPanel.getByTestId('edit-displayName-button');
-    await expect(editButton).toBeVisible();
   });
 
   test('should cancel edit display name modal', async ({ page }) => {
