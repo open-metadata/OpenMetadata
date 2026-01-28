@@ -78,7 +78,9 @@ class SalesforceSource(DatabaseServiceSource):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.root.config
+        self.service_connection: SalesforceConnection = (
+            self.config.serviceConnection.root.config
+        )
         self.ssl_manager: SSLManager = check_ssl_and_init(self.service_connection)
         if self.ssl_manager:
             self.service_connection = self.ssl_manager.setup_ssl(
@@ -162,7 +164,6 @@ class SalesforceSource(DatabaseServiceSource):
 
         Priority:
         1. sobjectNames (array) - if specified, iterate over these
-        2. sobjectName (single) - if specified
         3. All objects from describe()
 
         tableFilterPattern is applied in ALL cases.
@@ -172,15 +173,14 @@ class SalesforceSource(DatabaseServiceSource):
         schema_name = self.context.get().database_schema
 
         try:
-            object_names: List[str] = []
-
             if self.service_connection.sobjectNames:
                 object_names = list(self.service_connection.sobjectNames)
-            elif self.service_connection.sobjectName:
-                object_names = [self.service_connection.sobjectName]
+
             else:
-                for salesforce_object in self.client.describe()["sobjects"]:
-                    object_names.append(salesforce_object["name"])
+                object_names = [
+                    salesforce_object["name"]
+                    for salesforce_object in self.client.describe()["sobjects"]
+                ]
 
             for table_name in object_names:
                 table_name = self.standardize_table_name(schema_name, table_name)
