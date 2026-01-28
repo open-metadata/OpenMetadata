@@ -19,7 +19,10 @@ import {
 export const isExternalTestDefinition = (
   testDefinition?: TestDefinition
 ): boolean => {
-  if (!testDefinition?.testPlatforms) {
+  if (
+    !testDefinition?.testPlatforms ||
+    testDefinition.testPlatforms.length === 0
+  ) {
     return false;
   }
 

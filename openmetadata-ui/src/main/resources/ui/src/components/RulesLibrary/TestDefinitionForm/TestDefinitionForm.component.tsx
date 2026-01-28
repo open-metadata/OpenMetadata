@@ -95,6 +95,14 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           })
         );
       } else {
+        let validatorClass: string | undefined;
+        if (values.sqlExpression) {
+          validatorClass =
+            values.entityType === EntityType.Column
+              ? 'ColumnRuleLibrarySqlExpressionValidator'
+              : 'TableRuleLibrarySqlExpressionValidator';
+        }
+
         const payload: CreateTestDefinition = {
           name: values.name,
           displayName: values.displayName,
@@ -106,11 +114,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           supportedDataTypes: values.supportedDataTypes,
           supportedServices: values.supportedServices,
           parameterDefinition: values.parameterDefinition,
-          validatorClass: values.sqlExpression
-            ? values.entityType === EntityType.Column
-              ? 'ColumnRuleLibrarySqlExpressionValidator'
-              : 'TableRuleLibrarySqlExpressionValidator'
-            : undefined,
+          validatorClass,
         };
         await createTestDefinition(payload);
         showSuccessToast(
@@ -449,13 +453,16 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                       />
                     </Form.Item>
 
-                    <Form.Item
-                      {...restField}
-                      label={t('label.required')}
-                      name={[name, 'required']}
-                      valuePropName="checked">
-                      <Switch disabled={isReadOnlyField} />
-                    </Form.Item>
+                    <div className="d-flex items-center gap-2">
+                      <label>{t('label.required')}</label>
+                      <Form.Item
+                        noStyle
+                        {...restField}
+                        name={[name, 'required']}
+                        valuePropName="checked">
+                        <Switch disabled={isReadOnlyField} />
+                      </Form.Item>
+                    </div>
                   </Card>
                 ))}
                 {!isReadOnlyField && (
@@ -473,13 +480,12 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           </Form.List>
         </Form.Item>
         {isEditMode && (
-          <Form.Item
-            label={t('label.enabled')}
-            name="enabled"
-            style={{ marginTop: 16 }}
-            valuePropName="checked">
-            <Switch />
-          </Form.Item>
+          <div className="d-flex items-center gap-2" style={{ marginTop: 16 }}>
+            <label>{t('label.enabled')}</label>
+            <Form.Item noStyle name="enabled" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+          </div>
         )}
       </Form>
     </Drawer>

@@ -466,9 +466,10 @@ describe('TestDefinitionForm Component', () => {
         />
       );
 
-      const displayNameField = screen.getByLabelText('label.display-name');
+      const displayNameFields = screen.getAllByLabelText('label.display-name');
+      const testDefinitionDisplayNameField = displayNameFields[0];
 
-      expect(displayNameField).not.toBeDisabled();
+      expect(testDefinitionDisplayNameField).not.toBeDisabled();
     });
 
     it('should allow editing description for external tests', () => {
@@ -480,9 +481,10 @@ describe('TestDefinitionForm Component', () => {
         />
       );
 
-      const descriptionField = screen.getByLabelText('label.description');
+      const descriptionFields = screen.getAllByLabelText('label.description');
+      const testDefinitionDescriptionField = descriptionFields[0];
 
-      expect(descriptionField).not.toBeDisabled();
+      expect(testDefinitionDescriptionField).not.toBeDisabled();
     });
 
     it('should allow editing data quality dimension for external tests', () => {

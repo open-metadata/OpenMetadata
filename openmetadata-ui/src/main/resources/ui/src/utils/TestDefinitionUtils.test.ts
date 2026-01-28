@@ -73,17 +73,17 @@ describe('TestDefinitionUtils', () => {
     });
 
     it('should return false when testPlatforms is empty array', () => {
-      const testWithEmptyPlatforms: TestDefinition = {
+      const testWithEmptyPlatforms = {
         id: 'test-6',
         name: 'emptyPlatformTest',
         testPlatforms: [],
-      } as TestDefinition;
+      } as unknown as TestDefinition;
 
       expect(isExternalTestDefinition(testWithEmptyPlatforms)).toBe(false);
     });
 
     it('should return false when testDefinition is undefined', () => {
-      expect(isExternalTestDefinition(undefined)).toBe(false);
+      expect(isExternalTestDefinition()).toBe(false);
     });
 
     it('should handle Great Expectations platform correctly', () => {
