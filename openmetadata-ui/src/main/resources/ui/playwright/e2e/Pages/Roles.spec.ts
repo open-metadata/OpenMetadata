@@ -506,7 +506,7 @@ test('Roles page should work properly', async ({ page }) => {
   });
 });
 
-test.skip('Delete role action from manage button options', async ({ page }) => {
+test('Delete role action from manage button options', async ({ page }) => {
   const { apiContext, afterAction } = await getApiContext(page);
 
   const role = new RolesClass();
