@@ -39,24 +39,31 @@ public class DefaultToolContext {
     Map<String, Object> params = request.arguments();
     Object result;
     try {
+      McpTool tool;
       switch (toolName) {
         case "search_metadata":
-          result = new SearchMetadataTool().execute(authorizer, securityContext, params);
+          tool = new SearchMetadataTool();
+          result = tool.execute(authorizer, securityContext, params);
           break;
         case "get_entity_details":
-          result = new GetEntityTool().execute(authorizer, securityContext, params);
+          tool = new GetEntityTool();
+          result = tool.execute(authorizer, securityContext, params);
           break;
         case "create_glossary":
-          result = new GlossaryTool().execute(authorizer, limits, securityContext, params);
+          tool = new GlossaryTool();
+          result = tool.execute(authorizer, limits, securityContext, params);
           break;
         case "create_glossary_term":
-          result = new GlossaryTermTool().execute(authorizer, limits, securityContext, params);
+          tool = new GlossaryTermTool();
+          result = tool.execute(authorizer, limits, securityContext, params);
           break;
         case "patch_entity":
-          result = new PatchEntityTool().execute(authorizer, securityContext, params);
+          tool = new PatchEntityTool();
+          result = tool.execute(authorizer, securityContext, params);
           break;
         case "get_entity_lineage":
-          result = new GetLineageTool().execute(authorizer, securityContext, params);
+          tool = new GetLineageTool();
+          result = tool.execute(authorizer, securityContext, params);
           break;
         default:
           return McpSchema.CallToolResult.builder()
@@ -73,6 +80,7 @@ public class DefaultToolContext {
           .isError(false)
           .build();
     } catch (AuthorizationException ex) {
+      // OpenMetadata authorization error
       LOG.error("Authorization error: {}", ex.getMessage());
       return McpSchema.CallToolResult.builder()
           .content(

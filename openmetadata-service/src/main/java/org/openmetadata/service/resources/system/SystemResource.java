@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
@@ -776,6 +778,113 @@ public class SystemResource {
       @Context SecurityContext securityContext, @Valid SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.validateSecurityConfiguration(securityConfig, applicationConfig);
+  }
+
+  @GET
+  @Path("/mcp/config")
+  @Operation(
+      operationId = "getMCPConfiguration",
+      summary = "Get MCP server configuration",
+      description =
+          "Get the current MCP server configuration including base URL, allowed origins, and timeout settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "MCP configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MCPConfiguration.class))),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response getMCPConfiguration(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    Settings mcpSettings = systemRepository.getConfigWithKey(MCP_CONFIGURATION.toString());
+    if (mcpSettings != null && mcpSettings.getConfigValue() != null) {
+      return Response.ok(mcpSettings.getConfigValue()).build();
+    }
+    return Response.status(Response.Status.NOT_FOUND).entity("MCP configuration not found").build();
+  }
+
+  @PUT
+  @Path("/mcp/config")
+  @Operation(
+      operationId = "updateMCPConfiguration",
+      summary = "Update MCP server configuration",
+      description =
+          "Update MCP server configuration. Changes take effect after server reload. "
+              + "Note: Updating MCP configuration will reload the security system to apply changes.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "MCP configuration updated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MCPConfiguration.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid configuration"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response updateMCPConfiguration(
+      @Context SecurityContext securityContext, @Valid MCPConfiguration mcpConfig) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      // Validate baseUrl
+      if (mcpConfig.getBaseUrl() != null && !mcpConfig.getBaseUrl().isEmpty()) {
+        try {
+          java.net.URI uri = new java.net.URI(mcpConfig.getBaseUrl());
+          if (!uri.getScheme().matches("https?")) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity("baseUrl must use HTTP or HTTPS scheme")
+                .build();
+          }
+        } catch (java.net.URISyntaxException e) {
+          return Response.status(Response.Status.BAD_REQUEST)
+              .entity("Invalid baseUrl: " + e.getMessage())
+              .build();
+        }
+      }
+
+      // Validate allowedOrigins
+      if (mcpConfig.getAllowedOrigins() != null) {
+        for (String origin : mcpConfig.getAllowedOrigins()) {
+          if (origin.contains("*") && !origin.equals("*")) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity(
+                    "Wildcard origins must be exactly '*', not partial wildcards like '"
+                        + origin
+                        + "'")
+                .build();
+          }
+          if (!origin.equals("*")) {
+            try {
+              new java.net.URI(origin);
+            } catch (java.net.URISyntaxException e) {
+              return Response.status(Response.Status.BAD_REQUEST)
+                  .entity("Invalid origin URL '" + origin + "': " + e.getMessage())
+                  .build();
+            }
+          }
+        }
+      }
+
+      Settings mcpSettings =
+          new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
+
+      systemRepository.createOrUpdate(mcpSettings);
+
+      SettingsCache.invalidateSettings(MCP_CONFIGURATION.toString());
+
+      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+
+      return Response.ok(mcpConfig).build();
+    } catch (Exception e) {
+      LOG.error("Failed to update MCP configuration", e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity("Failed to update MCP configuration. Please check server logs for details.")
+          .build();
+    }
   }
 
   @GET

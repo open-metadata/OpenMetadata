@@ -374,14 +374,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Asset Servlet Registration
     registerAssetServlet(catalogConfig, catalogConfig.getWebConfiguration(), environment);
 
-    // Register MCP
+    // Register Auth Handlers (must be before MCP for SSO initialization)
+    registerAuthServlets(catalogConfig, environment);
+
+    // Register MCP (depends on Auth Handlers for SSO)
     registerMCPServer(catalogConfig, environment);
 
     // Handle Services Jobs
     registerHealthCheckJobs(catalogConfig);
-
-    // Register Auth Handlers
-    registerAuthServlets(catalogConfig, environment);
 
     // Register User Metrics Servlet
     registerUserMetricsServlet(environment);
@@ -395,6 +395,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         McpServerProvider mcpServer =
             (McpServerProvider) mcpServerClass.getDeclaredConstructor().newInstance();
         mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
+        LOG.info("MCP Server initialized successfully. OAuth endpoints registered via servlets.");
+
         LOG.info("MCP Server registered successfully");
       }
     } catch (ClassNotFoundException ex) {
@@ -959,6 +961,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Jetty metrics for monitoring
     JettyMetricsIntegration.registerJettyMetrics(environment);
+
+    // MCP OAuth is handled by servlets registered in McpServer.initializeMcpServer()
+    // No JAX-RS resources needed for OAuth endpoints
 
     // RDF resources are now automatically registered via @Collection annotation
     if (config.getRdfConfiguration() != null

@@ -85,6 +85,7 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONObject;
@@ -127,6 +128,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
+  public static final String SESSION_GOOGLE_CALLBACK_URL = "googleCallbackUrl";
   public static final String SESSION_USER_ID = "userId";
   public static final String SESSION_USERNAME = "username";
   public static final String REDIRECT_URI_KEY = "redirectUri";
@@ -142,7 +144,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
-  private OidcClient client;
+  @Getter private OidcClient client;
   private List<String> claimsOrder;
   private Map<String, String> claimsMapping;
   private String teamClaimMapping;
@@ -274,6 +276,30 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // Disable PKCE
       configuration.setDisablePkce(clientConfig.getDisablePkce());
 
+      // Configure HTTP timeouts from MCP configuration
+      try {
+        org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
+            org.openmetadata.service.security.auth.SecurityConfigurationManager
+                .getCurrentMcpConfig();
+        if (mcpConfig != null) {
+          if (mcpConfig.getConnectTimeout() != null) {
+            configuration.setConnectTimeout(mcpConfig.getConnectTimeout());
+            LOG.info(
+                "Set OIDC client connection timeout to {}ms from MCP configuration",
+                mcpConfig.getConnectTimeout());
+          }
+          if (mcpConfig.getReadTimeout() != null) {
+            configuration.setReadTimeout(mcpConfig.getReadTimeout());
+            LOG.info(
+                "Set OIDC client read timeout to {}ms from MCP configuration",
+                mcpConfig.getReadTimeout());
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to configure OIDC client HTTP timeouts from MCP config: {}", e.getMessage());
+      }
+
       // Add Custom Params
       if (clientConfig.getCustomParams() != null) {
         for (int j = 1; j <= 5; ++j) {
@@ -315,18 +341,59 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   public void handleLogin(HttpServletRequest req, HttpServletResponse resp) {
     try {
       HttpSession session = getHttpSession(req, true);
-      checkAndStoreRedirectUriInSession(session, req.getParameter(REDIRECT_URI_KEY));
 
-      LOG.debug("Performing Auth Login For User Session: {} ", session.getId());
+      // Get redirect URI from request parameter
+      String requestedRedirectUri = req.getParameter(REDIRECT_URI_KEY);
+
+      // Determine Google callback URL and final redirect URI based on the flow:
+      // 1. MCP OAuth flow: requestedRedirectUri is a full URL (e.g.,
+      // https://ngrok-url/mcp/callback)
+      //    - Use the full URL for Google OAuth callback
+      //    - MCP handles its own final redirect
+      // 2. Web login flow: requestedRedirectUri is a relative path (e.g., /auth/callback)
+      //    - Use the YAML-configured callback URL for Google OAuth
+      //    - Store the relative path for final redirect to frontend
+      String googleCallbackUrl;
+      String finalRedirectUri;
+
+      if (requestedRedirectUri != null
+          && (requestedRedirectUri.startsWith("http://")
+              || requestedRedirectUri.startsWith("https://"))) {
+        // MCP flow: use the provided full URL for Google OAuth
+        googleCallbackUrl = requestedRedirectUri;
+        finalRedirectUri = requestedRedirectUri;
+        LOG.info("MCP OAuth flow detected - using provided callback URL for Google OAuth");
+      } else {
+        // Regular web login: use configured callback for Google, store frontend path for redirect
+        googleCallbackUrl = client.getCallbackUrl();
+        finalRedirectUri = requestedRedirectUri != null ? requestedRedirectUri : googleCallbackUrl;
+        LOG.info("Web login flow detected - using configured callback URL for Google OAuth");
+      }
+
+      checkAndStoreRedirectUriInSession(session, finalRedirectUri);
+
+      // Store the Google callback URL used for authorization so token exchange uses the same URL
+      session.setAttribute(SESSION_GOOGLE_CALLBACK_URL, googleCallbackUrl);
+
+      LOG.info(
+          "Auth Login - Session: {}, requestedRedirectUri: {}, googleCallbackUrl: {}, finalRedirectUri: {}",
+          session.getId(),
+          requestedRedirectUri,
+          googleCallbackUrl,
+          finalRedirectUri);
       Optional<OidcCredentials> credentials = getUserCredentialsFromSession(session);
       if (credentials.isPresent()) {
         LOG.debug("Auth Tokens Located from Session: {} ", session.getId());
         sendRedirectWithToken(session, resp, credentials.get());
       } else {
-        LOG.debug("Performing Auth Code Flow to Idp: {} ", session.getId());
+        LOG.info(
+            "Performing Auth Code Flow to Google with callback URL: {} (frontend will receive final redirect at: {})",
+            googleCallbackUrl,
+            finalRedirectUri);
         Map<String, String> params = buildLoginParams();
 
-        params.put(OidcConfiguration.REDIRECT_URI, client.getCallbackUrl());
+        // Use the computed callback URL for Google OAuth (MCP URL or configured backend URL)
+        params.put(OidcConfiguration.REDIRECT_URI, googleCallbackUrl);
 
         addStateAndNonceParameters(client, session, params);
 
@@ -368,6 +435,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
 
     session.setAttribute(SESSION_REDIRECT_URI, redirectUri);
+    LOG.info("Stored redirect URI in session {}: {}", session.getId(), redirectUri);
   }
 
   // Callback
@@ -379,8 +447,20 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         throw new TechnicalException("No session found for callback, redirecting to login");
       }
 
-      LOG.debug("Performing Auth Callback For User Session: {} ", session.getId());
-      String computedCallbackUrl = client.getCallbackUrl();
+      LOG.info("Performing Auth Callback For User Session: {} ", session.getId());
+
+      // Retrieve the Google callback URL that was used during authorization
+      // This MUST match the redirect_uri sent to Google in the authorization request
+      String computedCallbackUrl = (String) session.getAttribute(SESSION_GOOGLE_CALLBACK_URL);
+      if (computedCallbackUrl == null) {
+        // Fallback to client's callback URL if not found in session (backward compatibility)
+        computedCallbackUrl = client.getCallbackUrl();
+        LOG.warn(
+            "Google callback URL not found in session {}, using client callback URL: {}",
+            session.getId(),
+            computedCallbackUrl);
+      }
+      LOG.info("Token exchange using callback URL: {}", computedCallbackUrl);
       Map<String, List<String>> parameters = retrieveCallbackParameters(req);
       AuthenticationResponse response =
           AuthenticationResponseParser.parse(new URI(computedCallbackUrl), parameters);
@@ -541,14 +621,18 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       HttpSession session, OidcCredentials oidcCredentials, String computedCallbackUrl)
       throws URISyntaxException {
     if (oidcCredentials.getCode() != null) {
-      LOG.debug("Initiating Token Request for User Session: {} ", session.getId());
+      LOG.info(
+          "Initiating Token Request - Session: {}, redirect_uri for token exchange: {}",
+          session.getId(),
+          computedCallbackUrl);
       CodeVerifier verifier =
           (CodeVerifier) session.getAttribute(client.getCodeVerifierSessionAttributeName());
       // Token request
-      TokenRequest request =
-          createTokenRequest(
-              new AuthorizationCodeGrant(
-                  oidcCredentials.getCode(), new URI(computedCallbackUrl), verifier));
+      AuthorizationCodeGrant grant =
+          new AuthorizationCodeGrant(
+              oidcCredentials.getCode(), new URI(computedCallbackUrl), verifier);
+      LOG.info("AuthorizationCodeGrant redirect_uri: {}", grant.getRedirectionURI());
+      TokenRequest request = createTokenRequest(grant);
       executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
     }
   }
@@ -559,8 +643,19 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       AuthenticationSuccessResponse successResponse) {
     if (client.getConfiguration().isWithState()) {
       // Validate state for CSRF mitigation
-      State requestState = (State) session.getAttribute(client.getStateSessionAttributeName());
+      String stateAttrName = client.getStateSessionAttributeName();
+      State requestState = (State) session.getAttribute(stateAttrName);
+      LOG.info(
+          "State validation - Session: {}, stateAttrName: {}, requestState: {}, session attributes: {}",
+          session.getId(),
+          stateAttrName,
+          requestState,
+          java.util.Collections.list(session.getAttributeNames()));
       if (requestState == null || CommonHelper.isBlank(requestState.getValue())) {
+        LOG.error(
+            "Missing state in session {}. Available attributes: {}",
+            session.getId(),
+            java.util.Collections.list(session.getAttributeNames()));
         getErrorMessage(resp, new TechnicalException("Missing state parameter"));
         return;
       }
@@ -752,6 +847,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
 
     String redirectUri = (String) httpSession.getAttribute(SESSION_REDIRECT_URI);
+    if (redirectUri == null || redirectUri.trim().isEmpty()) {
+      throw new IllegalStateException("Redirect URI not found in session");
+    }
     User user = getOrCreateOidcUser(userName, email, claims);
     Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
     // Store user info in session for logout audit
@@ -814,8 +912,34 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       LOG.info("Admin principals list: {}", getAdminPrincipals());
 
       String domain = email.split("@")[1];
+
+      // Validate email domain against allowed registration domains
+      Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
+      if (allowedDomains != null
+          && !allowedDomains.contains("all")
+          && !allowedDomains.contains(domain)) {
+        LOG.warn(
+            "SECURITY: Blocked OAuth signup for disallowed domain: {} (user: {})", domain, email);
+        throw new AuthenticationException("Email domain not allowed for self-signup: " + domain);
+      }
+
       User newUser =
           UserUtil.user(userName, domain, userName).withIsAdmin(isAdmin).withIsEmailVerified(true);
+
+      // Assign default role if configured
+      String defaultRoleName = authorizerConfiguration.getDefaultOAuthRole();
+      if (defaultRoleName != null && !defaultRoleName.isEmpty()) {
+        try {
+          org.openmetadata.schema.entity.teams.Role defaultRole =
+              Entity.getEntityByName(Entity.ROLE, defaultRoleName, "", Include.NON_DELETED);
+          newUser.setRoles(List.of(defaultRole.getEntityReference()));
+          LOG.info("Assigned default OAuth role '{}' to new user: {}", defaultRoleName, userName);
+        } catch (EntityNotFoundException ex) {
+          LOG.error(
+              "Default OAuth role '{}' not found. User will be created without roles.",
+              defaultRoleName);
+        }
+      }
 
       // Assign teams from claims if provided
       UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
