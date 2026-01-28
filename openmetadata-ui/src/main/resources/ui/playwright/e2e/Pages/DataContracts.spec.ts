@@ -668,10 +668,17 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Delete contract', async () => {
+        const contractRefreshResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataContracts/entity') &&
+            response.request().method() === 'GET'
+        );
+
         await deleteContract(page, DATA_CONTRACT_DETAILS.name);
 
         await toastNotification(page, '"Contract" deleted successfully!');
 
+        await contractRefreshResponse;
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -691,10 +698,17 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Delete imported contract', async () => {
+        const contractRefreshResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataContracts/entity') &&
+            response.request().method() === 'GET'
+        );
+
         await deleteContract(page);
 
         await toastNotification(page, '"Contract" deleted successfully!');
 
+        await contractRefreshResponse;
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
