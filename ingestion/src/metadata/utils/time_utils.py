@@ -13,10 +13,9 @@
 Time utility functions
 """
 
-import re
 from datetime import datetime, time, timedelta
 from math import floor
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 from pytz import timezone
 
@@ -214,36 +213,3 @@ def timedelta_to_string(td: timedelta):
         res[-1] += "s"
     total_seconds = "total seconds: " + str(td.total_seconds())
     return " ".join(res) + f" ({total_seconds})"
-
-
-# Regex pattern to match ISO 8601 datetime strings without microseconds
-# Matches: 2026-01-19T18:08:41Z or 2026-01-19T18:08:41+00:00
-ISO_DATETIME_WITHOUT_MICROSECONDS = re.compile(
-    r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})([Z]|[+-]\d{2}:\d{2})$"
-)
-
-
-def normalize_datetime_strings(obj: Any) -> Any:
-    """
-    Recursively process a JSON-like object to ensure all ISO 8601 datetime
-    strings include microseconds (.000000).
-
-    This fixes compatibility with Java's SimpleDateFormat which requires
-    microseconds in the format: yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'
-
-    Args:
-        obj: A JSON-like object (dict, list, or primitive)
-
-    Returns:
-        The object with datetime strings normalized to include microseconds
-    """
-    if isinstance(obj, dict):
-        return {k: normalize_datetime_strings(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [normalize_datetime_strings(item) for item in obj]
-    if isinstance(obj, str):
-        match = ISO_DATETIME_WITHOUT_MICROSECONDS.match(obj)
-        if match:
-            return f"{match.group(1)}.000000{match.group(2)}"
-        return obj
-    return obj
