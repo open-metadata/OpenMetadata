@@ -657,10 +657,10 @@ test.describe(
           ).not.toBeVisible();
 
           await page.locator('#supportedServices').click();
-          await page.locator('#supportedServices').fill('MySql');
+          await page.locator('#supportedServices').fill('Mysql');
           const mysqlOption = page
             .locator('.ant-select-dropdown:visible')
-            .getByTitle('MySql');
+            .getByTitle('Mysql');
           await expect(mysqlOption).toBeVisible();
           await mysqlOption.click();
           await page.locator('#supportedServices').clear();
@@ -847,7 +847,7 @@ test.describe(
           ).toBeVisible();
 
           await expect(
-            page.locator('.ant-select-selection-item[title="MySql"]')
+            page.locator('.ant-select-selection-item[title="Mysql"]')
           ).not.toBeVisible();
 
           await page.getByRole('button', { name: /Cancel/i }).click();

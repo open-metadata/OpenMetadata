@@ -338,7 +338,9 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           }
           name="supportedServices">
           <Select
+            showSearch
             disabled={isReadOnlyField}
+            filterOption={handleSearchFilterOption}
             mode="multiple"
             options={databaseServiceTypes}
             placeholder={t('message.empty-means-all-services')}
@@ -436,6 +438,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                       <Select
                         showSearch
                         disabled={isReadOnlyField}
+                        filterOption={handleSearchFilterOption}
                         options={Object.values(TestDataType).map((type) => ({
                           label: type,
                           value: type,
@@ -443,7 +446,6 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                         placeholder={t('label.select-field', {
                           field: t('label.data-type'),
                         })}
-                        onSearch={handleSearchFilterOption}
                       />
                     </Form.Item>
 

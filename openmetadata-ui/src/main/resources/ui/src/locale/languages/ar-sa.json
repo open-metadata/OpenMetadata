@@ -2843,7 +2843,7 @@
     "success-status-for-entity-deploy": "تم {{entityStatus}} ونشر <0>{{entity}}</0> بنجاح",
     "successful-events-description": "عدد الأحداث الناجحة لتنبيه معين.",
     "successfully-completed-the-tour": "لقد أكملت الجولة بنجاح.",
-    "supported-services-help": "Select the services where this test definition should be available. Leave empty to support all services.",
+    "supported-services-help": "حدد الخدمات التي يجب أن يكون تعريف الاختبار هذا متاحًا فيها. اتركه فارغًا لدعم جميع الخدمات.",
     "synonym-placeholder": "لإضافة مرادف، ما عليك سوى كتابته والضغط على Enter",
     "system-alert-edit-message": "لا يُسمح بتحرير تنبيه تم إنشاؤه بواسطة النظام.",
     "system-tag-delete-disable-message": "لا يُسمح بحذف علامات تم إنشاؤها بواسطة النظام. يمكنك محاولة تعطيل العلامة بدلاً من ذلك.",

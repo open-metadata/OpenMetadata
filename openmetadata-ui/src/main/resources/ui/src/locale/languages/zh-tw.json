@@ -2843,7 +2843,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0> 已 {{entityStatus}} 並成功部署",
     "successful-events-description": "特定警示的成功事件計數。",
     "successfully-completed-the-tour": "您已成功完成導覽。",
-    "supported-services-help": "Select the services where this test definition should be available. Leave empty to support all services.",
+    "supported-services-help": "選取此測試定義應可用的服務。留空則支援所有服務。",
     "synonym-placeholder": "若要新增同義詞，只需輸入並按 Enter",
     "system-alert-edit-message": "不允許編輯系統產生的警示。",
     "system-tag-delete-disable-message": "不允許刪除系統產生的標籤。您可以嘗試停用該標籤。",

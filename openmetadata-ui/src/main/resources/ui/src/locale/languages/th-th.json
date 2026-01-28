@@ -2843,7 +2843,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0> มีสถานะ {{entityStatus}} และเรียกใช้งานสำเร็จ",
     "successful-events-description": "Count of successful events for specific alert.",
     "successfully-completed-the-tour": "คุณได้ทำการทัวร์สำเร็จ!",
-    "supported-services-help": "Select the services where this test definition should be available. Leave empty to support all services.",
+    "supported-services-help": "เลือกบริการที่ต้องการให้คำนิยามการทดสอบนี้ใช้งานได้ หากเว้นว่างไว้จะรองรับทุกบริการ",
     "synonym-placeholder": "เพื่อเพิ่มคำพ้อง เพียงแค่พิมพ์และกด Enter",
     "system-alert-edit-message": "ไม่อนุญาตให้แก้ไขการแจ้งเตือนที่สร้างโดยระบบ",
     "system-tag-delete-disable-message": "ไม่อนุญาตให้ลบแท็กที่สร้างโดยระบบ คุณสามารถลองปิดใช้งานแทน",

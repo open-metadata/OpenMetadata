@@ -2843,7 +2843,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0> {{entityStatus}} केले गेले आहे आणि यशस्वीरित्या उपयोजित केले आहे",
     "successful-events-description": "Count of successful events for specific alert.",
     "successfully-completed-the-tour": "तुम्ही टूर यशस्वीरित्या पूर्ण केली आहे.",
-    "supported-services-help": "Select the services where this test definition should be available. Leave empty to support all services.",
+    "supported-services-help": "ही टेस्ट डेफिनिशन उपलब्ध असेल अशा सेवा निवडा. सर्व सेवांना समर्थन देण्यासाठी हे रिकामे ठेवा.",
     "synonym-placeholder": "समानार्थी शब्द जोडण्यासाठी, फक्त टाइप करा आणि Enter दाबा",
     "system-alert-edit-message": "सिस्टम व्युत्पन्न अलर्ट संपादित करण्याची परवानगी नाही.",
     "system-tag-delete-disable-message": "सिस्टम व्युत्पन्न टॅग्स हटविण्याची परवानगी नाही. त्याऐवजी तुम्ही टॅग अक्षम करण्याचा प्रयत्न करू शकता.",

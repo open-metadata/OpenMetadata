@@ -2843,7 +2843,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0> は{{entityStatus}}され、正常にデプロイされました",
     "successful-events-description": "特定のアラートに対する成功イベントの件数。",
     "successfully-completed-the-tour": "ツアーを無事に完了しました。",
-    "supported-services-help": "Select the services where this test definition should be available. Leave empty to support all services.",
+    "supported-services-help": "このテスト定義を利用可能にするサービスを選択します。すべてのサービスを対象にする場合は、空のままにしてください。",
     "synonym-placeholder": "シノニムを追加するには、入力してEnterを押してください",
     "system-alert-edit-message": "システム生成アラートの編集はできません。",
     "system-tag-delete-disable-message": "システム生成タグは削除できません。代わりに無効化をお試しください。",

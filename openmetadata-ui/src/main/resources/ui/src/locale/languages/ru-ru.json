@@ -2843,7 +2843,7 @@
     "success-status-for-entity-deploy": "Объект «<0>{{entity}}</0>» был {{entityStatus}} и успешно развернут",
     "successful-events-description": "Количество успешных событий для конкретного оповещения.",
     "successfully-completed-the-tour": "Вы успешно завершили экскурсию.",
-    "supported-services-help": "Select the services where this test definition should be available. Leave empty to support all services.",
+    "supported-services-help": "Выберите службы, в которых это определение теста должно быть доступно. Оставьте пустым, чтобы поддерживать все службы.",
     "synonym-placeholder": "Введите синоним и нажмите Enter.",
     "system-alert-edit-message": "Редактирование системного оповещения запрещено.",
     "system-tag-delete-disable-message": "Нельзя удалить системный тег. Отключите его, если он не нужен",

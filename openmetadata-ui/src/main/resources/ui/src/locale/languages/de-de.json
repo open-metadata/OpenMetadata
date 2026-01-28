@@ -2843,7 +2843,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0> wurde {{entityStatus}} und erfolgreich bereitgestellt",
     "successful-events-description": "Anzahl erfolgreicher Ereignisse für einen bestimmten Alert.",
     "successfully-completed-the-tour": "Sie haben die Tour erfolgreich abgeschlossen.",
-    "supported-services-help": "Select the services where this test definition should be available. Leave empty to support all services.",
+    "supported-services-help": "Wählen Sie die Dienste aus, für die diese Testdefinition verfügbar sein soll. Lassen Sie das Feld leer, um alle Dienste zu unterstützen.",
     "synonym-placeholder": "Um ein Synonym hinzuzufügen, geben Sie es einfach ein und drücken Sie Enter",
     "system-alert-edit-message": "Das Bearbeiten eines systemgenerierten Alarms ist nicht erlaubt.",
     "system-tag-delete-disable-message": "Das Löschen von systemgenerierten Tags ist nicht zulässig. Sie können versuchen, den Tag stattdessen zu deaktivieren.",

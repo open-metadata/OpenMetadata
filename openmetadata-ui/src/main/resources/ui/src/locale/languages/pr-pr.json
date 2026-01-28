@@ -2843,7 +2843,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0> با موفقیت {{entityStatus}} و مستقر شد.",
     "successful-events-description": "Count of successful events for specific alert.",
     "successfully-completed-the-tour": "شما با موفقیت تور را به پایان رساندید.",
-    "supported-services-help": "Select the services where this test definition should be available. Leave empty to support all services.",
+    "supported-services-help": "سرویسهایی را انتخاب کنید که این تعریف تست باید در آنها در دسترس باشد. برای پشتیبانی از همه سرویسها، این فیلد را خالی بگذارید.",
     "synonym-placeholder": "برای افزودن یک مترادف، آن را تایپ کنید و Enter را فشار دهید.",
     "system-alert-edit-message": "ویرایش هشدار تولید شده توسط سیستم مجاز نیست.",
     "system-tag-delete-disable-message": "حذف برچسب‌های تولید شده توسط سیستم مجاز نیست. می‌توانید برچسب را غیرفعال کنید.",
