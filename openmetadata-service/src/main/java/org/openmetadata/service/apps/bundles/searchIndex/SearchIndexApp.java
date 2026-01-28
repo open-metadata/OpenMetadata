@@ -605,7 +605,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
     stats.setEntityStats(new org.openmetadata.schema.system.EntityStats());
     stats.setJobStats(new StepStats());
     stats.setReaderStats(new StepStats());
+    stats.setProcessStats(new StepStats());
     stats.setSinkStats(new StepStats());
+    stats.setVectorStats(new StepStats());
 
     int total = 0;
     for (String entityType : entities) {
@@ -627,9 +629,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
     stats.getReaderStats().setSuccessRecords(0);
     stats.getReaderStats().setFailedRecords(0);
 
+    stats.getProcessStats().setTotalRecords(0);
+    stats.getProcessStats().setSuccessRecords(0);
+    stats.getProcessStats().setFailedRecords(0);
+
     stats.getSinkStats().setTotalRecords(0);
     stats.getSinkStats().setSuccessRecords(0);
     stats.getSinkStats().setFailedRecords(0);
+
+    stats.getVectorStats().setTotalRecords(0);
+    stats.getVectorStats().setSuccessRecords(0);
+    stats.getVectorStats().setFailedRecords(0);
 
     return stats;
   }

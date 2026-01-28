@@ -12,8 +12,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
  */
 @Slf4j
 public class StageStatsTracker {
-  private static final int FLUSH_OPERATION_THRESHOLD = 100;
-  private static final long FLUSH_TIME_INTERVAL_MS = 5000; // 5 seconds
+  private static final int FLUSH_OPERATION_THRESHOLD = 25;
+  private static final long FLUSH_TIME_INTERVAL_MS = 2000; // 2 seconds
 
   public enum Stage {
     READER,
