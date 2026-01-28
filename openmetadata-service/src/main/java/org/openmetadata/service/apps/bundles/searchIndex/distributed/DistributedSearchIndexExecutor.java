@@ -388,7 +388,7 @@ public class DistributedSearchIndexExecutor {
 
     workerExecutor =
         Executors.newFixedThreadPool(
-            numWorkers, Thread.ofPlatform().name("partition-worker-", 0).factory());
+            numWorkers, Thread.ofVirtual().name("partition-worker-", 0).factory());
 
     AtomicLong totalSuccess = new AtomicLong(0);
     AtomicLong totalFailed = new AtomicLong(0);
