@@ -66,10 +66,15 @@ export default defineConfig(({ mode }) => {
         },
       }),
       mode === 'production' &&
-        viteCompression({
-          algorithm: 'gzip',
-          ext: '.gz',
-        }),
+      viteCompression({
+        algorithm: 'gzip',
+        ext: '.gz',
+      }),
+      mode === 'production' &&
+      viteCompression({
+        algorithm: 'brotliCompress',
+        ext: '.br',
+      }),
     ].filter(Boolean),
 
     resolve: {

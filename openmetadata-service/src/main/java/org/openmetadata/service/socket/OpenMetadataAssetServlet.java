@@ -13,6 +13,12 @@
 
 package org.openmetadata.service.socket;
 
+import java.net.URL;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import jakarta.servlet.http.HttpServletResponseWrapper;
+
 import static org.openmetadata.service.exception.OMErrorPageHandler.setSecurityHeader;
 
 import io.dropwizard.servlets.assets.AssetServlet;
@@ -28,6 +34,7 @@ import org.openmetadata.service.resources.system.IndexResource;
 public class OpenMetadataAssetServlet extends AssetServlet {
   private final OMWebConfiguration webConfiguration;
   private final String basePath;
+  private final String resourcePath;
 
   public OpenMetadataAssetServlet(
       String basePath,
@@ -36,6 +43,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       @Nullable String indexFile,
       OMWebConfiguration webConf) {
     super(resourcePath, uriPath, indexFile, "text/html", StandardCharsets.UTF_8);
+    this.resourcePath = resourcePath;
     this.webConfiguration = webConf;
     this.basePath = basePath;
   }
@@ -54,6 +62,37 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       return;
     }
 
+    String acceptEncoding = req.getHeader("Accept-Encoding");
+
+    // 1. Check for Brotli (br)
+    if (acceptEncoding != null && acceptEncoding.contains("br")) {
+       try {
+         String fullResourcePath = getPathToCheck(req, requestUri, ".br");
+         URL url = this.getClass().getResource(fullResourcePath);
+         if (url != null) {
+           serveCompressed(req, resp, requestUri, "br", "br");
+           return;
+         }
+       } catch (Exception e) {
+         // Ignore and try next
+       }
+    }
+
+    // 2. Check for Gzip
+    if (acceptEncoding != null && acceptEncoding.contains("gzip")) {
+      try {
+        String fullResourcePath = getPathToCheck(req, requestUri, ".gz");
+        URL url = this.getClass().getResource(fullResourcePath);
+        
+        if (url != null) {
+          serveCompressed(req, resp, requestUri, "gzip", "gz");
+          return;
+        }
+      } catch (Exception e) {
+        // Fallback to default behavior
+      }
+    }
+
     super.doGet(req, resp);
 
     // For SPA routing: serve index.html for 404s that don't look like static asset requests
@@ -67,6 +106,46 @@ public class OpenMetadataAssetServlet extends AssetServlet {
         resp.sendError(404);
       }
     }
+  }
+
+  private String getPathToCheck(HttpServletRequest req, String requestUri, String extension) {
+      String pathToCheck = requestUri;
+      String contextPath = req.getContextPath();
+      if (contextPath != null && requestUri.startsWith(contextPath)) {
+        pathToCheck = requestUri.substring(contextPath.length());
+      }
+      return this.resourcePath + (pathToCheck.startsWith("/") ? "" : "/") + pathToCheck + extension;
+  }
+
+  private void serveCompressed(HttpServletRequest req, HttpServletResponse resp, String requestUri, String contentEncoding, String extension) throws ServletException, IOException {
+      resp.setHeader("Content-Encoding", contentEncoding);
+      String mimeType = req.getServletContext().getMimeType(requestUri);
+
+      HttpServletRequestWrapper compressedReq = new HttpServletRequestWrapper(req) {
+        @Override
+        public String getPathInfo() {
+           String pathInfo = super.getPathInfo();
+           return pathInfo != null ? pathInfo + "." + extension : null;
+        }
+
+        @Override
+        public String getRequestURI() {
+          return super.getRequestURI() + "." + extension;
+        }
+      };
+
+      HttpServletResponseWrapper compressedResp = new HttpServletResponseWrapper(resp) {
+        @Override
+        public void setContentType(String type) {
+           if (mimeType != null) {
+              super.setContentType(mimeType);
+           } else {
+              super.setContentType(type);
+           }
+        }
+      };
+
+      super.doGet(compressedReq, compressedResp);
   }
 
   /**
