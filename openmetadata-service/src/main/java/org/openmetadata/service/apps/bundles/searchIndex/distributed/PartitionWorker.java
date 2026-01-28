@@ -176,28 +176,41 @@ public class PartitionWorker {
         } catch (SearchIndexException e) {
           LOG.error("Error processing batch at offset {} for {}", currentOffset, entityType, e);
 
-          // Check if this is a reader or sink failure
           boolean isReaderFailure =
               e.getIndexingError() != null
                   && e.getIndexingError().getErrorSource()
                       == org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
 
-          if (failureRecorder != null) {
-            if (isReaderFailure) {
+          int batchFailedCount =
+              e.getIndexingError() != null && e.getIndexingError().getFailedCount() != null
+                  ? e.getIndexingError().getFailedCount()
+                  : currentBatchSize;
+
+          if (isReaderFailure) {
+            if (statsTracker != null) {
+              statsTracker.recordReaderBatch(0, batchFailedCount, 0);
+            }
+            if (failureRecorder != null) {
               failureRecorder.recordReaderFailure(
                   entityType, e.getMessage(), ExceptionUtils.getStackTrace(e));
-            } else {
-              // For sink failures, we don't have individual entity IDs here
-              failureRecorder.recordReaderFailure(
-                  entityType, "SINK: " + e.getMessage(), ExceptionUtils.getStackTrace(e));
+            }
+            readerFailedCount.addAndGet(batchFailedCount);
+          } else {
+            if (statsTracker != null) {
+              statsTracker.recordSinkBatch(0, batchFailedCount);
+            }
+            if (failureRecorder != null) {
+              failureRecorder.recordSinkFailure(
+                  entityType,
+                  "BATCH",
+                  "batch_at_offset_" + currentOffset,
+                  e.getMessage(),
+                  ExceptionUtils.getStackTrace(e));
             }
           }
 
-          failedCount.addAndGet(currentBatchSize);
-          // Only count as reader failure if it's actually from the reader
-          if (isReaderFailure) {
-            readerFailedCount.addAndGet(currentBatchSize);
-          }
+          failedCount.addAndGet(batchFailedCount);
+          processedCount.addAndGet(batchFailedCount);
           currentOffset += currentBatchSize;
 
           updateProgress(
@@ -295,18 +308,25 @@ public class PartitionWorker {
       return new BatchResult(0, 0, 0);
     }
 
+    int readSuccessCount = listOrEmpty(resultList.getData()).size();
+    int readErrorCount = listOrEmpty(resultList.getErrors()).size();
+    int warningsCount = resultList.getWarningsCount() != null ? resultList.getWarningsCount() : 0;
+
+    if (statsTracker != null) {
+      statsTracker.recordReaderBatch(readSuccessCount, readErrorCount, warningsCount);
+    }
+
     Map<String, Object> contextData = createContextData(entityType, statsTracker);
 
     try {
       writeToSink(entityType, resultList, contextData);
-      int successCount = listOrEmpty(resultList.getData()).size();
-      int failedCount = listOrEmpty(resultList.getErrors()).size();
-      int warningsCount = resultList.getWarningsCount() != null ? resultList.getWarningsCount() : 0;
-      return new BatchResult(successCount, failedCount, warningsCount);
+      return new BatchResult(readSuccessCount, readErrorCount, warningsCount);
     } catch (Exception e) {
       throw new SearchIndexException(
           new org.openmetadata.schema.system.IndexingError()
               .withErrorSource(org.openmetadata.schema.system.IndexingError.ErrorSource.SINK)
+              .withSubmittedCount(readSuccessCount)
+              .withFailedCount(readSuccessCount)
               .withMessage("Failed to write batch to search index: " + e.getMessage()));
     }
   }

@@ -65,6 +65,11 @@ public class StageStatsTracker {
     checkFlush();
   }
 
+  public void recordReaderBatch(int successCount, int failedCount, int warningsCount) {
+    reader.add(successCount, failedCount, warningsCount);
+    checkFlush();
+  }
+
   public void recordProcess(StatsResult result) {
     process.record(result);
     checkFlush();
@@ -73,6 +78,11 @@ public class StageStatsTracker {
   public void recordSink(StatsResult result) {
     sink.record(result);
     pendingSinkOps.decrementAndGet();
+    checkFlush();
+  }
+
+  public void recordSinkBatch(int successCount, int failedCount) {
+    sink.add(successCount, failedCount, 0);
     checkFlush();
   }
 
