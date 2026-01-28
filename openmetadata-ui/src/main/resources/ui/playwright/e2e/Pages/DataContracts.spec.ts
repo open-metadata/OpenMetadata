@@ -672,6 +672,10 @@ test.describe('Data Contracts', () => {
 
         await toastNotification(page, '"Contract" deleted successfully!');
 
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
         await expect(page.getByTestId('add-contract-button')).toBeVisible();
       });
@@ -690,6 +694,10 @@ test.describe('Data Contracts', () => {
         await deleteContract(page);
 
         await toastNotification(page, '"Contract" deleted successfully!');
+
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
       });
