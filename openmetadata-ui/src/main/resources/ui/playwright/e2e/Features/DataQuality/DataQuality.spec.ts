@@ -382,7 +382,7 @@ test.describe(
        */
       await test.step('Create', async () => {
         const testDefinitionResponse = page.waitForResponse(
-          '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
+          '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR&supportedService=Mysql*'
         );
         await page.click('[id="root\\/column"]');
         await page.click(`[title="${NEW_COLUMN_TEST_CASE.column}"]`);

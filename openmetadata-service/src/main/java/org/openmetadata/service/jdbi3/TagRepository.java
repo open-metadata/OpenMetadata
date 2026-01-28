@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
@@ -67,6 +68,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadCursorException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -180,8 +182,15 @@ public class TagRepository extends EntityRepository<Tag> {
     // Validate recognizers
     if (entity.getRecognizers() != null) {
       for (org.openmetadata.schema.type.Recognizer recognizer : entity.getRecognizers()) {
+        prepareRecognizer(recognizer);
         validateRecognizer(recognizer);
       }
+    }
+  }
+
+  private void prepareRecognizer(org.openmetadata.schema.type.Recognizer recognizer) {
+    if (recognizer.getId() == null) {
+      recognizer.setId(UUID.randomUUID());
     }
   }
 
@@ -195,6 +204,10 @@ public class TagRepository extends EntityRepository<Tag> {
       if (threshold < 0.0 || threshold > 1.0) {
         throw new IllegalArgumentException("confidenceThreshold must be between 0.0 and 1.0");
       }
+    }
+
+    if (recognizer.getId() == null) {
+      throw new IllegalArgumentException("Can't create recognizer without an ID");
     }
   }
 
@@ -656,10 +669,23 @@ public class TagRepository extends EntityRepository<Tag> {
       return new DescriptionTaskWorkflow(threadContext);
     } else if (EntityUtil.isTagTask(taskType)) {
       return new TagTaskWorkflow(threadContext);
+    } else if (isRecognizerFeedbackTask(threadContext.getThread().getId())) {
+      return new RecognizerFeedbackTaskWorkflow(threadContext);
     } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
       return new ApprovalTaskWorkflow(threadContext);
     }
     return super.getTaskWorkflow(threadContext);
+  }
+
+  private boolean isRecognizerFeedbackTask(UUID taskId) {
+    try {
+      FeedRepository feedRepository = Entity.getFeedRepository();
+      Thread thread = feedRepository.get(taskId);
+      return thread.getTask() != null && thread.getTask().getFeedback() != null;
+    } catch (Exception e) {
+      LOG.debug("Failed to check if task is recognizer feedback task", e);
+    }
+    return false;
   }
 
   public static class ApprovalTaskWorkflow extends TaskWorkflow {
@@ -681,7 +707,6 @@ public class TagRepository extends EntityRepository<Tag> {
           workflowHandler.resolveTask(
               taskId, workflowHandler.transformToNodeVariables(taskId, variables));
 
-      // If workflow failed (corrupted Flowable task), apply the status directly
       if (!workflowSuccess) {
         LOG.warn(
             "[GlossaryTerm] Workflow failed for taskId='{}', applying status directly", taskId);
@@ -689,6 +714,55 @@ public class TagRepository extends EntityRepository<Tag> {
         String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
         EntityFieldUtils.setEntityField(tag, TAG, user, FIELD_ENTITY_STATUS, entityStatus, true);
       }
+      return tag;
+    }
+  }
+
+  public static class RecognizerFeedbackTaskWorkflow extends TaskWorkflow {
+    RecognizerFeedbackTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      Tag tag = (Tag) threadContext.getAboutEntity();
+      TagRepository.checkUpdatedByReviewer(tag, user);
+
+      UUID taskId = threadContext.getThread().getId();
+      Map<String, Object> variables = new HashMap<>();
+      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
+      variables.put(UPDATED_BY_VARIABLE, user);
+
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      boolean workflowSuccess =
+          workflowHandler.resolveTask(
+              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      if (!workflowSuccess) {
+        LOG.warn(
+            "[RecognizerFeedback] Workflow failed for taskId='{}', attempting direct resolution",
+            taskId);
+        try {
+          org.openmetadata.schema.type.RecognizerFeedback feedback =
+              threadContext.getThread().getTask().getFeedback();
+          if (feedback != null) {
+            RecognizerFeedbackRepository repo =
+                new RecognizerFeedbackRepository(Entity.getCollectionDAO());
+
+            boolean approved =
+                resolveTask.getNewValue() != null
+                    && resolveTask.getNewValue().equalsIgnoreCase("approved");
+            if (approved) {
+              repo.applyFeedback(feedback, user);
+            } else {
+              repo.rejectFeedback(feedback, user, null);
+            }
+          }
+        } catch (Exception e) {
+          LOG.error("[RecognizerFeedback] Failed to resolve feedback directly", e);
+        }
+      }
+
       return tag;
     }
   }
@@ -957,5 +1031,127 @@ public class TagRepository extends EntityRepository<Tag> {
         throw new AuthorizationException(notReviewer(updatedBy));
       }
     }
+  }
+
+  private String getRecognizerCursorValue(Recognizer recognizer) {
+    Map<String, String> map =
+        Map.of("id", recognizer.getId().toString(), "name", recognizer.getName());
+    return JsonUtils.pojoToJson(map);
+  }
+
+  public ResultList<Recognizer> getRecognizersOfTagById(
+      UUID tagId, String before, String after, int limit) {
+    Tag tag = get(null, tagId, getFields("recognizers"));
+    return getRecognizersOfTag(tag, before, after, limit);
+  }
+
+  public ResultList<Recognizer> getRecognizersOfTagByFQN(
+      String tagFqn, String before, String after, int limit) {
+    Tag tag = getByName(null, tagFqn, getFields("recognizers"));
+    return getRecognizersOfTag(tag, before, after, limit);
+  }
+
+  public ResultList<Recognizer> getRecognizersOfTag(
+      Tag tag, String before, String after, int limit) {
+    ResultList<Recognizer> result;
+
+    if (tag.getRecognizers() == null || tag.getRecognizers().isEmpty()) {
+      return new ResultList<>(Collections.emptyList(), null, null, 0);
+    }
+
+    if (before != null) {
+      result = listRecognizersBeforeCursor(tag.getRecognizers(), before, limit);
+    } else {
+      result = listRecognizersAfterCursor(tag.getRecognizers(), after, limit);
+    }
+
+    return result;
+  }
+
+  private UUID extractIdFromCursor(String cursor) {
+    UUID id = null;
+    if (cursor != null) {
+      try {
+        Map<String, String> map = parseCursorMap(RestUtil.decodeCursor(cursor));
+        String idString = map.get("id");
+
+        if (idString == null) {
+          throw new BadCursorException();
+        }
+
+        id = UUID.fromString(idString);
+
+      } catch (Exception e) {
+        throw new BadCursorException();
+      }
+    }
+    return id;
+  }
+
+  private ResultList<Recognizer> listRecognizersAfterCursor(
+      List<Recognizer> recognizers, String after, int limit) {
+    UUID afterId;
+
+    try {
+      afterId = extractIdFromCursor(after);
+    } catch (BadCursorException ignored) {
+      throw new BadCursorException("Invalid `after` cursor");
+    }
+
+    return listRecognizersAfter(recognizers, afterId, limit);
+  }
+
+  private ResultList<Recognizer> listRecognizersBeforeCursor(
+      List<Recognizer> recognizers, String before, int limit) {
+    UUID beforeId;
+
+    try {
+      beforeId = extractIdFromCursor(before);
+    } catch (BadCursorException ignored) {
+      throw new BadCursorException("Invalid `before` cursor");
+    }
+
+    return listRecognizersAfter(recognizers.reversed(), beforeId, limit);
+  }
+
+  private ResultList<Recognizer> listRecognizersAfter(
+      List<Recognizer> recognizers, UUID startId, int limit) {
+    int total = recognizers.size();
+
+    boolean append = startId == null;
+    limit = limit > 0 ? Math.min(total, limit) : total;
+
+    List<Recognizer> result = new ArrayList<>(limit);
+    int startIndex = 0;
+    int endIndex = -1;
+
+    for (int i = 0; i < recognizers.size(); i++) {
+      Recognizer recognizer = recognizers.get(i);
+
+      if (result.size() >= limit) {
+        break;
+      }
+
+      if (!append) {
+        append = startId.equals(recognizer.getId());
+        continue;
+      }
+
+      if (result.isEmpty()) {
+        startIndex = i;
+      }
+      endIndex = i;
+      result.add(recognizer);
+    }
+
+    if (result.isEmpty()) {
+      return new ResultList<>(result, null, null, total);
+    }
+
+    String newBefore = (startIndex == 0) ? null : getRecognizerCursorValue(result.getFirst());
+    String newAfter =
+        (endIndex == recognizers.size() - 1) ? null : getRecognizerCursorValue(result.getLast());
+
+    return new ResultList<>(result, newBefore, newAfter, total);
   }
 }

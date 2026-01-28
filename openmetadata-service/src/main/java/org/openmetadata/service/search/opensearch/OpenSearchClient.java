@@ -4,7 +4,7 @@ import static org.openmetadata.service.search.SearchUtils.buildHttpHosts;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 import static org.openmetadata.service.util.AwsCredentialsUtil.buildCredentialsProvider;
-import static org.openmetadata.service.util.AwsCredentialsUtil.isAwsConfigured;
+import static org.openmetadata.service.util.AwsCredentialsUtil.isAwsIamAuthEnabled;
 
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
@@ -228,6 +228,11 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public Set<String> listIndicesByPrefix(String prefix) {
     return indexManager.listIndicesByPrefix(prefix);
+  }
+
+  @Override
+  public List<IndexStats> getAllIndexStats() throws IOException {
+    return indexManager.getAllIndexStats();
   }
 
   @Override
@@ -625,8 +630,8 @@ public class OpenSearchClient implements SearchClient {
         RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
 
         AwsConfiguration awsConfig = esConfig.getAws();
-        // Enable IAM auth if AWS region is configured (region is required for SigV4 signing)
-        boolean useIamAuth = isAwsConfigured(awsConfig);
+        // Enable IAM auth only if explicitly enabled and region is configured
+        boolean useIamAuth = isAwsIamAuthEnabled(awsConfig);
 
         restClientBuilder.setHttpClientConfigCallback(
             httpAsyncClientBuilder -> {

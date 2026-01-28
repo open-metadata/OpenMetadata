@@ -233,6 +233,10 @@
     "sqlExpression": {
       "description": "SQL expression template for custom SQL-based test definitions. Supports substitution variables: {table} and {column} for runtime entity references, and {{paramName}} for user-defined parameters. This field is only applicable for test definitions with testPlatforms set to 'OpenMetadata' and is used to execute custom SQL queries for data quality validation.",
       "$ref": "../type/basic.json#/definitions/sqlQuery"
+    },
+    "validatorClass": {
+      "description": "Class name of the validator to use for this test definition. This field is used to map the test definition to its corresponding validation logic in the data quality framework.",
+      "type": "string"
     }
   },
   "required": ["name", "description", "testPlatforms"],

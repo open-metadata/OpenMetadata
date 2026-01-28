@@ -18,5 +18,6 @@
   "supportsRowLevelPassedFailed": true,
   "provider": "system",
   "enabled": true,
-  "dataQualityDimension": "Validity"
+  "dataQualityDimension": "Validity",
+  "validatorClass": "ColumnValuesToMatchRegexValidator"
 }

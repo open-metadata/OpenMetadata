@@ -184,10 +184,10 @@ export const selectOption = async (
   isSearchable = false
 ) => {
   if (isSearchable) {
-    // Force click on the selector to ensure it opens even if there's an existing selection
-    await dropdownLocator
-      .locator('.ant-select-selector')
-      .click({ force: true });
+    // Wait for dropdown to be visible before clicking
+    const selector = dropdownLocator.locator('.ant-select-selector');
+    await expect(selector).toBeVisible();
+    await selector.click();
 
     await dropdownLocator
       .locator('.ant-select-arrow-loading svg[data-icon="loading"]')
@@ -216,10 +216,13 @@ export const selectOption = async (
     state: 'visible',
   });
 
+  // CRITICAL: Use :visible selector chain pattern (Rule 4 from deflake guide)
+  // Use .first() to handle multiple matches (acceptable when scoped to visible dropdown)
   const optionLocator = page
-    .locator(`.ant-select-dropdown:visible [title="${optionTitle}"]`)
+    .locator('.ant-select-dropdown:visible')
+    .locator(`[title="${optionTitle}"]`)
     .first();
-  await optionLocator.waitFor({ state: 'visible' });
+  await expect(optionLocator).toBeVisible();
   await optionLocator.click();
 };
 
