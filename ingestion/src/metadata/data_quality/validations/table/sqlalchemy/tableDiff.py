@@ -416,11 +416,11 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             extra_columns=self.runtime_params.table2.extra_columns,
             case_sensitive=self.get_case_sensitive(),
             where=right_where,
-            key_content=self.runtime_params.table1.privateKey.get_secret_value()
-            if self.runtime_params.table1.privateKey
+            key_content=self.runtime_params.table2.privateKey.get_secret_value()
+            if self.runtime_params.table2.privateKey
             else None,
-            private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
-            if self.runtime_params.table1.passPhrase
+            private_key_passphrase=self.runtime_params.table2.passPhrase.get_secret_value()
+            if self.runtime_params.table2.passPhrase
             else None,
         )
         data_diff_kwargs = {

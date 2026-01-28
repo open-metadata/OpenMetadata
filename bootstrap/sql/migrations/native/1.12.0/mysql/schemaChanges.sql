@@ -214,9 +214,11 @@ CREATE TABLE IF NOT EXISTS search_index_server_stats (
     serverId VARCHAR(256) NOT NULL,
     readerSuccess BIGINT DEFAULT 0,
     readerFailed BIGINT DEFAULT 0,
+    readerWarnings BIGINT DEFAULT 0,
     sinkTotal BIGINT DEFAULT 0,
     sinkSuccess BIGINT DEFAULT 0,
     sinkFailed BIGINT DEFAULT 0,
+    sinkWarnings BIGINT DEFAULT 0,
     entityBuildFailures BIGINT DEFAULT 0,
     partitionsCompleted INT DEFAULT 0,
     partitionsFailed INT DEFAULT 0,
@@ -225,3 +227,16 @@ CREATE TABLE IF NOT EXISTS search_index_server_stats (
     UNIQUE INDEX idx_search_index_server_stats_job_server (jobId, serverId),
     INDEX idx_search_index_server_stats_job_id (jobId)
 );
+
+-- Create Learning Resource Entity Table
+CREATE TABLE IF NOT EXISTS learning_resource_entity (
+  id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,'$.id'))) STORED NOT NULL,
+  name varchar(3072) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,'$.fullyQualifiedName'))) VIRTUAL,
+  fqnHash varchar(256) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  json json NOT NULL,
+  updatedAt bigint UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(`json`,'$.updatedAt'))) VIRTUAL NOT NULL,
+  updatedBy varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,'$.updatedBy'))) VIRTUAL NOT NULL,
+  deleted TINYINT(1) GENERATED ALWAYS AS (IF(json_extract(json,'$.deleted') = TRUE, 1, 0)) VIRTUAL,
+  PRIMARY KEY (id),
+  UNIQUE KEY fqnHash (fqnHash)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
