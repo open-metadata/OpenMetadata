@@ -122,6 +122,7 @@ const SSOConfigurationFormRJSF = ({
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [modalSaveLoading, setModalSaveLoading] = useState<boolean>(false);
   const [isModalSave, setIsModalSave] = useState<boolean>(false);
+  const [errorClearTrigger, setErrorClearTrigger] = useState<number>(0);
   const fieldErrorsRef = useRef<ErrorSchema>({});
 
   // Helper function to setup configuration state - extracted to avoid redundancy
@@ -537,8 +538,12 @@ const SSOConfigurationFormRJSF = ({
         Object.keys(fieldErrorsRef.current).length > 0
       ) {
         const changedFields = findChangedFields(internalData, newFormData);
-        for (const fieldPath of changedFields) {
-          handleClearFieldError(fieldPath);
+        if (changedFields.length > 0) {
+          for (const fieldPath of changedFields) {
+            handleClearFieldError(fieldPath);
+          }
+          // Force form to re-render and re-validate with cleared errors
+          setErrorClearTrigger((prev) => prev + 1);
         }
       }
 
@@ -713,6 +718,7 @@ const SSOConfigurationFormRJSF = ({
   const handleSave = async () => {
     updateLoadingState(isModalSave, setIsLoading, true);
     fieldErrorsRef.current = {};
+    setErrorClearTrigger(0);
 
     try {
       // Prepare payload
@@ -765,6 +771,8 @@ const SSOConfigurationFormRJSF = ({
 
   const handleCancelConfirm = () => {
     setShowCancelModal(false);
+    fieldErrorsRef.current = {};
+    setErrorClearTrigger(0);
 
     // For existing/configured SSO, discard changes and stay on the same page
     if (hasExistingConfig && savedData) {
@@ -876,7 +884,10 @@ const SSOConfigurationFormRJSF = ({
           }}
           formData={internalData}
           idSeparator="/"
-          liveValidate={Object.keys(fieldErrorsRef.current).length > 0}
+          liveValidate={
+            Object.keys(fieldErrorsRef.current).length > 0 ||
+            errorClearTrigger > 0
+          }
           schema={schema}
           showErrorList={false}
           templates={{

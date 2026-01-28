@@ -69,13 +69,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
     const fetchRoles = async () => {
       setIsLoadingRoles(true);
       try {
-        const response = await getRoles(
-          '*',
-          undefined,
-          undefined,
-          undefined,
-          1000
-        );
+        const response = await getRoles('*', undefined, undefined, true, 1000);
         const roleOptions: RoleOption[] = (response.data || []).map((role) => ({
           label: role.displayName || role.name,
           value: role.name,

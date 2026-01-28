@@ -176,7 +176,7 @@ export const LDAP_UI_SCHEMA = {
     roleAdminName: { 'ui:title': 'Admin Role Name' },
     allAttributeName: { 'ui:title': 'All Attribute Name' },
     mailAttributeName: { 'ui:title': 'Mail Attribute Name' },
-    usernameAttributeName: { 'ui:title': 'Username Attribute Name' },
+    usernameAttributeName: { 'ui:widget': 'hidden', 'ui:hideError': true },
     groupAttributeName: { 'ui:title': 'Group Attribute Name' },
     groupAttributeValue: { 'ui:title': 'Group Attribute Value' },
     groupMemberAttributeName: { 'ui:title': 'Group Member Attribute Name' },

@@ -124,18 +124,6 @@ LDAP authentication enables users to log in with their LDAP directory credential
 - **How to find in phpLDAPadmin:** Open a user object and look for the attribute containing their email address
 - **Validation:** OpenMetadata verifies this attribute exists on actual users before saving
 
-## <span data-id="usernameAttributeName">Username Attribute Name</span>
-
-- **Definition:** LDAP attribute containing the username (NOT currently used in OpenMetadata).
-- **Example:** uid or sAMAccountName
-- **Current Status:** This field is defined but NOT used during LDAP authentication
-- **How Username is Determined:**
-  - Username is **automatically derived from the email address**
-  - Formula: `username = email.split("@")[0]`
-  - Example: `john.doe@company.com` → username will be `john.doe`
-  - LDAP CN, UID, or other attributes are ignored
-- **Note:** You can leave this field with any value - it has no effect on authentication
-
 ## <span data-id="groupAttributeName">Group Attribute Name</span>
 
 - **Definition:** Attribute name used to identify and filter group objects in LDAP.
