@@ -146,8 +146,7 @@ test.describe('Right Panel Page Objects Test Suite', () => {
       // Dashboard service already existed, don't delete it
       await testTag.delete(apiContext);
       await testClassification.delete(apiContext);
-      await testGlossaryTerm.delete(apiContext);
-      await testGlossary.delete(apiContext);
+      await testGlossaryTerm.delete(apiContext)
       await domainEntity.delete(apiContext);
     } finally {
       await afterAction();
