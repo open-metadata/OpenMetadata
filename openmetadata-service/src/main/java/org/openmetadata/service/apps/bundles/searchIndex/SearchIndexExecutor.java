@@ -452,16 +452,16 @@ public class SearchIndexExecutor implements AutoCloseable {
     producersDone.set(false);
 
     jobExecutor =
-        Executors.newFixedThreadPool(entityCount, Thread.ofPlatform().name("job-", 0).factory());
+        Executors.newFixedThreadPool(entityCount, Thread.ofVirtual().name("job-", 0).factory());
 
     int finalNumConsumers = Math.min(threadConfig.numConsumers(), MAX_CONSUMER_THREADS);
     consumerExecutor =
         Executors.newFixedThreadPool(
-            finalNumConsumers, Thread.ofPlatform().name("consumer-", 0).factory());
+            finalNumConsumers, Thread.ofVirtual().name("consumer-", 0).factory());
 
     producerExecutor =
         Executors.newFixedThreadPool(
-            threadConfig.numProducers(), Thread.ofPlatform().name("producer-", 0).factory());
+            threadConfig.numProducers(), Thread.ofVirtual().name("producer-", 0).factory());
 
     return effectiveQueueSize;
   }
