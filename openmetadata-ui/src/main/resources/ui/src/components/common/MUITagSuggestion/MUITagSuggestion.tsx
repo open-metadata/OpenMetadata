@@ -15,14 +15,14 @@ import { Autocomplete, Box, TextField } from '@mui/material';
 import { debounce, isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
-  FC,
-  HtmlHTMLAttributes,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    FC,
+    HtmlHTMLAttributes,
+    ReactNode,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagSource } from '../../../generated/entity/data/container';
@@ -255,6 +255,11 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
             );
           })
       }
+      // We override filterOptions to return options unchanged because our search is async,
+      // so filtering is already performed server-side. This prevents MUI Autocomplete from
+      // applying its default client-side filtering, which could hide results we want to show.
+      // See https://mui.com/material-ui/react-autocomplete/#search-as-you-type for reference.
+      filterOptions={(options) => options}
       size="small"
       value={selectedOptions}
       onChange={handleChange}
