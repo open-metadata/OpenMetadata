@@ -907,14 +907,18 @@ test.describe('Classification Page Tests', () => {
       await page.waitForLoadState('networkidle');
       await waitForAllLoadersToDisappear(page);
 
-      const firstColumnName = table.entity?.columns[0].name;
-      const columnRowSelector = `[data-row-key$="${firstColumnName}"]`;
 
       // Step 1: Add Tag A to the first column
+      const firstColumnIndex = 0;
+      const rowName = await page.getByTestId('column-name').first().textContent() ?? '';
       await test.step('Add Tag A to column', async () => {
-        await page.click(
-          `${columnRowSelector} [data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]`
-        );
+        await addTagToTableColumn(page, {
+          tagName: tagA.data.name,
+          tagFqn: tagA.responseData.fullyQualifiedName,
+          tagDisplayName: tagA.responseData.displayName,
+          columnNumber: firstColumnIndex,
+          rowName: rowName,
+        });
 
         await page.fill('[data-testid="tag-selector"] input', tagA.data.name);
 
@@ -941,13 +945,13 @@ test.describe('Classification Page Tests', () => {
         // Verify Tag A was added successfully
         await expect(
           page.locator(
-            `${columnRowSelector} [data-testid="classification-tags-0"] [data-testid="tags-container"]`
+            `${rowName} [data-testid="classification-tags-0"] [data-testid="tags-container"]`
           )
         ).toContainText(tagA.responseData.displayName);
 
         await expect(
           page.locator(
-            `${columnRowSelector} [data-testid="classification-tags-0"] [data-testid="tags-container"] [data-testid="tag-${tagA.responseData.fullyQualifiedName}"]`
+            `${rowName} [data-testid="classification-tags-0"] [data-testid="tags-container"] [data-testid="tag-${tagA.responseData.fullyQualifiedName}"]`
           )
         ).toBeVisible();
       });
@@ -957,9 +961,13 @@ test.describe('Classification Page Tests', () => {
         'Add Tag B to same column (should replace Tag A)',
         async () => {
           // Click edit button to modify existing tags on the same column
-          await page.click(
-            `${columnRowSelector} [data-testid="classification-tags-0"] [data-testid="tags-container"] [data-testid="edit-button"]`
-          );
+         await addTagToTableColumn(page, {
+          tagName: tagB.data.name,
+          tagFqn: tagB.responseData.fullyQualifiedName,
+          tagDisplayName: tagB.responseData.displayName,
+          columnNumber: firstColumnIndex,
+          rowName: rowName,
+        });
 
           // const tagSearchResponse2 = page.waitForResponse(
           //   `/api/v1/search/query?q=*${encodeURIComponent(tagB.data.name)}*`
@@ -1003,7 +1011,7 @@ test.describe('Classification Page Tests', () => {
         await expect(page.locator('.ant-select-dropdown')).not.toBeVisible();
 
         const tagContainer = page.locator(
-          `${columnRowSelector} [data-testid="classification-tags-0"] [data-testid="tags-container"]`
+          `${rowName} [data-testid="classification-tags-0"] [data-testid="tags-container"]`
         );
 
         // Verify that Tag A is still present (not replaced)
