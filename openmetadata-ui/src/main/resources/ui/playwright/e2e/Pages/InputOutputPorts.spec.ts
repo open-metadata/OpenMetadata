@@ -129,7 +129,6 @@ test.describe('Input Output Ports', () => {
       page,
     }) => {
       const dataProduct = new DataProduct([domain]);
-
       await test.step('Create data product via API', async () => {
         const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);

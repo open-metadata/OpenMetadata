@@ -19,6 +19,7 @@ import { EntityTypeEndpoint } from '../entity/Entity.interface';
 import { EntityClass } from '../entity/EntityClass';
 import { Domain } from './Domain';
 import { SubDomain } from './SubDomain';
+import { getEncodedFqn } from '../../utils/entity';
 
 type UserTeamRef = {
   name: string;
@@ -123,9 +124,9 @@ export class DataProduct extends EntityClass {
 
     return response.body;
   }
-
+  
   private getFqn() {
-    return this.responseData?.fullyQualifiedName ?? this.data.name;
+    return this.data?.fullyQualifiedName ?? this.data.name;
   }
 
   async addAssets(
@@ -152,7 +153,7 @@ export class DataProduct extends EntityClass {
     assets: { id: string; type: string }[]
   ) {
     const response = await apiContext.put(
-      `/api/v1/dataProducts/name/${encodeURIComponent(
+      `/api/v1/dataProducts/name/${getEncodedFqn(
         this.getFqn()
       )}/inputPorts/add`,
       {
@@ -168,7 +169,7 @@ export class DataProduct extends EntityClass {
     assets: { id: string; type: string }[]
   ) {
     const response = await apiContext.put(
-      `/api/v1/dataProducts/name/${encodeURIComponent(
+      `/api/v1/dataProducts/name/${getEncodedFqn(
         this.getFqn()
       )}/outputPorts/add`,
       {
@@ -184,7 +185,7 @@ export class DataProduct extends EntityClass {
     assets: { id: string; type: string }[]
   ) {
     const response = await apiContext.put(
-      `/api/v1/dataProducts/name/${encodeURIComponent(
+      `/api/v1/dataProducts/name/${getEncodedFqn(
         this.getFqn()
       )}/inputPorts/remove`,
       {
@@ -200,7 +201,7 @@ export class DataProduct extends EntityClass {
     assets: { id: string; type: string }[]
   ) {
     const response = await apiContext.put(
-      `/api/v1/dataProducts/name/${encodeURIComponent(
+      `/api/v1/dataProducts/name/${getEncodedFqn(
         this.getFqn()
       )}/outputPorts/remove`,
       {
@@ -226,7 +227,7 @@ export class DataProduct extends EntityClass {
       queryParams.set('fields', params.fields);
     }
     const queryString = queryParams.toString();
-    const url = `/api/v1/dataProducts/name/${encodeURIComponent(
+    const url = `/api/v1/dataProducts/name/${getEncodedFqn(
       this.getFqn()
     )}/inputPorts${queryString ? `?${queryString}` : ''}`;
 
@@ -250,7 +251,7 @@ export class DataProduct extends EntityClass {
       queryParams.set('fields', params.fields);
     }
     const queryString = queryParams.toString();
-    const url = `/api/v1/dataProducts/name/${encodeURIComponent(
+    const url = `/api/v1/dataProducts/name/${getEncodedFqn(
       this.getFqn()
     )}/outputPorts${queryString ? `?${queryString}` : ''}`;
 
@@ -282,7 +283,7 @@ export class DataProduct extends EntityClass {
       queryParams.set('outputOffset', params.outputOffset.toString());
     }
     const queryString = queryParams.toString();
-    const url = `/api/v1/dataProducts/name/${encodeURIComponent(
+    const url = `/api/v1/dataProducts/name/${getEncodedFqn(
       this.getFqn()
     )}/portsView${queryString ? `?${queryString}` : ''}`;
 
