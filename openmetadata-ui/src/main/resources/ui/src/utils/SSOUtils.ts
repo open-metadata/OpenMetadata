@@ -294,6 +294,37 @@ export const clearFieldError = (
 };
 
 /**
+ * Provider-specific JWT principal claims defaults
+ * These are known-good claims that work with each provider
+ * Order matters - first matching claim is used for user identification
+ */
+const PROVIDER_JWT_PRINCIPAL_CLAIMS: Record<string, string[]> = {
+  [AuthProvider.Google]: ['email', 'preferred_username', 'sub'],
+  [AuthProvider.Azure]: ['preferred_username', 'email', 'upn', 'sub'],
+  [AuthProvider.Okta]: ['email', 'preferred_username', 'sub'],
+  [AuthProvider.Auth0]: ['email', 'name', 'sub'],
+  [AuthProvider.AwsCognito]: ['email', 'cognito:username', 'sub'],
+  [AuthProvider.CustomOidc]: ['email', 'preferred_username', 'sub'],
+  [AuthProvider.LDAP]: ['email', 'preferred_username', 'sub'],
+  [AuthProvider.Saml]: ['email', 'preferred_username', 'sub'],
+};
+
+/**
+ * Gets provider-specific JWT principal claims
+ * @param provider - The authentication provider
+ * @returns Array of claim names in priority order
+ */
+const getProviderJwtClaims = (provider: AuthProvider): string[] => {
+  return (
+    PROVIDER_JWT_PRINCIPAL_CLAIMS[provider] || [
+      'email',
+      'preferred_username',
+      'sub',
+    ]
+  );
+};
+
+/**
  * Gets default configuration values based on the selected provider
  * @param provider - The authentication provider
  * @param clientType - The client type (Public or Confidential)
@@ -305,7 +336,6 @@ export const getDefaultsForProvider = (
 ): FormData => {
   const isGoogle = provider === AuthProvider.Google;
   const isSaml = provider === AuthProvider.Saml;
-  const isLdap = provider === AuthProvider.LDAP;
 
   const {
     discoveryUri = '',
@@ -325,7 +355,7 @@ export const getDefaultsForProvider = (
     callbackUrl: '',
     publicKeyUrls: [],
     tokenValidationAlgorithm: 'RS256',
-    jwtPrincipalClaims: isLdap ? ['email', 'preferred_username', 'sub'] : [],
+    jwtPrincipalClaims: getProviderJwtClaims(provider),
     jwtPrincipalClaimsMapping: [],
     // Always include authority and publicKeyUrls for Google (required by backend)
     ...(isGoogle
@@ -341,8 +371,6 @@ export const getDefaultsForProvider = (
           publicKeyUrls: [],
           clientId: '',
           tokenValidationAlgorithm: 'RS256',
-          jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
-          jwtPrincipalClaimsMapping: [],
           samlConfiguration: {
             debugMode: false,
             idp: {

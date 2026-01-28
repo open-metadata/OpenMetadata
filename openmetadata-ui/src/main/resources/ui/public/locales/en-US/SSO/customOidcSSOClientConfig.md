@@ -29,13 +29,16 @@ Custom OIDC authentication enables integration with any OpenID Connect compliant
 - **Required:** Yes
 - **Note:** Must be publicly accessible and return valid OIDC discovery document at `/.well-known/openid_configuration`
 
-## <span data-id="callbackUrl">Callback URL</span>
+## <span data-id="callbackUrl">Callback URL / Redirect URI</span>
 
-- **Definition:** URL where users are redirected after authentication.
-- **Example:** https://yourapp.company.com/callback
-- **Why it matters:** Must match the redirect URI configured in your OIDC provider.
-- **Required:** Yes
-- **Setup:** Add this URL to your OIDC provider's allowed redirect URIs.
+- **Definition:** URL where the OIDC provider redirects after authentication.
+- **Auto-Generated:** This field is automatically populated as `{your-domain}/callback`.
+- **Example:** https://openmetadata.company.com/callback
+- **Why it matters:** Must be registered in your OIDC provider configuration.
+- **Note:**
+  - **This field is read-only** - it cannot be edited
+  - **Copy this exact URL** and add it to your OIDC provider's allowed redirect URIs list
+  - Format is always: `{your-domain}/callback`
 
 ## <span data-id="scopes">Scopes</span>
 
@@ -49,14 +52,6 @@ Custom OIDC authentication enables integration with any OpenID Connect compliant
   - `email`: Access to user email address
   - `groups`: Access to user group memberships (if supported)
 
-## <span data-id="tokenValidation">Token Validation Algorithm</span>
-
-- **Definition:** Algorithm used to validate JWT tokens from your OIDC provider.
-- **Default:** RS256
-- **Options:** RS256, RS384, RS512, HS256, HS384, HS512
-- **Why it matters:** Must match the algorithm your OIDC provider uses to sign tokens.
-- **Note:** RS256 is recommended for most providers.
-
 ## <span data-id="publicKey">Public Key / JWK URI</span>
 
 - **Definition:** Public key or JSON Web Key Set URI for token validation.
@@ -66,8 +61,14 @@ Custom OIDC authentication enables integration with any OpenID Connect compliant
 
 ## <span data-id="principals">JWT Principal Claims</span>
 
+> ⚠️ **CRITICAL WARNING**: Incorrect claims will **lock out ALL users including admins**!
+> - These claims MUST exist in JWT tokens from your OIDC provider
+> - Order matters: first matching claim is used for user identification
+> - **Default values (email, preferred_username, sub) work for most standard OIDC providers**
+> - Verify with your provider's documentation before changing
+
 - **Definition:** JWT claim names that contain user principal information.
-- **Default:** ["email", "preferred_username", "sub"]
+- **Default:** ["email", "preferred_username", "sub"] (recommended)
 - **Example:** ["email", "username", "sub"]
 - **Why it matters:** Maps JWT claims to OpenMetadata user identities.
 

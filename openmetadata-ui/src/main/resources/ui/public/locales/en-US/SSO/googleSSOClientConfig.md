@@ -83,7 +83,14 @@ Google Single Sign-On (SSO) enables users to log in with their Google Workspace 
 
 ### <span data-id="principals">JWT Principal Claims</span>
 
+> ⚠️ **CRITICAL WARNING**: Incorrect claims will **lock out ALL users including admins**!
+> - These claims MUST exist in JWT tokens from Google
+> - Order matters: first matching claim is used for user identification
+> - **Default values (email, preferred_username, sub) work for most Google configurations**
+> - Only change if you have custom claim requirements
+
 - **Definition:** JWT claims used to identify the user principal.
+- **Default:** ["email", "preferred_username", "sub"] (recommended)
 - **Example:** ["email", "sub", "preferred_username"]
 - **Why it matters:** Determines which claim from the JWT token identifies the user.
 - **Note:** Common claims: email (recommended), sub, preferred_username
@@ -114,20 +121,11 @@ Google Single Sign-On (SSO) enables users to log in with their Google Workspace 
   - Common custom attributes can be configured in Google Admin Console
   - For group-based teams, use "groups" claim (requires appropriate OAuth scopes)
   - Custom schema attributes can be mapped to JWT claims
-- **Note:** 
+- **Note:**
   - The team must already exist in OpenMetadata for assignment to work
   - Only teams of type "Group" can be auto-assigned (not "Organization" or "BusinessUnit" teams)
   - Team names are case-sensitive and must match exactly
   - Multiple team assignments are supported for array claims (e.g., "groups")
-
-### <span data-id="tokenValidation">Token Validation Algorithm</span>
-
-- **Definition:** Algorithm used to validate JWT token signatures.
-- **Options:** RS256 | RS384 | RS512
-- **Default:** RS256
-- **Example:** RS256
-- **Why it matters:** Must match the algorithm used by Google to sign tokens.
-- **Note:** Google typically uses RS256
 
 ## OIDC Configuration (Confidential Client Only)
 
@@ -171,26 +169,10 @@ These fields are only shown when Client Type is set to **Confidential**.
 ### <span data-id="useNonce">OIDC Use Nonce</span>
 
 - **Definition:** Security feature to prevent replay attacks in OIDC flows.
-- **Default:** true
-- **Example:** true
+- **Default:** false
+- **Example:** false
 - **Why it matters:** Enhances security by ensuring each authentication request is unique.
-- **Note:** Generally should be left enabled for security
-
-### <span data-id="preferredJwsAlgorithm">OIDC Preferred JWS Algorithm</span>
-
-- **Definition:** Algorithm used to verify JWT token signatures from Google.
-- **Default:** RS256
-- **Example:** RS256
-- **Why it matters:** Must match Google's token signing algorithm.
-- **Note:** Google typically uses RS256, rarely needs to be changed
-
-### <span data-id="responseType">OIDC Response Type</span>
-
-- **Definition:** Type of response expected from Google during authentication.
-- **Default:** id_token
-- **Options:** id_token | code
-- **Example:** id_token
-- **Why it matters:** Determines the OAuth flow type (implicit vs authorization code).
+- **Note:** Can be enabled for additional security if your provider supports it
 
 ### <span data-id="disablePkce">OIDC Disable PKCE</span>
 
@@ -210,10 +192,9 @@ These fields are only shown when Client Type is set to **Confidential**.
 ### <span data-id="clientAuthenticationMethod">OIDC Client Authentication Method</span>
 
 - **Definition:** Method used to authenticate the client with Google.
-- **Default:** client_secret_basic
-- **Options:** client_secret_basic | client_secret_post | client_secret_jwt | private_key_jwt
-- **Example:** client_secret_basic
-- **Why it matters:** Must match your Google OAuth client configuration.
+- **Default:** client_secret_post (automatically configured)
+- **Why it matters:** OpenMetadata uses `client_secret_post` which is supported by Google OAuth.
+- **Note:** This field is hidden and automatically configured. Google supports both `client_secret_post` and `client_secret_basic`.
 
 ### <span data-id="tokenValidity">OIDC Token Validity</span>
 
@@ -232,12 +213,16 @@ These fields are only shown when Client Type is set to **Confidential**.
   - `prompt`: Controls authentication prompts
   - `login_hint`: Pre-fill email address
 
-### <span data-id="callbackUrl">OIDC Callback URL</span>
+### <span data-id="callbackUrl">OIDC Callback URL / Redirect URI</span>
 
-- **Definition:** Redirect URI for OIDC flow authentication responses.
-- **Example:** https://yourapp.company.com/callback
-- **Why it matters:** Must match the redirect URI configured in Google Cloud Console.
-- **Note:** Must be registered in Google Cloud Console OAuth client
+- **Definition:** URL where Google redirects after authentication.
+- **Auto-Generated:** This field is automatically populated as `{your-domain}/callback`.
+- **Example:** https://openmetadata.company.com/callback
+- **Why it matters:** Must be registered in your Google Cloud Console configuration.
+- **Note:**
+  - **This field is read-only** - it cannot be edited
+  - **Copy this exact URL** and add it to your Google Cloud Console → OAuth 2.0 Client → Authorized redirect URIs
+  - Format is always: `{your-domain}/callback`
 
 ### <span data-id="maxAge">OIDC Max Age</span>
 

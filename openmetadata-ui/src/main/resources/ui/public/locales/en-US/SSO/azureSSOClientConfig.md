@@ -68,10 +68,17 @@ Azure Active Directory (Azure AD) SSO enables users to log in with their Microso
 
 ### <span data-id="principals">JWT Principal Claims</span>
 
+> ⚠️ **CRITICAL WARNING**: Incorrect claims will **lock out ALL users including admins**!
+> - These claims MUST exist in JWT tokens from Azure AD
+> - Order matters: first matching claim is used for user identification
+> - **Default values (preferred_username, email, upn, sub) work for most Azure AD configurations**
+> - Only change if you have custom claim requirements
+
 - **Definition:** JWT claims used to identify the user principal.
+- **Default:** ["preferred_username", "email", "upn", "sub"] (recommended)
 - **Example:** ["preferred_username", "email", "sub"]
 - **Why it matters:** Determines which claim from the JWT token identifies the user.
-- **Note:** Common claims: email, preferred_username, upn, sub
+- **Note:** Common Azure AD claims: email, preferred_username, upn, sub
   - Order matters; first matching claim is used
 
 ### <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
@@ -103,21 +110,12 @@ Azure Active Directory (Azure AD) SSO enables users to log in with their Microso
     2. Add optional claims → Select ID token → Add the desired attribute (e.g., "department")
     3. Check "Turn on the Microsoft Graph profile permission"
   - For group-based teams, use "groups" claim (requires group membership configuration)
-- **Note:** 
+- **Note:**
   - The team must already exist in OpenMetadata for assignment to work
   - Only teams of type "Group" can be auto-assigned (not "Organization" or "BusinessUnit" teams)
   - Team names are case-sensitive and must match exactly
   - Azure AD's "department" attribute is the most common use case (e.g., "Engineering", "Sales", "Marketing")
   - Multiple team assignments are supported for array claims (e.g., "groups")
-
-### <span data-id="tokenValidation">Token Validation Algorithm</span>
-
-- **Definition:** Algorithm used to validate JWT token signatures.
-- **Options:** RS256 | RS384 | RS512
-- **Default:** RS256
-- **Example:** RS256
-- **Why it matters:** Must match the algorithm used by Azure AD to sign tokens.
-- **Note:** Azure AD typically uses RS256
 
 ## OIDC Configuration (Confidential Client Only)
 
@@ -158,26 +156,10 @@ These fields are only shown when Client Type is set to **Confidential**.
 ### <span data-id="useNonce">OIDC Use Nonce</span>
 
 - **Definition:** Security feature to prevent replay attacks in OIDC flows.
-- **Default:** true
-- **Example:** true
+- **Default:** false
+- **Example:** false
 - **Why it matters:** Enhances security by ensuring each authentication request is unique.
-- **Note:** Generally should be left enabled for security
-
-### <span data-id="preferredJwsAlgorithm">OIDC Preferred JWS Algorithm</span>
-
-- **Definition:** Algorithm used to verify JWT token signatures from Azure AD.
-- **Default:** RS256
-- **Example:** RS256
-- **Why it matters:** Must match Azure AD's token signing algorithm.
-- **Note:** Azure AD typically uses RS256, rarely needs to be changed
-
-### <span data-id="responseType">OIDC Response Type</span>
-
-- **Definition:** Type of response expected from Azure AD during authentication.
-- **Default:** id_token
-- **Options:** id_token | code
-- **Example:** id_token
-- **Why it matters:** Determines the OAuth flow type (implicit vs authorization code).
+- **Note:** Can be enabled for additional security if your provider supports it
 
 ### <span data-id="disablePkce">OIDC Disable PKCE</span>
 
@@ -197,10 +179,9 @@ These fields are only shown when Client Type is set to **Confidential**.
 ### <span data-id="clientAuthenticationMethod">OIDC Client Authentication Method</span>
 
 - **Definition:** Method used to authenticate the client with Azure AD.
-- **Default:** client_secret_basic
-- **Options:** client_secret_basic | client_secret_post | client_secret_jwt | private_key_jwt
-- **Example:** client_secret_basic
-- **Why it matters:** Must match your Azure AD app configuration.
+- **Default:** client_secret_post (automatically configured)
+- **Why it matters:** OpenMetadata uses `client_secret_post` which is supported by Azure AD.
+- **Note:** This field is hidden and automatically configured. Azure AD supports both `client_secret_post` and `client_secret_basic`.
 
 ### <span data-id="tokenValidity">OIDC Token Validity</span>
 
@@ -223,19 +204,16 @@ These fields are only shown when Client Type is set to **Confidential**.
 - **Why it matters:** Specifies which Azure AD tenant to authenticate against.
 - **Note:** Can be tenant ID, domain name, or "common" for multi-tenant
 
-### <span data-id="serverUrl">OIDC Server URL</span>
+### <span data-id="callbackUrl">OIDC Callback URL / Redirect URI</span>
 
-- **Definition:** Base URL for Collate server.
-- **Example:** https://yourapp.company.com
-- **Why it matters:** Specifies Collate endpoint
-- **Note:** Usually your collate API server
-
-### <span data-id="callbackUrl">OIDC Callback URL</span>
-
-- **Definition:** Redirect URI for OIDC flow authentication responses.
-- **Example:** https://yourapp.company.com/callback
-- **Why it matters:** Must match the redirect URI configured in Azure AD.
-- **Note:** Must be registered in Azure AD app registration
+- **Definition:** URL where Azure AD redirects after authentication.
+- **Auto-Generated:** This field is automatically populated as `{your-domain}/callback`.
+- **Example:** https://openmetadata.company.com/callback
+- **Why it matters:** Must be registered in your Azure AD app configuration.
+- **Note:**
+  - **This field is read-only** - it cannot be edited
+  - **Copy this exact URL** and add it to Azure AD → App registrations → Authentication → Redirect URIs
+  - Format is always: `{your-domain}/callback`
 
 ### <span data-id="maxAge">OIDC Max Age</span>
 
