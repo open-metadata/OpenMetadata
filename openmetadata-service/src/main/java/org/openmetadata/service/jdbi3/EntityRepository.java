@@ -1005,7 +1005,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
       Map<String, String> cursorMap =
-          parseCursorMap(after == null ? "" : RestUtil.decodeCursor(after));
+          parseCursorMap(after == null || after.isEmpty() ? "" : RestUtil.decodeCursor(after));
       String afterName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
       String afterId = cursorMap.get("id");
       List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
@@ -1019,7 +1019,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String beforeCursor;
       String afterCursor = null;
-      beforeCursor = after == null ? null : getCursorValue(entities.get(0));
+      beforeCursor = after == null || after.isEmpty() ? null : getCursorValue(entities.get(0));
       if (entities.size()
           > limitParam) { // If extra result exists, then next page exists - return after cursor
         entities.remove(limitParam);
@@ -2927,7 +2927,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getLabelType().ordinal(),
                 tagLabel.getState().ordinal(),
                 tagLabel.getReason(),
-                tagLabel.getAppliedBy());
+                tagLabel.getAppliedBy(),
+                tagLabel.getMetadata());
 
         // Update RDF store
         org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);

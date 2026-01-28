@@ -66,6 +66,10 @@
     "appliedBy": {
       "type": "string",
       "description": "Who it is that applied this tag (e.g: a bot, AI or a human)"
+    },
+    "metadata": {
+      "description": "Additional metadata associated with this tag label, such as recognizer information for automatically applied tags.",
+      "$ref": "tagLabelMetadata.json"
     }
   },
   "required": ["tagFQN", "source", "labelType", "state"],
