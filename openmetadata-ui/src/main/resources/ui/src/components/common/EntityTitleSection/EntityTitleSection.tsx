@@ -105,7 +105,7 @@ export const EntityTitleSection = ({
       className={className}
       sx={{
         position: 'sticky',
-        padding: '4px',
+        padding: theme.spacing(1),
         zIndex: 999,
         top: 0,
         flex: 1,
@@ -119,10 +119,9 @@ export const EntityTitleSection = ({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderRadius: '8px',
-          height: '46px',
-          paddingLeft: '4px',
-          paddingRight: '4px',
+          borderRadius: theme.spacing(2),
+          height: theme.spacing(11.5),
+          px: theme.spacing(1),
           backgroundColor: theme.palette.allShades.blueGray[50],
         }}>
         <Box
@@ -136,13 +135,13 @@ export const EntityTitleSection = ({
           <Box
             sx={{
               color: theme.palette.allShades.blue[600],
-              width: '18px',
-              height: '18px',
-              marginLeft: '4px',
+              width: theme.spacing(4.5),
+              height: theme.spacing(4.5),
+              ml: theme.spacing(1),
               display: 'inline-flex',
               alignItems: 'center',
               flexShrink: 0,
-              marginRight: '8px',
+              mr: theme.spacing(2),
             }}>
             {searchClassBase.getEntityIcon(entityTypeValue)}
           </Box>
@@ -156,7 +155,7 @@ export const EntityTitleSection = ({
               style={{
                 minWidth: 0,
                 overflow: 'hidden',
-                fontSize: '15px',
+                fontSize: theme.typography.pxToRem(15),
                 cursor: 'pointer',
                 fontWeight: 600,
                 textOverflow: 'ellipsis',
@@ -175,7 +174,7 @@ export const EntityTitleSection = ({
                 data-testid="edit-displayName-button"
                 size="small"
                 sx={{
-                  marginLeft: '4px',
+                  ml: theme.spacing(1),
                   flexShrink: 0,
                 }}
                 onClick={() => setIsEditModalOpen(true)}>
