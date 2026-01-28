@@ -352,9 +352,7 @@ export const addMultiOwner = async (data: {
     clearAll = true,
   } = data;
   const isMultipleOwners = Array.isArray(ownerNames);
-  const owners = (isMultipleOwners ? ownerNames : [ownerNames]).filter(
-    (name): name is string => Boolean(name)
-  );
+  const owners = (isMultipleOwners ? ownerNames : [ownerNames])
 
   await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
 
