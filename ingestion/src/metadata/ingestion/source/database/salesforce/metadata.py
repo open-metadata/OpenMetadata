@@ -164,7 +164,7 @@ class SalesforceSource(DatabaseServiceSource):
 
         Priority:
         1. sobjectNames (array) - if specified, iterate over these
-        3. All objects from describe()
+        2. All objects from describe()
 
         tableFilterPattern is applied in ALL cases.
 
