@@ -196,11 +196,10 @@ class RedshiftSource(
         """
         try:
             self.partition_details.clear()
-            results = self.connection.execute(
-                statement=REDSHIFT_PARTITION_DETAILS
-            ).fetchall()
-            for row in results:
-                self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
+            with self.engine.connect() as conn:
+                results = conn.execute(statement=REDSHIFT_PARTITION_DETAILS).fetchall()
+                for row in results:
+                    self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
         except Exception as exe:
             logger.debug(traceback.format_exc())
             logger.debug(f"Failed to fetch partition details due: {exe}")
@@ -213,35 +212,37 @@ class RedshiftSource(
         """
         self._set_constraint_details(schema_name)
 
-        result = self.connection.execute(
-            sql.text(
-                REDSHIFT_GET_ALL_RELATION_INFO.format(
-                    view_filter=(
-                        "OR c.relkind IN ('v', 'm')"
-                        if self.source_config.includeViews
-                        else "AND c.relkind NOT IN ('v', 'm')"
+        with self.engine.connect() as conn:
+            result = conn.execute(
+                sql.text(
+                    REDSHIFT_GET_ALL_RELATION_INFO.format(
+                        view_filter=(
+                            "OR c.relkind IN ('v', 'm')"
+                            if self.source_config.includeViews
+                            else "AND c.relkind NOT IN ('v', 'm')"
+                        )
                     )
-                )
-            ),
-            {"schema": schema_name},
-        )
-
-        if self.incremental.enabled:
-            result = [
-                (name, relkind)
-                for name, relkind in result
-                if name
-                in self.incremental_table_processor.get_not_deleted(
-                    schema_name=schema_name
-                )
-            ]
-
-        return [
-            TableNameAndType(
-                name=name, type_=STANDARD_TABLE_TYPES.get(relkind, TableType.Regular)
+                ),
+                {"schema": schema_name},
             )
-            for name, relkind in result
-        ]
+
+            if self.incremental.enabled:
+                result = [
+                    (name, relkind)
+                    for name, relkind in result
+                    if name
+                    in self.incremental_table_processor.get_not_deleted(
+                        schema_name=schema_name
+                    )
+                ]
+
+            return [
+                TableNameAndType(
+                    name=name,
+                    type_=STANDARD_TABLE_TYPES.get(relkind, TableType.Regular),
+                )
+                for name, relkind in result
+            ]
 
     def query_view_names_and_types(
         self, schema_name: str
@@ -294,13 +295,14 @@ class RedshiftSource(
 
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
-        results = self.engine.execute(
-            REDSHIFT_EXTERNAL_TABLE_LOCATION.format(database_name=database_name)
-        ).all()
-        self.external_location_map = {
-            (database_name, row.schemaname, row.tablename): row.location
-            for row in results
-        }
+        with self.engine.connect() as conn:
+            results = conn.execute(
+                REDSHIFT_EXTERNAL_TABLE_LOCATION.format(database_name=database_name)
+            ).all()
+            self.external_location_map = {
+                (database_name, row.schemaname, row.tablename): row.location
+                for row in results
+            }
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:
@@ -397,16 +399,17 @@ class RedshiftSource(
     def get_stored_procedures(self) -> Iterable[RedshiftStoredProcedure]:
         """List Snowflake stored procedures"""
         if self.source_config.includeStoredProcedures:
-            results = self.connection.execute(
-                REDSHIFT_GET_STORED_PROCEDURES.format(
-                    schema_name=self.context.get().database_schema,
-                )
-            ).all()
-            for row in results:
-                stored_procedure = RedshiftStoredProcedure.model_validate(dict(row))
-                if self.is_stored_procedure_filtered(stored_procedure.name):
-                    continue
-                yield stored_procedure
+            with self.engine.connect() as conn:
+                results = conn.execute(
+                    REDSHIFT_GET_STORED_PROCEDURES.format(
+                        schema_name=self.context.get().database_schema,
+                    )
+                ).all()
+                for row in results:
+                    stored_procedure = RedshiftStoredProcedure.model_validate(dict(row))
+                    if self.is_stored_procedure_filtered(stored_procedure.name):
+                        continue
+                    yield stored_procedure
 
     @calculate_execution_time_generator()
     def yield_stored_procedure(
