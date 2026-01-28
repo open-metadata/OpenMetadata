@@ -41,6 +41,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
@@ -642,15 +643,14 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     try {
+      AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+
       // Auto-populate publicKeyUrls for OIDC confidential clients before saving
-      systemRepository.autoPopulatePublicKeyUrlsIfNeeded(
-          securityConfig.getAuthenticationConfiguration());
+      systemRepository.autoPopulatePublicKeyUrlsIfNeeded(authConfig);
 
       // Update both configurations in a transaction
       Settings authSettings =
-          new Settings()
-              .withConfigType(AUTHENTICATION_CONFIGURATION)
-              .withConfigValue(securityConfig.getAuthenticationConfiguration());
+          new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig);
 
       Settings authzSettings =
           new Settings()

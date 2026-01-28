@@ -381,7 +381,6 @@ public class SystemRepository {
       } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
         AuthenticationConfiguration authConfig =
             JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
-
         setting.setConfigValue(authConfig);
       } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
         AuthorizerConfiguration authorizerConfig =
@@ -1092,11 +1091,11 @@ public class SystemRepository {
     }
 
     try {
-      LOG.info(
-          "Auto-populating publicKeyUrls from discovery document for provider: {}",
-          authConfig.getProvider());
       OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
       discoveryValidator.autoPopulatePublicKeyUrls(oidcConfig.getDiscoveryUri(), authConfig);
+      LOG.info(
+          "Auto-populated publicKeyUrls from discovery document for provider: {}",
+          authConfig.getProvider());
     } catch (Exception e) {
       LOG.error("Failed to auto-populate publicKeyUrls: {}", e.getMessage(), e);
     }

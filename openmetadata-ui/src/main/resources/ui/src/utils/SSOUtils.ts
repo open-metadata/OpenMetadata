@@ -761,6 +761,7 @@ export const populateSamlIdpAuthority = (authConfig: SamlAuthConfig): void => {
 
 /**
  * Populates SAML SP callback URLs from root callbackUrl
+ * Only populates if the fields are empty (doesn't overwrite existing values from database)
  * @param authConfig - SAML authentication configuration
  */
 export const populateSamlSpCallback = (authConfig: SamlAuthConfig): void => {
@@ -768,8 +769,16 @@ export const populateSamlSpCallback = (authConfig: SamlAuthConfig): void => {
     return;
   }
 
-  authConfig.samlConfiguration.sp.callback = authConfig.callbackUrl;
-  authConfig.samlConfiguration.sp.acs = authConfig.callbackUrl;
+  // Only set callback if it's empty (don't overwrite existing database values)
+  if (!authConfig.samlConfiguration.sp.callback) {
+    authConfig.samlConfiguration.sp.callback = authConfig.callbackUrl;
+  }
+
+  // Only set acs if it's empty (don't overwrite existing database values)
+  // This preserves old URLs like /api/v1/saml/acs for existing users
+  if (!authConfig.samlConfiguration.sp.acs) {
+    authConfig.samlConfiguration.sp.acs = authConfig.callbackUrl;
+  }
 };
 
 /**
