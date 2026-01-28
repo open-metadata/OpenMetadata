@@ -78,6 +78,7 @@ class BaseTableParameter:
             path=self.get_data_diff_table_path(
                 entity.fullyQualifiedName.root, service.serviceType
             ),
+            fullyQualifiedName=entity.fullyQualifiedName.root,
             serviceUrl=self.get_data_diff_url(
                 service,
                 entity.fullyQualifiedName.root,
