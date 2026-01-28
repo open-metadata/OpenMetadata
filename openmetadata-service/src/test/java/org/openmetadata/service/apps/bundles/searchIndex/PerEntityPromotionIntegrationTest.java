@@ -283,15 +283,11 @@ class PerEntityPromotionIntegrationTest extends OpenMetadataApplicationTest {
       }
 
       verify(statsDAO, atLeastOnce())
-          .upsert(
+          .incrementStats(
               anyString(),
               eq(jobId),
               eq(serverId),
-              any(),
-              any(),
-              any(),
-              any(),
-              any(),
+              eq("table"),
               any(),
               any(),
               any(),
@@ -307,8 +303,8 @@ class PerEntityPromotionIntegrationTest extends OpenMetadataApplicationTest {
     }
 
     @Test
-    @DisplayName("Should include all stage stats in upsert")
-    void testAllStatsIncludedInUpsert() {
+    @DisplayName("Should include all stage stats in incrementStats")
+    void testAllStatsIncludedInIncrementStats() {
       String jobId = UUID.randomUUID().toString();
       String serverId = "test-server";
 
@@ -321,25 +317,22 @@ class PerEntityPromotionIntegrationTest extends OpenMetadataApplicationTest {
 
       tracker.flush();
 
+      // Verify incrementStats is called with delta values
       verify(statsDAO, times(1))
-          .upsert(
+          .incrementStats(
               anyString(),
               eq(jobId),
               eq(serverId),
-              eq(1L),
-              eq(0L),
-              eq(0L),
-              any(),
-              any(),
-              any(),
-              any(),
-              any(),
-              eq(0L),
-              eq(1L),
-              eq(0L),
-              eq(1L),
-              eq(0L),
-              eq(0L),
+              eq("table"),
+              eq(1L), // readerSuccess
+              eq(0L), // readerFailed
+              eq(0L), // readerWarnings
+              eq(0L), // sinkSuccess (warning doesn't count as success)
+              eq(0L), // sinkFailed
+              eq(0L), // processSuccess
+              eq(1L), // processFailed
+              eq(1L), // vectorSuccess
+              eq(0L), // vectorFailed
               any(),
               any(),
               any());

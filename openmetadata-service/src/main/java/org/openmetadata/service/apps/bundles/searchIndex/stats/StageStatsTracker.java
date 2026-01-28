@@ -88,32 +88,54 @@ public class StageStatsTracker {
     }
   }
 
-  /** Flushes current statistics to the database using upsert. */
+  /** Flushes current statistics to the database using increment (delta approach). */
   public synchronized void flush() {
     if (statsDAO == null) {
       LOG.debug("Stats DAO is null, skipping flush for job {} on server {}", jobId, serverId);
       return;
     }
 
+    // Get and reset counters atomically for delta-based update
+    long rSuccess = reader.getSuccess().getAndSet(0);
+    long rFailed = reader.getFailed().getAndSet(0);
+    long rWarnings = reader.getWarnings().getAndSet(0);
+    long pSuccess = process.getSuccess().getAndSet(0);
+    long pFailed = process.getFailed().getAndSet(0);
+    long sSuccess = sink.getSuccess().getAndSet(0);
+    long sFailed = sink.getFailed().getAndSet(0);
+    long vSuccess = vector.getSuccess().getAndSet(0);
+    long vFailed = vector.getFailed().getAndSet(0);
+
+    // Skip if nothing to flush
+    if (rSuccess == 0
+        && rFailed == 0
+        && rWarnings == 0
+        && pSuccess == 0
+        && pFailed == 0
+        && sSuccess == 0
+        && sFailed == 0
+        && vSuccess == 0
+        && vFailed == 0) {
+      operationCount.set(0);
+      lastFlushTime = System.currentTimeMillis();
+      return;
+    }
+
     try {
-      statsDAO.upsert(
+      statsDAO.incrementStats(
           recordId.toString(),
           jobId,
           serverId,
-          reader.getSuccess().get(),
-          reader.getFailed().get(),
-          reader.getWarnings().get(),
-          sink.getTotal(),
-          sink.getSuccess().get(),
-          sink.getFailed().get(),
-          sink.getWarnings().get(),
-          0L, // entityBuildFailures - tracked separately
-          process.getSuccess().get(),
-          process.getFailed().get(),
-          process.getWarnings().get(),
-          vector.getSuccess().get(),
-          vector.getFailed().get(),
-          vector.getWarnings().get(),
+          entityType,
+          rSuccess,
+          rFailed,
+          rWarnings,
+          sSuccess,
+          sFailed,
+          pSuccess,
+          pFailed,
+          vSuccess,
+          vFailed,
           0, // partitionsCompleted - tracked separately
           0, // partitionsFailed - tracked separately
           System.currentTimeMillis());
@@ -126,15 +148,25 @@ public class StageStatsTracker {
           jobId,
           entityType,
           serverId,
-          reader.getSuccess().get(),
-          reader.getFailed().get(),
-          process.getSuccess().get(),
-          process.getFailed().get(),
-          sink.getSuccess().get(),
-          sink.getFailed().get(),
-          vector.getSuccess().get(),
-          vector.getFailed().get());
+          rSuccess,
+          rFailed,
+          pSuccess,
+          pFailed,
+          sSuccess,
+          sFailed,
+          vSuccess,
+          vFailed);
     } catch (Exception e) {
+      // On failure, add the values back so they're not lost
+      reader.getSuccess().addAndGet(rSuccess);
+      reader.getFailed().addAndGet(rFailed);
+      reader.getWarnings().addAndGet(rWarnings);
+      process.getSuccess().addAndGet(pSuccess);
+      process.getFailed().addAndGet(pFailed);
+      sink.getSuccess().addAndGet(sSuccess);
+      sink.getFailed().addAndGet(sFailed);
+      vector.getSuccess().addAndGet(vSuccess);
+      vector.getFailed().addAndGet(vFailed);
       LOG.error(
           "Failed to flush stats for job {} on server {}: {}", jobId, serverId, e.getMessage(), e);
     }

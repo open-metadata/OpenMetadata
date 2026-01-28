@@ -41,8 +41,8 @@ import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
-import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
+import org.openmetadata.service.apps.bundles.searchIndex.stats.EntityStatsTracker;
+import org.openmetadata.service.apps.bundles.searchIndex.stats.JobStatsManager;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -134,7 +134,7 @@ public class SearchIndexExecutor implements AutoCloseable {
   private ReindexingJobContext context;
   private long startTime;
   private IndexingFailureRecorder failureRecorder;
-  private final Map<String, StageStatsTracker> entityTrackers = new ConcurrentHashMap<>();
+  private JobStatsManager statsManager;
   private final Map<String, AtomicInteger> entityBatchCounters = new ConcurrentHashMap<>();
   private final Map<String, AtomicInteger> entityBatchFailures = new ConcurrentHashMap<>();
   private final Set<String> promotedEntities = ConcurrentHashMap.newKeySet();
@@ -182,23 +182,25 @@ public class SearchIndexExecutor implements AutoCloseable {
     this.listeners = new CompositeProgressListener();
   }
 
-  private StageStatsTracker getTracker(String entityType) {
-    return entityTrackers.computeIfAbsent(
-        entityType,
-        et ->
-            new StageStatsTracker(
-                context != null ? context.getJobId().toString() : "unknown",
-                org.openmetadata
-                    .service
-                    .apps
-                    .bundles
-                    .searchIndex
-                    .distributed
-                    .ServerIdentityResolver
-                    .getInstance()
-                    .getServerId(),
-                et,
-                collectionDAO.searchIndexServerStatsDAO()));
+  private EntityStatsTracker getTracker(String entityType) {
+    return statsManager != null ? statsManager.getTracker(entityType) : null;
+  }
+
+  private void initStatsManager() {
+    if (statsManager == null && context != null) {
+      String jobId = context.getJobId().toString();
+      String serverId =
+          org.openmetadata
+              .service
+              .apps
+              .bundles
+              .searchIndex
+              .distributed
+              .ServerIdentityResolver
+              .getInstance()
+              .getServerId();
+      statsManager = new JobStatsManager(jobId, serverId, collectionDAO);
+    }
   }
 
   public SearchIndexExecutor addListener(ReindexingProgressListener listener) {
@@ -248,6 +250,7 @@ public class SearchIndexExecutor implements AutoCloseable {
     entityBatchCounters.clear();
     entityBatchFailures.clear();
     promotedEntities.clear();
+    initStatsManager();
   }
 
   private ExecutionResult executeSingleServer() throws Exception {
@@ -524,22 +527,20 @@ public class SearchIndexExecutor implements AutoCloseable {
   /**
    * Process a single indexing task.
    *
-   * <p>Stats tracking is simplified:
+   * <p>Stats are tracked via EntityStatsTracker (one per entity type) which flushes to
+   * search_index_server_stats table. Each stage tracks:
    * <ul>
-   *   <li>Reader: success/warnings/failed tracked from ResultList
-   *   <li>Process: build failures tracked internally by BulkSink
-   *   <li>Sink: success/failed tracked by BulkSink from async responses
-   *   <li>Vector: tracked separately by OpenSearchBulkSinkExt
+   *   <li>Reader: success/warnings/failed from ResultList
+   *   <li>Process: success/failed during entity → search doc conversion (in BulkSink)
+   *   <li>Sink: success/failed from ES/OS bulk response (in BulkSink)
+   *   <li>Vector: success/failed for vector embeddings (in OpenSearchBulkSinkExt)
    * </ul>
-   *
-   * <p>StageStatsTracker records are used for distributed mode (search_index_server_stats).
-   * The BulkSink tracks sink stats internally, synced at end via syncSinkStatsFromBulkSink().
    */
   private void processTask(IndexingTask<?> task) {
     String entityType = task.entityType();
     ResultList<?> entities = task.entities();
     Map<String, Object> contextData = createContextData(entityType);
-    StageStatsTracker tracker = getTracker(entityType);
+    EntityStatsTracker tracker = getTracker(entityType);
 
     long taskStartTime = System.currentTimeMillis();
 
@@ -549,18 +550,11 @@ public class SearchIndexExecutor implements AutoCloseable {
     int readerWarningsCount = entities.getWarningsCount() != null ? entities.getWarningsCount() : 0;
 
     updateReaderStats(readerSuccessCount, readerFailedCount, readerWarningsCount);
-    recordToTracker(
-        tracker,
-        StageStatsTracker.Stage.READER,
-        readerSuccessCount,
-        readerFailedCount,
-        readerWarningsCount);
+    if (tracker != null) {
+      tracker.recordReaderBatch(readerSuccessCount, readerFailedCount, readerWarningsCount);
+    }
 
-    // Stage 2 & 3: Process + Sink
-    // BulkSink handles internally:
-    // - Build failures (entity → search doc conversion failures)
-    // - Sink failures (from bulk response listener)
-    // Stats are tracked via StageStatsTracker passed in context
+    // Stage 2 & 3: Process + Sink handled by BulkSink via tracker passed in context
     try {
       writeEntitiesToSink(entityType, entities, contextData);
 
@@ -577,23 +571,6 @@ public class SearchIndexExecutor implements AutoCloseable {
       handleSearchIndexException(entityType, entities, e);
     } catch (Exception e) {
       handleGenericException(entityType, entities, e);
-    }
-  }
-
-  private void recordToTracker(
-      StageStatsTracker tracker,
-      StageStatsTracker.Stage stage,
-      int successCount,
-      int failedCount,
-      int warningsCount) {
-    for (int i = 0; i < successCount; i++) {
-      tracker.record(stage, StatsResult.SUCCESS);
-    }
-    for (int i = 0; i < failedCount; i++) {
-      tracker.record(stage, StatsResult.FAILED);
-    }
-    for (int i = 0; i < warningsCount; i++) {
-      tracker.record(stage, StatsResult.WARNING);
     }
   }
 
@@ -1494,7 +1471,9 @@ public class SearchIndexExecutor implements AutoCloseable {
 
   @Override
   public void close() {
-    entityTrackers.values().forEach(StageStatsTracker::flush);
+    if (statsManager != null) {
+      statsManager.flushAll();
+    }
     stop();
     cleanup();
   }

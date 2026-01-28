@@ -193,15 +193,11 @@ class StageStatsTrackerTest {
       }
 
       verify(statsDAO, atLeastOnce())
-          .upsert(
+          .incrementStats(
               anyString(),
               anyString(),
               anyString(),
-              anyLong(),
-              anyLong(),
-              anyLong(),
-              anyLong(),
-              anyLong(),
+              anyString(),
               anyLong(),
               anyLong(),
               anyLong(),
@@ -224,15 +220,11 @@ class StageStatsTrackerTest {
       }
 
       verify(statsDAO, never())
-          .upsert(
+          .incrementStats(
               anyString(),
               anyString(),
               anyString(),
-              anyLong(),
-              anyLong(),
-              anyLong(),
-              anyLong(),
-              anyLong(),
+              anyString(),
               anyLong(),
               anyLong(),
               anyLong(),
@@ -261,15 +253,11 @@ class StageStatsTrackerTest {
       tracker.flush();
 
       verify(statsDAO, times(1))
-          .upsert(
+          .incrementStats(
               anyString(),
               anyString(),
               anyString(),
-              anyLong(),
-              anyLong(),
-              anyLong(),
-              anyLong(),
-              anyLong(),
+              anyString(),
               anyLong(),
               anyLong(),
               anyLong(),
@@ -299,15 +287,11 @@ class StageStatsTrackerTest {
     void testFlushErrorHandling() {
       org.mockito.Mockito.doThrow(new RuntimeException("DB error"))
           .when(statsDAO)
-          .upsert(
+          .incrementStats(
               anyString(),
               anyString(),
               anyString(),
-              anyLong(),
-              anyLong(),
-              anyLong(),
-              anyLong(),
-              anyLong(),
+              anyString(),
               anyLong(),
               anyLong(),
               anyLong(),

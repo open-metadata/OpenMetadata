@@ -60,7 +60,6 @@ public class ElasticSearchBulkSink implements BulkSink {
   private final AtomicLong totalSubmitted = new AtomicLong(0);
   private final AtomicLong totalSuccess = new AtomicLong(0);
   private final AtomicLong totalFailed = new AtomicLong(0);
-  private final AtomicLong entityBuildFailures = new AtomicLong(0);
 
   // Configuration
   private volatile int batchSize;
@@ -216,7 +215,6 @@ public class ElasticSearchBulkSink implements BulkSink {
       }
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
-      entityBuildFailures.incrementAndGet();
       totalFailed.incrementAndGet();
       updateStats();
       if (tracker != null) {
@@ -233,7 +231,6 @@ public class ElasticSearchBulkSink implements BulkSink {
     } catch (Exception e) {
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
-      entityBuildFailures.incrementAndGet();
       totalFailed.incrementAndGet();
       updateStats();
       if (tracker != null) {
@@ -272,7 +269,6 @@ public class ElasticSearchBulkSink implements BulkSink {
       }
     } catch (EntityNotFoundException e) {
       LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
-      entityBuildFailures.incrementAndGet();
       totalFailed.incrementAndGet();
       updateStats();
       if (tracker != null) {
@@ -288,7 +284,6 @@ public class ElasticSearchBulkSink implements BulkSink {
     } catch (Exception e) {
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
-      entityBuildFailures.incrementAndGet();
       totalFailed.incrementAndGet();
       updateStats();
       if (tracker != null) {
@@ -345,11 +340,10 @@ public class ElasticSearchBulkSink implements BulkSink {
       updateStats();
 
       LOG.info(
-          "Sink closed - final stats: submitted={}, success={}, failed={}, entityBuildFailures={}",
+          "Sink closed - final stats: submitted={}, success={}, failed={}",
           totalSubmitted.get(),
           totalSuccess.get(),
-          totalFailed.get(),
-          entityBuildFailures.get());
+          totalFailed.get());
 
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while closing bulk processor", e);
@@ -388,13 +382,6 @@ public class ElasticSearchBulkSink implements BulkSink {
    */
   public int getConcurrentRequests() {
     return maxConcurrentRequests;
-  }
-
-  /**
-   * Get the count of entity build failures (entities that failed during SearchDoc construction)
-   */
-  public long getEntityBuildFailures() {
-    return entityBuildFailures.get();
   }
 
   @Override

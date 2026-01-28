@@ -431,13 +431,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     if (serverStatsAggr != null && serverStatsAggr.sinkSuccess() > 0) {
       // Use server stats table (most accurate)
-      // Include entityBuildFailures in failed count - these are records that read successfully
-      // but failed during Entity.buildSearchIndex() conversion
+      // processFailed = records that read successfully but failed during doc building
       successRecords = serverStatsAggr.sinkSuccess();
       failedRecords =
           serverStatsAggr.readerFailed()
               + serverStatsAggr.sinkFailed()
-              + serverStatsAggr.entityBuildFailures();
+              + serverStatsAggr.processFailed();
       statsSource = "serverStatsTable";
     } else if (actualSinkStats != null) {
       // Use local sink stats (single server scenario)
@@ -476,31 +475,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (sinkStats != null) {
       if (serverStatsAggr != null) {
         // Use actual sink stats from the database
-        // sinkTotal = entities actually submitted to bulk processor (totalSubmitted)
-        // Note: sinkTotal might be less than readerSuccess if there were entity build failures
-        long actualSinkTotal = serverStatsAggr.sinkTotal();
         long sinkSuccess = serverStatsAggr.sinkSuccess();
         long sinkFailed = serverStatsAggr.sinkFailed();
-        long sinkWarnings = serverStatsAggr.sinkWarnings();
-        long entityBuildFailures = serverStatsAggr.entityBuildFailures();
+        long processFailed = serverStatsAggr.processFailed();
 
-        // Log for debugging - entity build failures explain the gap between reader and sink
-        long expectedSinkTotal = distributedJob.getTotalRecords() - serverStatsAggr.readerFailed();
-        if (actualSinkTotal != expectedSinkTotal) {
-          LOG.info(
-              "Sink stats: actualSinkTotal={}, expectedSinkTotal={}, gap={} (entityBuildFailures={})",
-              actualSinkTotal,
-              expectedSinkTotal,
-              expectedSinkTotal - actualSinkTotal,
-              entityBuildFailures);
-        }
+        // sinkTotal = processSuccess (submitted to ES) = sinkSuccess + sinkFailed
+        long actualSinkTotal = sinkSuccess + sinkFailed;
 
         sinkStats.setTotalRecords((int) actualSinkTotal);
         sinkStats.setSuccessRecords((int) sinkSuccess);
-        // Include entityBuildFailures in sinkFailed - they occur during sink processing
-        // when Entity.buildSearchIndex() fails before sending to bulk processor
-        sinkStats.setFailedRecords((int) (sinkFailed + entityBuildFailures));
-        sinkStats.setWarningRecords((int) sinkWarnings);
+        // Include processFailed - docs that failed to build before sending to ES
+        sinkStats.setFailedRecords((int) (sinkFailed + processFailed));
       } else {
         // Fallback: derive from reader stats (less accurate)
         long readerFailed = 0;
