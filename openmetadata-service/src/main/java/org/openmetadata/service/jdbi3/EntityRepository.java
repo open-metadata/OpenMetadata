@@ -1356,8 +1356,146 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeRelationships(entity);
   }
 
-  public final void storeRelationshipsInternal(List<T> entity) {
-    entity.forEach(this::storeRelationshipsInternal);
+  public final void storeRelationshipsInternal(List<T> entities) {
+    if (entities.isEmpty()) {
+      return;
+    }
+
+    // Batched operations - reduces DB calls from N*5 to ~5 per relationship type
+    storeOwners(entities);
+    storeDomains(entities);
+    storeReviewers(entities);
+    storeDataProducts(entities);
+    applyTagsToEntities(entities);
+
+    // Entity-specific relationships - must be per-entity (abstract method)
+    entities.forEach(this::storeRelationships);
+  }
+
+  @Transaction
+  protected void storeOwners(List<T> entities) {
+    if (!supportsOwners) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getOwners())) {
+        for (EntityReference owner : entity.getOwners()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(owner.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(owner.getType())
+                  .toEntity(entityType)
+                  .relation(Relationship.OWNS.ordinal())
+                  .build());
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void storeDomains(List<T> entities) {
+    if (!supportsDomains) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getDomains())) {
+        validateDomainsByRef(entity.getDomains());
+        for (EntityReference domain : entity.getDomains()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(domain.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(DOMAIN)
+                  .toEntity(entityType)
+                  .relation(Relationship.HAS.ordinal())
+                  .build());
+          addDomainLineage(domain.getId(), entityType, domain);
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void storeReviewers(List<T> entities) {
+    if (!supportsReviewers) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getReviewers())) {
+        for (EntityReference reviewer : entity.getReviewers()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(reviewer.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(reviewer.getType())
+                  .toEntity(entityType)
+                  .relation(Relationship.REVIEWS.ordinal())
+                  .build());
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void storeDataProducts(List<T> entities) {
+    if (!supportsDataProducts) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getDataProducts())) {
+        for (EntityReference dataProduct : entity.getDataProducts()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(dataProduct.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(DATA_PRODUCT)
+                  .toEntity(entityType)
+                  .relation(Relationship.HAS.ordinal())
+                  .build());
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void applyTagsToEntities(List<T> entities) {
+    if (!supportsTags) {
+      return;
+    }
+    for (T entity : entities) {
+      List<TagLabel> nonDerivedTags =
+          listOrEmpty(entity.getTags()).stream()
+              .filter(t -> !t.getLabelType().equals(TagLabel.LabelType.DERIVED))
+              .toList();
+      if (!nonDerivedTags.isEmpty()) {
+        daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, entity.getFullyQualifiedName());
+        for (TagLabel tagLabel : nonDerivedTags) {
+          org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
+              tagLabel, entity.getFullyQualifiedName());
+        }
+      }
+    }
   }
 
   public final T setFieldsInternal(T entity, Fields fields) {

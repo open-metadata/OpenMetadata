@@ -6291,10 +6291,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .on(
             "csvExportChannel",
             args -> {
-              receivedMessage[0] = (String) args[0];
-              System.out.println("Received message: " + receivedMessage[0]);
-              messageLatch.countDown();
-              socket.disconnect();
+              String msg = (String) args[0];
+              CSVExportMessage csvExportMessage = JsonUtils.readValue(msg, CSVExportMessage.class);
+              System.out.println("Received message with status: " + csvExportMessage.getStatus());
+              if (Objects.equals(csvExportMessage.getStatus(), "COMPLETED")
+                  || Objects.equals(csvExportMessage.getStatus(), "FAILED")) {
+                receivedMessage[0] = msg;
+                messageLatch.countDown();
+                socket.disconnect();
+              }
             })
         .on(
             Socket.EVENT_CONNECT_ERROR,
