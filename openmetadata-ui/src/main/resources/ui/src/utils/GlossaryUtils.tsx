@@ -529,3 +529,17 @@ export const validateReferenceURL = (url: string): boolean => {
 
   return url.startsWith('http://') || url.startsWith('https://');
 };
+
+export const referenceURLValidator = (
+  t: (key: string) => string
+): ((rule: unknown, value: string) => Promise<void>) => {
+  return (_, value) => {
+    if (validateReferenceURL(value)) {
+      return Promise.resolve();
+    }
+
+    return Promise.reject(
+      new Error(t('message.url-must-start-with-http-or-https'))
+    );
+  };
+};

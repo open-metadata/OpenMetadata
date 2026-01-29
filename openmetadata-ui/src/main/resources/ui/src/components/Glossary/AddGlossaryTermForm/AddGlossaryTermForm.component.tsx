@@ -31,7 +31,7 @@ import {
   HelperTextType,
 } from '../../../interface/FormUtils.interface';
 import { generateFormFields, getField } from '../../../utils/formUtils';
-import { validateReferenceURL } from '../../../utils/GlossaryUtils';
+import { referenceURLValidator } from '../../../utils/GlossaryUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
@@ -438,17 +438,7 @@ const AddGlossaryTermForm = ({
                           type: 'url',
                         },
                         {
-                          validator: (_, value) => {
-                            if (validateReferenceURL(value)) {
-                              return Promise.resolve();
-                            }
-
-                            return Promise.reject(
-                              new Error(
-                                t('message.url-must-start-with-http-or-https')
-                              )
-                            );
-                          },
+                          validator: referenceURLValidator(t),
                         },
                       ]}>
                       <Input

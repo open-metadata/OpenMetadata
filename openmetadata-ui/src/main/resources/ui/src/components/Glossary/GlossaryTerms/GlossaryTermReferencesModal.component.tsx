@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TermReference } from '../../../generated/entity/data/glossaryTerm';
-import { validateReferenceURL } from '../../../utils/GlossaryUtils';
+import { referenceURLValidator } from '../../../utils/GlossaryUtils';
 
 interface GlossaryTermReferencesModalProps {
   references: TermReference[];
@@ -120,17 +120,7 @@ const GlossaryTermReferencesModal = ({
                           message: t('message.endpoint-should-be-valid'),
                         },
                         {
-                          validator: (_, value) => {
-                            if (validateReferenceURL(value)) {
-                              return Promise.resolve();
-                            }
-
-                            return Promise.reject(
-                              new Error(
-                                t('message.url-must-start-with-http-or-https')
-                              )
-                            );
-                          },
+                          validator: referenceURLValidator(t),
                         },
                       ]}>
                       <Input placeholder={t('label.endpoint')} />
