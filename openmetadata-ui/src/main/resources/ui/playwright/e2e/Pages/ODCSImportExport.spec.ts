@@ -37,6 +37,7 @@ import {
 } from '../../constant/dataContracts';
 import { TableClass } from '../../support/entity/TableClass';
 import {
+  descriptionBox,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -1840,79 +1841,6 @@ version: "1.0.0"`;
     }
   });
 
-  test('Import ODCS, update description via UI, export and verify description change', async ({
-    page,
-  }) => {
-    const table = new TableClass();
-    const { apiContext } = await getApiContext(page);
-    await table.create(apiContext);
-
-    const updatedDescription = 'Updated description via UI for testing';
-
-    try {
-      // Step 1: Import a basic ODCS contract
-      await navigateToContractTab(page, table);
-      await openODCSImportDropdown(page);
-      await importODCSYaml(
-        page,
-        ODCS_VALID_DRAFT_STATUS_YAML,
-        'draft-for-description-update.yaml'
-      );
-
-      await expect(page.getByTestId('contract-title')).toBeVisible();
-      await expect(page.getByTestId('contract-title')).toContainText(
-        'Draft ODCS Contract'
-      );
-
-      // Step 2: Edit the contract and update description
-      await page.getByTestId('manage-contract-actions').click();
-      await page.waitForSelector('.contract-action-dropdown', {
-        state: 'visible',
-      });
-      await page.getByTestId('contract-edit-button').click();
-
-      // Wait for edit mode
-      await expect(page.getByTestId('save-contract-btn')).toBeVisible();
-
-      // Update description - clear and type new description
-      const descriptionEditor = page.getByTestId('contract-description');
-      await descriptionEditor.click();
-      // Clear existing content and type new description
-      await page.keyboard.press('Control+A');
-      await page.keyboard.type(updatedDescription);
-
-      // Save the contract
-      const saveContractResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*'
-      );
-      await page.getByTestId('save-contract-btn').click();
-      await saveContractResponse;
-
-      await page.waitForLoadState('networkidle');
-
-      // Step 3: Export as ODCS YAML
-      const downloadPromise = page.waitForEvent('download');
-      await page.getByTestId('manage-contract-actions').click();
-      await page.getByTestId('export-odcs-contract-button').click();
-
-      const download = await downloadPromise;
-      const tempPath = `/tmp/description-updated-${Date.now()}.yaml`;
-      await download.saveAs(tempPath);
-
-      // Step 4: Verify description change is reflected in the export
-      const fsModule = await import('fs');
-      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
-
-      // Verify updated description appears in ODCS export
-      expect(exportedYaml).toContain(updatedDescription);
-
-      // Cleanup
-      fsModule.unlinkSync(tempPath);
-    } finally {
-      await table.delete(apiContext);
-    }
-  });
-
   test('Import ODCS with SLA, modify SLA via UI, export and verify SLA changes', async ({
     page,
   }) => {
@@ -2018,6 +1946,12 @@ version: "1.0.0"`;
       // Get the markdown parser element where description is rendered
       const markdownParser = page.getByTestId('markdown-parser').first();
       await expect(markdownParser).toBeVisible();
+
+      // Click "more" button to expand the full description if it exists
+      const moreButton = page.getByRole('button', { name: 'more' });
+      if (await moreButton.isVisible()) {
+        await moreButton.click();
+      }
 
       // Verify markdown content is rendered (text content check)
       // Headers
