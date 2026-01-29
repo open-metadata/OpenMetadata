@@ -20,6 +20,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // Use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -54,7 +55,7 @@ async function searchColumn(page: Page, columnName: string) {
   await waitForAllLoadersToDisappear(page);
 }
 
-test.describe('Column Bulk Operations Page', () => {
+test.describe('Column Bulk Operations Page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
