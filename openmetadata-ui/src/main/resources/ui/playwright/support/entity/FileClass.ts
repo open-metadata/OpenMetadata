@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -24,8 +25,8 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class FileClass extends EntityClass {
-  private fileName = `pw-file-${uuid()}`;
-  private serviceName = `pw-directory-service-${uuid()}`;
+  private readonly fileName = `pw-file-${uuid()}`;
+  private readonly serviceName = `pw-directory-service-${uuid()}`;
 
   service = {
     name: this.serviceName,
@@ -67,7 +68,7 @@ export class FileClass extends EntityClass {
     {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.File);
+    super(EntityTypeEndpoint.File, EntityType.FILE);
     this.service.name = name ?? this.service.name;
     this.type = 'File';
     this.serviceCategory = SERVICE_TYPE.DriveService;

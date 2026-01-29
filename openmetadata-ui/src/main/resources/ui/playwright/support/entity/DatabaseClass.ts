@@ -14,6 +14,7 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import {
   assignSingleSelectDomain,
   removeSingleSelectDomain,
@@ -126,7 +127,7 @@ export class DatabaseClass extends EntityClass {
     {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.Database);
+    super(EntityTypeEndpoint.Database, EntityType.DATABASE);
     this.service.name = name ?? this.service.name;
     this.type = 'Database';
     this.serviceType = ServiceTypes.DATABASE_SERVICES;

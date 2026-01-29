@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
@@ -25,9 +26,9 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class ApiCollectionClass extends EntityClass {
-  private serviceName: string;
-  private apiCollectionName: string;
-  private apiEndpointName: string;
+  private readonly serviceName: string;
+  private readonly apiCollectionName: string;
+  private readonly apiEndpointName: string;
   service: {
     name: string;
     serviceType: string;
@@ -57,7 +58,7 @@ export class ApiCollectionClass extends EntityClass {
   apiEndpointResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.API_COLLECTION);
+    super(EntityTypeEndpoint.API_COLLECTION, EntityType.API_COLLECTION);
     this.serviceCategory = SERVICE_TYPE.ApiService;
     this.serviceType = ServiceTypes.API_SERVICES;
     this.type = 'Api Collection';

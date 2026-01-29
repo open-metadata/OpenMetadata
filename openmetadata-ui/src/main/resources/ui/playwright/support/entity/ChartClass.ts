@@ -14,11 +14,9 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
-import {
-  visitEntityPage,
-  visitEntityPageWithCustomSearchBox,
-} from '../../utils/entity';
+import { visitEntityPage } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -27,7 +25,7 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class ChartClass extends EntityClass {
-  private chartName: string;
+  private readonly chartName: string;
   service: {
     name: string;
     serviceType: string;
@@ -56,7 +54,7 @@ export class ChartClass extends EntityClass {
     {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.Chart);
+    super(EntityTypeEndpoint.Chart, EntityType.CHART);
 
     this.chartName = `pw-chart-${uuid()}`;
 
@@ -156,14 +154,6 @@ export class ChartClass extends EntityClass {
       dataTestId: `${
         this.entityResponseData.service.name ?? this.service.name
       }-${this.entityResponseData.name ?? this.entity.name}`,
-    });
-  }
-
-  async visitEntityPageWithCustomSearchBox(page: Page, searchTerm?: string) {
-    await visitEntityPageWithCustomSearchBox({
-      page,
-      searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
     });
   }
 

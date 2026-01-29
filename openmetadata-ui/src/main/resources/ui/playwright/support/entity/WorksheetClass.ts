@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -24,9 +25,9 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class WorksheetClass extends EntityClass {
-  private spreadsheetName = `pw-spreadsheet-${uuid()}`;
-  private worksheetName = `pw-worksheet-${uuid()}`;
-  private serviceName = `pw-worksheet-service-${uuid()}`;
+  private readonly spreadsheetName = `pw-spreadsheet-${uuid()}`;
+  private readonly worksheetName = `pw-worksheet-${uuid()}`;
+  private readonly serviceName = `pw-worksheet-service-${uuid()}`;
 
   service = {
     name: this.serviceName,
@@ -100,7 +101,7 @@ export class WorksheetClass extends EntityClass {
     {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.Worksheet);
+    super(EntityTypeEndpoint.Worksheet, EntityType.WORKSHEET);
     this.service.name = name ?? this.service.name;
     this.type = 'Worksheet';
     this.serviceCategory = SERVICE_TYPE.DriveService;

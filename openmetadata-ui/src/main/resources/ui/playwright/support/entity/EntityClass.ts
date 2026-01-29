@@ -13,6 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { GlobalSettingOptions, ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import {
   assignDataProduct,
   assignSingleSelectDomain,
@@ -65,7 +66,11 @@ import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
 import { TagClass } from '../tag/TagClass';
-import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
+import {
+  ENTITY_PATH,
+  EntityTypeEndpoint,
+  ResponseDataType,
+} from './Entity.interface';
 
 export class EntityClass {
   type = '';
@@ -76,14 +81,21 @@ export class EntityClass {
   childrenSelectorId2?: string;
   endpoint: EntityTypeEndpoint;
   cleanupUser?: (apiContext: APIRequestContext) => Promise<void>;
+  entityType: EntityType;
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  entityResponseData: ResponseDataType = {} as ResponseDataType;
 
   customPropertyValue: Record<
     string,
     { value: string; newValue: string; property: CustomProperty }
   > = {};
 
-  constructor(endpoint: EntityTypeEndpoint) {
+  constructor(
+    endpoint: EntityTypeEndpoint,
+    entityType: EntityType = EntityType.TABLE
+  ) {
     this.endpoint = endpoint;
+    this.entityType = entityType;
   }
 
   public getType() {
@@ -94,12 +106,11 @@ export class EntityClass {
     return {};
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public set(_data: any) {
     // handle in parent component
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async visitEntityPage(_: Page) {
     // Override for entity visit
   }
@@ -274,7 +285,6 @@ export class EntityClass {
 
   async descriptionUpdate(page: Page) {
     const description =
-      // eslint-disable-next-line max-len
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
 
     await updateDescription(page, description);
@@ -287,7 +297,6 @@ export class EntityClass {
     entityEndpoint: string
   ) {
     const description =
-      // eslint-disable-next-line max-len
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
 
     // Add description

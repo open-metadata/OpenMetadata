@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -24,8 +25,8 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class DashboardDataModelClass extends EntityClass {
-  private dashboardDataModelName: string;
-  private projectName: string;
+  private readonly dashboardDataModelName: string;
+  private readonly projectName: string;
   service: {
     name: string;
     serviceType: string;
@@ -66,7 +67,7 @@ export class DashboardDataModelClass extends EntityClass {
     {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.DataModel);
+    super(EntityTypeEndpoint.DataModel, EntityType.DASHBOARD_DATA_MODEL);
 
     this.dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
     this.projectName = `pw-project-${uuid()}`;
