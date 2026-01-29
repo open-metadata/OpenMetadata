@@ -178,7 +178,12 @@ test.describe('Data Contracts', () => {
           DATA_CONTRACT_DETAILS.description
         );
 
-        await page.getByTestId('select-owners').click();
+        await page.getByTestId('select-owners').click();  
+        
+        await page.locator('.rc-virtual-list-holder-inner li')
+          .first()
+          .waitFor({ state: 'visible' });
+
         await page.locator('.rc-virtual-list-holder-inner li').first().click();
 
         await expect(page.getByTestId('user-tag')).toBeVisible();
