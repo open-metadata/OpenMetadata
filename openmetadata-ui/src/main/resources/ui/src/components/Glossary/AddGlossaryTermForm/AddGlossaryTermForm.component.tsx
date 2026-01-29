@@ -436,6 +436,25 @@ const AddGlossaryTermForm = ({
                           message: t('message.valid-url-endpoint'),
                           type: 'url',
                         },
+                        {
+                          validator: (_, value) => {
+                            if (!value) {
+                              return Promise.resolve();
+                            }
+                            if (
+                              value.startsWith('http://') ||
+                              value.startsWith('https://')
+                            ) {
+                              return Promise.resolve();
+                            }
+
+                            return Promise.reject(
+                              new Error(
+                                t('message.url-must-start-with-http-or-https')
+                              )
+                            );
+                          },
+                        },
                       ]}>
                       <Input
                         id={`url-${index}`}

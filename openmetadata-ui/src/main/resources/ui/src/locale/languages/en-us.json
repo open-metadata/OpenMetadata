@@ -2340,6 +2340,7 @@
     "enable-tag-description": "By enabling tag, you will be able to search by, or assign this tag to any entity.",
     "enables-end-to-end-metadata-management": "Discover all your data assets in a single place. Gain crucial insights with the right data at your fingertips. Now, unlock your data potential and make informed business decisions!",
     "endpoint-should-be-valid": "Endpoint should be valid URL.",
+    "url-must-start-with-http-or-https": "URL must start with http:// or https://",
     "ensure-airflow-set-up-correctly-before-heading-to-ingest-metadata": "Ensure that you have Airflow set up correctly before heading to ingest metadata.",
     "ensure-elasticsearch-is-up-and-running": "Ensure that the Elasticsearch docker is up and running.",
     "enter-a-field": "Enter a {{field}}",

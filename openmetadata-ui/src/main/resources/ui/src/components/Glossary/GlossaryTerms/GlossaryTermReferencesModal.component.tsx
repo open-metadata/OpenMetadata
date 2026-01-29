@@ -118,6 +118,25 @@ const GlossaryTermReferencesModal = ({
                           type: 'url',
                           message: t('message.endpoint-should-be-valid'),
                         },
+                        {
+                          validator: (_, value) => {
+                            if (!value) {
+                              return Promise.resolve();
+                            }
+                            if (
+                              value.startsWith('http://') ||
+                              value.startsWith('https://')
+                            ) {
+                              return Promise.resolve();
+                            }
+
+                            return Promise.reject(
+                              new Error(
+                                t('message.url-must-start-with-http-or-https')
+                              )
+                            );
+                          },
+                        },
                       ]}>
                       <Input placeholder={t('label.endpoint')} />
                     </Form.Item>
