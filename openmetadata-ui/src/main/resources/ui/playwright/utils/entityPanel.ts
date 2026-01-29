@@ -518,3 +518,28 @@ export const removeTierFromPanel = async (page: Page) => {
   await clearButton.click();
   await patchPromise;
 };
+
+export const editDisplayNameFromPanel = async (
+  page: Page,
+  newDisplayName: string
+) => {
+  const summaryPanel = page.locator('.entity-summary-panel-container');
+  const editButton = summaryPanel.getByTestId('edit-displayName-button');
+
+  await editButton.waitFor({ state: 'visible' });
+  await editButton.click();
+
+  const modal = page.locator('.ant-modal');
+  await modal.waitFor({ state: 'visible' });
+
+  const displayNameInput = modal.locator('#displayName');
+  await displayNameInput.waitFor({ state: 'visible' });
+  await displayNameInput.clear();
+  await displayNameInput.fill(newDisplayName);
+
+  const patchPromise = waitForPatchResponse(page);
+  await modal.getByTestId('save-button').click();
+  await patchPromise;
+
+  await modal.waitFor({ state: 'hidden' });
+};

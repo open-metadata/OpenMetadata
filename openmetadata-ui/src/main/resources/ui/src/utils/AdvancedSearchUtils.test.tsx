@@ -12,6 +12,7 @@
  */
 
 import { FieldOrGroup } from '@react-awesome-query-builder/antd';
+import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   EntityFields,
@@ -564,6 +565,89 @@ describe('AdvancedSearchUtils tests', () => {
       expect(tableSubfields.existingField).toBeDefined();
       expect(tableSubfields['newField.keyword']).toBeDefined();
     });
+
+    it('should pass ElasticSearch searchOutputType to getCustomPropertiesSubFields', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+      const mockField = { name: 'testField', type: 'string' };
+
+      (
+        advancedSearchClassBase.getCustomPropertiesSubFields as jest.Mock
+      ).mockReturnValue({
+        subfieldsKey: 'testField.keyword',
+        dataObject: {
+          type: 'text',
+          label: 'Test Field',
+          valueSources: ['value'],
+        },
+      });
+
+      processCustomPropertyField(
+        mockField as never,
+        'table',
+        subfields,
+        'table',
+        SearchOutputType.ElasticSearch
+      );
+
+      expect(
+        advancedSearchClassBase.getCustomPropertiesSubFields
+      ).toHaveBeenCalledWith(mockField, SearchOutputType.ElasticSearch);
+    });
+
+    it('should pass JSONLogic searchOutputType to getCustomPropertiesSubFields', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+      const mockField = { name: 'testField', type: 'string' };
+
+      (
+        advancedSearchClassBase.getCustomPropertiesSubFields as jest.Mock
+      ).mockReturnValue({
+        subfieldsKey: 'testField',
+        dataObject: {
+          type: 'text',
+          label: 'Test Field',
+          valueSources: ['value'],
+        },
+      });
+
+      processCustomPropertyField(
+        mockField as never,
+        'table',
+        subfields,
+        'table',
+        SearchOutputType.JSONLogic
+      );
+
+      expect(
+        advancedSearchClassBase.getCustomPropertiesSubFields
+      ).toHaveBeenCalledWith(mockField, SearchOutputType.JSONLogic);
+    });
+
+    it('should pass undefined searchOutputType to getCustomPropertiesSubFields when not provided', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+      const mockField = { name: 'testField', type: 'string' };
+
+      (
+        advancedSearchClassBase.getCustomPropertiesSubFields as jest.Mock
+      ).mockReturnValue({
+        subfieldsKey: 'testField.keyword',
+        dataObject: {
+          type: 'text',
+          label: 'Test Field',
+          valueSources: ['value'],
+        },
+      });
+
+      processCustomPropertyField(
+        mockField as never,
+        'table',
+        subfields,
+        'table'
+      );
+
+      expect(
+        advancedSearchClassBase.getCustomPropertiesSubFields
+      ).toHaveBeenCalledWith(mockField, undefined);
+    });
   });
 
   describe('processEntityTypeFields', () => {
@@ -653,6 +737,57 @@ describe('AdvancedSearchUtils tests', () => {
       expect(
         advancedSearchClassBase.getCustomPropertiesSubFields
       ).toHaveBeenCalledTimes(2);
+    });
+
+    it('should pass searchOutputType through to processCustomPropertyField with ElasticSearch', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+
+      processEntityTypeFields(
+        'table',
+        mockFields as never,
+        subfields,
+        'table',
+        SearchOutputType.ElasticSearch
+      );
+
+      expect(
+        advancedSearchClassBase.getCustomPropertiesSubFields
+      ).toHaveBeenCalledWith(mockFields[0], SearchOutputType.ElasticSearch);
+      expect(
+        advancedSearchClassBase.getCustomPropertiesSubFields
+      ).toHaveBeenCalledWith(mockFields[1], SearchOutputType.ElasticSearch);
+    });
+
+    it('should pass searchOutputType through to processCustomPropertyField with JSONLogic', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+
+      processEntityTypeFields(
+        'table',
+        mockFields as never,
+        subfields,
+        'table',
+        SearchOutputType.JSONLogic
+      );
+
+      expect(
+        advancedSearchClassBase.getCustomPropertiesSubFields
+      ).toHaveBeenCalledWith(mockFields[0], SearchOutputType.JSONLogic);
+      expect(
+        advancedSearchClassBase.getCustomPropertiesSubFields
+      ).toHaveBeenCalledWith(mockFields[1], SearchOutputType.JSONLogic);
+    });
+
+    it('should handle undefined searchOutputType in processEntityTypeFields', () => {
+      const subfields: Record<string, FieldOrGroup> = {};
+
+      processEntityTypeFields('table', mockFields as never, subfields, 'table');
+
+      expect(
+        advancedSearchClassBase.getCustomPropertiesSubFields
+      ).toHaveBeenCalledWith(mockFields[0], undefined);
+      expect(
+        advancedSearchClassBase.getCustomPropertiesSubFields
+      ).toHaveBeenCalledWith(mockFields[1], undefined);
     });
   });
 });

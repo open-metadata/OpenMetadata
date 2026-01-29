@@ -227,7 +227,13 @@ export const AdvanceSearchProvider = ({
       const res = await getAllCustomProperties();
 
       Object.entries(res).forEach(([resEntityType, fields]) => {
-        processEntityTypeFields(resEntityType, fields, subfields, entityType);
+        processEntityTypeFields(
+          resEntityType,
+          fields,
+          subfields,
+          entityType,
+          searchOutputType
+        );
       });
     } catch {
       return subfields;
