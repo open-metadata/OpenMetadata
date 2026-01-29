@@ -120,7 +120,7 @@ const GlossaryTermReferencesModal = ({
                           message: t('message.endpoint-should-be-valid'),
                         },
                         {
-                          validator: referenceURLValidator(t),
+                          validator: referenceURLValidator,
                         },
                       ]}>
                       <Input placeholder={t('label.endpoint')} />

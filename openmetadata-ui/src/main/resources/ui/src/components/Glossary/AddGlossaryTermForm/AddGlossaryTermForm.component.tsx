@@ -438,7 +438,7 @@ const AddGlossaryTermForm = ({
                           type: 'url',
                         },
                         {
-                          validator: referenceURLValidator(t),
+                          validator: referenceURLValidator,
                         },
                       ]}>
                       <Input

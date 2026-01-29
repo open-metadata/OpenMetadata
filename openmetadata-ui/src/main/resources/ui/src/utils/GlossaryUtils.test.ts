@@ -407,38 +407,26 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
   });
 
   describe('referenceURLValidator', () => {
-    const mockT = (key: string) => key;
-
-    it('should return a validator function', () => {
-      const validator = referenceURLValidator(mockT);
-
-      expect(typeof validator).toBe('function');
-    });
-
     it('should resolve for valid http:// URLs', async () => {
-      const validator = referenceURLValidator(mockT);
-
-      await expect(validator({}, 'http://example.com')).resolves.toBeUndefined();
+      await expect(
+        referenceURLValidator({}, 'http://example.com')
+      ).resolves.toBeUndefined();
     });
 
     it('should resolve for valid https:// URLs', async () => {
-      const validator = referenceURLValidator(mockT);
-
-      await expect(validator({}, 'https://example.com')).resolves.toBeUndefined();
+      await expect(
+        referenceURLValidator({}, 'https://example.com')
+      ).resolves.toBeUndefined();
     });
 
     it('should reject for URLs without http:// or https://', async () => {
-      const validator = referenceURLValidator(mockT);
-
-      await expect(validator({}, 'www.example.com')).rejects.toThrow(
-        'message.url-must-start-with-http-or-https'
-      );
+      await expect(
+        referenceURLValidator({}, 'www.example.com')
+      ).rejects.toThrow('message.url-must-start-with-http-or-https');
     });
 
     it('should resolve for empty string', async () => {
-      const validator = referenceURLValidator(mockT);
-
-      await expect(validator({}, '')).resolves.toBeUndefined();
+      await expect(referenceURLValidator({}, '')).resolves.toBeUndefined();
     });
   });
 });

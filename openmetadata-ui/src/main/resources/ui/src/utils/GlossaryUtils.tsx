@@ -45,6 +45,7 @@ import { calculatePercentageFromValue } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
 import Fqn from './Fqn';
+import i18n from './i18next/LocalUtil';
 import { getGlossaryPath } from './RouterUtils';
 
 export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
@@ -531,15 +532,14 @@ export const validateReferenceURL = (url: string): boolean => {
 };
 
 export const referenceURLValidator = (
-  t: (key: string) => string
-): ((rule: unknown, value: string) => Promise<void>) => {
-  return (_, value) => {
-    if (validateReferenceURL(value)) {
-      return Promise.resolve();
-    }
+  _: unknown,
+  value: string
+): Promise<void> => {
+  if (validateReferenceURL(value)) {
+    return Promise.resolve();
+  }
 
-    return Promise.reject(
-      new Error(t('message.url-must-start-with-http-or-https'))
-    );
-  };
+  return Promise.reject(
+    new Error(i18n.t('message.url-must-start-with-http-or-https'))
+  );
 };
