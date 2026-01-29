@@ -85,11 +85,19 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
     return <div />;
   }
 
-  const labelStyle = {
-    px: 2,
-    gap: 2,
-    flex: '0 0 34%',
+  const rowStyle = {
+    gap: 3,
     display: 'flex',
+    alignItems: 'flex-start',
+  };
+
+  const labelStyle = {
+    pl: 2,
+    gap: 2,
+    minWidth: 0,
+    display: 'flex',
+    flex: '0 0 45%',
+    maxWidth: '45%',
     alignItems: 'center',
     color: theme.palette.grey[700],
   };
@@ -98,9 +106,15 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
     <Box
       className="feedback-approval-task"
       data-testid="feedback-approval-task"
-      sx={{ display: 'flex', rowGap: 4, flexDirection: 'column', mt: -1.5 }}>
+      sx={{
+        display: 'flex',
+        rowGap: 4,
+        flexDirection: 'column',
+        mt: -1.5,
+        maxWidth: '405px',
+      }}>
       {recognizerName && (
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
+        <Box sx={rowStyle}>
           <Typography sx={labelStyle} variant="body2">
             <CpuChip02 className="text-grey-muted" size={16} />
             {t('label.recognizer')}
@@ -110,7 +124,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
           </Typography>
         </Box>
       )}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+      <Box sx={rowStyle}>
         <Typography sx={labelStyle} variant="body2">
           <Flag04 className="text-grey-muted" size={16} />
           {t('label.feedback-type')}
@@ -147,7 +161,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
       </Box>
 
       {feedback.userComments && (
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
+        <Box sx={rowStyle}>
           <Typography sx={labelStyle} variant="body2">
             <MessageTextSquare01 className="text-grey-muted" size={16} />
             {t('label.comment-plural')}
@@ -168,7 +182,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
       )}
 
       {feedback.createdBy && (
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
+        <Box sx={rowStyle}>
           <Typography sx={labelStyle} variant="body2">
             <UsersRight className="text-grey-muted" size={16} />
             {t('label.submitted-by')}
@@ -183,7 +197,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
       )}
 
       {feedback.createdAt && (
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
+        <Box sx={rowStyle}>
           <Typography sx={labelStyle} variant="body2">
             <Clock className="text-grey-muted" size={16} />
             {t('label.submitted-on')}
@@ -198,7 +212,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
       )}
 
       {entityLinkData && (
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
+        <Box sx={rowStyle}>
           <Typography sx={labelStyle} variant="body2">
             <Database01 className="text-grey-muted" size={16} />
             {t('label.entity-link')}
