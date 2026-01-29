@@ -1055,8 +1055,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               <Typography sx={{ fontSize: '14px' }}>
                 {t('label.schema')} :{' '}
                 {serverValidation.schemaValidation?.failed}{' '}
-                {t('label.field-plural-lowercase')}{' '}
-                {t('label.with-issues')}
+                {t('label.field-plural-lowercase')} {t('label.with-issues')}
               </Typography>
             </Box>
           </Box>
