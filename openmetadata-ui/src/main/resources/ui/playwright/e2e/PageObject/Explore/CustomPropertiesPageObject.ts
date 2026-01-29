@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Locator} from '@playwright/test';
+import { Locator, Page} from '@playwright/test';
 import { RightPanelPageObject } from './RightPanelPageObject';
 
 /**
@@ -20,6 +20,7 @@ import { RightPanelPageObject } from './RightPanelPageObject';
  * Handles custom properties display, search, and verification
  */
 export class CustomPropertiesPageObject {
+  private readonly page: Page;
   private readonly rightPanel: RightPanelPageObject;
 
   // ============ PRIVATE LOCATORS (scoped to container) ============
@@ -27,9 +28,11 @@ export class CustomPropertiesPageObject {
   private readonly searchBar: Locator;
   private readonly propertyCard: Locator;
   private readonly valueElement: Locator;
+  private readonly emptyCustomPropertiesContainer: Locator;
 
-  constructor(rightPanel: RightPanelPageObject) {
+  constructor(rightPanel: RightPanelPageObject, page: Page) {
     this.rightPanel = rightPanel;
+    this.page = page;
 
     // Base container - scoped to right panel summary panel
     this.container = this.rightPanel.getSummaryPanel().locator('.custom-properties-container');
@@ -38,6 +41,7 @@ export class CustomPropertiesPageObject {
     this.searchBar = this.container.locator('.searchbar-container input, .searchbar-container input[type="text"]');
     this.propertyCard = this.container.locator('.custom-property, [class*="property"]');
     this.valueElement = this.propertyCard.locator('.value, [class*="value"], [data-testid="value"]');
+    this.emptyCustomPropertiesContainer = this.page.getByTestId('no-data-placeholder');
   }
 
   // ============ NAVIGATION METHODS (Fluent Interface) ============
@@ -63,6 +67,14 @@ export class CustomPropertiesPageObject {
     await this.searchBar.fill(searchTerm);
     await this.rightPanel.waitForLoadersToDisappear();
     return this;
+  }
+
+  /**
+   * Verify empty custom properties container is visible
+   * @returns CustomPropertiesPageObject for method chaining
+   */
+  async shouldShowEmptyCustomPropertiesContainer(): Promise<void> {
+    await this.emptyCustomPropertiesContainer.waitFor({ state: 'visible' });
   }
 
   /**

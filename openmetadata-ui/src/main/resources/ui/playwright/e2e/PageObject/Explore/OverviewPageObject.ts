@@ -49,6 +49,7 @@ export class OverviewPageObject {
   private readonly glossaryTermListItem: Locator;
   private readonly glossaryTermListContainer: Locator;
 
+
   constructor(rightPanel: RightPanelPageObject, page: Page) {
     this.rightPanel = rightPanel;
     this.page = page;

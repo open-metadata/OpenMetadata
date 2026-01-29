@@ -134,7 +134,7 @@ test.describe('Right Panel Page Objects Test Suite', () => {
     schema = new SchemaPageObject(rightPanel, adminPage);
     lineage = new LineagePageObject(rightPanel);
     dataQuality = new DataQualityPageObject(rightPanel);
-    customProperties = new CustomPropertiesPageObject(rightPanel);
+    customProperties = new CustomPropertiesPageObject(rightPanel, adminPage);
   });
 
   // Cleanup test data
@@ -355,8 +355,12 @@ test.describe('Right Panel Page Objects Test Suite', () => {
             const customPropertiesTabExists = await rightPanel.verifyTabExists('Custom Property');
             if (customPropertiesTabExists) {
               await customProperties.navigateToCustomPropertiesTab();
-              await customProperties.shouldBeVisible();
+              
+              // await customProperties.shouldBeVisible();
               // await customProperties.shouldHaveSearchBar();
+
+              //Right now we are checking for empty custom properties container
+              await customProperties.shouldShowEmptyCustomPropertiesContainer();
             }
           } catch {
             console.debug(`No custom properties exists for ${entityType}`);
