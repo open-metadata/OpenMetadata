@@ -705,6 +705,16 @@ const TagsPage = () => {
                   noWrap
                   className="self-center m-b-0 tag-category"
                   data-testid="tag-name"
+                  sx={{
+                    fontWeight:
+                      currentClassification?.name === category.name
+                        ? theme.typography.fontWeightBold
+                        : 'inherit',
+                    color:
+                      currentClassification?.name === category.name
+                        ? 'primary.main'
+                        : 'inherit',
+                  }}
                   title={getEntityName(category)}
                   variant="body2">
                   {getEntityName(category)}
