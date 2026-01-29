@@ -2840,6 +2840,10 @@ test.describe('Glossary tests', () => {
       await page.click('[data-testid="save-button"]');
       await updateNameResponse;
 
+      // Since rename updates left sidebar as well makes multiple requests, wait for network idle
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
       // Verify the name was updated in the header
       await expect(
         page.locator('[data-testid="entity-header-name"]')

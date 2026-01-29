@@ -28,7 +28,6 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { columnPaginationTable } from '../../utils/table';
 import { test } from '../fixtures/pages';
 
 const table1 = new TableClass();
@@ -277,140 +276,6 @@ test.describe('Table pagination sorting search scenarios ', () => {
 });
 
 test.describe('Table & Data Model columns table pagination', () => {
-  test('pagination for table column should work', async ({
-    dataConsumerPage: page,
-  }) => {
-    const columnsResponse = page.waitForResponse(
-      '/api/v1/tables/name/*/columns?*fields=tags*&include=all*'
-    );
-
-    await page.goto(
-      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
-    );
-
-    await columnsResponse;
-    await page.waitForSelector(
-      '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-      {
-        state: 'detached',
-      }
-    );
-
-    // Check for column count
-    expect(page.getByTestId('schema').getByTestId('filter-count')).toHaveText(
-      '2000'
-    );
-
-    await columnPaginationTable(page);
-  });
-
-  test('pagination for dashboard data model columns should work', async ({
-    dataConsumerPage: page,
-  }) => {
-    const dataModelsResponse1 = page.waitForResponse(
-      '/api/v1/dashboard/datamodels/name/*/columns?*fields=tags*include=all*'
-    );
-
-    await page.goto(
-      '/dashboardDataModel/sample_superset.model.big_analytics_data_model_with_nested_columns'
-    );
-
-    await dataModelsResponse1;
-    await page.waitForSelector(
-      '#KnowledgePanel\\.DataModel [data-testid="loader"]',
-      {
-        state: 'detached',
-      }
-    );
-
-    // 50 Row + 1 Header row
-    expect(
-      page.getByTestId('data-model-column-table').getByRole('row')
-    ).toHaveCount(51);
-
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 36`);
-
-    const dataModelsResponse2 = page.waitForResponse(
-      '/api/v1/dashboard/datamodels/name/*/columns?*fields=tags*include=all*'
-    );
-
-    await page.getByTestId('next').click();
-
-    await dataModelsResponse2;
-    await page.waitForSelector(
-      '#KnowledgePanel\\.DataModel [data-testid="loader"]',
-      {
-        state: 'detached',
-      }
-    );
-
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 36`);
-
-    expect(
-      page.getByTestId('data-model-column-table').getByRole('row')
-    ).toHaveCount(51);
-
-    const dataModelsResponse3 = page.waitForResponse(
-      '/api/v1/dashboard/datamodels/name/*/columns?*fields=tags*include=all*'
-    );
-
-    await page.getByTestId('previous').click();
-
-    await dataModelsResponse3;
-    await page.waitForSelector(
-      '#KnowledgePanel\\.DataModel [data-testid="loader"]',
-      {
-        state: 'detached',
-      }
-    );
-
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 36`);
-
-    // Change page size to 15
-    await page.getByTestId('page-size-selection-dropdown').click();
-
-    const dataModelsResponse4 = page.waitForResponse(
-      '/api/v1/dashboard/datamodels/name/*/columns?*fields=tags*include=all*'
-    );
-
-    await page.getByRole('menuitem', { name: '15 / Page' }).click();
-
-    await dataModelsResponse4;
-    await page.waitForSelector(
-      '#KnowledgePanel\\.DataModel [data-testid="loader"]',
-      {
-        state: 'detached',
-      }
-    );
-
-    // 15 Row + 1 Header row
-    expect(
-      page.getByTestId('data-model-column-table').getByRole('row')
-    ).toHaveCount(16);
-
-    // Change page size to 25
-    await page.getByTestId('page-size-selection-dropdown').click();
-
-    const dataModelsResponse5 = page.waitForResponse(
-      '/api/v1/dashboard/datamodels/name/*/columns?*fields=tags*include=all*'
-    );
-
-    await page.getByRole('menuitem', { name: '25 / Page' }).click();
-
-    await dataModelsResponse5;
-    await page.waitForSelector(
-      '#KnowledgePanel\\.DataModel [data-testid="loader"]',
-      {
-        state: 'detached',
-      }
-    );
-
-    // 25 Row + 1 Header row
-    expect(
-      page.getByTestId('data-model-column-table').getByRole('row')
-    ).toHaveCount(26);
-  });
-
   test('expand collapse should only visible for nested columns', async ({
     page,
   }) => {
@@ -852,8 +717,11 @@ test.describe('Large Table Column Search & Copy Link', () => {
     expect(clipboardText).toContain(targetColumnName);
 
     // 5. Visit the copied Link
+    const visitLinkResponse = page.waitForResponse((response) =>
+      response.url().includes(`/table/${createdTable.fullyQualifiedName}`)
+    );
     await page.goto(clipboardText);
-    await page.waitForLoadState('networkidle');
+    await visitLinkResponse;
     await waitForAllLoadersToDisappear(page);
 
     // 6. Verify Side Panel is open

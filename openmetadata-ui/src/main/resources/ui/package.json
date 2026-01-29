@@ -108,7 +108,7 @@
     "js-yaml": "^4.1.1",
     "jwt-decode": "^3.1.2",
     "katex": "^0.16.21",
-    "lodash": "^4.17.21",
+    "lodash": "^4.17.23",
     "luxon": "^3.2.1",
     "notistack": "^3.0.2",
     "oidc-client": "^1.11.5",
@@ -262,6 +262,8 @@
     "on-headers": "1.1.0",
     "form-data": "3.0.4",
     "tar-fs": "2.1.4",
-    "js-yaml": "4.1.1"
+    "js-yaml": "4.1.1",
+    "lodash": ">=4.17.23",
+    "lodash-es": ">=4.17.23"
   }
 }
