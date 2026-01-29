@@ -17,6 +17,10 @@ export const CP_BASE_VALUES = {
   markdown: '<p>HEre</p><p>new desc</p>',
   sqlQuery: 'Select * from TABLE',
   duration: 'P1Y3M4D1H3M4S',
+  hyperlinkCp: {
+    url: 'https://open-metadata.org',
+    displayText: 'Test Link',
+  },
   integer: 65,
   number: 55.7,
   timestamp: 1358694736345,
