@@ -1158,6 +1158,7 @@ public class TableRepository extends EntityRepository<Table> {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(Table::getId).toList();
     deleteToMany(ids, Entity.TABLE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
+    deleteFromMany(ids, Entity.TABLE, Relationship.RELATED_TO, Entity.TABLE);
   }
 
   @Override

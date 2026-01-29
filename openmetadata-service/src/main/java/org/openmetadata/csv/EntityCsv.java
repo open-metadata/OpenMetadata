@@ -50,12 +50,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
@@ -138,6 +140,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   // Queue for batching entity creates/updates - processed after each batch of CSV records
   protected final List<PendingEntityOperation> pendingEntityOperations = new ArrayList<>();
+  // Track FQNs of entities in pendingEntityOperations for O(1) lookup
+  protected final Set<String> pendingEntityFQNs = new HashSet<>();
 
   /** Holder for pending entity create/update operations */
   protected static class PendingEntityOperation {
@@ -1050,6 +1054,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         // Queue for batch processing instead of immediate persist
         pendingEntityOperations.add(
             new PendingEntityOperation(entity, original, csvRecord, entityType, !isUpdate));
+        pendingEntityFQNs.add(entity.getFullyQualifiedName());
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
@@ -1118,6 +1123,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         pendingEntityOperations.add(
             new PendingEntityOperation(
                 entity, (EntityInterface) original, csvRecord, type, !isUpdate));
+        pendingEntityFQNs.add(entity.getFullyQualifiedName());
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
@@ -1299,6 +1305,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
 
     pendingEntityOperations.clear();
+    pendingEntityFQNs.clear();
   }
 
   @Transaction
@@ -1635,13 +1642,28 @@ public abstract class EntityCsv<T extends EntityInterface> {
     String tableFQN = FullyQualifiedName.getTableFQN(entityFQN);
     String schemaFQN = FullyQualifiedName.getParentFQN(tableFQN);
 
-    // Check if we have a cached table context for batching
+    // Check if table is in the current batch's pending operations (not yet persisted)
+    // If so, we add columns directly to the cached object - they'll be persisted with the table
+    if (pendingEntityFQNs.contains(tableFQN)) {
+      EntityInterface cachedEntity = dryRunCreatedEntities.get(tableFQN);
+      if (cachedEntity instanceof Table cachedTable) {
+        updateColumnsFromCsvRecursive(cachedTable, csvRecord, printer);
+        if (processRecord) {
+          importSuccess(printer, csvRecord, ENTITY_UPDATED);
+        }
+        return;
+      }
+    }
+
+    // Check if we have a cached table context for batching (for tables from DB)
     TableUpdateContext tableContext = pendingTableUpdates.get(tableFQN);
 
     if (tableContext == null) {
       // First column for this table - fetch and cache it
-      Table table;
+      Table table = null;
       DatabaseSchema schema;
+
+      // Try to fetch table from DB first
       try {
         table =
             Entity.getEntityByName(
@@ -1650,38 +1672,46 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 "name,displayName,fullyQualifiedName,columns",
                 Include.NON_DELETED);
       } catch (EntityNotFoundException ex) {
-        try {
-          schema =
-              Entity.getEntityByName(
-                  DATABASE_SCHEMA,
-                  schemaFQN,
-                  "name,displayName,service,database",
-                  Include.NON_DELETED);
-        } catch (EntityNotFoundException exception) {
-          LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
-
-          if (importResult.getDryRun()) {
-            schema =
-                new DatabaseSchema()
-                    .withName(schemaFQN)
-                    .withDatabase(null)
-                    .withService(null)
-                    .withId(UUID.randomUUID());
-          } else {
-            throw new IllegalArgumentException(
-                "Schema not found for the column table: " + schemaFQN);
-          }
-        }
-        if (importResult.getDryRun()) {
-          table =
-              new Table()
-                  .withId(UUID.randomUUID())
-                  .withName(tableFQN)
-                  .withFullyQualifiedName(tableFQN)
-                  .withDatabaseSchema(schema.getEntityReference())
-                  .withColumns(new ArrayList<>());
+        // Table not in DB - check if it exists in dryRunCreatedEntities cache
+        // (for dry-run mode or cross-batch scenarios)
+        EntityInterface cachedEntity = dryRunCreatedEntities.get(tableFQN);
+        if (cachedEntity instanceof Table) {
+          table = (Table) cachedEntity;
         } else {
-          throw new IllegalArgumentException("Table not found: " + entityFQN);
+          // Table not in cache either - handle based on dryRun mode
+          try {
+            schema =
+                Entity.getEntityByName(
+                    DATABASE_SCHEMA,
+                    schemaFQN,
+                    "name,displayName,service,database",
+                    Include.NON_DELETED);
+          } catch (EntityNotFoundException exception) {
+            LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
+
+            if (importResult.getDryRun()) {
+              schema =
+                  new DatabaseSchema()
+                      .withName(schemaFQN)
+                      .withDatabase(null)
+                      .withService(null)
+                      .withId(UUID.randomUUID());
+            } else {
+              throw new IllegalArgumentException(
+                  "Schema not found for the column table: " + schemaFQN);
+            }
+          }
+          if (importResult.getDryRun()) {
+            table =
+                new Table()
+                    .withId(UUID.randomUUID())
+                    .withName(tableFQN)
+                    .withFullyQualifiedName(tableFQN)
+                    .withDatabaseSchema(schema.getEntityReference())
+                    .withColumns(new ArrayList<>());
+          } else {
+            throw new IllegalArgumentException("Table not found: " + entityFQN);
+          }
         }
       }
 
