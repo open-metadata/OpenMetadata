@@ -22,12 +22,13 @@ on:
       - synchronize
       - reopened
     paths:
-      - '.github/**'                            
-      - 'openmetadata-dist/**'
-      - 'docker/**'
-      - '!docker/development/docker-compose.yml'
-      - '!docker/development/docker-compose-postgres.yml'
-
+      - ".github/**"
+      - "openmetadata-dist/**"
+      - "docker/**"
+      - "!docker/development/docker-compose.yml"
+      - "!docker/development/docker-compose-postgres.yml"
+      - "openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
+      - "openmetadata-ui/src/main/resources/ui/playwright/docs/**"
 
 jobs:
   playwright-ci-mysql:
