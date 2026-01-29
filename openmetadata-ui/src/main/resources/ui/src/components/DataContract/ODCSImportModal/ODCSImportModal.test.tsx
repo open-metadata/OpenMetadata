@@ -203,8 +203,8 @@ jest.mock('react-i18next', () => ({
         'message.validating-contract-schema': 'Validating contract schema...',
         'label.schema-validation': 'Schema Validation',
         'label.passed': 'Passed',
-        'message.schema-validation-passed-count':
-          'Schema validation passed for 1 field',
+        'message.schema-validation-passed':
+          'Schema validation passed ({{count}} field(s) verified)',
         'message.contract-syntax-valid': 'Contract syntax is valid',
         'label.field-plural-lowercase': 'fields',
         'label.verified': 'verified',
@@ -1091,8 +1091,8 @@ describe('ContractImportModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Failed')).toBeInTheDocument();
-        expect(screen.getByText('field1')).toBeInTheDocument();
-        expect(screen.getByText('field2')).toBeInTheDocument();
+        expect(screen.getByText(/field1.*not found/i)).toBeInTheDocument();
+        expect(screen.getByText(/field2.*not found/i)).toBeInTheDocument();
       });
     });
 

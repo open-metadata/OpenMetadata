@@ -948,14 +948,19 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               }}
             />
           </Box>
-          <Box sx={{ flex: 1, minHeight: '200px' }}>
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: '200px',
+              overflowY: 'auto',
+            }}>
             <Box
               data-testid="failed-fields-list"
               sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {serverValidation.schemaValidation?.failedFields?.map(
                 (field, index) => (
                   <Box
-                    key={index}
+                    key={`notfound-${index}`}
                     sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Box
                       sx={{
@@ -967,6 +972,48 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                     />
                     <Typography
                       data-testid={`failed-field-${index}`}
+                      sx={{ fontSize: '14px' }}>
+                      {field} - {t('label.not-found-lowercase')}
+                    </Typography>
+                  </Box>
+                )
+              )}
+              {serverValidation.schemaValidation?.duplicateFields?.map(
+                (field, index) => (
+                  <Box
+                    key={`duplicate-${index}`}
+                    sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Box
+                      sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        backgroundColor: theme.palette.allShades.error[600],
+                      }}
+                    />
+                    <Typography
+                      data-testid={`duplicate-field-${index}`}
+                      sx={{ fontSize: '14px' }}>
+                      {field} - {t('label.duplicate')}
+                    </Typography>
+                  </Box>
+                )
+              )}
+              {serverValidation.schemaValidation?.typeMismatchFields?.map(
+                (field, index) => (
+                  <Box
+                    key={`typemismatch-${index}`}
+                    sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Box
+                      sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        backgroundColor: theme.palette.allShades.error[600],
+                      }}
+                    />
+                    <Typography
+                      data-testid={`type-mismatch-field-${index}`}
                       sx={{ fontSize: '14px' }}>
                       {field}
                     </Typography>
@@ -1009,7 +1056,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                 {t('label.schema')} :{' '}
                 {serverValidation.schemaValidation?.failed}{' '}
                 {t('label.field-plural-lowercase')}{' '}
-                {t('label.not-found-lowercase')}
+                {t('label.with-issues')}
               </Typography>
             </Box>
           </Box>
@@ -1185,7 +1232,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
             {serverValidation?.schemaValidation?.total &&
             serverValidation.schemaValidation.total > 0
-              ? t('message.schema-validation-passed-count', {
+              ? t('message.schema-validation-passed', {
                   count: serverValidation.schemaValidation?.passed,
                 })
               : t('message.contract-syntax-valid')}

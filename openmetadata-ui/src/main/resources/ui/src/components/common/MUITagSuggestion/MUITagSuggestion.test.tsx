@@ -268,6 +268,8 @@ describe('MUITagSuggestion', () => {
 
     const option = screen.getByTestId('tag-option-PersonalData.Personal');
 
+
+
     await act(async () => {
       fireEvent.click(option);
     });
