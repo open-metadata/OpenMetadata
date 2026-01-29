@@ -23,7 +23,6 @@
  */
 
 import { test } from '../../support/fixtures/userPages';
-import { Page } from '@playwright/test';
 import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import { SchemaPageObject } from '../PageObject/Explore/SchemaPageObject';
@@ -93,7 +92,6 @@ let schema: SchemaPageObject;
 let lineage: LineagePageObject;
 let dataQuality: DataQualityPageObject;
 let customProperties: CustomPropertiesPageObject;
-let page: Page;
 
 const domainToUpdate = domainEntity.responseData?.displayName ?? domainEntity.data.displayName;
 const ownerToUpdate = [EntityDataClass.user1.getUserDisplayName()];
@@ -105,13 +103,16 @@ const testTier = 'Tier1';
 test.describe('Right Panel Page Objects Test Suite', () => {
 
   // Setup test data and page objects
-  test.beforeAll(async ({ browser, page }) => {
+  test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     
     try {
-      Object.values(entityMap).forEach(async (entityInstance) => {
-        await entityInstance.create(apiContext);
-      });
+      // Create all entities in parallel for better performance
+      await Promise.all(
+        Object.values(entityMap).map((entityInstance) => 
+          entityInstance.create(apiContext)
+        )
+      );
 
       await testClassification.create(apiContext);
       await testTag.create(apiContext);
@@ -146,7 +147,8 @@ test.describe('Right Panel Page Objects Test Suite', () => {
       // Dashboard service already existed, don't delete it
       await testTag.delete(apiContext);
       await testClassification.delete(apiContext);
-      await testGlossaryTerm.delete(apiContext)
+      await testGlossaryTerm.delete(apiContext);
+
       await domainEntity.delete(apiContext);
     } finally {
       await afterAction();
