@@ -169,6 +169,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
   protected final List<EntityInterface> pendingSearchIndexUpdates = new ArrayList<>();
   // Queue for batching change event inserts - processed after each batch of CSV records
   protected final List<String> pendingChangeEvents = new ArrayList<>();
+  // Track CSV results to write after batch operations complete
+  protected final Map<CSVRecord, String> pendingCsvResults = new HashMap<>();
 
   /** Cache for tables being modified during column imports - enables batching column updates */
   protected final Map<String, TableUpdateContext> pendingTableUpdates = new HashMap<>();
@@ -234,6 +236,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
         flushPendingEntityOperations();
         // Flush any pending batched updates (e.g., column updates for tables)
         flushPendingTableUpdates(resultsPrinter);
+        // Write final CSV results after table batch operations complete
+        flushPendingCsvResults(resultsPrinter);
         // Flush pending search index updates using bulk API
         flushPendingSearchIndexUpdates();
         // Flush pending change events using batch insert
@@ -1249,6 +1253,22 @@ public abstract class EntityCsv<T extends EntityInterface> {
             });
   }
 
+  /** Write pending CSV results to output */
+  protected void flushPendingCsvResults(CSVPrinter printer) throws IOException {
+    for (Map.Entry<CSVRecord, String> entry : pendingCsvResults.entrySet()) {
+      CSVRecord csvRecord = entry.getKey();
+      String result = entry.getValue();
+
+      if (ENTITY_CREATED.equals(result) || ENTITY_UPDATED.equals(result)) {
+        importSuccess(printer, csvRecord, result);
+      } else {
+        // It's an error message
+        importFailure(printer, result, csvRecord);
+      }
+    }
+    pendingCsvResults.clear();
+  }
+
   /** Flush pending entity operations using batch DB operations */
   @SuppressWarnings("unchecked")
   protected void flushPendingEntityOperations() {
@@ -1672,7 +1692,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       if (cachedEntity instanceof Table cachedTable) {
         updateColumnsFromCsvRecursive(cachedTable, csvRecord, printer);
         if (processRecord) {
-          importSuccess(printer, csvRecord, ENTITY_UPDATED);
+          pendingCsvResults.put(csvRecord, ENTITY_UPDATED);
         }
         return;
       }
@@ -1749,8 +1769,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (processRecord) {
       // Track the CSV record for this column
       tableContext.csvRecords.add(csvRecord);
-      // Mark as success for now - actual patch will happen in flushPendingTableUpdates
-      importSuccess(printer, csvRecord, ENTITY_UPDATED);
+      // Queue result for later - actual success/failure determined after batch patch
+      pendingCsvResults.put(csvRecord, ENTITY_UPDATED);
     }
   }
 
@@ -1778,10 +1798,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
               "Batch patched table {} with {} column updates", tableFQN, context.csvRecords.size());
         } catch (Exception ex) {
           LOG.error("Failed to batch patch table {}: {}", tableFQN, ex.getMessage());
-          // Update the import result to reflect failures
+          // Mark these CSV records as failures - they'll be written as failures in
+          // flushPendingCsvResults
           for (CSVRecord record : context.csvRecords) {
-            importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() - 1);
-            importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
+            pendingCsvResults.put(record, ex.getMessage());
           }
           importResult.setStatus(ApiStatus.PARTIAL_SUCCESS);
         }
@@ -2083,6 +2103,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
         flushPendingEntityOperations();
         // Flush any pending batched updates (e.g., column updates for tables)
         flushPendingTableUpdates(resultsPrinter);
+        // Write final CSV results after table batch operations complete
+        flushPendingCsvResults(resultsPrinter);
         // Flush pending search index updates using bulk API
         flushPendingSearchIndexUpdates();
         // Flush pending change events using batch insert
