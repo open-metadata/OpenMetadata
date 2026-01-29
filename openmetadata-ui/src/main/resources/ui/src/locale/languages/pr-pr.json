@@ -2340,6 +2340,7 @@
     "enable-tag-description": "با فعال کردن برچسب، می‌توانید بر اساس آن جستجو کرده یا این برچسب را به هر موجودیتی اختصاص دهید.",
     "enables-end-to-end-metadata-management": "تمام دارایی‌های داده‌ای خود را در یک مکان کشف کنید. با داده‌های مناسب در دسترس، بینش‌های کلیدی کسب کنید. اکنون پتانسیل داده‌های خود را باز کنید و تصمیمات تجاری آگاهانه بگیرید!",
     "endpoint-should-be-valid": "نقطه پایان باید یک URL معتبر باشد.",
+    "url-must-start-with-http-or-https": "URL must start with http:// or https://",
     "ensure-airflow-set-up-correctly-before-heading-to-ingest-metadata": "اطمینان حاصل کنید که Airflow به درستی تنظیم شده است قبل از رفتن به مرحله ورود متادیتا.",
     "ensure-elasticsearch-is-up-and-running": "اطمینان حاصل کنید که داکر Elasticsearch فعال و در حال اجرا است.",
     "enter-a-field": "یک {{field}} وارد کنید.",

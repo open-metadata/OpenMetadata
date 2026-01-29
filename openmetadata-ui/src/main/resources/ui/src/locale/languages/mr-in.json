@@ -2340,6 +2340,7 @@
     "enable-tag-description": "टॅग सक्षम केल्याने, तुम्ही या टॅगद्वारे शोधू किंवा कोणत्याही घटकासाठी हा टॅग नियुक्त करू शकाल.",
     "enables-end-to-end-metadata-management": "सर्व डेटा ॲसेट एका ठिकाणी शोधा. तुमच्या बोटांच्या टोकावर योग्य डेटासह महत्त्वपूर्ण अंतर्दृष्टी मिळवा. आता, तुमच्या डेटाची क्षमता अनलॉक करा आणि माहितीपूर्ण व्यावसायिक निर्णय घ्या!",
     "endpoint-should-be-valid": "एंडपॉईंट वैध URL असावा.",
+    "url-must-start-with-http-or-https": "URL must start with http:// or https://",
     "ensure-airflow-set-up-correctly-before-heading-to-ingest-metadata": "मेटाडेटा अंतर्ग्रहण करण्यापूर्वी तुमच्याकडे एअरफ्लो योग्यरित्या सेट अप आहे याची खात्री करा.",
     "ensure-elasticsearch-is-up-and-running": "Elasticsearch डॉकर चालू आणि चालू आहे याची खात्री करा.",
     "enter-a-field": "{{field}} प्रविष्ट करा",

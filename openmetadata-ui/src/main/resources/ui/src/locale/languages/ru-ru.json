@@ -2340,6 +2340,7 @@
     "enable-tag-description": "Включив тег, вы сможете искать по нему или назначать его любой сущности.",
     "enables-end-to-end-metadata-management": "Обеспечивает комплексное управление метаданными с помощью обнаружения данных, обеспечения качества данных, наблюдаемости и совместной работы людей",
     "endpoint-should-be-valid": "Конечная точка должна быть допустимым URL.",
+    "url-must-start-with-http-or-https": "URL must start with http:// or https://",
     "ensure-airflow-set-up-correctly-before-heading-to-ingest-metadata": "Убедитесь, что у вас правильно настроен Airflow, прежде чем переходить к загрузке метаданных.",
     "ensure-elasticsearch-is-up-and-running": "Убедитесь, что докер Elasticsearch запущен и работает.",
     "enter-a-field": "Введите {{field}}",

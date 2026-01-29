@@ -2340,6 +2340,7 @@
     "enable-tag-description": "Durch Aktivieren des Tags können Sie nach diesem suchen oder es einer Entität zuweisen.",
     "enables-end-to-end-metadata-management": "Entdecken Sie alle Ihre Datenressourcen an einem einzigen Ort. Erhalten Sie entscheidende Einblicke in die richtigen Daten. Nutzen Sie jetzt Ihr Datenpotenzial und treffen Sie informierte Geschäftsentscheidungen!",
     "endpoint-should-be-valid": "Die Endpunkt-URL sollte gültig sein.",
+    "url-must-start-with-http-or-https": "URL must start with http:// or https://",
     "ensure-airflow-set-up-correctly-before-heading-to-ingest-metadata": "Stellen Sie sicher, dass Sie Airflow korrekt eingerichtet haben, bevor Sie mit der Metadaten-Erfassung beginnen.",
     "ensure-elasticsearch-is-up-and-running": "Stellen Sie sicher, dass der Elasticsearch-Docker gestartet und ausgeführt wird.",
     "enter-a-field": "Geben Sie ein {{field}} ein.",

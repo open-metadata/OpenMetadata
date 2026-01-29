@@ -2340,6 +2340,7 @@
     "enable-tag-description": "על ידי הפעלת התג, תוכל לחפש לפיו או להקצות אותו לישות כלשהי.",
     "enables-end-to-end-metadata-management": "גלה את כל הנכסים שלך במקום אחד. קבל תובנות חיוניות עם המידע הנכון בקרבת יד. כעת, שחרר את פוטנציאל הנתונים שלך וקבל החלטות עסקיות מושכלות!",
     "endpoint-should-be-valid": "יש להזין כתובת יעילה עבור הנקודת סיום.",
+    "url-must-start-with-http-or-https": "URL must start with http:// or https://",
     "ensure-airflow-set-up-correctly-before-heading-to-ingest-metadata": "וודא שהתקנת את Airflow בצורה נכונה לפני שתמשיך לזרוק נתונים.",
     "ensure-elasticsearch-is-up-and-running": "וודא שהתמקדות ה-Elasticsearch עומדת ופועלת.",
     "enter-a-field": "הזן {{field}}",

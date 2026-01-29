@@ -2340,6 +2340,7 @@
     "enable-tag-description": "بتمكين الوسم، ستتمكن من البحث باستخدامه أو تعيينه لأي كيان.",
     "enables-end-to-end-metadata-management": "اكتشف جميع أصول البيانات الخاصة بك في مكان واحد. احصل على رؤى حاسمة مع البيانات الصحيحة في متناول يدك. الآن، أطلق العنان لإمكانات بياناتك واتخذ قرارات عمل مستنيرة!",
     "endpoint-should-be-valid": "يجب أن تكون نقطة النهاية رابط URL صالحًا.",
+    "url-must-start-with-http-or-https": "URL must start with http:// or https://",
     "ensure-airflow-set-up-correctly-before-heading-to-ingest-metadata": "تأكد من إعداد Airflow بشكل صحيح قبل التوجه لاستيعاب البيانات الوصفية.",
     "ensure-elasticsearch-is-up-and-running": "تأكد من أن عامل Docker لـ Elasticsearch يعمل.",
     "enter-a-field": "أدخل {{field}}",

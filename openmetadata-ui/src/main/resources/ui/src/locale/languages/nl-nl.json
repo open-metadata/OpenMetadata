@@ -2340,6 +2340,7 @@
     "enable-tag-description": "Door de tag in te schakelen, kun je zoeken op deze tag of deze toewijzen aan elke entiteit.",
     "enables-end-to-end-metadata-management": "Ontdek al je data-assets op één plek. Krijg cruciale inzichten met de juiste data binnen handbereik. Ontgrendel nu het potentieel van je data en neem geïnformeerde zakelijke beslissingen!",
     "endpoint-should-be-valid": "Endpoint moet een geldige URL zijn.",
+    "url-must-start-with-http-or-https": "URL must start with http:// or https://",
     "ensure-airflow-set-up-correctly-before-heading-to-ingest-metadata": "Zorg ervoor dat Airflow correct is ingesteld voordat je doorgaat met het opnemen van metadata.",
     "ensure-elasticsearch-is-up-and-running": "Zorg ervoor dat de Elasticsearch-docker actief en operationeel is.",
     "enter-a-field": "Voer een {{field}} in",
