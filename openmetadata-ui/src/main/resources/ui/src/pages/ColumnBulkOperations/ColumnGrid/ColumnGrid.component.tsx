@@ -82,6 +82,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
 import './ColumnGrid.less';
 import { ColumnGridTableRow } from './components/ColumnGridTableRow';
+import { RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS } from './constants/ColumnGrid.constants';
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';
 // Removed React Data Grid - using MUI Table instead
@@ -1074,6 +1075,13 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         columnGridListing.selectedEntities
       );
 
+      showSuccessToast(
+        t('server.bulk-update-initiated', {
+          entity: t('label.column-plural'),
+          count: pendingHighlightRowIdsRef.current.size,
+        })
+      );
+
       closeDrawerRef.current();
       columnGridListing.clearSelection();
     } catch (error) {
@@ -1104,16 +1112,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         if (data.jobId && data.jobId === activeJobIdRef.current) {
           if (data.status === 'COMPLETED' || data.status === 'SUCCESS') {
             activeJobIdRef.current = null;
-            Promise.resolve(columnGridListing.refetch({ silent: true }))
+            columnGridListing
+              .refetch({ silent: true })
               .then(() => {
                 setRecentlyUpdatedRowIds(
                   new Set(pendingHighlightRowIdsRef.current)
-                );
-                showSuccessToast(
-                  t('server.bulk-update-initiated', {
-                    entity: t('label.column-plural'),
-                    count: pendingHighlightRowIdsRef.current.size,
-                  })
                 );
               })
               .catch(() => {
@@ -1140,6 +1143,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     };
   }, [socket, columnGridListing.refetch, t]);
 
+  // Clear highlighted rows after 1s and collapse their expanded state
   useEffect(() => {
     if (recentlyUpdatedRowIds.size === 0) {
       return;
@@ -1156,7 +1160,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
         return next;
       });
-    }, 1000);
+    }, RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS);
 
     return () => clearTimeout(timer);
   }, [recentlyUpdatedRowIds, columnGridListing.setExpandedRows]);

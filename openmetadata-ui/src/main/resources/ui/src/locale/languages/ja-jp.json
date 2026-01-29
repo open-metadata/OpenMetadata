@@ -1124,7 +1124,7 @@
     "metadata-lowercase": "メタデータ",
     "metadata-plural": "メタデータ",
     "metadata-service": "メタデータサービス",
-    "metadata-status": "Metadata Status",
+    "metadata-status": "あり / なし メタデータ",
     "metadata-to-es-config-optional": "MetadataからES設定（オプション）",
     "metapilot": "MetaPilot",
     "metapilot-suggested-description": "MetaPilotの提案説明",

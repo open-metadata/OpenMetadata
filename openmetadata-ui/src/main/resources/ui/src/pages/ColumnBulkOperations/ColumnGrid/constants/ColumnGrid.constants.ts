@@ -19,6 +19,8 @@ import i18n from '../../../../utils/i18next/LocalUtil';
 export const COLUMN_TAG_FIELD = 'columnTags';
 export const COLUMN_GLOSSARY_FIELD = 'columnGlossaryTerms';
 
+export const RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS = 1000;
+
 export const COLUMN_GRID_FILTERS: ExploreQuickFilterField[] = [
   {
     label: i18n.t('label.service'),

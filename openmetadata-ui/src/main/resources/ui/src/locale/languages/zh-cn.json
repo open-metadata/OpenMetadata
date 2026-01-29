@@ -1124,7 +1124,7 @@
     "metadata-lowercase": "元数据",
     "metadata-plural": "元数据",
     "metadata-service": "元数据服务",
-    "metadata-status": "Metadata Status",
+    "metadata-status": "有 / 无 元数据",
     "metadata-to-es-config-optional": "元数据到 ES 配置(可选)",
     "metapilot": "MetaPilot",
     "metapilot-suggested-description": "Metapilot 建议说明",

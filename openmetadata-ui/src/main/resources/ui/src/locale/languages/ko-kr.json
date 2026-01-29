@@ -1124,7 +1124,7 @@
     "metadata-lowercase": "메타데이터",
     "metadata-plural": "메타데이터",
     "metadata-service": "메타데이터 서비스",
-    "metadata-status": "Metadata Status",
+    "metadata-status": "있음 / 없음 메타데이터",
     "metadata-to-es-config-optional": "메타데이터를 ES로 설정 (선택사항)",
     "metapilot": "메타파일럿",
     "metapilot-suggested-description": "메타파일럿 제안 설명",

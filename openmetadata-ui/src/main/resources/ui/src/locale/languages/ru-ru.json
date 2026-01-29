@@ -1124,7 +1124,7 @@
     "metadata-lowercase": "метаданные",
     "metadata-plural": "Метаданные",
     "metadata-service": "Сервис метаданных",
-    "metadata-status": "Metadata Status",
+    "metadata-status": "Есть / Нет метаданных",
     "metadata-to-es-config-optional": "Метаданные для конфигурации ES (необязательно)",
     "metapilot": "MetaPilot",
     "metapilot-suggested-description": "Рекомендованные описания Metapilot",

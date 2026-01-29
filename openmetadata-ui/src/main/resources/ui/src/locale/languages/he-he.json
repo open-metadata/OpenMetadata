@@ -1124,7 +1124,7 @@
     "metadata-lowercase": "מטא-דאטה",
     "metadata-plural": "מטא-דאטה",
     "metadata-service": "שירות מטא-נתונים",
-    "metadata-status": "Metadata Status",
+    "metadata-status": "יש / חסר מטא-דאטה",
     "metadata-to-es-config-optional": "קונפיגורציית מטא-דאטה ל-Elasticsearch (אופציונלי)",
     "metapilot": "MetaPilot",
     "metapilot-suggested-description": "תיאור מוצע על ידי Metapilot",

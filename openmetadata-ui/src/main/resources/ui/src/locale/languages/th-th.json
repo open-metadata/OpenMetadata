@@ -1124,7 +1124,7 @@
     "metadata-lowercase": "ข้อมูลเมตา",
     "metadata-plural": "ข้อมูลเมตาหลายรายการ",
     "metadata-service": "บริการข้อมูลเมตา",
-    "metadata-status": "Metadata Status",
+    "metadata-status": "มี / ไม่มี เมตาดาต้า",
     "metadata-to-es-config-optional": "ข้อมูลเมตาไปยังการกำหนดค่าของ ES (เลือกได้)",
     "metapilot": "MetaPilot",
     "metapilot-suggested-description": "คำอธิบายที่แนะนำโดย Metapilot",

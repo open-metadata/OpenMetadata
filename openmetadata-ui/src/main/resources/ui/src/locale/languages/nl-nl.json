@@ -1124,7 +1124,7 @@
     "metadata-lowercase": "metadata",
     "metadata-plural": "Metadata",
     "metadata-service": "Metadataservice",
-    "metadata-status": "Metadata Status",
+    "metadata-status": "Heeft / Ontbreekt metagegevens",
     "metadata-to-es-config-optional": "Metadata naar ES-configuratie (Optioneel)",
     "metapilot": "MetaPilot",
     "metapilot-suggested-description": "Door Metapilot voorgestelde beschrijving",

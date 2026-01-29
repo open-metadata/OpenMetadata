@@ -1124,7 +1124,7 @@
     "metadata-lowercase": "metadata",
     "metadata-plural": "Metadatalar",
     "metadata-service": "Meta Veri Servisi",
-    "metadata-status": "Metadata Status",
+    "metadata-status": "Var / Eksik Metaveri",
     "metadata-to-es-config-optional": "Metadata'dan ES'ye Yapılandırma (İsteğe Bağlı)",
     "metapilot": "MetaPilot",
     "metapilot-suggested-description": "Metapilot Tarafından Önerilen Açıklama",

@@ -1124,7 +1124,7 @@
     "metadata-lowercase": "البيانات الوصفية",
     "metadata-plural": "البيانات الوصفية",
     "metadata-service": "خدمة البيانات الوصفية",
-    "metadata-status": "Metadata Status",
+    "metadata-status": "لديه / بدون بيانات وصفية",
     "metadata-to-es-config-optional": "تكوين البيانات الوصفية إلى ES (اختياري)",
     "metapilot": "MetaPilot",
     "metapilot-suggested-description": "وصف مقترح من Metapilot",

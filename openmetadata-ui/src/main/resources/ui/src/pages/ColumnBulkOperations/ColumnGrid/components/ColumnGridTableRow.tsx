@@ -19,6 +19,7 @@ interface ColumnGridTableRowProps {
   entity: ColumnGridRowData;
   isSelected: boolean;
   isIndeterminate?: boolean;
+  /** When true, row shows highlighted (theme warning) background for recently bulk-updated columns */
   isRecentlyUpdated?: boolean;
   onSelect: (id: string, checked: boolean) => void;
   onGroupSelect?: (groupId: string, checked: boolean) => void;
@@ -28,8 +29,6 @@ interface ColumnGridTableRowProps {
   renderTagsCell: (entity: ColumnGridRowData) => React.ReactNode;
   renderGlossaryTermsCell: (entity: ColumnGridRowData) => React.ReactNode;
 }
-
-const YELLOW_HIGHLIGHT_FALLBACK = '#FEFBE8';
 
 const ROW_BG_TRANSITION = 'background-color 0.4s ease-in-out';
 
@@ -53,7 +52,9 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
     const type = isChildRow ? 'child' : 'parent';
 
     const yellowHighlightBg =
-      theme.palette.allShades?.warning?.[50] ?? YELLOW_HIGHLIGHT_FALLBACK;
+      theme.palette.allShades?.warning?.[50] ??
+      theme.palette.warning?.light ??
+      theme.palette.warning?.main;
 
     if (isRecentlyUpdated) {
       return {

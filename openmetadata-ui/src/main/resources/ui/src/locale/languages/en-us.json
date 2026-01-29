@@ -1124,7 +1124,7 @@
     "metadata-lowercase": "metadata",
     "metadata-plural": "Metadata",
     "metadata-service": "Metadata Service",
-    "metadata-status": "Metadata Status",
+    "metadata-status": "Has / Missing Metadata",
     "metadata-to-es-config-optional": "Metadata To ES Config (Optional)",
     "metapilot": "MetaPilot",
     "metapilot-suggested-description": "Metapilot Suggested Description",
