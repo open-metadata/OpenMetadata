@@ -1842,7 +1842,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       T updated = updates.get(i);
       // Copy ID and version from original
       updated.setId(original.getId());
-      updated.setVersion(original.getVersion());
+      updated.setVersion(nextVersion(original.getVersion()));
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
       // 2. Set impersonatedBy
