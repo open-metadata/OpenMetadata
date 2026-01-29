@@ -62,6 +62,9 @@ from metadata.generated.schema.api.data.createTableProfile import (
 )
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.data.createWorksheet import CreateWorksheetRequest
+from metadata.generated.schema.api.domains.createDataProduct import (
+    CreateDataProductRequest,
+)
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -726,6 +729,13 @@ class SampleDataSource(
                 encoding=UTF_8,
             )
         )
+        self.data_product = json.load(
+            open(
+                sample_data_folder + "/domains/dataProduct.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
 
         # Load data contracts sample data
         try:
@@ -838,6 +848,7 @@ class SampleDataSource(
 
     def _iter(self, *_, **__) -> Iterable[Entity]:
         yield from self.ingest_domains()
+        yield from self.ingest_data_products()
         yield from self.ingest_teams()
         yield from self.ingest_users()
         yield from self.ingest_drives()
@@ -878,6 +889,11 @@ class SampleDataSource(
 
         domain_request = CreateDomainRequest(**self.domain)
         yield Either(right=domain_request)
+
+    def ingest_data_products(self):
+
+        data_product_request = CreateDataProductRequest(**self.data_product)
+        yield Either(right=data_product_request)
 
     def ingest_data_contracts(self) -> Iterable[Either[CreateDataContractRequest]]:
         """
