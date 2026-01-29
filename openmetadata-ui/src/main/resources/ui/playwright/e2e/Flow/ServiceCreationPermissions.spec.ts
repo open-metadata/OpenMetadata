@@ -185,6 +185,10 @@ test.describe('Service Creation with isOwner() Permissions', () => {
 
     await adminOwnedService.visitEntityPage(page);
 
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
     // Manage button is visible but rename/delete options should not be available
@@ -295,6 +299,10 @@ test.describe('Service Creation with isOwner() Permissions', () => {
 
     await redirectToHomePage(otherPage);
     await userOwnedService.visitEntityPage(otherPage);
+
+    await otherPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     await expect(otherPage.getByTestId('entity-header-name')).toBeVisible();
 
