@@ -2675,6 +2675,7 @@
     "optional-configuration-update-description-dbt": "dbt から説明文を更新するかどうかのオプション設定です",
     "optional-markdown-content": "オプション：リソースに直接埋め込むマークダウンコンテンツを追加",
     "orphan-indexes-deleted-successfully": "Successfully deleted {{count}} orphan index(es).",
+    "output-ports-from-data-product-assets": "Output ports can only be added from assets that belong to this Data Product.",
     "owners-coverage-widget-description": "サービス内の全データアセットの所有者カバレッジ。<0>詳細を見る。</0>",
     "page-is-not-available": "お探しのページはご利用いただけません",
     "page-sub-header-for-activity-feed": "データ変更イベントの概要を表示するアクティビティフィードです。",

@@ -2675,6 +2675,7 @@
     "optional-configuration-update-description-dbt": "Необязательная конфигурация для обновления описания из dbt или нет",
     "optional-markdown-content": "Необязательно: Добавить markdown контент для встраивания непосредственно в ресурс",
     "orphan-indexes-deleted-successfully": "Successfully deleted {{count}} orphan index(es).",
+    "output-ports-from-data-product-assets": "Output ports can only be added from assets that belong to this Data Product.",
     "owners-coverage-widget-description": "Покрытие владельцами для всех объектов данных в сервисе. <0>узнать больше.</0>",
     "page-is-not-available": "Страница, которую вы ищете, недоступна",
     "page-sub-header-for-activity-feed": "Лента активности показывает изменения в объектах данных.",

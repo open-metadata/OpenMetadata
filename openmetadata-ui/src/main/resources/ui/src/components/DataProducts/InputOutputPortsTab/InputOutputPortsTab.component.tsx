@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
   Card,
@@ -360,17 +361,19 @@ export const InputOutputPortsTab = forwardRef<
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {permissions.EditAll && !isInputPortsCollapsed && (
-                    <Button
-                      className="h-8 flex items-center"
-                      data-testid="add-input-port-button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddInputPort();
-                      }}>
-                      {t('label.add')}
-                    </Button>
-                  )}
+                  {permissions.EditAll &&
+                    !isInputPortsCollapsed &&
+                    inputPortsCount > 0 && (
+                      <Button
+                        className="h-8 flex items-center"
+                        data-testid="add-input-port-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddInputPort();
+                        }}>
+                        {t('label.add')}
+                      </Button>
+                    )}
                   <IconButton
                     data-testid="toggle-input-ports-collapse"
                     size="small"
@@ -392,7 +395,9 @@ export const InputOutputPortsTab = forwardRef<
                     display: 'flex',
                     flexDirection: 'column',
                     '&:last-child': { pb: 2 },
-                    height: isInputPortsCollapsed ? 'auto': 'calc(100vh - 400px)',
+                    height: isInputPortsCollapsed
+                      ? 'auto'
+                      : 'calc(100vh - 400px)',
                   }}>
                   {inputPortsCount === 0 ? (
                     <ErrorPlaceHolder
@@ -408,6 +413,20 @@ export const InputOutputPortsTab = forwardRef<
                       <Typography className="text-center">
                         {t('message.no-input-ports-added')}
                       </Typography>
+                      {permissions.EditAll && (
+                        <Button
+                          className="m-t-md"
+                          data-testid="add-input-port-button"
+                          icon={<PlusOutlined />}
+                          type="primary"
+                          onClick={handleAddInputPort}>
+                          {t('label.add-entity', {
+                            entity: t('label.entity-port-plural', {
+                              entity: t('label.input'),
+                            }),
+                          })}
+                        </Button>
+                      )}
                     </ErrorPlaceHolder>
                   ) : (
                     <PortsListView
@@ -458,18 +477,19 @@ export const InputOutputPortsTab = forwardRef<
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {permissions.EditAll && !isOutputPortsCollapsed && (
-                    <Button
-                      className="h-8 flex items-center"
-                      data-testid="add-output-port-button"
-                      disabled={assetCount === 0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddOutputPort();
-                      }}>
-                      {t('label.add')}
-                    </Button>
-                  )}
+                  {permissions.EditAll &&
+                    !isOutputPortsCollapsed &&
+                    outputPortsCount > 0 && (
+                      <Button
+                        className="h-8 flex items-center"
+                        data-testid="add-output-port-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddOutputPort();
+                        }}>
+                        {t('label.add')}
+                      </Button>
+                    )}
                   <IconButton
                     data-testid="toggle-output-ports-collapse"
                     size="small"
@@ -491,7 +511,9 @@ export const InputOutputPortsTab = forwardRef<
                     display: 'flex',
                     flexDirection: 'column',
                     '&:last-child': { pb: 2 },
-                    height: isOutputPortsCollapsed ? 'auto': 'calc(100vh - 400px)',
+                    height: isOutputPortsCollapsed
+                      ? 'auto'
+                      : 'calc(100vh - 400px)',
                   }}>
                   {outputPortsCount === 0 ? (
                     <ErrorPlaceHolder
@@ -509,6 +531,20 @@ export const InputOutputPortsTab = forwardRef<
                           ? t('message.no-assets-for-output-ports')
                           : t('message.no-output-ports-added')}
                       </Typography>
+                      {permissions.EditAll && assetCount > 0 && (
+                        <Button
+                          className="m-t-md"
+                          data-testid="add-output-port-button"
+                          icon={<PlusOutlined />}
+                          type="primary"
+                          onClick={handleAddOutputPort}>
+                          {t('label.add-entity', {
+                            entity: t('label.entity-port-plural', {
+                              entity: t('label.output'),
+                            }),
+                          })}
+                        </Button>
+                      )}
                     </ErrorPlaceHolder>
                   ) : (
                     <PortsListView
@@ -542,7 +578,9 @@ export const InputOutputPortsTab = forwardRef<
           open={isAddingOutputPort}
           queryFilter={portQueryFilter}
           title={t('label.add-entity', {
-            entity: t('label.entity-port-plural', { entity: t('label.output') }),
+            entity: t('label.entity-port-plural', {
+              entity: t('label.output'),
+            }),
           })}
           type={AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT}
           onCancel={() => setIsAddingOutputPort(false)}

@@ -2675,6 +2675,7 @@
     "optional-configuration-update-description-dbt": "การตั้งค่าเสริมเพื่ออัปเดตคำอธิบายจาก dbt หรือไม่",
     "optional-markdown-content": "ตัวเลือก: เพิ่มเนื้อหา markdown เพื่อฝังโดยตรงในทรัพยากร",
     "orphan-indexes-deleted-successfully": "Successfully deleted {{count}} orphan index(es).",
+    "output-ports-from-data-product-assets": "Output ports can only be added from assets that belong to this Data Product.",
     "owners-coverage-widget-description": "ความครอบคลุมของเจ้าของสำหรับสินทรัพย์ข้อมูลทั้งหมดในบริการ <0>เรียนรู้เพิ่มเติม</0>",
     "page-is-not-available": "หน้าเว็บที่คุณกำลังมองหาไม่สามารถใช้งานได้",
     "page-sub-header-for-activity-feed": "ฟีดกิจกรรมที่ช่วยให้คุณดูสรุปเหตุการณ์การเปลี่ยนแปลงข้อมูล",

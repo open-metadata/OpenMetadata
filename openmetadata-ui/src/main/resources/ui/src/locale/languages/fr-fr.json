@@ -2675,6 +2675,7 @@
     "optional-configuration-update-description-dbt": "Configuration optionnelle pour mettre à jour la description à partir de dbt ou non",
     "optional-markdown-content": "Facultatif : Ajouter du contenu markdown à intégrer directement dans la ressource",
     "orphan-indexes-deleted-successfully": "Successfully deleted {{count}} orphan index(es).",
+    "output-ports-from-data-product-assets": "Output ports can only be added from assets that belong to this Data Product.",
     "owners-coverage-widget-description": "Couverture des propriétaires pour tous les actifs de données dans le service. <0>en savoir plus.</0>",
     "page-is-not-available": "La page que vous recherchez n'est pas disponible",
     "page-sub-header-for-activity-feed": "Fil d'activité qui vous permet de voir un résumé des événements de modification des données.",
