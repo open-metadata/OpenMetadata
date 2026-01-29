@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.stream.JsonParser;
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -25,6 +27,7 @@ import os.org.opensearch.client.opensearch.indices.IndexSettings;
 import os.org.opensearch.client.opensearch.indices.PutMappingRequest;
 import os.org.opensearch.client.opensearch.indices.UpdateAliasesRequest;
 import os.org.opensearch.client.opensearch.indices.UpdateAliasesResponse;
+import os.org.opensearch.client.opensearch.indices.stats.IndicesStats;
 import os.org.opensearch.client.transport.endpoints.BooleanResponse;
 
 /**
@@ -397,6 +400,70 @@ public class OpenSearchIndexManager implements IndexManagementClient {
   }
 
   @Override
+  public boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot swap aliases.");
+      return false;
+    }
+    if (aliases == null || aliases.isEmpty()) {
+      LOG.debug("No aliases to swap for index {}", newIndex);
+      return true;
+    }
+    if (oldIndices == null) {
+      oldIndices = new HashSet<>();
+    }
+
+    Set<String> finalOldIndices = oldIndices;
+    try {
+      UpdateAliasesRequest request =
+          UpdateAliasesRequest.of(
+              updateBuilder -> {
+                // First, remove aliases from all old indices
+                for (String oldIndex : finalOldIndices) {
+                  for (String alias : aliases) {
+                    updateBuilder.actions(
+                        actionBuilder ->
+                            actionBuilder.remove(
+                                removeBuilder -> removeBuilder.index(oldIndex).alias(alias)));
+                  }
+                }
+                // Then, add aliases to the new index
+                for (String alias : aliases) {
+                  updateBuilder.actions(
+                      actionBuilder ->
+                          actionBuilder.add(addBuilder -> addBuilder.index(newIndex).alias(alias)));
+                }
+                return updateBuilder;
+              });
+
+      UpdateAliasesResponse response = client.indices().updateAliases(request);
+
+      if (response.acknowledged()) {
+        LOG.info(
+            "Atomically swapped aliases {} from indices {} to index {}",
+            aliases,
+            finalOldIndices,
+            newIndex);
+        return true;
+      } else {
+        LOG.warn(
+            "Alias swap from indices {} to index {} was not acknowledged",
+            finalOldIndices,
+            newIndex);
+        return false;
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to swap aliases {} from indices {} to index {}",
+          aliases,
+          finalOldIndices,
+          newIndex,
+          e);
+      return false;
+    }
+  }
+
+  @Override
   public Set<String> getAliases(String indexName) {
     Set<String> aliases = new HashSet<>();
     if (!isClientAvailable) {
@@ -478,5 +545,48 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       LOG.error("Failed to list indices by prefix {} due to", prefix, e);
     }
     return indices;
+  }
+
+  @Override
+  public List<IndexStats> getAllIndexStats() throws IOException {
+    List<IndexStats> result = new ArrayList<>();
+    var statsResponse = client.indices().stats(s -> s.index("*"));
+    var indices = statsResponse.indices();
+    for (var entry : indices.entrySet()) {
+      String indexName = entry.getKey();
+      if (indexName.startsWith(".")) {
+        continue;
+      }
+      IndicesStats stats = entry.getValue();
+      long docs = 0;
+      long sizeBytes = 0;
+      int primaryShards = 0;
+      int replicaShards = 0;
+      if (stats.primaries() != null) {
+        if (stats.primaries().docs() != null) {
+          docs = stats.primaries().docs().count();
+        }
+        if (stats.primaries().store() != null) {
+          sizeBytes = stats.primaries().store().sizeInBytes();
+        }
+      }
+      if (stats.shards() != null) {
+        for (var shardEntry : stats.shards().entrySet()) {
+          for (var shardStats : shardEntry.getValue()) {
+            if (shardStats.routing() != null && shardStats.routing().primary()) {
+              primaryShards++;
+            } else {
+              replicaShards++;
+            }
+          }
+        }
+      }
+      String health = "GREEN";
+      Set<String> aliases = getAliases(indexName);
+      result.add(
+          new IndexStats(
+              indexName, docs, primaryShards, replicaShards, sizeBytes, health, aliases));
+    }
+    return result;
   }
 }

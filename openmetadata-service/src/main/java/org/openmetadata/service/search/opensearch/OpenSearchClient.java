@@ -221,6 +221,11 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases) {
+    return indexManager.swapAliases(oldIndices, newIndex, aliases);
+  }
+
+  @Override
   public Set<String> getIndicesByAlias(String aliasName) {
     return indexManager.getIndicesByAlias(aliasName);
   }
@@ -228,6 +233,11 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public Set<String> listIndicesByPrefix(String prefix) {
     return indexManager.listIndicesByPrefix(prefix);
+  }
+
+  @Override
+  public List<IndexStats> getAllIndexStats() throws IOException {
+    return indexManager.getAllIndexStats();
   }
 
   @Override

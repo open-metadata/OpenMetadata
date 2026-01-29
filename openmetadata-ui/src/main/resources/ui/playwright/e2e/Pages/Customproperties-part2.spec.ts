@@ -46,8 +46,6 @@ test.describe('Custom properties with custom property config', () => {
       const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
 
       test(`Add Enum custom property for ${entity.name}`, async ({ page }) => {
-        test.slow(true);
-
         await settingClick(
           page,
           entity.entityApiType as SettingOptionsType,
@@ -105,8 +103,6 @@ test.describe('Custom properties with custom property config', () => {
       const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
 
       test(`Add Table custom property for ${entity.name}`, async ({ page }) => {
-        test.slow(true);
-
         await settingClick(
           page,
           entity.entityApiType as SettingOptionsType,
@@ -170,8 +166,6 @@ test.describe('Custom properties with custom property config', () => {
         test(`Add Entity Reference custom property for ${entity.name}`, async ({
           page,
         }) => {
-          test.slow(true);
-
           await settingClick(
             page,
             entity.entityApiType as SettingOptionsType,
@@ -234,8 +228,6 @@ test.describe('Custom properties with custom property config', () => {
         test(`Add Entity Reference list custom property for ${entity.name}`, async ({
           page,
         }) => {
-          test.slow(true);
-
           await settingClick(
             page,
             entity.entityApiType as SettingOptionsType,
@@ -298,8 +290,6 @@ test.describe('Custom properties with custom property config', () => {
       const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
 
       test(`Add Date custom property for ${entity.name}`, async ({ page }) => {
-        test.slow(true);
-
         await settingClick(
           page,
           entity.entityApiType as SettingOptionsType,
@@ -351,8 +341,6 @@ test.describe('Custom properties with custom property config', () => {
       const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
 
       test(`Add Time custom property for ${entity.name}`, async ({ page }) => {
-        test.slow(true);
-
         await settingClick(
           page,
           entity.entityApiType as SettingOptionsType,
@@ -412,8 +400,6 @@ test.describe('Custom properties with custom property config', () => {
       test(`Add DateTime custom property for ${entity.name}`, async ({
         page,
       }) => {
-        test.slow(true);
-
         await settingClick(
           page,
           entity.entityApiType as SettingOptionsType,

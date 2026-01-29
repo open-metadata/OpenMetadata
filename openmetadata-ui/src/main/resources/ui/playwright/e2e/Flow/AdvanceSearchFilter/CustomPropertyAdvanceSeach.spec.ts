@@ -25,7 +25,6 @@ import {
   applyCustomPropertyFilter,
   clearAdvancedSearchFilters,
   CPASTestData,
-  selectEntityReferenceValue,
   setupCustomPropertyAdvancedSearchTest,
   verifySearchResults,
 } from '../../../utils/customPropertyAdvancedSearchUtils';
@@ -616,12 +615,13 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       )}.*${topic1.entityResponseData.displayName.substring(5, 7)}.*`;
 
       await showAdvancedSearchDialog(page);
-      const ruleLocator = page.locator('.rule').nth(0);
-      await applyCustomPropertyFilter(page, propertyName, 'select_equals', '');
-      await selectEntityReferenceValue(
+      await applyCustomPropertyFilter(
         page,
-        ruleLocator,
-        topic1.entityResponseData.name
+        propertyName,
+        'select_equals',
+        topic1.entityResponseData.displayName,
+        'Dashboard',
+        'entityReference'
       );
       await verifySearchResults(
         page,
@@ -631,17 +631,13 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
-      const ruleLocator2 = page.locator('.rule').nth(0);
       await applyCustomPropertyFilter(
         page,
         propertyName,
         'select_not_equals',
-        ''
-      );
-      await selectEntityReferenceValue(
-        page,
-        ruleLocator2,
-        topic1.entityResponseData.name
+        topic1.entityResponseData.displayName,
+        'Dashboard',
+        'entityReference'
       );
       await verifySearchResults(
         page,
@@ -717,12 +713,13 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       )}.*${topic1.entityResponseData.displayName.substring(5, 7)}.*`;
 
       await showAdvancedSearchDialog(page);
-      const ruleLocator = page.locator('.rule').nth(0);
-      await applyCustomPropertyFilter(page, propertyName, 'select_equals', '');
-      await selectEntityReferenceValue(
+      await applyCustomPropertyFilter(
         page,
-        ruleLocator,
-        topic1.entityResponseData.name
+        propertyName,
+        'select_equals',
+        topic1.entityResponseData.displayName,
+        'Dashboard',
+        'entityReferenceList'
       );
       await verifySearchResults(
         page,
@@ -732,12 +729,13 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
-      const ruleLocator2 = page.locator('.rule').nth(0);
-      await applyCustomPropertyFilter(page, propertyName, 'select_equals', '');
-      await selectEntityReferenceValue(
+      await applyCustomPropertyFilter(
         page,
-        ruleLocator2,
-        topic2.entityResponseData.name
+        propertyName,
+        'select_equals',
+        topic2.entityResponseData.displayName,
+        'Dashboard',
+        'entityReferenceList'
       );
       await verifySearchResults(
         page,
@@ -747,17 +745,13 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
       await clearAdvancedSearchFilters(page);
 
       await showAdvancedSearchDialog(page);
-      const ruleLocator3 = page.locator('.rule').nth(0);
       await applyCustomPropertyFilter(
         page,
         propertyName,
         'select_not_equals',
-        ''
-      );
-      await selectEntityReferenceValue(
-        page,
-        ruleLocator3,
-        topic2.entityResponseData.name
+        topic2.entityResponseData.displayName,
+        'Dashboard',
+        'entityReferenceList'
       );
       await verifySearchResults(
         page,
@@ -1222,6 +1216,180 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
 
       await showAdvancedSearchDialog(page);
       await applyCustomPropertyFilter(page, endPropertyName, 'is_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false
+      );
+      await clearAdvancedSearchFilters(page);
+    });
+
+    test('Hyperlink CP with operators', async ({ page }) => {
+      test.slow();
+
+      const propertyName = propertyNames['hyperlink-cp'];
+      const urlProperty = `${propertyName} URL`;
+      const displayTextProperty = `${propertyName} Display Text`;
+      const urlPartialValue = CP_BASE_VALUES.hyperlinkCp.url.substring(3, 9);
+      const displayTextPartialValue =
+        CP_BASE_VALUES.hyperlinkCp.displayText.substring(2, 6);
+
+      // URL property checks
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        urlProperty,
+        'equal',
+        CP_BASE_VALUES.hyperlinkCp.url
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true,
+        String(CP_BASE_VALUES.hyperlinkCp.url)
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        urlProperty,
+        'not_equal',
+        CP_BASE_VALUES.hyperlinkCp.url
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false,
+        String(CP_BASE_VALUES.hyperlinkCp.url)
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        urlProperty,
+        'like',
+        urlPartialValue
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true,
+        urlPartialValue
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        urlProperty,
+        'not_like',
+        urlPartialValue
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false,
+        urlPartialValue
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, urlProperty, 'is_not_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, urlProperty, 'is_null', '');
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false
+      );
+      await clearAdvancedSearchFilters(page);
+
+      // Hyperlink Display Text property checks
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        displayTextProperty,
+        'equal',
+        CP_BASE_VALUES.hyperlinkCp.displayText
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true,
+        String(CP_BASE_VALUES.hyperlinkCp.displayText)
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        displayTextProperty,
+        'not_equal',
+        CP_BASE_VALUES.hyperlinkCp.displayText
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false,
+        String(CP_BASE_VALUES.hyperlinkCp.displayText)
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        displayTextProperty,
+        'like',
+        displayTextPartialValue
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true,
+        displayTextPartialValue
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        displayTextProperty,
+        'not_like',
+        displayTextPartialValue
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        false,
+        displayTextPartialValue
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(
+        page,
+        displayTextProperty,
+        'is_not_null',
+        ''
+      );
+      await verifySearchResults(
+        page,
+        dashboard.entityResponseData.fullyQualifiedName,
+        true
+      );
+      await clearAdvancedSearchFilters(page);
+
+      await showAdvancedSearchDialog(page);
+      await applyCustomPropertyFilter(page, displayTextProperty, 'is_null', '');
       await verifySearchResults(
         page,
         dashboard.entityResponseData.fullyQualifiedName,

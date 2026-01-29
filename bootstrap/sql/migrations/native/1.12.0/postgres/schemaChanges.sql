@@ -234,9 +234,11 @@ CREATE TABLE IF NOT EXISTS search_index_server_stats (
     serverId VARCHAR(256) NOT NULL,
     readerSuccess BIGINT DEFAULT 0,
     readerFailed BIGINT DEFAULT 0,
+    readerWarnings BIGINT DEFAULT 0,
     sinkTotal BIGINT DEFAULT 0,
     sinkSuccess BIGINT DEFAULT 0,
     sinkFailed BIGINT DEFAULT 0,
+    sinkWarnings BIGINT DEFAULT 0,
     entityBuildFailures BIGINT DEFAULT 0,
     partitionsCompleted INT DEFAULT 0,
     partitionsFailed INT DEFAULT 0,
@@ -246,3 +248,40 @@ CREATE TABLE IF NOT EXISTS search_index_server_stats (
 );
 
 CREATE INDEX IF NOT EXISTS idx_search_index_server_stats_job_id ON search_index_server_stats(jobId);
+
+-- Create Learning Resource Entity Table
+CREATE TABLE IF NOT EXISTS learning_resource_entity (
+    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    name character varying(3072) GENERATED ALWAYS AS ((json ->> 'fullyQualifiedName'::text)) STORED,
+    fqnhash character varying(256) NOT NULL,
+    json jsonb NOT NULL,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    updatedby character varying(256) GENERATED ALWAYS AS ((json ->> 'updatedBy'::text)) STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnhash)
+);
+
+-- Add process and vector stage columns to search_index_server_stats table
+-- These columns support the 4-stage pipeline model (Reader, Process, Sink, Vector) for search indexing stats
+
+ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS processSuccess BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS processFailed BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS vectorSuccess BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS vectorFailed BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS vectorWarnings BIGINT DEFAULT 0;
+
+-- Add entityType column to support per-entity stats tracking
+-- Stats are now tracked per (jobId, serverId, entityType) instead of (jobId, serverId)
+ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS entityType VARCHAR(128) NOT NULL DEFAULT 'unknown';
+
+-- Drop old unique index and create new one with entityType
+DROP INDEX IF EXISTS idx_search_index_server_stats_job_server;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_search_index_server_stats_job_server_entity
+    ON search_index_server_stats (jobId, serverId, entityType);
+
+-- Remove deprecated columns (entityBuildFailures is redundant - failures are tracked as processFailed)
+-- sinkTotal and sinkWarnings are not needed
+ALTER TABLE search_index_server_stats DROP COLUMN IF EXISTS entityBuildFailures;
+ALTER TABLE search_index_server_stats DROP COLUMN IF EXISTS sinkTotal;
+ALTER TABLE search_index_server_stats DROP COLUMN IF EXISTS sinkWarnings;

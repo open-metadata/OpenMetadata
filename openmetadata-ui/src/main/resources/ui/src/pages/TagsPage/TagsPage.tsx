@@ -82,6 +82,8 @@ const TagsPage = () => {
   const [editTag, setEditTag] = useState<Tag>();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isClassificationLoading, setIsClassificationLoading] =
+    useState<boolean>(false);
   const [isTagFormLoading, setIsTagFormLoading] = useState<boolean>(false);
   const [isClassificationFormLoading, setIsClassificationFormLoading] =
     useState<boolean>(false);
@@ -165,7 +167,7 @@ const TagsPage = () => {
   };
 
   const fetchCurrentClassification = async (fqn: string) => {
-    setIsLoading(true);
+    setIsClassificationLoading(true);
     try {
       const currentClassification = await getClassificationByName(fqn, {
         fields: tagClassBase.getClassificationFields(),
@@ -184,11 +186,8 @@ const TagsPage = () => {
           })
         );
         setCurrentClassification(currentClassification);
-
-        setIsLoading(false);
       } else {
         showErrorToast(t('server.unexpected-response'));
-        setIsLoading(false);
       }
     } catch (err) {
       const errMsg = getErrorText(
@@ -200,7 +199,8 @@ const TagsPage = () => {
       showErrorToast(errMsg);
       setError(errMsg);
       setCurrentClassification(undefined);
-      setIsLoading(false);
+    } finally {
+      setIsClassificationLoading(false);
     }
   };
 
@@ -705,6 +705,16 @@ const TagsPage = () => {
                   noWrap
                   className="self-center m-b-0 tag-category"
                   data-testid="tag-name"
+                  sx={{
+                    fontWeight:
+                      currentClassification?.name === category.name
+                        ? theme.typography.fontWeightBold
+                        : 'inherit',
+                    color:
+                      currentClassification?.name === category.name
+                        ? 'primary.main'
+                        : 'inherit',
+                  }}
                   title={getEntityName(category)}
                   variant="body2">
                   {getEntityName(category)}
@@ -792,6 +802,7 @@ const TagsPage = () => {
                 handleToggleDisable={handleToggleDisable}
                 handleUpdateClassification={handleUpdateClassification}
                 isAddingTag={false}
+                isClassificationLoading={isClassificationLoading}
                 ref={classificationDetailsRef}
               />
 

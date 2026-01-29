@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { isObject, isUndefined } from 'lodash';
 import {
   CP_BASE_VALUES,
@@ -20,11 +20,7 @@ import { DashboardClass } from '../support/entity/DashboardClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { selectOption } from './advancedSearch';
 import { getApiContext, uuid } from './common';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-  waitForAllLoadersToDisappear,
-} from './entity';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export interface CustomPropertyDetails {
   name: string;
@@ -117,6 +113,15 @@ export const getCustomPropertyCreationData = (types: CPASTestData['types']) => {
           values: ['Option 1', 'Option 2', 'Option 3'],
           multiSelect: false,
         },
+      },
+    },
+    'hyperlink-cp': {
+      name: `${namePrefix}hyperlink-cp`,
+      description: `Description for ${namePrefix}hyperlink-cp`,
+      propertyType: {
+        name: 'hyperlink-cp',
+        type: 'type',
+        id: typeIdMapping['hyperlink-cp'],
       },
     },
     integer: {
@@ -247,6 +252,7 @@ export const getCustomPropertyValues = (
     [cpTypeToNameMapping['entityReference']]: topic1Ref,
     [cpTypeToNameMapping['entityReferenceList']]: [topic1Ref, topic2Ref],
     [cpTypeToNameMapping['enum']]: CP_BASE_VALUES.enum,
+    [cpTypeToNameMapping['hyperlink-cp']]: CP_BASE_VALUES.hyperlinkCp,
     [cpTypeToNameMapping['integer']]: CP_BASE_VALUES.integer,
     [cpTypeToNameMapping['markdown']]: CP_BASE_VALUES.markdown,
     [cpTypeToNameMapping['number']]: CP_BASE_VALUES.number,
@@ -268,10 +274,12 @@ export const setupCustomPropertyAdvancedSearchTest = async (
 ) => {
   const { apiContext, afterAction } = await getApiContext(page);
 
+  // Get the metadata types info required to create custom properties
   const typesInfo = await apiContext.get(
     '/api/v1/metadata/types?category=field&limit=20'
   );
 
+  // Get the dashboard metadata types info to add custom properties to it
   const cpMetadataType = await apiContext.get(
     '/api/v1/metadata/types/name/dashboard?fields=customProperties'
   );
@@ -279,6 +287,7 @@ export const setupCustomPropertyAdvancedSearchTest = async (
   testData.types = (await typesInfo.json()).data;
   testData.cpMetadataType = await cpMetadataType.json();
 
+  // Map and prepare the data required for creating custom properties of different types
   const cpCreationData = getCustomPropertyCreationData(testData.types);
   let metadataTypesData;
 
@@ -297,14 +306,26 @@ export const setupCustomPropertyAdvancedSearchTest = async (
     }
   }
   const metadataTypesJson = await metadataTypesData?.json();
-  testData.createdCPData = metadataTypesJson?.customProperties || [];
 
+  // Get the created custom properties names list
+  const createdCustomPropertyNamesList = new Set(
+    Object.values(cpCreationData).map((cp) => cp.name)
+  );
+  // Filter out the created custom properties from the metadata type response
+  // to only take the properties data created in this test setup
+  testData.createdCPData =
+    metadataTypesJson?.customProperties.filter((cp: CustomPropertyDetails) =>
+      createdCustomPropertyNamesList.has(cp.name)
+    ) || [];
+
+  // Get the custom property to values mapping to add to the dashboard entity
   const cpValuesData = getCustomPropertyValues(
     testData.createdCPData,
     topic1,
     topic2
   );
 
+  // Update the dashboard entity with the created custom property values
   await apiContext.patch(
     `/api/v1/dashboards/${dashboard.entityResponseData.id}`,
     {
@@ -344,6 +365,45 @@ export const getOperatorLabel = (operator: string): string => {
   };
 
   return operatorMap[operator] || operator;
+};
+
+const handlePropertyValueInput = async (
+  page: Page,
+  ruleLocator: ReturnType<Page['locator']>,
+  operator: string,
+  value: string | number | { start: string | number; end: string | number },
+  propertyType?: string
+) => {
+  const inputElement = ruleLocator.locator('.rule--widget input');
+
+  // Fill the input only if it's visible
+  if (await inputElement.isVisible()) {
+    // Convert object values to JSON strings
+    const stringValue = isObject(value) ? JSON.stringify(value) : String(value);
+    await inputElement.click();
+    await inputElement.fill(stringValue);
+
+    // Press Enter for multiselect operators and date types
+    if (
+      MULTISELECT_OPERATORS.includes(operator) ||
+      ((operator === 'equal' || operator === 'not_equal') &&
+        propertyType === 'dateTime-cp') ||
+      propertyType === 'date-cp'
+    ) {
+      await page.keyboard.press('Enter');
+    }
+
+    // Handle entity reference selection
+    if (
+      propertyType === 'entityReference' ||
+      propertyType === 'entityReferenceList'
+    ) {
+      await page
+        .locator(`.ant-select-dropdown:visible [title*="${value as string}"]`)
+        .first()
+        .click();
+    }
+  }
 };
 
 export const applyCustomPropertyFilter = async (
@@ -400,53 +460,15 @@ export const applyCustomPropertyFilter = async (
 
       await page.keyboard.press('Enter');
     } else {
-      const inputElement = ruleLocator.locator('.rule--widget input');
-
-      if (await inputElement.isVisible()) {
-        const stringValue = isObject(value)
-          ? JSON.stringify(value)
-          : String(value);
-        await inputElement.click();
-        await inputElement.fill(stringValue);
-
-        if (
-          MULTISELECT_OPERATORS.includes(operator) ||
-          ((operator === 'equal' || operator === 'not_equal') &&
-            propertyType === 'dateTime-cp') ||
-          propertyType === 'date-cp'
-        ) {
-          await page.keyboard.press('Enter');
-        }
-      }
+      await handlePropertyValueInput(
+        page,
+        ruleLocator,
+        operator,
+        value,
+        propertyType
+      );
     }
   }
-};
-
-export const selectEntityReferenceValue = async (
-  page: Page,
-  ruleLocator: Locator,
-  entityName: string
-) => {
-  const dropdownInput = ruleLocator.locator(
-    '.widget--widget > .ant-select > .ant-select-selector input'
-  );
-
-  const aggregateRes1 = page.waitForResponse('/api/v1/search/aggregate?*');
-  await dropdownInput.click();
-  await aggregateRes1;
-
-  const aggregateRes2 = page.waitForResponse(
-    `/api/v1/search/aggregate?*${getEncodedFqn(
-      escapeESReservedCharacters(entityName)
-    )}*`
-  );
-  await dropdownInput.fill(entityName);
-  await aggregateRes2;
-
-  await page
-    .locator(`.ant-select-dropdown:visible [title*="${entityName}"]`)
-    .first()
-    .click();
 };
 
 export const verifySearchResults = async (

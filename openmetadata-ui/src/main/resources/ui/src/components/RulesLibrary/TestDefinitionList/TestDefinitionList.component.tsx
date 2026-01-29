@@ -29,6 +29,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -50,12 +51,14 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../../utils/PermissionsUtils';
+import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../common/Table/Table';
+import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
 
@@ -317,6 +320,7 @@ const TestDefinitionList = () => {
         render: (enabled: boolean, record: TestDefinition) => {
           const entityPermissions = testDefinitionPermissions[record.name];
           const hasEditPermission = entityPermissions?.[Operation.EditAll];
+          const isExternal = isExternalTestDefinition(record);
 
           if (permissionLoading || !entityPermissions) {
             return (
@@ -324,16 +328,20 @@ const TestDefinitionList = () => {
             );
           }
 
+          let tooltipTitle;
+          if (isExternal) {
+            tooltipTitle = t('message.external-test-cannot-be-toggled');
+          } else if (!hasEditPermission) {
+            tooltipTitle = t('message.no-permission-for-action');
+          }
+
           return (
-            <Tooltip
-              title={
-                !hasEditPermission && t('message.no-permission-for-action')
-              }>
+            <Tooltip title={tooltipTitle}>
               <div className="new-form-style d-inline-flex">
                 <Switch
                   checked={enabled ?? true}
                   data-testid={`enable-switch-${record.name}`}
-                  disabled={!hasEditPermission}
+                  disabled={isExternal || !hasEditPermission}
                   size="small"
                   onChange={(checked) => handleEnableToggle(record, checked)}
                 />
@@ -456,9 +464,15 @@ const TestDefinitionList = () => {
           <Card>
             <Row justify="space-between">
               <Col>
-                <Typography.Title level={5}>
-                  {t('label.data-quality-rule-plural')}
-                </Typography.Title>
+                <div className="flex gap-2 items-center m-b-xss">
+                  <Typography.Title className="m-b-0" level={5}>
+                    {t('label.data-quality-rule-plural')}
+                  </Typography.Title>
+                  <LearningIcon
+                    pageId={LEARNING_PAGE_IDS.RULES_LIBRARY}
+                    title={t('label.data-quality-rule-plural')}
+                  />
+                </div>
                 <Typography.Text type="secondary">
                   {t('message.page-sub-header-for-test-definitions')}
                 </Typography.Text>

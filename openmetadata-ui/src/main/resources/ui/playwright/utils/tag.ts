@@ -595,3 +595,33 @@ export const verifyEntityTypeFilterInTagAssets = async (
   await page.getByText('Clear').click();
   await clearResponse;
 };
+
+export const selectTagInMUITagSuggestion = async (
+  page: Page,
+  {
+    searchTerm,
+    tagFqn,
+  }: {
+    searchTerm: string;
+    tagFqn: string;
+  }
+) => {
+  const tagInput = page.getByRole('combobox', { name: 'Tags' });
+
+  const tagSearchResponse = page.waitForResponse((response) => {
+    const url = response.url();
+    return (
+      url.includes('/api/v1/search/query') &&
+      url.includes('index=tag_search_index') &&
+      response.request().method() === 'GET'
+    );
+  });
+
+  await tagInput.fill(searchTerm);
+  await tagSearchResponse;
+
+  await page.waitForSelector('[role="listbox"]', { state: 'visible' });
+  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
+  await tagOption.waitFor({ state: 'visible' });
+  await tagOption.click();
+};

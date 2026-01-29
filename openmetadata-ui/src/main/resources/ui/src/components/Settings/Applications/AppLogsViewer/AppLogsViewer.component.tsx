@@ -25,7 +25,7 @@ import {
   Typography,
 } from 'antd';
 import { capitalize, isEmpty, isNil } from 'lodash';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ICON_DIMENSION, STATUS_ICON } from '../../../../constants/constants';
 import { StepStats } from '../../../../generated/entity/applications/appRunRecord';
@@ -40,11 +40,20 @@ import {
   ServerStats,
   ServerStatsData,
 } from './AppLogsViewer.interface';
+import ReindexFailures from './ReindexFailures.component';
 
 const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
   const { t } = useTranslation();
+  const [showFailuresDrawer, setShowFailuresDrawer] = useState(false);
 
   const { successContext, failureContext, timestamp, status } = data;
+
+  const hasFailures = useMemo(() => {
+    const jobStats =
+      successContext?.stats?.jobStats ?? failureContext?.stats?.jobStats;
+
+    return (jobStats?.failedRecords ?? 0) > 0;
+  }, [successContext, failureContext]);
 
   const handleJumpToEnd = () => {
     const logsBody = document.getElementsByClassName(
@@ -155,6 +164,19 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                         entity: t('label.failed'),
                       })}: ${stepStats.failedRecords}`}
                     />
+
+                    {stepStats.warningRecords !== undefined &&
+                      stepStats.warningRecords > 0 && (
+                        <Badge
+                          showZero
+                          className="request-badge warning"
+                          count={stepStats.warningRecords}
+                          overflowCount={99999999}
+                          title={`${t('label.entity-index', {
+                            entity: t('label.warning-plural'),
+                          })}: ${stepStats.warningRecords}`}
+                        />
+                      )}
                   </Space>
                 </span>
               </div>
@@ -436,43 +458,83 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
           t('label.overall-stat-plural')
         )}
 
-      {successContext?.stats?.readerStats && (
-        <div className="m-t-md">
-          {statsRender(
-            successContext.stats.readerStats,
-            t('label.reader-stat-plural'),
-            false
-          )}
-        </div>
-      )}
-      {failureContext?.stats?.readerStats && (
-        <div className="m-t-md">
-          {statsRender(
-            failureContext.stats.readerStats,
-            t('label.reader-stat-plural'),
-            false
-          )}
-        </div>
-      )}
+      <Row className="m-t-md" gutter={[16, 16]}>
+        {successContext?.stats?.readerStats && (
+          <Col span={6}>
+            {statsRender(
+              successContext.stats.readerStats,
+              t('label.reader-stat-plural'),
+              false
+            )}
+          </Col>
+        )}
+        {failureContext?.stats?.readerStats && (
+          <Col span={6}>
+            {statsRender(
+              failureContext.stats.readerStats,
+              t('label.reader-stat-plural'),
+              false
+            )}
+          </Col>
+        )}
 
-      {successContext?.stats?.sinkStats && (
-        <div className="m-t-md">
-          {statsRender(
-            successContext.stats.sinkStats,
-            t('label.sink-stat-plural'),
-            false
-          )}
-        </div>
-      )}
-      {failureContext?.stats?.sinkStats && (
-        <div className="m-t-md">
-          {statsRender(
-            failureContext.stats.sinkStats,
-            t('label.sink-stat-plural'),
-            false
-          )}
-        </div>
-      )}
+        {successContext?.stats?.processStats && (
+          <Col span={6}>
+            {statsRender(
+              successContext.stats.processStats,
+              t('label.process-stat-plural'),
+              false
+            )}
+          </Col>
+        )}
+        {failureContext?.stats?.processStats && (
+          <Col span={6}>
+            {statsRender(
+              failureContext.stats.processStats,
+              t('label.process-stat-plural'),
+              false
+            )}
+          </Col>
+        )}
+
+        {successContext?.stats?.sinkStats && (
+          <Col span={6}>
+            {statsRender(
+              successContext.stats.sinkStats,
+              t('label.sink-stat-plural'),
+              false
+            )}
+          </Col>
+        )}
+        {failureContext?.stats?.sinkStats && (
+          <Col span={6}>
+            {statsRender(
+              failureContext.stats.sinkStats,
+              t('label.sink-stat-plural'),
+              false
+            )}
+          </Col>
+        )}
+
+        {successContext?.stats?.vectorStats && (
+          <Col span={6}>
+            {statsRender(
+              successContext.stats.vectorStats,
+              t('label.vector-stat-plural'),
+              false
+            )}
+          </Col>
+        )}
+        {failureContext?.stats?.vectorStats && (
+          <Col span={6}>
+            {statsRender(
+              failureContext.stats.vectorStats,
+              t('label.vector-stat-plural'),
+              false
+            )}
+          </Col>
+        )}
+      </Row>
 
       {serverStatsRenderer()}
 
@@ -488,6 +550,22 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
           )
         )
       )}
+
+      {hasFailures && (
+        <div className="m-t-md">
+          <Button
+            data-testid="view-reindex-failures-button"
+            type="link"
+            onClick={() => setShowFailuresDrawer(true)}>
+            {t('label.view-reindex-failure-plural')}
+          </Button>
+        </div>
+      )}
+
+      <ReindexFailures
+        visible={showFailuresDrawer}
+        onClose={() => setShowFailuresDrawer(false)}
+      />
     </>
   );
 };

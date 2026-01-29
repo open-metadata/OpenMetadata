@@ -68,32 +68,46 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown and wait for documentation panel to be visible
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for test definitions API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMERIC&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
-        await page.click(`[title="${testCase.column}"]`);
+        const columnOption = page
+          .locator('.ant-select-dropdown:visible')
+          .locator(`[title="${testCase.column}"]`);
+        await expect(columnOption).toBeVisible();
+        await columnOption.click();
         await testDefinitionResponse;
+
+        // Wait for dropdown to close after selection
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name and wait for documentation panel
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
-        await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-          state: 'visible',
-        });
-
+        // Select test type and wait for documentation panel
+        await page.fill('[id="root/testType"]', testCase.type);
+        const testTypeOption = page
+          .locator('.ant-select-dropdown:visible')
+          .getByTestId(testCase.type);
+        await expect(testTypeOption).toBeVisible();
+        await testTypeOption.click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
+
+        // Wait for dropdown to close after test type selection
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
         await page.locator(descriptionBox).fill(testCase.description);
 
@@ -106,12 +120,12 @@ test.describe(
         await expect(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
-        await expect(page.locator('[id="root\\/name"]')).toHaveValue(
+        await expect(page.locator('[id="root/name"]')).toHaveValue(
           testCase.name
         );
 
-        await page.locator('[id="root\\/displayName"]').clear();
-        await page.fill('[id="root\\/displayName"]', testCase.displayName);
+        await page.locator('[id="root/displayName"]').clear();
+        await page.fill('[id="root/displayName"]', testCase.displayName);
         await clickUpdateButton(page);
       });
 
@@ -150,32 +164,38 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown and wait for documentation panel
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for test definitions API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
         await page.click(`[title="${testCase.column}"]`);
         await testDefinitionResponse;
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
+        // Select test type
+        await page.fill('[id="root/testType"]', testCase.type);
         await page.getByTestId(testCase.type).click();
-        await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-          state: 'visible',
-        });
-
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
         await page.fill('#testCaseFormV1_params_minValue', testCase.minValue);
         await page.fill('#testCaseFormV1_params_maxValue', testCase.maxValue);
@@ -229,32 +249,38 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMERIC&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
         await page.click(`[title="${testCase.column}"]`);
         await testDefinitionResponse;
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
+        // Select test type
+        await page.fill('[id="root/testType"]', testCase.type);
         await page.getByTestId(testCase.type).click();
-        await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-          state: 'visible',
-        });
-
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
         await clickCreateTestCaseButton(page, testCase.name);
       });
@@ -266,8 +292,8 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.locator('[id="root\\/displayName"]').clear();
-        await page.fill('[id="root\\/displayName"]', testCase.displayName);
+        await page.locator('[id="root/displayName"]').clear();
+        await page.fill('[id="root/displayName"]', testCase.displayName);
 
         await clickUpdateButton(page);
       });
@@ -302,33 +328,40 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
         await page.click(`[title="${testCase.column}"]`);
         await testDefinitionResponse;
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
+        // Select test type
+        await page.fill('[id="root/testType"]', testCase.type);
         await page.getByTestId(testCase.type).click();
-        await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-          state: 'visible',
-        });
-
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill allowed values
         await page.fill(
           '#testCaseFormV1_params_allowedValues_0_value',
           'active'
@@ -386,33 +419,40 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
         await page.click(`[title="${testCase.column}"]`);
         await testDefinitionResponse;
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
+        // Select test type
+        await page.fill('[id="root/testType"]', testCase.type);
         await page.getByTestId(testCase.type).click();
-        await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-          state: 'visible',
-        });
-
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill forbidden values
         await page.fill('#testCaseFormV1_params_forbiddenValues_0_value', '-1');
         await page.getByRole('button', { name: 'plus' }).click();
         await page.fill(
@@ -470,32 +510,38 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
         await page.click(`[title="${testCase.column}"]`);
         await testDefinitionResponse;
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
+        // Select test type
+        await page.fill('[id="root/testType"]', testCase.type);
         await page.getByTestId(testCase.type).click();
-        await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-          state: 'visible',
-        });
-
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
         await page.fill('#testCaseFormV1_params_regex', testCase.regex);
 
@@ -546,32 +592,38 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
         await page.click(`[title="${testCase.column}"]`);
         await testDefinitionResponse;
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
+        // Select test type
+        await page.fill('[id="root/testType"]', testCase.type);
         await page.getByTestId(testCase.type).click();
-        await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-          state: 'visible',
-        });
-
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_forbiddenRegex',
@@ -630,32 +682,38 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
         await page.click(`[title="${testCase.column}"]`);
         await testDefinitionResponse;
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
+        // Select test type
+        await page.fill('[id="root/testType"]', testCase.type);
         await page.getByTestId(testCase.type).click();
-        await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-          state: 'visible',
-        });
-
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForMaxInCol',
@@ -720,32 +778,38 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
         await page.click(`[title="${testCase.column}"]`);
         await testDefinitionResponse;
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
+        // Select test type
+        await page.fill('[id="root/testType"]', testCase.type);
         await page.getByTestId(testCase.type).click();
-        await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-          state: 'visible',
-        });
-
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForMinInCol',
@@ -810,32 +874,38 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
         await page.click(`[title="${testCase.column}"]`);
         await testDefinitionResponse;
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
+        // Select test type
+        await page.fill('[id="root/testType"]', testCase.type);
         await page.getByTestId(testCase.type).click();
-        await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-          state: 'visible',
-        });
-
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForMeanInCol',
@@ -904,32 +974,38 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
         await page.click(`[title="${testCase.column}"]`);
         await testDefinitionResponse;
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
+        // Select test type
+        await page.fill('[id="root/testType"]', testCase.type);
         await page.getByTestId(testCase.type).click();
-        await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-          state: 'visible',
-        });
-
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForMedianInCol',
@@ -998,32 +1074,38 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
         await page.click(`[title="${testCase.column}"]`);
         await testDefinitionResponse;
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
+        // Select test type
+        await page.fill('[id="root/testType"]', testCase.type);
         await page.getByTestId(testCase.type).click();
-        await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-          state: 'visible',
-        });
-
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForStdDevInCol',
@@ -1092,32 +1174,38 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
         await page.click(`[title="${testCase.column}"]`);
         await testDefinitionResponse;
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
+        // Select test type
+        await page.fill('[id="root/testType"]', testCase.type);
         await page.getByTestId(testCase.type).click();
-        await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-          state: 'visible',
-        });
-
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForColSum',
@@ -1182,32 +1270,38 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
         await page.click(`[title="${testCase.column}"]`);
         await testDefinitionResponse;
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
+        // Select test type
+        await page.fill('[id="root/testType"]', testCase.type);
         await page.getByTestId(testCase.type).click();
-        await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-          state: 'visible',
-        });
-
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
         await page.fill('#testCaseFormV1_params_minLength', testCase.minLength);
         await page.fill('#testCaseFormV1_params_maxLength', testCase.maxLength);
@@ -1261,32 +1355,38 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMERIC&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
         await page.click(`[title="${testCase.column}"]`);
         await testDefinitionResponse;
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
+        // Select test type
+        await page.fill('[id="root/testType"]', testCase.type);
         await page.getByTestId(testCase.type).click();
-        await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-          state: 'visible',
-        });
-
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_missingCountValue',
@@ -1339,39 +1439,51 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // Click column dropdown
+        await page.click('[id="root/column"]');
+        await expect(page.locator('[data-id="column"]')).toBeVisible();
+
+        // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click('[id="root\\/column"]');
-        await page.waitForSelector(`[data-id="column"]`, { state: 'visible' });
-
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
-
         await page.click(`[title="${testCase.column}"]`);
         await testDefinitionResponse;
+
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await page.waitForSelector(`[data-id="name"]`, { state: 'visible' });
-
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-
         await page.getByTestId('test-case-name').fill(testCase.name);
 
-        await page.fill('[id="root\\/testType"]', testCase.type);
+        // Select test type
+        await page.fill('[id="root/testType"]', testCase.type);
         await page.getByTestId(testCase.type).click();
         // Todo: uncomment below assertion after adding docs for columnValuesToBeAtExpectedLocation test case -> @ShaileshParmar11
-        // await page.waitForSelector(`[data-id="${testCase.type}"]`, {
-        //   state: 'visible',
-        // });
         // await expect(page.locator(`[data-id="${testCase.type}"]`)).toBeVisible();
 
+        // Wait for dropdown to close
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
+        // Select location reference type from dropdown
         await page.click('#testCaseFormV1_params_locationReferenceType');
-        await page.waitForSelector(
-          `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="POSTAL_CODE"]`,
-          { state: 'visible' }
+        const postalCodeOption = page.locator(
+          `.ant-select-dropdown:visible [title="POSTAL_CODE"]`
         );
-        await page.click(
-          `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="POSTAL_CODE"]`
-        );
+        await expect(postalCodeOption).toBeVisible();
+        await postalCodeOption.click();
+
+        // Wait for dropdown to close after selection
+        await expect(
+          page.locator('.ant-select-dropdown:visible')
+        ).not.toBeVisible();
+
         await page.fill(
           '#testCaseFormV1_params_longitudeColumnName',
           'longitudeColumnName'
