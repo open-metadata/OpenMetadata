@@ -170,7 +170,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   // Queue for batching change event inserts - processed after each batch of CSV records
   protected final List<String> pendingChangeEvents = new ArrayList<>();
   // Track CSV results to write after batch operations complete
-  protected final Map<CSVRecord, String> pendingCsvResults = new HashMap<>();
+  protected final Map<CSVRecord, String> pendingCsvResults = new LinkedHashMap<>();
 
   /** Cache for tables being modified during column imports - enables batching column updates */
   protected final Map<String, TableUpdateContext> pendingTableUpdates = new HashMap<>();
@@ -1065,7 +1065,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
         pendingEntityFQNs.add(entity.getFullyQualifiedName());
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
       } catch (Exception ex) {
-        importFailure(resultsPrinter, ex.getMessage(), csvRecord);
+        pendingCsvResults.put(csvRecord, ex.getMessage());
+        importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+        importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
         importResult.setStatus(ApiStatus.FAILURE);
         return;
       }
@@ -1079,9 +1081,21 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
 
     if (Response.Status.CREATED.equals(responseStatus)) {
-      importSuccess(resultsPrinter, csvRecord, ENTITY_CREATED);
+      pendingCsvResults.put(csvRecord, ENTITY_CREATED);
+      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+      // For dry run, count as passed immediately since no batch operations occur
+      // For actual import, will be counted after successful batch operations
+      if (Boolean.TRUE.equals(importResult.getDryRun())) {
+        importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
+      }
     } else {
-      importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
+      pendingCsvResults.put(csvRecord, ENTITY_UPDATED);
+      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+      // For dry run, count as passed immediately since no batch operations occur
+      // For actual import, will be counted after successful batch operations
+      if (Boolean.TRUE.equals(importResult.getDryRun())) {
+        importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
+      }
     }
   }
 
@@ -1134,7 +1148,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
         pendingEntityFQNs.add(entity.getFullyQualifiedName());
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
       } catch (Exception ex) {
-        importFailure(resultsPrinter, ex.getMessage(), csvRecord);
+        pendingCsvResults.put(csvRecord, ex.getMessage());
+        importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+        importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
         importResult.setStatus(ApiStatus.FAILURE);
         return;
       }
@@ -1146,9 +1162,21 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
 
     if (Response.Status.CREATED.equals(responseStatus)) {
-      importSuccess(resultsPrinter, csvRecord, ENTITY_CREATED);
+      pendingCsvResults.put(csvRecord, ENTITY_CREATED);
+      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+      // For dry run, count as passed immediately since no batch operations occur
+      // For actual import, will be counted after successful batch operations
+      if (Boolean.TRUE.equals(importResult.getDryRun())) {
+        importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
+      }
     } else {
-      importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
+      pendingCsvResults.put(csvRecord, ENTITY_UPDATED);
+      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+      // For dry run, count as passed immediately since no batch operations occur
+      // For actual import, will be counted after successful batch operations
+      if (Boolean.TRUE.equals(importResult.getDryRun())) {
+        importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
+      }
     }
   }
 
@@ -1260,13 +1288,31 @@ public abstract class EntityCsv<T extends EntityInterface> {
       String result = entry.getValue();
 
       if (ENTITY_CREATED.equals(result) || ENTITY_UPDATED.equals(result)) {
-        importSuccess(printer, csvRecord, result);
+        writeSuccessResult(printer, csvRecord, result);
       } else {
         // It's an error message
-        importFailure(printer, result, csvRecord);
+        writeFailureResult(printer, result, csvRecord);
       }
     }
     pendingCsvResults.clear();
+  }
+
+  /** Write success result without updating processed count (used during flush) */
+  private void writeSuccessResult(CSVPrinter printer, CSVRecord inputRecord, String successDetails)
+      throws IOException {
+    List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
+    recordList.addAll(inputRecord.toList());
+    printer.printRecord(recordList);
+    // Don't update processed count - already counted during initial processing
+  }
+
+  /** Write failure result without updating processed count (used during flush) */
+  private void writeFailureResult(CSVPrinter printer, String failedReason, CSVRecord inputRecord)
+      throws IOException {
+    List<String> recordList = listOf(IMPORT_FAILED, failedReason);
+    recordList.addAll(inputRecord.toList());
+    printer.printRecord(recordList);
+    // Don't update processed count - already counted during initial processing
   }
 
   /** Flush pending entity operations using batch DB operations */
@@ -1321,6 +1367,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
             createChangeEventForBatchedEntity(entity, EventType.ENTITY_CREATED);
             pendingSearchIndexUpdates.add(entity);
           }
+          // Count all queued creates as passed (each PendingEntityOperation = 1 CSV row)
+          importResult.withNumberOfRowsPassed(
+              importResult.getNumberOfRowsPassed() + toCreate.size());
         }
 
         // Batch update
@@ -1331,6 +1380,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
             createChangeEventForBatchedEntity(entity, EventType.ENTITY_UPDATED);
             pendingSearchIndexUpdates.add(entity);
           }
+          // Count all queued updates as passed (each PendingEntityOperation = 1 CSV row)
+          importResult.withNumberOfRowsPassed(
+              importResult.getNumberOfRowsPassed() + toUpdate.size());
         }
       } catch (Exception e) {
         LOG.error("Error in batch DB operation for {}, falling back to individual ops", type, e);
@@ -1340,8 +1392,14 @@ public abstract class EntityCsv<T extends EntityInterface> {
             PutResponse<EntityInterface> response =
                 repository.createOrUpdate(null, op.entity, importedBy);
             pendingSearchIndexUpdates.add(response.getEntity());
+            // Count successful individual operations as passed
+            importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
           } catch (Exception ex) {
             LOG.error("Failed to persist entity {}", op.entity.getFullyQualifiedName(), ex);
+            // Update the CSV result to reflect the failure
+            pendingCsvResults.put(op.csvRecord, ex.getMessage());
+            // Count failures
+            importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
           }
         }
       }
@@ -1398,7 +1456,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
             .getExecutorService()
             .submit(() -> createChangeEventForUserAndUpdateInES(response, importedBy));
       } catch (Exception ex) {
-        importFailure(resultsPrinter, ex.getMessage(), csvRecord);
+        pendingCsvResults.put(csvRecord, ex.getMessage());
+        importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+        importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
         importResult.setStatus(ApiStatus.FAILURE);
         return;
       }
@@ -1691,8 +1751,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
       EntityInterface cachedEntity = dryRunCreatedEntities.get(tableFQN);
       if (cachedEntity instanceof Table cachedTable) {
         updateColumnsFromCsvRecursive(cachedTable, csvRecord, printer);
+        // Count this row as processed and passed - it will be persisted with the table
         if (processRecord) {
           pendingCsvResults.put(csvRecord, ENTITY_UPDATED);
+          importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+          importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
         }
         return;
       }
@@ -1771,6 +1834,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       tableContext.csvRecords.add(csvRecord);
       // Queue result for later - actual success/failure determined after batch patch
       pendingCsvResults.put(csvRecord, ENTITY_UPDATED);
+      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
   }
 
@@ -1802,6 +1867,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
           // flushPendingCsvResults
           for (CSVRecord record : context.csvRecords) {
             pendingCsvResults.put(record, ex.getMessage());
+            // These were previously counted as passed, now move to failed count
+            importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() - 1);
+            importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
           }
           importResult.setStatus(ApiStatus.PARTIAL_SUCCESS);
         }
