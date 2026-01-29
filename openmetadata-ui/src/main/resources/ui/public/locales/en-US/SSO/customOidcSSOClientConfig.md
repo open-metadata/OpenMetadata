@@ -72,6 +72,18 @@ Custom OIDC authentication enables integration with any OpenID Connect compliant
 - **Example:** ["email", "username", "sub"]
 - **Why it matters:** Maps JWT claims to OpenMetadata user identities.
 
+### <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
+
+- **Definition:** Maps JWT claims to OpenMetadata user attributes. (Overrides JWT Principal Claims if set)
+- **Example:** ["email:email", "username:preferred_username"]
+- **Why it matters:** Controls how user information from your OIDC provider maps to OpenMetadata user profiles.
+- **Note:** Format: "openmetadata_field:jwt_claim"
+- **Validation Requirements:**
+  - Both `username` and `email` mappings must be present when this field is used
+  - Only `username` and `email` keys are allowed; no other keys are permitted
+  - If validation fails, errors will be displayed on this specific field
+- **Important:** JWT Principal Claims Mapping is **rarely needed** for most OIDC configurations. The default JWT Principal Claims handle user identification correctly. Only configure this if you have specific custom claim requirements.
+
 ## <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
 
 - **Definition:** JWT claim or attribute containing team/department information for automatic team assignment.
@@ -101,11 +113,23 @@ Custom OIDC authentication enables integration with any OpenID Connect compliant
 - **Why it matters:** Ensures consistent user identification across systems.
 - **Optional:** Only needed if usernames don't include domain information.
 
+### <span data-id="allowedDomains">Allowed Domains</span>
+
+- **Definition:** List of email domains that are permitted to access OpenMetadata.
+- **Example:** ["company.com", "external-partner.com"]
+- **Why it matters:** Provides fine-grained control over which email domains can authenticate via your OIDC provider.
+- **Note:**
+  - Works in conjunction with `enforcePrincipalDomain`
+  - When `enforcePrincipalDomain` is enabled, only users with email addresses from these domains can access OpenMetadata
+  - Leave empty or use single `principalDomain` if you only have one domain
+  - Useful for multi-domain organizations or when integrating with providers that support multiple domains
+
 ## <span data-id="adminPrincipals">Admin Principals</span>
 
 - **Definition:** List of user principals who should have admin access.
-- **Example:** ["admin@company.com", "sysadmin@company.com"]
+- **Example:** ["admin", "sysadmin", "john.doe"]
 - **Why it matters:** Grants administrative privileges to specific users.
+- **Note:** Use usernames (NOT email addresses) - these are derived from the email prefix (part before @)
 - **Security:** Ensure these users are trusted administrators.
 
 ## <span data-id="selfSignup">Enable Self Signup</span>

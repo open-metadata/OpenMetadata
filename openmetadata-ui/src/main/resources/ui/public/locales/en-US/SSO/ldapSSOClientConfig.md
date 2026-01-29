@@ -224,26 +224,16 @@ The following settings control authorization and access control across OpenMetad
 - **Why it matters:** Adds an extra layer of security by restricting access to users from specific domains.
 - **Note:** When enabled, only users from the configured principal domain can access OpenMetadata
 
-### <span data-id="principalDomainLdap">Principal Domain Validation for LDAP</span>
+### <span data-id="allowedDomains">Allowed Domains</span>
 
-- **Definition:** Controls whether users must have email addresses from specific domains to access OpenMetadata.
-- **How it works:**
-  - After successful LDAP authentication, the email domain (part after @) is validated
-  - If `enforcePrincipalDomain` is enabled, users must be from allowed domains
-  - Validation happens during API requests, not during login
-- **Configuration:**
-  - **Single Domain**: Set `principalDomain` to your company domain (e.g., "company.com")
-  - **Multiple Domains**: Leave `principalDomain` as default and add domains to `allowedDomains` list
-- **Example Scenario:**
-  - Your LDAP has users from `company.com` and `partner.com`
-  - Set `enforcePrincipalDomain` to `true`
-  - Add both domains to `allowedDomains`: `["company.com", "partner.com"]`
-  - Users from other domains will be blocked even if they exist in LDAP
-- **Important:**
-  - Users from non-allowed domains can authenticate against LDAP but will be blocked on first API call
-  - This provides an extra security layer beyond LDAP group membership
-  - Disable enforcement if your LDAP contains users from many different domains
-- **Error Message:** If a user from a non-allowed domain tries to access, they'll see: "Not Authorized! Email does not match the principal domain"
+- **Definition:** List of email domains that are permitted to access OpenMetadata.
+- **Example:** ["company.com", "partner.com", "contractor-company.com"]
+- **Why it matters:** Provides fine-grained control over which email domains can authenticate via LDAP.
+- **Note:**
+  - Works in conjunction with `enforcePrincipalDomain`
+  - When `enforcePrincipalDomain` is enabled, only users with email addresses from these domains can access OpenMetadata
+  - Leave empty or use single `principalDomain` if you only have one domain
+  - Use this field for multi-domain organizations (e.g., company.com + partner.com)
 
 ---
 

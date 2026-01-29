@@ -44,7 +44,7 @@ To configure SAML authentication, follow these steps:
 
 ### <span data-id="entityId">IdP Entity ID</span>
 
-- **Definition:** Unique identifier for the Identity Provider, usually the same as SSO login URL.
+- **Definition:** Unique identifier for the Identity Provider.
 - **Example:** https://adfs.company.com/adfs/services/trust
 - **Why it matters:** SAML messages use this to identify the IdP.
 - **Note:** Must match exactly what's configured in your IdP
@@ -69,8 +69,8 @@ To configure SAML authentication, follow these steps:
 ### <span data-id="nameId">Name ID Format</span>
 
 - **Definition:** Format of the SAML NameID element that identifies users.
-- **Default:** urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress
-- **Example:** urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress
+- **Default:** urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
+- **Example:** urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
 - **Why it matters:** Determines how users are identified in SAML assertions.
 - **Note:** Email format is most common and recommended
 
@@ -207,3 +207,14 @@ The following settings control authorization and access control across OpenMetad
 - **Example:** true
 - **Why it matters:** Adds an extra layer of security by restricting access to users from specific domains.
 - **Note:** When enabled, only users from the configured principal domain can access OpenMetadata
+
+### <span data-id="allowedDomains">Allowed Domains</span>
+
+- **Definition:** List of email domains that are permitted to access OpenMetadata.
+- **Example:** ["company.com", "partner.com"]
+- **Why it matters:** Provides fine-grained control over which email domains can authenticate via SAML.
+- **Note:**
+  - Works in conjunction with `enforcePrincipalDomain`
+  - When `enforcePrincipalDomain` is enabled, only users with email addresses from these domains can access OpenMetadata
+  - Leave empty or use single `principalDomain` if you only have one domain
+  - Use this field for multi-domain organizations

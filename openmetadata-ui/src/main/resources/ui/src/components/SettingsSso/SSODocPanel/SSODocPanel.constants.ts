@@ -27,6 +27,7 @@ export const FIELD_MAPPINGS: Record<string, string> = {
   principalDomain: 'principalDomain',
   enforcePrincipalDomain: 'enforcePrincipalDomain',
   adminPrincipals: 'adminPrincipals',
+  allowedDomains: 'allowedDomains',
   enableSelfSignup: 'selfSignup',
   secret: 'clientSecret',
   clientSecret: 'clientSecret',

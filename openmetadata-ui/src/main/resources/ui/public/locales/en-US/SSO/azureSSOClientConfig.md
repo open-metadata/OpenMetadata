@@ -91,6 +91,7 @@ Azure Active Directory (Azure AD) SSO enables users to log in with their Microso
   - Both `username` and `email` mappings must be present when this field is used
   - Only `username` and `email` keys are allowed; no other keys are permitted
   - If validation fails, errors will be displayed on this specific field
+- **Important:** JWT Principal Claims Mapping is **rarely needed** for most Azure AD configurations. The default JWT Principal Claims (`preferred_username`, `email`, `upn`, `sub`) handle user identification correctly. Only configure this if you have specific custom claim requirements.
 
 ### <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
 
@@ -248,7 +249,7 @@ These fields are only shown when Client Type is set to **Confidential**.
 - **Definition:** List of user principals who will have admin access.
 - **Example:** ["admin", "superuser"]
 - **Why it matters:** These users will have full administrative privileges in OpenMetadata.
-- **Note:** Use email addresses or UPNs that match the JWT principal claims
+- **Note:** Use usernames (NOT email addresses) - these are derived from the email prefix (part before @)
 
 ### <span data-id="principalDomain">Principal Domain</span>
 
@@ -263,6 +264,17 @@ These fields are only shown when Client Type is set to **Confidential**.
 - **Default:** false
 - **Example:** true
 - **Why it matters:** Adds an extra layer of security by restricting access to users from specific domains.
+
+### <span data-id="allowedDomains">Allowed Domains</span>
+
+- **Definition:** List of email domains that are permitted to access OpenMetadata.
+- **Example:** ["company.com", "subsidiary.com"]
+- **Why it matters:** Provides fine-grained control over which email domains can authenticate via Azure AD.
+- **Note:**
+  - Works in conjunction with `enforcePrincipalDomain`
+  - When `enforcePrincipalDomain` is enabled, only users with email addresses from these domains can access OpenMetadata
+  - Leave empty or use single `principalDomain` if you only have one Azure AD tenant
+  - Useful for multi-tenant scenarios or when allowing specific external domains
 
 ### <span data-id="enableSecureSocketConnection">Enable Secure Socket Connection</span>
 

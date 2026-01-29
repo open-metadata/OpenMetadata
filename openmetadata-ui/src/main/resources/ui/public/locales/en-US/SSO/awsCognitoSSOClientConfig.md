@@ -195,6 +195,7 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
   - Both `username` and `email` mappings must be present when this field is used
   - Only `username` and `email` keys are allowed; no other keys are permitted
   - If validation fails, errors will be displayed on this specific field
+- **Important:** JWT Principal Claims Mapping is **rarely needed** for most AWS Cognito configurations. The default JWT Principal Claims (`email`, `cognito:username`, `sub`) handle user identification correctly. Only configure this if you have specific custom claim requirements.
 
 ## <span data-id="jwtTeamClaimMapping">JWT Team Claim Mapping</span>
 
@@ -212,9 +213,51 @@ AWS Cognito SSO enables users to log in with their AWS Cognito User Pool credent
   - Configure custom attributes in Cognito User Pool → Attributes
   - For group-based teams, use "cognito:groups" claim (requires user pool groups configured)
   - Ensure custom attributes are included in the ID token
-- **Note:** 
+- **Note:**
   - The team must already exist in OpenMetadata for assignment to work
   - Only teams of type "Group" can be auto-assigned (not "Organization" or "BusinessUnit" teams)
   - Team names are case-sensitive and must match exactly
   - Multiple team assignments are supported for array claims (e.g., "cognito:groups")
+
+## Authorizer Configuration
+
+### <span data-id="adminPrincipals">Admin Principals</span>
+
+- **Definition:** List of user principals who will have admin access.
+- **Example:** ["admin", "superuser", "john.doe"]
+- **Why it matters:** These users will have full administrative privileges in OpenMetadata.
+- **Note:** Use usernames (NOT email addresses) - these are derived from the email prefix (part before @)
+
+### <span data-id="principalDomain">Principal Domain</span>
+
+- **Definition:** Default domain for user principals.
+- **Example:** company.com
+- **Why it matters:** Used to construct full user principals when only username is provided.
+- **Note:** Typically your organization's primary domain
+
+### <span data-id="enforcePrincipalDomain">Enforce Principal Domain</span>
+
+- **Definition:** Whether to enforce that all users belong to the principal domain.
+- **Default:** false
+- **Example:** true
+- **Why it matters:** Adds an extra layer of security by restricting access to users from specific domains.
+
+### <span data-id="allowedDomains">Allowed Domains</span>
+
+- **Definition:** List of email domains that are permitted to access OpenMetadata.
+- **Example:** ["company.com", "partner.com"]
+- **Why it matters:** Provides fine-grained control over which email domains can authenticate via AWS Cognito.
+- **Note:**
+  - Works in conjunction with `enforcePrincipalDomain`
+  - When `enforcePrincipalDomain` is enabled, only users with email addresses from these domains can access OpenMetadata
+  - Leave empty or use single `principalDomain` if you only have one Cognito User Pool
+  - Useful when your User Pool contains users from multiple domains
+
+### <span data-id="enableSecureSocketConnection">Enable Secure Socket Connection</span>
+
+- **Definition:** Whether to use SSL/TLS for secure connections.
+- **Default:** false
+- **Example:** true
+- **Why it matters:** Ensures encrypted communication for security.
+- **Note:** Should be enabled in production environments
 
