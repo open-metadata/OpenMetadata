@@ -2678,7 +2678,7 @@
     "optional-configuration-update-description-dbt": "可选配置, 选择是否从 dbt 更新描述",
     "optional-markdown-content": "可选：添加要直接嵌入资源的 markdown 内容",
     "orphan-indexes-deleted-successfully": "Successfully deleted {{count}} orphan index(es).",
-    "output-ports-from-data-product-assets": "Output ports can only be added from assets that belong to this Data Product.",
+    "output-ports-from-data-product-assets": "输出端口只能从属于此数据产品的资产中添加。",
     "owners-coverage-widget-description": "服务中所有数据资产的所有者覆盖率。<0>了解更多。</0>",
     "page-is-not-available": "您要查找的页面不可用",
     "page-sub-header-for-activity-feed": "活动信息流可用于查看数据的修改事件概览",

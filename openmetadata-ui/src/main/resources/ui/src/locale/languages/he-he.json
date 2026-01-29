@@ -2678,7 +2678,7 @@
     "optional-configuration-update-description-dbt": "הגדרת אופציונלית לעדכון התיאור מ-dbT או לא",
     "optional-markdown-content": "אופציונלי: הוסף תוכן markdown להטמעה ישירות במשאב",
     "orphan-indexes-deleted-successfully": "Successfully deleted {{count}} orphan index(es).",
-    "output-ports-from-data-product-assets": "Output ports can only be added from assets that belong to this Data Product.",
+    "output-ports-from-data-product-assets": "ניתן להוסיף יציאות פלט רק מנכסים השייכים למוצר נתונים זה.",
     "owners-coverage-widget-description": "כיסוי בעלים עבור כל נכסי הנתונים בשירות. <0>למד עוד</0>.",
     "page-is-not-available": "הדף שאתה מחפש לא זמין",
     "page-sub-header-for-activity-feed": "הזרמת פעילות שמאפשרת לך לראות סיכומים של אירועי שינוי בנתונים.",

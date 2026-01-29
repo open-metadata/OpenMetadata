@@ -2678,7 +2678,7 @@
     "optional-configuration-update-description-dbt": "dbt에서 설명을 업데이트할지 여부에 대한 선택적 구성",
     "optional-markdown-content": "선택사항: 리소스에 직접 포함할 마크다운 콘텐츠 추가",
     "orphan-indexes-deleted-successfully": "Successfully deleted {{count}} orphan index(es).",
-    "output-ports-from-data-product-assets": "Output ports can only be added from assets that belong to this Data Product.",
+    "output-ports-from-data-product-assets": "출력 포트는 이 데이터 제품에 속한 자산에서만 추가할 수 있습니다.",
     "owners-coverage-widget-description": "서비스 내 모든 데이터 자산의 소유자 커버리지입니다. <0>더 알아보기.</0>",
     "page-is-not-available": "찾고 있는 페이지를 사용할 수 없습니다",
     "page-sub-header-for-activity-feed": "데이터 변경 이벤트의 요약을 볼 수 있는 활동 피드입니다.",
