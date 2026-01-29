@@ -32,6 +32,8 @@ import {
   AuthorizerConfiguration,
   getSSOUISchema,
   GOOGLE_SSO_DEFAULTS,
+  NON_OIDC_SPECIFIC_FIELDS,
+  OIDC_SPECIFIC_FIELDS,
   VALIDATION_STATUS,
 } from '../../../constants/SSO.constant';
 import { User } from '../../../generated/entity/teams/user';
@@ -310,42 +312,14 @@ const SSOConfigurationFormRJSF = ({
 
     // Provider-specific schema modifications
     if (provider === AuthProvider.Saml) {
-      removeSchemaFields(authSchema, [
-        'callbackUrl',
-        'clientId',
-        'authority',
-        'publicKeyUrls',
-      ]);
-      removeRequiredFields(authSchema, [
-        'callbackUrl',
-        'clientId',
-        'authority',
-        'publicKeyUrls',
-      ]);
+      removeSchemaFields(authSchema, OIDC_SPECIFIC_FIELDS);
+      removeRequiredFields(authSchema, OIDC_SPECIFIC_FIELDS);
     } else if (provider === AuthProvider.LDAP) {
-      removeSchemaFields(authSchema, [
-        'callbackUrl',
-        'clientId',
-        'authority',
-        'publicKeyUrls',
-      ]);
-      removeRequiredFields(authSchema, [
-        'callbackUrl',
-        'clientId',
-        'authority',
-        'publicKeyUrls',
-      ]);
+      removeSchemaFields(authSchema, OIDC_SPECIFIC_FIELDS);
+      removeRequiredFields(authSchema, OIDC_SPECIFIC_FIELDS);
     } else if (provider === AuthProvider.CustomOidc) {
-      removeSchemaFields(authSchema, [
-        'ldapConfiguration',
-        'samlConfiguration',
-        'clientType',
-      ]);
-      removeRequiredFields(authSchema, [
-        'ldapConfiguration',
-        'samlConfiguration',
-        'clientType',
-      ]);
+      removeSchemaFields(authSchema, NON_OIDC_SPECIFIC_FIELDS);
+      removeRequiredFields(authSchema, NON_OIDC_SPECIFIC_FIELDS);
     }
 
     return createSchemaWithAuth(authSchema) as RJSFSchema;
