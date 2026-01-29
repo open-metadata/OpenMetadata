@@ -284,6 +284,69 @@ describe('TestDefinitionList Component', () => {
     });
   });
 
+  it('should reset pagination to page 1 after delete', async () => {
+    const mockHandlePageChange = jest.fn();
+    const { usePaging } = jest.requireMock('../../../hooks/paging/usePaging');
+
+    (usePaging as jest.Mock).mockReturnValue({
+      currentPage: 3,
+      pageSize: 15,
+      paging: { total: 50 },
+      handlePagingChange: jest.fn(),
+      handlePageChange: mockHandlePageChange,
+      handlePageSizeChange: jest.fn(),
+      showPagination: true,
+    });
+
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      const deleteButtons = screen.getAllByTestId(/delete-test-definition-/);
+      fireEvent.click(deleteButtons[0]);
+    });
+
+    await waitFor(() => {
+      const confirmButton = screen.getByText('Confirm');
+      fireEvent.click(confirmButton);
+    });
+
+    await waitFor(() => {
+      expect(mockHandlePageChange).toHaveBeenCalledWith(1);
+    });
+  });
+
+  it('should reset pagination to page 1 after edit', async () => {
+    const mockHandlePageChange = jest.fn();
+    const { usePaging } = jest.requireMock('../../../hooks/paging/usePaging');
+
+    (usePaging as jest.Mock).mockReturnValue({
+      currentPage: 2,
+      pageSize: 15,
+      paging: { total: 30 },
+      handlePagingChange: jest.fn(),
+      handlePageChange: mockHandlePageChange,
+      handlePageSizeChange: jest.fn(),
+      showPagination: true,
+    });
+
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    const addButton = await screen.findByTestId('add-test-definition-button');
+    fireEvent.click(addButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('test-definition-form')).toBeInTheDocument();
+    });
+
+    const onSuccessCallback = (TestDefinitionForm as jest.Mock).mock.calls[0][0]
+      .onSuccess;
+    onSuccessCallback();
+
+    await waitFor(() => {
+      expect(mockHandlePageChange).toHaveBeenCalledWith(1);
+    });
+  });
+
   it('should render add test definition button', async () => {
     render(<TestDefinitionList />, { wrapper: MemoryRouter });
 

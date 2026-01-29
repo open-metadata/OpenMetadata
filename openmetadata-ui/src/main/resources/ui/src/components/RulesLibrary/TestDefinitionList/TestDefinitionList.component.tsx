@@ -249,6 +249,7 @@ const TestDefinitionList = () => {
       );
       setIsDeleteModalVisible(false);
       setDefinitionToDelete(undefined);
+      handlePageChange(1);
       fetchTestDefinitions();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -263,6 +264,7 @@ const TestDefinitionList = () => {
   const handleFormSuccess = () => {
     setIsFormVisible(false);
     setSelectedDefinition(undefined);
+    handlePageChange(1);
     fetchTestDefinitions();
   };
 
