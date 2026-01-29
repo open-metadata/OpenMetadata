@@ -379,7 +379,7 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...mockPropsWithProcessStats} />);
 
     expect(
-      screen.getByTestId('stats-component-process stats')
+      screen.getByTestId('stats-component-label.process-stat-plural')
     ).toBeInTheDocument();
   });
 
@@ -387,7 +387,7 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...mockPropsWithVectorStats} />);
 
     expect(
-      screen.getByTestId('stats-component-vector stats')
+      screen.getByTestId('stats-component-label.vector-stat-plural')
     ).toBeInTheDocument();
   });
 
@@ -395,19 +395,19 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...mockPropsWithAllPipelineStats} />);
 
     expect(
-      screen.getByTestId('stats-component-overall stats')
+      screen.getByTestId('stats-component-label.overall-stat-plural')
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('stats-component-reader stats')
+      screen.getByTestId('stats-component-label.reader-stat-plural')
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('stats-component-process stats')
+      screen.getByTestId('stats-component-label.process-stat-plural')
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('stats-component-sink stats')
+      screen.getByTestId('stats-component-label.sink-stat-plural')
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('stats-component-vector stats')
+      screen.getByTestId('stats-component-label.vector-stat-plural')
     ).toBeInTheDocument();
   });
 
@@ -415,7 +415,7 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...mockProps1} />);
 
     expect(
-      screen.queryByTestId('stats-component-process stats')
+      screen.queryByTestId('stats-component-label.process-stat-plural')
     ).not.toBeInTheDocument();
   });
 
@@ -423,7 +423,7 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...mockProps1} />);
 
     expect(
-      screen.queryByTestId('stats-component-vector stats')
+      screen.queryByTestId('stats-component-label.vector-stat-plural')
     ).not.toBeInTheDocument();
   });
 });
