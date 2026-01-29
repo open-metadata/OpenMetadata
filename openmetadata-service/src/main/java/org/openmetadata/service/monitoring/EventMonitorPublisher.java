@@ -15,16 +15,16 @@ package org.openmetadata.service.monitoring;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.AbstractEventPublisher;
+import org.openmetadata.service.events.EventPublisher;
 import org.openmetadata.service.resources.events.EventResource;
 
 @Slf4j
-public class EventMonitorPublisher extends AbstractEventPublisher {
+@Deprecated(forRemoval = true)
+public class EventMonitorPublisher implements EventPublisher {
 
   private final EventMonitor eventMonitor;
 
   public EventMonitorPublisher(EventMonitorConfiguration config, EventMonitor eventMonitor) {
-    super(config.getBatchSize());
     this.eventMonitor = eventMonitor;
   }
 
