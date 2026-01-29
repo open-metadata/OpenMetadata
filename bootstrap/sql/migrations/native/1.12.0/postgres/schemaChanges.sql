@@ -267,7 +267,6 @@ CREATE TABLE IF NOT EXISTS learning_resource_entity (
 
 ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS processSuccess BIGINT DEFAULT 0;
 ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS processFailed BIGINT DEFAULT 0;
-ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS processWarnings BIGINT DEFAULT 0;
 ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS vectorSuccess BIGINT DEFAULT 0;
 ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS vectorFailed BIGINT DEFAULT 0;
 ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS vectorWarnings BIGINT DEFAULT 0;
@@ -286,4 +285,3 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_search_index_server_stats_job_server_entit
 ALTER TABLE search_index_server_stats DROP COLUMN IF EXISTS entityBuildFailures;
 ALTER TABLE search_index_server_stats DROP COLUMN IF EXISTS sinkTotal;
 ALTER TABLE search_index_server_stats DROP COLUMN IF EXISTS sinkWarnings;
-ALTER TABLE search_index_server_stats DROP COLUMN IF EXISTS processWarnings;

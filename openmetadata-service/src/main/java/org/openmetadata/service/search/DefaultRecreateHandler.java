@@ -79,22 +79,36 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         // Remove any null or blank aliases
         aliasesToAttach.removeIf(alias -> alias == null || alias.isBlank());
 
+        // Collect all old indices to delete (except staged)
         Set<String> allEntityIndices = searchClient.listIndicesByPrefix(canonicalIndex);
+        Set<String> oldIndicesToDelete = new HashSet<>();
         for (String oldIndex : allEntityIndices) {
-          if (oldIndex.equals(stagedIndex)) {
-            LOG.debug(
-                "Skipping deletion of staged index '{}' for entity '{}'.", stagedIndex, entityType);
-            continue;
+          if (!oldIndex.equals(stagedIndex)) {
+            oldIndicesToDelete.add(oldIndex);
           }
+        }
 
-          if (activeIndex != null && oldIndex.equals(activeIndex)) {
-            LOG.debug(
-                "Skipping deletion of currently active index '{}' for entity '{}' (will be deleted after alias swap).",
-                activeIndex,
+        // Atomically swap aliases from old indices to staged index
+        // This ensures zero-downtime: aliases point to new index before old ones are deleted
+        if (!aliasesToAttach.isEmpty()) {
+          boolean swapSuccess =
+              searchClient.swapAliases(oldIndicesToDelete, stagedIndex, aliasesToAttach);
+          if (!swapSuccess) {
+            LOG.error(
+                "Failed to atomically swap aliases for entity '{}'. Old indices will not be deleted.",
                 entityType);
-            continue;
+            return;
           }
+        }
 
+        LOG.info(
+            "Promoted staged index '{}' to serve entity '{}' (aliases: {}).",
+            stagedIndex,
+            entityType,
+            aliasesToAttach);
+
+        // Delete old indices after successful alias swap (with backoff for snapshot scenarios)
+        for (String oldIndex : oldIndicesToDelete) {
           try {
             if (searchClient.indexExists(oldIndex)) {
               searchClient.deleteIndexWithBackoff(oldIndex);
@@ -105,21 +119,6 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
                 "Failed to delete old index '{}' for entity '{}'.", oldIndex, entityType, deleteEx);
           }
         }
-
-        if (activeIndex != null && searchClient.indexExists(activeIndex)) {
-          searchClient.deleteIndexWithBackoff(activeIndex);
-          LOG.info(
-              "Deleted previously active index '{}' for entity '{}'.", activeIndex, entityType);
-        }
-
-        if (!aliasesToAttach.isEmpty()) {
-          searchClient.addAliases(stagedIndex, aliasesToAttach);
-        }
-        LOG.info(
-            "Promoted staged index '{}' to serve entity '{}' (aliases: {}).",
-            stagedIndex,
-            entityType,
-            aliasesToAttach);
       } catch (Exception ex) {
         LOG.error(
             "Failed to promote staged index '{}' for entity '{}'.", stagedIndex, entityType, ex);
@@ -187,12 +186,36 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       Set<String> aliasesToAttach =
           getAliasesFromMapping(indexMapping, searchRepository.getClusterAlias());
 
-      // Delete old indices with this prefix (except staged)
+      // Find old indices with this prefix (except staged)
       Set<String> allEntityIndices = searchClient.listIndicesByPrefix(canonicalIndex);
+      Set<String> oldIndicesToDelete = new HashSet<>();
       for (String oldIndex : allEntityIndices) {
-        if (oldIndex.equals(stagedIndex)) {
-          continue;
+        if (!oldIndex.equals(stagedIndex)) {
+          oldIndicesToDelete.add(oldIndex);
         }
+      }
+
+      // Atomically swap aliases from old indices to staged index
+      // This ensures zero-downtime: aliases point to new index before old ones are deleted
+      if (!aliasesToAttach.isEmpty()) {
+        boolean swapSuccess =
+            searchClient.swapAliases(oldIndicesToDelete, stagedIndex, aliasesToAttach);
+        if (!swapSuccess) {
+          LOG.error(
+              "Failed to atomically swap aliases for entity '{}'. Old indices will not be deleted.",
+              entityType);
+          return;
+        }
+      }
+
+      LOG.info(
+          "Promoted staged index '{}' to serve entity '{}' (aliases: {}).",
+          stagedIndex,
+          entityType,
+          aliasesToAttach);
+
+      // Delete old indices after successful alias swap (with backoff for snapshot scenarios)
+      for (String oldIndex : oldIndicesToDelete) {
         try {
           if (searchClient.indexExists(oldIndex)) {
             searchClient.deleteIndexWithBackoff(oldIndex);
@@ -203,16 +226,6 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
               "Failed to delete old index '{}' for entity '{}'.", oldIndex, entityType, deleteEx);
         }
       }
-
-      // Promote: attach all aliases to staged index
-      if (!aliasesToAttach.isEmpty()) {
-        searchClient.addAliases(stagedIndex, aliasesToAttach);
-      }
-      LOG.info(
-          "Promoted staged index '{}' to serve entity '{}' (aliases: {}).",
-          stagedIndex,
-          entityType,
-          aliasesToAttach);
     } catch (Exception ex) {
       LOG.error(
           "Failed to promote staged index '{}' for entity '{}'.", stagedIndex, entityType, ex);
