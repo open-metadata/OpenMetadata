@@ -29,6 +29,7 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import com.google.gson.Gson;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -237,13 +238,10 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public void storeEntity(User user, boolean update) {
-    // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> roles = user.getRoles();
     List<EntityReference> teams = user.getTeams();
     EntityReference defaultPersona = user.getDefaultPersona();
 
-    // Don't store roles, teams, defaultPersona and href as JSON. Build it on the fly based on
-    // relationships
     user.withRoles(null).withTeams(null).withInheritedRoles(null).withDefaultPersona(null);
 
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
@@ -254,8 +252,34 @@ public class UserRepository extends EntityRepository<User> {
 
     store(user, update);
 
-    // Restore the relationships
     user.withRoles(roles).withTeams(teams).withDefaultPersona(defaultPersona);
+  }
+
+  @Override
+  public void storeEntities(List<User> entities) {
+    List<User> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (User user : entities) {
+      List<EntityReference> roles = user.getRoles();
+      List<EntityReference> teams = user.getTeams();
+      EntityReference defaultPersona = user.getDefaultPersona();
+
+      user.withRoles(null).withTeams(null).withInheritedRoles(null).withDefaultPersona(null);
+
+      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+      if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
+        secretsManager.encryptAuthenticationMechanism(
+            user.getName(), user.getAuthenticationMechanism());
+      }
+
+      String jsonCopy = gson.toJson(user);
+      entitiesToStore.add(gson.fromJson(jsonCopy, User.class));
+
+      user.withRoles(roles).withTeams(teams).withDefaultPersona(defaultPersona);
+    }
+
+    storeMany(entitiesToStore);
   }
 
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {

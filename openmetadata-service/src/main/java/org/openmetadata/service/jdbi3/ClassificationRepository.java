@@ -218,6 +218,11 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
+  public void storeEntities(List<Classification> entities) {
+    storeMany(entities);
+  }
+
+  @Override
   public void storeRelationships(Classification entity) {
     // No relationships to store beyond what is stored in the super class
   }

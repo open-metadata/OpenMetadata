@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.TEST_CONNECTION_DEFINITION;
 
+import java.util.List;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
@@ -63,6 +64,10 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   @Override
   public void storeEntity(TestConnectionDefinition entity, boolean update) {
     store(entity, update);
+  }
+
+  public void storeEntities(List<TestConnectionDefinition> entities) {
+    storeMany(entities);
   }
 
   @Override

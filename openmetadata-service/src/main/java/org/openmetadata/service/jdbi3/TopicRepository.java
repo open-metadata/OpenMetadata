@@ -25,6 +25,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -118,6 +119,34 @@ public class TopicRepository extends EntityRepository<Topic> {
       topic.getMessageSchema().withSchemaFields(fieldsWithTags);
     }
     topic.withService(service);
+  }
+
+  @Override
+  public void storeEntities(List<Topic> topics) {
+    List<Topic> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Topic topic : topics) {
+      EntityReference service = topic.getService();
+      List<Field> fieldsWithTags = null;
+      if (topic.getMessageSchema() != null) {
+        fieldsWithTags = topic.getMessageSchema().getSchemaFields();
+        topic.getMessageSchema().setSchemaFields(cloneWithoutTags(fieldsWithTags));
+        topic.getMessageSchema().getSchemaFields().forEach(field -> field.setTags(null));
+      }
+
+      topic.withService(null);
+
+      String jsonCopy = gson.toJson(topic);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Topic.class));
+
+      if (fieldsWithTags != null) {
+        topic.getMessageSchema().withSchemaFields(fieldsWithTags);
+      }
+      topic.withService(service);
+    }
+
+    storeMany(entitiesToStore);
   }
 
   @Override

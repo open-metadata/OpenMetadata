@@ -25,6 +25,7 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FILE;
 import static org.openmetadata.service.Entity.SPREADSHEET;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -107,6 +108,20 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   public void storeEntity(Directory directory, boolean update) {
     // Store the entity
     store(directory, update);
+  }
+
+  @Override
+  public void storeEntities(List<Directory> directories) {
+    List<Directory> directoriesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Directory directory : directories) {
+      // Clone for storage
+      String jsonCopy = gson.toJson(directory);
+      directoriesToStore.add(gson.fromJson(jsonCopy, Directory.class));
+    }
+
+    storeMany(directoriesToStore);
   }
 
   @Override

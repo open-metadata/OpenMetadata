@@ -25,6 +25,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -144,6 +145,44 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
       apiEndpoint.getResponseSchema().withSchemaFields(responseFieldsWithTags);
     }
     apiEndpoint.withApiCollection(apiCollection);
+  }
+
+  @Override
+  public void storeEntities(List<APIEndpoint> entities) {
+    List<APIEndpoint> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (APIEndpoint apiEndpoint : entities) {
+      EntityReference apiCollection = apiEndpoint.getApiCollection();
+      apiEndpoint.withApiCollection(null);
+
+      List<Field> requestFieldsWithTags = null;
+      if (apiEndpoint.getRequestSchema() != null) {
+        requestFieldsWithTags = apiEndpoint.getRequestSchema().getSchemaFields();
+        apiEndpoint.getRequestSchema().setSchemaFields(cloneWithoutTags(requestFieldsWithTags));
+        apiEndpoint.getRequestSchema().getSchemaFields().forEach(field -> field.setTags(null));
+      }
+
+      List<Field> responseFieldsWithTags = null;
+      if (apiEndpoint.getResponseSchema() != null) {
+        responseFieldsWithTags = apiEndpoint.getResponseSchema().getSchemaFields();
+        apiEndpoint.getResponseSchema().setSchemaFields(cloneWithoutTags(responseFieldsWithTags));
+        apiEndpoint.getResponseSchema().getSchemaFields().forEach(field -> field.setTags(null));
+      }
+
+      String jsonCopy = gson.toJson(apiEndpoint);
+      entitiesToStore.add(gson.fromJson(jsonCopy, APIEndpoint.class));
+
+      if (requestFieldsWithTags != null) {
+        apiEndpoint.getRequestSchema().withSchemaFields(requestFieldsWithTags);
+      }
+      if (responseFieldsWithTags != null) {
+        apiEndpoint.getResponseSchema().withSchemaFields(responseFieldsWithTags);
+      }
+      apiEndpoint.withApiCollection(apiCollection);
+    }
+
+    storeMany(entitiesToStore);
   }
 
   @Override

@@ -1708,16 +1708,55 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public List<T> createManyEntitiesForImport(List<T> entities) {
+    return createManyEntitiesForImport(entities, null);
+  }
+
+  @Transaction
+  public List<T> createManyEntitiesForImport(List<T> entities, String impersonatedBy) {
+    if (entities == null || entities.isEmpty()) {
+      return entities;
+    }
+
+    // 1. Batch lock manager check
+    if (lockManager != null) {
+      lockManager.checkModificationsAllowed(entities);
+    }
+
+    // 2. Set impersonatedBy for each entity
+    for (T entity : entities) {
+      entity.setImpersonatedBy(impersonatedBy);
+    }
+
+    // 3. Store entities and relationships
     storeEntities(entities);
     storeExtensions(entities);
     storeRelationshipsInternal(entities);
     setInheritedFields(entities, new Fields(allowedFields));
     postCreate(entities);
+
+    // 4. Batch cache writes
+    writeThroughCacheMany(entities, false);
+
     return entities;
   }
 
   @Transaction
   public List<T> updateManyEntitiesForImport(List<T> originals, List<T> updates, String updatedBy) {
+    return updateManyEntitiesForImport(originals, updates, updatedBy, null);
+  }
+
+  @Transaction
+  public List<T> updateManyEntitiesForImport(
+      List<T> originals, List<T> updates, String updatedBy, String impersonatedBy) {
+    if (updates == null || updates.isEmpty()) {
+      return updates;
+    }
+
+    // 1. Batch lock manager check
+    if (lockManager != null) {
+      lockManager.checkModificationsAllowed(updates);
+    }
+
     List<T> updatedEntities = new ArrayList<>();
     for (int i = 0; i < originals.size(); i++) {
       T original = originals.get(i);
@@ -1727,10 +1766,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updated.setVersion(original.getVersion());
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
+      // 2. Set impersonatedBy
+      updated.setImpersonatedBy(impersonatedBy);
       updatedEntities.add(updated);
     }
+
     // Batch update in DB
     updateMany(updatedEntities);
+
     // Update relationships
     for (T entity : updatedEntities) {
       // For imports, delete existing tags before applying new ones to match single entity behavior
@@ -1739,6 +1782,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       storeRelationshipsInternal(entity);
     }
+
+    // 3. Batch cache writes
+    writeThroughCacheMany(updatedEntities, true);
+
     return updatedEntities;
   }
 
@@ -1784,6 +1831,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Only write to Redis if configured
     writeToRedisCache(entity, update);
+  }
+
+  /**
+   * Write multiple entities to Redis cache after batch DB operations
+   * More efficient than calling writeThroughCache for each entity
+   */
+  protected void writeThroughCacheMany(List<T> entities, boolean update) {
+    var cachedEntityDao = CacheBundle.getCachedEntityDao();
+    if (cachedEntityDao == null || entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    // Skip user entities
+    if ("user".equals(entityType)) {
+      return;
+    }
+
+    for (T entity : entities) {
+      try {
+        if (!isValidEntityForCache(entity)) {
+          continue;
+        }
+
+        String entityJson = dao.findById(dao.getTableName(), entity.getId(), "");
+        if (entityJson != null && !entityJson.isEmpty()) {
+          cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
+          if (entity.getFullyQualifiedName() != null) {
+            cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
+          }
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to write to Redis cache: {} {}", entityType, entity.getId(), e);
+      }
+    }
+    LOG.debug("Batch populated Redis cache for {} {} entities", entities.size(), entityType);
   }
 
   /**

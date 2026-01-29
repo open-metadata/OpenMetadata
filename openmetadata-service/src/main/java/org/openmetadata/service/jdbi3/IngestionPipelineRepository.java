@@ -17,6 +17,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
+import com.google.gson.Gson;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -260,6 +261,42 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         .withService(service)
         .withOpenMetadataServerConnection(openmetadataConnection)
         .withProcessingEngine(processingEngine);
+  }
+
+  @Override
+  public void storeEntities(List<IngestionPipeline> entities) {
+    List<IngestionPipeline> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+
+    for (IngestionPipeline ingestionPipeline : entities) {
+      EntityReference service = ingestionPipeline.getService();
+      OpenMetadataConnection openmetadataConnection =
+          ingestionPipeline.getOpenMetadataServerConnection();
+
+      if (secretsManager != null) {
+        secretsManager.encryptIngestionPipeline(ingestionPipeline);
+        openmetadataConnection =
+            secretsManager.encryptOpenMetadataConnection(openmetadataConnection, true);
+      }
+
+      EntityReference processingEngine = ingestionPipeline.getProcessingEngine();
+
+      ingestionPipeline
+          .withService(null)
+          .withOpenMetadataServerConnection(null)
+          .withProcessingEngine(null);
+
+      String jsonCopy = gson.toJson(ingestionPipeline);
+      entitiesToStore.add(gson.fromJson(jsonCopy, IngestionPipeline.class));
+
+      ingestionPipeline
+          .withService(service)
+          .withOpenMetadataServerConnection(openmetadataConnection)
+          .withProcessingEngine(processingEngine);
+    }
+
+    storeMany(entitiesToStore);
   }
 
   @Override

@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.jdbi3;
 
+import com.google.gson.Gson;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +67,25 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
     apiCollection.withService(null);
     store(apiCollection, update);
     apiCollection.withService(service);
+  }
+
+  @Override
+  public void storeEntities(List<APICollection> entities) {
+    List<APICollection> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (APICollection apiCollection : entities) {
+      EntityReference service = apiCollection.getService();
+
+      apiCollection.withService(null);
+
+      String jsonCopy = gson.toJson(apiCollection);
+      entitiesToStore.add(gson.fromJson(jsonCopy, APICollection.class));
+
+      apiCollection.withService(service);
+    }
+
+    storeMany(entitiesToStore);
   }
 
   @Override

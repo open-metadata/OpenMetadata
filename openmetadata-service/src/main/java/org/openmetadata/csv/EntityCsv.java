@@ -1199,6 +1199,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
   }
 
+  private void createChangeEventForBatchedEntity(EntityInterface entity, EventType eventType) {
+    ChangeEvent changeEvent =
+        FormatterUtil.createChangeEventForEntity(importedBy, eventType, entity);
+    Object eventEntity = changeEvent.getEntity();
+    changeEvent = copyChangeEvent(changeEvent);
+    changeEvent.setEntity(JsonUtils.pojoToMaskedJson(eventEntity));
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+  }
+
   /** Flush pending search index updates using bulk API */
   protected void flushPendingSearchIndexUpdates() {
     if (pendingSearchIndexUpdates.isEmpty()) {
@@ -1260,8 +1269,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
       try {
         // Batch create
         if (!toCreate.isEmpty()) {
-          List<EntityInterface> created = repository.createManyEntitiesForImport(toCreate);
+          List<EntityInterface> created =
+              repository.createManyEntitiesForImport(toCreate, importedBy);
           for (EntityInterface entity : created) {
+            createChangeEventForBatchedEntity(entity, EventType.ENTITY_CREATED);
             pendingSearchIndexUpdates.add(entity);
           }
         }
@@ -1269,8 +1280,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
         // Batch update
         if (!toUpdate.isEmpty()) {
           List<EntityInterface> updated =
-              repository.updateManyEntitiesForImport(originals, toUpdate, importedBy);
+              repository.updateManyEntitiesForImport(originals, toUpdate, importedBy, importedBy);
           for (EntityInterface entity : updated) {
+            createChangeEventForBatchedEntity(entity, EventType.ENTITY_UPDATED);
             pendingSearchIndexUpdates.add(entity);
           }
         }

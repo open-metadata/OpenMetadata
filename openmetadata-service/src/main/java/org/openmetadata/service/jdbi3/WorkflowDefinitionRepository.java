@@ -149,6 +149,11 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   @Override
+  public void storeEntities(List<WorkflowDefinition> entities) {
+    storeMany(entities);
+  }
+
+  @Override
   protected void storeRelationships(WorkflowDefinition entity) {}
 
   public UUID getIdFromName(String workflowDefinitionName) {

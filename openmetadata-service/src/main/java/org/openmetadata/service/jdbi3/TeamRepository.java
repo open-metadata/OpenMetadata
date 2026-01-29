@@ -43,6 +43,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.invalid
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParentCount;
 import static org.openmetadata.service.util.EntityUtil.*;
 
+import com.google.gson.Gson;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -478,13 +479,11 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void storeEntity(Team team, boolean update) {
-    // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> users = team.getUsers();
     List<EntityReference> defaultRoles = team.getDefaultRoles();
     List<EntityReference> parents = team.getParents();
     List<EntityReference> policies = team.getPolicies();
 
-    // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
     team.withUsers(null)
         .withDefaultRoles(null)
         .withParents(null)
@@ -493,11 +492,39 @@ public class TeamRepository extends EntityRepository<Team> {
 
     store(team, update);
 
-    // Restore the relationships
     team.withUsers(users)
         .withDefaultRoles(defaultRoles)
         .withParents(parents)
         .withPolicies(policies);
+  }
+
+  @Override
+  public void storeEntities(List<Team> entities) {
+    List<Team> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Team team : entities) {
+      List<EntityReference> users = team.getUsers();
+      List<EntityReference> defaultRoles = team.getDefaultRoles();
+      List<EntityReference> parents = team.getParents();
+      List<EntityReference> policies = team.getPolicies();
+
+      team.withUsers(null)
+          .withDefaultRoles(null)
+          .withParents(null)
+          .withPolicies(null)
+          .withInheritedRoles(null);
+
+      String jsonCopy = gson.toJson(team);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Team.class));
+
+      team.withUsers(users)
+          .withDefaultRoles(defaultRoles)
+          .withParents(parents)
+          .withPolicies(policies);
+    }
+
+    storeMany(entitiesToStore);
   }
 
   @Override
