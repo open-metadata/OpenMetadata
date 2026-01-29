@@ -12,13 +12,11 @@
  */
 
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
+import { Stack } from '@mui/material';
 import {
-  Button,
   Card,
-  Col,
   Form,
   Input,
-  Row,
   Select,
   Tag,
   TimePicker,
@@ -52,11 +50,15 @@ import {
   ICON_DIMENSION,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
-import { TABLE_TYPE_CUSTOM_PROPERTY } from '../../../constants/CustomProperty.constants';
+import {
+  HYPERLINK_TYPE_CUSTOM_PROPERTY,
+  TABLE_TYPE_CUSTOM_PROPERTY,
+} from '../../../constants/CustomProperty.constants';
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { Hyperlink } from '../../../generated/type/customProperties/complexTypes';
 import { Config } from '../../../generated/type/customProperty';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
 import { getCustomPropertyLuxonFormat } from '../../../utils/CustomProperty.utils';
@@ -745,10 +747,128 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
       }
 
+      case HYPERLINK_TYPE_CUSTOM_PROPERTY: {
+        const hyperlinkValue = value as Hyperlink | undefined;
+        const initialValues = {
+          url: hyperlinkValue?.url ?? '',
+          displayText: hyperlinkValue?.displayText ?? '',
+        };
+
+        const formId = `hyperlink-form-${propertyName}`;
+
+        const validateSafeUrl = (_: unknown, urlValue: string) => {
+          if (!urlValue) {
+            return Promise.resolve();
+          }
+          try {
+            const parsed = new URL(urlValue);
+            if (['http:', 'https:'].includes(parsed.protocol)) {
+              return Promise.resolve();
+            }
+
+            return Promise.reject(
+              new Error(t('message.url-must-use-http-or-https'))
+            );
+          } catch {
+            return Promise.reject(new Error(t('message.invalid-url')));
+          }
+        };
+
+        return (
+          <InlineEdit
+            className="custom-property-inline-edit-container"
+            isLoading={isLoading}
+            saveButtonProps={{
+              disabled: isLoading,
+              htmlType: 'submit',
+              form: formId,
+            }}
+            onCancel={onHideInput}
+            onSave={noop}>
+            <Form
+              id={formId}
+              initialValues={initialValues}
+              layout="vertical"
+              validateMessages={VALIDATION_MESSAGES}
+              onFinish={(values: { url: string; displayText: string }) => {
+                const hyperlinkData: Hyperlink = {
+                  url: values.url,
+                  ...(values.displayText
+                    ? { displayText: values.displayText }
+                    : {}),
+                };
+                onInputSave(hyperlinkData);
+              }}>
+              <Form.Item
+                name="url"
+                rules={[
+                  {
+                    required: true,
+                    message: t('label.field-required', {
+                      field: t('label.url-uppercase'),
+                    }),
+                  },
+                  {
+                    validator: validateSafeUrl,
+                  },
+                ]}
+                style={{ ...commonStyle, marginBottom: '16px' }}>
+                <Input
+                  allowClear
+                  data-testid="hyperlink-url-input"
+                  disabled={isLoading}
+                  placeholder={t('label.enter-entity', {
+                    entity: t('label.url-uppercase'),
+                  })}
+                />
+              </Form.Item>
+              <Form.Item name="displayText" style={commonStyle}>
+                <Input
+                  allowClear
+                  data-testid="hyperlink-display-text-input"
+                  disabled={isLoading}
+                  placeholder={t('label.enter-entity', {
+                    entity: t('label.display-text'),
+                  })}
+                />
+              </Form.Item>
+            </Form>
+          </InlineEdit>
+        );
+      }
+
       default:
         return null;
     }
   };
+
+  const getEntityRefLinkValue = (item: EntityReference) => (
+    <Link
+      className="entity-ref-link"
+      to={entityUtilClassBase.getEntityLink(
+        item.type,
+        item.fullyQualifiedName ?? item.name ?? ''
+      )}>
+      <div className="entity-icon m-r-xs">
+        {['user', 'team'].includes(item.type) ? (
+          <ProfilePicture
+            className="d-flex"
+            isTeam={item.type === 'team'}
+            name={item.name ?? ''}
+            type="circle"
+            width="18"
+          />
+        ) : (
+          searchClassBase.getEntityIcon(item.type)
+        )}
+      </div>
+      <Typography.Text
+        className="text-left text-primary truncate w-max-full"
+        ellipsis={{ tooltip: true }}>
+        {getEntityName(item)}
+      </Typography.Text>
+    </Link>
+  );
 
   const getPropertyValue = () => {
     if (isVersionView) {
@@ -770,7 +890,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           <>
             {isArray(value) ? (
               <div
-                className="w-full d-flex gap-2 flex-wrap"
+                className="w-max-full d-flex gap-2 flex-wrap"
                 data-testid="enum-value">
                 {value.map((val) => (
                   <Tooltip key={val} title={val} trigger="hover">
@@ -810,38 +930,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                   className="entity-reference-list-item flex items-center justify-between"
                   data-testid={getEntityName(item)}
                   key={item.id}>
-                  <div className="d-flex items-center">
-                    <Link
-                      to={entityUtilClassBase.getEntityLink(
-                        item.type,
-                        item.fullyQualifiedName ?? item.name
-                      )}>
-                      <Button
-                        className="entity-button flex-center p-0"
-                        icon={
-                          <div className="entity-button-icon m-r-xs">
-                            {['user', 'team'].includes(item.type) ? (
-                              <ProfilePicture
-                                className="d-flex"
-                                isTeam={item.type === 'team'}
-                                name={item.name ?? ''}
-                                type="circle"
-                                width="18"
-                              />
-                            ) : (
-                              searchClassBase.getEntityIcon(item.type)
-                            )}
-                          </div>
-                        }
-                        type="text">
-                        <Typography.Text
-                          className="text-left text-primary truncate w-68"
-                          ellipsis={{ tooltip: true }}>
-                          {getEntityName(item)}
-                        </Typography.Text>
-                      </Button>
-                    </Link>
-                  </div>
+                  {getEntityRefLinkValue(item)}
                 </div>
               );
             })}
@@ -857,42 +946,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         }
 
         return (
-          <div
-            className="d-flex items-center"
-            data-testid="entityReference-value">
-            <Link
-              to={entityUtilClassBase.getEntityLink(
-                item.type,
-                item.fullyQualifiedName as string
-              )}>
-              <Button
-                className="entity-button flex-center p-0"
-                icon={
-                  <div
-                    className="entity-button-icon m-r-xs"
-                    style={{ width: '20px', display: 'flex' }}>
-                    {['user', 'team'].includes(item.type) ? (
-                      <ProfilePicture
-                        className="d-flex"
-                        isTeam={item.type === 'team'}
-                        name={item.name ?? ''}
-                        type="circle"
-                        width="18"
-                      />
-                    ) : (
-                      searchClassBase.getEntityIcon(item.type)
-                    )}
-                  </div>
-                }
-                type="text">
-                <Typography.Text
-                  className="text-left text-primary truncate w-68 "
-                  data-testid="entityReference-value-name"
-                  ellipsis={{ tooltip: true }}>
-                  {getEntityName(item)}
-                </Typography.Text>
-              </Button>
-            </Link>
+          <div className="entity-list-body" data-testid="entityReference-value">
+            {getEntityRefLinkValue(item)}
           </div>
         );
       }
@@ -950,6 +1005,39 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         return <TableTypePropertyView columns={columns} rows={rows} />;
       }
 
+      case HYPERLINK_TYPE_CUSTOM_PROPERTY: {
+        const hyperlinkValue = value as Hyperlink | undefined;
+
+        if (!hyperlinkValue?.url) {
+          return null;
+        }
+
+        const isSafeUrl = (url: string): boolean => {
+          try {
+            const parsed = new URL(url);
+
+            return ['http:', 'https:'].includes(parsed.protocol);
+          } catch {
+            return false;
+          }
+        };
+
+        const safeHref = isSafeUrl(hyperlinkValue.url)
+          ? hyperlinkValue.url
+          : '#';
+
+        return (
+          <Typography.Link
+            className="break-all property-value"
+            data-testid="hyperlink-value"
+            href={safeHref}
+            rel="noopener noreferrer"
+            target="_blank">
+            {hyperlinkValue.displayText || hyperlinkValue.url}
+          </Typography.Link>
+        );
+      }
+
       case 'string':
       case 'integer':
       case 'number':
@@ -978,7 +1066,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       propertyValue
     ) : (
       <span className="text-grey-muted" data-testid="no-data">
-        {t('message.no-data')}
+        {t('label.not-set')}
       </span>
     );
   };
@@ -1006,95 +1094,87 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   }, [isExpanded, showInput, isRenderedInRightPanel]);
 
   const customPropertyElement = (
-    <Row data-testid={propertyName} gutter={[0, 8]}>
-      <Col span={24}>
-        <Row gutter={[0, 2]}>
-          <Col className="d-flex justify-between items-center w-full" span={24}>
-            <div className="d-flex items-center gap-1">
-              <Typography.Text
-                className="text-grey-body property-name"
-                data-testid="property-name">
-                {getEntityName(property)}
-              </Typography.Text>
-              {property.description && (
-                <Tooltip
-                  destroyTooltipOnHide
-                  placement="top"
-                  title={getTextFromHtmlString(property.description)}>
-                  <InfoCircleOutlined
-                    className="custom-property-description-icon"
-                    data-testid="custom-property-description-icon"
-                    style={{ color: GRAYED_OUT_COLOR, fontSize: '14px' }}
-                  />
-                </Tooltip>
-              )}
-            </div>
-            {hasEditPermissions && !showInput && (
-              <Tooltip
-                placement="left"
-                title={t('label.edit-entity', {
-                  entity: getEntityName(property),
-                })}>
-                <Icon
-                  component={EditIconComponent}
-                  data-testid={`edit-icon${
-                    isRenderedInRightPanel ? '-right-panel' : ''
-                  }`}
-                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                  tabIndex={0}
-                  onClick={onShowInput}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      onShowInput();
-                    }
-                  }}
-                />
-              </Tooltip>
-            )}
-          </Col>
-        </Row>
-      </Col>
-
-      <Col span={24}>
-        <div
-          className={classNames(
-            'd-flex justify-between w-full gap-2',
-            {
-              'items-end': isExpanded,
-            },
-            {
-              'items-center': !isExpanded,
-            }
-          )}>
-          <div
-            className="w-full"
-            ref={contentRef}
-            style={{
-              height: containerStyleFlag ? 'auto' : '30px',
-              overflow: 'hidden',
-            }}>
-            {showInput ? getPropertyInput() : getValueElement()}
-          </div>
-          {isOverflowing && !showInput && (
-            <Icon
-              className={classNames('custom-property-value-toggle-btn', {
-                active: isExpanded,
-              })}
-              component={ArrowIconComponent}
-              data-testid={`toggle-${propertyName}`}
-              style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-              tabIndex={0}
-              onClick={toggleExpand}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  toggleExpand();
-                }
-              }}
+    <Stack data-testid={propertyName} spacing={2}>
+      <div className="d-flex items-center gap-1">
+        <Typography.Text
+          className="text-grey-body property-name"
+          data-testid="property-name">
+          {getEntityName(property)}
+        </Typography.Text>
+        {property.description && (
+          <Tooltip
+            destroyTooltipOnHide
+            placement="top"
+            title={getTextFromHtmlString(property.description)}>
+            <InfoCircleOutlined
+              className="custom-property-description-icon"
+              data-testid="custom-property-description-icon"
+              style={{ color: GRAYED_OUT_COLOR, fontSize: '14px' }}
             />
+          </Tooltip>
+        )}
+      </div>
+
+      <div
+        className={classNames(
+          'd-flex justify-between w-full gap-2',
+          {
+            'items-end': isExpanded,
+          },
+          {
+            'items-center': !isExpanded,
+          }
+        )}>
+        <div
+          className="value-container"
+          data-testid="property-value"
+          ref={contentRef}
+          style={{
+            height: containerStyleFlag ? 'auto' : '30px',
+          }}>
+          {showInput ? getPropertyInput() : getValueElement()}
+          {hasEditPermissions && !showInput && (
+            <Tooltip
+              placement="left"
+              title={t('label.edit-entity', {
+                entity: getEntityName(property),
+              })}>
+              <Icon
+                component={EditIconComponent}
+                data-testid={`edit-icon${
+                  isRenderedInRightPanel ? '-right-panel' : ''
+                }`}
+                style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                tabIndex={0}
+                onClick={onShowInput}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    onShowInput();
+                  }
+                }}
+              />
+            </Tooltip>
           )}
         </div>
-      </Col>
-    </Row>
+        {isOverflowing && !showInput && (
+          <Icon
+            className={classNames('custom-property-value-toggle-btn', {
+              active: isExpanded,
+            })}
+            component={ArrowIconComponent}
+            data-testid={`toggle-${propertyName}`}
+            style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+            tabIndex={0}
+            onClick={toggleExpand}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                toggleExpand();
+              }
+            }}
+          />
+        )}
+      </div>
+    </Stack>
   );
 
   if (isRenderedInRightPanel) {
