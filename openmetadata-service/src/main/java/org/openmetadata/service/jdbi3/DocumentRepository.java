@@ -124,10 +124,6 @@ public class DocumentRepository extends EntityRepository<Document> {
     store(document, update);
   }
 
-  public void storeEntities(List<Document> entities) {
-    storeMany(entities);
-  }
-
   @Override
   public void storeRelationships(Document entity) {
     // validations are not implemented for Document

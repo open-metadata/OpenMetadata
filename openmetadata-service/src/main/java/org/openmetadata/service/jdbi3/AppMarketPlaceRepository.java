@@ -1,6 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import java.util.List;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.type.Include;
@@ -46,11 +45,6 @@ public class AppMarketPlaceRepository extends EntityRepository<AppMarketPlaceDef
   @Override
   public void storeEntity(AppMarketPlaceDefinition entity, boolean update) {
     store(entity, update);
-  }
-
-  @Override
-  public void storeEntities(List<AppMarketPlaceDefinition> entities) {
-    storeMany(entities);
   }
 
   @Override

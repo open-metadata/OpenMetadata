@@ -161,11 +161,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
-  public void storeEntities(List<DataProduct> entities) {
-    storeMany(entities);
-  }
-
-  @Override
   public void storeRelationships(DataProduct entity) {
     for (EntityReference domain : listOrEmpty(entity.getDomains())) {
       addRelationship(

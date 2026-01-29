@@ -549,7 +549,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void storeEntities(List<T> entities) {
-    // Nothing to do here. This method is overridden in the child class if required
+    // Default: store entities directly. Override if fields need nullification before storage.
+    storeMany(entities);
   }
 
   /**

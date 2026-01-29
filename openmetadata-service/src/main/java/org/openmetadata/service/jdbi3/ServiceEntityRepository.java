@@ -14,7 +14,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.Getter;
@@ -82,10 +81,6 @@ public abstract class ServiceEntityRepository<
   @Override
   public void storeEntity(T service, boolean update) {
     store(service, update);
-  }
-
-  public void storeEntities(List<T> entities) {
-    storeMany(entities);
   }
 
   @Override

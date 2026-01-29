@@ -126,11 +126,6 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
   }
 
   @Override
-  public void storeEntities(List<NotificationTemplate> entities) {
-    storeMany(entities);
-  }
-
-  @Override
   public void storeRelationships(NotificationTemplate entity) {}
 
   @Override
