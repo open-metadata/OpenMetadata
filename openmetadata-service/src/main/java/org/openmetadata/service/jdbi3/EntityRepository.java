@@ -1853,6 +1853,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Batch update in DB
     updateMany(updatedEntities);
 
+    // Clear and update extensions
+    removeExtensions(originals);
+    storeExtensions(updatedEntities);
+
     // Update relationships - batch clear existing and store new
     clearRelationshipsForUpdateMany(updatedEntities);
     storeRelationshipsInternal(updatedEntities);
@@ -3250,6 +3254,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
     while (customFields.hasNext()) {
       Entry<String, JsonNode> entry = customFields.next();
       removeCustomProperty(entity, entry.getKey());
+    }
+  }
+
+  public final void removeExtensions(List<T> entities) {
+    if (entities.isEmpty()) {
+      return;
+    }
+
+    List<String> entityIds =
+        entities.stream()
+            .filter(entity -> entity.getExtension() != null)
+            .map(entity -> entity.getId().toString())
+            .toList();
+
+    if (!entityIds.isEmpty()) {
+      daoCollection.entityExtensionDAO().deleteAllBatch(entityIds);
     }
   }
 
