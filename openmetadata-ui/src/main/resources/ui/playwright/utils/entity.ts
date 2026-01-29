@@ -398,9 +398,15 @@ export const addMultiOwner = async (data: {
       .getByTestId('clear-all-button');
 
     await clearButton.click();
+
+    await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
   }
 
   for (const ownerName of owners) {
+    await expect(
+      page.locator('[data-testid="owner-select-users-search-bar"]')
+    ).toBeVisible();
+
     const searchOwner = page.waitForResponse(
       'api/v1/search/query?q=*&index=user_search_index*'
     );

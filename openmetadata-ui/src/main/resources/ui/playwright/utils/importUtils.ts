@@ -50,9 +50,16 @@ export const createGlossaryTermRowDetails = () => {
 };
 
 export const fillTextInputDetails = async (page: Page, text: string) => {
-  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
-  await activeCell.click();
-  await activeCell.press('Enter', { delay: 100 });
+  await page.keyboard.press('Enter', { delay: 100 });
+
+  const isVisible = await page
+    .locator('.ant-layout-content')
+    .getByRole('textbox')
+    .isVisible();
+
+  if (!isVisible) {
+    await page.keyboard.press('Enter', { delay: 100 });
+  }
 
   const textboxLocator = page
     .locator('.ant-layout-content')
