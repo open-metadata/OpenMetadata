@@ -80,7 +80,7 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup', 'entity-data-setup'],
-      grepInvert: [/data-insight/, /ingestion/],
+      grepInvert: [/@data-insight/, /@ingestion/, /@sample-data/],
       teardown: 'entity-data-teardown',
       testIgnore: [
         '**/nightly/**',

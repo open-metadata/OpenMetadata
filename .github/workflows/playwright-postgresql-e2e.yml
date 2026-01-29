@@ -96,7 +96,7 @@ jobs:
           # Pass different args depending on the shardIndex:
           # - shard 1: run with ingestion setup
           # - other shards: skip ingestion setup
-          args: ${{ matrix.shardIndex == 1 && '-d postgresql' || '-d postgresql -i false' }}
+          args: ${{ matrix.shardIndex == 2 && '-d postgresql' || '-d postgresql -i false' }}
           ingestion_dependency: "all"
 
       - name: Setup Node.js
@@ -120,7 +120,6 @@ jobs:
               --project=setup \
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled \
-              --project=ingestion
           
           elif [ "${{ matrix.shardIndex }}" -eq "2" ]; then
             echo "🔹 Running ingestion tests on chromium shard ${CHROMIUM_SHARD}/5"
