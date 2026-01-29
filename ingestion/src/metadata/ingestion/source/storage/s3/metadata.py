@@ -88,6 +88,11 @@ class S3Source(StorageServiceSource):
         super().__init__(config, metadata)
         self.s3_client = self.connection.s3_client
         self.cloudwatch_client = self.connection.cloudwatch_client
+        self.fetch_cloudwatch_metrics = (
+            self.service_connection.fetchCloudWatchMetrics
+            if self.service_connection.fetchCloudWatchMetrics is not None
+            else True
+        )
 
         self._bucket_cache: Dict[str, Container] = {}
         self._unstructured_container_cache: Dict[str, Tuple[str, str]] = {}
@@ -586,6 +591,8 @@ class S3Source(StorageServiceSource):
         return results
 
     def _fetch_metric(self, bucket_name: str, metric: S3Metric) -> float:
+        if not self.fetch_cloudwatch_metrics:
+            return 0
         try:
             raw_result = self.cloudwatch_client.get_metric_data(
                 MetricDataQueries=[

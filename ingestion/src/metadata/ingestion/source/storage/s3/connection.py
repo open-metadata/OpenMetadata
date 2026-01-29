@@ -75,10 +75,17 @@ def test_connection(
         "ListBuckets": partial(
             test_buckets, client=client, connection=service_connection
         ),
-        "GetMetrics": partial(
-            client.cloudwatch_client.list_metrics, Namespace="AWS/S3"
-        ),
     }
+
+    fetch_cloudwatch_metrics = (
+        service_connection.fetchCloudWatchMetrics
+        if service_connection.fetchCloudWatchMetrics is not None
+        else True
+    )
+    if fetch_cloudwatch_metrics:
+        test_fn["GetMetrics"] = partial(
+            client.cloudwatch_client.list_metrics, Namespace="AWS/S3"
+        )
 
     return test_connection_steps(
         metadata=metadata,

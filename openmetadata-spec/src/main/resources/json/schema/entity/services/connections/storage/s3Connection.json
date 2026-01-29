@@ -50,6 +50,12 @@
         "excludes": ["_SUCCESS"]
       }
     },
+    "fetchCloudWatchMetrics": {
+      "title": "Fetch CloudWatch Metrics",
+      "description": "Enable fetching bucket-level metrics (size, object count) from CloudWatch. Requires cloudwatch:GetMetricData and cloudwatch:ListMetrics permissions. Set to false to skip CloudWatch metrics and reduce required permissions.",
+      "type": "boolean",
+      "default": true
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
