@@ -121,7 +121,13 @@ const TABLE_CREATE_TESTS_POLICY = [
   {
     name: `table-create-tests-policy-${uuid()}`,
     resources: ['table'],
-    operations: ['CreateTests', 'ViewAll', 'ViewBasic', 'ViewTests'],
+    operations: [
+      'CreateTests',
+      'EditTests',
+      'ViewAll',
+      'ViewBasic',
+      'ViewTests',
+    ],
     effect: 'allow',
   },
   {
@@ -692,6 +698,10 @@ test.describe(
       await table.visitEntityPage(page);
       await page.getByTestId('profiler').click();
       await page.getByRole('tab', { name: 'Data Quality' }).click();
+      // Wait for Data Quality tab content to load
+      await expect(page.getByTestId('table-profiler-container')).toBeVisible({
+        timeout: 10000,
+      });
     };
 
     test.describe('Standard Roles (Negative Scenarios)', () => {
@@ -1011,7 +1021,7 @@ test.describe(
         createPage,
       }) => {
         const { apiContext } = await getApiContext(createPage);
-        const tableFqn = table.entityResponseData.fullyQualifiedName;
+        const tableFqn = table.entityResponseData.fullyQualifiedName!;
 
         const res = await apiContext.get(
           `/api/v1/dataQuality/testCases/name/${encodeURIComponent(

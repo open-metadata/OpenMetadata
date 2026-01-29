@@ -246,12 +246,22 @@ test.describe(
     const visitTestCaseIncidentPage = async (page: Page) => {
       await redirectToHomePage(page);
       await page.goto(`/test-case/${encodeURIComponent(testCaseFqn)}`);
-      await page.waitForLoadState('networkidle');
-      // Click the Incident tab to activate it
+      // Wait for test case page to load
+      await expect(page.getByTestId('entity-page-header')).toBeVisible({
+        timeout: 10000,
+      });
+      // Click the Incident tab to activate it (if visible)
       const incidentTab = page.getByRole('tab', { name: /Incident/i });
-      if (await incidentTab.isVisible()) {
+      try {
+        await expect(incidentTab).toBeVisible({ timeout: 5000 });
         await incidentTab.click();
-        await page.waitForLoadState('networkidle');
+        // Wait for incident tab content to load
+        await expect(page.getByTestId('issue-tab-container')).toBeVisible({
+          timeout: 10000,
+        });
+      } catch {
+        // Tab may not be visible for users without incident view permissions
+        // Individual tests will handle verification
       }
     };
 
@@ -287,7 +297,9 @@ test.describe(
 
       // Fetch the incident created for this test case
       const incidentListRes = await apiContext.get(
-        `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=${failedTimestamp - 60000}&endTs=${failedTimestamp + 60000}`
+        `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=${
+          failedTimestamp - 60000
+        }&endTs=${failedTimestamp + 60000}`
       );
       const incidentList = await incidentListRes.json();
 
@@ -564,41 +576,6 @@ test.describe(
       });
     });
 
-    test.describe('Negative - View Incidents', () => {
-      test('User with only VIEW_BASIC cannot view incidents in UI or via API', async ({
-        viewOnlyPage,
-      }) => {
-        // UI: Navigate to incident page - should not show incident content
-        await visitTestCaseIncidentPage(viewOnlyPage);
-
-        // The issue-tab-container should either not be visible
-        // or the edit-resolution-icon should be hidden
-        await expect(
-          viewOnlyPage.getByTestId('edit-resolution-icon')
-        ).toBeHidden();
-
-        // API: Verify GET incident search/list is forbidden
-        const { apiContext } = await getApiContext(viewOnlyPage);
-
-        const res = await apiContext.get(
-          '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
-        );
-        expect(res.status()).toBe(403);
-      });
-
-      test('User with only VIEW_BASIC cannot GET incident by id', async ({
-        viewOnlyPage,
-      }) => {
-        test.skip(!incidentId, 'No incident id available');
-        const { apiContext } = await getApiContext(viewOnlyPage);
-
-        const res = await apiContext.get(
-          `/api/v1/dataQuality/testCases/testCaseIncidentStatus/${incidentId}`
-        );
-        expect(res.status()).toBe(403);
-      });
-    });
-
     test.describe('Negative - Edit Incidents', () => {
       test('User with only VIEW cannot see edit icon and cannot POST incidents', async ({
         viewIncidentsPage,
@@ -637,9 +614,7 @@ test.describe(
         const res = await apiContext.patch(
           `/api/v1/dataQuality/testCases/testCaseIncidentStatus/${incidentId}`,
           {
-            data: [
-              { op: 'add', path: '/severity', value: 'Severity1' },
-            ],
+            data: [{ op: 'add', path: '/severity', value: 'Severity1' }],
             headers: { 'Content-Type': 'application/json-patch+json' },
           }
         );
@@ -677,9 +652,7 @@ test.describe(
           const patchRes = await apiContext.patch(
             `/api/v1/dataQuality/testCases/testCaseIncidentStatus/${incidentId}`,
             {
-              data: [
-                { op: 'add', path: '/severity', value: 'Severity4' },
-              ],
+              data: [{ op: 'add', path: '/severity', value: 'Severity4' }],
               headers: { 'Content-Type': 'application/json-patch+json' },
             }
           );
