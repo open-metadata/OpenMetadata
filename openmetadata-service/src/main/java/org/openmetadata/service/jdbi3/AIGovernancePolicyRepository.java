@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -57,6 +58,11 @@ public class AIGovernancePolicyRepository extends EntityRepository<AIGovernanceP
   @Override
   public void storeEntity(AIGovernancePolicy policy, boolean update) {
     store(policy, update);
+  }
+
+  @Override
+  public void storeEntities(List<AIGovernancePolicy> entities) {
+    storeMany(entities);
   }
 
   @Override

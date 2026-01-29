@@ -24,6 +24,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notRevi
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 
+import com.google.gson.Gson;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
@@ -1362,6 +1363,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   @Override
   public void storeEntity(DataContract dataContract, boolean update) {
     store(dataContract, update);
+  }
+
+  @Override
+  public void storeEntities(List<DataContract> entities) {
+    List<DataContract> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (DataContract entity : entities) {
+      String jsonCopy = gson.toJson(entity);
+      entitiesToStore.add(gson.fromJson(jsonCopy, DataContract.class));
+    }
+    storeMany(entitiesToStore);
   }
 
   @Override

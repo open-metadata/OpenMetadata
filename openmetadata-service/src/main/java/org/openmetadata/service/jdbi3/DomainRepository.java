@@ -21,6 +21,7 @@ import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNameAlreadyExists;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -147,6 +148,25 @@ public class DomainRepository extends EntityRepository<Domain> {
     entity.withParent(null);
     store(entity, update);
     entity.withParent(parent);
+  }
+
+  @Override
+  public void storeEntities(List<Domain> entities) {
+    List<Domain> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Domain entity : entities) {
+      EntityReference parent = entity.getParent();
+
+      entity.withParent(null);
+
+      String jsonCopy = gson.toJson(entity);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Domain.class));
+
+      entity.withParent(parent);
+    }
+
+    storeMany(entitiesToStore);
   }
 
   @Override

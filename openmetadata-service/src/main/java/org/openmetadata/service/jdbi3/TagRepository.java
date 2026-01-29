@@ -28,6 +28,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
+import com.google.gson.Gson;
 import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -290,6 +291,26 @@ public class TagRepository extends EntityRepository<Tag> {
     tag.withClassification(null).withParent(null);
     store(tag, update);
     tag.withClassification(classification).withParent(parent);
+  }
+
+  @Override
+  public void storeEntities(List<Tag> entities) {
+    List<Tag> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Tag tag : entities) {
+      EntityReference classification = tag.getClassification();
+      EntityReference parent = tag.getParent();
+
+      tag.withClassification(null).withParent(null);
+
+      String jsonCopy = gson.toJson(tag);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Tag.class));
+
+      tag.withClassification(classification).withParent(parent);
+    }
+
+    storeMany(entitiesToStore);
   }
 
   @Override

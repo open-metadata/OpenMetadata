@@ -43,6 +43,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.invalid
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParentCount;
 import static org.openmetadata.service.util.EntityUtil.*;
 
+import com.google.gson.Gson;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -478,13 +479,11 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void storeEntity(Team team, boolean update) {
-    // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> users = team.getUsers();
     List<EntityReference> defaultRoles = team.getDefaultRoles();
     List<EntityReference> parents = team.getParents();
     List<EntityReference> policies = team.getPolicies();
 
-    // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
     team.withUsers(null)
         .withDefaultRoles(null)
         .withParents(null)
@@ -493,11 +492,39 @@ public class TeamRepository extends EntityRepository<Team> {
 
     store(team, update);
 
-    // Restore the relationships
     team.withUsers(users)
         .withDefaultRoles(defaultRoles)
         .withParents(parents)
         .withPolicies(policies);
+  }
+
+  @Override
+  public void storeEntities(List<Team> entities) {
+    List<Team> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Team team : entities) {
+      List<EntityReference> users = team.getUsers();
+      List<EntityReference> defaultRoles = team.getDefaultRoles();
+      List<EntityReference> parents = team.getParents();
+      List<EntityReference> policies = team.getPolicies();
+
+      team.withUsers(null)
+          .withDefaultRoles(null)
+          .withParents(null)
+          .withPolicies(null)
+          .withInheritedRoles(null);
+
+      String jsonCopy = gson.toJson(team);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Team.class));
+
+      team.withUsers(users)
+          .withDefaultRoles(defaultRoles)
+          .withParents(parents)
+          .withPolicies(policies);
+    }
+
+    storeMany(entitiesToStore);
   }
 
   @Override
@@ -1060,23 +1087,39 @@ public class TeamRepository extends EntityRepository<Team> {
               .withDefaultRoles(getEntityReferences(printer, csvRecord, 7, ROLE))
               .withPolicies(getEntityReferences(printer, csvRecord, 8, POLICY));
 
+      // Pre-track the entity so getParents can find it for circular dependency detection
+      if (processRecord) {
+        dryRunCreatedEntities.put(team.getName(), team);
+      }
+
       // Field 5 - parent teams
       getParents(printer, csvRecord, team);
-
-      // Validate during dry run to catch logical errors early
-      TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
-      if (processRecord && importResult.getDryRun()) {
-        try {
-          repository.validateForDryRun(team, dryRunCreatedEntities);
-        } catch (Exception ex) {
-          importFailure(printer, ex.getMessage(), csvRecord);
-          processRecord = false;
-        }
-      }
 
       if (processRecord) {
         createEntity(printer, csvRecord, team);
       }
+    }
+
+    @Override
+    protected void createEntity(CSVPrinter resultsPrinter, CSVRecord csvRecord, Team entity)
+        throws IOException {
+
+      // Validate hierarchy now that entity is pre-tracked
+      if (processRecord) {
+        TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
+        try {
+          repository.validateForDryRun(entity, dryRunCreatedEntities);
+        } catch (Exception ex) {
+          importFailure(resultsPrinter, ex.getMessage(), csvRecord);
+          processRecord = false;
+          // Remove from dryRunCreatedEntities since validation failed
+          dryRunCreatedEntities.remove(entity.getName());
+          return; // Don't proceed with creation
+        }
+      }
+
+      // Now call the parent method for normal processing
+      super.createEntity(resultsPrinter, csvRecord, entity);
     }
 
     @Override

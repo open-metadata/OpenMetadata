@@ -25,6 +25,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 import static org.openmetadata.service.Entity.TABLE;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -109,6 +110,29 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     store(schema, update);
     // Restore the relationships
     schema.withService(service);
+  }
+
+  @Override
+  public void storeEntities(List<DatabaseSchema> schemas) {
+    List<DatabaseSchema> schemasToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (DatabaseSchema schema : schemas) {
+      // Save entity-specific relationships
+      EntityReference service = schema.getService();
+
+      // Nullify for storage (same as storeEntity)
+      schema.withService(null);
+
+      // Clone for storage
+      String jsonCopy = gson.toJson(schema);
+      schemasToStore.add(gson.fromJson(jsonCopy, DatabaseSchema.class));
+
+      // Restore in original
+      schema.withService(service);
+    }
+
+    storeMany(schemasToStore);
   }
 
   @Override

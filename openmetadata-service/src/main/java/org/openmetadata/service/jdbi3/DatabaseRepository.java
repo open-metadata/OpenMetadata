@@ -24,6 +24,7 @@ import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 import static org.openmetadata.service.Entity.TABLE;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -111,6 +112,29 @@ public class DatabaseRepository extends EntityRepository<Database> {
     database.withService(null);
     store(database, update);
     database.withService(service);
+  }
+
+  @Override
+  public void storeEntities(List<Database> databases) {
+    List<Database> databasesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Database database : databases) {
+      // Save entity-specific relationships
+      EntityReference service = database.getService();
+
+      // Nullify for storage (same as storeEntity)
+      database.withService(null);
+
+      // Clone for storage
+      String jsonCopy = gson.toJson(database);
+      databasesToStore.add(gson.fromJson(jsonCopy, Database.class));
+
+      // Restore in original
+      database.withService(service);
+    }
+
+    storeMany(databasesToStore);
   }
 
   @Override

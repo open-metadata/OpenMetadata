@@ -659,6 +659,8 @@ public class SearchRepository {
       return;
     }
 
+    String entityType = entities.get(0).getEntityReference().getType();
+
     int batchSize = 100;
     int maxConcurrentRequests = 5;
     long maxPayloadSizeBytes = 10 * 1024 * 1024; // 10MB
@@ -667,6 +669,7 @@ public class SearchRepository {
     try {
       bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
       Map<String, Object> contextData = new HashMap<>();
+      contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
       bulkSink.write(entities, contextData);
       bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
     } catch (Exception e) {

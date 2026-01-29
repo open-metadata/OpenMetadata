@@ -25,6 +25,7 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FILE;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -131,6 +132,30 @@ public class FileRepository extends EntityRepository<File> {
     store(file, update);
     // Restore columns with tags
     file.withColumns(columnsWithTags);
+  }
+
+  @Override
+  public void storeEntities(List<File> files) {
+    List<File> filesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (File file : files) {
+      // Don't store column tags as JSON but build it on the fly based on relationships
+      List<Column> columnsWithTags = file.getColumns();
+      file.setColumns(ColumnUtil.cloneWithoutTags(columnsWithTags));
+      if (file.getColumns() != null) {
+        file.getColumns().forEach(column -> column.setTags(null));
+      }
+
+      // Clone for storage
+      String jsonCopy = gson.toJson(file);
+      filesToStore.add(gson.fromJson(jsonCopy, File.class));
+
+      // Restore columns with tags in original
+      file.withColumns(columnsWithTags);
+    }
+
+    storeMany(filesToStore);
   }
 
   @Override

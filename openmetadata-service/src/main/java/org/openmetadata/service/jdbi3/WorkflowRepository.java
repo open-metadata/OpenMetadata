@@ -2,6 +2,9 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.WORKFLOW;
 
+import com.google.gson.Gson;
+import java.util.ArrayList;
+import java.util.List;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -62,6 +65,29 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
 
     // Restore the relationships
     entity.withOpenMetadataServerConnection(openmetadataConnection);
+  }
+
+  public void storeEntities(List<Workflow> workflows) {
+    List<Workflow> workflowsToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+
+    for (Workflow workflow : workflows) {
+      OpenMetadataConnection openmetadataConnection = workflow.getOpenMetadataServerConnection();
+
+      if (secretsManager != null) {
+        workflow = secretsManager.encryptWorkflow(workflow);
+      }
+
+      workflow.withOpenMetadataServerConnection(null);
+
+      String jsonCopy = gson.toJson(workflow);
+      workflowsToStore.add(gson.fromJson(jsonCopy, Workflow.class));
+
+      workflow.withOpenMetadataServerConnection(openmetadataConnection);
+    }
+
+    storeMany(workflowsToStore);
   }
 
   /** Remove the secrets from the secret manager */

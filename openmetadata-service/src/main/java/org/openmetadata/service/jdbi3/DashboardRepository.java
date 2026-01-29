@@ -21,6 +21,7 @@ import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -377,6 +378,27 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.withService(null).withCharts(null).withDataModels(null);
     store(dashboard, update);
     dashboard.withService(service).withCharts(charts).withDataModels(dataModels);
+  }
+
+  @Override
+  public void storeEntities(List<Dashboard> dashboards) {
+    List<Dashboard> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Dashboard dashboard : dashboards) {
+      EntityReference service = dashboard.getService();
+      List<EntityReference> charts = dashboard.getCharts();
+      List<EntityReference> dataModels = dashboard.getDataModels();
+
+      dashboard.withService(null).withCharts(null).withDataModels(null);
+
+      String jsonCopy = gson.toJson(dashboard);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Dashboard.class));
+
+      dashboard.withService(service).withCharts(charts).withDataModels(dataModels);
+    }
+
+    storeMany(entitiesToStore);
   }
 
   @Override

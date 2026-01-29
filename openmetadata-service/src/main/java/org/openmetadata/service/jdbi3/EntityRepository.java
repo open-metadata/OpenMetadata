@@ -1356,8 +1356,146 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeRelationships(entity);
   }
 
-  public final void storeRelationshipsInternal(List<T> entity) {
-    entity.forEach(this::storeRelationshipsInternal);
+  public final void storeRelationshipsInternal(List<T> entities) {
+    if (entities.isEmpty()) {
+      return;
+    }
+
+    // Batched operations - reduces DB calls from N*5 to ~5 per relationship type
+    storeOwners(entities);
+    storeDomains(entities);
+    storeReviewers(entities);
+    storeDataProducts(entities);
+    applyTagsToEntities(entities);
+
+    // Entity-specific relationships - must be per-entity (abstract method)
+    entities.forEach(this::storeRelationships);
+  }
+
+  @Transaction
+  protected void storeOwners(List<T> entities) {
+    if (!supportsOwners) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getOwners())) {
+        for (EntityReference owner : entity.getOwners()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(owner.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(owner.getType())
+                  .toEntity(entityType)
+                  .relation(Relationship.OWNS.ordinal())
+                  .build());
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void storeDomains(List<T> entities) {
+    if (!supportsDomains) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getDomains())) {
+        validateDomainsByRef(entity.getDomains());
+        for (EntityReference domain : entity.getDomains()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(domain.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(DOMAIN)
+                  .toEntity(entityType)
+                  .relation(Relationship.HAS.ordinal())
+                  .build());
+          addDomainLineage(domain.getId(), entityType, domain);
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void storeReviewers(List<T> entities) {
+    if (!supportsReviewers) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getReviewers())) {
+        for (EntityReference reviewer : entity.getReviewers()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(reviewer.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(reviewer.getType())
+                  .toEntity(entityType)
+                  .relation(Relationship.REVIEWS.ordinal())
+                  .build());
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void storeDataProducts(List<T> entities) {
+    if (!supportsDataProducts) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getDataProducts())) {
+        for (EntityReference dataProduct : entity.getDataProducts()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(dataProduct.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(DATA_PRODUCT)
+                  .toEntity(entityType)
+                  .relation(Relationship.HAS.ordinal())
+                  .build());
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void applyTagsToEntities(List<T> entities) {
+    if (!supportsTags) {
+      return;
+    }
+    for (T entity : entities) {
+      List<TagLabel> nonDerivedTags =
+          listOrEmpty(entity.getTags()).stream()
+              .filter(t -> !t.getLabelType().equals(TagLabel.LabelType.DERIVED))
+              .toList();
+      if (!nonDerivedTags.isEmpty()) {
+        daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, entity.getFullyQualifiedName());
+        for (TagLabel tagLabel : nonDerivedTags) {
+          org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
+              tagLabel, entity.getFullyQualifiedName());
+        }
+      }
+    }
   }
 
   public final T setFieldsInternal(T entity, Fields fields) {
@@ -1569,18 +1707,56 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  private List<T> createManyEntitiesForImport(List<T> entities) {
+  public List<T> createManyEntitiesForImport(List<T> entities) {
+    return createManyEntitiesForImport(entities, null);
+  }
+
+  @Transaction
+  public List<T> createManyEntitiesForImport(List<T> entities, String impersonatedBy) {
+    if (entities == null || entities.isEmpty()) {
+      return entities;
+    }
+
+    // 1. Batch lock manager check
+    if (lockManager != null) {
+      lockManager.checkModificationsAllowed(entities);
+    }
+
+    // 2. Set impersonatedBy for each entity
+    for (T entity : entities) {
+      entity.setImpersonatedBy(impersonatedBy);
+    }
+
+    // 3. Store entities and relationships
     storeEntities(entities);
     storeExtensions(entities);
     storeRelationshipsInternal(entities);
     setInheritedFields(entities, new Fields(allowedFields));
     postCreate(entities);
+
+    // 4. Batch cache writes
+    writeThroughCacheMany(entities, false);
+
     return entities;
   }
 
   @Transaction
-  private List<T> updateManyEntitiesForImport(
-      List<T> originals, List<T> updates, String updatedBy) {
+  public List<T> updateManyEntitiesForImport(List<T> originals, List<T> updates, String updatedBy) {
+    return updateManyEntitiesForImport(originals, updates, updatedBy, null);
+  }
+
+  @Transaction
+  public List<T> updateManyEntitiesForImport(
+      List<T> originals, List<T> updates, String updatedBy, String impersonatedBy) {
+    if (updates == null || updates.isEmpty()) {
+      return updates;
+    }
+
+    // 1. Batch lock manager check
+    if (lockManager != null) {
+      lockManager.checkModificationsAllowed(updates);
+    }
+
     List<T> updatedEntities = new ArrayList<>();
     for (int i = 0; i < originals.size(); i++) {
       T original = originals.get(i);
@@ -1590,14 +1766,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updated.setVersion(original.getVersion());
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
+      // 2. Set impersonatedBy
+      updated.setImpersonatedBy(impersonatedBy);
       updatedEntities.add(updated);
     }
+
     // Batch update in DB
     updateMany(updatedEntities);
+
     // Update relationships
     for (T entity : updatedEntities) {
-      storeRelationships(entity);
+      // For imports, delete existing tags before applying new ones to match single entity behavior
+      if (supportsTags) {
+        daoCollection.tagUsageDAO().deleteTagsByTarget(entity.getFullyQualifiedName());
+      }
+      storeRelationshipsInternal(entity);
     }
+
+    // 3. Batch cache writes
+    writeThroughCacheMany(updatedEntities, true);
+
     return updatedEntities;
   }
 
@@ -1643,6 +1831,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Only write to Redis if configured
     writeToRedisCache(entity, update);
+  }
+
+  /**
+   * Write multiple entities to Redis cache after batch DB operations
+   * More efficient than calling writeThroughCache for each entity
+   */
+  protected void writeThroughCacheMany(List<T> entities, boolean update) {
+    var cachedEntityDao = CacheBundle.getCachedEntityDao();
+    if (cachedEntityDao == null || entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    // Skip user entities
+    if ("user".equals(entityType)) {
+      return;
+    }
+
+    for (T entity : entities) {
+      try {
+        if (!isValidEntityForCache(entity)) {
+          continue;
+        }
+
+        String entityJson = dao.findById(dao.getTableName(), entity.getId(), "");
+        if (entityJson != null && !entityJson.isEmpty()) {
+          cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
+          if (entity.getFullyQualifiedName() != null) {
+            cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
+          }
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to write to Redis cache: {} {}", entityType, entity.getId(), e);
+      }
+    }
+    LOG.debug("Batch populated Redis cache for {} {} entities", entities.size(), entityType);
   }
 
   /**

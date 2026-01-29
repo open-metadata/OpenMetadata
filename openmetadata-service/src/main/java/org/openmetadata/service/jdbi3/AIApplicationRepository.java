@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -58,6 +59,11 @@ public class AIApplicationRepository extends EntityRepository<AIApplication> {
   @Override
   public void storeEntity(AIApplication aiApplication, boolean update) {
     store(aiApplication, update);
+  }
+
+  @Override
+  public void storeEntities(List<AIApplication> entities) {
+    storeMany(entities);
   }
 
   @Override

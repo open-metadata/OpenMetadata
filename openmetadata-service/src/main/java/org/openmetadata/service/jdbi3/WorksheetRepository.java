@@ -26,6 +26,7 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.SPREADSHEET;
 import static org.openmetadata.service.Entity.WORKSHEET;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -144,6 +145,35 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
     store(worksheet, update);
     // Restore the relationships
     worksheet.withColumns(columnWithTags).withService(service).withSpreadsheet(spreadsheet);
+  }
+
+  @Override
+  public void storeEntities(List<Worksheet> worksheets) {
+    List<Worksheet> worksheetsToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Worksheet worksheet : worksheets) {
+      // Save entity-specific relationships
+      EntityReference service = worksheet.getService();
+      EntityReference spreadsheet = worksheet.getSpreadsheet();
+      List<Column> columnWithTags = worksheet.getColumns();
+
+      // Nullify for storage (same as storeEntity)
+      worksheet.withService(null).withSpreadsheet(null);
+      worksheet.setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
+      if (worksheet.getColumns() != null) {
+        worksheet.getColumns().forEach(column -> column.setTags(null));
+      }
+
+      // Clone for storage
+      String jsonCopy = gson.toJson(worksheet);
+      worksheetsToStore.add(gson.fromJson(jsonCopy, Worksheet.class));
+
+      // Restore in original
+      worksheet.withColumns(columnWithTags).withService(service).withSpreadsheet(spreadsheet);
+    }
+
+    storeMany(worksheetsToStore);
   }
 
   @Override

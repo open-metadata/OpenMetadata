@@ -30,6 +30,7 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.search.SearchClient.GLOSSARY_TERM_SEARCH_INDEX;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -168,6 +169,25 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     glossary.withReviewers(null);
     store(glossary, update);
     glossary.withReviewers(reviewers);
+  }
+
+  @Override
+  public void storeEntities(List<Glossary> entities) {
+    List<Glossary> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Glossary glossary : entities) {
+      List<EntityReference> reviewers = glossary.getReviewers();
+
+      glossary.withReviewers(null);
+
+      String jsonCopy = gson.toJson(glossary);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Glossary.class));
+
+      glossary.withReviewers(reviewers);
+    }
+
+    storeMany(entitiesToStore);
   }
 
   @Override

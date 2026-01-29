@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.type.EntityReference;
@@ -58,6 +59,11 @@ public class ReportRepository extends EntityRepository<Report> {
   @Override
   public void storeEntity(Report report, boolean update) {
     store(report, update);
+  }
+
+  @Override
+  public void storeEntities(List<Report> entities) {
+    storeMany(entities);
   }
 
   @Override

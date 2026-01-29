@@ -19,6 +19,7 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -148,17 +149,28 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public void storeEntity(DashboardDataModel dashboardDataModel, boolean update) {
-    // Relationships and fields such as href are derived and not stored as part of json
     EntityReference service = dashboardDataModel.getService();
-
-    // Don't store owners, database, href and tags as JSON. Build it on the fly based on
-    // relationships
     dashboardDataModel.withService(null);
-
     store(dashboardDataModel, update);
-
-    // Restore the relationships
     dashboardDataModel.withService(service);
+  }
+
+  @Override
+  public void storeEntities(List<DashboardDataModel> entities) {
+    List<DashboardDataModel> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (DashboardDataModel dashboardDataModel : entities) {
+      EntityReference service = dashboardDataModel.getService();
+      dashboardDataModel.withService(null);
+
+      String jsonCopy = gson.toJson(dashboardDataModel);
+      entitiesToStore.add(gson.fromJson(jsonCopy, DashboardDataModel.class));
+
+      dashboardDataModel.withService(service);
+    }
+
+    storeMany(entitiesToStore);
   }
 
   @Override

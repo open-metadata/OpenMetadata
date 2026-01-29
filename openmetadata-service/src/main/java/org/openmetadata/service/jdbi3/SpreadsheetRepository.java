@@ -25,6 +25,7 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.SPREADSHEET;
 import static org.openmetadata.service.Entity.WORKSHEET;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -113,6 +114,20 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   public void storeEntity(Spreadsheet spreadsheet, boolean update) {
     // Store the entity
     store(spreadsheet, update);
+  }
+
+  @Override
+  public void storeEntities(List<Spreadsheet> spreadsheets) {
+    List<Spreadsheet> spreadsheetsToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Spreadsheet spreadsheet : spreadsheets) {
+      // Clone for storage
+      String jsonCopy = gson.toJson(spreadsheet);
+      spreadsheetsToStore.add(gson.fromJson(jsonCopy, Spreadsheet.class));
+    }
+
+    storeMany(spreadsheetsToStore);
   }
 
   @Override

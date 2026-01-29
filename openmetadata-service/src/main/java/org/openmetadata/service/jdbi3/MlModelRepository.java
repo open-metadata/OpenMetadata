@@ -25,6 +25,7 @@ import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -278,6 +279,26 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlModel.withService(null).withDashboard(null);
     store(mlModel, update);
     mlModel.withService(service).withDashboard(dashboard);
+  }
+
+  @Override
+  public void storeEntities(List<MlModel> entities) {
+    List<MlModel> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (MlModel mlModel : entities) {
+      EntityReference dashboard = mlModel.getDashboard();
+      EntityReference service = mlModel.getService();
+
+      mlModel.withService(null).withDashboard(null);
+
+      String jsonCopy = gson.toJson(mlModel);
+      entitiesToStore.add(gson.fromJson(jsonCopy, MlModel.class));
+
+      mlModel.withService(service).withDashboard(dashboard);
+    }
+
+    storeMany(entitiesToStore);
   }
 
   @Override

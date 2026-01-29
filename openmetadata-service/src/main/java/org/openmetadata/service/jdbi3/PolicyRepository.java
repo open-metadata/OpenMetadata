@@ -170,6 +170,11 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
+  public void storeEntities(List<Policy> entities) {
+    storeMany(entities);
+  }
+
+  @Override
   public void storeRelationships(Policy policy) {
     // No relationships to store beyond what is stored in the super class
   }

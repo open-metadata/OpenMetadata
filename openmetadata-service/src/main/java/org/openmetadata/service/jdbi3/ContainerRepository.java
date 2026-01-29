@@ -14,6 +14,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 
 import com.google.common.collect.Lists;
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -325,6 +326,35 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container.getDataModel() != null) {
       container.getDataModel().setColumns(columnWithTags);
     }
+  }
+
+  @Override
+  public void storeEntities(List<Container> containers) {
+    List<Container> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Container container : containers) {
+      EntityReference storageService = container.getService();
+      EntityReference parent = container.getParent();
+      List<Column> columnWithTags = Lists.newArrayList();
+      if (container.getDataModel() != null) {
+        columnWithTags.addAll(container.getDataModel().getColumns());
+        container.getDataModel().setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
+        container.getDataModel().getColumns().forEach(column -> column.setTags(null));
+      }
+
+      container.withService(null).withParent(null);
+
+      String jsonCopy = gson.toJson(container);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Container.class));
+
+      container.withService(storageService).withParent(parent);
+      if (container.getDataModel() != null) {
+        container.getDataModel().setColumns(columnWithTags);
+      }
+    }
+
+    storeMany(entitiesToStore);
   }
 
   @Override

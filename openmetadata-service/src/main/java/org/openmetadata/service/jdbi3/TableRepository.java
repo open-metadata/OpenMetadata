@@ -38,6 +38,7 @@ import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparat
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
 import com.google.common.collect.Streams;
+import com.google.gson.Gson;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -1124,6 +1125,32 @@ public class TableRepository extends EntityRepository<Table> {
     table.withColumns(columnWithTags).withService(service);
     // Store ER relationships based on table constraints
     addConstraintRelationship(table, table.getTableConstraints());
+  }
+
+  @Override
+  public void storeEntities(List<Table> tables) {
+    List<Table> tablesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Table table : tables) {
+      // Save entity-specific relationships
+      EntityReference service = table.getService();
+      List<Column> columnWithTags = table.getColumns();
+
+      // Nullify for storage (same as storeEntity)
+      table.withService(null);
+      table.setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
+      table.getColumns().forEach(column -> column.setTags(null));
+
+      // Clone for storage
+      String jsonCopy = gson.toJson(table);
+      tablesToStore.add(gson.fromJson(jsonCopy, Table.class));
+
+      // Restore in original
+      table.withColumns(columnWithTags).withService(service);
+    }
+
+    storeMany(tablesToStore);
   }
 
   @Override

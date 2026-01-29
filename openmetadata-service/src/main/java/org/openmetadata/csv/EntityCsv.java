@@ -142,13 +142,19 @@ public abstract class EntityCsv<T extends EntityInterface> {
   /** Holder for pending entity create/update operations */
   protected static class PendingEntityOperation {
     EntityInterface entity;
+    EntityInterface originalEntity;
     CSVRecord csvRecord;
     String entityType;
     boolean isCreate;
 
     PendingEntityOperation(
-        EntityInterface entity, CSVRecord csvRecord, String entityType, boolean isCreate) {
+        EntityInterface entity,
+        EntityInterface originalEntity,
+        CSVRecord csvRecord,
+        String entityType,
+        boolean isCreate) {
       this.entity = entity;
+      this.originalEntity = originalEntity;
       this.csvRecord = csvRecord;
       this.entityType = entityType;
       this.isCreate = isCreate;
@@ -1021,11 +1027,29 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
         // In case of updating entity, prepareInternal as update=True
-        boolean isUpdate = repository.isUpdateForImport(entity);
-        repository.prepareInternal(entity, isUpdate);
+        T original = repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL);
+        boolean isUpdate = original != null;
+        if (isUpdate) {
+          entity.setId(original.getId());
+        }
+
+        // Track the entity for immediate lookup by subsequent CSV rows in the same batch BEFORE
+        // prepareInternal
+        dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
+        try {
+          repository.prepareInternal(entity, isUpdate);
+        } catch (EntityNotFoundException ex) {
+          // If entity is not found, checking if we have pending operations
+          if (!pendingEntityOperations.isEmpty()) {
+            flushPendingEntityOperations();
+            repository.prepareInternal(entity, isUpdate);
+          } else {
+            throw ex;
+          }
+        }
         // Queue for batch processing instead of immediate persist
         pendingEntityOperations.add(
-            new PendingEntityOperation(entity, csvRecord, entityType, !isUpdate));
+            new PendingEntityOperation(entity, original, csvRecord, entityType, !isUpdate));
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
@@ -1036,6 +1060,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       repository.setFullyQualifiedName(entity);
       boolean exists = repository.isUpdateForImport(entity);
       responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
+      // Track the dryRun created entities, as they may be referred by other entities being created
+      // during import
       // Track the dryRun created entities, as they may be referred by other entities being created
       // during import
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
@@ -1070,10 +1096,30 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
       try {
         // In case of updating entity, prepareInternal as update=True
-        boolean isUpdate = repository.isUpdateForImport(entity);
-        repository.prepareInternal(entity, isUpdate);
+        T original = (T) repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL);
+        boolean isUpdate = original != null;
+        if (isUpdate) {
+          entity.setId(original.getId());
+        }
+
+        // Track the entity for immediate lookup by subsequent CSV rows in the same batch BEFORE
+        // prepareInternal
+        dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
+        try {
+          repository.prepareInternal(entity, isUpdate);
+        } catch (EntityNotFoundException ex) {
+          // If entity is not found, checking if we have pending operations
+          if (!pendingEntityOperations.isEmpty()) {
+            flushPendingEntityOperations();
+            repository.prepareInternal(entity, isUpdate);
+          } else {
+            throw ex;
+          }
+        }
         // Queue for batch processing instead of immediate persist
-        pendingEntityOperations.add(new PendingEntityOperation(entity, csvRecord, type, !isUpdate));
+        pendingEntityOperations.add(
+            new PendingEntityOperation(
+                entity, (EntityInterface) original, csvRecord, type, !isUpdate));
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
@@ -1083,6 +1129,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     } else {
       repository.setFullyQualifiedName(entity);
       boolean exists = repository.isUpdateForImport(entity);
+      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
     }
@@ -1152,6 +1199,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
   }
 
+  private void createChangeEventForBatchedEntity(EntityInterface entity, EventType eventType) {
+    ChangeEvent changeEvent =
+        FormatterUtil.createChangeEventForEntity(importedBy, eventType, entity);
+    Object eventEntity = changeEvent.getEntity();
+    changeEvent = copyChangeEvent(changeEvent);
+    changeEvent.setEntity(JsonUtils.pojoToMaskedJson(eventEntity));
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+  }
+
   /** Flush pending search index updates using bulk API */
   protected void flushPendingSearchIndexUpdates() {
     if (pendingSearchIndexUpdates.isEmpty()) {
@@ -1189,31 +1245,46 @@ public abstract class EntityCsv<T extends EntityInterface> {
       // Separate creates and updates
       List<EntityInterface> toCreate = new ArrayList<>();
       List<EntityInterface> toUpdate = new ArrayList<>();
+      List<EntityInterface> originals = new ArrayList<>();
 
       for (PendingEntityOperation op : ops) {
         if (op.isCreate) {
           toCreate.add(op.entity);
         } else {
-          toUpdate.add(op.entity);
+          // Verify we have the original entity for update
+          if (op.originalEntity != null) {
+            toUpdate.add(op.entity);
+            originals.add(op.originalEntity);
+          } else {
+            // Should not happen if createEntity logic is correct, but fallback safely
+            LOG.warn(
+                "Missing original entity for update operation: {}",
+                op.entity.getFullyQualifiedName());
+            // Treat as potential create or individual fallback?
+            // Safest is to let it fail or try individual update fallback
+          }
         }
       }
 
       try {
         // Batch create
         if (!toCreate.isEmpty()) {
-          repository.getDao().insertMany(toCreate);
-          LOG.info("Batch inserted {} {} entities", toCreate.size(), type);
+          List<EntityInterface> created =
+              repository.createManyEntitiesForImport(toCreate, importedBy);
+          for (EntityInterface entity : created) {
+            createChangeEventForBatchedEntity(entity, EventType.ENTITY_CREATED);
+            pendingSearchIndexUpdates.add(entity);
+          }
         }
 
         // Batch update
         if (!toUpdate.isEmpty()) {
-          repository.getDao().updateMany(toUpdate);
-          LOG.info("Batch updated {} {} entities", toUpdate.size(), type);
-        }
-
-        // Queue all entities for ES bulk indexing
-        for (PendingEntityOperation op : ops) {
-          pendingSearchIndexUpdates.add(op.entity);
+          List<EntityInterface> updated =
+              repository.updateManyEntitiesForImport(originals, toUpdate, importedBy, importedBy);
+          for (EntityInterface entity : updated) {
+            createChangeEventForBatchedEntity(entity, EventType.ENTITY_UPDATED);
+            pendingSearchIndexUpdates.add(entity);
+          }
         }
       } catch (Exception e) {
         LOG.error("Error in batch DB operation for {}, falling back to individual ops", type, e);

@@ -196,6 +196,14 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
+  public void storeEntities(List<EventSubscription> entities) {
+    for (EventSubscription entity : entities) {
+      ensureDestinationIds(entity);
+    }
+    storeMany(entities);
+  }
+
+  @Override
   public void storeRelationships(EventSubscription entity) {
     EntityReference templateRef = entity.getNotificationTemplate();
     if (templateRef != null) {

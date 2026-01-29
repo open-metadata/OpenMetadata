@@ -27,6 +27,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
+import com.google.gson.Gson;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -613,6 +614,27 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setTasks(cloneWithoutTagsAndOwners(taskWithTagsAndOwners));
     store(pipeline, update);
     pipeline.withService(service).withTasks(taskWithTagsAndOwners);
+  }
+
+  @Override
+  public void storeEntities(List<Pipeline> pipelines) {
+    List<Pipeline> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Pipeline pipeline : pipelines) {
+      EntityReference service = pipeline.getService();
+      List<Task> taskWithTagsAndOwners = pipeline.getTasks();
+
+      pipeline.withService(null);
+      pipeline.setTasks(cloneWithoutTagsAndOwners(taskWithTagsAndOwners));
+
+      String jsonCopy = gson.toJson(pipeline);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Pipeline.class));
+
+      pipeline.withService(service).withTasks(taskWithTagsAndOwners);
+    }
+
+    storeMany(entitiesToStore);
   }
 
   @Override
