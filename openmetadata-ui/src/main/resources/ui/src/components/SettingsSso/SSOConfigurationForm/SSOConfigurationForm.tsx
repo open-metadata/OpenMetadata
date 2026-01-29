@@ -97,6 +97,19 @@ const widgets = {
   LdapRoleMappingWidget: LdapRoleMappingWidget,
 };
 
+const OIDC_SPECIFIC_FIELDS = [
+  'callbackUrl',
+  'clientId',
+  'authority',
+  'publicKeyUrls',
+];
+
+const NON_OIDC_SPECIFIC_FIELDS = [
+  'ldapConfiguration',
+  'samlConfiguration',
+  'clientType',
+];
+
 const SSOConfigurationFormRJSF = ({
   forceEditMode = false,
   onChangeProvider,
@@ -310,42 +323,14 @@ const SSOConfigurationFormRJSF = ({
 
     // Provider-specific schema modifications
     if (provider === AuthProvider.Saml) {
-      removeSchemaFields(authSchema, [
-        'callbackUrl',
-        'clientId',
-        'authority',
-        'publicKeyUrls',
-      ]);
-      removeRequiredFields(authSchema, [
-        'callbackUrl',
-        'clientId',
-        'authority',
-        'publicKeyUrls',
-      ]);
+      removeSchemaFields(authSchema, OIDC_SPECIFIC_FIELDS);
+      removeRequiredFields(authSchema, OIDC_SPECIFIC_FIELDS);
     } else if (provider === AuthProvider.LDAP) {
-      removeSchemaFields(authSchema, [
-        'callbackUrl',
-        'clientId',
-        'authority',
-        'publicKeyUrls',
-      ]);
-      removeRequiredFields(authSchema, [
-        'callbackUrl',
-        'clientId',
-        'authority',
-        'publicKeyUrls',
-      ]);
+      removeSchemaFields(authSchema, OIDC_SPECIFIC_FIELDS);
+      removeRequiredFields(authSchema, OIDC_SPECIFIC_FIELDS);
     } else if (provider === AuthProvider.CustomOidc) {
-      removeSchemaFields(authSchema, [
-        'ldapConfiguration',
-        'samlConfiguration',
-        'clientType',
-      ]);
-      removeRequiredFields(authSchema, [
-        'ldapConfiguration',
-        'samlConfiguration',
-        'clientType',
-      ]);
+      removeSchemaFields(authSchema, NON_OIDC_SPECIFIC_FIELDS);
+      removeRequiredFields(authSchema, NON_OIDC_SPECIFIC_FIELDS);
     }
 
     return createSchemaWithAuth(authSchema) as RJSFSchema;
