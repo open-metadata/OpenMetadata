@@ -209,6 +209,33 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
     assertTrue(evaluateExpression("matchTestResult('Success')", evaluationContext));
     assertFalse(evaluateExpression("matchTestResult('Failed')", evaluationContext));
   }
+  
+  @Test
+  void test_matchTestResult_fieldsNotChanged() {
+    ChangeDescription changeDescription = new ChangeDescription();
+    changeDescription.setFieldsAdded(
+        List.of(
+            new FieldChange()
+                .withName("testCaseResult")
+                .withNewValue(new TestCaseResult().withTestCaseStatus(TestCaseStatus.Success))));
+    
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TEST_CASE);
+    changeEvent.setChangeDescription(changeDescription);
+    
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    SimpleEvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(evaluateExpression("matchTestResult({'Success'})", evaluationContext));
+
+    assertEquals(1, changeDescription.getFieldsAdded().size());
+    assertTrue(changeDescription.getFieldsUpdated().isEmpty());
+    assertTrue(changeDescription.getFieldsDeleted().isEmpty());
+  }
 
   @Test
   void test_matchUpdatedBy() {
