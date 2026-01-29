@@ -1863,18 +1863,23 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public boolean isUpdateForImport(GlossaryTerm entity) {
-    if (super.isUpdateForImport(entity)) {
-      return true;
+  public GlossaryTerm findMatchForImport(GlossaryTerm entity) {
+    GlossaryTerm original = super.findMatchForImport(entity);
+    if (original != null) {
+      return original;
     }
 
     // A glossary term may have been moved to a different parent causing its FQN to change. So check
     // with name field
-    return Entity.getCollectionDAO()
+    String existingTermJson =
+        daoCollection
             .glossaryTermDAO()
-            .getGlossaryTermCountIgnoreCase(
-                entity.getGlossary().getFullyQualifiedName(), entity.getName())
-        > 0;
+            .getGlossaryTermByNameAndGlossaryIgnoreCase(
+                entity.getGlossary().getFullyQualifiedName(), entity.getName());
+    if (existingTermJson != null && !existingTermJson.isEmpty()) {
+      return JsonUtils.readValue(existingTermJson, GlossaryTerm.class);
+    }
+    return null;
   }
 
   @Override

@@ -1039,7 +1039,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
         // In case of updating entity, prepareInternal as update=True
-        T original = repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL);
+        T original = repository.findMatchForImport(entity);
         boolean isUpdate = original != null;
         if (isUpdate) {
           entity.setId(original.getId());
@@ -1121,7 +1121,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
       try {
         // In case of updating entity, prepareInternal as update=True
-        T original = (T) repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL);
+        T original = (T) repository.findMatchForImport(entity);
         boolean isUpdate = original != null;
         if (isUpdate) {
           entity.setId(original.getId());

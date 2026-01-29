@@ -7452,8 +7452,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
         || message.contains("entitynotfoundexception");
   }
 
+  public T findMatchForImport(T entity) {
+    return findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL);
+  }
+
   public boolean isUpdateForImport(T entity) {
-    return findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null;
+    T original = findMatchForImport(entity);
+    if (original != null) {
+      entity.setId(original.getId());
+      return true;
+    }
+    return false;
   }
 
   @Transaction
