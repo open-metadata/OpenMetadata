@@ -913,11 +913,11 @@ test.describe('Glossary P3 Tests', () => {
       await page.fill('[data-testid="name"]', 'TestTerm');
       await page.locator(descriptionBox).fill('Test description');
 
-      const addReferenceBtn = page.getByTestId('add-references-button');
+      const addReferenceBtn = page.getByTestId('add-reference');
       await addReferenceBtn.click();
 
-      await page.locator('#references_0_name').fill('BBC');
-      await page.locator('#references_0_endpoint').fill('www.bbc.co.uk');
+      await page.locator('#name-0').fill('BBC');
+      await page.locator('#url-0').fill('www.bbc.co.uk');
 
       await page.getByTestId('save-glossary-term').click();
 
@@ -927,10 +927,8 @@ test.describe('Glossary P3 Tests', () => {
 
       expect(errorMessage).toBe(true);
 
-      await page.locator('#references_0_endpoint').clear();
-      await page
-        .locator('#references_0_endpoint')
-        .fill('https://www.bbc.co.uk');
+      await page.locator('#url-0').clear();
+      await page.locator('#url-0').fill('https://www.bbc.co.uk');
 
       const saveResponse = page.waitForResponse('/api/v1/glossaryTerms');
       await page.getByTestId('save-glossary-term').click();
@@ -960,7 +958,9 @@ test.describe('Glossary P3 Tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await page.getByRole('link', { name: glossaryTerm.data.displayName }).click();
+      await page
+        .getByRole('link', { name: glossaryTerm.data.displayName })
+        .click();
 
       await page.getByTestId('term-references-add-button').click();
 
@@ -990,9 +990,7 @@ test.describe('Glossary P3 Tests', () => {
       await page.getByTestId('save-btn').click();
       await saveRes;
 
-      await expect(
-        page.getByTestId('reference-link-Wikipedia')
-      ).toBeVisible();
+      await expect(page.getByTestId('reference-link-Wikipedia')).toBeVisible();
     } finally {
       await glossaryTerm.delete(apiContext);
       await glossary.delete(apiContext);
