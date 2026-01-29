@@ -124,9 +124,7 @@ def test_get_child_measures(test_case_name, test_case):
 
 
 def test_powerbi_measures_string_expression():
-    measure = PowerBiMeasures(
-        name="test", expression="SUM(Sales)", isHidden=False
-    )
+    measure = PowerBiMeasures(name="test", expression="SUM(Sales)", isHidden=False)
     assert measure.expression == "SUM(Sales)"
 
 
@@ -140,9 +138,7 @@ def test_powerbi_measures_list_expression():
 
 
 def test_powerbi_measures_empty_list_expression():
-    measure = PowerBiMeasures(
-        name="test", expression=[], isHidden=False
-    )
+    measure = PowerBiMeasures(name="test", expression=[], isHidden=False)
     assert measure.expression == ""
 
 
@@ -152,9 +148,7 @@ def test_powerbi_table_source_string_expression():
 
 
 def test_powerbi_table_source_list_expression():
-    source = PowerBITableSource(
-        expression=["let", "    Source = ...", "in Source"]
-    )
+    source = PowerBITableSource(expression=["let", "    Source = ...", "in Source"])
     assert source.expression == "let\n    Source = ...\nin Source"
 
 
@@ -169,9 +163,7 @@ def test_dataset_expression_string():
 
 
 def test_dataset_expression_list():
-    expr = DatasetExpression(
-        name="test", expression=["", "VAR x = 1", "RETURN x"]
-    )
+    expr = DatasetExpression(name="test", expression=["", "VAR x = 1", "RETURN x"])
     assert expr.expression == "\nVAR x = 1\nRETURN x"
 
 

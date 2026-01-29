@@ -550,9 +550,7 @@ class PowerbiSource(DashboardServiceSource):
                 if measure.isHidden:
                     measure_type = DataType.MEASURE_HIDDEN
                 expression_text = (
-                    f"Expression : {measure.expression}"
-                    if measure.expression
-                    else ""
+                    f"Expression : {measure.expression}" if measure.expression else ""
                 )
                 description_text = (
                     f"Description : {measure.description}"
@@ -974,7 +972,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         Parse BigQuery source from Power Query M expressions.
         Handles both direct BigQuery connections and references to dataset expressions.
-        
+
         Examples:
         1. Direct: GoogleBigQuery.Database()[Name="project"][Data][Name="dataset",Kind="Schema"][Data][Name="table",Kind="Table"][Data]
         2. Via expression reference: Source = S_PJ_CODE (where S_PJ_CODE is a dataset expression)
@@ -987,13 +985,15 @@ class PowerbiSource(DashboardServiceSource):
                 source_expression,
                 re.MULTILINE,
             )
-            
+
             if source_ref_match:
-                ref_name = source_ref_match.group(1).strip().strip('"').strip('#').strip('"')
+                ref_name = (
+                    source_ref_match.group(1).strip().strip('"').strip("#").strip('"')
+                )
                 logger.debug(
                     f"Table source references expression: {ref_name}, resolving..."
                 )
-                
+
                 # Fetch the dataset to get its expressions
                 dataset = self._fetch_dataset_from_workspace(datamodel_entity.name.root)
                 if dataset and dataset.expressions:
@@ -1006,31 +1006,30 @@ class PowerbiSource(DashboardServiceSource):
                             return self._parse_bigquery_source(
                                 dexpression.expression, datamodel_entity
                             )
-            
+
             # Check if this is a direct BigQuery connection
             if "GoogleBigQuery.Database" not in source_expression:
                 return None
-                
+
             logger.debug(f"Found GoogleBigQuery.Database in expression")
-            
+
             # Extract project, dataset (schema), and table from BigQuery M expression
             # Pattern: [Name="project"][Data][Name="dataset",Kind="Schema"][Data][Name="table",Kind="Table"]
-            
+
             # Extract all Name= patterns
             name_matches = re.findall(
-                r'\[Name="([^"]+)"(?:,Kind="([^"]+)")?\]', 
-                source_expression
+                r'\[Name="([^"]+)"(?:,Kind="([^"]+)")?\]', source_expression
             )
-            
+
             if not name_matches:
                 logger.debug("No Name patterns found in BigQuery expression")
                 return None
-            
+
             # BigQuery structure: project -> dataset (Schema) -> table (Table/View)
             project = None
             dataset = None
             table_name = None
-            
+
             for name, kind in name_matches:
                 if kind == "Schema":
                     dataset = name
@@ -1039,20 +1038,16 @@ class PowerbiSource(DashboardServiceSource):
                 elif not kind and not project:
                     # First Name without Kind is likely the project
                     project = name
-            
+
             logger.debug(
                 f"Extracted BigQuery info: project={project}, dataset={dataset}, table={table_name}"
             )
-            
+
             if table_name:
-                return [{
-                    "database": project,
-                    "schema": dataset,
-                    "table": table_name
-                }]
-            
+                return [{"database": project, "schema": dataset, "table": table_name}]
+
             return None
-            
+
         except Exception as exc:
             logger.debug(f"Error to parse BigQuery table source: {exc}")
             logger.debug(traceback.format_exc())

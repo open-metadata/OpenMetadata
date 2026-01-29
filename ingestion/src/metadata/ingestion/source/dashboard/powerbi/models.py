@@ -185,7 +185,7 @@ class PowerBiTable(BaseModel):
     source: Optional[List[PowerBITableSource]] = None
     partitions: Optional[List[PowerBIPartition]] = None
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def extract_source_from_partitions(cls, values):
         if isinstance(values, dict):
@@ -195,7 +195,7 @@ class PowerBiTable(BaseModel):
                     partition_source = partitions[0].get("source")
                     if partition_source:
                         values["source"] = [partition_source]
-        
+
         return values
 
 
