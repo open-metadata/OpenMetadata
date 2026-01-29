@@ -1800,6 +1800,15 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity);
 
     @SqlQuery(
+        "SELECT COUNT(*) FROM entity_relationship "
+            + "WHERE fromId = :fromId AND toId = :toId AND fromEntity = :fromEntity AND relation = :relation")
+    int existsRelationship(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
         "SELECT fromId, COUNT(toId) FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
             + "GROUP BY fromId")
