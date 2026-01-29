@@ -2340,7 +2340,7 @@
     "enable-tag-description": "启用标签后, 您将能够通过该标签进行搜索或将其分配给任何实体.",
     "enables-end-to-end-metadata-management": "端到端元数据治理, 赋能数据探索、质控、可观测性和协作",
     "endpoint-should-be-valid": "Endpoint 端点应为有效的 URL",
-    "url-must-start-with-http-or-https": "URL must start with http:// or https://",
+    "url-must-start-with-http-or-https": "URL 必须以 http:// 或 https:// 开头",
     "ensure-airflow-set-up-correctly-before-heading-to-ingest-metadata": "确保在开始提取元数据之前正确设置了 Airflow",
     "ensure-elasticsearch-is-up-and-running": "确保 Elasticsearch 容器已启动并运行",
     "enter-a-field": "输入{{field}}",

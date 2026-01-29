@@ -2340,7 +2340,7 @@
     "enable-tag-description": "태그를 활성화하면 이 태그로 검색하거나 엔티티에 할당할 수 있게 됩니다.",
     "enables-end-to-end-metadata-management": "모든 데이터 자산을 한 곳에서 발견하세요. 필요한 데이터로 중요한 인사이트를 얻으세요. 이제 데이터 잠재력을 열고 정보에 기반한 비즈니스 결정을 내리세요!",
     "endpoint-should-be-valid": "엔드포인트는 유효한 URL이어야 합니다.",
-    "url-must-start-with-http-or-https": "URL must start with http:// or https://",
+    "url-must-start-with-http-or-https": "URL은 http:// 또는 https://로 시작해야 합니다",
     "ensure-airflow-set-up-correctly-before-heading-to-ingest-metadata": "메타데이터를 수집하기 전에 Airflow가 올바르게 설정되어 있는지 확인하세요.",
     "ensure-elasticsearch-is-up-and-running": "Elasticsearch 도커가 실행 중인지 확인하세요.",
     "enter-a-field": "{{field}}을(를) 입력하세요",

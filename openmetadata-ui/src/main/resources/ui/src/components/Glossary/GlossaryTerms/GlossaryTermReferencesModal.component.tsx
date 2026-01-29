@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TermReference } from '../../../generated/entity/data/glossaryTerm';
+import { validateReferenceURL } from '../../../utils/GlossaryUtils';
 
 interface GlossaryTermReferencesModalProps {
   references: TermReference[];
@@ -120,13 +121,7 @@ const GlossaryTermReferencesModal = ({
                         },
                         {
                           validator: (_, value) => {
-                            if (!value) {
-                              return Promise.resolve();
-                            }
-                            if (
-                              value.startsWith('http://') ||
-                              value.startsWith('https://')
-                            ) {
+                            if (validateReferenceURL(value)) {
                               return Promise.resolve();
                             }
 

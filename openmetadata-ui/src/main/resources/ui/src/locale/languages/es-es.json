@@ -2340,7 +2340,7 @@
     "enable-tag-description": "Al habilitar la etiqueta, podrá buscar por ella o asignarla a cualquier entidad.",
     "enables-end-to-end-metadata-management": "Permite la gestión de metadatos de extremo a extremo con descubrimiento de datos, calidad de datos, observabilidad y colaboración entre personas.",
     "endpoint-should-be-valid": "El punto final debe ser una URL válida.",
-    "url-must-start-with-http-or-https": "URL must start with http:// or https://",
+    "url-must-start-with-http-or-https": "La URL debe comenzar con http:// o https://",
     "ensure-airflow-set-up-correctly-before-heading-to-ingest-metadata": "Asegúrese de tener Airflow configurado correctamente antes de comenzar a ingerir metadatos.",
     "ensure-elasticsearch-is-up-and-running": "Asegúrese de que Elasticsearch esté activo y en funcionamiento.",
     "enter-a-field": "Ingrese un {{field}}",

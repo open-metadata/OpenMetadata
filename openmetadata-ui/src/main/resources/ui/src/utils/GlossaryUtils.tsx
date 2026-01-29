@@ -521,3 +521,11 @@ export const getAllExpandableKeys = (terms: ModifiedGlossary[]): string[] => {
 
   return keys;
 };
+
+export const validateReferenceURL = (url: string): boolean => {
+  if (!url) {
+    return true;
+  }
+
+  return url.startsWith('http://') || url.startsWith('https://');
+};

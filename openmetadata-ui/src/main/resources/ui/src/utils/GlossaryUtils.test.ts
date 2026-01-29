@@ -29,6 +29,7 @@ import {
   findExpandableKeysForArray,
   getQueryFilterToExcludeTerm,
   glossaryTermTableColumnsWidth,
+  validateReferenceURL,
 } from './GlossaryUtils';
 
 describe('Glossary Utils', () => {
@@ -379,6 +380,28 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
       reviewers: 330,
       status: 200,
       synonyms: 330,
+    });
+  });
+
+  describe('validateReferenceURL', () => {
+    it('should return true for URLs starting with http://', () => {
+      expect(validateReferenceURL('http://www.example.com')).toBe(true);
+      expect(validateReferenceURL('http://example.com')).toBe(true);
+    });
+
+    it('should return true for URLs starting with https://', () => {
+      expect(validateReferenceURL('https://www.example.com')).toBe(true);
+      expect(validateReferenceURL('https://example.com')).toBe(true);
+    });
+
+    it('should return false for URLs without http:// or https://', () => {
+      expect(validateReferenceURL('www.example.com')).toBe(false);
+      expect(validateReferenceURL('example.com')).toBe(false);
+      expect(validateReferenceURL('ftp://example.com')).toBe(false);
+    });
+
+    it('should return true for empty string', () => {
+      expect(validateReferenceURL('')).toBe(true);
     });
   });
 });

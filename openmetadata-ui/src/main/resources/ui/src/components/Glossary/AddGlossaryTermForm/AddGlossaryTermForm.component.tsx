@@ -31,6 +31,7 @@ import {
   HelperTextType,
 } from '../../../interface/FormUtils.interface';
 import { generateFormFields, getField } from '../../../utils/formUtils';
+import { validateReferenceURL } from '../../../utils/GlossaryUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
@@ -438,13 +439,7 @@ const AddGlossaryTermForm = ({
                         },
                         {
                           validator: (_, value) => {
-                            if (!value) {
-                              return Promise.resolve();
-                            }
-                            if (
-                              value.startsWith('http://') ||
-                              value.startsWith('https://')
-                            ) {
+                            if (validateReferenceURL(value)) {
                               return Promise.resolve();
                             }
 

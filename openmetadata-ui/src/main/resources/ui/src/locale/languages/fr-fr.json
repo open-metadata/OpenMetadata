@@ -2340,7 +2340,7 @@
     "enable-tag-description": "En activant le tag, vous pourrez rechercher par celui-ci ou l'assigner à une entité.",
     "enables-end-to-end-metadata-management": "Activer la gestion des métadonnées de bout en bout avec la découverte des données, la dualité des données, l'observabilité, et la collaboration",
     "endpoint-should-be-valid": "Le point de terminaison doit être une URL valide.",
-    "url-must-start-with-http-or-https": "URL must start with http:// or https://",
+    "url-must-start-with-http-or-https": "L'URL doit commencer par http:// ou https://",
     "ensure-airflow-set-up-correctly-before-heading-to-ingest-metadata": "Vérifiez que Airflow est correctement configuré avant de passer à l'ingestion de métadonnées.",
     "ensure-elasticsearch-is-up-and-running": "Vérifiez que le conteneur Elasticsearch est en cours d'exécution.",
     "enter-a-field": "Entrer un {{field}}",
