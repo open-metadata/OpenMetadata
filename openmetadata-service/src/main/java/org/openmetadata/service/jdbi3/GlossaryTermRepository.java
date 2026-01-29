@@ -960,26 +960,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               term.getParent().getFullyQualifiedName()));
     }
 
-    // Check for move-to-child scenario: does an existing term with the same name
-    // exist in the DB that would be moved under its own descendant?
-    // This handles the case in CSV import where a term is being created at a new location
-    // but the name matches an existing term that would need to be "moved".
-    String newParentFqn = term.getParent().getFullyQualifiedName();
-    String existingTermString =
-        daoCollection
-            .glossaryTermDAO()
-            .getGlossaryTermByNameAndGlossaryIgnoreCase(
-                term.getGlossary().getFullyQualifiedName(), term.getName());
-    if (existingTermString != null && !existingTermString.isEmpty()) {
-      GlossaryTerm existingTerm = JsonUtils.readValue(existingTermString, GlossaryTerm.class);
-      String existingFqn = existingTerm.getFullyQualifiedName();
-      // If the new parent's FQN starts with the existing term's FQN,
-      // then we're trying to move the term under its own descendant
-      if (FullyQualifiedName.isParent(newParentFqn, existingFqn)) {
-        throw new IllegalArgumentException(invalidGlossaryTermMove(existingFqn, newParentFqn));
-      }
-    }
-
     // Check for circular references by traversing the entire parent chain in the database
     // We track visited terms to detect cycles
     if (term.getId() != null && term.getParent().getId() != null) {

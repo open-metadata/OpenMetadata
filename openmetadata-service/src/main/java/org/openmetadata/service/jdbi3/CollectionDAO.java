@@ -6340,6 +6340,9 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void insert(@Bind("json") String json);
 
+    @SqlBatch("INSERT INTO change_event (json) VALUES (:json)")
+    void insertBatch(@Bind("json") List<String> jsons);
+
     @SqlUpdate("DELETE FROM change_event WHERE entityType = :entityType")
     void deleteAll(@Bind("entityType") String entityType);
 

@@ -167,6 +167,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   // Queue for batching OpenSearch updates - processed after each batch of CSV records
   protected final List<EntityInterface> pendingSearchIndexUpdates = new ArrayList<>();
+  // Queue for batching change event inserts - processed after each batch of CSV records
+  protected final List<String> pendingChangeEvents = new ArrayList<>();
 
   /** Cache for tables being modified during column imports - enables batching column updates */
   protected final Map<String, TableUpdateContext> pendingTableUpdates = new HashMap<>();
@@ -234,6 +236,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
         flushPendingTableUpdates(resultsPrinter);
         // Flush pending search index updates using bulk API
         flushPendingSearchIndexUpdates();
+        // Flush pending change events using batch insert
+        flushPendingChangeEvents();
 
         batchNumber++;
         int rowsProcessed = recordIndex - 1; // Exclude header row from count
@@ -1208,7 +1212,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     Object eventEntity = changeEvent.getEntity();
     changeEvent = copyChangeEvent(changeEvent);
     changeEvent.setEntity(JsonUtils.pojoToMaskedJson(eventEntity));
-    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    pendingChangeEvents.add(JsonUtils.pojoToJson(changeEvent));
   }
 
   /** Flush pending search index updates using bulk API */
@@ -1224,6 +1228,25 @@ public abstract class EntityCsv<T extends EntityInterface> {
     } finally {
       pendingSearchIndexUpdates.clear();
     }
+  }
+
+  /** Flush pending change events using batch insert */
+  protected void flushPendingChangeEvents() {
+    if (pendingChangeEvents.isEmpty()) {
+      return;
+    }
+    AsyncService.getInstance()
+        .getExecutorService()
+        .submit(
+            () -> {
+              try {
+                Entity.getCollectionDAO().changeEventDAO().insertBatch(pendingChangeEvents);
+                LOG.info("Batch inserted {} change events", pendingChangeEvents.size());
+                pendingChangeEvents.clear();
+              } catch (Exception e) {
+                LOG.error("Error batch inserting change events", e);
+              }
+            });
   }
 
   /** Flush pending entity operations using batch DB operations */
@@ -2062,6 +2085,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
         flushPendingTableUpdates(resultsPrinter);
         // Flush pending search index updates using bulk API
         flushPendingSearchIndexUpdates();
+        // Flush pending change events using batch insert
+        flushPendingChangeEvents();
 
         batchNumber++;
         int rowsProcessed = recordIndex - 1; // Exclude header row from count
