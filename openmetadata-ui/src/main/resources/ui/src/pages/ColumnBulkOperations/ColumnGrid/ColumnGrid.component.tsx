@@ -1156,7 +1156,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
         return next;
       });
-    }, 2500);
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, [recentlyUpdatedRowIds, columnGridListing.setExpandedRows]);
