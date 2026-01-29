@@ -1394,7 +1394,7 @@ public class SystemRepository {
    * we make "replace" operations work correctly while keeping validation and authentication logic
    * safe (since nullOrEmpty() treats both null and "" as empty).
    */
-  private void ensureLdapConfigDefaultValues(LdapConfiguration ldapConfig) {
+  public void ensureLdapConfigDefaultValues(LdapConfiguration ldapConfig) {
     if (ldapConfig == null) {
       return;
     }

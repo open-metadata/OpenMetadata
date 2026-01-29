@@ -24,6 +24,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.AuthenticationException;
@@ -97,49 +98,13 @@ public class SecurityConfigurationManager {
     // Apply LDAP default values before returning to prevent JSON PATCH errors
     // when updating fields that were previously null in the database
     if (currentAuthConfig != null && currentAuthConfig.getLdapConfiguration() != null) {
-      ensureLdapConfigDefaultValues(currentAuthConfig.getLdapConfiguration());
+      Entity.getSystemRepository()
+          .ensureLdapConfigDefaultValues(currentAuthConfig.getLdapConfiguration());
     }
 
     return new SecurityConfiguration()
         .withAuthenticationConfiguration(currentAuthConfig)
         .withAuthorizerConfiguration(currentAuthzConfig);
-  }
-
-  /**
-   * Ensures LDAP configuration fields have default values to prevent JSON PATCH errors. When
-   * fields are null in the database and the UI tries to update them with "replace" operation, JSON
-   * PATCH fails because "replace" requires the field to exist.
-   */
-  private void ensureLdapConfigDefaultValues(
-      org.openmetadata.schema.auth.LdapConfiguration ldapConfig) {
-    if (ldapConfig == null) {
-      return;
-    }
-
-    // Ensure group-related fields have defaults
-    if (ldapConfig.getGroupAttributeName() == null) {
-      ldapConfig.setGroupAttributeName("");
-    }
-    if (ldapConfig.getGroupAttributeValue() == null) {
-      ldapConfig.setGroupAttributeValue("");
-    }
-    if (ldapConfig.getGroupMemberAttributeName() == null) {
-      ldapConfig.setGroupMemberAttributeName("");
-    }
-    if (ldapConfig.getGroupBaseDN() == null) {
-      ldapConfig.setGroupBaseDN("");
-    }
-
-    // Ensure other optional fields have defaults
-    if (ldapConfig.getRoleAdminName() == null) {
-      ldapConfig.setRoleAdminName("");
-    }
-    if (ldapConfig.getAllAttributeName() == null) {
-      ldapConfig.setAllAttributeName("");
-    }
-    if (ldapConfig.getAuthRolesMapping() == null) {
-      ldapConfig.setAuthRolesMapping("");
-    }
   }
 
   public void reloadSecuritySystem() {

@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -343,15 +344,14 @@ public class OidcDiscoveryValidator {
     }
 
     if (nullOrEmpty(discoveryUri)) {
-      throw new IllegalArgumentException(
-          "Discovery URI is required for auto-populating publicKeyUrls");
+      throw new IOException("Discovery URI is required for auto-populating publicKeyUrls");
     }
 
     // Fetch discovery document
     ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUri);
     if (response.getStatusCode() != 200) {
-      throw new IllegalArgumentException(
-          "Cannot fetch discovery document from: "
+      throw new IOException(
+          "Failed to fetch discovery document from: "
               + discoveryUri
               + " (HTTP "
               + response.getStatusCode()
@@ -361,12 +361,12 @@ public class OidcDiscoveryValidator {
     // Parse and extract jwks_uri
     JsonNode discoveryDoc = OBJECT_MAPPER.readTree(response.getBody());
     if (!discoveryDoc.has("jwks_uri")) {
-      throw new IllegalArgumentException("Discovery document missing 'jwks_uri' field");
+      throw new IOException("Discovery document missing required 'jwks_uri' field");
     }
 
     String jwksUri = discoveryDoc.get("jwks_uri").asText();
     if (nullOrEmpty(jwksUri)) {
-      throw new IllegalArgumentException("Discovery document has empty 'jwks_uri' field");
+      throw new IOException("Discovery document contains empty 'jwks_uri' field");
     }
 
     // Auto-populate publicKeyUrls

@@ -625,6 +625,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
         LOG.warn("========================================================================");
         LOG.warn("");
 
+        // Scanner on System.in should not be closed as it would close System.in entirely
+        @SuppressWarnings("resource")
         Scanner scanner = new Scanner(System.in);
         LOG.info("Type 'CONFIRM' to proceed with updating the security configuration: ");
         String input = scanner.next();
@@ -2040,6 +2042,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
         LOG.warn("This includes authenticationConfiguration and authorizerConfiguration settings.");
         LOG.info("Use --force to skip this confirmation.");
 
+        // Scanner on System.in should not be closed as it would close System.in entirely
+        @SuppressWarnings("resource")
         Scanner scanner = new Scanner(System.in);
         LOG.info("Enter 'DELETE' to confirm removal of security configuration: ");
         String input = scanner.next();
@@ -2516,6 +2520,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
                     a lot of information from the users, such as descriptions, tags, etc.
                     """);
     String input = "";
+    // Scanner on System.in should not be closed as it would close System.in entirely
+    @SuppressWarnings("resource")
     Scanner scanner = new Scanner(System.in);
     while (!input.equals("DELETE")) {
       LOG.info("Enter QUIT to quit. If you still want to continue, please enter DELETE: ");
