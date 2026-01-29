@@ -392,7 +392,7 @@ export const InputOutputPortsTab = forwardRef<
                     display: 'flex',
                     flexDirection: 'column',
                     '&:last-child': { pb: 2 },
-                    maxHeight: 'calc(100vh - 400px)',
+                    height: isInputPortsCollapsed ? 'auto': 'calc(100vh - 400px)',
                   }}>
                   {inputPortsCount === 0 ? (
                     <ErrorPlaceHolder
@@ -491,7 +491,7 @@ export const InputOutputPortsTab = forwardRef<
                     display: 'flex',
                     flexDirection: 'column',
                     '&:last-child': { pb: 2 },
-                    maxHeight: 'calc(100vh - 400px)',
+                    height: isOutputPortsCollapsed ? 'auto': 'calc(100vh - 400px)',
                   }}>
                   {outputPortsCount === 0 ? (
                     <ErrorPlaceHolder
