@@ -42,11 +42,14 @@ import org.openmetadata.service.apps.bundles.searchIndex.listeners.QuartzProgres
 import org.openmetadata.service.apps.bundles.searchIndex.listeners.SlackProgressListener;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.quartz.JobExecutionContext;
 
 /**
@@ -653,14 +656,26 @@ public class SearchIndexApp extends AbstractNativeApplication {
       if (!TIME_SERIES_ENTITIES.contains(correctedType)) {
         return Entity.getEntityRepository(correctedType).getDao().listTotalCount();
       } else {
-        return Entity.getEntityTimeSeriesRepository(correctedType)
-            .getTimeSeriesDao()
-            .listCount(new org.openmetadata.service.jdbi3.ListFilter(null));
+        ListFilter listFilter = new ListFilter(null);
+        EntityTimeSeriesRepository<?> repository;
+
+        if (isDataInsightIndex(correctedType)) {
+          listFilter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(correctedType));
+          repository = Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA);
+        } else {
+          repository = Entity.getEntityTimeSeriesRepository(correctedType);
+        }
+
+        return repository.getTimeSeriesDao().listCount(listFilter);
       }
     } catch (Exception e) {
       LOG.debug("Error getting total for '{}'", entityType, e);
       return 0;
     }
+  }
+
+  private boolean isDataInsightIndex(String entityType) {
+    return entityType.endsWith("ReportData");
   }
 
   private void updateJobStatus(EventPublisherJob.Status newStatus) {

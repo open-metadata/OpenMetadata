@@ -143,9 +143,20 @@ public class OpenSearchBulkSink implements BulkSink {
 
     IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
     if (indexMapping == null) {
-      LOG.debug("No index mapping found for entityType '{}'. Skipping indexing.", entityType);
+      LOG.warn(
+          "No index mapping found for entityType '{}'. Skipping {} entities without recording stats.",
+          entityType,
+          entities.size());
       return;
     }
+
+    if (tracker == null) {
+      LOG.warn(
+          "No StageStatsTracker found in context for entityType '{}'. Stats will not be recorded for {} entities.",
+          entityType,
+          entities.size());
+    }
+
     String indexName =
         (String)
             contextData.getOrDefault(

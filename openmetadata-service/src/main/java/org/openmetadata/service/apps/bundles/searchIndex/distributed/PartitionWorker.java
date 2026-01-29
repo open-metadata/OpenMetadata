@@ -234,11 +234,13 @@ public class PartitionWorker {
             warningsCount.get());
       }
 
-      // Mark partition as completed
-      coordinator.completePartition(partition.getId(), successCount.get(), failedCount.get());
-
-      // Wait briefly for async sink operations to complete and update tracker
+      // Wait for async sink operations to complete and flush stats to DB
+      // IMPORTANT: This must happen BEFORE marking partition complete, otherwise
+      // the coordinator may aggregate stats before they're written to the database
       waitForSinkOperations(statsTracker);
+
+      // Mark partition as completed (stats are now in the database)
+      coordinator.completePartition(partition.getId(), successCount.get(), failedCount.get());
 
       LOG.info(
           "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, warnings: {})",

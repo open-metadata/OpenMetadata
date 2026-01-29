@@ -130,8 +130,18 @@ public class ElasticSearchBulkSink implements BulkSink {
 
     IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
     if (indexMapping == null) {
-      LOG.debug("No index mapping found for entityType '{}'. Skipping indexing.", entityType);
+      LOG.warn(
+          "No index mapping found for entityType '{}'. Skipping {} entities without recording stats.",
+          entityType,
+          entities.size());
       return;
+    }
+
+    if (tracker == null) {
+      LOG.warn(
+          "No StageStatsTracker found in context for entityType '{}'. Stats will not be recorded for {} entities.",
+          entityType,
+          entities.size());
     }
     String indexName =
         (String)
@@ -645,6 +655,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                     numberOfActions);
                 statsUpdater.run();
                 // Record SINK success and clean up tracking maps
+                int missingTrackers = 0;
                 for (BulkOperation op : operations) {
                   String docId = getDocId(op);
                   if (docId != null) {
@@ -652,8 +663,16 @@ public class ElasticSearchBulkSink implements BulkSink {
                     StageStatsTracker tracker = docIdToTracker.remove(docId);
                     if (tracker != null) {
                       tracker.recordSink(StatsResult.SUCCESS);
+                    } else {
+                      missingTrackers++;
                     }
                   }
+                }
+                if (missingTrackers > 0) {
+                  LOG.warn(
+                      "Bulk request {} had {} operations without tracker - sink stats not recorded",
+                      executionId,
+                      missingTrackers);
                 }
               }
             } finally {
