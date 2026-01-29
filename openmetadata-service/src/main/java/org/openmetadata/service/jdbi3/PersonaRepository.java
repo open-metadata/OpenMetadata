@@ -21,6 +21,7 @@ import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.teams.Persona;
@@ -99,6 +100,13 @@ public class PersonaRepository extends EntityRepository<Persona> {
     }
 
     storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Persona> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Persona::getId).toList();
+    deleteFromMany(ids, Entity.PERSONA, Relationship.APPLIED_TO, Entity.USER);
   }
 
   @Override

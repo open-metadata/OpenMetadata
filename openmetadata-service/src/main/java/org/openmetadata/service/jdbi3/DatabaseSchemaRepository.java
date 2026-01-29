@@ -136,6 +136,13 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<DatabaseSchema> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(DatabaseSchema::getId).toList();
+    deleteToMany(ids, Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.DATABASE);
+  }
+
+  @Override
   public void storeRelationships(DatabaseSchema schema) {
     EntityReference database = schema.getDatabase();
     addRelationship(

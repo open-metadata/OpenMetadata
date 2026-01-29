@@ -712,6 +712,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<TestCase> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(TestCase::getId).toList();
+    deleteToMany(ids, Entity.TEST_CASE, Relationship.CONTAINS, Entity.TEST_SUITE);
+    deleteToMany(ids, Entity.TEST_CASE, Relationship.CONTAINS, Entity.TEST_DEFINITION);
+  }
+
+  @Override
   public void storeRelationships(TestCase test) {
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);

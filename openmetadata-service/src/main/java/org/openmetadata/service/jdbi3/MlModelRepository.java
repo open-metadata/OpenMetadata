@@ -302,6 +302,14 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<MlModel> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(MlModel::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteFromMany(ids, Entity.MLMODEL, Relationship.USES, Entity.DASHBOARD);
+  }
+
+  @Override
   public void storeRelationships(MlModel mlModel) {
     addServiceRelationship(mlModel, mlModel.getService());
 

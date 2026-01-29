@@ -320,6 +320,14 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Tag> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Tag::getId).toList();
+    deleteToMany(ids, Entity.TAG, Relationship.CONTAINS, Entity.CLASSIFICATION);
+    deleteToMany(ids, Entity.TAG, Relationship.CONTAINS, Entity.TAG);
+  }
+
+  @Override
   public void storeRelationships(Tag entity) {
     addClassificationRelationship(entity);
     addParentRelationship(entity);

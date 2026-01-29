@@ -528,6 +528,16 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Team> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Team::getId).toList();
+    deleteFromMany(ids, Entity.TEAM, Relationship.HAS, Entity.USER);
+    deleteFromMany(ids, Entity.TEAM, Relationship.HAS, Entity.ROLE);
+    deleteToMany(ids, Entity.TEAM, Relationship.PARENT_OF, Entity.TEAM);
+    deleteFromMany(ids, Entity.TEAM, Relationship.PARENT_OF, Entity.TEAM);
+  }
+
+  @Override
   public void storeRelationships(Team team) {
     for (EntityReference user : listOrEmpty(team.getUsers())) {
       addRelationship(team.getId(), user.getId(), TEAM, Entity.USER, Relationship.HAS);

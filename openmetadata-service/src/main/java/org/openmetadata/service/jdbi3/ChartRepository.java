@@ -106,6 +106,14 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Chart> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Chart::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteToMany(ids, Entity.CHART, Relationship.HAS, Entity.DASHBOARD);
+  }
+
+  @Override
   @SneakyThrows
   public void storeRelationships(Chart chart) {
     addServiceRelationship(chart, chart.getService());

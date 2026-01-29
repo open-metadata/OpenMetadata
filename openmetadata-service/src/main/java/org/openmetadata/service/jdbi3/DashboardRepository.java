@@ -402,6 +402,15 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Dashboard> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Dashboard::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteFromMany(ids, Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
+    deleteFromMany(ids, Entity.DASHBOARD, Relationship.HAS, Entity.DASHBOARD_DATA_MODEL);
+  }
+
+  @Override
   public void storeRelationships(Dashboard dashboard) {
     addServiceRelationship(dashboard, dashboard.getService());
 

@@ -36,6 +36,7 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -171,6 +172,13 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     }
 
     storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<DashboardDataModel> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(DashboardDataModel::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
   }
 
   @Override

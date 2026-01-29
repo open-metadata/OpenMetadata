@@ -1062,8 +1062,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
       responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       // Track the dryRun created entities, as they may be referred by other entities being created
       // during import
-      // Track the dryRun created entities, as they may be referred by other entities being created
-      // during import
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
     }
 
@@ -1129,7 +1127,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
     } else {
       repository.setFullyQualifiedName(entity);
       boolean exists = repository.isUpdateForImport(entity);
-      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
     }

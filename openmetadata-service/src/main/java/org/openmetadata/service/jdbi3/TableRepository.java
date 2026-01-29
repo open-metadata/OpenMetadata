@@ -1154,6 +1154,13 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Table> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Table::getId).toList();
+    deleteToMany(ids, Entity.TABLE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
+  }
+
+  @Override
   public void storeRelationships(Table table) {
     // Add relationship from database to table
     addRelationship(

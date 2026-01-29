@@ -45,6 +45,7 @@ import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -147,6 +148,13 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
 
     storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Topic> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Topic::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
   }
 
   @Override

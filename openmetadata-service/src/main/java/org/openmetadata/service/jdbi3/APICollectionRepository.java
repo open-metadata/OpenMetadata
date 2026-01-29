@@ -89,6 +89,13 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<APICollection> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(APICollection::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+  }
+
+  @Override
   public void storeRelationships(APICollection apiCollection) {
     addServiceRelationship(apiCollection, apiCollection.getService());
   }

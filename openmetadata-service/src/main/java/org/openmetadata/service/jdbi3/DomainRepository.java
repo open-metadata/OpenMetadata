@@ -170,6 +170,13 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Domain> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Domain::getId).toList();
+    deleteToMany(ids, Entity.DOMAIN, Relationship.CONTAINS, Entity.DOMAIN);
+  }
+
+  @Override
   public void storeRelationships(Domain entity) {
     if (entity.getParent() != null) {
       addRelationship(

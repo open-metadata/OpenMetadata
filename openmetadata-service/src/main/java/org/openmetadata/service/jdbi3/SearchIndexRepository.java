@@ -148,6 +148,13 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<SearchIndex> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(SearchIndex::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+  }
+
+  @Override
   public void storeRelationships(SearchIndex searchIndex) {
     addServiceRelationship(searchIndex, searchIndex.getService());
   }

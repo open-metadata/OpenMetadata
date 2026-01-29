@@ -138,6 +138,13 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Database> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Database::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+  }
+
+  @Override
   public void storeRelationships(Database database) {
     addServiceRelationship(database, database.getService());
   }

@@ -238,6 +238,15 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Query> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Query::getId).toList();
+    deleteToMany(ids, Entity.QUERY, Relationship.USES, Entity.USER);
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteFromMany(ids, Entity.QUERY, Relationship.MENTIONED_IN, null);
+  }
+
+  @Override
   public void storeRelationships(Query queryEntity) {
     // Store Query Users Relation
     if (queryEntity.getUsers() != null) {

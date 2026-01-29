@@ -226,6 +226,13 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Role> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Role::getId).toList();
+    deleteFromMany(ids, Entity.ROLE, Relationship.HAS, Entity.POLICY);
+  }
+
+  @Override
   public void storeRelationships(Role role) {
     for (EntityReference policy : listOrEmpty(role.getPolicies())) {
       addRelationship(role.getId(), policy.getId(), Entity.ROLE, Entity.POLICY, Relationship.HAS);

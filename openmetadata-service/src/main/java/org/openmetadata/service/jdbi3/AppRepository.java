@@ -231,6 +231,13 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<App> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(App::getId).toList();
+    deleteFromMany(ids, Entity.APPLICATION, Relationship.CONTAINS, Entity.BOT);
+  }
+
+  @Override
   public void storeRelationships(App entity) {
     if (entity.getBot() != null) {
       addRelationship(

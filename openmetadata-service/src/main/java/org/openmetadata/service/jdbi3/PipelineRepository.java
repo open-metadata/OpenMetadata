@@ -649,6 +649,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Pipeline> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Pipeline::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+  }
+
+  @Override
   public void storeRelationships(Pipeline pipeline) {
     addServiceRelationship(pipeline, pipeline.getService());
 

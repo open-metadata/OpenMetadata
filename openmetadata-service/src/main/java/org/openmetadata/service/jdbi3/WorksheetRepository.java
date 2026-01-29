@@ -177,6 +177,13 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Worksheet> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Worksheet::getId).toList();
+    deleteToMany(ids, Entity.WORKSHEET, Relationship.CONTAINS, Entity.SPREADSHEET);
+  }
+
+  @Override
   public void storeRelationships(Worksheet worksheet) {
     if (worksheet.getSpreadsheet() == null) {
       LOG.error("Spreadsheet is null for worksheet {}", worksheet.getId());

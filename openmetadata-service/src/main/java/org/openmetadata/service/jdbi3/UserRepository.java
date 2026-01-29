@@ -350,6 +350,16 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<User> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(User::getId).toList();
+    deleteFromMany(ids, Entity.USER, Relationship.HAS, Entity.ROLE);
+    deleteToMany(ids, Entity.USER, Relationship.HAS, Entity.TEAM);
+    deleteToMany(ids, Entity.USER, Relationship.APPLIED_TO, Entity.PERSONA);
+    deleteToMany(ids, Entity.USER, Relationship.DEFAULTS_TO, Entity.PERSONA);
+  }
+
+  @Override
   public void storeRelationships(User user) {
     assignRoles(user, user.getRoles());
     assignTeams(user, user.getTeams());

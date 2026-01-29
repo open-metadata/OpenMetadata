@@ -403,6 +403,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<GlossaryTerm> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(GlossaryTerm::getId).toList();
+    deleteToMany(ids, Entity.GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY);
+    deleteToMany(ids, Entity.GLOSSARY_TERM, Relationship.HAS, Entity.GLOSSARY);
+    deleteToMany(ids, Entity.GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY_TERM);
+    deleteFromMany(ids, Entity.GLOSSARY_TERM, Relationship.RELATED_TO, Entity.GLOSSARY_TERM);
+    deleteToMany(ids, Entity.GLOSSARY_TERM, Relationship.RELATED_TO, Entity.GLOSSARY_TERM);
+  }
+
+  @Override
   public void storeRelationships(GlossaryTerm entity) {
     addGlossaryRelationship(entity);
     addParentRelationship(entity);

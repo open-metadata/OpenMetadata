@@ -365,6 +365,13 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Container> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Container::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+  }
+
+  @Override
   public void storeRelationships(Container container) {
     // store each relationship separately in the entity_relationship table
     addServiceRelationship(container, container.getService());

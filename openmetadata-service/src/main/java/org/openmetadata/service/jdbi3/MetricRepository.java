@@ -160,6 +160,14 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Metric> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Metric::getId).toList();
+    deleteFromMany(ids, Entity.METRIC, Relationship.RELATED_TO, Entity.METRIC);
+    deleteToMany(ids, Entity.METRIC, Relationship.RELATED_TO, Entity.METRIC);
+  }
+
+  @Override
   public void storeRelationships(Metric metric) {
     // Nothing to do
     for (EntityReference relatedMetric : listOrEmpty(metric.getRelatedMetrics())) {

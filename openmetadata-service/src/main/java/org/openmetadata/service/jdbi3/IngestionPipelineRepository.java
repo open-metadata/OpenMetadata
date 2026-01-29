@@ -300,6 +300,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<IngestionPipeline> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(IngestionPipeline::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteFromMany(ids, entityType, Relationship.USES, null);
+  }
+
+  @Override
   public void storeRelationships(IngestionPipeline ingestionPipeline) {
     addServiceRelationship(ingestionPipeline, ingestionPipeline.getService());
     if (ingestionPipeline.getIngestionRunner() != null) {

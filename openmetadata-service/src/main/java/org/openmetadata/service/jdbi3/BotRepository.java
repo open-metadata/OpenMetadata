@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.Bot;
@@ -89,6 +90,13 @@ public class BotRepository extends EntityRepository<Bot> {
       entity.withBotUser(botUser);
     }
     storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Bot> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Bot::getId).toList();
+    deleteFromMany(ids, Entity.BOT, Relationship.CONTAINS, Entity.USER);
   }
 
   @Override

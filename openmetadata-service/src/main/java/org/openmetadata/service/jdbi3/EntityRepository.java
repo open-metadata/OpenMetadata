@@ -562,6 +562,84 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected abstract void storeRelationships(T entity);
 
   /**
+   * Helper method to batch delete relationships where entities are the "to" side.
+   * Wraps the DAO method for convenience.
+   */
+  protected void deleteToMany(
+      List<UUID> toIds, String toEntity, Relationship relationship, String fromEntity) {
+    if (toIds.isEmpty()) return;
+    List<String> idStrings = toIds.stream().map(UUID::toString).toList();
+    if (fromEntity != null) {
+      daoCollection
+          .relationshipDAO()
+          .deleteToMany(idStrings, toEntity, relationship.ordinal(), fromEntity);
+    } else {
+      daoCollection.relationshipDAO().deleteToMany(idStrings, toEntity, relationship.ordinal());
+    }
+  }
+
+  /**
+   * Helper method to batch delete relationships where entities are the "from" side.
+   * Wraps the DAO method for convenience.
+   */
+  protected void deleteFromMany(
+      List<UUID> fromIds, String fromEntity, Relationship relationship, String toEntity) {
+    if (fromIds.isEmpty()) return;
+    List<String> idStrings = fromIds.stream().map(UUID::toString).toList();
+    if (toEntity != null) {
+      daoCollection
+          .relationshipDAO()
+          .deleteFromMany(idStrings, fromEntity, relationship.ordinal(), toEntity);
+    } else {
+      daoCollection.relationshipDAO().deleteFromMany(idStrings, fromEntity, relationship.ordinal());
+    }
+  }
+
+  /**
+   * Batch version of clearCommonRelationships. Clears tags, owners, domains, reviewers, and
+   * dataProducts for multiple entities in a single query per relationship type.
+   */
+  protected void clearCommonRelationshipsForMany(List<T> entities) {
+    if (entities.isEmpty()) return;
+
+    List<UUID> ids = entities.stream().map(EntityInterface::getId).toList();
+
+    if (supportsTags) {
+      List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+      daoCollection.tagUsageDAO().deleteTagsByTargets(fqns);
+    }
+    if (supportsOwners) {
+      deleteToMany(ids, entityType, Relationship.OWNS, null);
+    }
+    if (supportsDomains) {
+      deleteToMany(ids, entityType, Relationship.HAS, DOMAIN);
+    }
+    if (supportsReviewers) {
+      deleteToMany(ids, entityType, Relationship.REVIEWS, null);
+    }
+    if (supportsDataProducts) {
+      deleteToMany(ids, entityType, Relationship.HAS, DATA_PRODUCT);
+    }
+  }
+
+  /**
+   * Batch version of clearEntitySpecificRelationships. Override in subclasses to clear
+   * entity-specific relationships for multiple entities in batch.
+   */
+  protected void clearEntitySpecificRelationshipsForMany(List<T> entities) {
+    // Default: no-op. Subclasses override if they have entity-specific relationships to clear.
+  }
+
+  /**
+   * Batch version of clearRelationshipsForUpdate. Clears all relationships for multiple entities
+   * before update. Used during import to ensure old relationships are removed before new ones are stored.
+   */
+  protected void clearRelationshipsForUpdateMany(List<T> entities) {
+    clearCommonRelationshipsForMany(entities);
+    clearEntitySpecificRelationshipsForMany(entities);
+  }
+
+  /**
    * This method is called to set inherited fields that an entity inherits from its parent.
    *
    * @see TableRepository#setInheritedFields(Table, Fields) for an example implementation
@@ -1775,14 +1853,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Batch update in DB
     updateMany(updatedEntities);
 
-    // Update relationships
-    for (T entity : updatedEntities) {
-      // For imports, delete existing tags before applying new ones to match single entity behavior
-      if (supportsTags) {
-        daoCollection.tagUsageDAO().deleteTagsByTarget(entity.getFullyQualifiedName());
-      }
-      storeRelationshipsInternal(entity);
-    }
+    // Update relationships - batch clear existing and store new
+    clearRelationshipsForUpdateMany(updatedEntities);
+    storeRelationshipsInternal(updatedEntities);
 
     // 3. Batch cache writes
     writeThroughCacheMany(updatedEntities, true);

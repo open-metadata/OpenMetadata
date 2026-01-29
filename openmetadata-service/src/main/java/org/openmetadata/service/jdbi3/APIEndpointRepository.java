@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -183,6 +184,13 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     }
 
     storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<APIEndpoint> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(APIEndpoint::getId).toList();
+    deleteToMany(ids, Entity.API_ENDPOINT, Relationship.CONTAINS, Entity.API_COLLECTION);
   }
 
   @Override

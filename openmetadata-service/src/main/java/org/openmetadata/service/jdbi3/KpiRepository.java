@@ -193,6 +193,13 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Kpi> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Kpi::getId).toList();
+    deleteFromMany(ids, Entity.KPI, Relationship.USES, Entity.DATA_INSIGHT_CUSTOM_CHART);
+  }
+
+  @Override
   public void storeRelationships(Kpi kpi) {
     // Add relationship from Kpi to dataInsightChart
     addRelationship(

@@ -92,6 +92,13 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<StoredProcedure> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(StoredProcedure::getId).toList();
+    deleteToMany(ids, Entity.STORED_PROCEDURE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
+  }
+
+  @Override
   public void storeRelationships(StoredProcedure storedProcedure) {
     addRelationship(
         storedProcedure.getDatabaseSchema().getId(),
