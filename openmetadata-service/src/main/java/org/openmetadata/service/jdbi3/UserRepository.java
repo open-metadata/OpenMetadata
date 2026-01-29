@@ -51,6 +51,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
@@ -434,8 +436,29 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
+  public String exportToCsv(
+      String importingTeam, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
+    return exportToCsv(importingTeam, user, recursive);
+  }
+
+  @Override
   public CsvImportResult importFromCsv(
       String importingTeam, String csv, boolean dryRun, String user, boolean recursive)
+      throws IOException {
+    Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
+    UserCsv userCsv = new UserCsv(team, user);
+    return userCsv.importCsv(csv, dryRun);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String importingTeam,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
       throws IOException {
     Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
     UserCsv userCsv = new UserCsv(team, user);

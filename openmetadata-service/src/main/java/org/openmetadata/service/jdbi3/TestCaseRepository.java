@@ -1493,6 +1493,23 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new TestCaseCsv(user, targetBundleSuite).importCsv(csv, dryRun);
   }
 
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      String targetEntityType,
+      CsvImportProgressCallback callback)
+      throws IOException {
+    TestSuite targetBundleSuite =
+        TEST_SUITE.equals(targetEntityType)
+            ? Entity.getEntityByName(TEST_SUITE, name, "", Include.ALL)
+            : null;
+    return new TestCaseCsv(user, targetBundleSuite).importCsv(csv, dryRun);
+  }
+
   private List<TestCase> getTestCasesForExport(String name, boolean recursive) {
     // The name parameter can be:
     // 1. A table FQN - export test cases for that table
