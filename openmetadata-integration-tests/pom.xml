@@ -13,7 +13,19 @@
     <maven.surefire.version>3.1.2</maven.surefire.version>
     <junit.jupiter.version>5.10.2</junit.jupiter.version>
     <junit.platform.version>1.10.2</junit.platform.version>
+    <dockerjava.version>3.4.2</dockerjava.version>
   </properties>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.github.docker-java</groupId>
+        <artifactId>docker-java-bom</artifactId>
+        <version>${dockerjava.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
   <dependencies>
     <!-- SDK client -->
     <dependency>
@@ -144,6 +156,16 @@
       <groupId>org.apache.jena</groupId>
       <artifactId>jena-arq</artifactId>
       <version>5.0.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.github.docker-java</groupId>
+      <artifactId>docker-java-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.github.docker-java</groupId>
+      <artifactId>docker-java-transport-zerodep</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>

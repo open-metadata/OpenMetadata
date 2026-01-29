@@ -172,12 +172,30 @@ export default function EntitySummaryPanel({
   const fetchResourcePermission = async (entityFqn: string) => {
     try {
       setIsPermissionLoading(true);
-      const type = (get(entityDetails, 'details.entityType') ??
+      let type = (get(entityDetails, 'details.entityType') ??
         ResourceEntity.TABLE) as ResourceEntity;
-      const permissions = await getEntityPermission(type, entityFqn);
+      let fqnForPermission = entityFqn;
+
+      // For tableColumn entities, use the parent table's resource type and FQN
+      // since columns inherit permissions from their parent table
+      if (type === EntityType.TABLE_COLUMN) {
+        type = ResourceEntity.TABLE;
+        // Get the parent table FQN from the column's table reference
+        const tableFqn = get(
+          entityDetails,
+          'details.table.fullyQualifiedName'
+        ) as string;
+        if (tableFqn) {
+          fqnForPermission = tableFqn;
+        }
+      }
+
+      const permissions = await getEntityPermission(type, fqnForPermission);
       setEntityPermissions(permissions);
     } catch {
-      // Error
+      // Error - set default permission to allow viewing
+      // This prevents permission errors for entities like columns
+      setEntityPermissions(DEFAULT_ENTITY_PERMISSION);
     } finally {
       setIsPermissionLoading(false);
     }
@@ -325,6 +343,37 @@ export default function EntitySummaryPanel({
           tableType: (entityDetails.details as any).tableType,
         };
         setEntityData(mergedData);
+      } else {
+        // For entity types without a dedicated API (like tableColumn),
+        // use the search index data directly. The search index already
+        // contains all necessary fields (service, database, schema, table, etc.)
+        const searchData = entityDetails.details as any;
+        const columnData = {
+          entityType: searchData.entityType,
+          fullyQualifiedName: searchData.fullyQualifiedName,
+          id: searchData.id,
+          name: searchData.name,
+          displayName: searchData.displayName ?? searchData.name,
+          description: searchData.description,
+          deleted: searchData.deleted,
+          // Column-specific fields from search index
+          dataType: searchData.dataType,
+          dataTypeDisplay: searchData.dataTypeDisplay,
+          constraint: searchData.constraint,
+          ordinalPosition: searchData.ordinalPosition,
+          // Parent references for breadcrumb display
+          service: searchData.service,
+          database: searchData.database,
+          databaseSchema: searchData.databaseSchema,
+          table: searchData.table,
+          serviceType: searchData.serviceType,
+          // Inherited fields from parent table
+          owners: searchData.owners ?? [],
+          domains: searchData.domains ?? [],
+          tags: searchData.tags ?? [],
+          tier: searchData.tier,
+        };
+        setEntityData(columnData);
       }
     } catch (error) {
       showErrorToast(error as AxiosError);

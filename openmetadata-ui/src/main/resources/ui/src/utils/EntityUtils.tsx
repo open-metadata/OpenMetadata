@@ -2663,6 +2663,74 @@ export const getEntityBreadcrumbs = (
     case EntityType.KPI:
       return getBreadCrumbForKpi(entity as Kpi);
 
+    case EntityType.TABLE_COLUMN: {
+      // Column breadcrumb: Service > Database > Schema > Table > Column
+      const columnData = entity as SearchSourceAlias;
+      const service = columnData.service;
+      const database = columnData.database;
+      const databaseSchema = columnData.databaseSchema;
+      const table = columnData.table;
+
+      return [
+        ...(service
+          ? [
+              {
+                name: getEntityName(service),
+                url: service?.name
+                  ? getServiceDetailsPath(
+                      service?.name,
+                      ServiceCategoryPlural[
+                        service?.type as keyof typeof ServiceCategoryPlural
+                      ]
+                    )
+                  : '',
+              },
+            ]
+          : []),
+        ...(database
+          ? [
+              {
+                name: getEntityName(database),
+                url: getEntityDetailsPath(
+                  EntityType.DATABASE,
+                  database?.fullyQualifiedName ?? ''
+                ),
+              },
+            ]
+          : []),
+        ...(databaseSchema
+          ? [
+              {
+                name: getEntityName(databaseSchema),
+                url: getEntityDetailsPath(
+                  EntityType.DATABASE_SCHEMA,
+                  databaseSchema?.fullyQualifiedName ?? ''
+                ),
+              },
+            ]
+          : []),
+        ...(table
+          ? [
+              {
+                name: getEntityName(table),
+                url: getEntityDetailsPath(
+                  EntityType.TABLE,
+                  table?.fullyQualifiedName ?? ''
+                ),
+              },
+            ]
+          : []),
+        ...(includeCurrent
+          ? [
+              {
+                name: entity.name,
+                url: '', // Columns don't have their own page
+              },
+            ]
+          : []),
+      ];
+    }
+
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:
     case EntityType.PIPELINE:
