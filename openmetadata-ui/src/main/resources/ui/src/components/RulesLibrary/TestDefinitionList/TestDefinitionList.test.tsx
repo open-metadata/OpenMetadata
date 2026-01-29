@@ -311,7 +311,10 @@ describe('TestDefinitionList Component', () => {
     });
 
     await waitFor(() => {
-      expect(mockHandlePageChange).toHaveBeenCalledWith(1);
+      expect(mockHandlePageChange).toHaveBeenCalledWith(1, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
     });
   });
 
@@ -343,7 +346,10 @@ describe('TestDefinitionList Component', () => {
     onSuccessCallback();
 
     await waitFor(() => {
-      expect(mockHandlePageChange).toHaveBeenCalledWith(1);
+      expect(mockHandlePageChange).toHaveBeenCalledWith(1, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
     });
   });
 
