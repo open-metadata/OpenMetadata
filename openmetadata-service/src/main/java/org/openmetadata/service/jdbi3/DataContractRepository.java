@@ -72,6 +72,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -188,12 +189,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               entityRef.getType(), String.join(", ", schemaValidation.getFailedFields())));
     }
 
-    if (!nullOrEmpty(schemaValidation.getTypeMismatchFields())) {
-      errors.add(
-          String.format(
-              "Column type mismatches: %s",
-              String.join("; ", schemaValidation.getTypeMismatchFields())));
-    }
+    // Note: Type mismatches are tracked for informational purposes but do not block contract
+    // creation.
+    // ODCS contracts define data expectations, not necessarily matching physical schema exactly.
+    // Type mismatches can be viewed via schema validation results but are non-blocking.
 
     if (!errors.isEmpty()) {
       throw BadRequestException.of(
@@ -371,7 +370,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     validation.setTypeMismatchFields(typeMismatchFields.isEmpty() ? null : typeMismatchFields);
 
     int totalFields = dataContract.getSchema().size();
-    int failedCount = failedFields.size() + duplicateFields.size() + typeMismatchFields.size();
+    // Note: Type mismatches are tracked for informational purposes but don't count as failures.
+    // Only missing fields and duplicates are counted as failures.
+    int failedCount = failedFields.size() + duplicateFields.size();
     int passedCount = Math.max(0, totalFields - failedCount);
 
     return validation
@@ -421,7 +422,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       if (entityColumn == null) {
         result.failedFields.add(columnName);
       } else if (contractColumn.getDataType() != null
-          && !contractColumn.getDataType().equals(entityColumn.getDataType())) {
+          && !areTypesCompatible(contractColumn.getDataType(), entityColumn.getDataType())) {
         result.typeMismatchFields.add(
             String.format(
                 "%s: expected %s, got %s",
@@ -502,7 +503,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       if (entityColumn == null) {
         result.failedFields.add(columnName);
       } else if (contractColumn.getDataType() != null
-          && !contractColumn.getDataType().equals(entityColumn.getDataType())) {
+          && !areTypesCompatible(contractColumn.getDataType(), entityColumn.getDataType())) {
         result.typeMismatchFields.add(
             String.format(
                 "%s: expected %s, got %s",
@@ -573,6 +574,106 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       }
     }
     return columnMap;
+  }
+
+  /**
+   * Checks if two column data types are compatible. Types are considered compatible
+   * if they belong to the same type family. This allows ODCS contracts (which use
+   * logical types like STRING, INTEGER) to validate against tables with specific
+   * types (VARCHAR, BIGINT, etc.).
+   *
+   * Type families:
+   * - String types: STRING, VARCHAR, CHAR, TEXT, MEDIUMTEXT, NTEXT, CLOB
+   * - Integer types: INT, BIGINT, SMALLINT, TINYINT, BYTEINT, LONG
+   * - Decimal types: DECIMAL, NUMERIC, NUMBER, DOUBLE, FLOAT, MONEY
+   * - Boolean types: BOOLEAN
+   * - Date/Time types: DATE, DATETIME, TIMESTAMP, TIMESTAMPZ, TIME
+   * - Binary types: BINARY, VARBINARY, BLOB, BYTEA, BYTES, LONGBLOB, MEDIUMBLOB
+   * - Complex types: ARRAY, MAP, STRUCT, JSON
+   */
+  private boolean areTypesCompatible(ColumnDataType type1, ColumnDataType type2) {
+    if (type1 == null || type2 == null) {
+      return true;
+    }
+    if (type1.equals(type2)) {
+      return true;
+    }
+
+    Set<ColumnDataType> stringTypes =
+        Set.of(
+            ColumnDataType.STRING,
+            ColumnDataType.VARCHAR,
+            ColumnDataType.CHAR,
+            ColumnDataType.TEXT,
+            ColumnDataType.MEDIUMTEXT,
+            ColumnDataType.NTEXT,
+            ColumnDataType.CLOB);
+
+    Set<ColumnDataType> integerTypes =
+        Set.of(
+            ColumnDataType.INT,
+            ColumnDataType.BIGINT,
+            ColumnDataType.SMALLINT,
+            ColumnDataType.TINYINT,
+            ColumnDataType.BYTEINT,
+            ColumnDataType.LONG);
+
+    Set<ColumnDataType> decimalTypes =
+        Set.of(
+            ColumnDataType.DECIMAL,
+            ColumnDataType.NUMERIC,
+            ColumnDataType.NUMBER,
+            ColumnDataType.DOUBLE,
+            ColumnDataType.FLOAT,
+            ColumnDataType.MONEY);
+
+    Set<ColumnDataType> booleanTypes = Set.of(ColumnDataType.BOOLEAN);
+
+    Set<ColumnDataType> dateTimeTypes =
+        Set.of(
+            ColumnDataType.DATE,
+            ColumnDataType.DATETIME,
+            ColumnDataType.TIMESTAMP,
+            ColumnDataType.TIMESTAMPZ,
+            ColumnDataType.TIME);
+
+    Set<ColumnDataType> binaryTypes =
+        Set.of(
+            ColumnDataType.BINARY,
+            ColumnDataType.VARBINARY,
+            ColumnDataType.BLOB,
+            ColumnDataType.BYTEA,
+            ColumnDataType.BYTES,
+            ColumnDataType.LONGBLOB,
+            ColumnDataType.MEDIUMBLOB);
+
+    Set<ColumnDataType> complexTypes =
+        Set.of(
+            ColumnDataType.ARRAY, ColumnDataType.MAP, ColumnDataType.STRUCT, ColumnDataType.JSON);
+
+    if (stringTypes.contains(type1) && stringTypes.contains(type2)) {
+      return true;
+    }
+    if (integerTypes.contains(type1) && integerTypes.contains(type2)) {
+      return true;
+    }
+    if (decimalTypes.contains(type1) && decimalTypes.contains(type2)) {
+      return true;
+    }
+    if (booleanTypes.contains(type1) && booleanTypes.contains(type2)) {
+      return true;
+    }
+    if (dateTimeTypes.contains(type1) && dateTimeTypes.contains(type2)) {
+      return true;
+    }
+    if (binaryTypes.contains(type1) && binaryTypes.contains(type2)) {
+      return true;
+    }
+    if (complexTypes.contains(type1) && complexTypes.contains(type2)) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
