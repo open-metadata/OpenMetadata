@@ -217,6 +217,71 @@ function buildParameters(
 }
 
 /**
+ * Builds an Elasticsearch query for extension (custom property) fields.
+ * With the flattened extension type, we use customPropertiesFlat field
+ * which stores key:value pairs.
+ *
+ * @param {string} propertyName - The custom property name (without .keyword suffix)
+ * @param {string} entityType - The entity type (table, topic, etc.)
+ * @param {any} value - The value to search for
+ * @param {string} operator - The query operator
+ * @param {boolean} not - Whether to negate the query
+ * @returns {object} - The ES query for custom properties
+ * @private
+ */
+function buildExtensionQuery(propertyName, entityType, value, operator, not) {
+  // Remove .keyword suffix if present
+  const cleanPropertyName = propertyName.replace(/\.keyword$/, '');
+
+  // Build the key:value pair for customPropertiesFlat
+  const searchValue = `${cleanPropertyName}:${value}`;
+
+  // Build the main query using customPropertiesFlat
+  let mainQuery;
+  if (operator === 'like' || operator === 'wildcard') {
+    // For wildcard/like searches, use customPropertiesFuzzy with match
+    mainQuery = {
+      match: {
+        customPropertiesFuzzy: {
+          query: `${cleanPropertyName} ${value}`,
+          operator: 'and',
+        },
+      },
+    };
+  } else {
+    // For exact matches, use customPropertiesFlat with term
+    mainQuery = {
+      term: {
+        customPropertiesFlat: searchValue,
+      },
+    };
+  }
+
+  // Wrap in must_not if negated
+  if (not) {
+    mainQuery = {
+      bool: {
+        must_not: mainQuery,
+      },
+    };
+  }
+
+  // Combine with entityType filter
+  return {
+    bool: {
+      must: [
+        mainQuery,
+        {
+          term: {
+            entityType: entityType,
+          },
+        },
+      ],
+    },
+  };
+}
+
+/**
  * Handles the building of the group portion of the DSL
  *
  * @param {string} fieldName - The name of the field you are building a rule for
@@ -236,11 +301,13 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   let actualFieldName = fieldName;
   let isNestedExtensionField = false;
   let entityType = null;
+  let extensionPropertyName = null;
 
   if (fieldName.startsWith('extension.') && fieldName.split('.').length >= 3) {
     const parts = fieldName.split('.');
     entityType = parts[1];
-    actualFieldName = `${parts[0]}.${parts.slice(2).join('.')}`;
+    extensionPropertyName = parts.slice(2).join('.');
+    actualFieldName = `${parts[0]}.${extensionPropertyName}`;
     isNestedExtensionField = true;
   }
 
@@ -258,6 +325,17 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
     op = opConfig.reversedOp;
     opConfig = config.operators[op];
     ({ elasticSearchQueryType } = opConfig);
+  }
+
+  // For extension fields, use the new customPropertiesFlat field approach
+  if (isNestedExtensionField && entityType && value && value[0] !== undefined) {
+    return buildExtensionQuery(
+      extensionPropertyName,
+      entityType,
+      value[0],
+      op,
+      not
+    );
   }
 
   // handle if value 0 has multiple values like a select in a array
@@ -316,22 +394,6 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   } else {
     mainQuery = {
       [queryType]: { ...parameters },
-    };
-  }
-
-  // For nested extension fields, combine with entityType filter
-  if (isNestedExtensionField && entityType) {
-    return {
-      bool: {
-        must: [
-          mainQuery,
-          {
-            term: {
-              entityType: entityType,
-            },
-          },
-        ],
-      },
     };
   }
 
