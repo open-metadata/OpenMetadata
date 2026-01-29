@@ -6,7 +6,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -17,9 +25,16 @@ import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.Paging;
+import org.openmetadata.schema.type.PredefinedRecognizer;
+import org.openmetadata.schema.type.Recognizer;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpClient;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Tag entity operations.
@@ -973,5 +988,369 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     createSchema.setName(ns.shortPrefix("test_schema"));
     createSchema.setDatabase(databaseFqn);
     return SdkClients.adminClient().databaseSchemas().create(createSchema);
+  }
+
+  private ResultList<Recognizer> fetchRecognizers(
+      String url, String after, String before, int limit) {
+    HttpClient client = SdkClients.adminClient().getHttpClient();
+
+    StringBuilder params = new StringBuilder();
+    if (after != null) {
+      params.append("after=").append(URLEncoder.encode(after, StandardCharsets.UTF_8));
+    }
+    if (before != null) {
+      if (params.length() > 0) {
+        params.append("&");
+      }
+      params.append("before=").append(URLEncoder.encode(before, StandardCharsets.UTF_8));
+    }
+    if (limit >= 0) {
+      if (params.length() > 0) {
+        params.append("&");
+      }
+      params.append("limit=").append(limit);
+    }
+
+    if (params.length() > 0) {
+      url += "?" + params;
+    }
+
+    ResultList<LinkedHashMap> response =
+        client.execute(HttpMethod.GET, url, null, ResultList.class);
+
+    ObjectMapper mapper = new ObjectMapper();
+    List<Recognizer> recognizers =
+        response.getData().stream()
+            .map(r -> mapper.<Recognizer>convertValue(r, Recognizer.class))
+            .toList();
+
+    Paging paging = response.getPaging();
+    ResultList<Recognizer> resultList = new ResultList<>(recognizers).setPaging(paging);
+    return resultList;
+  }
+
+  private ResultList<Recognizer> fetchRecognizersByTagId(
+      UUID id, String after, String before, int limit) {
+    return fetchRecognizers("/v1/tags/" + id + "/recognizers", after, before, limit);
+  }
+
+  private ResultList<Recognizer> fetchRecognizersByTagFQN(
+      String fqn, String after, String before, int limit) {
+    return fetchRecognizers("/v1/tags/name/" + fqn + "/recognizers", after, before, limit);
+  }
+
+  @Test
+  void test_recognizerPaginationEndpoint(TestNamespace ns) {
+    int DEFAULT_LIMIT = 10;
+    Classification classification = createClassification(ns);
+
+    CreateTag request =
+        new CreateTag()
+            .withName(ns.shortPrefix("tag_with_owner"))
+            .withDescription("A test Tag")
+            .withClassification(classification.getFullyQualifiedName())
+            .withRecognizers(
+                IntStream.range(0, 50)
+                    .mapToObj(
+                        i ->
+                            new Recognizer()
+                                .withName("Recognizer_" + i)
+                                .withRecognizerConfig(
+                                    new PredefinedRecognizer()
+                                        .withName(PredefinedRecognizer.Name.EMAIL_RECOGNIZER)))
+                    .toList());
+
+    Tag tag = createEntity(request);
+
+    ResultList<Recognizer> response = fetchRecognizersByTagId(tag.getId(), null, null, -1);
+
+    assertEquals(tag.getRecognizers().size(), response.getPaging().getTotal());
+    assertEquals(DEFAULT_LIMIT, response.getData().size());
+
+    assertNotNull(response.getPaging());
+    Assertions.assertNull(response.getPaging().getBefore());
+    assertNotNull(response.getPaging().getAfter());
+
+    assertEquals(tag.getRecognizers().getFirst(), response.getData().getFirst());
+    assertEquals(tag.getRecognizers().get(DEFAULT_LIMIT - 1), response.getData().getLast());
+
+    String after = response.getPaging().getAfter();
+
+    response = fetchRecognizersByTagId(tag.getId(), after, null, DEFAULT_LIMIT * 2);
+
+    assertEquals(tag.getRecognizers().size(), response.getPaging().getTotal());
+    assertEquals(DEFAULT_LIMIT * 2, response.getData().size());
+    assertNotNull(response.getPaging());
+
+    assertNotNull(response.getPaging().getBefore());
+    assertNotNull(response.getPaging().getAfter());
+
+    assertEquals(tag.getRecognizers().get(DEFAULT_LIMIT), response.getData().getFirst());
+    assertEquals(tag.getRecognizers().get((DEFAULT_LIMIT * 3) - 1), response.getData().getLast());
+  }
+
+  @Test
+  void test_recognizerPaginationByFQN(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+
+    CreateTag request =
+        new CreateTag()
+            .withName(ns.shortPrefix("tag_pagination_fqn"))
+            .withDescription("Test tag for FQN pagination")
+            .withClassification(classification.getFullyQualifiedName())
+            .withRecognizers(
+                IntStream.range(0, 25)
+                    .mapToObj(
+                        i ->
+                            new Recognizer()
+                                .withName("Recognizer_" + i)
+                                .withRecognizerConfig(
+                                    new PredefinedRecognizer()
+                                        .withName(PredefinedRecognizer.Name.EMAIL_RECOGNIZER)))
+                    .toList());
+
+    Tag tag = createEntity(request);
+
+    ResultList<Recognizer> response =
+        fetchRecognizersByTagFQN(tag.getFullyQualifiedName(), null, null, 10);
+
+    assertEquals(25, response.getPaging().getTotal());
+    assertEquals(10, response.getData().size());
+    assertEquals(tag.getRecognizers().getFirst(), response.getData().getFirst());
+    assertNotNull(response.getPaging().getAfter());
+
+    ResultList<Recognizer> secondPage =
+        fetchRecognizersByTagFQN(
+            tag.getFullyQualifiedName(), response.getPaging().getAfter(), null, 10);
+
+    assertEquals(10, secondPage.getData().size());
+    assertEquals(tag.getRecognizers().get(10), secondPage.getData().getFirst());
+  }
+
+  @Test
+  void test_recognizerBackwardPagination(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+
+    CreateTag request =
+        new CreateTag()
+            .withName(ns.shortPrefix("tag_backward_pagination"))
+            .withDescription("Test tag for backward pagination")
+            .withClassification(classification.getFullyQualifiedName())
+            .withRecognizers(
+                IntStream.range(0, 30)
+                    .mapToObj(
+                        i ->
+                            new Recognizer()
+                                .withName("Recognizer_" + i)
+                                .withRecognizerConfig(
+                                    new PredefinedRecognizer()
+                                        .withName(PredefinedRecognizer.Name.EMAIL_RECOGNIZER)))
+                    .toList());
+
+    Tag tag = createEntity(request);
+
+    ResultList<Recognizer> firstPage = fetchRecognizersByTagId(tag.getId(), null, null, 10);
+    ResultList<Recognizer> secondPage =
+        fetchRecognizersByTagId(tag.getId(), firstPage.getPaging().getAfter(), null, 10);
+
+    String beforeCursor = secondPage.getPaging().getBefore();
+    ResultList<Recognizer> backwardPage =
+        fetchRecognizersByTagId(tag.getId(), null, beforeCursor, 10);
+
+    assertEquals(10, backwardPage.getData().size());
+    assertEquals(tag.getRecognizers().get(9), backwardPage.getData().getFirst());
+    assertEquals(tag.getRecognizers().get(0), backwardPage.getData().getLast());
+  }
+
+  @Test
+  void test_recognizerPaginationWithInvalidCursor_400(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+
+    CreateTag request =
+        new CreateTag()
+            .withName(ns.shortPrefix("tag_invalid_cursor"))
+            .withDescription("Test tag for invalid cursor")
+            .withClassification(classification.getFullyQualifiedName())
+            .withRecognizers(
+                IntStream.range(0, 10)
+                    .mapToObj(
+                        i ->
+                            new Recognizer()
+                                .withName("Recognizer_" + i)
+                                .withRecognizerConfig(
+                                    new PredefinedRecognizer()
+                                        .withName(PredefinedRecognizer.Name.EMAIL_RECOGNIZER)))
+                    .toList());
+
+    Tag tag = createEntity(request);
+
+    String invalidCursor = "invalid_cursor_value";
+
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> fetchRecognizersByTagId(tag.getId(), invalidCursor, null, 10),
+            "Invalid cursor should return HTTP 400");
+
+    assertEquals(400, exception.getStatusCode());
+  }
+
+  @Test
+  void test_recognizerPaginationWithNonExistentTag() {
+    UUID nonExistentId = UUID.randomUUID();
+
+    assertThrows(
+        Exception.class,
+        () -> {
+          fetchRecognizersByTagId(nonExistentId, null, null, 10);
+        });
+  }
+
+  @Test
+  void test_recognizerPaginationWithZeroRecognizers(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+
+    CreateTag request =
+        new CreateTag()
+            .withName(ns.shortPrefix("tag_no_recognizers"))
+            .withDescription("Test tag with no recognizers")
+            .withClassification(classification.getFullyQualifiedName())
+            .withRecognizers(List.of());
+
+    Tag tag = createEntity(request);
+
+    ResultList<Recognizer> response = fetchRecognizersByTagId(tag.getId(), null, null, 10);
+
+    assertEquals(0, response.getPaging().getTotal());
+    assertEquals(0, response.getData().size());
+    Assertions.assertNull(response.getPaging().getBefore());
+    Assertions.assertNull(response.getPaging().getAfter());
+  }
+
+  @Test
+  void test_recognizerPaginationWithLimitZero(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+
+    CreateTag request =
+        new CreateTag()
+            .withName(ns.shortPrefix("tag_limit_zero"))
+            .withDescription("Test tag for limit zero")
+            .withClassification(classification.getFullyQualifiedName())
+            .withRecognizers(
+                IntStream.range(0, 15)
+                    .mapToObj(
+                        i ->
+                            new Recognizer()
+                                .withName("Recognizer_" + i)
+                                .withRecognizerConfig(
+                                    new PredefinedRecognizer()
+                                        .withName(PredefinedRecognizer.Name.EMAIL_RECOGNIZER)))
+                    .toList());
+
+    Tag tag = createEntity(request);
+
+    ResultList<Recognizer> response = fetchRecognizersByTagId(tag.getId(), null, null, 0);
+
+    assertEquals(15, response.getPaging().getTotal());
+    assertEquals(15, response.getData().size());
+    Assertions.assertNull(response.getPaging().getBefore());
+    Assertions.assertNull(response.getPaging().getAfter());
+  }
+
+  @Test
+  void test_recognizerPaginationWithLimitOne(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+
+    CreateTag request =
+        new CreateTag()
+            .withName(ns.shortPrefix("tag_limit_one"))
+            .withDescription("Test tag for limit one")
+            .withClassification(classification.getFullyQualifiedName())
+            .withRecognizers(
+                IntStream.range(0, 10)
+                    .mapToObj(
+                        i ->
+                            new Recognizer()
+                                .withName("Recognizer_" + i)
+                                .withRecognizerConfig(
+                                    new PredefinedRecognizer()
+                                        .withName(PredefinedRecognizer.Name.EMAIL_RECOGNIZER)))
+                    .toList());
+
+    Tag tag = createEntity(request);
+
+    ResultList<Recognizer> response = fetchRecognizersByTagId(tag.getId(), null, null, 1);
+
+    assertEquals(10, response.getPaging().getTotal());
+    assertEquals(1, response.getData().size());
+    assertEquals(tag.getRecognizers().getFirst(), response.getData().getFirst());
+    Assertions.assertNull(response.getPaging().getBefore());
+    assertNotNull(response.getPaging().getAfter());
+  }
+
+  @Test
+  void test_recognizerPaginationWithLimitExceedsTotal(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+
+    CreateTag request =
+        new CreateTag()
+            .withName(ns.shortPrefix("tag_limit_exceeds"))
+            .withDescription("Test tag for limit exceeds total")
+            .withClassification(classification.getFullyQualifiedName())
+            .withRecognizers(
+                IntStream.range(0, 5)
+                    .mapToObj(
+                        i ->
+                            new Recognizer()
+                                .withName("Recognizer_" + i)
+                                .withRecognizerConfig(
+                                    new PredefinedRecognizer()
+                                        .withName(PredefinedRecognizer.Name.EMAIL_RECOGNIZER)))
+                    .toList());
+
+    Tag tag = createEntity(request);
+
+    ResultList<Recognizer> response = fetchRecognizersByTagId(tag.getId(), null, null, 100);
+
+    assertEquals(5, response.getPaging().getTotal());
+    assertEquals(5, response.getData().size());
+    Assertions.assertNull(response.getPaging().getBefore());
+    Assertions.assertNull(response.getPaging().getAfter());
+  }
+
+  @Test
+  void test_recognizerPaginationCompleteCycle(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+
+    CreateTag request =
+        new CreateTag()
+            .withName(ns.shortPrefix("tag_complete_cycle"))
+            .withDescription("Test tag for complete pagination cycle")
+            .withClassification(classification.getFullyQualifiedName())
+            .withRecognizers(
+                IntStream.range(0, 35)
+                    .mapToObj(
+                        i ->
+                            new Recognizer()
+                                .withName("Recognizer_" + i)
+                                .withRecognizerConfig(
+                                    new PredefinedRecognizer()
+                                        .withName(PredefinedRecognizer.Name.EMAIL_RECOGNIZER)))
+                    .toList());
+
+    Tag tag = createEntity(request);
+
+    List<Recognizer> allRecognizers = new ArrayList<>();
+
+    ResultList<Recognizer> page = fetchRecognizersByTagId(tag.getId(), null, null, 10);
+    allRecognizers.addAll(page.getData());
+
+    while (page.getPaging().getAfter() != null) {
+      page = fetchRecognizersByTagId(tag.getId(), page.getPaging().getAfter(), null, 10);
+      allRecognizers.addAll(page.getData());
+    }
+
+    assertEquals(35, allRecognizers.size());
+    assertEquals(tag.getRecognizers(), allRecognizers);
   }
 }

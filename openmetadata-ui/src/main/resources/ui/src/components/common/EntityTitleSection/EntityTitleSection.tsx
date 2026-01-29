@@ -11,34 +11,101 @@
  *  limitations under the License.
  */
 
-import { Box, useTheme } from '@mui/material';
+import { Box, IconButton, useTheme } from '@mui/material';
 import { Tooltip } from 'antd';
+import { AxiosError } from 'axios';
+import { Operation } from 'fast-json-patch';
+import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
+import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { EntityTitleSectionProps } from './EntityTitleSection.interface';
 
 export const EntityTitleSection = ({
   entityDetails,
   entityLink,
+  entityType,
   tooltipPlacement = 'topLeft',
   testId = 'entity-link',
   className = '',
+  hasEditPermission = false,
+  onDisplayNameUpdate,
+  entityDisplayName,
 }: EntityTitleSectionProps) => {
+  const { t } = useTranslation();
   const theme = useTheme();
-  const entityName = getEntityName(entityDetails);
-  const entityType = entityDetails.entityType ?? '';
+  const entityTypeValue = entityDetails.entityType ?? '';
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const displayName = entityDisplayName ?? entityDetails.displayName;
+  const entityName = getEntityName({
+    ...entityDetails,
+    displayName,
+  });
   const linkHref =
     typeof entityLink === 'string' ? entityLink : entityLink.pathname;
+
+  const handleDisplayNameUpdate = useCallback(
+    async (data: EntityName) => {
+      if (!entityDetails.id || !entityType) {
+        setIsEditModalOpen(false);
+
+        return;
+      }
+
+      try {
+        const jsonPatch = [
+          {
+            op: entityDisplayName ? 'replace' : 'add',
+            path: '/displayName',
+            value: data.displayName,
+          },
+        ];
+
+        const patchAPI = entityUtilClassBase.getEntityPatchAPI(entityType);
+        const response = await patchAPI(
+          entityDetails.id,
+          jsonPatch as Operation[]
+        );
+
+        showSuccessToast(
+          t('server.update-entity-success', {
+            entity: t('label.display-name'),
+          })
+        );
+
+        if (onDisplayNameUpdate) {
+          onDisplayNameUpdate(response.displayName || data.displayName || '');
+        }
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.display-name'),
+          })
+        );
+      } finally {
+        setIsEditModalOpen(false);
+      }
+    },
+    [entityDetails.id, entityDisplayName, entityType, onDisplayNameUpdate, t]
+  );
 
   return (
     <Box
       className={className}
       sx={{
         position: 'sticky',
-        padding: '4px',
+        padding: theme.spacing(1),
         zIndex: 999,
         top: 0,
         flex: 1,
@@ -52,45 +119,43 @@ export const EntityTitleSection = ({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderRadius: '8px',
-          height: '46px',
-          paddingLeft: '4px',
-          paddingRight: '4px',
+          borderRadius: theme.spacing(2),
+          height: theme.spacing(11.5),
+          px: theme.spacing(1),
           backgroundColor: theme.palette.allShades.blueGray[50],
         }}>
-        <Tooltip
-          mouseEnterDelay={0.5}
-          placement={tooltipPlacement}
-          title={getTextFromHtmlString(entityName)}
-          trigger="hover">
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+          }}>
           <Box
             sx={{
-              display: 'flex',
+              color: theme.palette.allShades.blue[600],
+              width: theme.spacing(4.5),
+              height: theme.spacing(4.5),
+              ml: theme.spacing(1),
+              display: 'inline-flex',
               alignItems: 'center',
-              flex: 1,
-              minWidth: 0,
-              overflow: 'hidden',
+              flexShrink: 0,
+              mr: theme.spacing(2),
             }}>
-            <Box
-              sx={{
-                color: theme.palette.allShades.blue[600],
-                width: '18px',
-                height: '18px',
-                marginLeft: '4px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                flexShrink: 0,
-                marginRight: '8px',
-              }}>
-              {searchClassBase.getEntityIcon(entityType)}
-            </Box>
+            {searchClassBase.getEntityIcon(entityTypeValue)}
+          </Box>
+          <Tooltip
+            mouseEnterDelay={0.5}
+            placement={tooltipPlacement}
+            title={getTextFromHtmlString(entityName)}
+            trigger="hover">
             <Link
               data-testid={testId}
               style={{
-                flex: 1,
                 minWidth: 0,
                 overflow: 'hidden',
-                fontSize: '15px',
+                fontSize: theme.typography.pxToRem(15),
                 cursor: 'pointer',
                 fontWeight: 600,
                 textOverflow: 'ellipsis',
@@ -102,9 +167,37 @@ export const EntityTitleSection = ({
               to={linkHref}>
               {stringToHTML(entityName)}
             </Link>
-          </Box>
-        </Tooltip>
+          </Tooltip>
+          {hasEditPermission && entityType && entityDetails.id && (
+            <Tooltip placement="top" title={t('label.edit')}>
+              <IconButton
+                data-testid="edit-displayName-button"
+                size="small"
+                sx={{
+                  ml: theme.spacing(1),
+                  flexShrink: 0,
+                }}
+                onClick={() => setIsEditModalOpen(true)}>
+                <IconEdit color={DE_ACTIVE_COLOR} height={14} width={14} />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
       </Box>
+      {isEditModalOpen && (
+        <EntityNameModal
+          entity={{
+            name: entityDetails.name ?? '',
+            displayName,
+          }}
+          title={t('label.edit-entity', {
+            entity: t('label.display-name'),
+          })}
+          visible={isEditModalOpen}
+          onCancel={() => setIsEditModalOpen(false)}
+          onSave={handleDisplayNameUpdate}
+        />
+      )}
     </Box>
   );
 };
