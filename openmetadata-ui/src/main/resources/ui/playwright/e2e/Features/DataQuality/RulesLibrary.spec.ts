@@ -979,9 +979,7 @@ test.describe(
           const testDefLocator = page.getByTestId(PAGINATION_TEST_NAME);
 
           // Check if item is already visible on current page
-          let isItemVisible = await testDefLocator
-            .isVisible()
-            .catch(() => false);
+          let isItemVisible = await testDefLocator.isVisible();
 
           // Navigate until we find our test definition or reach the last page
           while (!isItemVisible && (await nextButton.isEnabled())) {
@@ -996,7 +994,7 @@ test.describe(
             await fetchResponse;
 
             // Check again after page load
-            isItemVisible = await testDefLocator.isVisible().catch(() => false);
+            isItemVisible = await testDefLocator.isVisible();
           }
 
           // Verify our test definition is now visible
