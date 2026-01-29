@@ -25,6 +25,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { asyncFilterOptions } from '../../../constants/MUI.constants';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -179,6 +180,8 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
         } as HtmlHTMLAttributes<HTMLUListElement>
       }
       autoFocus={autoFocus}
+      data-testid="tag-suggestion"
+      filterOptions={asyncFilterOptions}
       getOptionLabel={(option) =>
         typeof option === 'string' ? option : option.label
       }
@@ -195,6 +198,7 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
         <TextField
           {...params}
           fullWidth
+          data-testid="tag-suggestion-input"
           label={label}
           placeholder={
             placeholder ??
@@ -221,7 +225,10 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
         }
 
         return (
-          <Box component="li" {...props}>
+          <Box
+            component="li"
+            {...props}
+            data-testid={`tag-option-${option.value}`}>
             <Box display="flex" flexDirection="column">
               <Box
                 fontWeight="medium"

@@ -257,12 +257,15 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         if column_diff:
             # If there are column differences, we set extra_columns to the common columns for the diff
             # Exclude incomparable columns (different data types) from the comparison
+            # Also exclude key columns since they are handled separately and should not be in extra_columns
             common_columns = list(
                 (
                     set(column_diff.schemaTable1.schema.keys())
                     & set(column_diff.schemaTable2.schema.keys())
                 )
                 - set(column_diff.changed)
+                - set(self.runtime_params.table1.key_columns or [])
+                - set(self.runtime_params.table2.key_columns or [])
             )
             self.runtime_params.extraColumns = common_columns
             self.runtime_params.table1.extra_columns = common_columns
@@ -648,7 +651,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 changed=changed,
                 schemaTable1=SchemaDiffResult(
                     serviceType=self.runtime_params.table1.database_service_type.name,
-                    fullyQualifiedTableName=self.runtime_params.table1.path,
+                    fullyQualifiedTableName=self.runtime_params.table1.fullyQualifiedName
+                    or self.runtime_params.table1.path,
                     schema={
                         c.name.root: {
                             "type": c.dataTypeDisplay,
@@ -659,7 +663,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 ),
                 schemaTable2=SchemaDiffResult(
                     serviceType=self.runtime_params.table2.database_service_type.name,
-                    fullyQualifiedTableName=self.runtime_params.table2.path,
+                    fullyQualifiedTableName=self.runtime_params.table2.fullyQualifiedName
+                    or self.runtime_params.table2.path,
                     schema={
                         c.name.root: {
                             "type": c.dataTypeDisplay,

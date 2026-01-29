@@ -2038,14 +2038,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         await cleanupAfterAction();
       });
     }
-
-    test.afterAll('Cleanup', async ({ browser }) => {
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await entity.delete(apiContext);
-      await afterAction();
-    });
   });
 
   /**
@@ -2083,13 +2075,4 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       );
     });
   });
-});
-
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await dataConsumerUser.delete(apiContext);
-  await user.delete(apiContext);
-  await tableEntity.delete(apiContext);
-  await afterAction();
 });

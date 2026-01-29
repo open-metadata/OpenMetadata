@@ -1005,7 +1005,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
       Map<String, String> cursorMap =
-          parseCursorMap(after == null ? "" : RestUtil.decodeCursor(after));
+          parseCursorMap(after == null || after.isEmpty() ? "" : RestUtil.decodeCursor(after));
       String afterName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
       String afterId = cursorMap.get("id");
       List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
@@ -1019,7 +1019,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String beforeCursor;
       String afterCursor = null;
-      beforeCursor = after == null ? null : getCursorValue(entities.get(0));
+      beforeCursor = after == null || after.isEmpty() ? null : getCursorValue(entities.get(0));
       if (entities.size()
           > limitParam) { // If extra result exists, then next page exists - return after cursor
         entities.remove(limitParam);
@@ -2685,6 +2685,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   .collect(Collectors.toList());
           jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
         }
+        case "hyperlink-cp" -> validateHyperlinkUrl(fieldValue, fieldName);
         default -> {}
       }
     }
@@ -2700,6 +2701,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     Object transformedExtension = validateAndTransformExtension(entity.getExtension(), entityType);
     entity.setExtension(transformedExtension);
+  }
+
+  private static void validateHyperlinkUrl(JsonNode fieldValue, String fieldName) {
+    if (fieldValue == null || fieldValue.isNull()) {
+      return;
+    }
+    JsonNode urlNode = fieldValue.get("url");
+    if (urlNode == null || urlNode.isNull() || urlNode.asText().isEmpty()) {
+      return;
+    }
+    String url = urlNode.asText();
+    try {
+      java.net.URI uri = new java.net.URI(url);
+      String scheme = uri.getScheme();
+      if (scheme == null
+          || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid URL protocol for field '%s': URL must use http or https protocol",
+                fieldName));
+      }
+    } catch (java.net.URISyntaxException e) {
+      throw new IllegalArgumentException(
+          String.format("Invalid URL format for field '%s': %s", fieldName, e.getMessage()));
+    }
   }
 
   private static String getFormattedDateTimeField(
