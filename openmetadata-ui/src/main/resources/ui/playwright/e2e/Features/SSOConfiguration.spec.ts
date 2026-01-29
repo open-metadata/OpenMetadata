@@ -10,18 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/*
- *  Copyright 2025 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  You may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
 
 import {
   LDAP_VISIBLE_FIELDS,
@@ -191,13 +179,7 @@ test.describe('SSO Configuration Tests', () => {
 
       await verifyProviderFields(page, SAML_VISIBLE_FIELDS);
 
-      const commonFields = [
-        'Provider Name',
-        'Client ID',
-        'Callback URL',
-        'Public Key URLs',
-        'JWT Principal Claims',
-      ];
+      const commonFields = ['Provider Name'];
 
       await verifyProviderFields(page, commonFields);
 
@@ -206,6 +188,13 @@ test.describe('SSO Configuration Tests', () => {
         'LDAP Port',
         'OIDC Client ID',
         'OIDC Client Secret',
+        'Use Roles From Provider',
+        'Allowed Email Registration Domains',
+        'Token Validity (seconds)',
+        'Client ID',
+        'Callback URL',
+        'Public Key URLs',
+        'JWT Principal Claims',
       ];
 
       await verifyProviderFields(page, [], hiddenFields);
@@ -218,7 +207,16 @@ test.describe('SSO Configuration Tests', () => {
 
       await verifyProviderFields(page, LDAP_VISIBLE_FIELDS);
 
-      const hiddenFields = ['OIDC Client ID', 'OIDC Client Secret'];
+      const hiddenFields = [
+        'OIDC Client ID',
+        'OIDC Client Secret',
+        'Allowed Email Registration Domains',
+        'Use Roles From Provider',
+        'Username Attribute Name',
+        'Auth Roles Mapping',
+        'Allowed Email Registration Domains',
+        'Use Roles From Provider',
+      ];
 
       await verifyProviderFields(page, [], hiddenFields);
     });
@@ -235,7 +233,10 @@ test.describe('SSO Configuration Tests', () => {
       await expect(publicRadio).toBeChecked();
 
       // Verify public client fields are visible
-      await verifyProviderFields(page, SSO_COMMON_FIELDS);
+      await verifyProviderFields(page, [
+        ...SSO_COMMON_FIELDS,
+        'Public Key URLs',
+      ]);
 
       // Verify Client Type radio group is visible
       await expect(page.locator('.field-radio-group').first()).toBeVisible();
@@ -259,12 +260,21 @@ test.describe('SSO Configuration Tests', () => {
       await expect(publicRadio).toBeChecked();
 
       // Verify public client fields are visible
-      await verifyProviderFields(page, SSO_COMMON_FIELDS);
+      await verifyProviderFields(page, [
+        ...SSO_COMMON_FIELDS,
+        'Public Key URLs',
+      ]);
 
       // Verify Client Type radio group is visible
       await expect(page.locator('.field-radio-group').first()).toBeVisible();
 
-      const hiddenFields = ['LDAP Host', 'IdP Entity ID', 'IdP SSO Login URL'];
+      const hiddenFields = [
+        'LDAP Host',
+        'IdP Entity ID',
+        'IdP SSO Login URL',
+        'Token Validation Algorithm',
+        'Allowed Email Registration Domains',
+      ];
       await verifyProviderFields(page, [], hiddenFields);
 
       // Verify Secret field is NOT visible for public client
@@ -286,12 +296,21 @@ test.describe('SSO Configuration Tests', () => {
       await expect(publicRadio).toBeChecked();
 
       // Verify public client fields are visible
-      await verifyProviderFields(page, SSO_COMMON_FIELDS);
+      await verifyProviderFields(page, [
+        ...SSO_COMMON_FIELDS,
+        'Public Key URLs',
+      ]);
 
       // Verify Client Type radio group is visible
       await expect(page.locator('.field-radio-group').first()).toBeVisible();
 
-      const hiddenFields = ['LDAP Host', 'IdP Entity ID', 'IdP SSO Login URL'];
+      const hiddenFields = [
+        'LDAP Host',
+        'IdP Entity ID',
+        'IdP SSO Login URL',
+        'Token Validation Algorithm',
+        'Allowed Email Registration Domains',
+      ];
       await verifyProviderFields(page, [], hiddenFields);
 
       // Verify Secret field is NOT visible for public client
