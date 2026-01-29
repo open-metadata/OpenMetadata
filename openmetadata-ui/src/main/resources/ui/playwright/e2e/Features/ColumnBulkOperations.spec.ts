@@ -81,77 +81,66 @@ test.describe('Column Bulk Operations Page', () => {
 });
 
 test.describe('Column Bulk Operations - Metadata Status Filters', () => {
-  test('should filter by MISSING metadata status', async ({ page }) => {
+  test('should filter by Missing Description metadata status', async ({
+    page,
+  }) => {
     await visitColumnBulkOperationsPage(page);
 
-    // Find and click the Metadata Status filter button
     const metadataStatusButton = page.getByRole('button', {
       name: 'Metadata Status',
     });
     await metadataStatusButton.click();
 
-    // Select MISSING filter - the dropdown has menuitems with checkboxes
-    await page.getByRole('menuitem', { name: 'Missing' }).click();
+    await page
+      .getByRole('menuitem', { name: 'Missing Description' })
+      .click();
     await page.getByRole('button', { name: 'Update' }).click();
 
-    // Wait for filter to apply
-
-    // Verify filter is applied (URL should contain the filter parameter)
-    await expect(page).toHaveURL(/metadataStatus=MISSING/);
+    await expect(page).toHaveURL(/metadataStatus=MISSING_DESCRIPTION/);
   });
 
-  test('should filter by INCOMPLETE metadata status', async ({ page }) => {
+  test('should filter by Has Description metadata status', async ({
+    page,
+  }) => {
     await visitColumnBulkOperationsPage(page);
-    // Find and click the Metadata Status filter button
+
     const metadataStatusButton = page.getByRole('button', {
       name: 'Metadata Status',
     });
     await metadataStatusButton.click();
 
-    // Select INCOMPLETE filter
-    await page.getByRole('menuitem', { name: 'Incomplete' }).click();
+    await page.getByRole('menuitem', { name: 'Has Description' }).click();
     await page.getByRole('button', { name: 'Update' }).click();
 
-    // Verify filter is applied
-    await expect(page).toHaveURL(/metadataStatus=INCOMPLETE/);
+    await expect(page).toHaveURL(/metadataStatus=HAS_DESCRIPTION/);
   });
 
-  test('should filter by INCONSISTENT metadata status', async ({ page }) => {
+  test('should filter by Has Tags metadata status', async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
 
-    // Find and click the Metadata Status filter button
     const metadataStatusButton = page.getByRole('button', {
       name: 'Metadata Status',
     });
     await metadataStatusButton.click();
 
-    // Select INCONSISTENT filter - for columns with different metadata across occurrences
-    await page.getByRole('menuitem', { name: 'Inconsistent' }).click();
+    await page.getByRole('menuitem', { name: 'Has Tags' }).click();
     await page.getByRole('button', { name: 'Update' }).click();
 
-    // Wait for filter to apply
-
-    // Verify filter is applied
-    await expect(page).toHaveURL(/metadataStatus=INCONSISTENT/);
+    await expect(page).toHaveURL(/metadataStatus=HAS_TAGS/);
   });
 
-  test('should filter by COMPLETE metadata status', async ({ page }) => {
+  test('should filter by Has Glossary metadata status', async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
 
-    // Find and click the Metadata Status filter button
     const metadataStatusButton = page.getByRole('button', {
       name: 'Metadata Status',
     });
     await metadataStatusButton.click();
 
-    // Select COMPLETE filter - use exact: true since "Complete" is substring of "Incomplete"
-    await page.getByRole('menuitem', { name: 'Complete', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Has Glossary' }).click();
     await page.getByRole('button', { name: 'Update' }).click();
 
-    // Wait for filter to apply
-
-    // Verify filter is applied
-    await expect(page).toHaveURL(/metadataStatus=COMPLETE/);
+    await expect(page).toHaveURL(/metadataStatus=HAS_GLOSSARY/);
   });
 
   test('should make API call when filtering by metadata status', async ({
@@ -159,7 +148,6 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
   }) => {
     await visitColumnBulkOperationsPage(page);
 
-    // Set up request interception to verify API call
     const apiCallPromise = page.waitForRequest(
       (request) =>
         request.url().includes('/api/v1/columns/grid') &&
@@ -167,19 +155,18 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
       { timeout: 10000 }
     );
 
-    // Find and click the Metadata Status filter button
     const metadataStatusButton = page.getByRole('button', {
       name: 'Metadata Status',
     });
     await metadataStatusButton.click();
 
-    // Select MISSING filter
-    await page.getByRole('menuitem', { name: 'Missing' }).click();
+    await page
+      .getByRole('menuitem', { name: 'Missing Description' })
+      .click();
     await page.getByRole('button', { name: 'Update' }).click();
 
-    // Verify API was called with metadataStatus parameter
     const apiRequest = await apiCallPromise;
-    expect(apiRequest.url()).toContain('metadataStatus=MISSING');
+    expect(apiRequest.url()).toContain('metadataStatus=MISSING_DESCRIPTION');
   });
 });
 
@@ -1087,50 +1074,47 @@ test.describe('Column Bulk Operations - Combined Filters', () => {
     });
     await metadataStatusButton.click();
 
-    await page.getByRole('menuitem', { name: 'Missing' }).click();
+    await page
+      .getByRole('menuitem', { name: 'Missing Description' })
+      .click();
     await page.getByRole('button', { name: 'Update' }).click();
 
-    // Verify filter is in URL
-    await expect(page).toHaveURL(/metadataStatus=MISSING/);
+    await expect(page).toHaveURL(/metadataStatus=MISSING_DESCRIPTION/);
   });
 
   test('should clear individual filters', async ({ page }) => {
-    // Start with a filter applied
-    await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING`);
+    await page.goto(
+      `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING_DESCRIPTION`
+    );
     await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
-    // Verify filter is applied
-    await expect(page).toHaveURL(/metadataStatus=MISSING/);
+    await expect(page).toHaveURL(/metadataStatus=MISSING_DESCRIPTION/);
 
-    // Open metadata status filter and deselect
     const metadataStatusButton = page.getByRole('button', {
       name: 'Metadata Status',
     });
     await metadataStatusButton.click();
 
-    // Click to deselect the checked item
-    await page.getByRole('menuitem', { name: 'Missing' }).click();
+    await page
+      .getByRole('menuitem', { name: 'Missing Description' })
+      .click();
     await page.getByRole('button', { name: 'Update' }).click();
 
-    // URL should not have the filter anymore
     const url = page.url();
-    expect(url).not.toContain('metadataStatus=MISSING');
+    expect(url).not.toContain('metadataStatus=MISSING_DESCRIPTION');
   });
 });
 
 test.describe('Column Bulk Operations - URL State Persistence', () => {
   test('should restore filters from URL on page load', async ({ page }) => {
-    // Navigate with filters in URL
-    await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=INCOMPLETE`);
+    await page.goto(
+      `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=HAS_TAGS`
+    );
     await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
-    // Wait for API call with filters
-
-    // Verify filters are reflected in UI
-    // The filter buttons should show the selected values
-    await expect(page).toHaveURL(/metadataStatus=INCOMPLETE/);
+    await expect(page).toHaveURL(/metadataStatus=HAS_TAGS/);
   });
 
   test('should persist search query in URL', async ({ page }) => {
@@ -2284,14 +2268,13 @@ test.describe('Column Bulk Operations - Empty/Edge Values', () => {
   test('should handle column with no existing metadata', async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
 
-    // Filter by MISSING metadata status to find columns without metadata
     const metadataStatusButton = page.getByRole('button', {
       name: /metadata status/i,
     });
     await metadataStatusButton.click();
 
     const missingOption = page.locator(
-      '[title="Missing"], [data-testid="Missing"]'
+      '[title="Missing Description"], [data-testid="Missing Description"]'
     );
 
     if ((await missingOption.count()) > 0) {
@@ -2463,7 +2446,7 @@ test.describe('Column Bulk Operations - Filter Edge Cases', () => {
     await page.waitForTimeout(300);
 
     const option = page.locator(
-      '[title="Incomplete"], [data-testid="Incomplete"]'
+      '[title="Has Tags"], [data-testid="Has Tags"]'
     );
 
     if ((await option.count()) > 0) {

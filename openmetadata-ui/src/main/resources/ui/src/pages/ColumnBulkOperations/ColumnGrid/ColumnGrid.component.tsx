@@ -96,8 +96,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const { socket } = useWebSocketConnector();
   const [isUpdating, setIsUpdating] = useState(false);
   const [viewSelectedOnly, setViewSelectedOnly] = useState(false);
+  const [recentlyUpdatedRowIds, setRecentlyUpdatedRowIds] = useState<
+    Set<string>
+  >(new Set());
   const editorRef = React.useRef<EditorContentRef>(null);
   const activeJobIdRef = useRef<string | null>(null);
+  const pendingHighlightRowIdsRef = useRef<Set<string>>(new Set());
   const closeDrawerRef = useRef<() => void>(() => {});
   const openDrawerRef = useRef<() => void>(() => {});
   const handleGroupSelectRef = useRef<
@@ -1025,31 +1029,53 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
       const response = await bulkUpdateColumnsAsync(request);
 
-      // Store the jobId to listen for WebSocket notification when job completes
       activeJobIdRef.current = response.jobId;
 
-      showSuccessToast(
-        t('server.bulk-update-initiated', {
-          entity: t('label.column-plural'),
-          count: cleanedUpdates.length,
-        })
+      const selectedIds = new Set(columnGridListing.selectedEntities);
+      const mergedRows = columnGridListing.allRows.map(
+        (r: ColumnGridRowData) => {
+          if (!selectedIds.has(r.id)) {
+            return {
+              ...r,
+              editedDisplayName: undefined,
+              editedDescription: undefined,
+              editedTags: undefined,
+            };
+          }
+          const hasEdits =
+            r.editedDisplayName !== undefined ||
+            r.editedDescription !== undefined ||
+            r.editedTags !== undefined;
+
+          if (!hasEdits) {
+            return {
+              ...r,
+              editedDisplayName: undefined,
+              editedDescription: undefined,
+              editedTags: undefined,
+            };
+          }
+
+          return {
+            ...r,
+            displayName: r.editedDisplayName ?? r.displayName,
+            description: r.editedDescription ?? r.description,
+            tags: r.editedTags ?? r.tags,
+            editedDisplayName: undefined,
+            editedDescription: undefined,
+            editedTags: undefined,
+          };
+        }
       );
 
-      setIsUpdating(false);
+      columnGridListing.setAllRows(mergedRows);
+      columnGridListing.clearEditedValues();
+      pendingHighlightRowIdsRef.current = new Set(
+        columnGridListing.selectedEntities
+      );
+
       closeDrawerRef.current();
       columnGridListing.clearSelection();
-
-      // Clear edited state in both allRows and the editedValuesRef
-      // The page will automatically refresh when the WebSocket notification arrives
-      columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
-        prev.map((r: ColumnGridRowData) => ({
-          ...r,
-          editedDisplayName: undefined,
-          editedDescription: undefined,
-          editedTags: undefined,
-        }))
-      );
-      columnGridListing.clearEditedValues();
     } catch (error) {
       showErrorToast(t('server.entity-updating-error'));
       setIsUpdating(false);
@@ -1058,8 +1084,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     columnGridListing.allRows,
     columnGridListing.selectedEntities,
     columnGridListing.clearEditedValues,
+    columnGridListing.setAllRows,
     t,
-    columnGridListing.refetch,
   ]);
 
   // Listen for WebSocket notifications when bulk update completes
@@ -1075,17 +1101,28 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           status?: string;
         };
 
-        // Check if this notification is for our active job
         if (data.jobId && data.jobId === activeJobIdRef.current) {
-          // Job completed - refresh the grid data
           if (data.status === 'COMPLETED' || data.status === 'SUCCESS') {
-            columnGridListing.setGridItems([]);
-            columnGridListing.setExpandedRows(new Set());
-            columnGridListing.refetch();
             activeJobIdRef.current = null;
+            Promise.resolve(columnGridListing.refetch({ silent: true }))
+              .then(() => {
+                setRecentlyUpdatedRowIds(
+                  new Set(pendingHighlightRowIdsRef.current)
+                );
+                showSuccessToast(
+                  t('server.bulk-update-initiated', {
+                    entity: t('label.column-plural'),
+                    count: pendingHighlightRowIdsRef.current.size,
+                  })
+                );
+              })
+              .catch(() => {
+                setIsUpdating(false);
+              });
           } else if (data.status === 'FAILED' || data.status === 'FAILURE') {
             showErrorToast(t('server.entity-updating-error'));
             activeJobIdRef.current = null;
+            setIsUpdating(false);
           }
         }
       } catch {
@@ -1102,6 +1139,27 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       );
     };
   }, [socket, columnGridListing.refetch, t]);
+
+  useEffect(() => {
+    if (recentlyUpdatedRowIds.size === 0) {
+      return;
+    }
+    const idsToCollapse = new Set(recentlyUpdatedRowIds);
+    const timer = setTimeout(() => {
+      setRecentlyUpdatedRowIds(new Set());
+      setIsUpdating(false);
+
+      columnGridListing.setExpandedRows((prev: Set<string>) => {
+        const next = new Set(prev);
+
+        idsToCollapse.forEach((id) => next.delete(id));
+
+        return next;
+      });
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [recentlyUpdatedRowIds, columnGridListing.setExpandedRows]);
 
   // Set up filters
   const { quickFilters, defaultFilters } = useColumnGridFilters({
@@ -1253,6 +1311,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <ColumnGridTableRow
           entity={entity}
           isIndeterminate={isIndeterminate}
+          isRecentlyUpdated={recentlyUpdatedRowIds.has(entity.id)}
           isSelected={isSelected}
           renderColumnNameCell={renderColumnNameCellFinal}
           renderDescriptionCell={renderDescriptionCellAdapter}
@@ -1265,6 +1324,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       );
     },
     [
+      recentlyUpdatedRowIds,
       renderColumnNameCellFinal,
       renderPathCellAdapter,
       renderDescriptionCellAdapter,

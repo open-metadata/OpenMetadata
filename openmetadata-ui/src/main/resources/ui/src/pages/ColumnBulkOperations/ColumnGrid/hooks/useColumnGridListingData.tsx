@@ -165,9 +165,12 @@ export const useColumnGridListingData = (
       page: number,
       searchQuery: string,
       filters: ColumnGridFilters,
-      pageSize: number
+      pageSize: number,
+      silent = false
     ) => {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       try {
         // For page 1, start fresh (no cursor). For other pages, use stored cursor from previous page
         const pageCursor =
@@ -230,10 +233,12 @@ export const useColumnGridListingData = (
           console.error('Error loading column grid:', error);
         }
       } finally {
-        setLoading(false);
+        if (!silent) {
+          setLoading(false);
+        }
       }
     },
-    [] // No dependencies - all values passed as parameters
+    []
   );
 
   const applyClientSideFilters = useCallback(
@@ -265,7 +270,6 @@ export const useColumnGridListingData = (
         expandedStructRows
       );
 
-      // Merge edited values from ref into transformed rows
       const rowsWithEdits =
         editedValuesRef.current.size > 0
           ? transformedRows.map((row) => {
@@ -279,10 +283,8 @@ export const useColumnGridListingData = (
           : transformedRows;
 
       setAllRows(rowsWithEdits);
-      setEntities(applyClientSideFilters(rowsWithEdits));
     } else {
       setAllRows([]);
-      setEntities([]);
     }
   }, [
     gridItems,
@@ -291,8 +293,11 @@ export const useColumnGridListingData = (
     expandedRows,
     expandedStructRows,
     props.transformGridItemsToRows,
-    applyClientSideFilters,
   ]);
+
+  useEffect(() => {
+    setEntities(applyClientSideFilters(allRows));
+  }, [allRows, applyClientSideFilters]);
 
   // Track edited values in ref when allRows changes
   // This ensures edits persist across row regenerations
@@ -407,28 +412,29 @@ export const useColumnGridListingData = (
     setCurrentPage(1);
   }, []);
 
-  const refetch = useCallback(() => {
-    // Clear ALL caches to ensure fresh data is fetched from the server
-    // This is especially important after bulk updates when the search index
-    // has been refreshed with new data
-    cursorsByPageRef.current = new Map();
-    itemsByPageRef.current = new Map();
-    totalUniqueColumnsRef.current = 0;
-    totalOccurrencesRef.current = 0;
+  const refetch = useCallback(
+    (options?: { silent?: boolean }): Promise<void> => {
+      cursorsByPageRef.current = new Map();
+      itemsByPageRef.current = new Map();
+      totalUniqueColumnsRef.current = 0;
+      totalOccurrencesRef.current = 0;
 
-    loadData(
+      return loadData(
+        urlState.currentPage,
+        urlState.searchQuery,
+        columnGridFilters,
+        urlState.pageSize,
+        options?.silent ?? false
+      );
+    },
+    [
       urlState.currentPage,
       urlState.searchQuery,
+      urlState.pageSize,
       columnGridFilters,
-      urlState.pageSize
-    );
-  }, [
-    urlState.currentPage,
-    urlState.searchQuery,
-    urlState.pageSize,
-    columnGridFilters,
-    loadData,
-  ]);
+      loadData,
+    ]
+  );
 
   // Clear all edited values (call after successful bulk update)
   const clearEditedValues = useCallback(() => {

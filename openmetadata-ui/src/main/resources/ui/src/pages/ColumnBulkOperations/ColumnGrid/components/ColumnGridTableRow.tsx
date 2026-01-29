@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { Checkbox, TableCell, TableRow } from '@mui/material';
-import React from 'react';
+import { Checkbox, TableCell, TableRow, useTheme } from '@mui/material';
+import React, { useMemo } from 'react';
 import { ColumnGridRowData } from '../ColumnGrid.interface';
 
 interface ColumnGridTableRowProps {
   entity: ColumnGridRowData;
   isSelected: boolean;
   isIndeterminate?: boolean;
+  isRecentlyUpdated?: boolean;
   onSelect: (id: string, checked: boolean) => void;
   onGroupSelect?: (groupId: string, checked: boolean) => void;
   renderColumnNameCell: (entity: ColumnGridRowData) => React.ReactNode;
@@ -28,10 +29,15 @@ interface ColumnGridTableRowProps {
   renderGlossaryTermsCell: (entity: ColumnGridRowData) => React.ReactNode;
 }
 
+const YELLOW_HIGHLIGHT_FALLBACK = '#FEFBE8';
+
+const ROW_BG_TRANSITION = 'background-color 0.4s ease-in-out';
+
 export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
   entity,
   isSelected,
   isIndeterminate,
+  isRecentlyUpdated,
   onSelect,
   onGroupSelect,
   renderColumnNameCell,
@@ -40,6 +46,52 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
   renderTagsCell,
   renderGlossaryTermsCell,
 }) => {
+  const theme = useTheme();
+
+  const { rowSx, cellSx, rowType } = useMemo(() => {
+    const isChildRow = Boolean(entity.parentId);
+    const type = isChildRow ? 'child' : 'parent';
+
+    const yellowHighlightBg =
+      theme.palette.allShades?.warning?.[50] ?? YELLOW_HIGHLIGHT_FALLBACK;
+
+    if (isRecentlyUpdated) {
+      return {
+        rowType: type,
+        rowSx: {
+          backgroundColor: yellowHighlightBg,
+          transition: ROW_BG_TRANSITION,
+          '&.Mui-selected': { backgroundColor: yellowHighlightBg },
+          '&.Mui-selected:hover': { backgroundColor: yellowHighlightBg },
+        },
+        cellSx: {
+          backgroundColor: yellowHighlightBg,
+          transition: ROW_BG_TRANSITION,
+        },
+      };
+    }
+
+    if (!isSelected) {
+      return { rowType: type, rowSx: undefined, cellSx: undefined };
+    }
+    const parentBg =
+      theme.palette.allShades?.gray?.[100] ?? theme.palette.grey?.[100];
+    const childBg =
+      theme.palette.allShades?.gray?.[50] ?? theme.palette.grey?.[50];
+    const bg = isChildRow ? childBg : parentBg;
+
+    return {
+      rowType: type,
+      rowSx: {
+        backgroundColor: bg,
+        transition: ROW_BG_TRANSITION,
+        '&.Mui-selected': { backgroundColor: bg },
+        '&.Mui-selected:hover': { backgroundColor: bg },
+      },
+      cellSx: { backgroundColor: bg, transition: ROW_BG_TRANSITION },
+    };
+  }, [isSelected, isRecentlyUpdated, entity.parentId, theme]);
+
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.target.checked;
 
@@ -53,10 +105,12 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
   return (
     <TableRow
       hover
+      data-row-type={rowType}
       data-testid={`column-row-${entity.columnName}`}
       key={entity.id}
-      selected={isSelected}>
-      <TableCell padding="checkbox">
+      selected={isSelected}
+      sx={rowSx}>
+      <TableCell padding="checkbox" sx={cellSx}>
         <Checkbox
           checked={isSelected}
           data-testid={`column-checkbox-${entity.columnName}`}
@@ -64,22 +118,22 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
           onChange={handleCheckboxChange}
         />
       </TableCell>
-      <TableCell data-testid="column-name-cell">
+      <TableCell data-testid="column-name-cell" sx={cellSx}>
         {renderColumnNameCell(entity)}
       </TableCell>
-      <TableCell data-testid="column-path-cell">
+      <TableCell data-testid="column-path-cell" sx={cellSx}>
         {renderPathCell(entity)}
       </TableCell>
-      <TableCell data-testid="column-description-cell">
+      <TableCell data-testid="column-description-cell" sx={cellSx}>
         {renderDescriptionCell(entity)}
       </TableCell>
-      <TableCell data-testid="column-datatype-cell">
+      <TableCell data-testid="column-datatype-cell" sx={cellSx}>
         {entity.dataType || '-'}
       </TableCell>
-      <TableCell data-testid="column-tags-cell">
+      <TableCell data-testid="column-tags-cell" sx={cellSx}>
         {renderTagsCell(entity)}
       </TableCell>
-      <TableCell data-testid="column-glossary-cell">
+      <TableCell data-testid="column-glossary-cell" sx={cellSx}>
         {renderGlossaryTermsCell(entity)}
       </TableCell>
     </TableRow>
