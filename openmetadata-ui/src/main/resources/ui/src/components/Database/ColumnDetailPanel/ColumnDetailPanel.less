@@ -124,4 +124,38 @@
       }
     }
   }
+
+  .floating-error-alert {
+    position: sticky;
+    top: -20px;
+    z-index: 1;
+    margin: 0px 16px 16px 8px;
+  }
+
+  .column-detail-panel-alert {
+    min-height: 48px;
+    padding: 8px 12px;
+
+    &.alert-container {
+      display: flex;
+      align-items: center;
+    }
+
+    .ant-alert-icon {
+      display: flex;
+      align-items: center;
+      margin-right: 8px;
+    }
+
+    #alert-icon {
+      padding: 4px;
+      border-width: 3px;
+      font-size: 16px;
+    }
+
+    .ant-alert-description {
+      flex: 1;
+      word-break: break-word;
+    }
+  }
 }

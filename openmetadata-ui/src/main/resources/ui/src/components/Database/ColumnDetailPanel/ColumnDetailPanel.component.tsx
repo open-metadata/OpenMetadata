@@ -44,7 +44,7 @@ import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
 import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
+import { getErrorText, stringToHTML } from '../../../utils/StringsUtils';
 import {
   buildColumnBreadcrumbPath,
   findOriginalColumnIndex,
@@ -54,7 +54,8 @@ import {
   mergeTagsWithGlossary,
   normalizeTags,
 } from '../../../utils/TableUtils';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import AlertBar from '../../AlertBar/AlertBar';
 import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
 import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
 import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
@@ -102,6 +103,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const [isDescriptionLoading, setIsDescriptionLoading] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
+  const [localToast, setLocalToast] = useState<{
+    open: boolean;
+    message: string;
+    type: 'success' | 'error';
+  }>({ open: false, message: '', type: 'success' });
 
   const hasEditPermission = useMemo(
     () => ({
@@ -175,13 +181,29 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       const res = await getTypeByFQN(ENTITY_PATH.column);
       setEntityTypeDetail(res);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      setLocalToast({
+        open: true,
+        message: getErrorText(error as AxiosError, t('message.error')),
+        type: 'error',
+      });
     }
   };
 
   useEffect(() => {
     fetchEntityTypeDetail();
   }, []);
+
+  useEffect(() => {
+    if (localToast.open) {
+      const timer = setTimeout(() => {
+        setLocalToast((prev) => ({ ...prev, open: false }));
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+
+    return undefined;
+  }, [localToast.open]);
 
   const [activeColumn, setActiveColumn] = useState<T | null>(column);
 
@@ -304,11 +326,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             update
           )) as T);
 
-      showSuccessToast(
-        t('server.update-entity-success', {
+      setLocalToast({
+        open: true,
+        message: t('server.update-entity-success', {
           entity: t(successMessageKey),
-        })
-      );
+        }),
+        type: 'success',
+      });
 
       return response;
     },
@@ -324,12 +348,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           'label.description'
         );
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.description'),
-          })
-        );
+        setLocalToast({
+          open: true,
+          message:
+            getErrorText(error as AxiosError, t('message.error')) ||
+            t('server.entity-updating-error', {
+              entity: t('label.description'),
+            }),
+          type: 'error',
+        });
       } finally {
         setIsDescriptionLoading(false);
       }
@@ -375,12 +402,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
         return response?.tags;
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.tag-plural'),
-          })
-        );
+        setLocalToast({
+          open: true,
+          message:
+            getErrorText(error as AxiosError, t('message.error')) ||
+            t('server.entity-updating-error', {
+              entity: t('label.tag-plural'),
+            }),
+          type: 'error',
+        });
 
         throw error;
       }
@@ -413,12 +443,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
         return response?.tags;
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.glossary-term-plural'),
-          })
-        );
+        setLocalToast({
+          open: true,
+          message:
+            getErrorText(error as AxiosError, t('message.error')) ||
+            t('server.entity-updating-error', {
+              entity: t('label.glossary-term-plural'),
+            }),
+          type: 'error',
+        });
 
         throw error;
       }
@@ -434,12 +467,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           'label.custom-property-plural'
         );
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.custom-property-plural'),
-          })
-        );
+        setLocalToast({
+          open: true,
+          message:
+            getErrorText(error as AxiosError, t('message.error')) ||
+            t('server.entity-updating-error', {
+              entity: t('label.custom-property-plural'),
+            }),
+          type: 'error',
+        });
       }
     },
     [performColumnFieldUpdate, t]
@@ -462,12 +498,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           );
         }
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.display-name'),
-          })
-        );
+        setLocalToast({
+          open: true,
+          message:
+            getErrorText(error as AxiosError, t('message.error')) ||
+            t('server.entity-updating-error', {
+              entity: t('label.display-name'),
+            }),
+          type: 'error',
+        });
       } finally {
         setIsDisplayNameEditing(false);
       }
@@ -899,6 +938,16 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       title={columnTitle}
       width="40%"
       onClose={onClose}>
+      {localToast.open && (
+        <div className="floating-error-alert">
+          <AlertBar
+            defafultExpand
+            className="column-detail-panel-alert"
+            message={localToast.message || 'test'}
+            type={localToast.type}
+          />
+        </div>
+      )}
       <div className="column-detail-panel-container">
         <div className="d-flex gap-2">
           <Card bordered={false} className="summary-panel-container">
