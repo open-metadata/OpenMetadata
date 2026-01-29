@@ -545,7 +545,7 @@ class SalesforceUnitTest(TestCase):
         )
         self.salesforce_source = SalesforceSource.create(
             mock_salesforce_oauth_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(config=self.config.workflowConfig.openMetadataServerConfig),
         )
         self.assertTrue(
             self.salesforce_source.config.serviceConnection.root.config.consumerKey
@@ -586,7 +586,7 @@ class SalesforceUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_salesforce_config)
         self.salesforce_source = SalesforceSource.create(
             mock_salesforce_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(config=self.config.workflowConfig.openMetadataServerConfig),
         )
         self.assertTrue(self.salesforce_source.ssl_manager.ca_file_path)
         self.assertTrue(self.salesforce_source.ssl_manager.cert_file_path)
@@ -604,7 +604,7 @@ class SalesforceUnitTest(TestCase):
         )
         salesforce_source = SalesforceSource.create(
             mock_salesforce_multi_objects_config["source"],
-            config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(config=self.config.workflowConfig.openMetadataServerConfig),
         )
         self.assertEqual(
             salesforce_source.service_connection.sobjectNames,
