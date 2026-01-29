@@ -51,6 +51,7 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../../utils/PermissionsUtils';
+import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -319,6 +320,7 @@ const TestDefinitionList = () => {
         render: (enabled: boolean, record: TestDefinition) => {
           const entityPermissions = testDefinitionPermissions[record.name];
           const hasEditPermission = entityPermissions?.[Operation.EditAll];
+          const isExternal = isExternalTestDefinition(record);
 
           if (permissionLoading || !entityPermissions) {
             return (
@@ -326,16 +328,20 @@ const TestDefinitionList = () => {
             );
           }
 
+          let tooltipTitle;
+          if (isExternal) {
+            tooltipTitle = t('message.external-test-cannot-be-toggled');
+          } else if (!hasEditPermission) {
+            tooltipTitle = t('message.no-permission-for-action');
+          }
+
           return (
-            <Tooltip
-              title={
-                !hasEditPermission && t('message.no-permission-for-action')
-              }>
+            <Tooltip title={tooltipTitle}>
               <div className="new-form-style d-inline-flex">
                 <Switch
                   checked={enabled ?? true}
                   data-testid={`enable-switch-${record.name}`}
-                  disabled={!hasEditPermission}
+                  disabled={isExternal || !hasEditPermission}
                   size="small"
                   onChange={(checked) => handleEnableToggle(record, checked)}
                 />

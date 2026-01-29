@@ -2,7 +2,7 @@
 
 # Discovery
 
-> **7 Components** | **26 Files** | **368 Tests** | **380 Scenarios** 🚀
+> **7 Components** | **27 Files** | **369 Tests** | **385 Scenarios** 🚀
 
 ## Table of Contents
 - [Feed](#feed)
@@ -584,6 +584,24 @@
 | | ↳ *Add Constraints* | |
 | | ↳ *Verify Constraints Data* | |
 | | ↳ *Remove Constraints* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>PipelineExecution.spec.ts</b> (1 tests, 5 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/PipelineExecution.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/PipelineExecution.spec.ts)
+
+### Pipeline Execution Tab
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pipeline Execution Tab** - Execution tab should display start time, end time, and duration columns | Execution tab should display start time, end time, and duration columns |
+| | ↳ *Navigate to pipeline entity page* | |
+| | ↳ *Navigate to Executions tab* | |
+| | ↳ *Verify ListView displays timing columns* | |
+| | ↳ *Verify execution data rows are present* | |
+| | ↳ *Verify duration is 10 minutes for both tasks* | |
 
 </details>
 
