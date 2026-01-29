@@ -266,7 +266,7 @@
         }
       },
       "extension": {
-        "type": "object"
+        "type": "flattened"
       },
       "owners": {
         "properties": {
@@ -428,7 +428,8 @@
         }
       },
       "lifeCycle": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "usageSummary": {
         "properties": {
@@ -534,7 +535,16 @@
         "null_value": 0
       },
       "votes": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "upVotes": {
+            "type": "integer"
+          },
+          "downVotes": {
+            "type": "integer"
+          }
+        }
       },
       "descriptionStatus": {
         "type": "keyword"
@@ -576,6 +586,19 @@
           "expiryDate": {
             "type": "date",
             "format": "strict_date_optional_time||epoch_millis"
+          }
+        }
+      },
+      "customPropertiesFlat": {
+        "type": "keyword"
+      },
+      "customPropertiesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       }

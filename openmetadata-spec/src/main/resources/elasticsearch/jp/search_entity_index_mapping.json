@@ -477,10 +477,11 @@
         }
       },
       "extension": {
-        "type": "object"
+        "type": "flattened"
       },
       "lifeCycle": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "upstreamLineage": {
         "properties": {
@@ -639,7 +640,16 @@
         "null_value": 0
       },
       "votes": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "upVotes": {
+            "type": "integer"
+          },
+          "downVotes": {
+            "type": "integer"
+          }
+        }
       },
       "certification": {
         "type": "object",
@@ -690,6 +700,19 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 512
+          }
+        }
+      },
+      "customPropertiesFlat": {
+        "type": "keyword"
+      },
+      "customPropertiesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       }

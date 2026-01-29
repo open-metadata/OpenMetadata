@@ -282,7 +282,20 @@
         "type": "keyword"
       },
       "extension": {
-        "type": "object"
+        "type": "flattened"
+      },
+      "customPropertiesFlat": {
+        "type": "keyword"
+      },
+      "customPropertiesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       }
     }
   }

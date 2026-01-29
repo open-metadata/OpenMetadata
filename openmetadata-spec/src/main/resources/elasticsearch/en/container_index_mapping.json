@@ -468,7 +468,7 @@
         }
       },
       "extension": {
-        "type": "object"
+        "type": "flattened"
       },
       "children": {
         "properties": {
@@ -632,7 +632,8 @@
         }
       },
       "lifeCycle": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "usageSummary": {
         "properties": {
@@ -757,13 +758,16 @@
         "type": "keyword"
       },
       "descriptionSources": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "tagSources": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "tierSources": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "certification": {
         "type": "object",
@@ -802,6 +806,19 @@
           "expiryDate": {
             "type": "date",
             "format": "strict_date_optional_time||epoch_millis"
+          }
+        }
+      },
+      "customPropertiesFlat": {
+        "type": "keyword"
+      },
+      "customPropertiesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       }

@@ -342,7 +342,7 @@
         }
       },
       "extension": {
-        "type": "object"
+        "type": "flattened"
       },
       "mlFeatures": {
         "properties": {
@@ -550,7 +550,8 @@
         }
       },
       "lifeCycle": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "usageSummary": {
         "properties": {
@@ -722,6 +723,19 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 512
+          }
+        }
+      },
+      "customPropertiesFlat": {
+        "type": "keyword"
+      },
+      "customPropertiesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       }

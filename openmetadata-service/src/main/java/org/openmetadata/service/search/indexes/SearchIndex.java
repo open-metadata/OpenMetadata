@@ -137,6 +137,12 @@ public interface SearchIndex {
     TagLabel tierTag = new ParseTags(Entity.getEntityTags(entityType, entity)).getTierTag();
     map.put("tier", tierTag);
     map.put("certification", entity.getCertification());
+
+    SearchIndexUtils.FlattenedCustomProperties flattenedProps =
+        SearchIndexUtils.flattenCustomProperties(entity.getExtension());
+    map.put("customPropertiesFlat", flattenedProps.getKeyValuePairs());
+    map.put("customPropertiesFuzzy", flattenedProps.getFuzzyText());
+
     return map;
   }
 

@@ -425,7 +425,7 @@
         }
       },
       "extension": {
-        "type": "object"
+        "type": "flattened"
       },
       "dataProducts": {
         "properties": {
@@ -577,7 +577,8 @@
         }
       },
       "lifeCycle": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "usageSummary": {
         "properties": {
@@ -698,13 +699,16 @@
         "type": "keyword"
       },
       "descriptionSources": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "tagSources": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "tierSources": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "certification": {
         "type": "object",
@@ -752,6 +756,19 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 512
+          }
+        }
+      },
+      "customPropertiesFlat": {
+        "type": "keyword"
+      },
+      "customPropertiesFuzzy": {
+        "type": "text",
+        "analyzer": "om_analyzer",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       }

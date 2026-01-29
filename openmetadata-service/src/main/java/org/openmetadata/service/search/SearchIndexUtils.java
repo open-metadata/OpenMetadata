@@ -428,4 +428,66 @@ public final class SearchIndexUtils {
       this.tierSources = new HashMap<>();
     }
   }
+
+  /**
+   * Flattens custom properties (extension field) into searchable formats.
+   * Creates name:value pairs for exact matching and concatenated text for fuzzy search.
+   *
+   * @param extension The extension object containing custom properties
+   * @return FlattenedCustomProperties containing keyword pairs and fuzzy text
+   */
+  public static FlattenedCustomProperties flattenCustomProperties(Object extension) {
+    List<String> keyValuePairs = new ArrayList<>();
+    StringBuilder fuzzyText = new StringBuilder();
+
+    if (extension != null) {
+      Map<String, Object> extensionMap = JsonUtils.getMap(extension);
+      for (Map.Entry<String, Object> entry : extensionMap.entrySet()) {
+        String key = entry.getKey();
+        Object value = entry.getValue();
+        String valueStr = value != null ? flattenValue(value) : "";
+
+        String pair = key + ":" + valueStr;
+        keyValuePairs.add(pair);
+
+        if (fuzzyText.length() > 0) {
+          fuzzyText.append(" ");
+        }
+        fuzzyText.append(key).append(" ").append(valueStr);
+      }
+    }
+
+    return new FlattenedCustomProperties(keyValuePairs, fuzzyText.toString().trim());
+  }
+
+  private static String flattenValue(Object value) {
+    if (value == null) {
+      return "";
+    }
+    if (value instanceof String) {
+      return (String) value;
+    }
+    if (value instanceof Number || value instanceof Boolean) {
+      return value.toString();
+    }
+    if (value instanceof List) {
+      List<?> list = (List<?>) value;
+      return list.stream().map(SearchIndexUtils::flattenValue).collect(Collectors.joining(","));
+    }
+    if (value instanceof Map) {
+      return JsonUtils.pojoToJson(value);
+    }
+    return value.toString();
+  }
+
+  @Getter
+  public static class FlattenedCustomProperties {
+    private final List<String> keyValuePairs;
+    private final String fuzzyText;
+
+    public FlattenedCustomProperties(List<String> keyValuePairs, String fuzzyText) {
+      this.keyValuePairs = keyValuePairs;
+      this.fuzzyText = fuzzyText;
+    }
+  }
 }
