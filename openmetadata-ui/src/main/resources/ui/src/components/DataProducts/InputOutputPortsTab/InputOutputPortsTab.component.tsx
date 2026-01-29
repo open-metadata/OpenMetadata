@@ -291,7 +291,7 @@ export const InputOutputPortsTab = forwardRef<
                 </IconButton>
               </Box>
               <Collapse in={!isLineageCollapsed}>
-                <CardContent sx={{ p: 0 }}>
+                <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
                   {isLoadingLineage ? (
                     <Box
                       sx={{
