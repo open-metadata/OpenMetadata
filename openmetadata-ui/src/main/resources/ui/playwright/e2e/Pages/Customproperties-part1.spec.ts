@@ -33,6 +33,7 @@ const propertiesList = [
   'Sql Query',
   'Time Interval',
   'Timestamp',
+  'Hyperlink',
 ];
 
 const TABLE_COLUMN_ENTITY_NAME = 'tableColumn';
