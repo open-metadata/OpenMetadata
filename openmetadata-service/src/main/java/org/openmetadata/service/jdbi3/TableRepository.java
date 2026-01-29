@@ -2285,8 +2285,18 @@ public class TableRepository extends EntityRepository<Table> {
 
           if (observability.getPipeline() != null) {
             try {
-              Entity.getEntity(
-                  Entity.PIPELINE, observability.getPipeline().getId(), "", Include.NON_DELETED);
+              Pipeline pipeline =
+                  Entity.getEntity(
+                      Entity.PIPELINE,
+                      observability.getPipeline().getId(),
+                      "",
+                      Include.NON_DELETED);
+
+              if (observability.getServiceType() == null
+                  && pipeline != null
+                  && pipeline.getServiceType() != null) {
+                observability.setServiceType(pipeline.getServiceType());
+              }
             } catch (Exception e) {
               LOG.debug(
                   "Skipping pipeline observability for deleted or inaccessible pipeline {} on table {}: {}",
