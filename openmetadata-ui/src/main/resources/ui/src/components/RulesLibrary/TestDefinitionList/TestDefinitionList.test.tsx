@@ -318,7 +318,7 @@ describe('TestDefinitionList Component', () => {
     });
   });
 
-  it('should reset pagination to page 1 after edit', async () => {
+  it('should reset pagination to page 1 after create', async () => {
     const mockHandlePageChange = jest.fn();
     const { usePaging } = jest.requireMock('../../../hooks/paging/usePaging');
 

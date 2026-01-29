@@ -250,6 +250,9 @@ const TestDefinitionList = () => {
       );
       setIsDeleteModalVisible(false);
       setDefinitionToDelete(undefined);
+      // Reset pagination to page 1: handlePageChange synchronously updates URL params,
+      // and fetchTestDefinitions reads from usePaging state which syncs with URL.
+      // This ensures the list refreshes at page 1 with no cursor.
       handlePageChange(INITIAL_PAGING_VALUE, {
         cursorType: null,
         cursorValue: undefined,
@@ -272,6 +275,8 @@ const TestDefinitionList = () => {
         prev.map((item) => (item.id === data.id ? data : item))
       );
     } else {
+      // New item created: reset to page 1 to show the new item
+      // (same pattern as handleDeleteConfirm)
       handlePageChange(INITIAL_PAGING_VALUE, {
         cursorType: null,
         cursorValue: undefined,
