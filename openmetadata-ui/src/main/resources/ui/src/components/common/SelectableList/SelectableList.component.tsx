@@ -303,6 +303,7 @@ export const SelectableList = ({
           <VirtualList
             className="selectable-list-virtual-list"
             data={uniqueOptions}
+            data-testid="selectable-virtual-list"
             height={height}
             itemHeight={40}
             itemKey="id"
@@ -316,6 +317,7 @@ export const SelectableList = ({
                     active: checkActiveSelectedItem(item),
                   }
                 )}
+                data-testid={`selectable-list-item-${index}`}
                 extra={
                   multiSelect ? (
                     <CheckOutlined

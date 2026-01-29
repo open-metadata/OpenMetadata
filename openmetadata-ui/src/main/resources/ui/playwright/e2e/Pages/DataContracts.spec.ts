@@ -179,12 +179,26 @@ test.describe('Data Contracts', () => {
         );
 
         await page.getByTestId('select-owners').click();  
-        
-        await page.locator('.rc-virtual-list-holder-inner li')
-          .first()
-          .waitFor({ state: 'visible' });
+        const ownersResponse = page.waitForResponse((response) => {
+          return (
+            response.url().includes('/api/v1/search/query') &&
+            response.request().method() === 'GET' &&
+            response.status() === 200
+          );
+        });
 
-        await page.locator('.rc-virtual-list-holder-inner li').first().click();
+        await ownersResponse;
+
+        await expect(
+          page.getByTestId('selectable-virtual-list')
+            .getByTestId(/selectable-list-item-/)
+            .first()
+        ).toBeVisible();
+
+        await page.getByTestId('selectable-virtual-list')
+          .getByTestId(/selectable-list-item-/)
+          .first()
+          .click();
 
         await expect(page.getByTestId('user-tag')).toBeVisible();
       });
