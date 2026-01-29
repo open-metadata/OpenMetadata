@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { EntityType } from '../../../../enums/entity.enum';
+import { CustomProperty } from '../../../../generated/entity/type';
 import CustomPropertiesSection from './CustomPropertiesSection';
+import { EntityTypeDetail } from './CustomPropertiesSection.interface';
 
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
@@ -132,11 +134,11 @@ jest.mock('../../../../utils/SearchClassBase', () => ({
 
 // Mock PropertyValue component
 jest.mock('../../../common/CustomPropertyTable/PropertyValue', () => ({
-  PropertyValue: jest.fn().mockImplementation(({ property, value }) => (
-    <div data-testid="property-value">
-      {property.displayName || property.name}: {JSON.stringify(value)}
-    </div>
-  )),
+  PropertyValue: jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="property-name">PropertyValue</div>
+    )),
 }));
 
 const mockEntityData = {
@@ -171,7 +173,7 @@ const mockEntityDetails = {
   },
 };
 
-const mockEntityTypeDetail = {
+const mockEntityTypeDetail: EntityTypeDetail = {
   customProperties: [
     {
       name: 'property1',
@@ -238,7 +240,7 @@ const defaultProps = {
   viewCustomPropertiesPermission: true,
   entityDetails: mockEntityDetails,
   hasEditPermissions: true,
-  onExtensionUpdate: jest.fn(),
+  onExtensionUpdate: jest.fn().mockResolvedValue(undefined),
 };
 
 describe('CustomPropertiesSection', () => {
@@ -247,1223 +249,404 @@ describe('CustomPropertiesSection', () => {
   });
 
   describe('Loading State', () => {
-    it('should render loader when isEntityDataLoading is true', () => {
+    it('should render Loader when isEntityDataLoading is true', () => {
       render(<CustomPropertiesSection {...defaultProps} isEntityDataLoading />);
 
-      expect(screen.getByTestId('loader')).toBeInTheDocument();
-      expect(screen.getByTestId('loader')).toHaveAttribute(
-        'data-size',
-        'default'
-      );
-    });
+      const loader = screen.getByTestId('loader');
 
-    it('should render with correct CSS classes when loading', () => {
-      const { container } = render(
-        <CustomPropertiesSection
-          {...defaultProps}
-          isEntityDataLoading
-          entityTypeDetail={mockEntityTypeDetail}
-        />
-      );
-
-      expect(container.querySelector('.p-x-md')).not.toBeInTheDocument();
-      expect(container.querySelector('.p-t-md')).not.toBeInTheDocument();
+      expect(loader).toBeInTheDocument();
+      expect(loader).toHaveAttribute('data-size', 'default');
     });
   });
 
-  describe('No Custom Properties', () => {
-    it('should render no custom properties message when customProperties is empty', () => {
+  describe('Permission Handling', () => {
+    it('should show permission error when viewCustomPropertiesPermission is false', () => {
       render(
         <CustomPropertiesSection
           {...defaultProps}
-          entityTypeDetail={{ customProperties: [] }}
+          viewCustomPropertiesPermission={false}
         />
       );
 
-      expect(screen.getByTestId('trans-component')).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          'message.no-custom-properties-entity - label.custom-property-plural - label.doc-plural-lowercase'
-        )
-      ).toBeInTheDocument();
-    });
+      const errorPlaceholder = screen.getByTestId('error-placeholder');
 
-    it('should render documentation link when no custom properties', () => {
-      render(
-        <CustomPropertiesSection
-          {...defaultProps}
-          entityTypeDetail={{ customProperties: [] }}
-        />
-      );
+      expect(errorPlaceholder).toBeInTheDocument();
+      expect(errorPlaceholder).toHaveAttribute('data-type', 'PERMISSION');
 
-      const docLink = screen.getByTitle('Custom properties documentation');
+      const transComponent = screen.getByTestId('trans-component');
 
-      expect(docLink).toBeInTheDocument();
-      expect(docLink).toHaveAttribute(
-        'href',
-        'https://docs.open-metadata.org/how-to-guides/guide-for-data-users/custom'
-      );
-      expect(docLink).toHaveAttribute('target', '_blank');
-      expect(docLink).toHaveAttribute('rel', 'noreferrer');
-    });
+      expect(transComponent).toBeInTheDocument();
+      expect(transComponent).toHaveTextContent('message.no-access-placeholder');
 
-    it('should render with correct CSS classes when no custom properties', () => {
-      const { container } = render(
-        <CustomPropertiesSection
-          {...defaultProps}
-          entityTypeDetail={{ customProperties: [] }}
-        />
-      );
-
-      expect(
-        container.querySelector('.entity-summary-panel-tab-content')
-      ).not.toBeInTheDocument();
-      expect(container.querySelector('.text-justify')).toBeInTheDocument();
-      expect(
-        container.querySelector('.no-data-placeholder')
-      ).toBeInTheDocument();
+      expect(screen.queryByTestId('search-bar')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('property-name')).not.toBeInTheDocument();
     });
   });
 
-  describe('Permission Error', () => {
-    it('should render permission error when viewCustomPropertiesPermission is false', () => {
-      render(
-        <CustomPropertiesSection
-          {...defaultProps}
-          viewCustomPropertiesPermission={false}
-        />
-      );
+  describe('Empty State', () => {
+    it('should show empty state when no custom properties exist', () => {
+      const propsWithNoProperties = {
+        ...defaultProps,
+        entityTypeDetail: { customProperties: [] } as EntityTypeDetail,
+      };
 
-      expect(screen.getByTestId('trans-component')).toHaveTextContent(
-        'message.no-access-placeholder - label.view-entity -'
-      );
-    });
+      render(<CustomPropertiesSection {...propsWithNoProperties} />);
 
-    it('should not render custom properties when viewCustomPropertiesPermission is false', () => {
-      render(
-        <CustomPropertiesSection
-          {...defaultProps}
-          viewCustomPropertiesPermission={false}
-        />
-      );
+      const errorPlaceholder = screen.getByTestId('error-placeholder');
 
-      expect(screen.queryByText('Property 1')).not.toBeInTheDocument();
-      expect(screen.queryByText('Property 2')).not.toBeInTheDocument();
-      expect(screen.queryByText('value1')).not.toBeInTheDocument();
-    });
+      expect(errorPlaceholder).toBeInTheDocument();
+      expect(errorPlaceholder).toHaveAttribute('data-type', 'CUSTOM');
 
-    it('should not render view all button when viewCustomPropertiesPermission is false', () => {
-      render(
-        <CustomPropertiesSection
-          {...defaultProps}
-          viewCustomPropertiesPermission={false}
-        />
-      );
+      const transComponent = screen.getByTestId('trans-component');
 
-      expect(screen.queryByText('label.view-all')).not.toBeInTheDocument();
-    });
-
-    it('should render permission error with correct placeholder type', () => {
-      const { container } = render(
-        <CustomPropertiesSection
-          {...defaultProps}
-          viewCustomPropertiesPermission={false}
-        />
-      );
-
-      expect(
-        container.querySelector('.permission-error-placeholder')
-      ).toBeInTheDocument();
-    });
-  });
-
-  describe('Custom Properties Rendering', () => {
-    it('should render custom properties when available', () => {
-      render(<CustomPropertiesSection {...defaultProps} />);
-
-      expect(screen.getAllByText('Property 1')[0]).toBeInTheDocument();
-      expect(screen.getAllByText('Property 2')[0]).toBeInTheDocument();
-      expect(screen.getAllByText('Property 3')[0]).toBeInTheDocument();
-      expect(screen.getAllByText('Property 4')[0]).toBeInTheDocument();
-      expect(screen.getAllByText('Property 5')[0]).toBeInTheDocument();
-    });
-
-    it('should render with correct CSS classes', () => {
-      const { container } = render(
-        <CustomPropertiesSection {...defaultProps} />
-      );
-
-      expect(
-        container.querySelector('.entity-summary-panel-tab-content')
-      ).toBeInTheDocument();
-      expect(container.querySelector('.p-x-md')).toBeInTheDocument();
-      expect(
-        container.querySelector('.custom-properties-list')
-      ).toBeInTheDocument();
-    });
-
-    it('should display all properties without limit', () => {
-      render(<CustomPropertiesSection {...defaultProps} />);
-
-      // Should show all properties (no 5-item limit)
-      expect(screen.getByText('Property 1')).toBeInTheDocument();
-      expect(screen.getByText('Property 2')).toBeInTheDocument();
-      expect(screen.getByText('Property 3')).toBeInTheDocument();
-      expect(screen.getByText('Property 4')).toBeInTheDocument();
-      expect(screen.getByText('Property 5')).toBeInTheDocument();
-      expect(screen.getByText('Property 6')).toBeInTheDocument();
-      expect(screen.getByText('Property 7')).toBeInTheDocument();
-      expect(screen.getByText('Property 8')).toBeInTheDocument();
-      expect(screen.getByText('Property 9')).toBeInTheDocument();
-    });
-
-    it('should render search bar when custom properties exist', () => {
-      render(<CustomPropertiesSection {...defaultProps} />);
-
-      expect(screen.getByTestId('search-bar')).toBeInTheDocument();
-      expect(screen.getByTestId('search-input')).toHaveAttribute(
-        'placeholder',
-        'label.search-for-type'
-      );
-    });
-
-    it('should not render search bar when no custom properties', () => {
-      render(
-        <CustomPropertiesSection
-          {...defaultProps}
-          entityTypeDetail={{ customProperties: [] }}
-        />
+      expect(transComponent).toBeInTheDocument();
+      expect(transComponent).toHaveTextContent(
+        'message.no-custom-properties-entity'
       );
 
       expect(screen.queryByTestId('search-bar')).not.toBeInTheDocument();
     });
   });
 
-  describe('Property Value Formatting', () => {
-    it('should render string values correctly', () => {
+  describe('Search Bar Rendering', () => {
+    it('should render search bar when custom properties exist', () => {
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      expect(screen.getByText('value1')).toBeInTheDocument();
-      expect(screen.getByText('value2')).toBeInTheDocument();
-    });
+      const searchBar = screen.getByTestId('search-bar');
 
-    it('should render array values as comma-separated string', () => {
-      render(<CustomPropertiesSection {...defaultProps} />);
+      expect(searchBar).toBeInTheDocument();
 
-      expect(screen.getByText('array, value')).toBeInTheDocument();
-    });
+      const searchInput = screen.getByTestId('search-input');
 
-    it('should render object with name property', () => {
-      render(<CustomPropertiesSection {...defaultProps} />);
-
-      expect(screen.getByText('object-name')).toBeInTheDocument();
-    });
-
-    it('should render object with value property', () => {
-      render(<CustomPropertiesSection {...defaultProps} />);
-
-      expect(screen.getByText('object-value')).toBeInTheDocument();
-    });
-
-    it('should render table-type custom properties', () => {
-      const tableProps = {
-        ...defaultProps,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'property6',
-              displayName: 'Property 6',
-              description: 'Property 6 description',
-              propertyType: { id: 'type6', name: 'table', type: 'type' },
-            },
-          ],
-        },
-      };
-
-      const { container } = render(<CustomPropertiesSection {...tableProps} />);
-
-      const table = container.querySelector('.custom-property-table table');
-
-      expect(table).toBeInTheDocument();
-      expect(table).toHaveClass('ant-table', 'ant-table-small');
-
-      // Check table headers
-      expect(screen.getByText('col1')).toBeInTheDocument();
-      expect(screen.getByText('col2')).toBeInTheDocument();
-
-      // Check table data
-      expect(screen.getByText('row1-col1')).toBeInTheDocument();
-      expect(screen.getByText('row1-col2')).toBeInTheDocument();
-      expect(screen.getByText('row2-col1')).toBeInTheDocument();
-      expect(screen.getByText('row2-col2')).toBeInTheDocument();
-    });
-
-    it('should render "not set" for null values', () => {
-      const nullProps = {
-        ...defaultProps,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'property7',
-              displayName: 'Property 7',
-              description: 'Property 7 description',
-              propertyType: { id: 'type7', name: 'string', type: 'type' },
-            },
-          ],
-        },
-      };
-
-      render(<CustomPropertiesSection {...nullProps} />);
-
-      expect(screen.getByText('label.not-set')).toBeInTheDocument();
-    });
-
-    it('should render "not set" for undefined values', () => {
-      const undefinedProps = {
-        ...defaultProps,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'property8',
-              displayName: 'Property 8',
-              description: 'Property 8 description',
-              propertyType: { id: 'type8', name: 'string', type: 'type' },
-            },
-          ],
-        },
-      };
-
-      render(<CustomPropertiesSection {...undefinedProps} />);
-
-      expect(screen.getByText('label.not-set')).toBeInTheDocument();
-    });
-
-    it('should render "not set" for empty string values', () => {
-      const emptyProps = {
-        ...defaultProps,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'property9',
-              displayName: 'Property 9',
-              description: 'Property 9 description',
-              propertyType: { id: 'type9', name: 'string', type: 'type' },
-            },
-          ],
-        },
-      };
-
-      render(<CustomPropertiesSection {...emptyProps} />);
-
-      expect(screen.getByText('label.not-set')).toBeInTheDocument();
-    });
-
-    it('should render JSON string for complex objects', () => {
-      const complexObjectData = {
-        extension: {
-          complexProperty: { nested: { value: 'test' }, other: 'data' },
-        },
-      };
-
-      const complexObjectProps = {
-        ...defaultProps,
-        entityData: complexObjectData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'complexProperty',
-              displayName: 'Complex Property',
-              description: 'Complex Property description',
-              propertyType: { id: 'typeComplex', name: 'object', type: 'type' },
-            },
-          ],
-        },
-      };
-
-      render(<CustomPropertiesSection {...complexObjectProps} />);
-
-      expect(
-        screen.getByText('{"nested":{"value":"test"},"other":"data"}')
-      ).toBeInTheDocument();
+      expect(searchInput).toBeInTheDocument();
+      expect(searchInput).toHaveAttribute(
+        'placeholder',
+        'label.search-for-type'
+      );
     });
   });
 
-  describe('Property Names', () => {
-    it('should use displayName when available', () => {
+  describe('Search Functionality', () => {
+    it('should filter properties by property name', () => {
+      const {
+        PropertyValue,
+      } = require('../../../common/CustomPropertyTable/PropertyValue');
+      PropertyValue.mockImplementation(
+        ({ property }: { property: CustomProperty }) => (
+          <div data-testid="property-name">{property.name}</div>
+        )
+      );
+
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      expect(screen.getByText('Property 1')).toBeInTheDocument();
-      expect(screen.getByText('Property 2')).toBeInTheDocument();
+      const searchInput = screen.getByTestId('search-input');
+
+      fireEvent.change(searchInput, { target: { value: 'property1' } });
+
+      const properties = screen.getAllByTestId('property-name');
+
+      expect(properties).toHaveLength(1);
+      expect(properties[0]).toHaveTextContent('property1');
     });
 
-    it('should fallback to name when displayName is not available', () => {
-      const propsWithoutDisplayName = {
-        ...defaultProps,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'property1',
-              description: 'Property 1 description',
-              propertyType: { id: 'type1', name: 'string', type: 'type' },
-            },
-            {
-              name: 'property2',
-              displayName: 'Property 2',
-              description: 'Property 2 description',
-              propertyType: { id: 'type2', name: 'string', type: 'type' },
-            },
-          ],
-        },
-      };
+    it('should filter properties by display name', () => {
+      const {
+        PropertyValue,
+      } = require('../../../common/CustomPropertyTable/PropertyValue');
+      PropertyValue.mockImplementation(
+        ({ property }: { property: CustomProperty }) => (
+          <div data-testid="property-name">{property.displayName}</div>
+        )
+      );
 
-      render(<CustomPropertiesSection {...propsWithoutDisplayName} />);
+      render(<CustomPropertiesSection {...defaultProps} />);
 
-      expect(screen.getByText('property1')).toBeInTheDocument();
-      expect(screen.getByText('Property 2')).toBeInTheDocument();
+      const searchInput = screen.getByTestId('search-input');
+
+      fireEvent.change(searchInput, { target: { value: 'Property 1' } });
+
+      const properties = screen.getAllByTestId('property-name');
+
+      expect(properties).toHaveLength(1);
+      expect(properties[0]).toHaveTextContent('Property 1');
+    });
+
+    it('should filter properties by property type', () => {
+      const {
+        PropertyValue,
+      } = require('../../../common/CustomPropertyTable/PropertyValue');
+      PropertyValue.mockImplementation(
+        ({ property }: { property: CustomProperty }) => (
+          <div data-testid="property-name">{property.propertyType.name}</div>
+        )
+      );
+
+      render(<CustomPropertiesSection {...defaultProps} />);
+
+      const searchInput = screen.getByTestId('search-input');
+
+      fireEvent.change(searchInput, { target: { value: 'string' } });
+
+      const properties = screen.getAllByTestId('property-name');
+
+      expect(properties.length).toBeGreaterThan(0);
+
+      properties.forEach((property) => {
+        expect(property).toHaveTextContent('string');
+      });
+    });
+
+    it('should perform case-insensitive search', () => {
+      const {
+        PropertyValue,
+      } = require('../../../common/CustomPropertyTable/PropertyValue');
+      PropertyValue.mockImplementation(
+        ({ property }: { property: CustomProperty }) => (
+          <div data-testid="property-name">{property.name}</div>
+        )
+      );
+
+      render(<CustomPropertiesSection {...defaultProps} />);
+
+      const searchInput = screen.getByTestId('search-input');
+
+      fireEvent.change(searchInput, { target: { value: 'PROPERTY1' } });
+
+      const properties = screen.getAllByTestId('property-name');
+
+      expect(properties).toHaveLength(1);
+      expect(properties[0]).toHaveTextContent('property1');
+    });
+
+    it('should show no results message when search returns no matches', () => {
+      render(<CustomPropertiesSection {...defaultProps} />);
+
+      const searchInput = screen.getByTestId('search-input');
+
+      fireEvent.change(searchInput, {
+        target: { value: 'nonexistent-property' },
+      });
+
+      expect(screen.queryByTestId('property-name')).not.toBeInTheDocument();
+
+      const noResultsMessage = screen.getByText(
+        'message.no-entity-found-for-name'
+      );
+
+      expect(noResultsMessage).toBeInTheDocument();
+
+      expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
     });
   });
 
-  describe('Entity Type Handling', () => {
-    it('should render with different entity types', () => {
-      const dashboardProps = {
-        ...defaultProps,
-        entityType: EntityType.DASHBOARD,
-      };
+  describe('Property Rendering', () => {
+    it('should render all properties when no search is applied', () => {
+      const {
+        PropertyValue,
+      } = require('../../../common/CustomPropertyTable/PropertyValue');
+      PropertyValue.mockImplementation(
+        ({ property }: { property: CustomProperty }) => (
+          <div data-testid="property-name">{property.name}</div>
+        )
+      );
 
-      render(<CustomPropertiesSection {...dashboardProps} />);
+      render(<CustomPropertiesSection {...defaultProps} />);
 
-      expect(screen.getByText('Property 1')).toBeInTheDocument();
+      const properties = screen.getAllByTestId('property-name');
+
+      expect(properties).toHaveLength(9);
+    });
+
+    it('should pass correct props to PropertyValue component', () => {
+      const {
+        PropertyValue,
+      } = require('../../../common/CustomPropertyTable/PropertyValue');
+
+      render(<CustomPropertiesSection {...defaultProps} />);
+
+      expect(PropertyValue).toHaveBeenCalled();
+
+      const firstCall = PropertyValue.mock.calls[0][0];
+
+      expect(firstCall).toHaveProperty('isRenderedInRightPanel', true);
+      expect(firstCall).toHaveProperty('extension', mockEntityData.extension);
+      expect(firstCall).toHaveProperty('hasEditPermissions', true);
+      expect(firstCall).toHaveProperty('property');
+      expect(firstCall).toHaveProperty('onExtensionUpdate');
+      expect(typeof firstCall.onExtensionUpdate).toBe('function');
+    });
+  });
+
+  describe('User Interactions', () => {
+    it('should update search and filter properties when typing in search input', () => {
+      const {
+        PropertyValue,
+      } = require('../../../common/CustomPropertyTable/PropertyValue');
+      PropertyValue.mockImplementation(
+        ({ property }: { property: CustomProperty }) => (
+          <div data-testid="property-name">{property.name}</div>
+        )
+      );
+
+      render(<CustomPropertiesSection {...defaultProps} />);
+
+      let properties = screen.getAllByTestId('property-name');
+
+      expect(properties).toHaveLength(9);
+
+      const searchInput = screen.getByTestId('search-input');
+
+      fireEvent.change(searchInput, { target: { value: 'property2' } });
+
+      properties = screen.getAllByTestId('property-name');
+
+      expect(properties).toHaveLength(1);
+      expect(properties[0]).toHaveTextContent('property2');
+    });
+
+    it('should show all properties when search is cleared', () => {
+      const {
+        PropertyValue,
+      } = require('../../../common/CustomPropertyTable/PropertyValue');
+      PropertyValue.mockImplementation(
+        ({ property }: { property: CustomProperty }) => (
+          <div data-testid="property-name">{property.name}</div>
+        )
+      );
+
+      render(<CustomPropertiesSection {...defaultProps} />);
+
+      const searchInput = screen.getByTestId('search-input');
+
+      fireEvent.change(searchInput, { target: { value: 'property1' } });
+
+      let properties = screen.getAllByTestId('property-name');
+
+      expect(properties).toHaveLength(1);
+
+      fireEvent.change(searchInput, { target: { value: '' } });
+
+      properties = screen.getAllByTestId('property-name');
+
+      expect(properties).toHaveLength(9);
     });
   });
 
   describe('Edge Cases', () => {
-    it('should handle missing entityData gracefully', () => {
-      render(
-        <CustomPropertiesSection {...defaultProps} entityData={undefined} />
-      );
-
-      expect(screen.getByText('Property 1')).toBeInTheDocument();
-
-      const noDataElements = screen.getAllByText('label.not-set');
-
-      expect(noDataElements.length).toBeGreaterThan(0);
-    });
-
-    it('should handle missing entityTypeDetail gracefully', () => {
-      render(
-        <CustomPropertiesSection
-          {...defaultProps}
-          entityTypeDetail={undefined}
-        />
-      );
-
-      expect(screen.getByTestId('trans-component')).toBeInTheDocument();
-    });
-
-    it('should handle empty extension data', () => {
-      const emptyExtensionProps = {
+    it('should render without errors when extension data is empty', () => {
+      const propsWithEmptyExtension = {
         ...defaultProps,
         entityData: { extension: {} },
       };
 
-      render(<CustomPropertiesSection {...emptyExtensionProps} />);
+      expect(() =>
+        render(<CustomPropertiesSection {...propsWithEmptyExtension} />)
+      ).not.toThrow();
 
-      // All properties should show "not set"
-      const noDataElements = screen.getAllByText('label.not-set');
-
-      expect(noDataElements.length).toBeGreaterThan(0);
+      expect(screen.getByTestId('search-bar')).toBeInTheDocument();
     });
 
-    it('should handle table with empty rows', () => {
-      const emptyTableData = {
-        extension: {
-          emptyTable: {
-            rows: [],
-            columns: ['col1', 'col2'],
-          },
-        },
+    it('should render without errors when extension is undefined', () => {
+      const propsWithUndefinedExtension = {
+        ...defaultProps,
+        entityData: {},
       };
 
-      const emptyTableProps = {
+      expect(() =>
+        render(<CustomPropertiesSection {...propsWithUndefinedExtension} />)
+      ).not.toThrow();
+
+      expect(screen.getByTestId('search-bar')).toBeInTheDocument();
+    });
+
+    it('should handle properties missing optional fields gracefully', () => {
+      const propsWithPartialProperties = {
         ...defaultProps,
-        entityData: emptyTableData,
         entityTypeDetail: {
           customProperties: [
             {
-              name: 'emptyTable',
-              displayName: 'Empty Table',
-              description: 'Empty Table description',
-              propertyType: { id: 'typeEmpty', name: 'table', type: 'type' },
+              name: 'minimal-property',
+              propertyType: { id: 'type1', name: 'string', type: 'type' },
             },
           ],
-        },
+        } as EntityTypeDetail,
       };
 
-      const { container } = render(
-        <CustomPropertiesSection {...emptyTableProps} />
-      );
-      const table = container.querySelector('.custom-property-table table');
+      expect(() =>
+        render(<CustomPropertiesSection {...propsWithPartialProperties} />)
+      ).not.toThrow();
 
-      expect(table).toBeInTheDocument();
-
-      const col1Elements = screen.getAllByText('col1');
-
-      expect(col1Elements.length).toBeGreaterThan(0);
-
-      const col2Elements = screen.getAllByText('col2');
-
-      expect(col2Elements.length).toBeGreaterThan(0);
+      expect(screen.getByTestId('search-bar')).toBeInTheDocument();
     });
 
-    it('should handle table with missing column data', () => {
-      const incompleteTableData = {
-        extension: {
-          incompleteTable: {
-            rows: [
-              { col1: 'row1-col1' }, // Missing col2
-              { col2: 'row2-col2' }, // Missing col1
-            ],
-            columns: ['col1', 'col2'],
-          },
-        },
-      };
+    it('should handle search with special characters without errors', () => {
+      const {
+        PropertyValue,
+      } = require('../../../common/CustomPropertyTable/PropertyValue');
+      PropertyValue.mockImplementation(() => (
+        <div data-testid="property-name">PropertyValue</div>
+      ));
 
-      const incompleteTableProps = {
+      render(<CustomPropertiesSection {...defaultProps} />);
+
+      const searchInput = screen.getByTestId('search-input');
+
+      expect(() =>
+        fireEvent.change(searchInput, { target: { value: '@#$%^&*()' } })
+      ).not.toThrow();
+
+      expect(screen.queryByTestId('property-name')).not.toBeInTheDocument();
+    });
+
+    it('should handle undefined entityTypeDetail gracefully', () => {
+      const propsWithUndefinedTypeDetail = {
         ...defaultProps,
-        entityData: incompleteTableData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'incompleteTable',
-              displayName: 'Incomplete Table',
-              description: 'Incomplete Table description',
-              propertyType: {
-                id: 'typeIncomplete',
-                name: 'table',
-                type: 'type',
-              },
-            },
-          ],
-        },
+        entityTypeDetail: undefined,
       };
 
-      render(<CustomPropertiesSection {...incompleteTableProps} />);
-
-      expect(screen.getByText('row1-col1')).toBeInTheDocument();
-      expect(screen.getByText('row2-col2')).toBeInTheDocument();
-
-      const dashElements = screen.getAllByText('-');
-
-      expect(dashElements.length).toBeGreaterThan(0); // Missing data placeholder
+      expect(() =>
+        render(<CustomPropertiesSection {...propsWithUndefinedTypeDetail} />)
+      ).not.toThrow();
     });
-  });
 
-  describe('ViewCustomFields Permission Tests', () => {
-    it('should render custom properties when viewCustomPropertiesPermission is true', () => {
-      render(
-        <CustomPropertiesSection
-          {...defaultProps}
-          viewCustomPropertiesPermission
-        />
+    it('should handle properties with null/undefined name, displayName, and propertyType in search', () => {
+      const {
+        PropertyValue,
+      } = require('../../../common/CustomPropertyTable/PropertyValue');
+      PropertyValue.mockImplementation(
+        ({ property }: { property: CustomProperty }) => (
+          <div data-testid="property-name">{property.name || 'no-name'}</div>
+        )
       );
 
-      expect(screen.getByText('Property 1')).toBeInTheDocument();
-      expect(screen.getByText('value1')).toBeInTheDocument();
-    });
-
-    it('should hide custom properties and show error when viewCustomPropertiesPermission is false', () => {
-      render(
-        <CustomPropertiesSection
-          {...defaultProps}
-          viewCustomPropertiesPermission={false}
-        />
-      );
-
-      expect(screen.queryByText('Property 1')).not.toBeInTheDocument();
-      expect(screen.getByTestId('trans-component')).toBeInTheDocument();
-    });
-
-    it('should take precedence over loading state when viewCustomPropertiesPermission is false', () => {
-      render(
-        <CustomPropertiesSection
-          {...defaultProps}
-          isEntityDataLoading
-          viewCustomPropertiesPermission={false}
-        />
-      );
-
-      expect(screen.getByTestId('loader')).toBeInTheDocument();
-    });
-
-    it('should show permission error even when no custom properties exist', () => {
-      render(
-        <CustomPropertiesSection
-          {...defaultProps}
-          entityTypeDetail={{ customProperties: [] }}
-          viewCustomPropertiesPermission={false}
-        />
-      );
-
-      expect(screen.getByTestId('trans-component')).toHaveTextContent(
-        'message.no-access-placeholder'
-      );
-    });
-
-    it('should display custom properties correctly when permission is granted and data exists', () => {
-      const { container } = render(
-        <CustomPropertiesSection
-          {...defaultProps}
-          viewCustomPropertiesPermission
-        />
-      );
-
-      expect(
-        container.querySelector('.custom-properties-list')
-      ).toBeInTheDocument();
-      expect(screen.getByText('Property 1')).toBeInTheDocument();
-      expect(screen.getByText('Property 2')).toBeInTheDocument();
-    });
-  });
-
-  describe('CSS Classes and Structure', () => {
-    it('should render with correct CSS classes for custom property items', () => {
-      const { container } = render(
-        <CustomPropertiesSection {...defaultProps} />
-      );
-
-      const propertyItems = container.querySelectorAll('.custom-property-item');
-
-      expect(propertyItems.length).toBeGreaterThan(0);
-
-      propertyItems.forEach((item) => {
-        expect(item.querySelector('.property-name')).toBeInTheDocument();
-        expect(item.querySelector('.property-value')).toBeInTheDocument();
-      });
-    });
-
-    it('should render Typography components with correct props', () => {
-      const { container } = render(
-        <CustomPropertiesSection {...defaultProps} />
-      );
-
-      const strongElements = container.querySelectorAll('.property-name');
-
-      expect(strongElements.length).toBeGreaterThan(0);
-
-      const textElements = container.querySelectorAll('.property-value');
-
-      expect(textElements.length).toBeGreaterThan(0);
-    });
-
-    it('should render table with correct structure', () => {
-      const tableProps = {
+      const propsWithNullFields = {
         ...defaultProps,
         entityTypeDetail: {
           customProperties: [
             {
-              name: 'property6',
-              displayName: 'Property 6',
-              description: 'Property 6 description',
-              propertyType: { id: 'type6', name: 'string', type: 'type' },
+              name: null,
+              displayName: null,
+              propertyType: { name: null },
+            },
+            {
+              name: 'valid-property',
+              displayName: 'Valid Property',
+              propertyType: { name: 'string' },
             },
           ],
-        },
+        } as EntityTypeDetail,
       };
 
-      const { container } = render(<CustomPropertiesSection {...tableProps} />);
+      render(<CustomPropertiesSection {...propsWithNullFields} />);
 
-      const table = container.querySelector('.custom-property-table table');
+      const searchInput = screen.getByTestId('search-input');
 
-      expect(table).toBeInTheDocument();
+      fireEvent.change(searchInput, { target: { value: 'valid' } });
 
-      const colgroup = table?.querySelector('colgroup');
+      const properties = screen.getAllByTestId('property-name');
 
-      expect(colgroup).toBeInTheDocument();
-
-      const thead = table?.querySelector('thead');
-
-      expect(thead).toBeInTheDocument();
-
-      const tbody = table?.querySelector('tbody');
-
-      expect(tbody).toBeInTheDocument();
-    });
-  });
-
-  describe('Type Handling - Advanced Property Types', () => {
-    it('should handle markdown property type', () => {
-      const markdownData = {
-        extension: {
-          markdownProp: '# Heading\n\nThis is **bold** text',
-        },
-      };
-
-      const markdownProps = {
-        ...defaultProps,
-        entityData: markdownData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'markdownProp',
-              displayName: 'Markdown Property',
-              description: 'Markdown Property description',
-              propertyType: { id: 'md', name: 'markdown', type: 'type' },
-            },
-          ],
-        },
-      };
-
-      const { container } = render(
-        <CustomPropertiesSection {...markdownProps} />
-      );
-
-      expect(container.querySelector('.property-value')).toBeInTheDocument();
-    });
-
-    it('should handle enum property type with array of values', () => {
-      const enumData = {
-        extension: {
-          enumProp: ['Value1', 'Value2', 'Value3'],
-        },
-      };
-
-      const enumProps = {
-        ...defaultProps,
-        entityData: enumData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'enumProp',
-              displayName: 'Enum Property',
-              description: 'Enum Property description',
-              propertyType: { id: 'enum', name: 'enum', type: 'type' },
-            },
-          ],
-        },
-      };
-
-      render(<CustomPropertiesSection {...enumProps} />);
-
-      expect(screen.getByText('Value1')).toBeInTheDocument();
-      expect(screen.getByText('Value2')).toBeInTheDocument();
-      expect(screen.getByText('Value3')).toBeInTheDocument();
-    });
-
-    it('should handle entityReference property type', () => {
-      const entityRefData = {
-        extension: {
-          entityRef: {
-            id: 'entity-123',
-            type: 'table',
-            name: 'test-table',
-            fullyQualifiedName: 'database.schema.test-table',
-            displayName: 'Test Table',
-          },
-        },
-      };
-
-      const entityRefProps = {
-        ...defaultProps,
-        entityData: entityRefData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'entityRef',
-              displayName: 'Entity Reference',
-              description: 'Entity Reference description',
-              propertyType: {
-                id: 'entityRef',
-                name: 'entityReference',
-                type: 'type',
-              },
-            },
-          ],
-        },
-      };
-
-      const { container } = render(
-        <CustomPropertiesSection {...entityRefProps} />
-      );
-
-      const linkElement = container.querySelector('a');
-
-      expect(linkElement).toBeInTheDocument();
-      expect(linkElement).toHaveAttribute('href', '/test-entity-link');
-    });
-
-    it('should handle entityReferenceList property type', () => {
-      const entityRefListData = {
-        extension: {
-          entityRefList: [
-            {
-              id: 'entity-1',
-              type: 'table',
-              name: 'table-1',
-              fullyQualifiedName: 'db.schema.table-1',
-              displayName: 'Table 1',
-            },
-            {
-              id: 'entity-2',
-              type: 'dashboard',
-              name: 'dashboard-1',
-              fullyQualifiedName: 'service.dashboard-1',
-              displayName: 'Dashboard 1',
-            },
-          ],
-        },
-      };
-
-      const entityRefListProps = {
-        ...defaultProps,
-        entityData: entityRefListData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'entityRefList',
-              displayName: 'Entity Reference List',
-              description: 'Entity Reference List description',
-              propertyType: {
-                id: 'entityRefList',
-                name: 'entityReferenceList',
-                type: 'type',
-              },
-            },
-          ],
-        },
-      };
-
-      const { container } = render(
-        <CustomPropertiesSection {...entityRefListProps} />
-      );
-
-      const links = container.querySelectorAll('a');
-
-      expect(links).toHaveLength(2);
-      expect(links[0]).toHaveAttribute('href', '/test-entity-link');
-      expect(links[1]).toHaveAttribute('href', '/test-entity-link');
-    });
-
-    it('should handle timeInterval property type (start/end)', () => {
-      const timeIntervalData = {
-        extension: {
-          timeIntervalProp: {
-            start: 1710831125922,
-            end: 1711176725922,
-          },
-        },
-      };
-
-      const timeIntervalProps = {
-        ...defaultProps,
-        entityData: timeIntervalData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'timeIntervalProp',
-              displayName: 'Time Interval Property',
-              description: 'Time Interval Property description',
-              propertyType: {
-                id: 'timeInterval',
-                name: 'timeInterval',
-                type: 'type',
-              },
-            },
-          ],
-        },
-      };
-
-      render(<CustomPropertiesSection {...timeIntervalProps} />);
-
-      expect(screen.getByText(/label\.start-entity/)).toBeInTheDocument();
-      expect(screen.getByText(/1710831125922/)).toBeInTheDocument();
-      expect(screen.getByText(/label\.end-entity/)).toBeInTheDocument();
-      expect(screen.getByText(/1711176725922/)).toBeInTheDocument();
-    });
-
-    it('should handle range property type (start/end)', () => {
-      const rangeData = {
-        extension: {
-          rangeProp: {
-            start: 10,
-            end: 100,
-          },
-        },
-      };
-
-      const rangeProps = {
-        ...defaultProps,
-        entityData: rangeData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'rangeProp',
-              displayName: 'Range Property',
-              description: 'Range Property description',
-              propertyType: { id: 'range', name: 'range', type: 'type' },
-            },
-          ],
-        },
-      };
-
-      render(<CustomPropertiesSection {...rangeProps} />);
-
-      expect(screen.getByText(/label\.start-entity.*10/)).toBeInTheDocument();
-      expect(screen.getByText(/label\.end-entity.*100/)).toBeInTheDocument();
-    });
-
-    it('should handle user entity reference with ProfilePicture', () => {
-      const userRefData = {
-        extension: {
-          userRef: {
-            id: 'user-123',
-            type: 'user',
-            name: 'john.doe',
-            fullyQualifiedName: 'john.doe',
-            displayName: 'John Doe',
-          },
-        },
-      };
-
-      const userRefProps = {
-        ...defaultProps,
-        entityData: userRefData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'userRef',
-              displayName: 'User Reference',
-              description: 'User Reference description',
-              propertyType: {
-                id: 'userRef',
-                name: 'entityReference',
-                type: 'type',
-              },
-            },
-          ],
-        },
-      };
-
-      const { container } = render(
-        <CustomPropertiesSection {...userRefProps} />
-      );
-
-      const linkElement = container.querySelector('a');
-
-      expect(linkElement).toBeInTheDocument();
-    });
-
-    it('should handle team entity reference with ProfilePicture', () => {
-      const teamRefData = {
-        extension: {
-          teamRef: {
-            id: 'team-123',
-            type: 'team',
-            name: 'engineering',
-            fullyQualifiedName: 'engineering',
-            displayName: 'Engineering Team',
-          },
-        },
-      };
-
-      const teamRefProps = {
-        ...defaultProps,
-        entityData: teamRefData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'teamRef',
-              displayName: 'Team Reference',
-              description: 'Team Reference description',
-              propertyType: {
-                id: 'teamRef',
-                name: 'entityReference',
-                type: 'type',
-              },
-            },
-          ],
-        },
-      };
-
-      const { container } = render(
-        <CustomPropertiesSection {...teamRefProps} />
-      );
-
-      const linkElement = container.querySelector('a');
-
-      expect(linkElement).toBeInTheDocument();
-    });
-
-    it('should handle displayName property in entity objects', () => {
-      const displayNameData = {
-        extension: {
-          displayNameProp: {
-            name: 'internalName',
-            displayName: 'User Friendly Name',
-          },
-        },
-      };
-
-      const displayNameProps = {
-        ...defaultProps,
-        entityData: displayNameData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'displayNameProp',
-              displayName: 'Display Name Property',
-              description: 'Display Name Property description',
-              propertyType: { id: 'obj', name: 'object', type: 'type' },
-            },
-          ],
-        },
-      };
-
-      render(<CustomPropertiesSection {...displayNameProps} />);
-
-      expect(screen.getByText('internalName')).toBeInTheDocument();
-    });
-
-    it('should handle fallback to name when displayName is not present', () => {
-      const nameOnlyData = {
-        extension: {
-          nameOnlyProp: {
-            name: 'onlyNameAvailable',
-          },
-        },
-      };
-
-      const nameOnlyProps = {
-        ...defaultProps,
-        entityData: nameOnlyData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'nameOnlyProp',
-              displayName: 'Name Only Property',
-              description: 'Name Only Property description',
-              propertyType: { id: 'obj', name: 'object', type: 'type' },
-            },
-          ],
-        },
-      };
-
-      render(<CustomPropertiesSection {...nameOnlyProps} />);
-
-      expect(screen.getByText('onlyNameAvailable')).toBeInTheDocument();
-    });
-
-    it('should convert non-string primitives to strings', () => {
-      const primitiveData = {
-        extension: {
-          numberProp: 42,
-          booleanProp: true,
-        },
-      };
-
-      const primitiveProps = {
-        ...defaultProps,
-        entityData: primitiveData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'numberProp',
-              displayName: 'Number Property',
-              description: 'Number Property description',
-              propertyType: { id: 'num', name: 'number', type: 'type' },
-            },
-            {
-              name: 'booleanProp',
-              displayName: 'Boolean Property',
-              description: 'Boolean Property description',
-              propertyType: { id: 'bool', name: 'boolean', type: 'type' },
-            },
-          ],
-        },
-      };
-
-      render(<CustomPropertiesSection {...primitiveProps} />);
-
-      expect(screen.getByText('42')).toBeInTheDocument();
-      expect(screen.getByText('true')).toBeInTheDocument();
-    });
-
-    it('should handle empty enum array', () => {
-      const emptyEnumData = {
-        extension: {
-          emptyEnum: [],
-        },
-      };
-
-      const emptyEnumProps = {
-        ...defaultProps,
-        entityData: emptyEnumData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'emptyEnum',
-              displayName: 'Empty Enum',
-              description: 'Empty Enum description',
-              propertyType: { id: 'enum', name: 'enum', type: 'type' },
-            },
-          ],
-        },
-      };
-
-      render(<CustomPropertiesSection {...emptyEnumProps} />);
-
-      expect(screen.getByText('label.not-set')).toBeInTheDocument();
-    });
-
-    it('should handle mixed entityReferenceList with users and other entities', () => {
-      const mixedRefListData = {
-        extension: {
-          mixedRefList: [
-            {
-              id: 'user-1',
-              type: 'user',
-              name: 'user1',
-              fullyQualifiedName: 'user1',
-            },
-            {
-              id: 'table-1',
-              type: 'table',
-              name: 'table1',
-              fullyQualifiedName: 'db.table1',
-            },
-            {
-              id: 'team-1',
-              type: 'team',
-              name: 'team1',
-              fullyQualifiedName: 'team1',
-            },
-          ],
-        },
-      };
-
-      const mixedRefListProps = {
-        ...defaultProps,
-        entityData: mixedRefListData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'mixedRefList',
-              displayName: 'Mixed Reference List',
-              description: 'Mixed Reference List description',
-              propertyType: {
-                id: 'mixed',
-                name: 'entityReferenceList',
-                type: 'type',
-              },
-            },
-          ],
-        },
-      };
-
-      const { container } = render(
-        <CustomPropertiesSection {...mixedRefListProps} />
-      );
-
-      const links = container.querySelectorAll('a');
-
-      expect(links).toHaveLength(3);
-    });
-
-    it('should handle table with custom column widths', () => {
-      const tableData = {
-        extension: {
-          tableProp: {
-            rows: [{ col1: 'value1', col2: 'value2', col3: 'value3' }],
-            columns: ['col1', 'col2', 'col3'],
-          },
-        },
-      };
-
-      const tableProps = {
-        ...defaultProps,
-        entityData: tableData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'tableProp',
-              displayName: 'Table Property',
-              description: 'Table Property description',
-              propertyType: { id: 'table', name: 'table', type: 'type' },
-            },
-          ],
-        },
-      };
-
-      const { container } = render(<CustomPropertiesSection {...tableProps} />);
-
-      const cols = container.querySelectorAll('colgroup col');
-
-      expect(cols).toHaveLength(3);
-
-      cols.forEach((col) => {
-        expect(col).toHaveClass('table-col-min-width');
-      });
-    });
-
-    it('should handle zero values', () => {
-      const zeroData = {
-        extension: {
-          zeroProp: 0,
-          zeroStartProp: { start: 0, end: 10 },
-        },
-      };
-
-      const zeroProps = {
-        ...defaultProps,
-        entityData: zeroData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'zeroProp',
-              displayName: 'Zero Property',
-              description: 'Zero Property description',
-              propertyType: { id: 'num', name: 'number', type: 'type' },
-            },
-            {
-              name: 'zeroStartProp',
-              displayName: 'Zero Start Property',
-              description: 'Zero Start Property description',
-              propertyType: { id: 'range', name: 'range', type: 'type' },
-            },
-          ],
-        },
-      };
-
-      render(<CustomPropertiesSection {...zeroProps} />);
-
-      expect(screen.getByText('0')).toBeInTheDocument();
-      expect(screen.getByText(/label\.start-entity.*0/)).toBeInTheDocument();
-    });
-
-    it('should handle false boolean value', () => {
-      const falseData = {
-        extension: {
-          falseProp: false,
-        },
-      };
-
-      const falseProps = {
-        ...defaultProps,
-        entityData: falseData,
-        entityTypeDetail: {
-          customProperties: [
-            {
-              name: 'falseProp',
-              displayName: 'False Property',
-              description: 'False Property description',
-              propertyType: { id: 'bool', name: 'boolean', type: 'type' },
-            },
-          ],
-        },
-      };
-
-      render(<CustomPropertiesSection {...falseProps} />);
-
-      expect(screen.getByText('false')).toBeInTheDocument();
+      expect(properties).toHaveLength(1);
+      expect(properties[0]).toHaveTextContent('valid-property');
     });
   });
 });
