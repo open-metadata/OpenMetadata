@@ -29,6 +29,7 @@ import {
   importContractFromODCSYaml,
   parseODCSYaml,
   updateContract,
+  validateContractYaml,
   validateODCSYaml,
 } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -120,6 +121,7 @@ jest.mock('../../../rest/contractAPI', () => ({
   importContractFromODCSYaml: jest.fn(),
   parseODCSYaml: jest.fn(),
   updateContract: jest.fn(),
+  validateContractYaml: jest.fn(),
   validateODCSYaml: jest.fn(),
 }));
 
@@ -214,6 +216,9 @@ jest.mock('react-i18next', () => ({
         'label.or-drag-and-drop': 'or drag and drop',
         'message.upload-file-description':
           'Upload a contract file to import or validate',
+        'label.contract-validation': 'Contract Validation',
+        'label.validation-failed': 'Validation Failed',
+        'label.error-plural': 'Errors',
       };
 
       return translations[key] || key;
@@ -308,10 +313,22 @@ describe('ContractImportModal', () => {
       hasMultipleObjects: false,
     });
     (validateODCSYaml as jest.Mock).mockResolvedValue({
-      passed: 1,
-      failed: 0,
-      total: 1,
-      failedFields: [],
+      valid: true,
+      schemaValidation: {
+        passed: 1,
+        failed: 0,
+        total: 1,
+        failedFields: [],
+      },
+    });
+    (validateContractYaml as jest.Mock).mockResolvedValue({
+      valid: true,
+      schemaValidation: {
+        passed: 1,
+        failed: 0,
+        total: 1,
+        failedFields: [],
+      },
     });
   });
 
@@ -1040,10 +1057,13 @@ describe('ContractImportModal', () => {
 
     it('should show validation failed state with failed fields', async () => {
       (validateODCSYaml as jest.Mock).mockResolvedValue({
-        passed: 0,
-        failed: 2,
-        total: 2,
-        failedFields: ['field1', 'field2'],
+        valid: false,
+        schemaValidation: {
+          passed: 0,
+          failed: 2,
+          total: 2,
+          failedFields: ['field1', 'field2'],
+        },
       });
 
       render(
@@ -1106,6 +1126,150 @@ describe('ContractImportModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Server validation error')).toBeInTheDocument();
+      });
+    });
+
+    it('should show entity validation errors when entityErrors are present', async () => {
+      (validateODCSYaml as jest.Mock).mockResolvedValue({
+        valid: false,
+        entityErrors: [
+          'name must match "^((?!::).)*$"',
+          'name size must be between 1 and 256',
+        ],
+        schemaValidation: {
+          passed: 1,
+          failed: 0,
+          total: 1,
+          failedFields: [],
+        },
+      });
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([validODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('entity-validation-error-panel')
+        ).toBeInTheDocument();
+        expect(screen.getByText('Contract Validation')).toBeInTheDocument();
+        expect(screen.getByText('Failed')).toBeInTheDocument();
+        expect(
+          screen.getByText('name must match "^((?!::).)*$"')
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText('name size must be between 1 and 256')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should show constraint errors when constraintErrors are present', async () => {
+      (validateODCSYaml as jest.Mock).mockResolvedValue({
+        valid: false,
+        constraintErrors: [
+          'Entity type "unsupported" is not supported for data contracts',
+        ],
+        schemaValidation: {
+          passed: 0,
+          failed: 0,
+          total: 0,
+          failedFields: [],
+        },
+      });
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([validODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('entity-validation-error-panel')
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            'Entity type "unsupported" is not supported for data contracts'
+          )
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should disable import button when entity errors are present', async () => {
+      (validateODCSYaml as jest.Mock).mockResolvedValue({
+        valid: false,
+        entityErrors: ['name size must be between 1 and 256'],
+        schemaValidation: {
+          passed: 1,
+          failed: 0,
+          total: 1,
+          failedFields: [],
+        },
+      });
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const file = new File([validODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        const importButton = screen.getByRole('button', { name: 'Import' });
+
+        expect(importButton).toBeDisabled();
       });
     });
   });

@@ -732,6 +732,35 @@ slaProperties:
     unit: hours
 `;
 
+// Multi-object YAML without schema properties for import testing
+// (schema validation passes since there are no properties to validate)
+export const ODCS_VALID_MULTI_OBJECT_SIMPLE_YAML = `apiVersion: v3.1.0
+kind: DataContract
+id: multi-object-simple-contract
+name: Multi-Object Simple Contract
+version: "1.0.0"
+status: active
+description:
+  purpose: Contract with multiple schema objects for testing multi-object import (no properties)
+schema:
+  - name: customers
+    logicalType: object
+    physicalType: table
+    description: Customer records table
+  - name: orders
+    logicalType: object
+    physicalType: table
+    description: Customer orders table
+  - name: products
+    logicalType: object
+    physicalType: table
+    description: Product catalog table
+slaProperties:
+  - property: freshness
+    value: "12"
+    unit: hours
+`;
+
 export const ODCS_INVALID_MISSING_APIVERSION_YAML = `kind: DataContract
 id: missing-apiversion
 name: Missing API Version Contract

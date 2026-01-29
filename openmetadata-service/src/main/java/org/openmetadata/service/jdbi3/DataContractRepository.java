@@ -51,6 +51,7 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.LatestResult;
 import org.openmetadata.schema.entity.data.TermsOfUse;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.FailedRule;
 import org.openmetadata.schema.entity.datacontract.QualityValidation;
@@ -102,6 +103,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.ValidatorUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -261,6 +263,50 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   public SchemaValidation validateContractSchema(
       DataContract dataContract, EntityReference entityRef) {
     return validateSchemaFieldsAgainstEntity(dataContract, entityRef);
+  }
+
+  /**
+   * Comprehensive validation that collects all errors without throwing exceptions.
+   * Uses the prepare() method to leverage all existing validation logic.
+   *
+   * @param dataContract The data contract to validate (from CreateDataContract conversion)
+   * @return ContractValidation with comprehensive error reporting
+   */
+  public ContractValidation validateContractWithoutThrowing(DataContract dataContract) {
+    ContractValidation validation = new ContractValidation();
+    validation.setValid(true);
+    List<String> entityErrors = new ArrayList<>();
+    List<String> constraintErrors = new ArrayList<>();
+
+    // First, run Jakarta Bean Validation to catch schema-level errors
+    // (e.g., name too long, invalid pattern, required fields)
+    String beanViolations = ValidatorUtil.validate(dataContract);
+    if (beanViolations != null) {
+      validation.setValid(false);
+      // Parse the violations string "[field1 message1, field2 message2]" into individual errors
+      String violations = beanViolations.substring(1, beanViolations.length() - 1);
+      for (String violation : violations.split(", ")) {
+        entityErrors.add(violation.trim());
+      }
+    }
+
+    // Then run domain-specific validation through prepare()
+    try {
+      prepare(dataContract, false);
+    } catch (Exception e) {
+      validation.setValid(false);
+      constraintErrors.add(e.getMessage());
+    }
+
+    // Get schema validation results (prepare already validated but we want the details)
+    SchemaValidation schemaValidation =
+        validateSchemaFieldsAgainstEntity(dataContract, dataContract.getEntity());
+    validation.setSchemaValidation(schemaValidation);
+
+    validation.setEntityErrors(entityErrors.isEmpty() ? null : entityErrors);
+    validation.setConstraintErrors(constraintErrors.isEmpty() ? null : constraintErrors);
+
+    return validation;
   }
 
   private SchemaValidation validateSchemaFieldsAgainstEntity(
@@ -429,6 +475,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   /**
    * Validates entity-specific constraints for data contracts based on entity type.
+   * Throws BadRequestException if any constraints are violated.
    *
    * Supported entities: table, storedProcedure, database, databaseSchema, dashboard,
    * dashboardDataModel, pipeline, topic, searchIndex, apiCollection, apiEndpoint, api,

@@ -22,8 +22,8 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
-import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
@@ -4543,16 +4543,20 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             + "  - name: name\n"
             + "    logicalType: string\n";
 
-    SchemaValidation validation =
+    ContractValidation validation =
         SdkClients.adminClient()
             .dataContracts()
             .validateODCSYaml(yamlContent, table.getId(), "table");
 
     assertNotNull(validation);
-    assertEquals(2, validation.getTotal());
-    assertEquals(2, validation.getPassed());
-    assertEquals(0, validation.getFailed());
-    assertTrue(validation.getFailedFields() == null || validation.getFailedFields().isEmpty());
+    assertTrue(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    assertEquals(2, validation.getSchemaValidation().getTotal());
+    assertEquals(2, validation.getSchemaValidation().getPassed());
+    assertEquals(0, validation.getSchemaValidation().getFailed());
+    assertTrue(
+        validation.getSchemaValidation().getFailedFields() == null
+            || validation.getSchemaValidation().getFailedFields().isEmpty());
   }
 
   @Test
@@ -4586,19 +4590,21 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             + "  - name: order_total\n"
             + "    logicalType: number\n";
 
-    SchemaValidation validation =
+    ContractValidation validation =
         SdkClients.adminClient()
             .dataContracts()
             .validateODCSYaml(yamlContent, table.getId(), "table");
 
     assertNotNull(validation);
-    assertEquals(2, validation.getTotal());
-    assertEquals(0, validation.getPassed());
-    assertEquals(2, validation.getFailed());
-    assertNotNull(validation.getFailedFields());
-    assertEquals(2, validation.getFailedFields().size());
-    assertTrue(validation.getFailedFields().contains("customer_id"));
-    assertTrue(validation.getFailedFields().contains("order_total"));
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    assertEquals(2, validation.getSchemaValidation().getTotal());
+    assertEquals(0, validation.getSchemaValidation().getPassed());
+    assertEquals(2, validation.getSchemaValidation().getFailed());
+    assertNotNull(validation.getSchemaValidation().getFailedFields());
+    assertEquals(2, validation.getSchemaValidation().getFailedFields().size());
+    assertTrue(validation.getSchemaValidation().getFailedFields().contains("customer_id"));
+    assertTrue(validation.getSchemaValidation().getFailedFields().contains("order_total"));
   }
 
   @Test
@@ -4638,18 +4644,20 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             + "  - name: nonexistent_field\n"
             + "    logicalType: string\n";
 
-    SchemaValidation validation =
+    ContractValidation validation =
         SdkClients.adminClient()
             .dataContracts()
             .validateODCSYaml(yamlContent, table.getId(), "table");
 
     assertNotNull(validation);
-    assertEquals(3, validation.getTotal());
-    assertEquals(2, validation.getPassed());
-    assertEquals(1, validation.getFailed());
-    assertNotNull(validation.getFailedFields());
-    assertEquals(1, validation.getFailedFields().size());
-    assertTrue(validation.getFailedFields().contains("nonexistent_field"));
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    assertEquals(3, validation.getSchemaValidation().getTotal());
+    assertEquals(2, validation.getSchemaValidation().getPassed());
+    assertEquals(1, validation.getSchemaValidation().getFailed());
+    assertNotNull(validation.getSchemaValidation().getFailedFields());
+    assertEquals(1, validation.getSchemaValidation().getFailedFields().size());
+    assertTrue(validation.getSchemaValidation().getFailedFields().contains("nonexistent_field"));
   }
 
   @Test
@@ -4669,15 +4677,17 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             + "version: '1.0.0'\n"
             + "status: active\n";
 
-    SchemaValidation validation =
+    ContractValidation validation =
         SdkClients.adminClient()
             .dataContracts()
             .validateODCSYaml(yamlContent, table.getId(), "table");
 
     assertNotNull(validation);
-    assertEquals(0, validation.getTotal());
-    assertEquals(0, validation.getPassed());
-    assertEquals(0, validation.getFailed());
+    assertTrue(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    assertEquals(0, validation.getSchemaValidation().getTotal());
+    assertEquals(0, validation.getSchemaValidation().getPassed());
+    assertEquals(0, validation.getSchemaValidation().getFailed());
   }
 
   @Test
@@ -4734,14 +4744,16 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             + "    logicalType: integer\n";
 
     // Call validation endpoint
-    SchemaValidation validation =
+    ContractValidation validation =
         SdkClients.adminClient()
             .dataContracts()
             .validateODCSYaml(yamlContent, table.getId(), "table");
 
     assertNotNull(validation);
-    assertEquals(1, validation.getTotal());
-    assertEquals(1, validation.getPassed());
+    assertTrue(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    assertEquals(1, validation.getSchemaValidation().getTotal());
+    assertEquals(1, validation.getSchemaValidation().getPassed());
 
     // Verify that no contract was created
     assertThrows(
@@ -5755,16 +5767,18 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             + "    logicalType: string\n";
 
     // Validation should pass for column existence (type validation is separate concern)
-    SchemaValidation validation =
+    ContractValidation validation =
         SdkClients.adminClient()
             .dataContracts()
             .validateODCSYaml(yamlContent, table.getId(), "table");
 
     assertNotNull(validation);
+    assertTrue(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
     // Columns exist, so validation passes for field existence
-    assertEquals(2, validation.getTotal());
-    assertEquals(2, validation.getPassed());
-    assertEquals(0, validation.getFailed());
+    assertEquals(2, validation.getSchemaValidation().getTotal());
+    assertEquals(2, validation.getSchemaValidation().getPassed());
+    assertEquals(0, validation.getSchemaValidation().getFailed());
   }
 
   @Test
@@ -5872,14 +5886,17 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     // Validation should handle duplicate column names
     try {
-      SchemaValidation validation =
+      ContractValidation validation =
           SdkClients.adminClient()
               .dataContracts()
               .validateODCSYaml(yamlContent, table.getId(), "table");
 
       assertNotNull(validation);
+      assertNotNull(validation.getSchemaValidation());
       // The validation counts may vary based on how duplicates are handled
-      assertTrue(validation.getTotal() >= 2, "Should validate at least the unique columns");
+      assertTrue(
+          validation.getSchemaValidation().getTotal() >= 2,
+          "Should validate at least the unique columns");
     } catch (OpenMetadataException e) {
       // If validation rejects duplicates, that's acceptable
       assertTrue(
@@ -6077,5 +6094,194 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     boolean hasLatency =
         exportedOdcs.getSlaProperties().stream().anyMatch(p -> "latency".equals(p.getProperty()));
     assertTrue(hasLatency, "Export should contain latency SLA added via UI");
+  }
+
+  // ==================== OM Format Validation Endpoint Tests ====================
+
+  @Test
+  void testValidateContractRequestValid(TestNamespace ns) {
+    Table table =
+        createTestTable(
+            ns,
+            List.of(
+                new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+                new Column()
+                    .withName("name")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("validate_valid"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Test validation")
+            .withSchema(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+                    new Column()
+                        .withName("name")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)));
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertTrue(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    assertEquals(2, validation.getSchemaValidation().getTotal());
+    assertEquals(2, validation.getSchemaValidation().getPassed());
+    assertEquals(0, validation.getSchemaValidation().getFailed());
+    assertNull(validation.getEntityErrors());
+    assertNull(validation.getConstraintErrors());
+  }
+
+  @Test
+  void testValidateContractRequestNameTooLong(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    String longName = "x".repeat(300);
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(longName)
+            .withEntity(table.getEntityReference())
+            .withDescription("Test name too long");
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getConstraintErrors());
+    assertTrue(
+        validation.getConstraintErrors().stream().anyMatch(e -> e.contains("256 characters")));
+  }
+
+  @Test
+  void testValidateContractRequestUnsupportedEntityType(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    EntityReference fakeEntity =
+        new EntityReference().withId(table.getId()).withType("unsupportedType");
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("unsupported_type"))
+            .withEntity(fakeEntity)
+            .withDescription("Test unsupported entity type");
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getConstraintErrors());
+    assertTrue(
+        validation.getConstraintErrors().stream()
+            .anyMatch(e -> e.contains("not supported for data contracts")));
+  }
+
+  @Test
+  void testValidateContractRequestSchemaFieldMismatch(TestNamespace ns) {
+    Table table =
+        createTestTable(
+            ns,
+            List.of(
+                new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+                new Column()
+                    .withName("name")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("schema_mismatch"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Test schema field mismatch")
+            .withSchema(
+                List.of(
+                    new Column().withName("nonexistent_column").withDataType(ColumnDataType.BIGINT),
+                    new Column()
+                        .withName("another_missing")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)));
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    assertEquals(2, validation.getSchemaValidation().getTotal());
+    assertEquals(0, validation.getSchemaValidation().getPassed());
+    assertEquals(2, validation.getSchemaValidation().getFailed());
+    assertTrue(validation.getSchemaValidation().getFailedFields().contains("nonexistent_column"));
+    assertTrue(validation.getSchemaValidation().getFailedFields().contains("another_missing"));
+  }
+
+  @Test
+  void testValidateContractDoesNotCreateContract(TestNamespace ns) {
+    Table table =
+        createTestTable(ns, List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("validate_no_create"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Validation should not create contract")
+            .withSchema(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertTrue(validation.getValid());
+
+    // Verify that no contract was actually created
+    assertThrows(
+        OpenMetadataException.class,
+        () -> SdkClients.adminClient().dataContracts().getByEntityId(table.getId(), "table"),
+        "Validation should not create a contract");
+  }
+
+  @Test
+  void testODCSValidationReturnsContractValidation(TestNamespace ns) {
+    Table table =
+        createTestTable(
+            ns,
+            List.of(
+                new Column().withName("id").withDataType(ColumnDataType.INT),
+                new Column()
+                    .withName("name")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + ns.prefix("odcs_contract_validation")
+            + "\n"
+            + "name: "
+            + ns.prefix("odcs_contract_validation")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "schema:\n"
+            + "  - name: id\n"
+            + "    logicalType: integer\n"
+            + "  - name: name\n"
+            + "    logicalType: string\n";
+
+    ContractValidation validation =
+        SdkClients.adminClient()
+            .dataContracts()
+            .validateODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(validation);
+    assertTrue(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    assertNull(validation.getEntityErrors());
+    assertNull(validation.getConstraintErrors());
   }
 }

@@ -27,6 +27,7 @@ import {
   ODCS_VALID_BASIC_YAML,
   ODCS_VALID_DRAFT_STATUS_YAML,
   ODCS_VALID_FULL_YAML,
+  ODCS_VALID_MULTI_OBJECT_SIMPLE_YAML,
   ODCS_VALID_MULTI_OBJECT_YAML,
   ODCS_VALID_QUALITY_RULES_BETWEEN_YAML,
   ODCS_VALID_WITH_MARKDOWN_DESCRIPTION_YAML,
@@ -1611,7 +1612,7 @@ version: "1.0.0"`;
     }
   });
 
-  test('Multi-object ODCS contract - selecting object enables import', async ({
+  test('Multi-object ODCS contract - selecting object enables import and completes import', async ({
     page,
   }) => {
     const table = new TableClass();
@@ -1625,11 +1626,12 @@ version: "1.0.0"`;
 
       await page.getByTestId('import-contract-modal').waitFor();
 
+      // Use the simple multi-object YAML (no properties) to avoid schema validation failures
       const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
-        name: 'valid-multi-object.yaml',
+        name: 'valid-multi-object-simple.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_VALID_MULTI_OBJECT_YAML),
+        buffer: Buffer.from(ODCS_VALID_MULTI_OBJECT_SIMPLE_YAML),
       });
 
       // Wait for object selector to appear
@@ -1641,20 +1643,37 @@ version: "1.0.0"`;
       await page.getByTestId('schema-object-select').click();
       await page.getByTestId('schema-object-option-customers').click();
 
-      // Wait for validation to complete after selecting object
-      await page.waitForTimeout(2000);
-
-      // Import button should now be enabled (or disabled if schema validation fails)
-      // For this test, we just verify the selector works
+      // Verify selector shows the selected object
       await expect(page.getByTestId('schema-object-select')).toContainText(
         'customers'
       );
 
-      // Close modal
-      await page
-        .getByTestId('cancel-button')
-        .filter({ hasText: /cancel/i })
-        .click();
+      // Wait for server validation to complete after selecting object
+      await expect(page.getByTestId('validation-success-panel')).toBeVisible({
+        timeout: 15000,
+      });
+
+      // Import button should be enabled after successful validation
+      const importButton = page.getByTestId('import-button');
+      await expect(importButton).toBeEnabled({ timeout: 10000 });
+
+      // Click import to complete the flow
+      await importButton.click();
+
+      // Verify contract was created successfully
+      await expect(page.getByTestId('contract-title')).toBeVisible({
+        timeout: 15000,
+      });
+
+      // Verify the contract has the name from the multi-object YAML
+      await expect(page.getByTestId('contract-title')).toContainText(
+        'Multi-Object Simple Contract'
+      );
+
+      // Verify SLA card is visible (the simple YAML has SLA properties)
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible({
+        timeout: 10000,
+      });
     } finally {
       await table.delete(apiContext);
     }
@@ -1983,6 +2002,120 @@ version: "1.0.0"`;
 
       // Link text
       await expect(markdownParser).toContainText('documentation');
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  // OpenMetadata (OM) Format Export/Import Round Trip Tests
+
+  test('OM format export and import round trip - create, export, delete, reimport', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+    const contractName = `OM Round Trip Contract ${Date.now()}`;
+
+    try {
+      // Step 1: Create a contract via API with all properties including termsOfUse
+      const createContractPayload = {
+        name: contractName,
+        description: 'Contract for testing OM format export/import round trip',
+        entity: {
+          id: table.entity.id,
+          type: 'table',
+        },
+        termsOfUse: 'These are the terms of use for the data contract. Data must be used responsibly.',
+        sla: {
+          refreshFrequency: {
+            interval: 24,
+            timeUnit: 'Hour',
+          },
+          maxLatency: {
+            value: 2,
+            timeUnit: 'Hour',
+          },
+        },
+      };
+
+      const createResponse = await apiContext.post('/api/v1/dataContracts', {
+        data: createContractPayload,
+      });
+      expect(createResponse.ok()).toBeTruthy();
+      const createdContract = await createResponse.json();
+
+      // Navigate to the contract tab and verify it was created
+      await navigateToContractTab(page, table);
+      await expect(page.getByTestId('contract-title')).toBeVisible();
+      await expect(page.getByTestId('contract-title')).toContainText(
+        contractName
+      );
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Step 2: Export as OpenMetadata (OM) format
+      const omDownloadPromise = page.waitForEvent('download');
+      await page.getByTestId('manage-contract-actions').click();
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
+      await page.getByTestId('export-contract-button').click();
+
+      const omDownload = await omDownloadPromise;
+      const omTempPath = `/tmp/om-roundtrip-export-${Date.now()}.yaml`;
+      await omDownload.saveAs(omTempPath);
+
+      // Read the exported OM YAML content
+      const fsModule = await import('fs');
+      const omYamlContent = fsModule.readFileSync(omTempPath, 'utf-8');
+
+      // Verify exported YAML contains expected fields
+      expect(omYamlContent).toContain('name:');
+      expect(omYamlContent).toContain('termsOfUse:');
+      expect(omYamlContent).toContain('sla:');
+      // Verify system fields are NOT in the export
+      expect(omYamlContent).not.toContain('createdAt:');
+      expect(omYamlContent).not.toContain('createdBy:');
+
+      // Step 3: Delete the contract via API
+      await apiContext.delete(
+        `/api/v1/dataContracts/${createdContract.id}?hardDelete=true&recursive=true`
+      );
+
+      // Step 4: Import the exported OM YAML via API
+      const importResponse = await apiContext.put('/api/v1/dataContracts', {
+        data: omYamlContent,
+        headers: {
+          'Content-Type': 'application/yaml',
+        },
+      });
+
+      // Verify the import succeeded
+      expect(importResponse.ok()).toBeTruthy();
+      const importedContract = await importResponse.json();
+      expect(importedContract.name).toBe(contractName);
+      expect(importedContract.termsOfUse).toBeDefined();
+      expect(importedContract.termsOfUse.content).toContain(
+        'terms of use for the data contract'
+      );
+      expect(importedContract.sla).toBeDefined();
+
+      // Step 5: Navigate back to the contract tab and verify the reimported contract
+      await navigateToContractTab(page, table);
+
+      // Verify the reimported contract is displayed with correct data
+      await expect(page.getByTestId('contract-title')).toBeVisible();
+      await expect(page.getByTestId('contract-title')).toContainText(
+        contractName
+      );
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Cleanup temp file
+      fsModule.unlinkSync(omTempPath);
     } finally {
       await table.delete(apiContext);
     }
