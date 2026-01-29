@@ -301,8 +301,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withStyle(getStyle(csvRecord))
           .withExtension(getExtension(printer, csvRecord, 13));
 
-      // Validate during dry run to catch logical errors early
-      if (processRecord && importResult.getDryRun()) {
+      // Validate to catch logical errors for both dry run and actual import
+      if (processRecord) {
         try {
           repository.validateForDryRun(glossaryTerm, dryRunCreatedEntities);
         } catch (Exception ex) {
