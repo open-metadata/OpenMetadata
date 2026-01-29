@@ -604,7 +604,7 @@ class SalesforceUnitTest(TestCase):
         )
         salesforce_source = SalesforceSource.create(
             mock_salesforce_multi_objects_config["source"],
-            config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(config=config.workflowConfig.openMetadataServerConfig),
         )
         self.assertEqual(
             salesforce_source.service_connection.sobjectNames,
