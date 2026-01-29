@@ -217,11 +217,66 @@ function buildParameters(
 }
 
 /**
- * Builds an Elasticsearch query for extension (custom property) fields.
- * With the flattened extension type, we use customPropertiesFlat field
- * which stores key:value pairs.
+ * Extracts the base property name from a potentially nested field path.
+ * Complex custom property types (entityReference, timeInterval, hyperlink, etc.)
+ * have nested paths like "userref.displayName.keyword" or "timeInterval.start".
+ * This function strips those suffixes to get the base property name.
  *
- * @param {string} propertyName - The custom property name (without .keyword suffix)
+ * Examples:
+ *   - "userref.displayName.keyword" -> "userref" (entityReference)
+ *   - "timeInterval.start" -> "timeInterval" (timeInterval)
+ *   - "link.url.keyword" -> "link" (hyperlink-cp)
+ *   - "mytable.rows.col1.keyword" -> "mytable" (table-cp)
+ *   - "mystring.keyword" -> "mystring" (string)
+ *   - "myenum.keyword" -> "myenum" (enum)
+ *
+ * @param {string} propertyName - The full property name with potential nested path
+ * @returns {string} - The base property name
+ * @private
+ */
+function getBasePropertyName(propertyName) {
+  // Handle table-cp pattern: propertyName.rows.columnName.keyword
+  const tableMatch = propertyName.match(/^([^.]+)\.rows\./);
+  if (tableMatch) {
+    return tableMatch[1];
+  }
+
+  // Known nested field suffixes for complex custom property types
+  const nestedSuffixes = [
+    '.displayName.keyword',
+    '.displayName',
+    '.name.keyword',
+    '.name',
+    '.fullyQualifiedName.keyword',
+    '.fullyQualifiedName',
+    '.url.keyword',
+    '.url',
+    '.displayText.keyword',
+    '.displayText',
+    '.start',
+    '.end',
+    '.keyword',
+  ];
+
+  let baseName = propertyName;
+  for (const suffix of nestedSuffixes) {
+    if (baseName.endsWith(suffix)) {
+      baseName = baseName.slice(0, -suffix.length);
+
+      break;
+    }
+  }
+
+  return baseName;
+}
+
+/**
+ * Builds an Elasticsearch query for extension (custom property) fields.
+ * With the flattened extension type, we use customPropertiesFuzzy field
+ * for searching since customPropertiesFlat stores concatenated values
+ * (e.g., "userref:Aaron Singh aaron.singh2 \"aaron.singh2\"").
+ *
+ * @param {string} propertyName - The custom property name (may include nested paths)
  * @param {string} entityType - The entity type (table, topic, etc.)
  * @param {any} value - The value to search for
  * @param {string} operator - The query operator
@@ -230,29 +285,36 @@ function buildParameters(
  * @private
  */
 function buildExtensionQuery(propertyName, entityType, value, operator, not) {
-  // Remove .keyword suffix if present
-  const cleanPropertyName = propertyName.replace(/\.keyword$/, '');
+  // Extract base property name, stripping nested paths for complex types
+  // e.g., "userref.displayName.keyword" -> "userref"
+  const basePropertyName = getBasePropertyName(propertyName);
 
-  // Build the key:value pair for customPropertiesFlat
-  const searchValue = `${cleanPropertyName}:${value}`;
-
-  // Build the main query using customPropertiesFlat
+  // Build the main query using customPropertiesFuzzy with match query
+  // This works for all custom property types because:
+  // - Simple strings: stored as "propName:value", match finds "propName value"
+  // - EntityReference: stored as "propName:displayName name fqn", match finds partial values
+  // - TimeInterval: stored as "propName:start end", match finds partial values
+  // - Hyperlink: stored as "propName:displayText url", match finds partial values
   let mainQuery;
-  if (operator === 'like' || operator === 'wildcard') {
-    // For wildcard/like searches, use customPropertiesFuzzy with match
+  if (operator === 'like' || operator === 'wildcard' || operator === 'regexp') {
+    // For wildcard/like/regexp searches, use match with more relaxed matching
     mainQuery = {
       match: {
         customPropertiesFuzzy: {
-          query: `${cleanPropertyName} ${value}`,
+          query: `${basePropertyName} ${value}`,
           operator: 'and',
         },
       },
     };
   } else {
-    // For exact matches, use customPropertiesFlat with term
+    // For equals/exact matches, still use match but require both property name and value
+    // This finds "Aaron Singh" within "userref:Aaron Singh aaron.singh2 \"aaron.singh2\""
     mainQuery = {
-      term: {
-        customPropertiesFlat: searchValue,
+      match: {
+        customPropertiesFuzzy: {
+          query: `${basePropertyName} ${value}`,
+          operator: 'and',
+        },
       },
     };
   }

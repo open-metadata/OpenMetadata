@@ -460,6 +460,10 @@ public final class SearchIndexUtils {
     return new FlattenedCustomProperties(keyValuePairs, fuzzyText.toString().trim());
   }
 
+  /**
+   * Flattens a custom property value into a searchable string.
+   * Handles various types: String, Number, Boolean, List, Map (entityReference, timeInterval, etc.)
+   */
   private static String flattenValue(Object value) {
     if (value == null) {
       return "";
@@ -472,12 +476,83 @@ public final class SearchIndexUtils {
     }
     if (value instanceof List) {
       List<?> list = (List<?>) value;
-      return list.stream().map(SearchIndexUtils::flattenValue).collect(Collectors.joining(","));
+      return list.stream().map(SearchIndexUtils::flattenValue).collect(Collectors.joining(" "));
     }
     if (value instanceof Map) {
-      return JsonUtils.pojoToJson(value);
+      Map<?, ?> map = (Map<?, ?>) value;
+      return flattenMapValue(map);
     }
     return value.toString();
+  }
+
+  /**
+   * Extracts searchable text from Map-based custom property values.
+   * Handles entityReference, timeInterval, hyperlink, table-cp, and other complex types.
+   */
+  private static String flattenMapValue(Map<?, ?> map) {
+    List<String> parts = new ArrayList<>();
+
+    // EntityReference: extract displayName, name, or fullyQualifiedName
+    if (map.containsKey("type") && map.containsKey("id")) {
+      // This looks like an entityReference
+      extractIfPresent(map, "displayName", parts);
+      extractIfPresent(map, "name", parts);
+      extractIfPresent(map, "fullyQualifiedName", parts);
+      if (!parts.isEmpty()) {
+        return String.join(" ", parts);
+      }
+    }
+
+    // TimeInterval: extract start and end
+    if (map.containsKey("start") || map.containsKey("end")) {
+      extractIfPresent(map, "start", parts);
+      extractIfPresent(map, "end", parts);
+      if (!parts.isEmpty()) {
+        return String.join(" ", parts);
+      }
+    }
+
+    // Hyperlink: extract url and displayText
+    if (map.containsKey("url")) {
+      extractIfPresent(map, "displayText", parts);
+      extractIfPresent(map, "url", parts);
+      if (!parts.isEmpty()) {
+        return String.join(" ", parts);
+      }
+    }
+
+    // Table-cp (rows): flatten nested row data
+    if (map.containsKey("rows")) {
+      Object rows = map.get("rows");
+      if (rows instanceof List) {
+        return flattenValue(rows);
+      }
+    }
+
+    // Generic fallback: extract all string/number values from the map
+    for (Map.Entry<?, ?> entry : map.entrySet()) {
+      Object v = entry.getValue();
+      if (v instanceof String || v instanceof Number) {
+        parts.add(v.toString());
+      }
+    }
+
+    if (!parts.isEmpty()) {
+      return String.join(" ", parts);
+    }
+
+    // Last resort: JSON representation
+    return JsonUtils.pojoToJson(map);
+  }
+
+  private static void extractIfPresent(Map<?, ?> map, String key, List<String> parts) {
+    Object value = map.get(key);
+    if (value != null) {
+      String str = value.toString();
+      if (!str.isEmpty()) {
+        parts.add(str);
+      }
+    }
   }
 
   @Getter
