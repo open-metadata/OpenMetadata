@@ -722,20 +722,18 @@ class SampleDataSource(
                 encoding=UTF_8,
             )
         )
-        self.domain = json.load(
-            open(
-                sample_data_folder + "/domains/domain.json",
-                "r",
-                encoding=UTF_8,
-            )
-        )
-        self.data_product = json.load(
-            open(
-                sample_data_folder + "/domains/dataProduct.json",
-                "r",
-                encoding=UTF_8,
-            )
-        )
+        with open(
+            sample_data_folder + "/domains/domain.json",
+            "r",
+            encoding=UTF_8,
+        ) as domain_file:
+            self.domain = json.load(domain_file)
+        with open(
+            sample_data_folder + "/domains/dataProduct.json",
+            "r",
+            encoding=UTF_8,
+        ) as data_product_file:
+            self.data_product = json.load(data_product_file)
 
         # Load data contracts sample data
         try:
@@ -885,15 +883,33 @@ class SampleDataSource(
         yield from self.ingest_data_contracts()
         yield from self.ingest_sagemaker_models()
 
-    def ingest_domains(self):
+    def ingest_domains(self) -> Iterable[Either[CreateDomainRequest]]:
+        """Ingest sample domains"""
+        try:
+            domain_request = CreateDomainRequest(**self.domain)
+            yield Either(right=domain_request)
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="Domain",
+                    error=f"Error ingesting domain: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
-        domain_request = CreateDomainRequest(**self.domain)
-        yield Either(right=domain_request)
-
-    def ingest_data_products(self):
-
-        data_product_request = CreateDataProductRequest(**self.data_product)
-        yield Either(right=data_product_request)
+    def ingest_data_products(self) -> Iterable[Either[CreateDataProductRequest]]:
+        """Ingest sample data products"""
+        try:
+            data_product_request = CreateDataProductRequest(**self.data_product)
+            yield Either(right=data_product_request)
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="DataProduct",
+                    error=f"Error ingesting data product: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def ingest_data_contracts(self) -> Iterable[Either[CreateDataContractRequest]]:
         """
