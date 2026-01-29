@@ -74,6 +74,7 @@ WORKDIR ingestion/
 
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
 COPY ingestion/operators/docker/*.py .
+COPY ingestion/operators/docker/dependency-constraints.txt .
 
 # Disable pip cache dir
 # https://pip.pypa.io/en/stable/topics/caching/#avoiding-caching
@@ -84,9 +85,13 @@ ENV PIP_QUIET=1
 RUN pip install --upgrade pip
 
 ARG INGESTION_DEPENDENCY="all"
-ARG RI_VERSION="1.7.7.3"
-RUN pip install --upgrade pip
-RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
+ARG RI_VERSION="1.7.7.4"
+
+# Use dependency-constraints.txt as constraint file - it contains a known working set of dependency versions
+# This avoids the urllib3 conflict (uses 1.26.20) and prevents resolution-too-deep errors
+RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}" --constraint dependency-constraints.txt
+
+# Install additional extras without constraint since base package is already installed
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 
