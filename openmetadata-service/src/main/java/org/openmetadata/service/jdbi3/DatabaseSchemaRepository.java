@@ -280,11 +280,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     List<UUID> allTableIds =
         schemaToTableIds.values().stream().flatMap(List::stream).distinct().toList();
 
-    // Bulk fetch all table references
+    // Bulk fetch all table references (exclude deleted tables)
     Map<UUID, EntityReference> tableReferences = new HashMap<>();
     if (!allTableIds.isEmpty()) {
       List<EntityReference> tableRefs =
-          Entity.getEntityReferencesByIds(TABLE, allTableIds, Include.ALL);
+          Entity.getEntityReferencesByIdsRespectingInclude(TABLE, allTableIds, Include.NON_DELETED);
       for (EntityReference ref : tableRefs) {
         tableReferences.put(ref.getId(), ref);
       }
