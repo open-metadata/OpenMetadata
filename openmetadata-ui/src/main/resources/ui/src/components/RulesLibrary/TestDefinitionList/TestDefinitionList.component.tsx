@@ -29,6 +29,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -54,7 +55,6 @@ import {
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../common/Loader/Loader';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../common/Table/Table';
@@ -71,6 +71,7 @@ const TestDefinitionList = () => {
     pageSize,
     handlePagingChange,
     handlePageChange,
+    handlePageSizeChange,
     showPagination,
     pagingCursor,
   } = usePaging();
@@ -249,7 +250,10 @@ const TestDefinitionList = () => {
       );
       setIsDeleteModalVisible(false);
       setDefinitionToDelete(undefined);
-      handlePageChange(1);
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
       fetchTestDefinitions();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -261,11 +265,20 @@ const TestDefinitionList = () => {
     setDefinitionToDelete(undefined);
   };
 
-  const handleFormSuccess = () => {
+  const handleFormSuccess = (data?: TestDefinition) => {
     setIsFormVisible(false);
+    if (selectedDefinition && data) {
+      setTestDefinitions((prev) =>
+        prev.map((item) => (item.id === data.id ? data : item))
+      );
+    } else {
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+      fetchTestDefinitions();
+    }
     setSelectedDefinition(undefined);
-    handlePageChange(1);
-    fetchTestDefinitions();
   };
 
   const handleFormCancel = () => {
@@ -421,10 +434,6 @@ const TestDefinitionList = () => {
     currentPage,
   }: PagingHandlerParams) => {
     if (cursorType && paging) {
-      fetchTestDefinitions({
-        [cursorType]: paging[cursorType],
-        total: paging.total,
-      } as Paging);
       handlePageChange(
         currentPage,
         { cursorType, cursorValue: paging[cursorType] },
@@ -435,25 +444,24 @@ const TestDefinitionList = () => {
 
   const customPaginationProps = useMemo(
     () => ({
-      currentPage: currentPage,
-      pageSize: pageSize,
-      paging: paging,
+      currentPage,
+      pageSize,
+      paging,
       pagingHandler: handlePageChangeCallback,
-      showPagination: showPagination,
+      showPagination,
+      isLoading,
+      onShowSizeChange: handlePageSizeChange,
     }),
     [
       currentPage,
       paging,
       pageSize,
-      handlePagingChange,
       handlePageChange,
+      handlePageSizeChange,
       showPagination,
+      isLoading,
     ]
   );
-
-  if (isLoading) {
-    return <Loader />;
-  }
 
   if (!viewPermission) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
@@ -495,22 +503,26 @@ const TestDefinitionList = () => {
           </Card>
         </Col>
         <Col span={24}>
-          {testDefinitions.length > 0 ? (
-            <Table
-              bordered
-              columns={columns}
-              customPaginationProps={customPaginationProps}
-              data-testid="test-definition-table"
-              dataSource={testDefinitions}
-              loading={isLoading}
-              pagination={false}
-              rowKey="id"
-              scroll={{ x: 1200 }}
-              size="small"
-            />
-          ) : (
-            <ErrorPlaceHolder />
-          )}
+          <Table
+            bordered
+            columns={columns}
+            customPaginationProps={customPaginationProps}
+            data-testid="test-definition-table"
+            dataSource={testDefinitions}
+            loading={isLoading}
+            locale={{
+              emptyText: !isLoading && (
+                <ErrorPlaceHolder
+                  className="p-y-lg"
+                  type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+                />
+              ),
+            }}
+            pagination={false}
+            rowKey="id"
+            scroll={{ x: 1200 }}
+            size="small"
+          />
         </Col>
       </Row>
 
