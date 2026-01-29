@@ -50,8 +50,16 @@
           "description": "Stats for the reader step (reading from database)",
           "$ref": "#/definitions/stepStats"
         },
+        "processStats": {
+          "description": "Stats for the process step (building search index documents)",
+          "$ref": "#/definitions/stepStats"
+        },
         "sinkStats": {
           "description": "Stats for the sink step (writing to search index)",
+          "$ref": "#/definitions/stepStats"
+        },
+        "vectorStats": {
+          "description": "Stats for the vector step (generating and indexing vector embeddings)",
           "$ref": "#/definitions/stepStats"
         },
         "entityStats": {
