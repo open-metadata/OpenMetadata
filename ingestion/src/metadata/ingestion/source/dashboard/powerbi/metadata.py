@@ -550,9 +550,7 @@ class PowerbiSource(DashboardServiceSource):
                 if measure.isHidden:
                     measure_type = DataType.MEASURE_HIDDEN
                 expression_text = (
-                    f"Expression : {measure.expression}"
-                    if measure.expression
-                    else ""
+                    f"Expression : {measure.expression}" if measure.expression else ""
                 )
                 description_text = (
                     f"Description : {measure.description}"
