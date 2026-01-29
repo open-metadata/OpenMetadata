@@ -429,8 +429,7 @@ const SchemaTable = () => {
 
   const updateColumnDetails = async (
     columnFqn: string,
-    column: Partial<Column>,
-    field?: keyof Column
+    column: Partial<Column>
   ) => {
     const response = await updateTableColumn(columnFqn, column);
     const cleanResponse = isEmpty(response.children)
@@ -438,12 +437,7 @@ const SchemaTable = () => {
       : response;
 
     setTableColumns((prev) =>
-      prev.map((col) =>
-        col.fullyQualifiedName === columnFqn
-          ? // Have to omit the field which is being updated to avoid persisted old value
-            { ...omit(col, field ?? ''), ...cleanResponse }
-          : col
-      )
+      updateColumnInNestedStructure(prev, columnFqn, cleanResponse)
     );
 
     return response;
@@ -452,13 +446,9 @@ const SchemaTable = () => {
   const handleEditColumnChange = async (columnDescription: string) => {
     if (!isUndefined(editColumn) && editColumn.fullyQualifiedName) {
       try {
-        await updateColumnDetails(
-          editColumn.fullyQualifiedName,
-          {
-            description: columnDescription,
-          },
-          'description'
-        );
+        await updateColumnDetails(editColumn.fullyQualifiedName, {
+          description: columnDescription,
+        });
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -475,13 +465,9 @@ const SchemaTable = () => {
   ) => {
     if (selectedTags && editColumnTag.fullyQualifiedName) {
       try {
-        await updateColumnDetails(
-          editColumnTag.fullyQualifiedName,
-          {
-            tags: selectedTags,
-          },
-          'tags'
-        );
+        await updateColumnDetails(editColumnTag.fullyQualifiedName, {
+          tags: selectedTags,
+        });
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -568,18 +554,14 @@ const SchemaTable = () => {
       editColumnDisplayName.fullyQualifiedName
     ) {
       try {
-        await updateColumnDetails(
-          editColumnDisplayName.fullyQualifiedName,
-          {
-            displayName: displayName,
-            ...(isEmpty(constraint)
-              ? {
-                  removeConstraint: true,
-                }
-              : { constraint }),
-          },
-          'displayName'
-        );
+        await updateColumnDetails(editColumnDisplayName.fullyQualifiedName, {
+          displayName: displayName,
+          ...(isEmpty(constraint)
+            ? {
+                removeConstraint: true,
+              }
+            : { constraint }),
+        });
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
