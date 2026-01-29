@@ -125,7 +125,7 @@ test.describe('Input Output Ports', () => {
 
 
   test.describe('Section 1: Tab Initialization & Empty States', () => {
-    test('Input port button enabled, output port button disabled when no assets', async ({
+    test('Input port button visible, output port button hidden when no assets', async ({
       page,
     }) => {
       const dataProduct = new DataProduct([domain]);
@@ -143,10 +143,11 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify button states', async () => {
-        // Input port button should be ENABLED (can add from any asset in system)
+        // Input port button should be visible in empty state (can add from any asset in system)
+        await expect(page.getByTestId('add-input-port-button')).toBeVisible();
         await expect(page.getByTestId('add-input-port-button')).toBeEnabled();
-        // Output port button should be DISABLED (requires data product assets)
-        await expect(page.getByTestId('add-output-port-button')).toBeDisabled();
+        // Output port button should NOT be visible (requires data product assets first)
+        await expect(page.getByTestId('add-output-port-button')).not.toBeVisible();
       });
     });
 
