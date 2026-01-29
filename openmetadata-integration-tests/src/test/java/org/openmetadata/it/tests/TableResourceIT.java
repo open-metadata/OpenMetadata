@@ -1208,12 +1208,20 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     CreateTable createTableRequest = createRequest(ns.prefix("observability_table"), ns);
     Table table = createEntity(createTableRequest);
 
+    String shortId = UUID.randomUUID().toString().substring(0, 8);
+    org.openmetadata.schema.api.services.CreatePipelineService createPipelineService =
+        new org.openmetadata.schema.api.services.CreatePipelineService()
+            .withName("airflow_" + shortId)
+            .withServiceType(
+                org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType
+                    .Airflow);
+    org.openmetadata.schema.entity.services.PipelineService pipelineService =
+        client.pipelineServices().create(createPipelineService);
+
     CreatePipeline createPipelineRequest =
         new CreatePipeline()
-            .withName(ns.prefix("test_pipeline"))
-            .withService(
-                org.openmetadata.it.factories.PipelineServiceTestFactory.createAirflow(ns)
-                    .getFullyQualifiedName())
+            .withName("pipe_" + shortId)
+            .withService(pipelineService.getFullyQualifiedName())
             .withDescription("Test pipeline for observability");
     Pipeline pipeline = client.pipelines().create(createPipelineRequest);
 
