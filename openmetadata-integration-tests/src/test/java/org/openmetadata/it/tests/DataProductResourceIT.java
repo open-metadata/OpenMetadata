@@ -2717,4 +2717,52 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
     assertEquals(1, inputPorts.getPaging().getTotal());
   }
+
+  @Test
+  void test_deletingAssetRemovesItFromPorts(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_delete_asset_port"))
+            .withDescription("Data product for asset deletion port cleanup test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table inputTable = createTestTable(ns, "del_input", domain);
+    Table outputTable = createTestTable(ns, "del_output", domain);
+    Table survivingTable = createTestTable(ns, "del_surviving", domain);
+
+    // Add input ports
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(
+                List.of(inputTable.getEntityReference(), survivingTable.getEntityReference())));
+
+    // Add output port
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(outputTable.getEntityReference())));
+
+    // Verify ports before deletion
+    assertEquals(2, getInputPorts(dataProduct.getId(), 10, 0).getPaging().getTotal());
+    assertEquals(1, getOutputPorts(dataProduct.getId(), 10, 0).getPaging().getTotal());
+
+    // Hard delete the input table asset
+    Map<String, String> hardDeleteParams = Map.of("hardDelete", "true");
+    SdkClients.adminClient().tables().delete(inputTable.getId().toString(), hardDeleteParams);
+
+    // Verify input port is cleaned up
+    ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, inputPorts.getPaging().getTotal());
+    assertEquals(survivingTable.getId(), getEntityId(inputPorts.getData().get(0)));
+
+    // Hard delete the output table asset
+    SdkClients.adminClient().tables().delete(outputTable.getId().toString(), hardDeleteParams);
+
+    // Verify output port is cleaned up
+    ResultList<Map<String, Object>> outputPorts = getOutputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(0, outputPorts.getPaging().getTotal());
+  }
 }
