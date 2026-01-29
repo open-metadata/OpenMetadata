@@ -13,7 +13,6 @@
 
 import { removeSession } from '@analytics/session-utils';
 import { Auth0Provider } from '@auth0/auth0-react';
-
 import {
   Configuration,
   IPublicClientApplication,
@@ -80,8 +79,6 @@ import {
   clearOidcToken,
   getOidcToken,
   getRefreshToken,
-  setOidcToken,
-  setRefreshToken,
 } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
@@ -199,8 +196,7 @@ export const AuthProvider = ({
     removeSession();
 
     // Clear tokens properly during logout
-    await setOidcToken('');
-    await setRefreshToken('');
+    await clearOidcToken();
 
     setApplicationLoading(false);
 
