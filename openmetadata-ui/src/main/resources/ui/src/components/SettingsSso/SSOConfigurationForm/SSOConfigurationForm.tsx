@@ -32,6 +32,8 @@ import {
   AuthorizerConfiguration,
   getSSOUISchema,
   GOOGLE_SSO_DEFAULTS,
+  NON_OIDC_SPECIFIC_FIELDS,
+  OIDC_SPECIFIC_FIELDS,
   VALIDATION_STATUS,
 } from '../../../constants/SSO.constant';
 import { User } from '../../../generated/entity/teams/user';
@@ -96,19 +98,6 @@ const widgets = {
   SelectWidget: SelectWidget,
   LdapRoleMappingWidget: LdapRoleMappingWidget,
 };
-
-const OIDC_SPECIFIC_FIELDS = [
-  'callbackUrl',
-  'clientId',
-  'authority',
-  'publicKeyUrls',
-];
-
-const NON_OIDC_SPECIFIC_FIELDS = [
-  'ldapConfiguration',
-  'samlConfiguration',
-  'clientType',
-];
 
 const SSOConfigurationFormRJSF = ({
   forceEditMode = false,

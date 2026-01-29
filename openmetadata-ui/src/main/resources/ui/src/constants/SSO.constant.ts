@@ -52,6 +52,20 @@ export const SAML_SSO_DEFAULTS = {
   },
 };
 
+// Provider-specific schema field lists
+export const OIDC_SPECIFIC_FIELDS = [
+  'callbackUrl',
+  'clientId',
+  'authority',
+  'publicKeyUrls',
+];
+
+export const NON_OIDC_SPECIFIC_FIELDS = [
+  'ldapConfiguration',
+  'samlConfiguration',
+  'clientType',
+];
+
 // Common UI field configurations to reduce duplication
 export const COMMON_UI_FIELDS = {
   clientId: {
