@@ -364,7 +364,6 @@ export const InputOutputPortsTab = forwardRef<
                     <Button
                       className="h-8 flex items-center"
                       data-testid="add-input-port-button"
-                      disabled={assetCount === 0}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleAddInputPort();
@@ -407,9 +406,7 @@ export const InputOutputPortsTab = forwardRef<
                       size={SIZE.SMALL}
                       type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
                       <Typography className="text-center">
-                        {assetCount === 0
-                          ? t('message.no-assets-for-input-ports')
-                          : t('message.no-input-ports-added')}
+                        {t('message.no-input-ports-added')}
                       </Typography>
                     </ErrorPlaceHolder>
                   ) : (
@@ -531,7 +528,6 @@ export const InputOutputPortsTab = forwardRef<
         <AssetSelectionDrawer
           entityFqn={dataProductFqn}
           open={isAddingInputPort}
-          queryFilter={portQueryFilter}
           title={t('label.add-entity', {
             entity: t('label.entity-port-plural', { entity: t('label.input') }),
           })}
@@ -542,6 +538,7 @@ export const InputOutputPortsTab = forwardRef<
 
         <AssetSelectionDrawer
           entityFqn={dataProductFqn}
+          infoBannerText={t('message.output-ports-from-data-product-assets')}
           open={isAddingOutputPort}
           queryFilter={portQueryFilter}
           title={t('label.add-entity', {

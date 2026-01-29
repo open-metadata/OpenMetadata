@@ -125,7 +125,7 @@ test.describe('Input Output Ports', () => {
 
 
   test.describe('Section 1: Tab Initialization & Empty States', () => {
-    test('Add buttons disabled when no assets attached to Data Product', async ({
+    test('Input port button enabled, output port button disabled when no assets', async ({
       page,
     }) => {
       const dataProduct = new DataProduct([domain]);
@@ -142,8 +142,10 @@ test.describe('Input Output Ports', () => {
         await navigateToPortsTab(page);
       });
 
-      await test.step('Verify add buttons are disabled', async () => {
-        await expect(page.getByTestId('add-input-port-button')).toBeDisabled();
+      await test.step('Verify button states', async () => {
+        // Input port button should be ENABLED (can add from any asset in system)
+        await expect(page.getByTestId('add-input-port-button')).toBeEnabled();
+        // Output port button should be DISABLED (requires data product assets)
         await expect(page.getByTestId('add-output-port-button')).toBeDisabled();
       });
     });
@@ -504,7 +506,197 @@ test.describe('Input Output Ports', () => {
         ).toBeVisible();
       });
 
-    
+
+    });
+
+    test('Input port drawer shows assets from outside data product', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with ONE asset', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Open input port drawer and verify unfiltered assets', async () => {
+        await page.getByTestId('add-input-port-button').click();
+        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+          state: 'visible',
+        });
+
+        await waitForAllLoadersToDisappear(page);
+
+        // Search for an asset NOT in the data product (tables[1])
+        const searchBar = page
+          .getByTestId('asset-selection-modal')
+          .getByTestId('searchbar');
+        const table2Name = get(tables[1], 'entityResponseData.name');
+
+        const searchRes = page.waitForResponse(
+          (res) =>
+            res.url().includes('/api/v1/search/query') &&
+            res.request().method() === 'GET'
+        );
+        await searchBar.fill(table2Name);
+        await searchRes;
+
+        // Asset should be visible even though it's not in the data product
+        const table2Fqn = get(tables[1], 'entityResponseData.fullyQualifiedName');
+        await expect(
+          page.locator(`[data-testid="table-data-card_${table2Fqn}"]`)
+        ).toBeVisible();
+      });
+    });
+
+    test('Add input port from asset not in data product', async ({ page }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product WITHOUT any assets', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+        // Note: NOT adding any assets to data product
+      });
+
+      await test.step('Navigate to ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Add input port from external asset', async () => {
+        // tables[0] is NOT a data product asset, but should still be addable as input port
+        await addInputPortToDataProduct(page, tables[0]);
+      });
+
+      await test.step('Verify port was added', async () => {
+        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(page.getByTestId('input-ports-list')).toBeVisible();
+      });
+    });
+
+    test('Output port drawer shows info banner about data product assets', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with assets', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Open output port drawer and verify info banner', async () => {
+        await page.getByTestId('add-output-port-button').click();
+        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+          state: 'visible',
+        });
+
+        // Verify info banner is visible with correct message
+        await expect(page.locator('.ant-alert-info')).toBeVisible();
+        await expect(
+          page.locator(
+            'text=Output ports can only be added from assets that belong to this Data Product'
+          )
+        ).toBeVisible();
+      });
+    });
+
+    test('Input port drawer does not show info banner', async ({ page }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+      });
+
+      await test.step('Navigate to ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Open input port drawer and verify no info banner', async () => {
+        await page.getByTestId('add-input-port-button').click();
+        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+          state: 'visible',
+        });
+
+        // Info banner should NOT be visible for input ports
+        await expect(page.locator('.ant-alert-info')).not.toBeVisible();
+      });
+    });
+
+    test('Output port drawer only shows data product assets', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with specific assets', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+        // Only add tables[0] as data product asset
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Open output port drawer and verify filtering', async () => {
+        await page.getByTestId('add-output-port-button').click();
+        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+          state: 'visible',
+        });
+
+        await waitForAllLoadersToDisappear(page);
+
+        // Search for asset NOT in data product - should not appear
+        const searchBar = page
+          .getByTestId('asset-selection-modal')
+          .getByTestId('searchbar');
+        const table2Name = get(tables[1], 'entityResponseData.name');
+
+        const searchRes = page.waitForResponse(
+          (res) =>
+            res.url().includes('/api/v1/search/query') &&
+            res.request().method() === 'GET'
+        );
+        await searchBar.fill(table2Name);
+        await searchRes;
+
+        // Asset should NOT be visible (filtered out)
+        const table2Fqn = get(tables[1], 'entityResponseData.fullyQualifiedName');
+        await expect(
+          page.locator(`[data-testid="table-data-card_${table2Fqn}"]`)
+        ).not.toBeVisible();
+      });
     });
   });
 

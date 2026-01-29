@@ -97,6 +97,7 @@ export interface AssetSelectionContentProps {
   onCancel?: () => void;
   queryFilter?: QueryFilterInterface;
   emptyPlaceHolderText?: string;
+  infoBannerText?: string;
   title?: string;
 }
 
@@ -109,6 +110,7 @@ export const useAssetSelectionContent = ({
   variant = 'modal',
   queryFilter,
   emptyPlaceHolderText,
+  infoBannerText,
 }: AssetSelectionContentProps) => {
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
@@ -632,6 +634,8 @@ export const useAssetSelectionContent = ({
           type={exportJob?.error ? 'error' : 'success'}
         />
       )}
+
+      {infoBannerText && <Alert showIcon message={infoBannerText} type="info" />}
 
       <div className="d-flex items-center gap-3">
         <div className="flex-1">
