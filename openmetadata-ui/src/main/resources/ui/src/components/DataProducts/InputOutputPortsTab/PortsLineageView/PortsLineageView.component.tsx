@@ -287,9 +287,9 @@ const PortsLineageView = ({
               }}
               onClick={handleToggleFullScreen}>
               {isFullScreen ? (
-                <Minimize01 fill='#414651' height={18} width={18} />
+                <Minimize01 fill="#414651" height={18} width={18} />
               ) : (
-                <Maximize01 fill='#414651' height={18} width={18} />
+                <Maximize01 fill="#414651" height={18} width={18} />
               )}
             </IconButton>
           </Tooltip>
