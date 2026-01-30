@@ -2496,6 +2496,7 @@
     "invalid-object-key": "Geçersiz nesne anahtarı. Bir harf, alt çizgi veya dolar işareti ile başlamalı, ardından harfler, alt çizgiler, dolar işaretleri veya rakamlar gelmelidir.",
     "invalid-odcs-contract-format": "Geçersiz ODCS sözleşme formatı. Gerekli alanlar: apiVersion, kind, status.",
     "invalid-openmetadata-contract-format": "Invalid OpenMetadata contract format. Required fields: entity.",
+    "invalid-openmetadata-contract-format-required-fields": "Invalid OpenMetadata contract format. The following fields are required:",
     "invalid-property-name": "Geçersiz Özellik Adı",
     "invalid-string-length-error": "{{exportType}} resmi, aşırı büyük bir {{entity}} nedeniyle oluşturulamadı.",
     "invalid-unix-epoch-time-milliseconds": "Milisaniye cinsinden geçersiz Unix çağ zamanı",

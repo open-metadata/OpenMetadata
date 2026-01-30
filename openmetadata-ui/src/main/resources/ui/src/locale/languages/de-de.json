@@ -2496,6 +2496,7 @@
     "invalid-object-key": "Ungültiger Objektschlüssel. Muss mit einem Buchstaben, einem Unterstrich oder einem Dollarzeichen beginnen, gefolgt von Buchstaben, Unterstrichen, Dollarzeichen oder Ziffern.",
     "invalid-odcs-contract-format": "Ungültiges ODCS-Vertragsformat. Erforderliche Felder: apiVersion, kind, status.",
     "invalid-openmetadata-contract-format": "Invalid OpenMetadata contract format. Required fields: entity.",
+    "invalid-openmetadata-contract-format-required-fields": "Invalid OpenMetadata contract format. The following fields are required:",
     "invalid-property-name": "Ungültiger Eigenschaftsname.",
     "invalid-string-length-error": "Das {{exportType}}-Bild konnte aufgrund einer zu großen {{entity}} nicht generiert werden.",
     "invalid-unix-epoch-time-milliseconds": "Ungültige Unix-Epochenzeit in Millisekunden",

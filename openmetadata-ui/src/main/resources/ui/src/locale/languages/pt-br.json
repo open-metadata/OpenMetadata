@@ -2496,6 +2496,7 @@
     "invalid-object-key": "Chave de objeto inválida. Deve começar com uma letra, sublinhado ou cifrão, seguido por letras, sublinhados, cifrões ou dígitos.",
     "invalid-odcs-contract-format": "Formato de contrato ODCS inválido. Campos obrigatórios: apiVersion, kind, status.",
     "invalid-openmetadata-contract-format": "Invalid OpenMetadata contract format. Required fields: entity.",
+    "invalid-openmetadata-contract-format-required-fields": "Invalid OpenMetadata contract format. The following fields are required:",
     "invalid-property-name": "Nome de Propriedade Inválido",
     "invalid-string-length-error": "A imagem {{exportType}} não pôde ser gerada devido a um {{entity}} excessivamente grande.",
     "invalid-unix-epoch-time-milliseconds": "Tempo de Unix epoch inválido em milissegundos",

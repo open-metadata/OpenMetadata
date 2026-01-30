@@ -2496,6 +2496,7 @@
     "invalid-object-key": "無效的物件金鑰。必須以字母、底線或貨幣符號開頭，後面跟著字母、底線、貨幣符號或數字。",
     "invalid-odcs-contract-format": "無效的 ODCS 合約格式。必填欄位：apiVersion、kind、status。",
     "invalid-openmetadata-contract-format": "Invalid OpenMetadata contract format. Required fields: entity.",
+    "invalid-openmetadata-contract-format-required-fields": "Invalid OpenMetadata contract format. The following fields are required:",
     "invalid-property-name": "無效的屬性名稱",
     "invalid-string-length-error": "由於 {{entity}} 過大，無法產生 {{exportType}} 圖片。",
     "invalid-unix-epoch-time-milliseconds": "無效的 Unix 紀元時間（毫秒）",

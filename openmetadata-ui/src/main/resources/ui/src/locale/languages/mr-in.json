@@ -2496,6 +2496,7 @@
     "invalid-object-key": "अवैध ऑब्जेक्ट की. अक्षर, अंडरस्कोर किंवा डॉलर चिन्हाने सुरू होणे आवश्यक आहे, त्यानंतर अक्षरे, अंडरस्कोर्स, डॉलर चिन्हे किंवा अंक.",
     "invalid-odcs-contract-format": "अवैध ODCS करार स्वरूप. आवश्यक फील्ड: apiVersion, kind, status.",
     "invalid-openmetadata-contract-format": "Invalid OpenMetadata contract format. Required fields: entity.",
+    "invalid-openmetadata-contract-format-required-fields": "Invalid OpenMetadata contract format. The following fields are required:",
     "invalid-property-name": "अवैध गुणधर्म नाव",
     "invalid-string-length-error": "{{exportType}} प्रतिमा अत्यंत मोठ्या {{entity}} मुळे तयार केली जाऊ शकली नाही.",
     "invalid-unix-epoch-time-milliseconds": "अवैध युनिक्स युग वेळ मिलीसेकंदात",

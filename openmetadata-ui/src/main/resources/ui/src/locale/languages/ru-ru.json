@@ -2496,6 +2496,7 @@
     "invalid-object-key": "Неверный ключ объекта. Он должен начинаться с буквы, знака подчеркивания или знака доллара, за которыми следуют буквы, знаки подчеркивания, знаки доллара или цифры.",
     "invalid-odcs-contract-format": "Недопустимый формат контракта ODCS. Обязательные поля: apiVersion, kind, status.",
     "invalid-openmetadata-contract-format": "Invalid OpenMetadata contract format. Required fields: entity.",
+    "invalid-openmetadata-contract-format-required-fields": "Invalid OpenMetadata contract format. The following fields are required:",
     "invalid-property-name": "Недопустимое имя свойства",
     "invalid-string-length-error": "Не удалось сгенерировать изображение {{exportType}} из-за слишком большого объекта «{{entity}}».",
     "invalid-unix-epoch-time-milliseconds": "Неверное время Unix epoch в миллисекундах",

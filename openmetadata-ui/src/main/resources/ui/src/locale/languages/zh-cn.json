@@ -2496,6 +2496,7 @@
     "invalid-object-key": "无效的对象键名, 命名首字母必须由字母、下划线、美元符号开始, 再跟随字母、下划线、美元符号或数字",
     "invalid-odcs-contract-format": "无效的 ODCS 合同格式。必填字段：apiVersion、kind、status。",
     "invalid-openmetadata-contract-format": "Invalid OpenMetadata contract format. Required fields: entity.",
+    "invalid-openmetadata-contract-format-required-fields": "Invalid OpenMetadata contract format. The following fields are required:",
     "invalid-property-name": "无效属性名称",
     "invalid-string-length-error": "由于 {{entity}} 过大，无法生成 {{exportType}} 图像。",
     "invalid-unix-epoch-time-milliseconds": "无效的Unix纪元时间（毫秒）",

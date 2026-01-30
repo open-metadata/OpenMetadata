@@ -2496,6 +2496,7 @@
     "invalid-object-key": "מפתח אובייקט לא חוקי. חייב להתחיל עם אות, קו תחתון או סימן דולר, ולפניו אות, קו תחתון או סימן דולר או ספרות.",
     "invalid-odcs-contract-format": "פורמט חוזה ODCS לא חוקי. שדות נדרשים: apiVersion, kind, status.",
     "invalid-openmetadata-contract-format": "Invalid OpenMetadata contract format. Required fields: entity.",
+    "invalid-openmetadata-contract-format-required-fields": "Invalid OpenMetadata contract format. The following fields are required:",
     "invalid-property-name": "שם מאפיין לא חוקי",
     "invalid-string-length-error": "לא ניתן היה לייצר את התמונה {{exportType}} עקב {{entity}} גדול מדי.",
     "invalid-unix-epoch-time-milliseconds": "זמן Unix epoch לא חוקי באלפיות שנייה",

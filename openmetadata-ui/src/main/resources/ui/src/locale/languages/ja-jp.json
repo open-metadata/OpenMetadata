@@ -2496,6 +2496,7 @@
     "invalid-object-key": "無効なオブジェクトキーです。英字、アンダースコア（_）、ドル記号（$）で始まり、それに英数字、アンダースコア、ドル記号が続く必要があります。",
     "invalid-odcs-contract-format": "無効な ODCS 契約形式です。必須フィールド：apiVersion、kind、status。",
     "invalid-openmetadata-contract-format": "Invalid OpenMetadata contract format. Required fields: entity.",
+    "invalid-openmetadata-contract-format-required-fields": "Invalid OpenMetadata contract format. The following fields are required:",
     "invalid-property-name": "無効なプロパティ名",
     "invalid-string-length-error": "{{entity}} が大きすぎるため、{{exportType}} イメージを生成できませんでした。",
     "invalid-unix-epoch-time-milliseconds": "無効なミリ秒単位の Unix エポック時間です",
