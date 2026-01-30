@@ -220,7 +220,8 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
 
   const parseOpenMetadataContent = useCallback(
     (parsed: Record<string, unknown>): ParsedOpenMetadataContract | null => {
-      if (!parsed.entity) {
+      // OM contracts must have a name field
+      if (!parsed.name) {
         return null;
       }
 
@@ -761,24 +762,30 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                 color: theme.palette.text.secondary,
                 mb: '12px',
               }}>
-              {t('message.invalid-odcs-contract-format-required-fields')}
+              {isODCSFormat
+                ? t('message.invalid-odcs-contract-format-required-fields')
+                : t(
+                    'message.invalid-openmetadata-contract-format-required-fields'
+                  )}
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {['APIVersion', 'Kind', 'Status'].map((field) => (
-                <Box
-                  key={field}
-                  sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {(isODCSFormat ? ['APIVersion', 'Kind', 'Status'] : ['name']).map(
+                (field) => (
                   <Box
-                    sx={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      backgroundColor: theme.palette.allShades.error[600],
-                    }}
-                  />
-                  <Typography sx={{ fontSize: '14px' }}>{field}</Typography>
-                </Box>
-              ))}
+                    key={field}
+                    sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Box
+                      sx={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        backgroundColor: theme.palette.allShades.error[600],
+                      }}
+                    />
+                    <Typography sx={{ fontSize: '14px' }}>{field}</Typography>
+                  </Box>
+                )
+              )}
             </Box>
           </Box>
           <Box
