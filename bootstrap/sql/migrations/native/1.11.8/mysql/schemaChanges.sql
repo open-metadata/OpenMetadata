@@ -15,7 +15,7 @@ SET
         '$.connection.config.sobjectName'
     )
 WHERE
-    JSON_UNQUOTE (JSON_EXTRACT (json, '$.serviceType')) = 'Salesforce'
+    serviceType = 'Salesforce'
     AND JSON_TYPE (
         JSON_EXTRACT (json, '$.connection.config.sobjectName')
     ) != 'NULL';

@@ -7,5 +7,5 @@ SET json = jsonb_set(
     '{connection,config,sobjectNames}',
     jsonb_build_array(json->'connection'->'config'->>'sobjectName')
 )::json
-WHERE json->>'serviceType' = 'Salesforce'
+WHERE serviceType = 'Salesforce'
   AND json->'connection'->'config'->>'sobjectName' IS NOT NULL;
