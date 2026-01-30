@@ -10,19 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../../../../../styles/variables.less';
+
 .ldap-role-mapping-widget {
   .mapping-header {
     display: flex;
-    gap: 8px;
-    margin-bottom: 8px;
-    padding: 0 12px;
+    gap: @size-xs;
+    margin-bottom: @margin-xs;
 
     .mapping-header-col {
       flex: 1;
     }
 
     .mapping-header-actions {
-      width: 32px;
+      width: @size-xl;
     }
   }
 
@@ -34,9 +35,16 @@
       padding: 0px;
 
       .ant-input {
-        padding: 10px 14px;
-        line-height: 24px;
+        padding: 10px 14px; // custom styling to match rjsf input
+        line-height: @size-lg;
       }
     }
+  }
+
+  .add-mapping-btn.ant-btn.ant-btn-default:not(:hover) {
+    border-color: @grey-300;
+  }
+  .add-mapping-btn.ant-btn.ant-btn-default {
+    margin-bottom: @margin-xs;
   }
 }

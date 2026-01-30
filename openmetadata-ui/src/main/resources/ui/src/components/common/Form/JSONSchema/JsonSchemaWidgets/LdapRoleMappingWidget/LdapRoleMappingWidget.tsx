@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import { Grid } from '@mui/material';
 import { WidgetProps } from '@rjsf/utils';
 import { Button, Card, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as DeleteIcon } from '../../../../../../assets/svg/ic-delete.svg';
 import { getRoles } from '../../../../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import './ldap-role-mapping-widget.less';
@@ -210,10 +211,10 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
         {mappings.length > 0 && (
           <div className="mapping-header">
             <div className="mapping-header-col">
-              <Text strong>{t('label.ldap-group-dn')}</Text>
+              <Text>{t('label.ldap-group-dn')}</Text>
             </div>
             <div className="mapping-header-col">
-              <Text strong>{t('label.openmetadata-role-plural')}</Text>
+              <Text>{t('label.openmetadata-role-plural')}</Text>
             </div>
             <div className="mapping-header-actions" />
           </div>
@@ -271,8 +272,8 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
                 <Button
                   data-testid={`remove-mapping-btn-${mapping.id}`}
                   disabled={disabled || readonly}
-                  icon={<DeleteOutlined />}
-                  size="small"
+                  icon={<DeleteIcon height={20} width={20} />}
+                  size="large"
                   type="text"
                   onClick={() => handleRemoveMapping(mapping.id)}
                 />
@@ -284,10 +285,10 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
         {!readonly && (
           <Button
             block
+            className="add-mapping-btn"
             data-testid="add-mapping-btn"
             disabled={disabled}
             icon={<PlusOutlined />}
-            type="dashed"
             onClick={handleAddMapping}>
             {t('label.add-entity', {
               entity: t('label.ldap-group-mapping'),
