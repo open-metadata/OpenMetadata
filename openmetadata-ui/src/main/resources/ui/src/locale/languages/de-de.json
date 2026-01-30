@@ -2930,6 +2930,7 @@
     "upload-file-to-validate": "Upload a file to validate",
     "upload-not-configured": "Upload-Funktion ist nicht konfiguriert. Bitte wenden Sie sich an Ihren Administrator.",
     "upstream-depth-tooltip": "Zeigen Sie bis zu 3 Knoten der Upstream-Lineage an, um die Quelle (Elternebenen) zu identifizieren.",
+    "url-must-start-with-http-or-https": "URL muss mit http:// oder https:// beginnen",
     "url-must-use-http-or-https": "URL muss das http- oder https-Protokoll verwenden",
     "usage-ingestion-description": "Die Nutzungsinhalation kann nach Einrichtung einer Metadateninhalation konfiguriert und bereitgestellt werden. Der Nutzungsinhalationsworkflow erhält die Abfrageprotokolle und Details zur Tabellenerstellung aus der zugrunde liegenden Datenbank und gibt sie an {{brandName}} weiter. Metadaten und Nutzung können nur eine Pipeline für einen Datenbankdienst haben. Legen Sie die Dauer des Abfrageprotokolls (in Tagen), den Speicherort der Staging-Datei und das Ergebnislimit fest, um zu beginnen.",
     "use-fqn-for-filtering-message": "Das Regex wird auf den vollständig qualifizierten Namen angewendet (z. B. service_name.db_name.schema_name.table_name) anstelle des Rohnamens (z. B. table_name).",
