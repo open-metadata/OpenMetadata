@@ -49,7 +49,6 @@ jobs:
     # Step 4: Run the monitoring script
     - name: Monitor Slack Link
       id: monitor
-      continue-on-error: true # Allow subsequent steps (notification) even if this fails
       env:
         PYTHONUNBUFFERED: "1" # Recommended for immediate log output
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_MONITOR_SLACK_WEBHOOK }}
