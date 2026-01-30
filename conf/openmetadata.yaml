@@ -66,7 +66,7 @@ server:
 
   # Response compression disabled for maximum throughput
   gzip:
-    enabled: false
+    enabled: true
 
   # Thread pool configuration
   # With virtual threads enabled (Java 21+), these settings become less critical
