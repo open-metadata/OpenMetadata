@@ -2926,6 +2926,7 @@
     "upload-file-to-validate": "Upload a file to validate",
     "upload-not-configured": "Yükleme işlevi yapılandırılmamış. Lütfen yöneticinizle iletişime geçin.",
     "upstream-depth-tooltip": "Kaynağı (üst seviyeler) belirlemek için en fazla 3 yukarı akış veri soyu düğümünü görüntüleyin.",
+    "url-must-start-with-http-or-https": "URL http:// veya https:// ile başlamalıdır",
     "url-must-use-http-or-https": "URL, http veya https protokolü kullanmalıdır",
     "usage-ingestion-description": "Kullanım alımı, bir metadata alımı ayarlandıktan sonra yapılandırılabilir ve dağıtılabilir. Kullanım alım iş akışı, sorgu günlüğünü ve tablo oluşturma ayrıntılarını temel veritabanından alır ve {{brandName}}'ya besler. Metadata ve kullanımın bir veritabanı servisi için yalnızca bir iş akışı olabilir. Başlamak için Sorgu Günlüğü Süresini (gün olarak), Hazırlık Dosya Konumunu ve Sonuç Sınırını tanımlayın.",
     "use-fqn-for-filtering-message": "Regex, ham ad (ör. tablo_adı) yerine tam nitelikli ad (ör. servis_adı.db_adı.şema_adı.tablo_adı) üzerinde uygulanacaktır.",
