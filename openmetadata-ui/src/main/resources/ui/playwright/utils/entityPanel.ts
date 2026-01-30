@@ -12,7 +12,6 @@
  */
 import { expect, Page } from '@playwright/test';
 import { redirectToExplorePage } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
 
@@ -90,7 +89,13 @@ export async function navigateToExploreAndSelectTable(
   const permissionsResponse = await permissionsResponsePromise;
   expect(permissionsResponse.status()).toBe(200);
 
-  await waitForAllLoadersToDisappear(page);
+  // Ensure all the component for right panel are rendered
+  const loaders = page.locator(
+    '[data-testid="entity-summary-panel-container"] [data-testid="loader"]'
+  );
+
+  // Wait for the loader elements count to become 0
+  await expect(loaders).toHaveCount(0, { timeout: 30000 });
 }
 
 export const waitForPatchResponse = async (page: Page) => {
