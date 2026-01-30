@@ -384,7 +384,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<ObjectFieldTemplateProps
         {!isEmpty(advancedProperties) && (
           <Collapse
             destroyInactivePanel
-            className={classNames('advanced-properties-collapse', {
+            className={classNames('sso-advanced-properties-collapse', {
               'm-t-sm': shouldApplyGrouping,
             })}
             expandIconPosition="end">

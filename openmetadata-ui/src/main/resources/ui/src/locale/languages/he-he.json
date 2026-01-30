@@ -2510,6 +2510,7 @@
     "latency-sla-description": "<0>{{label}}</0>: זמן תגובת השאילתה חייב להיות פחות מ‑ <0>{{data}}</0>.",
     "latest-offset-description": "ה-offset האחרון של האירוע במערכת.",
     "ldap-group-dn-placeholder": "לדוגמה cn=admins,ou=groups,dc=example,dc=com",
+    "ldap-group-duplicate-error": "DN של קבוצת LDAP זו כבר ממופה. כל קבוצת LDAP יכולה להיות ממופה רק פעם אחת.",
     "learning-resources-management-description": "חקור את תכונות המוצר ולמד כיצד הן עובדות באמצעות המשאבים שלנו",
     "leave-the-team-team-name": "עזוב את הקבוצה {{teamName}}",
     "length-validator-error": "נדרשים לפחות {{length}} {{field}}",

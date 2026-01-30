@@ -475,16 +475,12 @@ const SSOConfigurationFormRJSF = ({
         'ui:hideError': true,
       };
 
-      // For Google, show authority and publicKeyUrls even in Confidential mode
+      // For Google, show authority even in Confidential mode
       const isGoogle = currentProvider === AuthProvider.Google;
       if (isGoogle) {
         authConfig.authority = {
           'ui:title': 'Authority',
           'ui:placeholder': GOOGLE_SSO_DEFAULTS.authority,
-        } as UISchemaObject;
-        authConfig.publicKeyUrls = {
-          'ui:title': 'Public Key URLs',
-          'ui:placeholder': `Enter value (default: ${GOOGLE_SSO_DEFAULTS.publicKeyUrls[0]}) and press ENTER`,
         } as UISchemaObject;
       }
     }

@@ -12,10 +12,11 @@
  */
 
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { Grid } from '@mui/material';
 import { WidgetProps } from '@rjsf/utils';
 import { Button, Card, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getRoles } from '../../../../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
@@ -34,6 +35,10 @@ interface RoleOption {
   value: string;
 }
 
+interface MappingError {
+  [mappingId: string]: string;
+}
+
 const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
   const { t } = useTranslation();
   const { value, onChange, id, disabled, readonly } = props;
@@ -41,30 +46,49 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
   const [mappings, setMappings] = useState<RoleMappingEntry[]>([]);
   const [availableRoles, setAvailableRoles] = useState<RoleOption[]>([]);
   const [isLoadingRoles, setIsLoadingRoles] = useState(false);
+  const [errors, setErrors] = useState<MappingError>({});
 
-  // Parse JSON string value to mappings array
+  const idCounterRef = useRef(0);
+  const stableIdMapRef = useRef<Map<string, string>>(new Map());
+
+  const getStableId = useCallback(
+    (ldapGroup: string, index: number): string => {
+      const key = `${index}-${ldapGroup}`;
+      if (!stableIdMapRef.current.has(key)) {
+        const stableId = `mapping-${++idCounterRef.current}`;
+        stableIdMapRef.current.set(key, stableId);
+      }
+
+      return stableIdMapRef.current.get(key)!;
+    },
+    []
+  );
+
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
-    if (value && typeof value === 'string') {
-      try {
-        const parsed = JSON.parse(value) as Record<string, string[]>;
-        const entries: RoleMappingEntry[] = Object.entries(parsed).map(
-          ([ldapGroup, roles], index) => ({
-            id: `${index}-${ldapGroup}`,
-            ldapGroup,
-            roles,
-          })
-        );
-        setMappings(entries);
-      } catch (e) {
-        // Invalid JSON, start fresh
+    if (isInitialMount.current) {
+      if (value && typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value) as Record<string, string[]>;
+          const entries: RoleMappingEntry[] = Object.entries(parsed).map(
+            ([ldapGroup, roles], index) => ({
+              id: getStableId(ldapGroup, index),
+              ldapGroup,
+              roles,
+            })
+          );
+          setMappings(entries);
+        } catch {
+          setMappings([]);
+        }
+      } else {
         setMappings([]);
       }
-    } else {
-      setMappings([]);
+      isInitialMount.current = false;
     }
-  }, [value]);
+  }, [value, getStableId]);
 
-  // Fetch available roles from backend
   useEffect(() => {
     const fetchRoles = async () => {
       setIsLoadingRoles(true);
@@ -83,25 +107,60 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
     };
 
     fetchRoles();
-  }, [t]);
+  }, []);
 
-  // Convert mappings array back to JSON string
+  const checkDuplicates = useCallback(
+    (newMappings: RoleMappingEntry[]) => {
+      const newErrors: MappingError = {};
+      const ldapGroupCounts = new Map<string, number>();
+
+      newMappings.forEach((mapping) => {
+        if (mapping.ldapGroup.trim()) {
+          const normalizedGroup = mapping.ldapGroup.trim().toLowerCase();
+          ldapGroupCounts.set(
+            normalizedGroup,
+            (ldapGroupCounts.get(normalizedGroup) || 0) + 1
+          );
+        }
+      });
+
+      newMappings.forEach((mapping) => {
+        if (mapping.ldapGroup.trim()) {
+          const normalizedGroup = mapping.ldapGroup.trim().toLowerCase();
+          if (ldapGroupCounts.get(normalizedGroup)! > 1) {
+            newErrors[mapping.id] = t('message.ldap-group-duplicate-error');
+          }
+        }
+      });
+
+      setErrors(newErrors);
+
+      return Object.keys(newErrors).length === 0;
+    },
+    [t]
+  );
+
   const updateValue = useCallback(
     (newMappings: RoleMappingEntry[]) => {
+      const isValid = checkDuplicates(newMappings);
+
       const result: Record<string, string[]> = {};
       newMappings.forEach((mapping) => {
-        if (mapping.ldapGroup && mapping.roles.length > 0) {
+        if (mapping.ldapGroup) {
           result[mapping.ldapGroup] = mapping.roles;
         }
       });
-      onChange(JSON.stringify(result));
+
+      if (isValid) {
+        onChange(JSON.stringify(result));
+      }
     },
-    [onChange]
+    [onChange, checkDuplicates]
   );
 
   const handleAddMapping = useCallback(() => {
     const newMapping: RoleMappingEntry = {
-      id: `new-${Date.now()}`,
+      id: `new-${Date.now()}-${Math.random()}`,
       ldapGroup: '',
       roles: [],
     };
@@ -113,9 +172,14 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
     (mappingId: string) => {
       const newMappings = mappings.filter((m) => m.id !== mappingId);
       setMappings(newMappings);
+
+      const newErrors = { ...errors };
+      delete newErrors[mappingId];
+      setErrors(newErrors);
+
       updateValue(newMappings);
     },
-    [mappings, updateValue]
+    [mappings, errors, updateValue]
   );
 
   const handleLdapGroupChange = useCallback(
@@ -161,19 +225,32 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
             data-testid={`mapping-card-${mapping.id}`}
             key={mapping.id}
             size="small">
-            <div className="mapping-row">
-              <div className="mapping-col ldap-group-col">
-                <Input
-                  data-testid={`ldap-group-input-${mapping.id}`}
-                  disabled={disabled || readonly}
-                  placeholder={t('message.ldap-group-dn-placeholder')}
-                  value={mapping.ldapGroup}
-                  onChange={(e) =>
-                    handleLdapGroupChange(mapping.id, e.target.value)
-                  }
-                />
-              </div>
-              <div className="mapping-col roles-col">
+            <Grid container alignItems="center" spacing={2}>
+              <Grid size="grow">
+                <div>
+                  <Input
+                    className="form-control"
+                    data-testid={`ldap-group-input-${mapping.id}`}
+                    disabled={disabled || readonly}
+                    placeholder={t('message.ldap-group-dn-placeholder')}
+                    status={errors[mapping.id] ? 'error' : undefined}
+                    value={mapping.ldapGroup}
+                    onChange={(e) =>
+                      handleLdapGroupChange(mapping.id, e.target.value)
+                    }
+                  />
+                  {errors[mapping.id] && (
+                    <Text
+                      className="text-xs m-t-xss"
+                      data-testid={`ldap-group-error-${mapping.id}`}
+                      type="danger">
+                      {errors[mapping.id]}
+                    </Text>
+                  )}
+                </div>
+              </Grid>
+
+              <Grid size="grow">
                 <Select
                   showSearch
                   className="w-full"
@@ -188,8 +265,9 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
                   value={mapping.roles}
                   onChange={(roles) => handleRolesChange(mapping.id, roles)}
                 />
-              </div>
-              <div className="mapping-col actions-col">
+              </Grid>
+
+              <Grid size="auto">
                 <Button
                   data-testid={`remove-mapping-btn-${mapping.id}`}
                   disabled={disabled || readonly}
@@ -198,8 +276,8 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
                   type="text"
                   onClick={() => handleRemoveMapping(mapping.id)}
                 />
-              </div>
-            </div>
+              </Grid>
+            </Grid>
           </Card>
         ))}
 

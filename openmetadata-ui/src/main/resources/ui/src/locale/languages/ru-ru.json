@@ -2510,6 +2510,7 @@
     "latency-sla-description": "<0>{{label}}</0>: Время ответа на запрос должно быть меньше <0>{{data}}</0>.",
     "latest-offset-description": "Последнее смещение события в системе.",
     "ldap-group-dn-placeholder": "например cn=admins,ou=groups,dc=example,dc=com",
+    "ldap-group-duplicate-error": "Этот DN группы LDAP уже сопоставлен. Каждая группа LDAP может быть сопоставлена только один раз.",
     "learning-resources-management-description": "Изучайте возможности продукта и узнавайте, как они работают, с помощью наших ресурсов",
     "leave-the-team-team-name": "Покинуть команду «{{teamName}}»",
     "length-validator-error": "Требуется не менее {{length}} {{field}}",

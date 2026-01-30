@@ -2510,6 +2510,7 @@
     "latency-sla-description": "<0>{{label}}</0>: La respuesta a la consulta debe ser menor que <0>{{data}}</0>.",
     "latest-offset-description": "El último offset del evento en el sistema.",
     "ldap-group-dn-placeholder": "ej. cn=admins,ou=groups,dc=example,dc=com",
+    "ldap-group-duplicate-error": "Este DN de grupo LDAP ya está mapeado. Cada grupo LDAP solo puede mapearse una vez.",
     "learning-resources-management-description": "Explora las funciones del producto y aprende cómo funcionan a través de nuestros recursos",
     "leave-the-team-team-name": "Abandonar el equipo {{teamName}}",
     "length-validator-error": "Se requiere al menos {{length}} {{field}}",

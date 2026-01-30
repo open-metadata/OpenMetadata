@@ -2510,6 +2510,7 @@
     "latency-sla-description": "<0>{{label}}</0>: Sorgu yanıtı <0>{{data}}</0>'den az olmalıdır.",
     "latest-offset-description": "Sistemdeki olayın en son ofseti.",
     "ldap-group-dn-placeholder": "örn. cn=admins,ou=groups,dc=example,dc=com",
+    "ldap-group-duplicate-error": "Bu LDAP grup DN'i zaten eşlenmiştir. Her LDAP grubu sadece bir kez eşlenebilir.",
     "learning-resources-management-description": "Ürün özelliklerini keşfedin ve kaynaklarımız aracılığıyla nasıl çalıştıklarını öğrenin",
     "leave-the-team-team-name": "{{teamName}} takımından ayrıl",
     "length-validator-error": "En az {{length}} {{field}} gerekli",

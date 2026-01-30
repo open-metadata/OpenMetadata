@@ -2510,6 +2510,7 @@
     "latency-sla-description": "<0>{{label}}</0>：查询响应时间必须小于 <0>{{data}}</0>。",
     "latest-offset-description": "系统中事件的最新偏移量。",
     "ldap-group-dn-placeholder": "例如 cn=admins,ou=groups,dc=example,dc=com",
+    "ldap-group-duplicate-error": "此LDAP组DN已被映射。每个LDAP组只能映射一次。",
     "learning-resources-management-description": "探索产品功能，通过我们的资源了解它们的工作原理",
     "leave-the-team-team-name": "离开团队{{teamName}}",
     "length-validator-error": "至少需要{{length}}个{{field}}",

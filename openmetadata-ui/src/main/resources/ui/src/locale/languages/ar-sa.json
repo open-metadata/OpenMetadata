@@ -2510,6 +2510,7 @@
     "latency-sla-description": "<0>{{label}}</0>: يجب أن تكون استجابة الاستعلام أقل من <0>{{data}}</0>",
     "latest-offset-description": "أحدث إزاحة للحدث في النظام.",
     "ldap-group-dn-placeholder": "مثال: cn=admins,ou=groups,dc=example,dc=com",
+    "ldap-group-duplicate-error": "هذا DN لمجموعة LDAP مُعيَّن بالفعل. يمكن تعيين كل مجموعة LDAP مرة واحدة فقط.",
     "learning-resources-management-description": "استكشف ميزات المنتج وتعلم كيفية عملها من خلال مواردنا",
     "leave-the-team-team-name": "مغادرة الفريق {{teamName}}",
     "length-validator-error": "مطلوب ما لا يقل عن {{length}} {{field}}",

@@ -2510,6 +2510,7 @@
     "latency-sla-description": "<0>{{label}}</0>: Reactietijd van de query moet onder <0>{{data}}</0> liggen.",
     "latest-offset-description": "De laatste offset van de gebeurtenis in het systeem.",
     "ldap-group-dn-placeholder": "bijv. cn=admins,ou=groups,dc=example,dc=com",
+    "ldap-group-duplicate-error": "Deze LDAP-groep DN is al toegewezen. Elke LDAP-groep kan slechts één keer worden toegewezen.",
     "learning-resources-management-description": "Ontdek productfuncties en leer hoe ze werken via onze bronnen",
     "leave-the-team-team-name": "Verlaat het team {{teamName}}",
     "length-validator-error": "Minimaal {{length}} {{field}} vereist",

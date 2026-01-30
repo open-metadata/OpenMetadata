@@ -27,34 +27,15 @@
   }
 
   .mapping-card {
-    border: 1px solid #d9d9d9;
-    border-radius: 4px;
+    background-color: transparent;
+    border: none;
 
     .ant-card-body {
-      padding: 12px;
-    }
-  }
+      padding: 0px;
 
-  .mapping-row {
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-
-    .mapping-col {
-      &.ldap-group-col {
-        flex: 1;
-        min-width: 0;
-      }
-
-      &.roles-col {
-        flex: 1;
-        min-width: 0;
-      }
-
-      &.actions-col {
-        display: flex;
-        align-items: center;
-        padding-top: 4px;
+      .ant-input {
+        padding: 10px 14px;
+        line-height: 24px;
       }
     }
   }
