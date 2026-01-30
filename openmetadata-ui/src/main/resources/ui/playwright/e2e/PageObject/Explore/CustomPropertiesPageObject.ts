@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Locator, Page} from '@playwright/test';
+import { Locator } from '@playwright/test';
 import { RightPanelPageObject } from './RightPanelPageObject';
 
 /**
@@ -20,7 +20,6 @@ import { RightPanelPageObject } from './RightPanelPageObject';
  * Handles custom properties display, search, and verification
  */
 export class CustomPropertiesPageObject {
-  private readonly page: Page;
   private readonly rightPanel: RightPanelPageObject;
 
   // ============ PRIVATE LOCATORS (scoped to container) ============
@@ -30,9 +29,8 @@ export class CustomPropertiesPageObject {
   private readonly valueElement: Locator;
   private readonly emptyCustomPropertiesContainer: Locator;
 
-  constructor(rightPanel: RightPanelPageObject, page: Page) {
+  constructor(rightPanel: RightPanelPageObject) {
     this.rightPanel = rightPanel;
-    this.page = page;
 
     // Base container - scoped to right panel summary panel
     this.container = this.rightPanel.getSummaryPanel().locator('.custom-properties-container');
@@ -41,7 +39,7 @@ export class CustomPropertiesPageObject {
     this.searchBar = this.container.locator('.searchbar-container input, .searchbar-container input[type="text"]');
     this.propertyCard = this.container.locator('.custom-property, [class*="property"]');
     this.valueElement = this.propertyCard.locator('.value, [class*="value"], [data-testid="value"]');
-    this.emptyCustomPropertiesContainer = this.page.getByTestId('no-data-placeholder');
+    this.emptyCustomPropertiesContainer = this.rightPanel.page.getByTestId('no-data-placeholder');
   }
 
   // ============ NAVIGATION METHODS (Fluent Interface) ============

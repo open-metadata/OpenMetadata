@@ -134,7 +134,7 @@ test.describe('Right Panel Page Objects Test Suite', () => {
     schema = new SchemaPageObject(rightPanel, adminPage);
     lineage = new LineagePageObject(rightPanel);
     dataQuality = new DataQualityPageObject(rightPanel);
-    customProperties = new CustomPropertiesPageObject(rightPanel, adminPage);
+    customProperties = new CustomPropertiesPageObject(rightPanel);
   });
 
   // Cleanup test data
