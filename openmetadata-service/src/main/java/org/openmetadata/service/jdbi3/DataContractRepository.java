@@ -286,7 +286,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   /**
    * Comprehensive validation that collects all errors without throwing exceptions.
-   * Uses the prepare() method to leverage all existing validation logic.
+   * Performs validation logic without side effects (no test suite creation).
    *
    * @param dataContract The data contract to validate (from CreateDataContract conversion)
    * @return ContractValidation with comprehensive error reporting
@@ -309,16 +309,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       }
     }
 
-    // Run domain-specific validation through prepare()
-    // Pass update=true to skip "entity already exists" check since contracts can be merged/replaced
+    // Run domain-specific validation WITHOUT side effects (no test suite creation)
+    // This validates entity constraints and schema fields only
     try {
-      prepare(dataContract, true);
+      prepareForValidation(dataContract);
     } catch (Exception e) {
       validation.setValid(false);
       constraintErrors.add(e.getMessage());
     }
 
-    // Get schema validation results (prepare already validated but we want the details)
+    // Get schema validation results (prepareForValidation already validated but we want the
+    // details)
     SchemaValidation schemaValidation =
         validateSchemaFieldsAgainstEntity(dataContract, dataContract.getEntity());
     validation.setSchemaValidation(schemaValidation);
@@ -327,6 +328,52 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     validation.setConstraintErrors(constraintErrors.isEmpty() ? null : constraintErrors);
 
     return validation;
+  }
+
+  /**
+   * Validation-only version of prepare() that validates without creating any entities.
+   * This is used for ODCS import preview and contract validation endpoints.
+   * Unlike prepare(), this method has NO side effects (no test suite or pipeline creation).
+   */
+  private void prepareForValidation(DataContract dataContract) {
+    EntityReference entityRef = dataContract.getEntity();
+
+    validateEntitySpecificConstraints(dataContract, entityRef);
+
+    // Validate schema fields and throw exception if there are failures
+    SchemaValidation schemaValidation = validateSchemaFieldsAgainstEntity(dataContract, entityRef);
+    List<String> errors = new ArrayList<>();
+
+    if (!nullOrEmpty(schemaValidation.getDuplicateFields())) {
+      errors.add(
+          String.format(
+              "Duplicate column names in contract schema: %s",
+              String.join(", ", schemaValidation.getDuplicateFields())));
+    }
+
+    if (!nullOrEmpty(schemaValidation.getFailedFields())) {
+      errors.add(
+          String.format(
+              "The following fields specified in the data contract do not exist in the %s: %s",
+              entityRef.getType(), String.join(", ", schemaValidation.getFailedFields())));
+    }
+
+    if (!errors.isEmpty()) {
+      throw BadRequestException.of(
+          String.format("Schema validation failed. %s", String.join(". ", errors)));
+    }
+
+    // Validate owners and reviewers references exist (without populating)
+    if (!nullOrEmpty(dataContract.getOwners())) {
+      for (EntityReference owner : dataContract.getOwners()) {
+        Entity.getEntityReferenceById(owner.getType(), owner.getId(), Include.NON_DELETED);
+      }
+    }
+    if (!nullOrEmpty(dataContract.getReviewers())) {
+      for (EntityReference reviewer : dataContract.getReviewers()) {
+        Entity.getEntityReferenceById(reviewer.getType(), reviewer.getId(), Include.NON_DELETED);
+      }
+    }
   }
 
   private SchemaValidation validateSchemaFieldsAgainstEntity(
