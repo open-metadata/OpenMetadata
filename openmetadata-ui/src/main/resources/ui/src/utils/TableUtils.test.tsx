@@ -23,6 +23,7 @@ import {
   ExtraTableDropdownOptions,
   fieldExistsByFQN,
   findColumnByEntityLink,
+  getColumnOptionsFromTableColumn,
   getEntityIcon,
   getExpandAllKeysToDepth,
   getHighlightedRowClassName,
@@ -41,7 +42,15 @@ import {
   updateFieldExtension,
 } from '../utils/TableUtils';
 import EntityLink from './EntityLink';
+import { TableDetailPageTabProps } from './TableClassBase';
 import { extractTableColumns } from './TableUtils';
+import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
+
+type ParentFieldObject = {
+  fullyQualifiedName?: string;
+  children?: ParentFieldObject[];
+  name?: string;
+};
 
 jest.mock(
   '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
@@ -1040,7 +1049,7 @@ describe('TableUtils', () => {
     });
   });
 
-  const mockProps = {
+  const mockProps: TableDetailPageTabProps = {
     activeTab: EntityTabs.DBT,
     deleted: false,
     editCustomAttributePermission: true,
@@ -1053,6 +1062,7 @@ describe('TableUtils', () => {
       totalCount: 0,
       totalTasksCount: 0,
     },
+    viewCustomPropertiesPermission: true,
     fetchTableDetails: jest.fn(),
     getEntityFeedCount: jest.fn(),
     handleFeedCount: jest.fn(),
@@ -1641,7 +1651,10 @@ describe('TableUtils', () => {
                 {
                   fullyQualifiedName: 'table.level1.level2.level3',
                   children: [
-                    { fullyQualifiedName: 'table.level1.level2.level3.level4' },
+                    {
+                      fullyQualifiedName: 'table.level1.level2.level3.level4',
+                      children: [],
+                    },
                   ],
                 },
               ],
@@ -1684,18 +1697,23 @@ describe('TableUtils', () => {
         {
           fullyQualifiedName: 'table.parent1',
           children: [
-            { fullyQualifiedName: 'table.parent1.child1' },
+            { fullyQualifiedName: 'table.parent1.child1', children: [] },
             {
               fullyQualifiedName: 'table.parent1.child2',
               children: [
-                { fullyQualifiedName: 'table.parent1.child2.grandchild' },
+                {
+                  fullyQualifiedName: 'table.parent1.child2.grandchild',
+                  children: [],
+                },
               ],
             },
           ],
         },
         {
           fullyQualifiedName: 'table.parent2',
-          children: [{ fullyQualifiedName: 'table.parent2.child1' }],
+          children: [
+            { fullyQualifiedName: 'table.parent2.child1', children: [] },
+          ],
         },
       ];
 
@@ -1725,8 +1743,8 @@ describe('TableUtils', () => {
         {
           fullyQualifiedName: 'table.parent',
           children: [
-            { fullyQualifiedName: 'table.parent.child1' },
-            { fullyQualifiedName: 'table.parent.child2' },
+            { fullyQualifiedName: 'table.parent.child1', children: [] },
+            { fullyQualifiedName: 'table.parent.child2', children: [] },
           ],
         },
       ];
@@ -1750,7 +1768,10 @@ describe('TableUtils', () => {
                 {
                   fullyQualifiedName: 'table.level1.level2.level3',
                   children: [
-                    { fullyQualifiedName: 'table.level1.level2.level3.level4' },
+                    {
+                      fullyQualifiedName: 'table.level1.level2.level3.level4',
+                      children: [],
+                    },
                   ],
                 },
               ],
@@ -1793,15 +1814,18 @@ describe('TableUtils', () => {
           name: 'parent',
           fullyQualifiedName: undefined,
           children: [
-            { fullyQualifiedName: 'table.parent.child1' },
-            { fullyQualifiedName: 'table.parent.child2' },
+            { fullyQualifiedName: 'table.parent.child1', children: [] },
+            { fullyQualifiedName: 'table.parent.child2', children: [] },
           ],
         },
       ];
 
-      expect(getParentKeysToExpand(items, 'table.parent.child1')).toEqual([
-        'parent',
-      ]);
+      expect(
+        getParentKeysToExpand(
+          items as ParentFieldObject[],
+          'table.parent.child1'
+        )
+      ).toEqual(['parent']);
     });
 
     it('should use empty string when both fullyQualifiedName and name are undefined', () => {
@@ -1809,11 +1833,13 @@ describe('TableUtils', () => {
         {
           name: undefined,
           fullyQualifiedName: undefined,
-          children: [{ fullyQualifiedName: 'table.child1' }],
+          children: [{ fullyQualifiedName: 'table.child1', children: [] }],
         },
       ];
 
-      expect(getParentKeysToExpand(items, 'table.child1')).toEqual(['']);
+      expect(
+        getParentKeysToExpand(items as ParentFieldObject[], 'table.child1')
+      ).toEqual(['']);
     });
 
     it('should handle multiple parents with different children', () => {
@@ -1821,8 +1847,8 @@ describe('TableUtils', () => {
         {
           fullyQualifiedName: 'table.parent1',
           children: [
-            { fullyQualifiedName: 'table.parent1.child1' },
-            { fullyQualifiedName: 'table.parent1.child2' },
+            { fullyQualifiedName: 'table.parent1.child1', children: [] },
+            { fullyQualifiedName: 'table.parent1.child2', children: [] },
           ],
         },
         {
@@ -1831,7 +1857,10 @@ describe('TableUtils', () => {
             {
               fullyQualifiedName: 'table.parent2.child1',
               children: [
-                { fullyQualifiedName: 'table.parent2.child1.grandchild' },
+                {
+                  fullyQualifiedName: 'table.parent2.child1.grandchild',
+                  children: [],
+                },
               ],
             },
           ],
@@ -1850,7 +1879,9 @@ describe('TableUtils', () => {
       const items = [
         {
           fullyQualifiedName: 'table.parent',
-          children: [{ fullyQualifiedName: 'table.parent.child1' }],
+          children: [
+            { fullyQualifiedName: 'table.parent.child1', children: [] },
+          ],
         },
       ];
 
@@ -1866,11 +1897,14 @@ describe('TableUtils', () => {
         {
           fullyQualifiedName: 'table.parent',
           children: [
-            { fullyQualifiedName: 'table.parent.child1' },
+            { fullyQualifiedName: 'table.parent.child1', children: [] },
             {
               fullyQualifiedName: 'table.parent.child2',
               children: [
-                { fullyQualifiedName: 'table.parent.child2.grandchild' },
+                {
+                  fullyQualifiedName: 'table.parent.child2.grandchild',
+                  children: [],
+                },
               ],
             },
           ],
@@ -1926,7 +1960,7 @@ describe('TableUtils', () => {
         fullyQualifiedName: 'test.database.schema.table.column1',
       };
 
-      const result = getHighlightedRowClassName(record, undefined);
+      const result = getHighlightedRowClassName(record);
 
       expect(result).toBe('');
     });
@@ -1957,7 +1991,7 @@ describe('TableUtils', () => {
         fullyQualifiedName: undefined,
       };
 
-      const result = getHighlightedRowClassName(record, undefined);
+      const result = getHighlightedRowClassName(record);
 
       expect(result).toBe('');
     });
@@ -2132,7 +2166,7 @@ describe('TableUtils', () => {
       const newExtension = { property: 'value' };
 
       expect(() => {
-        updateFieldExtension('table.column1', newExtension, undefined);
+        updateFieldExtension('table.column1', newExtension);
       }).not.toThrow();
     });
 
@@ -2182,16 +2216,16 @@ describe('TableUtils', () => {
     });
 
     it('should work with SearchIndexField type', () => {
-      const fields = [
+      const fields: TableFieldsInfoCommonEntities[] = [
         {
           name: 'field1',
           fullyQualifiedName: 'index.field1',
-          dataType: 'TEXT',
+          dataType: DataType.Text,
         },
         {
           name: 'field2',
           fullyQualifiedName: 'index.field2',
-          dataType: 'KEYWORD',
+          dataType: DataType.Geometry,
         },
       ];
 
@@ -2203,16 +2237,16 @@ describe('TableUtils', () => {
     });
 
     it('should work with Field type (Topic)', () => {
-      const fields = [
+      const fields: TableFieldsInfoCommonEntities[] = [
         {
           name: 'topicField1',
           fullyQualifiedName: 'topic.field1',
-          dataType: 'STRING',
+          dataType: DataType.String,
         },
         {
           name: 'topicField2',
           fullyQualifiedName: 'topic.field2',
-          dataType: 'INT',
+          dataType: DataType.Int,
         },
       ];
 
