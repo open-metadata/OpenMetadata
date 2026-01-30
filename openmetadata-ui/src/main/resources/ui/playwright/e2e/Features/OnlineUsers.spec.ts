@@ -189,7 +189,7 @@ test.describe('Online Users Feature', () => {
       state: 'detached',
     });
     // Check various time formats in the Last Activity column
-    const activityCells = page.locator('tbody tr td:nth-child(2)');
+    const activityCells = page.locator('tbody tr td:nth-child(3)');
     const count = await activityCells.count();
 
     // If no users are online within the time window, that's ok - just skip
