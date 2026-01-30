@@ -2926,6 +2926,7 @@
     "upload-file-to-validate": "Upload a file to validate",
     "upload-not-configured": "La funcionalidad de carga no está configurada. Por favor, contacta a tu administrador.",
     "upstream-depth-tooltip": "Muestra hasta 3 nodos de la línea ascendente para identificar la fuente (niveles padre).",
+    "url-must-start-with-http-or-https": "La URL debe comenzar con http:// o https://",
     "url-must-use-http-or-https": "La URL debe usar el protocolo http o https",
     "usage-ingestion-description": "La ingesta de uso se puede configurar e implementar después de que se haya establecido una ingesta de metadatos. El flujo de trabajo de ingesta de uso obtiene el registro de consultas y los detalles de creación de tablas de la base de datos subyacente y los alimenta a {{brandName}}. Los metadatos y el uso solo pueden tener un flujo de trabajo para un servicio de base de datos. Defina la duración del registro de consultas (en días), la ubicación del archivo de etapa y el límite de resultados para comenzar.",
     "use-fqn-for-filtering-message": "Se aplicará Regex en el nombre completamente calificado (p. ej., service_name.db_name.schema_name.table_name) en lugar del nombre sin procesar (p. ej., table_name).",

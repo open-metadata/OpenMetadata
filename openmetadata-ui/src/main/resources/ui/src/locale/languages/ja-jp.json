@@ -2926,6 +2926,7 @@
     "upload-file-to-validate": "Upload a file to validate",
     "upload-not-configured": "アップロード機能が設定されていません。管理者に連絡してください。",
     "upstream-depth-tooltip": "親レベル（最大3ノード）の上流系統を表示して、データの発生源を把握します。",
+    "url-must-start-with-http-or-https": "URLはhttp://またはhttps://で始まる必要があります",
     "url-must-use-http-or-https": "URLはhttpまたはhttpsプロトコルを使用する必要があります",
     "usage-ingestion-description": "使用状況の取り込みは、メタデータ取り込み後に構成してデプロイできます。このワークフローは、クエリログやテーブル作成情報を取得し、{{brandName}}に連携します。メタデータと使用状況の取り込みパイプラインは、1つのデータベースサービスに対して1つのみです。日数単位のクエリログ期間、一時ファイルの場所、取得上限を設定してください。",
     "use-fqn-for-filtering-message": "正規表現は生の名前（例：table_name）ではなく、完全修飾名（例：service_name.db_name.schema_name.table_name）に対して適用されます。",
