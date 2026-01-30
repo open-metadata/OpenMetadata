@@ -32,6 +32,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.util.Utilities;
 
 @Slf4j
@@ -432,49 +433,6 @@ public final class SearchIndexUtils {
   }
 
   /**
-   * Flattens custom properties (extension field) into searchable formats.
-   * Creates name:value pairs for exact matching and concatenated text for fuzzy search.
-   *
-   * @param extension The extension object containing custom properties
-   * @return FlattenedCustomProperties containing keyword pairs and fuzzy text
-   */
-  public static FlattenedCustomProperties flattenCustomProperties(Object extension) {
-    // Add null check
-    if (extension == null) {
-      return new FlattenedCustomProperties(Collections.emptyList(), "");
-    }
-
-    List<String> keyValuePairs = new ArrayList<>();
-    StringBuilder fuzzyText = new StringBuilder();
-
-    try {
-      Map<String, Object> extensionMap = JsonUtils.getMap(extension);
-
-      // Add empty check
-      if (extensionMap == null || extensionMap.isEmpty()) {
-        return new FlattenedCustomProperties(Collections.emptyList(), "");
-      }
-
-      for (Map.Entry<String, Object> entry : extensionMap.entrySet()) {
-        String key = entry.getKey();
-        Object value = entry.getValue();
-        String valueStr = value != null ? flattenValue(value) : "";
-        String pair = key + ":" + valueStr;
-        keyValuePairs.add(pair);
-        if (fuzzyText.length() > 0) {
-          fuzzyText.append(" ");
-        }
-        fuzzyText.append(key).append(" ").append(valueStr);
-      }
-
-    } catch (Exception e) {
-      LOG.warn("Failed to flatten custom properties", e);
-      return new FlattenedCustomProperties(Collections.emptyList(), "");
-    }
-    return new FlattenedCustomProperties(keyValuePairs, fuzzyText.toString().trim());
-  }
-
-  /**
    * Flattens a custom property value into a searchable string.
    * Handles various types: String, Number, Boolean, List, Map (entityReference, timeInterval, etc.)
    */
@@ -569,14 +527,256 @@ public final class SearchIndexUtils {
     }
   }
 
-  @Getter
-  public static class FlattenedCustomProperties {
-    private final List<String> keyValuePairs;
-    private final String fuzzyText;
-
-    public FlattenedCustomProperties(List<String> keyValuePairs, String fuzzyText) {
-      this.keyValuePairs = keyValuePairs;
-      this.fuzzyText = fuzzyText;
+  /**
+   * Builds typed custom properties for ES nested array indexing.
+   * This enables range queries, exact matches, and structured queries on custom properties
+   * while keeping the field count bounded.
+   *
+   * @param extension The extension object containing custom properties
+   * @param entityType The entity type (e.g., "table", "dashboard") to look up property types
+   * @return List of typed custom property maps for ES nested indexing
+   */
+  public static List<Map<String, Object>> buildTypedCustomProperties(
+      Object extension, String entityType) {
+    if (extension == null) {
+      return Collections.emptyList();
     }
+
+    List<Map<String, Object>> typedProperties = new ArrayList<>();
+
+    try {
+      Map<String, Object> extensionMap = JsonUtils.getMap(extension);
+      if (extensionMap == null || extensionMap.isEmpty()) {
+        return Collections.emptyList();
+      }
+
+      for (Map.Entry<String, Object> entry : extensionMap.entrySet()) {
+        String propertyName = entry.getKey();
+        Object value = entry.getValue();
+
+        if (value == null) {
+          continue;
+        }
+
+        String propertyType = getPropertyTypeSafe(entityType, propertyName);
+        List<Map<String, Object>> propertyEntries =
+            buildTypedPropertyEntries(propertyName, propertyType, value);
+        typedProperties.addAll(propertyEntries);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to build typed custom properties for entity type {}", entityType, e);
+      return Collections.emptyList();
+    }
+
+    return typedProperties;
+  }
+
+  private static String getPropertyTypeSafe(String entityType, String propertyName) {
+    try {
+      return TypeRegistry.getCustomPropertyType(entityType, propertyName);
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not find property type for {}.{}, using 'unknown'", entityType, propertyName);
+      return "unknown";
+    }
+  }
+
+  private static List<Map<String, Object>> buildTypedPropertyEntries(
+      String propertyName, String propertyType, Object value) {
+    List<Map<String, Object>> entries = new ArrayList<>();
+
+    switch (propertyType) {
+      case "integer", "number" -> entries.add(buildNumericEntry(propertyName, propertyType, value));
+      case "timestamp" -> entries.add(buildTimestampEntry(propertyName, propertyType, value));
+      case "timeInterval" -> entries.add(buildTimeIntervalEntry(propertyName, propertyType, value));
+      case "date-cp", "dateTime-cp", "time-cp" -> entries.add(
+          buildDateStringEntry(propertyName, propertyType, value));
+      case "entityReference" -> entries.add(
+          buildEntityReferenceEntry(propertyName, propertyType, value));
+      case "entityReferenceList" -> entries.addAll(
+          buildEntityReferenceListEntries(propertyName, propertyType, value));
+      case "enum" -> entries.addAll(buildEnumEntries(propertyName, propertyType, value));
+      case "markdown", "sqlQuery" -> entries.add(buildTextEntry(propertyName, propertyType, value));
+      case "table-cp" -> entries.add(buildTableEntry(propertyName, propertyType, value));
+      case "hyperlink-cp" -> entries.add(buildHyperlinkEntry(propertyName, propertyType, value));
+      default -> entries.add(buildStringEntry(propertyName, propertyType, value));
+    }
+
+    return entries;
+  }
+
+  private static Map<String, Object> buildNumericEntry(
+      String name, String propertyType, Object value) {
+    Map<String, Object> entry = createBaseEntry(name, propertyType);
+    if (value instanceof Number num) {
+      if (value instanceof Double || value instanceof Float) {
+        entry.put("doubleValue", num.doubleValue());
+      } else {
+        entry.put("longValue", num.longValue());
+      }
+    } else if (value instanceof String str) {
+      try {
+        if (str.contains(".")) {
+          entry.put("doubleValue", Double.parseDouble(str));
+        } else {
+          entry.put("longValue", Long.parseLong(str));
+        }
+      } catch (NumberFormatException e) {
+        entry.put("stringValue", str);
+      }
+    }
+    return entry;
+  }
+
+  private static Map<String, Object> buildTimestampEntry(
+      String name, String propertyType, Object value) {
+    Map<String, Object> entry = createBaseEntry(name, propertyType);
+    if (value instanceof Number num) {
+      entry.put("longValue", num.longValue());
+    } else if (value instanceof String str) {
+      try {
+        entry.put("longValue", Long.parseLong(str));
+      } catch (NumberFormatException e) {
+        entry.put("stringValue", str);
+      }
+    }
+    return entry;
+  }
+
+  private static Map<String, Object> buildTimeIntervalEntry(
+      String name, String propertyType, Object value) {
+    Map<String, Object> entry = createBaseEntry(name, propertyType);
+    if (value instanceof Map<?, ?> map) {
+      Object start = map.get("start");
+      Object end = map.get("end");
+      if (start instanceof Number num) {
+        entry.put("start", num.longValue());
+      }
+      if (end instanceof Number num) {
+        entry.put("end", num.longValue());
+      }
+    }
+    return entry;
+  }
+
+  private static Map<String, Object> buildDateStringEntry(
+      String name, String propertyType, Object value) {
+    Map<String, Object> entry = createBaseEntry(name, propertyType);
+    entry.put("stringValue", value.toString());
+    return entry;
+  }
+
+  private static Map<String, Object> buildEntityReferenceEntry(
+      String name, String propertyType, Object value) {
+    Map<String, Object> entry = createBaseEntry(name, propertyType);
+    if (value instanceof Map<?, ?> map) {
+      populateEntityRefFields(entry, map);
+    }
+    return entry;
+  }
+
+  private static List<Map<String, Object>> buildEntityReferenceListEntries(
+      String name, String propertyType, Object value) {
+    List<Map<String, Object>> entries = new ArrayList<>();
+    if (value instanceof List<?> list) {
+      for (Object item : list) {
+        if (item instanceof Map<?, ?> map) {
+          Map<String, Object> entry = createBaseEntry(name, propertyType);
+          populateEntityRefFields(entry, map);
+          entries.add(entry);
+        }
+      }
+    }
+    if (entries.isEmpty()) {
+      entries.add(createBaseEntry(name, propertyType));
+    }
+    return entries;
+  }
+
+  private static void populateEntityRefFields(Map<String, Object> entry, Map<?, ?> map) {
+    if (map.get("id") != null) {
+      entry.put("refId", map.get("id").toString());
+    }
+    if (map.get("type") != null) {
+      entry.put("refType", map.get("type").toString());
+    }
+    if (map.get("name") != null) {
+      entry.put("refName", map.get("name").toString());
+    }
+    if (map.get("fullyQualifiedName") != null) {
+      entry.put("refFqn", map.get("fullyQualifiedName").toString());
+    }
+    if (map.get("displayName") != null) {
+      entry.put("stringValue", map.get("displayName").toString());
+    }
+  }
+
+  private static List<Map<String, Object>> buildEnumEntries(
+      String name, String propertyType, Object value) {
+    List<Map<String, Object>> entries = new ArrayList<>();
+    if (value instanceof List<?> list) {
+      for (Object item : list) {
+        Map<String, Object> entry = createBaseEntry(name, propertyType);
+        entry.put("stringValue", item.toString());
+        entries.add(entry);
+      }
+    } else if (value instanceof String str) {
+      Map<String, Object> entry = createBaseEntry(name, propertyType);
+      entry.put("stringValue", str);
+      entries.add(entry);
+    }
+    if (entries.isEmpty()) {
+      entries.add(createBaseEntry(name, propertyType));
+    }
+    return entries;
+  }
+
+  private static Map<String, Object> buildTextEntry(
+      String name, String propertyType, Object value) {
+    Map<String, Object> entry = createBaseEntry(name, propertyType);
+    entry.put("textValue", value.toString());
+    entry.put("stringValue", value.toString());
+    return entry;
+  }
+
+  private static Map<String, Object> buildTableEntry(
+      String name, String propertyType, Object value) {
+    Map<String, Object> entry = createBaseEntry(name, propertyType);
+    if (value instanceof Map<?, ?> map && map.containsKey("rows")) {
+      entry.put("textValue", flattenValue(map.get("rows")));
+    } else {
+      entry.put("textValue", flattenValue(value));
+    }
+    return entry;
+  }
+
+  private static Map<String, Object> buildHyperlinkEntry(
+      String name, String propertyType, Object value) {
+    Map<String, Object> entry = createBaseEntry(name, propertyType);
+    if (value instanceof Map<?, ?> map) {
+      if (map.get("url") != null) {
+        entry.put("stringValue", map.get("url").toString());
+      }
+      if (map.get("displayText") != null) {
+        entry.put("textValue", map.get("displayText").toString());
+      }
+    }
+    return entry;
+  }
+
+  private static Map<String, Object> buildStringEntry(
+      String name, String propertyType, Object value) {
+    Map<String, Object> entry = createBaseEntry(name, propertyType);
+    String strValue = flattenValue(value);
+    entry.put("stringValue", strValue);
+    entry.put("textValue", strValue);
+    return entry;
+  }
+
+  private static Map<String, Object> createBaseEntry(String name, String propertyType) {
+    Map<String, Object> entry = new HashMap<>();
+    entry.put("name", name);
+    entry.put("propertyType", propertyType);
+    return entry;
   }
 }

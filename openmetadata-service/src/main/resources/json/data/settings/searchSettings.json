@@ -2194,18 +2194,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with database."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -2251,18 +2239,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with database schema."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -2340,18 +2316,6 @@
         {
           "name": "columns.children.description",
           "description": "Search on descriptions of nested columns within complex data types. Helps find tables with nested fields serving specific purposes."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -2409,18 +2373,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with stored procedure."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -2474,18 +2426,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with query."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -2579,18 +2519,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with topic."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -2676,18 +2604,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with dashboard."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -2765,18 +2681,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with dashboard data model."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -2842,18 +2746,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with pipeline."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -2919,18 +2811,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with mlmodel."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -2996,18 +2876,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with search index."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -3085,18 +2953,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with container."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -3190,18 +3046,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with apiEndpoint."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -3243,18 +3087,6 @@
         {
           "name": "tags.tagFQN.text",
           "description": "Search within parts of tag names. Use this to find domains with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -3296,18 +3128,6 @@
         {
           "name": "tags.tagFQN.text",
           "description": "Search within parts of tag names. Use this to find data products with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -3349,18 +3169,6 @@
         {
           "name": "classification.name",
           "description": "Search on the name of the classification that contains this tag to find tags within specific categories."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -3422,18 +3230,6 @@
         {
           "name": "domains.displayName.keyword",
           "description": "Exact match on domain associated with glossary term."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -3483,18 +3279,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with drive service."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -3560,18 +3344,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with directory."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -3649,18 +3421,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with file."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -3730,18 +3490,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with spreadsheet."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -3815,18 +3563,6 @@
         {
           "name": "dataProducts.displayName.keyword",
           "description": "Exact match on dataProducts associated with worksheet."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     },
@@ -3864,18 +3600,6 @@
         {
           "name": "fqnParts",
           "description": "Search on individual parts of the fully qualified name, allowing more flexible matching on hierarchy components."
-        },
-        {
-          "name": "customPropertiesFlat",
-          "description": "Exact match on custom property name:value pairs. Use format 'propertyName:value' to find entities with specific custom property values."
-        },
-        {
-          "name": "customPropertiesFuzzy",
-          "description": "Full-text search on custom property names and values. Enables flexible searching across all custom properties."
-        },
-        {
-          "name": "customPropertiesFuzzy.ngram",
-          "description": "Partial matching on custom property names and values using n-grams. Helps find entities when you only remember part of a custom property value."
         }
       ]
     }
@@ -3922,7 +3646,7 @@
       },
       {
         "section": "INCORRECT VS CORRECT PATTERNS",
-        "content": "❌ INCORRECT: Tables query missing entityType filter AND using only one owner field\n{\"bool\": {\"must\": [{\"term\": {\"owners.displayName.keyword\": \"accounting\"}}]}}\n\n✅ CORRECT: Tables query with entityType filter\n{\"bool\": {\"must\": [{\"bool\": {\"should\": [{\"term\": {\"entityType.keyword\": \"table\"}}]}}, {\"bool\": {\"should\": [{\"term\": {\"owners.name\": \"accounting\"}}, {\"term\": {\"owners.displayName.keyword\": \"accounting\"}}]}}]}}\n\n❌ INCORRECT: Using nested query for columns\n{\"bool\": {\"must\": [{\"nested\": {\"path\": \"columns\", \"query\": {\"match\": {\"columns.name\": \"SKU\"}}}}]}}\n\n✅ CORRECT: Direct match query for columns\n{\"bool\": {\"must\": [{\"bool\": {\"should\": [{\"term\": {\"entityType.keyword\": \"table\"}}]}}, {\"match\": {\"columns.name\": \"SKU\"}}]}}\n\n❌ INCORRECT: Using owner.name (singular) or only one field\n{\"term\": {\"owner.name\": \"marketing\"}}\n{\"term\": {\"owners.name\": \"marketing\"}}\n\n✅ CORRECT: Search BOTH owners.name and owners.displayName.keyword\n{\"bool\": {\"should\": [{\"term\": {\"owners.name\": \"marketing\"}}, {\"term\": {\"owners.displayName.keyword\": \"marketing\"}}]}}\n\n❌ INCORRECT: Using tags for tier\n{\"term\": {\"tags.tagFQN\": \"Tier1\"}}\n\n✅ CORRECT: Using tier.tagFQN with proper format\n{\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}",
+        "content": "\u274c INCORRECT: Tables query missing entityType filter AND using only one owner field\n{\"bool\": {\"must\": [{\"term\": {\"owners.displayName.keyword\": \"accounting\"}}]}}\n\n\u2705 CORRECT: Tables query with entityType filter\n{\"bool\": {\"must\": [{\"bool\": {\"should\": [{\"term\": {\"entityType.keyword\": \"table\"}}]}}, {\"bool\": {\"should\": [{\"term\": {\"owners.name\": \"accounting\"}}, {\"term\": {\"owners.displayName.keyword\": \"accounting\"}}]}}]}}\n\n\u274c INCORRECT: Using nested query for columns\n{\"bool\": {\"must\": [{\"nested\": {\"path\": \"columns\", \"query\": {\"match\": {\"columns.name\": \"SKU\"}}}}]}}\n\n\u2705 CORRECT: Direct match query for columns\n{\"bool\": {\"must\": [{\"bool\": {\"should\": [{\"term\": {\"entityType.keyword\": \"table\"}}]}}, {\"match\": {\"columns.name\": \"SKU\"}}]}}\n\n\u274c INCORRECT: Using owner.name (singular) or only one field\n{\"term\": {\"owner.name\": \"marketing\"}}\n{\"term\": {\"owners.name\": \"marketing\"}}\n\n\u2705 CORRECT: Search BOTH owners.name and owners.displayName.keyword\n{\"bool\": {\"should\": [{\"term\": {\"owners.name\": \"marketing\"}}, {\"term\": {\"owners.displayName.keyword\": \"marketing\"}}]}}\n\n\u274c INCORRECT: Using tags for tier\n{\"term\": {\"tags.tagFQN\": \"Tier1\"}}\n\n\u2705 CORRECT: Using tier.tagFQN with proper format\n{\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}",
         "order": 6
       },
       {
@@ -3937,7 +3661,7 @@
       },
       {
         "section": "OWNER FIELD SELECTION",
-        "content": "When filtering by owner, ALWAYS search BOTH fields simultaneously:\n\n✅ CORRECT PATTERN (use for ALL owner queries):\n{\"bool\": {\"should\": [\n  {\"term\": {\"owners.name\": \"value\"}},\n  {\"term\": {\"owners.displayName.keyword\": \"value\"}}\n]}}\n\nThis matches whether the value is a username (e.g., 'jsmith') OR display name (e.g., 'John Smith').\n\n⚠️ NEVER use 'owner.name' (singular) - always use 'owners' (plural)\n⚠️ ALWAYS include BOTH fields in a should clause",
+        "content": "When filtering by owner, ALWAYS search BOTH fields simultaneously:\n\n\u2705 CORRECT PATTERN (use for ALL owner queries):\n{\"bool\": {\"should\": [\n  {\"term\": {\"owners.name\": \"value\"}},\n  {\"term\": {\"owners.displayName.keyword\": \"value\"}}\n]}}\n\nThis matches whether the value is a username (e.g., 'jsmith') OR display name (e.g., 'John Smith').\n\n\u26a0\ufe0f NEVER use 'owner.name' (singular) - always use 'owners' (plural)\n\u26a0\ufe0f ALWAYS include BOTH fields in a should clause",
         "order": 12
       },
       {
@@ -3977,7 +3701,7 @@
         "sections": [
           {
             "section": "TABLE FIELDS",
-            "content": "- name (text): Use match query for fuzzy text search\n  Example: {\"match\": {\"name\": \"customer\"}}\n\n- name.keyword (exact): Use term query for exact matching\n  Example: {\"term\": {\"name.keyword\": \"customer_orders\"}}\n\n- description (text): Use match query for content search\n  Example: {\"match\": {\"description\": \"sales data\"}}\n\n- owners (keyword fields): ALWAYS search BOTH owners.name and owners.displayName.keyword\n  Example: {\"bool\": {\"should\": [{\"term\": {\"owners.name\": \"value\"}}, {\"term\": {\"owners.displayName.keyword\": \"value\"}}]}}\n  This matches usernames OR display names in a single query\n\n- tier.tagFQN (keyword): Use term query for tier classification\n  Example: {\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}\n\n- tags.tagFQN (keyword): Use term query for tags\n  Example: {\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}\n\n- columns.name (keyword): Use direct match queries for columns\n  Example: {\"match\": {\"columns.name\": \"address\"}}\n  ⚠️ IMPORTANT: Do NOT use nested query syntax for columns\n\n- service.name, database.name, databaseSchema.name (keywords): Use term queries\n  Example: {\"term\": {\"service.name\": \"snowflake\"}}",
+            "content": "- name (text): Use match query for fuzzy text search\n  Example: {\"match\": {\"name\": \"customer\"}}\n\n- name.keyword (exact): Use term query for exact matching\n  Example: {\"term\": {\"name.keyword\": \"customer_orders\"}}\n\n- description (text): Use match query for content search\n  Example: {\"match\": {\"description\": \"sales data\"}}\n\n- owners (keyword fields): ALWAYS search BOTH owners.name and owners.displayName.keyword\n  Example: {\"bool\": {\"should\": [{\"term\": {\"owners.name\": \"value\"}}, {\"term\": {\"owners.displayName.keyword\": \"value\"}}]}}\n  This matches usernames OR display names in a single query\n\n- tier.tagFQN (keyword): Use term query for tier classification\n  Example: {\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}\n\n- tags.tagFQN (keyword): Use term query for tags\n  Example: {\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}\n\n- columns.name (keyword): Use direct match queries for columns\n  Example: {\"match\": {\"columns.name\": \"address\"}}\n  \u26a0\ufe0f IMPORTANT: Do NOT use nested query syntax for columns\n\n- service.name, database.name, databaseSchema.name (keywords): Use term queries\n  Example: {\"term\": {\"service.name\": \"snowflake\"}}",
             "order": 10
           }
         ]

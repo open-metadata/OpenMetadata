@@ -138,10 +138,9 @@ public interface SearchIndex {
     map.put("tier", tierTag);
     map.put("certification", entity.getCertification());
 
-    SearchIndexUtils.FlattenedCustomProperties flattenedProps =
-        SearchIndexUtils.flattenCustomProperties(entity.getExtension());
-    map.put("customPropertiesFlat", flattenedProps.getKeyValuePairs());
-    map.put("customPropertiesFuzzy", flattenedProps.getFuzzyText());
+    map.put(
+        "customPropertiesTyped",
+        SearchIndexUtils.buildTypedCustomProperties(entity.getExtension(), entityType));
 
     return map;
   }

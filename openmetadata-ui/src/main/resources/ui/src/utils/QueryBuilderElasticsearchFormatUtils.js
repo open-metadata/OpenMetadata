@@ -271,10 +271,127 @@ function getBasePropertyName(propertyName) {
 }
 
 /**
+ * Determines the field type and appropriate ES field mapping from the property name.
+ *
+ * @param {string} propertyName - The full property name with potential nested path
+ * @returns {{ fieldType: string, nestedField: string|null }} - Field type and nested field to query
+ * @private
+ */
+function getFieldTypeInfo(propertyName) {
+  // TimeInterval fields: propertyName.start or propertyName.end
+  if (propertyName.endsWith('.start')) {
+    return { fieldType: 'timeInterval', nestedField: 'start' };
+  }
+  if (propertyName.endsWith('.end')) {
+    return { fieldType: 'timeInterval', nestedField: 'end' };
+  }
+
+  // EntityReference fields: propertyName.displayName.keyword, propertyName.name.keyword, etc.
+  if (
+    propertyName.includes('.displayName') ||
+    propertyName.includes('.name') ||
+    propertyName.includes('.fullyQualifiedName')
+  ) {
+    return { fieldType: 'entityReference', nestedField: 'refName' };
+  }
+
+  // Hyperlink fields: propertyName.url.keyword or propertyName.displayText.keyword
+  if (propertyName.includes('.url')) {
+    return { fieldType: 'hyperlink', nestedField: 'stringValue' };
+  }
+  if (propertyName.includes('.displayText')) {
+    return { fieldType: 'hyperlink', nestedField: 'textValue' };
+  }
+
+  // Table-cp fields: propertyName.rows.columnName.keyword
+  if (propertyName.includes('.rows.')) {
+    return { fieldType: 'table', nestedField: 'textValue' };
+  }
+
+  // Default: string or numeric type (determined by operator)
+  return { fieldType: 'default', nestedField: null };
+}
+
+/**
+ * Checks if the operator is a range operator (requires numeric field).
+ *
+ * @param {string} operator - The query operator
+ * @returns {boolean} - True if range operator
+ * @private
+ */
+function isRangeOperator(operator) {
+  return [
+    'between',
+    'not_between',
+    'less',
+    'less_or_equal',
+    'greater',
+    'greater_or_equal',
+  ].includes(operator);
+}
+
+/**
+ * Builds a nested query for customPropertiesTyped field.
+ *
+ * @param {string} propertyName - The base property name
+ * @param {string} nestedField - The nested field to query (longValue, stringValue, etc.)
+ * @param {any} value - The value to search for
+ * @param {string} operator - The query operator
+ * @returns {object} - The nested ES query
+ * @private
+ */
+function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
+  const mustClauses = [
+    { term: { 'customPropertiesTyped.name': propertyName } },
+  ];
+
+  // Build the value query based on operator
+  if (isRangeOperator(operator)) {
+    const rangeQuery = {};
+    if (operator === 'between' && Array.isArray(value) && value.length >= 2) {
+      rangeQuery.gte = value[0];
+      rangeQuery.lte = value[1];
+    } else if (operator === 'less') {
+      rangeQuery.lt = Array.isArray(value) ? value[0] : value;
+    } else if (operator === 'less_or_equal') {
+      rangeQuery.lte = Array.isArray(value) ? value[0] : value;
+    } else if (operator === 'greater') {
+      rangeQuery.gt = Array.isArray(value) ? value[0] : value;
+    } else if (operator === 'greater_or_equal') {
+      rangeQuery.gte = Array.isArray(value) ? value[0] : value;
+    }
+    mustClauses.push({
+      range: { [`customPropertiesTyped.${nestedField}`]: rangeQuery },
+    });
+  } else {
+    // Exact match
+    const termValue = Array.isArray(value) ? value[0] : value;
+    mustClauses.push({
+      term: { [`customPropertiesTyped.${nestedField}`]: termValue },
+    });
+  }
+
+  return {
+    nested: {
+      path: 'customPropertiesTyped',
+      ignore_unmapped: true,
+      query: {
+        bool: {
+          must: mustClauses,
+        },
+      },
+    },
+  };
+}
+
+/**
  * Builds an Elasticsearch query for extension (custom property) fields.
- * With the flattened extension type, we use customPropertiesFuzzy field
- * for searching since customPropertiesFlat stores concatenated values
- * (e.g., "userref:Aaron Singh aaron.singh2 \"aaron.singh2\"").
+ * Uses customPropertiesTyped (nested) for all queries:
+ * - Range queries: longValue/doubleValue fields
+ * - Exact match: stringValue field
+ * - Text search: textValue field
+ * - Entity references: refName/refId/refFqn fields
+ * - Time intervals: start/end fields
  *
  * @param {string} propertyName - The custom property name (may include nested paths)
  * @param {string} entityType - The entity type (table, topic, etc.)
@@ -285,45 +402,75 @@ function getBasePropertyName(propertyName) {
  * @private
  */
 function buildExtensionQuery(propertyName, entityType, value, operator, not) {
-  // Extract base property name, stripping nested paths for complex types
-  // e.g., "userref.displayName.keyword" -> "userref"
   const basePropertyName = getBasePropertyName(propertyName);
+  const { fieldType, nestedField } = getFieldTypeInfo(propertyName);
 
-  // Build the main query using customPropertiesFuzzy with match query
-  // This works for all custom property types because:
-  // - Simple strings: stored as "propName:value", match finds "propName value"
-  // - EntityReference: stored as "propName:displayName name fqn", match finds partial values
-  // - TimeInterval: stored as "propName:start end", match finds partial values
-  // - Hyperlink: stored as "propName:displayText url", match finds partial values
   let mainQuery;
-  if (operator === 'like' || operator === 'wildcard' || operator === 'regexp') {
-    // For wildcard/like/regexp searches, use match with more relaxed matching
-    mainQuery = {
-      match: {
-        customPropertiesFuzzy: {
-          query: `${basePropertyName} ${value}`,
-          operator: 'and',
-        },
-      },
-    };
+
+  // Use customPropertiesTyped for structured queries
+  if (fieldType === 'timeInterval' && nestedField) {
+    // TimeInterval: query start or end field
+    mainQuery = buildNestedTypedQuery(
+      basePropertyName,
+      nestedField,
+      value,
+      operator
+    );
+  } else if (fieldType === 'entityReference') {
+    // EntityReference: query refName field
+    mainQuery = buildNestedTypedQuery(
+      basePropertyName,
+      'refName',
+      value,
+      operator
+    );
+  } else if (isRangeOperator(operator)) {
+    // Numeric range query: use longValue or doubleValue
+    mainQuery = buildNestedTypedQuery(
+      basePropertyName,
+      'longValue',
+      value,
+      operator
+    );
+  } else if (operator === 'equal' || operator === 'not_equal') {
+    // Exact match: use stringValue for strings, nested query
+    mainQuery = buildNestedTypedQuery(
+      basePropertyName,
+      'stringValue',
+      value,
+      'equal'
+    );
   } else {
-    // For equals/exact matches, still use match but require both property name and value
-    // This finds "Aaron Singh" within "userref:Aaron Singh aaron.singh2 \"aaron.singh2\""
+    // Text search (like, wildcard, regexp): use customPropertiesTyped.textValue
+    const searchValue = Array.isArray(value) ? value[0] : value;
     mainQuery = {
-      match: {
-        customPropertiesFuzzy: {
-          query: `${basePropertyName} ${value}`,
-          operator: 'and',
+      nested: {
+        path: 'customPropertiesTyped',
+        ignore_unmapped: true,
+        query: {
+          bool: {
+            must: [
+              { term: { 'customPropertiesTyped.name': basePropertyName } },
+              {
+                match: {
+                  'customPropertiesTyped.textValue': {
+                    query: searchValue,
+                    operator: 'and',
+                  },
+                },
+              },
+            ],
+          },
         },
       },
     };
   }
 
   // Wrap in must_not if negated
-  if (not) {
+  if (not || operator === 'not_equal' || operator === 'not_between') {
     mainQuery = {
       bool: {
-        must_not: mainQuery,
+        must_not: mainQuery.nested ? mainQuery : [mainQuery],
       },
     };
   }
