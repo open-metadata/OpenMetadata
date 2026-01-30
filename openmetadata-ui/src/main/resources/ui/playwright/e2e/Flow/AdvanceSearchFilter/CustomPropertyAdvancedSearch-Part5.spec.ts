@@ -28,7 +28,7 @@ import {
   testASForEntityReferenceTypedCP,
   testASForEnumTypedCP,
   testASForNumberTypedCP,
-  testASForTextTypedCP
+  testASForTextTypedCP,
 } from '../../../utils/customPropertyAdvancedSearchUtils';
 import { sidebarClick } from '../../../utils/sidebar';
 
@@ -144,6 +144,7 @@ for (const [name, EntityClass] of Object.entries(entitiesList)) {
         });
 
         test('Time CP with all operators', async ({ page }) => {
+          test.slow();
           const propertyName = testData.propertyNames['time-cp'];
 
           await testASForTextTypedCP({
