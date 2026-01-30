@@ -98,7 +98,6 @@ export interface AssetSelectionContentProps {
   queryFilter?: QueryFilterInterface;
   emptyPlaceHolderText?: string;
   infoBannerText?: string;
-  title?: string;
 }
 
 export const useAssetSelectionContent = ({
