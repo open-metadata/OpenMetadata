@@ -49,6 +49,7 @@ import {
   getHighlightedRowClassName,
   getTableExpandableConfig,
   pruneEmptyChildren,
+  updateColumnInNestedStructure,
 } from '../../../../../utils/TableUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -202,8 +203,7 @@ const ModelTab = () => {
 
   const updateColumnDetails = async (
     columnFqn: string,
-    column: Partial<Column>,
-    field?: keyof Column
+    column: Partial<Column>
   ) => {
     const response = await updateDataModelColumn(columnFqn, column);
     const cleanResponse = isEmpty(response.children)
@@ -211,12 +211,7 @@ const ModelTab = () => {
       : response;
 
     setPaginatedColumns((prev) =>
-      prev.map((col) =>
-        col.fullyQualifiedName === columnFqn
-          ? // Have to omit the field which is being updated to avoid persisted old value
-            { ...omit(col, field ?? ''), ...cleanResponse }
-          : col
-      )
+      updateColumnInNestedStructure(prev, columnFqn, cleanResponse)
     );
 
     return response;
@@ -225,13 +220,9 @@ const ModelTab = () => {
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
       if (editColumnTag.fullyQualifiedName) {
-        await updateColumnDetails(
-          editColumnTag.fullyQualifiedName,
-          {
-            tags: selectedTags,
-          },
-          'tags'
-        );
+        await updateColumnDetails(editColumnTag.fullyQualifiedName, {
+          tags: selectedTags,
+        });
       }
     },
     [updateColumnDetails]
@@ -240,13 +231,9 @@ const ModelTab = () => {
   const handleColumnDescriptionChange = useCallback(
     async (updatedDescription: string) => {
       if (editColumnDescription?.fullyQualifiedName) {
-        await updateColumnDetails(
-          editColumnDescription.fullyQualifiedName,
-          {
-            description: updatedDescription,
-          },
-          'description'
-        );
+        await updateColumnDetails(editColumnDescription.fullyQualifiedName, {
+          description: updatedDescription,
+        });
 
         setEditColumnDescription(undefined);
       }
@@ -264,13 +251,9 @@ const ModelTab = () => {
       return; // Early return if id is not provided
     }
 
-    await updateColumnDetails(
-      fullyQualifiedName,
-      {
-        displayName,
-      },
-      'displayName'
-    );
+    await updateColumnDetails(fullyQualifiedName, {
+      displayName,
+    });
   };
 
   const handleColumnClick = useCallback(
