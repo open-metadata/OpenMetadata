@@ -1827,6 +1827,7 @@
     "syntax": "Syntax",
     "tab": "כרטיסייה",
     "table": "טבלה",
+    "table-column": "עמודת טבלה",
     "table-constraint-plural": "אילוצי טבלה",
     "table-constraints": "אילוצי טבלה",
     "table-details": "פרטי טבלה",

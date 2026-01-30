@@ -1827,6 +1827,7 @@
     "syntax": "Syntax",
     "tab": "แท็บ",
     "table": "ตาราง",
+    "table-column": "คอลัมน์ตาราง",
     "table-constraint-plural": "ข้อจำกัดของตาราง",
     "table-constraints": "ข้อจำกัดของตาราง",
     "table-details": "รายละเอียดของตาราง",
