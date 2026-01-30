@@ -69,6 +69,15 @@ export default defineConfig(({ mode }) => {
         viteCompression({
           algorithm: 'gzip',
           ext: '.gz',
+          threshold: 1024, // Only compress files larger than 1KB
+          deleteOriginFile: false, // Keep original files for fallback
+        }),
+      mode === 'production' &&
+        viteCompression({
+          algorithm: 'brotliCompress',
+          ext: '.br',
+          threshold: 1024, // Only compress files larger than 1KB
+          deleteOriginFile: false, // Keep original files for fallback
         }),
     ].filter(Boolean),
 
