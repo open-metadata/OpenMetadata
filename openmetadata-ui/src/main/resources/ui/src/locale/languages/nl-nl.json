@@ -2926,6 +2926,7 @@
     "upload-file-to-validate": "Upload a file to validate",
     "upload-not-configured": "Uploadfunctionaliteit is niet geconfigureerd. Neem contact op met uw beheerder.",
     "upstream-depth-tooltip": "Toon tot 3 knooppunten van upstream-lineage om de bron (parent-levels) te identificeren.",
+    "url-must-start-with-http-or-https": "URL moet beginnen met http:// of https://",
     "url-must-use-http-or-https": "URL moet http- of https-protocol gebruiken",
     "usage-ingestion-description": "Gebruiksingestie kan worden geconfigureerd en ingezet nadat een metadataingestie is opgezet. De gebruiksingestieworkflow verkrijgt de querylogboeken en tabelcreatiedata van de onderliggende database en voedt deze naar {{brandName}}. Metadata en gebruik kunnen slechts één pijplijn hebben voor een databaseservice. Definieer de duur van het querylogboek (in dagen), de locatie van het stagingbestand en het resultatenlimiet om te beginnen.",
     "use-fqn-for-filtering-message": "Regex wordt toegepast op de volledig gekwalificeerde naam (bijv. service_name.db_name.schema_name.table_name) in plaats van de ruwe naam (bijv. table_name).",
