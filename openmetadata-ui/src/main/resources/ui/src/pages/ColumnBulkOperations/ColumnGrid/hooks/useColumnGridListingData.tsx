@@ -99,6 +99,7 @@ export const useColumnGridListingData = (
     const filterKeys = [
       EntityFields.ENTITY_TYPE,
       EntityFields.SERVICE,
+      EntityFields.SERVICE_TYPE,
       EntityFields.DOMAINS,
       'metadataStatus',
       COLUMN_TAG_FIELD,
@@ -146,6 +147,7 @@ export const useColumnGridListingData = (
       ...serverFilters,
       entityTypes: urlState.filters[EntityFields.ENTITY_TYPE],
       serviceName: urlState.filters[EntityFields.SERVICE]?.[0],
+      serviceTypes: urlState.filters[EntityFields.SERVICE_TYPE],
       domainId: urlState.filters[EntityFields.DOMAINS]?.[0],
       metadataStatus: urlState.filters['metadataStatus'],
       tags: urlState.filters[COLUMN_TAG_FIELD],

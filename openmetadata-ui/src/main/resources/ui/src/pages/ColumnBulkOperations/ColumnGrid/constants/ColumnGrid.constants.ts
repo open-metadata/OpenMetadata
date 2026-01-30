@@ -28,6 +28,11 @@ export const COLUMN_GRID_FILTERS: ExploreQuickFilterField[] = [
     hideCounts: true,
   },
   {
+    label: i18n.t('label.service-type'),
+    key: EntityFields.SERVICE_TYPE,
+    hideCounts: true,
+  },
+  {
     label: i18n.t('label.domain-plural'),
     key: EntityFields.DOMAINS,
     hideCounts: true,

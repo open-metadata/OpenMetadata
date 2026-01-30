@@ -25,7 +25,7 @@ import {
 } from '@mui/material';
 import { Tag01 as TagIcon } from '@untitledui/icons';
 import { Button, Tag, Typography as AntTypography } from 'antd';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined, some } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -89,6 +89,13 @@ import { useColumnGridListingData } from './hooks/useColumnGridListingData';
 
 const { Text } = AntTypography;
 
+const EDITED_ROW_KEYS: ReadonlyArray<
+  'editedDisplayName' | 'editedDescription' | 'editedTags'
+> = ['editedDisplayName', 'editedDescription', 'editedTags'];
+
+const hasEditedValues = (r: ColumnGridRowData): boolean =>
+  some(EDITED_ROW_KEYS, (key) => !isUndefined(r[key]));
+
 const ColumnGrid: React.FC<ColumnGridProps> = ({
   filters: externalFilters,
 }) => {
@@ -100,6 +107,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const [recentlyUpdatedRowIds, setRecentlyUpdatedRowIds] = useState<
     Set<string>
   >(new Set());
+  const [pendingRefetchRowIds, setPendingRefetchRowIds] = useState<Set<string>>(
+    new Set()
+  );
   const editorRef = React.useRef<EditorContentRef>(null);
   const activeJobIdRef = useRef<string | null>(null);
   const pendingHighlightRowIdsRef = useRef<Set<string>>(new Set());
@@ -933,12 +943,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       (r: ColumnGridRowData) => columnGridListing.isSelected(r.id)
     );
 
-    const updatesCount = selectedRowsData.filter(
-      (r: ColumnGridRowData) =>
-        r.editedDisplayName !== undefined ||
-        r.editedDescription !== undefined ||
-        r.editedTags !== undefined
-    ).length;
+    const updatesCount = selectedRowsData.filter(hasEditedValues).length;
 
     if (updatesCount === 0) {
       showErrorToast(t('message.no-changes-to-save'));
@@ -952,11 +957,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       const columnUpdates: ColumnUpdate[] = [];
 
       for (const row of selectedRowsData) {
-        if (
-          row.editedDisplayName === undefined &&
-          row.editedDescription === undefined &&
-          row.editedTags === undefined
-        ) {
+        if (!hasEditedValues(row)) {
           continue;
         }
 
@@ -1032,58 +1033,32 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
       activeJobIdRef.current = response.jobId;
 
-      const selectedIds = new Set(columnGridListing.selectedEntities);
-      const mergedRows = columnGridListing.allRows.map(
-        (r: ColumnGridRowData) => {
-          if (!selectedIds.has(r.id)) {
-            return {
-              ...r,
-              editedDisplayName: undefined,
-              editedDescription: undefined,
-              editedTags: undefined,
-            };
-          }
-          const hasEdits =
-            r.editedDisplayName !== undefined ||
-            r.editedDescription !== undefined ||
-            r.editedTags !== undefined;
-
-          if (!hasEdits) {
-            return {
-              ...r,
-              editedDisplayName: undefined,
-              editedDescription: undefined,
-              editedTags: undefined,
-            };
-          }
-
-          return {
-            ...r,
-            displayName: r.editedDisplayName ?? r.displayName,
-            description: r.editedDescription ?? r.description,
-            tags: r.editedTags ?? r.tags,
-            editedDisplayName: undefined,
-            editedDescription: undefined,
-            editedTags: undefined,
-          };
-        }
+      const updatedRowIds = new Set(
+        selectedRowsData.map((r: ColumnGridRowData) => r.id)
       );
-
-      columnGridListing.setAllRows(mergedRows);
-      columnGridListing.clearEditedValues();
-      pendingHighlightRowIdsRef.current = new Set(
-        columnGridListing.selectedEntities
-      );
+      setPendingRefetchRowIds(updatedRowIds);
+      pendingHighlightRowIdsRef.current = updatedRowIds;
 
       showSuccessToast(
         t('server.bulk-update-initiated', {
           entity: t('label.column-plural'),
-          count: pendingHighlightRowIdsRef.current.size,
+          count: cleanedUpdates.length,
         })
       );
 
+      setIsUpdating(false);
       closeDrawerRef.current();
       columnGridListing.clearSelection();
+
+      columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
+        prev.map((r: ColumnGridRowData) => ({
+          ...r,
+          editedDisplayName: undefined,
+          editedDescription: undefined,
+          editedTags: undefined,
+        }))
+      );
+      columnGridListing.clearEditedValues();
     } catch (error) {
       showErrorToast(t('server.entity-updating-error'));
       setIsUpdating(false);
@@ -1091,7 +1066,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   }, [
     columnGridListing.allRows,
     columnGridListing.selectedEntities,
-    columnGridListing.isSelected,
     columnGridListing.clearEditedValues,
     columnGridListing.setAllRows,
     columnGridListing.clearSelection,
@@ -1113,19 +1087,28 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
         if (data.jobId && data.jobId === activeJobIdRef.current) {
           if (data.status === 'COMPLETED' || data.status === 'SUCCESS') {
-            activeJobIdRef.current = null;
-            Promise.resolve(columnGridListing.refetch({ silent: true }))
-              .then(() => {
+            columnGridListing.setGridItems([]);
+            columnGridListing.setExpandedRows(new Set());
+            const refetchPromise = columnGridListing.refetch() as
+              | Promise<void>
+              | undefined;
+            refetchPromise
+              ?.then(() => {
+                setPendingRefetchRowIds(new Set());
                 setRecentlyUpdatedRowIds(
                   new Set(pendingHighlightRowIdsRef.current)
                 );
+                activeJobIdRef.current = null;
                 setIsUpdating(false);
               })
               .catch(() => {
+                setPendingRefetchRowIds(new Set());
+                activeJobIdRef.current = null;
                 setIsUpdating(false);
               });
           } else if (data.status === 'FAILED' || data.status === 'FAILURE') {
             showErrorToast(t('server.entity-updating-error'));
+            setPendingRefetchRowIds(new Set());
             activeJobIdRef.current = null;
             pendingHighlightRowIdsRef.current = new Set();
             setIsUpdating(false);
@@ -1318,6 +1301,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <ColumnGridTableRow
           entity={entity}
           isIndeterminate={isIndeterminate}
+          isPendingRefetch={pendingRefetchRowIds.has(entity.id)}
           isRecentlyUpdated={recentlyUpdatedRowIds.has(entity.id)}
           isSelected={isSelected}
           renderColumnNameCell={renderColumnNameCellFinal}
@@ -1331,6 +1315,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       );
     },
     [
+      pendingRefetchRowIds,
       recentlyUpdatedRowIds,
       renderColumnNameCellFinal,
       renderPathCellAdapter,
@@ -1366,6 +1351,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       entities: filteredEntities,
       columns,
       renderers: finalRenderers,
+      loading:
+        pendingRefetchRowIds.size > 0 ? false : columnGridListing.loading,
     },
     enableSelection: true,
     entityLabelKey: 'label.column',
@@ -1383,12 +1370,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   });
 
   const editedCount = useMemo(() => {
-    return columnGridListing.allRows.filter(
-      (r: ColumnGridRowData) =>
-        r.editedDisplayName !== undefined ||
-        r.editedDescription !== undefined ||
-        r.editedTags !== undefined
-    ).length;
+    return columnGridListing.allRows.filter(hasEditedValues).length;
   }, [columnGridListing.allRows]);
 
   const selectedCount = columnGridListing.selectedEntities.length;

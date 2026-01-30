@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Checkbox, TableCell, TableRow, useTheme } from '@mui/material';
+import {
+  Checkbox,
+  CircularProgress,
+  TableCell,
+  TableRow,
+  useTheme,
+} from '@mui/material';
 import React, { useMemo } from 'react';
 import { ColumnGridRowData } from '../ColumnGrid.interface';
 
@@ -19,6 +25,8 @@ interface ColumnGridTableRowProps {
   entity: ColumnGridRowData;
   isSelected: boolean;
   isIndeterminate?: boolean;
+  /** When true, show loader in place of checkbox until refetch completes */
+  isPendingRefetch?: boolean;
   /** When true, row shows highlighted (theme warning) background for recently bulk-updated columns */
   isRecentlyUpdated?: boolean;
   onSelect: (id: string, checked: boolean) => void;
@@ -36,6 +44,7 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
   entity,
   isSelected,
   isIndeterminate,
+  isPendingRefetch = false,
   isRecentlyUpdated,
   onSelect,
   onGroupSelect,
@@ -112,12 +121,16 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
       selected={isSelected}
       sx={rowSx}>
       <TableCell padding="checkbox" sx={cellSx}>
-        <Checkbox
-          checked={isSelected}
-          data-testid={`column-checkbox-${entity.columnName}`}
-          indeterminate={isIndeterminate}
-          onChange={handleCheckboxChange}
-        />
+        {isPendingRefetch ? (
+          <CircularProgress size={20} sx={{ display: 'block' }} />
+        ) : (
+          <Checkbox
+            checked={isSelected}
+            data-testid={`column-checkbox-${entity.columnName}`}
+            indeterminate={isIndeterminate}
+            onChange={handleCheckboxChange}
+          />
+        )}
       </TableCell>
       <TableCell data-testid="column-name-cell" sx={cellSx}>
         {renderColumnNameCell(entity)}
