@@ -97,3 +97,9 @@ UPDATE test_definition
 SET json = jsonb_set(json::jsonb, '{validatorClass}', to_jsonb(INITCAP(SUBSTRING(json->>'name', 1, 1)) || SUBSTRING(json->>'name', 2) || 'Validator'))
 WHERE json->>'validatorClass' IS NULL
   AND json->>'provider' = 'system';
+
+-- Remove orphaned inputPorts and outputPorts fields from data_product_entity
+-- These fields were added in 1.10.x but removed in 1.12.x (now relationship-based)
+UPDATE data_product_entity
+SET json = json - 'inputPorts' - 'outputPorts'
+WHERE json ?? 'inputPorts' OR json ?? 'outputPorts';
