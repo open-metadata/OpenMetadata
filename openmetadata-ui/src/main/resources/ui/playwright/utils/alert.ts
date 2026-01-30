@@ -15,14 +15,14 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { isEmpty, startCase } from 'lodash';
 import {
   ALERT_DESCRIPTION,
-  ALERT_WITHOUT_PERMISSION_POLICY_DETAILS,
-  ALERT_WITHOUT_PERMISSION_POLICY_NAME,
-  ALERT_WITHOUT_PERMISSION_ROLE_DETAILS,
-  ALERT_WITHOUT_PERMISSION_ROLE_NAME,
   ALERT_WITH_PERMISSION_POLICY_DETAILS,
   ALERT_WITH_PERMISSION_POLICY_NAME,
   ALERT_WITH_PERMISSION_ROLE_DETAILS,
   ALERT_WITH_PERMISSION_ROLE_NAME,
+  ALERT_WITHOUT_PERMISSION_POLICY_DETAILS,
+  ALERT_WITHOUT_PERMISSION_POLICY_NAME,
+  ALERT_WITHOUT_PERMISSION_ROLE_DETAILS,
+  ALERT_WITHOUT_PERMISSION_ROLE_NAME,
 } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
 import { DELETE_TERM } from '../constant/common';
@@ -323,11 +323,15 @@ export const addEntityFQNFilter = async ({
     `.ant-select-dropdown:visible [data-testid="${selectId}-filter-option"]`
   );
   await expect(entityFilterOption).toBeVisible();
-  await entityFilterOption.click({ force: true });
+  await expect(entityFilterOption).toBeEnabled();
+  await entityFilterOption.click();
 
   // Search and select entity
   const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
-  await page.fill('[data-testid="fqn-list-select"] [role="combobox"]', entityFQN);
+  await page.fill(
+    '[data-testid="fqn-list-select"] [role="combobox"]',
+    entityFQN
+  );
   await getSearchResult;
   await page
     .locator(`.ant-select-dropdown:visible [title="${entityFQN}"]`)
@@ -380,6 +384,8 @@ export const addEventTypeFilter = async ({
     ).toBeAttached();
   }
 
+  await clickOutside(page);
+
   if (exclude) {
     // Change filter effect
     await page.click(`[data-testid="filter-switch-${filterNumber}"]`);
@@ -399,37 +405,56 @@ export const addDomainFilter = async ({
   domainDisplayName: string;
   exclude?: boolean;
 }) => {
-  // Select domain filter
+  // Open filter dropdown
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-  const domainOption = page.locator(
-    `.ant-select-dropdown:visible [data-testid="Domain-filter-option"]`
-  );
-  await expect(domainOption).toBeVisible();
-  await domainOption.click({ force: true });
 
-  // Search and select domain
-  const getSearchResult = page.waitForResponse(
-    '/api/v1/search/query?q=**index=domain_search_index*'
-  );
+  // Select Domain filter option - chain :visible selector inline to avoid stale references
+  const domainOption = page
+    .locator('.ant-select-dropdown:visible')
+    .getByTestId('Domain-filter-option');
+  await expect(domainOption).toBeVisible();
+  await domainOption.click();
+
+  // Verify filter dropdown closed before next interaction
+  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
+
+  // Open domain select dropdown
   const domainInput = page.locator(
     '[data-testid="domain-select"] [role="combobox"]'
   );
-  await domainInput.click({ force: true });
-  await domainInput.fill(domainName, { force: true });
-  await getSearchResult;
-  const searchResult = page.locator(
-    `.ant-select-dropdown:visible [title="${domainDisplayName}"]`
-  );
-  await expect(searchResult).toBeVisible();
-  await searchResult.click({ force: true });
+  await expect(domainInput).toBeVisible();
+  await domainInput.click();
 
+  const awaitResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query?q=') &&
+      response.url().includes('index=domain_search_index')
+  );
+
+  // Fill search term and wait for API response
+  await domainInput.fill(domainName);
+  await awaitResponse;
+
+  // Select domain from search results - chain :visible selector inline
+  const searchResult = page
+    .locator('.ant-select-dropdown:visible')
+    .locator(`[title="${domainDisplayName}"]`);
+  await expect(searchResult).toBeVisible();
+  await searchResult.click();
+
+  await clickOutside(page);
+
+  // Verify dropdown closed and domain is selected in UI
+  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
   await expect(
     page.getByTestId('domain-select').getByTitle(domainDisplayName)
-  ).toBeAttached();
+  ).toBeVisible();
 
   if (exclude) {
-    // Change filter effect
-    await page.click(`[data-testid="filter-switch-${filterNumber}"]`);
+    // Toggle filter to exclude mode
+    const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
+    await expect(filterSwitch).toBeVisible();
+    await filterSwitch.click();
   }
 };
 
@@ -471,19 +496,17 @@ const checkActionOrFilterDetails = async ({
 
       await expect(page.getByTestId(`filter-${index}`)).toBeAttached();
 
-      filter.effect === 'include'
-        ? await expect(
-            page.getByTestId(
-              `${isFilter ? 'filter' : 'trigger'}-switch-${index}`
-            )
-          ).toHaveClass('ant-switch ant-switch-checked ant-switch-disabled')
-        : await expect(
-            page.getByTestId(
-              `${isFilter ? 'filter' : 'trigger'}-switch-${index}`
-            )
-          ).not.toHaveClass(
-            'ant-switch ant-switch-checked ant-switch-disabled'
-          );
+      const switchTestId = `${isFilter ? 'filter' : 'trigger'}-switch-${index}`;
+
+      if (filter.effect === 'include') {
+        await expect(page.getByTestId(switchTestId)).toHaveClass(
+          'ant-switch ant-switch-checked ant-switch-disabled'
+        );
+      } else {
+        await expect(page.getByTestId(switchTestId)).not.toHaveClass(
+          'ant-switch ant-switch-checked ant-switch-disabled'
+        );
+      }
     }
   }
 };

@@ -98,6 +98,18 @@ public interface IndexManagementClient {
   void removeAliases(String indexName, Set<String> aliases);
 
   /**
+   * Atomically swap aliases from old indices to a new index.
+   * This operation removes the specified aliases from any old indices and adds them to the new index
+   * in a single atomic operation, ensuring zero-downtime during index promotion.
+   *
+   * @param oldIndices the set of old index names to remove aliases from
+   * @param newIndex the new index name to add aliases to
+   * @param aliases the set of aliases to swap
+   * @return true if the swap was successful, false otherwise
+   */
+  boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases);
+
+  /**
    * Get all aliases for an index.
    *
    * @param indexName the name of the index
