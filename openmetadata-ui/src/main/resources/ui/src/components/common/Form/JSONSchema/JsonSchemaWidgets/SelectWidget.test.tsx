@@ -141,9 +141,9 @@ describe('Test SelectWidget Component', () => {
       'combobox'
     );
 
-    // Open dropdown
+    // Open dropdown using mouseDown which is more reliable for Ant Design Select
     await act(async () => {
-      await userEvent.click(selectInput);
+      fireEvent.mouseDown(selectInput);
     });
 
     // Wait for dropdown to open and show all options
