@@ -1131,7 +1131,7 @@ test.describe('ODCS Import/Export', () => {
 
       // Verify roles are in the export
       expect(exportedYaml).toContain('roles');
-      expect(exportedYaml).toContain('data-consumer');
+      expect(exportedYaml).toContain('data_admin');
 
       // Cleanup
       fsModule.unlinkSync(tempPath);

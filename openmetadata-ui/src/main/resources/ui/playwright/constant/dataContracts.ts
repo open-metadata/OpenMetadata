@@ -416,13 +416,13 @@ status: active
 description:
   purpose: Contract testing security roles
 roles:
-  - name: data_admin
+  - role: data_admin
     description: Full access to all data
     access: readWrite
-  - name: analyst
+  - role: analyst
     description: Read-only access for analysis
     access: read
-  - name: auditor
+  - role: auditor
     description: Audit access for compliance
     access: read
 `;
@@ -519,10 +519,10 @@ slaProperties:
     value: "365"
     unit: day
 roles:
-  - name: data_admin
+  - role: data_admin
     description: Full access to all data
     access: readWrite
-  - name: analyst
+  - role: analyst
     description: Read-only access for analysis
     access: read
 `;
