@@ -13,21 +13,13 @@
 
 import {
   AccessToken,
-  EVENT_ERROR,
-  EVENT_EXPIRED,
   EVENT_RENEWED,
   IDToken,
   OktaAuth,
   OktaAuthOptions,
 } from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
-import {
-  FunctionComponent,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-} from 'react';
+import { FunctionComponent, ReactNode, useEffect, useMemo } from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from './AuthProvider';
@@ -60,31 +52,9 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
           expireEarlySeconds: 60,
           secure: true,
         },
-        cookies: {
-          secure: true,
-          sameSite: 'lax',
-        },
-        services: {
-          autoRenew: true,
-          renewOnTabActivation: true,
-          tabInactivityDuration: 3600,
-        },
       }),
     [clientId, issuer, redirectUri, scopes, pkce]
   );
-
-  const triggerLogin = useCallback(async () => {
-    await oktaAuth.signInWithRedirect();
-  }, [oktaAuth]);
-
-  const customAuthHandler = useCallback(async () => {
-    const previousAuthState = oktaAuth.authStateManager.getPreviousAuthState();
-    if (!previousAuthState?.isAuthenticated) {
-      oktaAuth.tokenManager.clear();
-      await oktaAuth.signOut();
-      await triggerLogin();
-    }
-  }, [oktaAuth, triggerLogin]);
 
   useEffect(() => {
     const handleTokenRenewed = async (
@@ -96,71 +66,43 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
       }
     };
 
-    const handleTokenExpired = async (key: string) => {
-      if (key === 'idToken' || key === 'accessToken') {
-        try {
-          await oktaAuth.tokenManager.renew(key);
-        } catch (error) {
-          await customAuthHandler();
-        }
-      }
-    };
-
-    const handleTokenError = async (error: Error) => {
-      // eslint-disable-next-line no-console
-      console.error('Token error:', error);
-      await customAuthHandler();
-    };
-
     oktaAuth.tokenManager.on(EVENT_RENEWED, handleTokenRenewed);
-    oktaAuth.tokenManager.on(EVENT_EXPIRED, handleTokenExpired);
-    oktaAuth.tokenManager.on(EVENT_ERROR, handleTokenError);
 
     return () => {
       oktaAuth.tokenManager.off(EVENT_RENEWED, handleTokenRenewed);
-      oktaAuth.tokenManager.off(EVENT_EXPIRED, handleTokenExpired);
-      oktaAuth.tokenManager.off(EVENT_ERROR, handleTokenError);
     };
-  }, [oktaAuth, customAuthHandler]);
+  }, [oktaAuth]);
 
-  const restoreOriginalUri = useCallback(
-    async (_oktaAuth: OktaAuth) => {
-      const idToken = _oktaAuth.getIdToken() ?? '';
-      const scopes =
-        _oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
-      await setOidcToken(idToken);
-      _oktaAuth
-        .getUser()
-        .then((info) => {
-          const user = {
-            id_token: idToken,
-            scope: scopes,
-            profile: {
-              email: info.email ?? '',
-              name: info.name ?? '',
+  const restoreOriginalUri = async () => {
+    const idToken = oktaAuth.getIdToken() ?? '';
+    const scopes =
+      oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
 
-              picture: (info as any).imageUrl ?? '',
-              locale: info.locale ?? '',
-              sub: info.sub,
-            },
-          };
-          handleSuccessfulLogin(user);
-        })
-        .catch(async (err) => {
-          // eslint-disable-next-line no-console
-          console.error(err);
-          // Redirect to login on error.
-          await customAuthHandler();
-        });
-    },
-    [handleSuccessfulLogin]
-  );
+    await setOidcToken(idToken);
+
+    try {
+      const info = await oktaAuth.getUser();
+      const user = {
+        id_token: idToken,
+        scope: scopes,
+        profile: {
+          email: info.email ?? '',
+          name: info.name ?? '',
+          picture: (info as any).imageUrl ?? '',
+          locale: info.locale ?? '',
+          sub: info.sub,
+        },
+      };
+      handleSuccessfulLogin(user);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to restore original URI:', error);
+      await oktaAuth.signInWithRedirect();
+    }
+  };
 
   return (
-    <Security
-      oktaAuth={oktaAuth}
-      restoreOriginalUri={restoreOriginalUri}
-      onAuthRequired={customAuthHandler}>
+    <Security oktaAuth={oktaAuth} restoreOriginalUri={restoreOriginalUri}>
       {children}
     </Security>
   );
