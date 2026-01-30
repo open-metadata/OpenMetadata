@@ -102,4 +102,4 @@ WHERE json->>'validatorClass' IS NULL
 -- These fields were added in 1.10.x but removed in 1.12.x (now relationship-based)
 UPDATE data_product_entity
 SET json = json - 'inputPorts' - 'outputPorts'
-WHERE json ? 'inputPorts' OR json ? 'outputPorts';
+WHERE json ?? 'inputPorts' OR json ?? 'outputPorts';
