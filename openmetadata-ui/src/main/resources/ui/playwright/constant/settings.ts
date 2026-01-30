@@ -42,6 +42,7 @@ export enum GlobalSettingOptions {
   PERSONA = 'persona',
   ROLES = 'roles',
   POLICIES = 'policies',
+  PERMISSION_DEBUGGER = 'permission-debugger',
   AUDIT_LOGS = 'audit-logs',
   LEARNING_RESOURCES = 'learning-resources',
   DATABASES = 'databases',
@@ -201,6 +202,10 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.POLICIES]: [
     GlobalSettingsMenuCategory.ACCESS,
     `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.POLICIES}`,
+  ],
+  [GlobalSettingOptions.PERMISSION_DEBUGGER]: [
+    GlobalSettingsMenuCategory.ACCESS,
+    `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.PERMISSION_DEBUGGER}`,
   ],
   [GlobalSettingOptions.AUDIT_LOGS]: [
     GlobalSettingsMenuCategory.ACCESS,

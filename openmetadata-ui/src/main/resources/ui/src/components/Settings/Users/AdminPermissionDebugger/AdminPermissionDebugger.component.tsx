@@ -38,6 +38,7 @@ import {
   PermissionEvaluationDebugInfo,
 } from '../../../../rest/permissionAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -62,13 +63,16 @@ interface EvaluationFormValues {
 const AdminPermissionDebugger: React.FC = () => {
   const { t } = useTranslation();
   const [selectedUsername, setSelectedUsername] = useState<string>('');
+  const [selectedUserDisplayName, setSelectedUserDisplayName] =
+    useState<string>('');
+  const [autoCompleteValue, setAutoCompleteValue] = useState<string>('');
   const [permissionInfo, setPermissionInfo] = useState<PermissionDebugInfo>();
   const [evaluationInfo, setEvaluationInfo] =
     useState<PermissionEvaluationDebugInfo>();
   const [loadingPermissions, setLoadingPermissions] = useState(false);
   const [loadingEvaluation, setLoadingEvaluation] = useState(false);
   const [userOptions, setUserOptions] = useState<
-    { value: string; label: string }[]
+    { value: string; label: string; displayName: string }[]
   >([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [form] = Form.useForm();
@@ -117,6 +121,7 @@ const AdminPermissionDebugger: React.FC = () => {
             label: `${hit._source.displayName || hit._source.name} (${
               hit._source.name
             })`,
+            displayName: hit._source.displayName || hit._source.name,
           })
         );
 
@@ -132,7 +137,12 @@ const AdminPermissionDebugger: React.FC = () => {
   );
 
   const handleUserSelect = async (username: string) => {
+    const selectedOption = userOptions.find(
+      (option) => option.value === username
+    );
     setSelectedUsername(username);
+    setSelectedUserDisplayName(selectedOption?.displayName ?? username);
+    setAutoCompleteValue(selectedOption?.label ?? username);
     setLoadingPermissions(true);
     try {
       const response = await getPermissionDebugInfo(username);
@@ -188,7 +198,8 @@ const AdminPermissionDebugger: React.FC = () => {
               <span>{evaluationInfo.finalDecision}</span>
             </Title>
             <Text>
-              {t('label.user')} <strong>{evaluationInfo.user.name}</strong>{' '}
+              {t('label.user')}{' '}
+              <strong>{getEntityName(evaluationInfo.user)}</strong>{' '}
               {t('label.is')}{' '}
               <strong
                 style={{
@@ -349,22 +360,24 @@ const AdminPermissionDebugger: React.FC = () => {
                   entity: t('label.user'),
                 })}
                 style={{ maxWidth: 400 }}
-                onSearch={searchUsers}
+                value={autoCompleteValue}
+                onChange={(value) => {
+                  setAutoCompleteValue(value);
+                  searchUsers(value);
+                }}
                 onSelect={handleUserSelect}
               />
 
               {selectedUsername && (
-                <>
-                  <Text type="secondary">
-                    {t('label.selected-entity', {
-                      entity: t('label.user-lowercase'),
-                    })}
-                    {': '}
-                    <strong>
-                      <span>{selectedUsername}</span>
-                    </strong>
-                  </Text>
-                </>
+                <Text data-testid="selected-user" type="secondary">
+                  {t('label.selected-entity', {
+                    entity: t('label.user-lowercase'),
+                  })}
+                  {': '}
+                  <strong>
+                    <span>{selectedUserDisplayName}</span>
+                  </strong>
+                </Text>
               )}
             </Space>
           </Card>
@@ -457,7 +470,10 @@ const AdminPermissionDebugger: React.FC = () => {
           )}
 
           {permissionInfo && !loadingPermissions && (
-            <Card title={`${t('label.permissions-for')} ${selectedUsername}`}>
+            <Card
+              title={`${t(
+                'label.permissions-for'
+              )} ${selectedUserDisplayName}`}>
               <UserPermissions
                 isLoggedInUser={false}
                 username={selectedUsername}
