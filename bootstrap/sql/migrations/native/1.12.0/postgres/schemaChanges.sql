@@ -275,7 +275,8 @@ ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS vectorWarnings BI
 -- Stats are now tracked per (jobId, serverId, entityType) instead of (jobId, serverId)
 ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS entityType VARCHAR(128) NOT NULL DEFAULT 'unknown';
 
--- Drop old unique index and create new one with entityType
+-- Drop old unique constraint and index, then create new one with entityType
+ALTER TABLE search_index_server_stats DROP CONSTRAINT IF EXISTS search_index_server_stats_jobid_serverid_key;
 DROP INDEX IF EXISTS idx_search_index_server_stats_job_server;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_search_index_server_stats_job_server_entity
     ON search_index_server_stats (jobId, serverId, entityType);
