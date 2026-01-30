@@ -914,7 +914,7 @@ public class SearchIndexExecutor implements AutoCloseable {
           entityType,
           entitySuccess,
           stagedIndexOpt.get());
-      defaultHandler.promoteEntityIndex(entityContext, entitySuccess);
+      defaultHandler.promoteEntityIndex(entityContext, true);
       promotedEntities.add(entityType);
     }
   }
