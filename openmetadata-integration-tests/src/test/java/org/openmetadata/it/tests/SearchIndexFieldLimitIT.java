@@ -48,6 +48,7 @@ import org.openmetadata.sdk.network.RequestOptions;
  * <p>These tests verify that:
  * <ul>
  *   <li>The extension field uses flattened/flat_object type (not dynamic object)</li>
+ *   <li>The customPropertiesTyped nested field exists with proper structure for typed queries</li>
  *   <li>Creating many custom properties doesn't cause field explosion in the index</li>
  *   <li>The field count stays bounded regardless of custom property count</li>
  *   <li>Other dynamic object fields (votes, lifeCycle, etc.) have dynamic: false</li>
@@ -174,10 +175,11 @@ public class SearchIndexFieldLimitIT {
   }
 
   /**
-   * Test that customPropertiesFlat field exists for searchable custom properties.
+   * Test that customPropertiesTyped nested field exists for typed custom property queries.
+   * This field enables range queries, exact matches, and structured queries on custom properties.
    */
   @Test
-  void testCustomPropertiesFlatFieldExists(TestNamespace ns) throws Exception {
+  void testCustomPropertiesTypedFieldExists(TestNamespace ns) throws Exception {
     RestClient searchClient = TestSuiteBootstrap.createSearchClient();
 
     Request request = new Request("GET", "/" + TABLE_INDEX + "/_mapping");
@@ -188,33 +190,39 @@ public class SearchIndexFieldLimitIT {
     String responseBody = EntityUtils.toString(response.getEntity());
     JsonNode root = OBJECT_MAPPER.readTree(responseBody);
 
-    JsonNode customPropsFlat = findFieldMapping(root, "customPropertiesFlat");
-    assertNotNull(customPropsFlat, "customPropertiesFlat field should exist");
+    JsonNode customPropsTyped = findFieldMapping(root, "customPropertiesTyped");
+    assertNotNull(customPropsTyped, "customPropertiesTyped field should exist");
 
-    String fieldType = customPropsFlat.path("type").asText();
-    assertEquals("keyword", fieldType, "customPropertiesFlat should be keyword type");
-  }
+    String fieldType = customPropsTyped.path("type").asText();
+    assertEquals("nested", fieldType, "customPropertiesTyped should be nested type");
 
-  /**
-   * Test that customPropertiesFuzzy field exists for fuzzy search on custom properties.
-   */
-  @Test
-  void testCustomPropertiesFuzzyFieldExists(TestNamespace ns) throws Exception {
-    RestClient searchClient = TestSuiteBootstrap.createSearchClient();
+    // Verify nested field structure
+    JsonNode properties = customPropsTyped.path("properties");
+    assertFalse(properties.isMissingNode(), "customPropertiesTyped should have properties");
 
-    Request request = new Request("GET", "/" + TABLE_INDEX + "/_mapping");
-    Response response = searchClient.performRequest(request);
+    // Check required nested fields exist
+    assertTrue(properties.has("name"), "Should have 'name' field");
+    assertTrue(properties.has("propertyType"), "Should have 'propertyType' field");
+    assertTrue(properties.has("stringValue"), "Should have 'stringValue' field");
+    assertTrue(properties.has("textValue"), "Should have 'textValue' field");
+    assertTrue(properties.has("longValue"), "Should have 'longValue' field");
+    assertTrue(properties.has("doubleValue"), "Should have 'doubleValue' field");
+    assertTrue(properties.has("start"), "Should have 'start' field for timeInterval");
+    assertTrue(properties.has("end"), "Should have 'end' field for timeInterval");
+    assertTrue(properties.has("refId"), "Should have 'refId' field for entityReference");
+    assertTrue(properties.has("refName"), "Should have 'refName' field for entityReference");
 
-    assertEquals(200, response.getStatusLine().getStatusCode());
-
-    String responseBody = EntityUtils.toString(response.getEntity());
-    JsonNode root = OBJECT_MAPPER.readTree(responseBody);
-
-    JsonNode customPropsFuzzy = findFieldMapping(root, "customPropertiesFuzzy");
-    assertNotNull(customPropsFuzzy, "customPropertiesFuzzy field should exist");
-
-    String fieldType = customPropsFuzzy.path("type").asText();
-    assertEquals("text", fieldType, "customPropertiesFuzzy should be text type");
+    // Verify field types
+    assertEquals("keyword", properties.path("name").path("type").asText());
+    assertEquals("keyword", properties.path("propertyType").path("type").asText());
+    assertEquals("keyword", properties.path("stringValue").path("type").asText());
+    assertEquals("text", properties.path("textValue").path("type").asText());
+    assertEquals("long", properties.path("longValue").path("type").asText());
+    assertEquals("double", properties.path("doubleValue").path("type").asText());
+    assertEquals("long", properties.path("start").path("type").asText());
+    assertEquals("long", properties.path("end").path("type").asText());
+    assertEquals("keyword", properties.path("refId").path("type").asText());
+    assertEquals("keyword", properties.path("refName").path("type").asText());
   }
 
   /**
