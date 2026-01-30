@@ -46,11 +46,19 @@ logger.info("Successfully loaded all required environment variables.")
 logger.info(f"Repo: {github_repository}, Run ID: {github_run_id}")
 
 
+def send_slack_alert(message: str) -> None:
+    slack_client = WebhookClient(url=slack_webhook_url)
+    full_message = f"{message}\nWorkflow run: {github_server_url}/{github_repository}/actions/runs/{github_run_id}"
+    slack_client.send(text=full_message)
+
+
 def main():
     slack_url_map = {
         "open-metadata": "https://slack.open-metadata.org",
         "free-tier-support": "https://free-tier-support.getcollate.io/",
     }
+
+    errors = []
 
     for product_type, slack_url in slack_url_map.items():
         res = None
@@ -59,25 +67,41 @@ def main():
                 "https://linkmonitor.onrender.com/api/v1/validate",
                 headers={"Content-Type": "application/json"},
                 json={"url": slack_url},
+                timeout=30,
             )
             logger.info(f"Status: {res.status_code} {res.text}")
 
-            if res.json().get("status") != "active":
+            if res.status_code != 200:
+                raise RuntimeError(
+                    f"API returned status {res.status_code}: {res.text}"
+                )
+
+            try:
+                response_data = res.json()
+            except requests.exceptions.JSONDecodeError as json_err:
+                raise RuntimeError(
+                    f"Invalid JSON response: {res.text}"
+                ) from json_err
+
+            if response_data.get("status") != "active":
                 raise RuntimeError("Expired status!")
+
         except RuntimeError as err:
-            error_msg = f"{product_type} slack link is expired"
+            error_msg = f"🔥 {product_type} slack link check failed: {err} 🔥"
             logger.error(error_msg)
-            slack_client = WebhookClient(
-                url=slack_webhook_url,
-            )
-            error_msg = f"🔥 {product_type} slack link is expired 🔥 \n Workflow run: {github_server_url}/{github_repository}/actions/runs/{github_run_id}"
-            slack_client.send(text=error_msg)
+            send_slack_alert(error_msg)
+            errors.append(error_msg)
         except Exception as err:
-            error_msg = f"Something went wrong fetching the data - [{err}]"
+            error_msg = f"🔥 {product_type} monitoring error: {err}"
             if res is not None:
-                error_msg += f" [{res.text}]"
+                error_msg += f" [Response: {res.text}]"
+            error_msg += " 🔥"
             logger.error(error_msg)
-            raise err
+            send_slack_alert(error_msg)
+            errors.append(error_msg)
+
+    if errors:
+        raise RuntimeError(f"Monitoring failed with {len(errors)} error(s)")
 
 
 if __name__ == "__main__":
