@@ -266,8 +266,18 @@ test.describe(
         }
 
         // Add Multiple GlossaryTerm to Table
-        await assignGlossaryTerm(page, glossaryTerm.responseData);
-        await assignGlossaryTerm(page, glossaryTerm2.responseData, 'Edit');
+        await assignGlossaryTerm(
+          page,
+          glossaryTerm.responseData,
+          'Add',
+          entity.endpoint
+        );
+        await assignGlossaryTerm(
+          page,
+          glossaryTerm2.responseData,
+          'Edit',
+          entity.endpoint
+        );
       });
     }
   }
