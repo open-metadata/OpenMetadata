@@ -255,7 +255,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return false;
   }
 
-  private boolean hasScheduleChanged(IngestionPipeline original, IngestionPipeline updated) {
+  boolean hasScheduleChanged(IngestionPipeline original, IngestionPipeline updated) {
     String originalSchedule =
         original.getAirflowConfig() != null
             ? original.getAirflowConfig().getScheduleInterval()
@@ -267,7 +267,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return !Objects.equals(originalSchedule, updatedSchedule);
   }
 
-  private boolean hasSourceConfigChanged(IngestionPipeline original, IngestionPipeline updated) {
+  boolean hasSourceConfigChanged(IngestionPipeline original, IngestionPipeline updated) {
     if (original.getSourceConfig() == null && updated.getSourceConfig() == null) {
       return false;
     }
@@ -312,7 +312,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         deployResponse.getReason());
   }
 
-  private String extractErrorContext(String message) {
+  String extractErrorContext(String message) {
     if (message == null || message.isEmpty()) {
       return "runner unavailable";
     }
@@ -663,9 +663,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
               "Failed to deploy pipeline '{}' before update. Aborting DB update to maintain consistency.",
               updated.getName(),
               e);
-          String errorContext = extractErrorContext(e.getMessage());
-          throw new PipelineServiceClientException(
-              String.format("Deployment failed: %s. Changes not saved.", errorContext));
+          throw e;
         } catch (Exception e) {
           LOG.error(
               "Unexpected error deploying pipeline '{}' before update. Aborting DB update.",

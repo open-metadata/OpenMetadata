@@ -2,7 +2,11 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.util.Objects;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
@@ -14,13 +18,28 @@ import org.openmetadata.schema.type.EntityReference;
 
 class IngestionPipelineRepositoryTest {
 
+  private static IngestionPipelineRepository repository;
+
+  @BeforeAll
+  static void setup() {
+    repository = mock(IngestionPipelineRepository.class);
+    when(repository.hasScheduleChanged(
+            org.mockito.ArgumentMatchers.any(IngestionPipeline.class),
+            org.mockito.ArgumentMatchers.any(IngestionPipeline.class)))
+        .thenCallRealMethod();
+    when(repository.hasSourceConfigChanged(
+            org.mockito.ArgumentMatchers.any(IngestionPipeline.class),
+            org.mockito.ArgumentMatchers.any(IngestionPipeline.class)))
+        .thenCallRealMethod();
+  }
+
   @Test
   @DisplayName("requiresRedeployment should detect schedule changes from Scheduled to On-Demand")
   void testRequiresRedeployment_ScheduleToOnDemand_ShouldReturnTrue() {
     IngestionPipeline original = createPipelineWithSchedule("0 0 * * *");
     IngestionPipeline updated = createPipelineWithSchedule(null);
 
-    boolean requiresRedeployment = hasScheduleChanged(original, updated);
+    boolean requiresRedeployment = repository.hasScheduleChanged(original, updated);
 
     assertTrue(
         requiresRedeployment, "Changing from Scheduled to On-Demand should require redeployment");
@@ -32,7 +51,7 @@ class IngestionPipelineRepositoryTest {
     IngestionPipeline original = createPipelineWithSchedule(null);
     IngestionPipeline updated = createPipelineWithSchedule("0 0 * * *");
 
-    boolean requiresRedeployment = hasScheduleChanged(original, updated);
+    boolean requiresRedeployment = repository.hasScheduleChanged(original, updated);
 
     assertTrue(
         requiresRedeployment, "Changing from On-Demand to Scheduled should require redeployment");
@@ -44,7 +63,7 @@ class IngestionPipelineRepositoryTest {
     IngestionPipeline original = createPipelineWithSchedule("0 0 * * *");
     IngestionPipeline updated = createPipelineWithSchedule("0 0 * * *");
 
-    boolean requiresRedeployment = hasScheduleChanged(original, updated);
+    boolean requiresRedeployment = repository.hasScheduleChanged(original, updated);
 
     assertFalse(requiresRedeployment, "Same schedule should not require redeployment");
   }
@@ -55,7 +74,7 @@ class IngestionPipelineRepositoryTest {
     IngestionPipeline original = createPipelineWithSchedule(null);
     IngestionPipeline updated = createPipelineWithSchedule(null);
 
-    boolean hasChanged = hasScheduleChanged(original, updated);
+    boolean hasChanged = repository.hasScheduleChanged(original, updated);
 
     assertFalse(hasChanged, "Both null schedules should not indicate a change");
   }
@@ -67,7 +86,7 @@ class IngestionPipelineRepositoryTest {
     original.setAirflowConfig(null);
     IngestionPipeline updated = createPipelineWithSchedule("0 0 * * *");
 
-    boolean hasChanged = hasScheduleChanged(original, updated);
+    boolean hasChanged = repository.hasScheduleChanged(original, updated);
 
     assertTrue(hasChanged, "Null to non-null schedule should indicate a change");
   }
@@ -80,7 +99,7 @@ class IngestionPipelineRepositoryTest {
     IngestionPipeline updated = createBasicPipeline();
     updated.setEnabled(false);
 
-    boolean requiresRedeployment = !original.getEnabled().equals(updated.getEnabled());
+    boolean requiresRedeployment = !Objects.equals(original.getEnabled(), updated.getEnabled());
 
     assertTrue(requiresRedeployment, "Enabled change should require redeployment");
   }
@@ -93,9 +112,22 @@ class IngestionPipelineRepositoryTest {
     IngestionPipeline updated = createBasicPipeline();
     updated.setEnabled(true);
 
-    boolean requiresRedeployment = !original.getEnabled().equals(updated.getEnabled());
+    boolean requiresRedeployment = !Objects.equals(original.getEnabled(), updated.getEnabled());
 
     assertFalse(requiresRedeployment, "Same enabled value should not require redeployment");
+  }
+
+  @Test
+  @DisplayName("requiresRedeployment should handle null enabled values")
+  void testRequiresRedeployment_NullEnabled_ShouldNotThrowNPE() {
+    IngestionPipeline original = createBasicPipeline();
+    original.setEnabled(null);
+    IngestionPipeline updated = createBasicPipeline();
+    updated.setEnabled(true);
+
+    boolean requiresRedeployment = !Objects.equals(original.getEnabled(), updated.getEnabled());
+
+    assertTrue(requiresRedeployment, "Null to non-null enabled should require redeployment");
   }
 
   @Test
@@ -106,7 +138,8 @@ class IngestionPipelineRepositoryTest {
     IngestionPipeline updated = createBasicPipeline();
     updated.setLoggerLevel(LogLevels.DEBUG);
 
-    boolean requiresRedeployment = !original.getLoggerLevel().equals(updated.getLoggerLevel());
+    boolean requiresRedeployment =
+        !Objects.equals(original.getLoggerLevel(), updated.getLoggerLevel());
 
     assertTrue(requiresRedeployment, "LoggerLevel change should require redeployment");
   }
@@ -119,9 +152,24 @@ class IngestionPipelineRepositoryTest {
     IngestionPipeline updated = createBasicPipeline();
     updated.setLoggerLevel(LogLevels.INFO);
 
-    boolean requiresRedeployment = !original.getLoggerLevel().equals(updated.getLoggerLevel());
+    boolean requiresRedeployment =
+        !Objects.equals(original.getLoggerLevel(), updated.getLoggerLevel());
 
     assertFalse(requiresRedeployment, "Same loggerLevel should not require redeployment");
+  }
+
+  @Test
+  @DisplayName("requiresRedeployment should handle null loggerLevel values")
+  void testRequiresRedeployment_NullLoggerLevel_ShouldNotThrowNPE() {
+    IngestionPipeline original = createBasicPipeline();
+    original.setLoggerLevel(null);
+    IngestionPipeline updated = createBasicPipeline();
+    updated.setLoggerLevel(LogLevels.DEBUG);
+
+    boolean requiresRedeployment =
+        !Objects.equals(original.getLoggerLevel(), updated.getLoggerLevel());
+
+    assertTrue(requiresRedeployment, "Null to non-null loggerLevel should require redeployment");
   }
 
   @Test
@@ -130,7 +178,7 @@ class IngestionPipelineRepositoryTest {
     IngestionPipeline original = createPipelineWithSourceConfig("table1");
     IngestionPipeline updated = createPipelineWithSourceConfig("table2");
 
-    boolean hasChanged = hasSourceConfigChanged(original, updated);
+    boolean hasChanged = repository.hasSourceConfigChanged(original, updated);
 
     assertTrue(hasChanged, "Different sourceConfig should indicate a change");
   }
@@ -141,7 +189,7 @@ class IngestionPipelineRepositoryTest {
     IngestionPipeline original = createPipelineWithSourceConfig("table1");
     IngestionPipeline updated = createPipelineWithSourceConfig("table1");
 
-    boolean hasChanged = hasSourceConfigChanged(original, updated);
+    boolean hasChanged = repository.hasSourceConfigChanged(original, updated);
 
     assertFalse(hasChanged, "Same sourceConfig should not indicate a change");
   }
@@ -154,7 +202,7 @@ class IngestionPipelineRepositoryTest {
     IngestionPipeline updated = new IngestionPipeline();
     updated.setSourceConfig(null);
 
-    boolean hasChanged = hasSourceConfigChanged(original, updated);
+    boolean hasChanged = repository.hasSourceConfigChanged(original, updated);
 
     assertFalse(hasChanged, "Both null sourceConfigs should not indicate a change");
   }
@@ -166,12 +214,12 @@ class IngestionPipelineRepositoryTest {
     original.setSourceConfig(null);
     IngestionPipeline updated = createPipelineWithSourceConfig("table1");
 
-    boolean hasChanged = hasSourceConfigChanged(original, updated);
+    boolean hasChanged = repository.hasSourceConfigChanged(original, updated);
 
     assertTrue(hasChanged, "Null to non-null sourceConfig should indicate a change");
   }
 
-  private IngestionPipeline createPipelineWithSchedule(String schedule) {
+  private static IngestionPipeline createPipelineWithSchedule(String schedule) {
     IngestionPipeline pipeline = createBasicPipeline();
     AirflowConfig airflowConfig = new AirflowConfig();
     airflowConfig.setScheduleInterval(schedule);
@@ -179,7 +227,7 @@ class IngestionPipelineRepositoryTest {
     return pipeline;
   }
 
-  private IngestionPipeline createPipelineWithSourceConfig(String schemaFilterPattern) {
+  private static IngestionPipeline createPipelineWithSourceConfig(String schemaFilterPattern) {
     IngestionPipeline pipeline = createBasicPipeline();
     SourceConfig sourceConfig = new SourceConfig();
     DatabaseServiceMetadataPipeline metadataConfig = new DatabaseServiceMetadataPipeline();
@@ -191,7 +239,7 @@ class IngestionPipelineRepositoryTest {
     return pipeline;
   }
 
-  private IngestionPipeline createBasicPipeline() {
+  private static IngestionPipeline createBasicPipeline() {
     IngestionPipeline pipeline = new IngestionPipeline();
     pipeline.setName("test-pipeline");
     pipeline.setFullyQualifiedName("test-service.test-pipeline");
@@ -201,31 +249,5 @@ class IngestionPipelineRepositoryTest {
     pipeline.setService(serviceRef);
 
     return pipeline;
-  }
-
-  private boolean hasScheduleChanged(IngestionPipeline original, IngestionPipeline updated) {
-    String originalSchedule =
-        original.getAirflowConfig() != null
-            ? original.getAirflowConfig().getScheduleInterval()
-            : null;
-    String updatedSchedule =
-        updated.getAirflowConfig() != null
-            ? updated.getAirflowConfig().getScheduleInterval()
-            : null;
-    return !java.util.Objects.equals(originalSchedule, updatedSchedule);
-  }
-
-  private boolean hasSourceConfigChanged(IngestionPipeline original, IngestionPipeline updated) {
-    if (original.getSourceConfig() == null && updated.getSourceConfig() == null) {
-      return false;
-    }
-    if (original.getSourceConfig() == null || updated.getSourceConfig() == null) {
-      return true;
-    }
-    String originalJson =
-        org.openmetadata.schema.utils.JsonUtils.pojoToJson(original.getSourceConfig());
-    String updatedJson =
-        org.openmetadata.schema.utils.JsonUtils.pojoToJson(updated.getSourceConfig());
-    return !originalJson.equals(updatedJson);
   }
 }
