@@ -700,6 +700,8 @@ class UnitycatalogSource(
     def close(self):
         for sql_connection in self._sql_connection_map.values():
             sql_connection.close()
+        if self.engine:
+            self.engine.dispose()
 
     # pylint: disable=arguments-renamed
     def get_owner_ref(self, owner: Optional[str]) -> Optional[EntityReferenceList]:
