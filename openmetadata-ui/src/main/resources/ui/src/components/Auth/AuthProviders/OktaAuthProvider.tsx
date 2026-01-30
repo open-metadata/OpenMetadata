@@ -11,9 +11,23 @@
  *  limitations under the License.
  */
 
-import { OktaAuth, OktaAuthOptions } from '@okta/okta-auth-js';
+import {
+  AccessToken,
+  EVENT_ERROR,
+  EVENT_EXPIRED,
+  EVENT_RENEWED,
+  IDToken,
+  OktaAuth,
+  OktaAuthOptions,
+} from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
-import { FunctionComponent, ReactNode, useCallback, useMemo } from 'react';
+import {
+  FunctionComponent,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+} from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from './AuthProvider';
@@ -59,22 +73,55 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
     [clientId, issuer, redirectUri, scopes, pkce]
   );
 
-  const triggerLogin = async () => {
+  const triggerLogin = useCallback(async () => {
     await oktaAuth.signInWithRedirect();
-  };
+  }, [oktaAuth]);
 
-  const customAuthHandler = async () => {
+  const customAuthHandler = useCallback(async () => {
     const previousAuthState = oktaAuth.authStateManager.getPreviousAuthState();
     if (!previousAuthState?.isAuthenticated) {
-      // Clear storage before triggering login
       oktaAuth.tokenManager.clear();
       await oktaAuth.signOut();
-      // App initialization stage
       await triggerLogin();
-    } else {
-      // Ask the user to trigger the login process during token autoRenew process
     }
-  };
+  }, [oktaAuth, triggerLogin]);
+
+  useEffect(() => {
+    const handleTokenRenewed = async (
+      key: string,
+      newToken: IDToken | AccessToken
+    ) => {
+      if (key === 'idToken' && 'idToken' in newToken && newToken.idToken) {
+        await setOidcToken(newToken.idToken);
+      }
+    };
+
+    const handleTokenExpired = async (key: string) => {
+      if (key === 'idToken' || key === 'accessToken') {
+        try {
+          await oktaAuth.tokenManager.renew(key);
+        } catch (error) {
+          await customAuthHandler();
+        }
+      }
+    };
+
+    const handleTokenError = async (error: Error) => {
+      // eslint-disable-next-line no-console
+      console.error('Token error:', error);
+      await customAuthHandler();
+    };
+
+    oktaAuth.tokenManager.on(EVENT_RENEWED, handleTokenRenewed);
+    oktaAuth.tokenManager.on(EVENT_EXPIRED, handleTokenExpired);
+    oktaAuth.tokenManager.on(EVENT_ERROR, handleTokenError);
+
+    return () => {
+      oktaAuth.tokenManager.off(EVENT_RENEWED, handleTokenRenewed);
+      oktaAuth.tokenManager.off(EVENT_EXPIRED, handleTokenExpired);
+      oktaAuth.tokenManager.off(EVENT_ERROR, handleTokenError);
+    };
+  }, [oktaAuth, customAuthHandler]);
 
   const restoreOriginalUri = useCallback(
     async (_oktaAuth: OktaAuth) => {

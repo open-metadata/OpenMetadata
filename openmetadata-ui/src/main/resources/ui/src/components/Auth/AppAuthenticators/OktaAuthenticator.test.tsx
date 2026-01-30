@@ -12,7 +12,7 @@
  */
 import { useOktaAuth } from '@okta/okta-react';
 import { act, render, screen } from '@testing-library/react';
-import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
+import { getOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import OktaAuthenticator from './OktaAuthenticator';
 
@@ -21,7 +21,7 @@ jest.mock('@okta/okta-react', () => ({
 }));
 
 jest.mock('../../../utils/SwTokenStorageUtils', () => ({
-  setOidcToken: jest.fn(),
+  getOidcToken: jest.fn(),
 }));
 
 const mockHandleSuccessfulLogout = jest.fn();
@@ -36,13 +36,7 @@ const mockOktaAuth = {
   signInWithRedirect: jest.fn(),
   tokenManager: {
     clear: jest.fn(),
-    get: jest.fn(),
-    setTokens: jest.fn(),
   },
-  token: {
-    renewTokens: jest.fn(),
-  },
-  getIdToken: jest.fn(),
 };
 
 const mockProps = {
@@ -127,18 +121,8 @@ describe('OktaAuthenticator', () => {
   });
 
   describe('renewToken', () => {
-    it('should renew tokens successfully and return new token', async () => {
-      const mockIdToken = { idToken: 'new-id-token' };
-      const mockAccessToken = { accessToken: 'access-token' };
-      const mockRenewedTokens = {
-        idToken: mockIdToken,
-        accessToken: mockAccessToken,
-      };
-
-      mockOktaAuth.tokenManager.get
-        .mockResolvedValueOnce(mockIdToken)
-        .mockResolvedValueOnce(mockAccessToken);
-      mockOktaAuth.token.renewTokens.mockResolvedValueOnce(mockRenewedTokens);
+    it('should return token from storage', async () => {
+      (getOidcToken as jest.Mock).mockResolvedValueOnce('stored-token');
 
       render(
         <OktaAuthenticator
@@ -149,29 +133,12 @@ describe('OktaAuthenticator', () => {
 
       const result = await authenticatorRef?.renewIdToken();
 
-      expect(mockOktaAuth.tokenManager.get).toHaveBeenCalledWith('idToken');
-      expect(mockOktaAuth.tokenManager.get).toHaveBeenCalledWith('accessToken');
-      expect(mockOktaAuth.token.renewTokens).toHaveBeenCalledTimes(1);
-      expect(mockOktaAuth.tokenManager.setTokens).toHaveBeenCalledWith(
-        mockRenewedTokens
-      );
-      expect(setOidcToken).toHaveBeenCalledWith('new-id-token');
-      expect(result).toBe('new-id-token');
+      expect(getOidcToken).toHaveBeenCalledTimes(1);
+      expect(result).toBe('stored-token');
     });
 
-    it('should use fallback getIdToken if renewed token is not available', async () => {
-      const mockIdToken = { idToken: 'existing-id-token' };
-      const mockAccessToken = { accessToken: 'access-token' };
-      const mockRenewedTokens = {
-        idToken: undefined,
-        accessToken: mockAccessToken,
-      };
-
-      mockOktaAuth.tokenManager.get
-        .mockResolvedValueOnce(mockIdToken)
-        .mockResolvedValueOnce(mockAccessToken);
-      mockOktaAuth.token.renewTokens.mockResolvedValueOnce(mockRenewedTokens);
-      mockOktaAuth.getIdToken.mockReturnValueOnce('fallback-id-token');
+    it('should return empty string if no token in storage', async () => {
+      (getOidcToken as jest.Mock).mockResolvedValueOnce('');
 
       render(
         <OktaAuthenticator
@@ -182,90 +149,7 @@ describe('OktaAuthenticator', () => {
 
       const result = await authenticatorRef?.renewIdToken();
 
-      expect(mockOktaAuth.getIdToken).toHaveBeenCalledTimes(1);
-      expect(setOidcToken).toHaveBeenCalledWith('fallback-id-token');
-      expect(result).toBe('fallback-id-token');
-    });
-
-    it('should redirect to sign-in if no existing tokens', async () => {
-      mockOktaAuth.tokenManager.get
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(null);
-
-      render(
-        <OktaAuthenticator
-          {...mockProps}
-          ref={(ref) => (authenticatorRef = ref)}
-        />
-      );
-
-      const result = await authenticatorRef?.renewIdToken();
-
-      expect(mockOktaAuth.tokenManager.get).toHaveBeenCalledWith('idToken');
-      expect(mockOktaAuth.tokenManager.get).toHaveBeenCalledWith('accessToken');
-      expect(mockOktaAuth.signInWithRedirect).toHaveBeenCalledTimes(1);
-      expect(mockOktaAuth.token.renewTokens).not.toHaveBeenCalled();
-      expect(result).toBe('');
-    });
-
-    it('should redirect to sign-in when token renewal fails', async () => {
-      const mockIdToken = { idToken: 'existing-id-token' };
-      const mockAccessToken = { accessToken: 'access-token' };
-
-      mockOktaAuth.tokenManager.get
-        .mockResolvedValueOnce(mockIdToken)
-        .mockResolvedValueOnce(mockAccessToken);
-      mockOktaAuth.token.renewTokens.mockRejectedValueOnce(
-        new Error('Token renewal failed')
-      );
-
-      const consoleErrorSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
-
-      render(
-        <OktaAuthenticator
-          {...mockProps}
-          ref={(ref) => (authenticatorRef = ref)}
-        />
-      );
-
-      const result = await authenticatorRef?.renewIdToken();
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Error renewing Okta token:',
-        expect.any(Error)
-      );
-      expect(mockOktaAuth.signInWithRedirect).toHaveBeenCalledTimes(1);
-      expect(result).toBe('');
-
-      consoleErrorSpy.mockRestore();
-    });
-
-    it('should return empty string if all token sources fail', async () => {
-      const mockIdToken = { idToken: 'existing-id-token' };
-      const mockAccessToken = { accessToken: 'access-token' };
-      const mockRenewedTokens = {
-        idToken: undefined,
-        accessToken: mockAccessToken,
-      };
-
-      mockOktaAuth.tokenManager.get
-        .mockResolvedValueOnce(mockIdToken)
-        .mockResolvedValueOnce(mockAccessToken);
-      mockOktaAuth.token.renewTokens.mockResolvedValueOnce(mockRenewedTokens);
-      mockOktaAuth.getIdToken.mockReturnValueOnce(undefined);
-
-      render(
-        <OktaAuthenticator
-          {...mockProps}
-          ref={(ref) => (authenticatorRef = ref)}
-        />
-      );
-
-      const result = await authenticatorRef?.renewIdToken();
-
-      expect(setOidcToken).toHaveBeenCalledWith('');
+      expect(getOidcToken).toHaveBeenCalledTimes(1);
       expect(result).toBe('');
     });
   });

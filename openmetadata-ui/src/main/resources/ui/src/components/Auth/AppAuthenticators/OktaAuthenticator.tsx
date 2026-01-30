@@ -13,8 +13,7 @@
 
 import { useOktaAuth } from '@okta/okta-react';
 import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
-
-import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
+import { getOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
@@ -33,43 +32,14 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const logout = async () => {
       try {
-        // Perform logout on Okta
         oktaAuth.tokenManager.clear();
       } finally {
-        // Cleanup application state
         handleSuccessfulLogout();
       }
     };
 
     const renewToken = async () => {
-      try {
-        const existingIdToken = await oktaAuth.tokenManager.get('idToken');
-        const existingAccessToken = await oktaAuth.tokenManager.get(
-          'accessToken'
-        );
-
-        // Add fallback if renewToken fails
-        // Redirect to sign-in if no tokens exist
-        if (!existingIdToken && !existingAccessToken) {
-          oktaAuth.signInWithRedirect();
-
-          return '';
-        }
-
-        const tokens = await oktaAuth.token.renewTokens();
-        oktaAuth.tokenManager.setTokens(tokens);
-        const newToken =
-          tokens?.idToken?.idToken ?? oktaAuth.getIdToken() ?? '';
-        await setOidcToken(newToken);
-
-        return newToken;
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('Error renewing Okta token:', error);
-        oktaAuth.signInWithRedirect();
-      }
-
-      return '';
+      return await getOidcToken();
     };
 
     useImperativeHandle(ref, () => ({
