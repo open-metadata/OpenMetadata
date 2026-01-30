@@ -2769,6 +2769,8 @@
     "redirecting-to-home-page": "홈 페이지로 리디렉션 중",
     "refer-to-our-doc": "더 많은 도움이 필요하신가요? 자세한 정보는 <0>{{doc}}</0>를 참조하세요.",
     "refresh-frequency-contract-description": "예상 데이터 업데이트 빈도",
+    "remove-asset-output-port-warning": "The following asset(s) are also configured as Output Ports. Removing them will also remove them from Output Ports:",
+    "remove-asset-will-also-remove-from-output-ports": "This asset is also configured as an Output Port. Removing it will also remove it from Output Ports.",
     "remove-default-persona-confirmation": "{{persona}}를 기본 페르소나에서 제거하시겠습니까? 사용자에게 기본 페르소나가 설정되지 않습니다.",
     "remove-default-persona-description": "사용자에게 기본 페르소나가 설정되지 않습니다",
     "remove-edge-between-source-and-target": "\"{{sourceDisplayName}}와(과) {{targetDisplayName}}\" 사이의 엣지를 제거하시겠습니까?",

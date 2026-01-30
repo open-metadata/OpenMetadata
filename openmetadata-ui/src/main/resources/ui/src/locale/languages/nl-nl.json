@@ -2769,6 +2769,8 @@
     "redirecting-to-home-page": "Doorgaan naar de startpagina",
     "refer-to-our-doc": "Hulp nodig? Raadpleeg onze <0>{{doc}}</0> voor meer informatie.",
     "refresh-frequency-contract-description": "Verwachte frequentie van gegevensupdates",
+    "remove-asset-output-port-warning": "The following asset(s) are also configured as Output Ports. Removing them will also remove them from Output Ports:",
+    "remove-asset-will-also-remove-from-output-ports": "This asset is also configured as an Output Port. Removing it will also remove it from Output Ports.",
     "remove-default-persona-confirmation": "Weet je zeker dat je {{persona}} als standaard persona wilt verwijderen? Er wordt geen standaard persona ingesteld voor gebruikers.",
     "remove-default-persona-description": "Er wordt geen standaard persona ingesteld voor gebruikers",
     "remove-edge-between-source-and-target": "Weet je zeker dat je de verbinding tussen \"{{sourceDisplayName}} en {{targetDisplayName}}\" wilt verwijderen?",

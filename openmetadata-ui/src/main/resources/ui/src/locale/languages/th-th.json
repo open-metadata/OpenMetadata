@@ -2769,6 +2769,8 @@
     "redirecting-to-home-page": "กำลังเปลี่ยนเส้นทางไปยังหน้าแรก",
     "refer-to-our-doc": "ยังต้องการความช่วยเหลืออยู่ใช่ไหม? โปรดดูเอกสารของเรา <0>{{doc}}</0> สำหรับข้อมูลเพิ่มเติม",
     "refresh-frequency-contract-description": "ความถี่ที่คาดว่าจะมีการอัปเดตข้อมูล",
+    "remove-asset-output-port-warning": "The following asset(s) are also configured as Output Ports. Removing them will also remove them from Output Ports:",
+    "remove-asset-will-also-remove-from-output-ports": "This asset is also configured as an Output Port. Removing it will also remove it from Output Ports.",
     "remove-default-persona-confirmation": "คุณแน่ใจหรือไม่ว่าต้องการลบ {{persona}} เป็นบุคลิกภาพเริ่มต้น? จะไม่มีบุคลิกภาพเริ่มต้นสำหรับผู้ใช้",
     "remove-default-persona-description": "จะไม่มีบุคลิกภาพเริ่มต้นสำหรับผู้ใช้",
     "remove-edge-between-source-and-target": "คุณแน่ใจหรือไม่ว่าต้องการลบขอบระหว่าง \"{{sourceDisplayName}}\" และ \"{{targetDisplayName}}\"?",

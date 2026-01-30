@@ -2769,6 +2769,8 @@
     "redirecting-to-home-page": "ホームページへリダイレクト中です",
     "refer-to-our-doc": "さらに詳しく知りたいですか？こちらの <0>{{doc}}</0> をご覧ください。",
     "refresh-frequency-contract-description": "データ更新の想定頻度",
+    "remove-asset-output-port-warning": "The following asset(s) are also configured as Output Ports. Removing them will also remove them from Output Ports:",
+    "remove-asset-will-also-remove-from-output-ports": "This asset is also configured as an Output Port. Removing it will also remove it from Output Ports.",
     "remove-default-persona-confirmation": "{{persona}}をデフォルトペルソナから削除してもよろしいですか？ユーザーにはデフォルトペルソナが設定されません。",
     "remove-default-persona-description": "ユーザーにはデフォルトペルソナが設定されません",
     "remove-edge-between-source-and-target": "「{{sourceDisplayName}}」と「{{targetDisplayName}}」の接続を削除してもよろしいですか？",

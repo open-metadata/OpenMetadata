@@ -2769,6 +2769,8 @@
     "redirecting-to-home-page": "در حال انتقال به صفحه اصلی.",
     "refer-to-our-doc": "هنوز نیاز به کمک دارید؟ به <0>{{doc}}</0> ما مراجعه کنید برای اطلاعات بیشتر.",
     "refresh-frequency-contract-description": "فرکانس مورد انتظار به‌روزرسانی داده‌ها",
+    "remove-asset-output-port-warning": "The following asset(s) are also configured as Output Ports. Removing them will also remove them from Output Ports:",
+    "remove-asset-will-also-remove-from-output-ports": "This asset is also configured as an Output Port. Removing it will also remove it from Output Ports.",
     "remove-default-persona-confirmation": "ਕੀ ਤੁਸੀਂ ਯਕੀਨਨ {{persona}} ਨੂੰ ਡਿਫਾਲਟ ਸ਼ਖਸੀਅਤ ਵਜੋਂ ਹਟਾਉਣਾ ਚਾਹੁੰਦੇ ਹੋ? ਉਪਭੋਗਤਾਵਾਂ ਲਈ ਕੋਈ ਡਿਫਾਲਟ ਸ਼ਖਸੀਅਤ ਸੈੱਟ ਨਹੀਂ ਕੀਤੀ ਜਾਵੇਗੀ.",
     "remove-default-persona-description": "ਉਪਭੋਗਤਾਵਾਂ ਲਈ ਕੋਈ ਡਿਫਾਲਟ ਸ਼ਖਸੀਅਤ ਸੈੱਟ ਨਹੀਂ ਕੀਤੀ ਜਾਵੇਗੀ",
     "remove-edge-between-source-and-target": "آیا مطمئن هستید که می‌خواهید لبه بین \"{{sourceDisplayName}} و {{targetDisplayName}}\" را حذف کنید؟",

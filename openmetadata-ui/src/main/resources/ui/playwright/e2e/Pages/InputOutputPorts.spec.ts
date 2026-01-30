@@ -1644,7 +1644,189 @@ test.describe('Input Output Ports', () => {
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
 
-    
+
+    });
+  });
+
+  test.describe('Section 9: Asset Removal Warning for Output Ports', () => {
+    test('Warning shown when removing asset that is also an output port', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with asset as output port via API', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+        await dataProduct.addOutputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to data product assets tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        const assetsTab = page.getByTestId('assets');
+        await assetsTab.click();
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Delete asset and verify warning', async () => {
+        const tableFqn = get(
+          tables[0],
+          'entityResponseData.fullyQualifiedName'
+        );
+        await page.getByTestId(`manage-button-${tableFqn}`).click();
+        await page.getByTestId('delete-button').click();
+
+        await expect(page.locator('.ant-alert-warning')).toBeVisible();
+        await expect(
+          page.locator(
+            'text=This asset is also configured as an Output Port'
+          )
+        ).toBeVisible();
+      });
+    });
+
+    test('No warning when removing asset that is NOT an output port', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with asset (not output port) via API', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+        ]);
+
+        await dataProduct.addOutputPorts(apiContext, [
+          createAssetRef(tables[1], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to data product assets tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        const assetsTab = page.getByTestId('assets');
+        await assetsTab.click();
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Delete asset that is NOT an output port', async () => {
+        const tableFqn = get(
+          tables[0],
+          'entityResponseData.fullyQualifiedName'
+        );
+        await page.getByTestId(`manage-button-${tableFqn}`).click();
+        await page.getByTestId('delete-button').click();
+
+        await expect(page.locator('.ant-alert-warning')).not.toBeVisible();
+        await expect(
+          page.getByText('Are you sure you want to remove')
+        ).toBeVisible();
+      });
+    });
+
+    test('Bulk delete shows warning listing only assets in output ports', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with mixed assets via API', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+          createAssetRef(tables[2], 'table'),
+        ]);
+
+        await dataProduct.addOutputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to data product assets tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        const assetsTab = page.getByTestId('assets');
+        await assetsTab.click();
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Select all assets and click bulk delete', async () => {
+        await page.getByRole('checkbox', { name: 'Select All' }).click();
+
+        await page.getByTestId('delete-all-button').click();
+
+        await expect(page.locator('.ant-alert-warning')).toBeVisible();
+        await expect(
+          page.locator(
+            'text=The following asset(s) are also configured as Output Ports'
+          )
+        ).toBeVisible();
+
+        const table1Name = get(tables[0], 'entityResponseData.displayName');
+        const table2Name = get(tables[1], 'entityResponseData.displayName');
+        const table3Name = get(tables[2], 'entityResponseData.displayName');
+
+        const warningAlert = page.locator('.ant-alert-warning');
+
+        await expect(
+          warningAlert.locator(`li:has-text("${table1Name}")`)
+        ).toBeVisible();
+        await expect(
+          warningAlert.locator(`li:has-text("${table2Name}")`)
+        ).toBeVisible();
+        await expect(
+          warningAlert.locator(`li:has-text("${table3Name}")`)
+        ).not.toBeVisible();
+      });
+    });
+
+    test('No warning when data product has no output ports', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with assets but no output ports', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate and delete asset', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        const assetsTab = page.getByTestId('assets');
+        await assetsTab.click();
+        await waitForAllLoadersToDisappear(page);
+
+        const tableFqn = get(
+          tables[0],
+          'entityResponseData.fullyQualifiedName'
+        );
+        await page.getByTestId(`manage-button-${tableFqn}`).click();
+        await page.getByTestId('delete-button').click();
+
+        await expect(page.locator('.ant-alert-warning')).not.toBeVisible();
+      });
     });
   });
 });

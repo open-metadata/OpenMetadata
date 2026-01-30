@@ -2769,6 +2769,8 @@
     "redirecting-to-home-page": "Redirigiendo a la página principal",
     "refer-to-our-doc": "¿Necesitas más ayuda? Consulta nuestra <0>{{doc}}</0> para obtener más información.",
     "refresh-frequency-contract-description": "Frecuencia esperada de actualizaciones de datos",
+    "remove-asset-output-port-warning": "The following asset(s) are also configured as Output Ports. Removing them will also remove them from Output Ports:",
+    "remove-asset-will-also-remove-from-output-ports": "This asset is also configured as an Output Port. Removing it will also remove it from Output Ports.",
     "remove-default-persona-confirmation": "¿Está seguro de que desea eliminar {{persona}} como persona predeterminada? No se establecerá ninguna persona predeterminada para los usuarios.",
     "remove-default-persona-description": "No se establecerá ninguna persona predeterminada para los usuarios",
     "remove-edge-between-source-and-target": "¿Estás seguro de que quieres eliminar la relación entre \"{{sourceDisplayName}}\" y \"{{targetDisplayName}}\"?",
