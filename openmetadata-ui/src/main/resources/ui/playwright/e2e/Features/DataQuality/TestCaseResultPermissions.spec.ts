@@ -302,19 +302,15 @@ test.describe(
 
       // Add a test case result so we have one to query/patch/delete
       resultTimestamp = getCurrentMillis();
-      await table.addTestCaseResult(
-        apiContext,
-        testCaseFqn,
-        {
-          result: 'Found value 10 vs expected 100.',
-          testCaseStatus: 'Failed',
-          testResultValue: [
-            { name: 'minValue', value: '10' },
-            { name: 'maxValue', value: '100' },
-          ],
-          timestamp: resultTimestamp,
-        }
-      );
+      await table.addTestCaseResult(apiContext, testCaseFqn, {
+        result: 'Found value 10 vs expected 100.',
+        testCaseStatus: 'Failed',
+        testResultValue: [
+          { name: 'minValue', value: '10' },
+          { name: 'maxValue', value: '100' },
+        ],
+        timestamp: resultTimestamp,
+      });
 
       // Setup all users
       await setupUserWithPolicy(
@@ -413,9 +409,7 @@ test.describe(
       }) => {
         // UI: Navigate to profiler page and verify test case is visible
         await visitProfilerPage(viewResultsPage);
-        await expect(
-          viewResultsPage.getByTestId(testCaseName)
-        ).toBeVisible();
+        await expect(viewResultsPage.getByTestId(testCaseName)).toBeVisible();
 
         // UI: Navigate to test case details to see results tab
         await visitTestCaseDetailsPage(viewResultsPage);

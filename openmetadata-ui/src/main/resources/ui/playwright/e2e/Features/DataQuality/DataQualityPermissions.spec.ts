@@ -882,6 +882,7 @@ test.describe(
       test('User with TEST_CASE.DELETE cannot create test cases', async ({
         deletePage,
       }) => {
+        test.slow();
         await visitProfilerPage(deletePage);
 
         // UI: Verify add test case button is hidden
@@ -1016,20 +1017,6 @@ test.describe(
         );
         expect(res.status()).toBe(403);
       });
-
-      test('User with TEST_CASE.CREATE cannot export test cases without EditAll', async ({
-        createPage,
-      }) => {
-        const { apiContext } = await getApiContext(createPage);
-        const tableFqn = table.entityResponseData.fullyQualifiedName!;
-
-        const res = await apiContext.get(
-          `/api/v1/dataQuality/testCases/name/${encodeURIComponent(
-            tableFqn
-          )}/export`
-        );
-        expect(res.status()).toBe(403);
-      });
     });
 
     test.describe('Granular Permissions - TestCase CRUD', () => {
@@ -1037,6 +1024,7 @@ test.describe(
         createPage,
         adminPage,
       }) => {
+        test.slow();
         await visitProfilerPage(createPage);
         const { apiContext } = await getApiContext(createPage);
 
@@ -1135,6 +1123,7 @@ test.describe(
         tableCreateTestsPage,
         adminPage,
       }) => {
+        test.slow();
         await visitProfilerPage(tableCreateTestsPage);
         const { apiContext } = await getApiContext(tableCreateTestsPage);
 

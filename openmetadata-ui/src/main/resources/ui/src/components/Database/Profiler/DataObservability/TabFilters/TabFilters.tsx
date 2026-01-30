@@ -32,9 +32,9 @@ import {
   DEFAULT_RANGE_DATA,
   DEFAULT_SELECTED_RANGE,
 } from '../../../../../constants/profiler.constant';
+import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { useTourProvider } from '../../../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
-import { ResourceEntity } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { Operation } from '../../../../../generated/entity/policies/policy';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
@@ -111,12 +111,16 @@ const TabFilters = () => {
     table,
   } = useTableProfiler();
 
+  const { permissions: globalPermissions } = usePermissionProvider();
+
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn: datasetFQN } = useFqn();
   const editDataProfile =
     permissions &&
     getPrioritizedEditPermission(permissions, Operation.EditDataProfile);
+  const createTestCasePermission =
+    permissions?.CreateTests || globalPermissions?.testCase?.Create || false;
 
   const handleTestCaseClick = () => {
     onTestCaseDrawerOpen(formType as TestLevel);
@@ -230,9 +234,7 @@ const TabFilters = () => {
 
       {!isTableDeleted && (
         <>
-          {(editDataProfile ||
-            permissions.CreateTests ||
-            permissions.EditTests) && (
+          {(editDataProfile || createTestCasePermission) && (
             <LimitWrapper resource="dataQuality">
               <>
                 <Button
@@ -260,32 +262,38 @@ const TabFilters = () => {
                     horizontal: 'right',
                   }}
                   onClose={handleMenuClose}>
-                  <MenuItem onClick={handleTestCaseClick}>
-                    <TabsLabel id="test-case" name={t('label.test-case')} />
-                  </MenuItem>
-                  <MenuItem onClick={handleCustomMetricClick}>
-                    <TabsLabel
-                      id="custom-metric"
-                      name={t('label.custom-metric')}
-                    />
-                  </MenuItem>
+                  {createTestCasePermission && (
+                    <MenuItem onClick={handleTestCaseClick}>
+                      <TabsLabel id="test-case" name={t('label.test-case')} />
+                    </MenuItem>
+                  )}
+                  {editDataProfile && (
+                    <MenuItem onClick={handleCustomMetricClick}>
+                      <TabsLabel
+                        id="custom-metric"
+                        name={t('label.custom-metric')}
+                      />
+                    </MenuItem>
+                  )}
                 </Menu>
               </>
             </LimitWrapper>
           )}
-          <Tooltip placement="top" title={t('label.setting-plural')}>
-            <Button
-              color="primary"
-              data-testid="profiler-setting-btn"
-              sx={{
-                minWidth: '36px',
-                height: '32px',
-              }}
-              variant="outlined"
-              onClick={onSettingButtonClick}>
-              <SettingIcon />
-            </Button>
-          </Tooltip>
+          {editDataProfile && (
+            <Tooltip placement="top" title={t('label.setting-plural')}>
+              <Button
+                color="primary"
+                data-testid="profiler-setting-btn"
+                sx={{
+                  minWidth: '36px',
+                  height: '32px',
+                }}
+                variant="outlined"
+                onClick={onSettingButtonClick}>
+                <SettingIcon />
+              </Button>
+            </Tooltip>
+          )}
         </>
       )}
     </Stack>
