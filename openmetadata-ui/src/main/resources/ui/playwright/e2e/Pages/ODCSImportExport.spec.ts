@@ -2023,18 +2023,18 @@ version: "1.0.0"`;
         name: contractName,
         description: 'Contract for testing OM format export/import round trip',
         entity: {
-          id: table.entity.id,
+          id: table.entityResponseData.id,
           type: 'table',
         },
         termsOfUse: 'These are the terms of use for the data contract. Data must be used responsibly.',
         sla: {
           refreshFrequency: {
             interval: 24,
-            timeUnit: 'Hour',
+            unit: 'day',
           },
           maxLatency: {
             value: 2,
-            timeUnit: 'Hour',
+            unit: 'hour',
           },
         },
       };
