@@ -115,6 +115,15 @@ export const getCustomPropertyCreationData = (types: CPASTestData['types']) => {
         },
       },
     },
+    'hyperlink-cp': {
+      name: `${namePrefix}hyperlink-cp`,
+      description: `Description for ${namePrefix}hyperlink-cp`,
+      propertyType: {
+        name: 'hyperlink-cp',
+        type: 'type',
+        id: typeIdMapping['hyperlink-cp'],
+      },
+    },
     integer: {
       name: `${namePrefix}integer`,
       description: `Description for ${namePrefix}integer`,
@@ -243,6 +252,7 @@ export const getCustomPropertyValues = (
     [cpTypeToNameMapping['entityReference']]: topic1Ref,
     [cpTypeToNameMapping['entityReferenceList']]: [topic1Ref, topic2Ref],
     [cpTypeToNameMapping['enum']]: CP_BASE_VALUES.enum,
+    [cpTypeToNameMapping['hyperlink-cp']]: CP_BASE_VALUES.hyperlinkCp,
     [cpTypeToNameMapping['integer']]: CP_BASE_VALUES.integer,
     [cpTypeToNameMapping['markdown']]: CP_BASE_VALUES.markdown,
     [cpTypeToNameMapping['number']]: CP_BASE_VALUES.number,

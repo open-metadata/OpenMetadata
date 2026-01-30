@@ -331,37 +331,24 @@ public class DistributedJobParticipant implements Managed {
               result.readerFailed(),
               result.readerWarnings());
 
-          // Persist stats after each partition completion
-          persistServerStats(
-              job.getId(),
-              sinkForStats,
-              partitionsProcessed,
-              totalReaderSuccess,
-              totalReaderFailed,
-              totalReaderWarnings);
+          // Stats are tracked per-entityType by StageStatsTracker in PartitionWorker
 
         } catch (Exception e) {
           LOG.error("Error processing partition {}", partition.getId(), e);
         }
       }
 
-      // Flush sink and wait for all pending bulk requests to complete before persisting final stats
+      // Flush sink and wait for all pending bulk requests to complete
       if (sinkForStats != null) {
-        LOG.info("Flushing sink and waiting for pending requests before final stats persist");
+        LOG.info("Flushing sink and waiting for pending requests");
         boolean completed = sinkForStats.flushAndAwait(60);
         if (!completed) {
           LOG.warn("Sink flush timed out - some requests may not be reflected in final stats");
         }
       }
 
-      // Persist final server stats before exiting (ensures final state is captured)
-      persistServerStats(
-          job.getId(),
-          sinkForStats,
-          partitionsProcessed,
-          totalReaderSuccess,
-          totalReaderFailed,
-          totalReaderWarnings);
+      // Stats are tracked per-entityType by StageStatsTracker in PartitionWorker
+      // No need for participant-level aggregation - it causes double-counting
 
       LOG.info(
           "Server {} finished participating in job {}, processed {} partitions",
@@ -388,66 +375,6 @@ public class DistributedJobParticipant implements Managed {
           LOG.warn("Error closing bulk sink", e);
         }
       }
-    }
-  }
-
-  /** Persist server stats to the database. */
-  private void persistServerStats(
-      UUID jobId,
-      BulkSink bulkSink,
-      int partitionsCompleted,
-      long readerSuccess,
-      long readerFailed,
-      long readerWarnings) {
-    if (bulkSink == null) {
-      return;
-    }
-
-    try {
-      org.openmetadata.schema.system.StepStats sinkStats = bulkSink.getStats();
-      long entityBuildFailures = bulkSink.getEntityBuildFailures();
-
-      long totalFailed = sinkStats != null ? sinkStats.getFailedRecords() : 0;
-      long actualSinkFailed = totalFailed - entityBuildFailures;
-      long sinkWarnings =
-          sinkStats != null && sinkStats.getWarningRecords() != null
-              ? sinkStats.getWarningRecords()
-              : 0;
-
-      String statsId = UUID.nameUUIDFromBytes((jobId.toString() + serverId).getBytes()).toString();
-
-      collectionDAO
-          .searchIndexServerStatsDAO()
-          .upsert(
-              statsId,
-              jobId.toString(),
-              serverId,
-              readerSuccess,
-              readerFailed,
-              readerWarnings,
-              sinkStats != null ? sinkStats.getTotalRecords() : 0,
-              sinkStats != null ? sinkStats.getSuccessRecords() : 0,
-              actualSinkFailed,
-              sinkWarnings,
-              entityBuildFailures,
-              partitionsCompleted,
-              0, // partitionsFailed - not tracked here
-              System.currentTimeMillis());
-
-      LOG.info(
-          "Participant {} persisted server stats for job {}: readerSuccess={}, readerFailed={}, "
-              + "readerWarnings={}, sinkFailed={}, sinkWarnings={}, partitionsCompleted={}",
-          serverId,
-          jobId,
-          readerSuccess,
-          readerFailed,
-          readerWarnings,
-          actualSinkFailed,
-          sinkWarnings,
-          partitionsCompleted);
-
-    } catch (Exception e) {
-      LOG.error("Failed to persist server stats for participant {} job {}", serverId, jobId, e);
     }
   }
 
