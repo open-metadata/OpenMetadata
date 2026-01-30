@@ -33,6 +33,8 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     DataflowExportResponse,
     Dataset,
     DatasetResponse,
+    Datasource,
+    DatasourcesResponse,
     Group,
     GroupsResponse,
     PowerBIDashboard,
@@ -633,6 +635,37 @@ class PowerBiApiClient:
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error exporting dataflow {dataflow_id}: {exc}")
+
+        return None
+
+    def fetch_dataset_datasources(
+        self, group_id: str, dataset_id: str
+    ) -> Optional[List[Datasource]]:
+        """Method to fetch datasources for a dataset in a group
+        API: https://api.powerbi.com/v1.0/myorg/groups/{groupId}/datasets/{datasetId}/datasources
+        API doc: https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/get-datasources-in-group
+        Args:
+            group_id: The workspace ID
+            dataset_id: The dataset ID
+        Returns:
+            List[Datasource]
+        """
+        try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/datasets/{dataset_id}/datasources)"  # pylint: disable=protected-access
+                " to get dataset datasources"
+            )
+            response_data = self.client.get(
+                f"/myorg/groups/{group_id}/datasets/{dataset_id}/datasources"
+            )
+            if response_data:
+                response = DatasourcesResponse(**response_data)
+                return response.value
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error fetching datasources for dataset {dataset_id}: {exc}"
+            )
 
         return None
 

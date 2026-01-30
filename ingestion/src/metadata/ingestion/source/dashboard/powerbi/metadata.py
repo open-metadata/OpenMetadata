@@ -1582,6 +1582,56 @@ class PowerbiSource(DashboardServiceSource):
         tables - datamodel - report - dashboard
         """
         (prefix_service_name, *_) = self.parse_db_service_prefix(db_service_prefix)
+        # get group datasources
+        datasources = self.api_client.fetch_report_datasources(
+            group_id=self.context.get().workspace.id
+        )
+        for datasource in datasources or []:
+            try:
+                if not datasource.datasetId:
+                    logger.debug(
+                        f"No datasetId found for datasource in dashboard "
+                        f"[{dashboard_details.id}], Moving to next datasource"
+                    )
+                    continue
+                dataset = self._fetch_dataset_from_workspace(datasource.datasetId)
+                if not dataset:
+                    logger.debug(
+                        f"No dataset found for datasetId={str(datasource.datasetId)} "
+                        f"in dashboard [{dashboard_details.id}]"
+                    )
+                    continue
+                dataset_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DashboardDataModel,
+                    service_name=self.context.get().dashboard_service,
+                    data_model_name=datasource.datasetId,
+                )
+                dataset_entity = self.metadata.get_by_name(
+                    entity=DashboardDataModel,
+                    fqn=dataset_fqn,
+                )
+                if dataset_entity and dashboard_details:
+                    yield self._get_add_lineage_request(
+                        from_entity=dataset_entity,
+                        to_entity=dashboard_details,
+                    )
+                else:
+                    logger.debug(
+                        f"No dataset entity with id={str(dataset.id)} "
+                        f"found for dashboard [{dashboard_details.id}]"
+                    )
+            except Exception as exc:  # pylint: disable=broad-except
+                yield Either(
+                    left=StackTraceError(
+                        name="Dashboard Lineage",
+                        error=(
+                            "Error to yield dashboard lineage details between "
+                            f"[{str(datasource.datasetId)}, {dashboard_details.id}]: {exc}"
+                        ),
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
         for dashboard in self.filtered_dashboards or []:
             dashboard_details = self.get_dashboard_details(dashboard)
