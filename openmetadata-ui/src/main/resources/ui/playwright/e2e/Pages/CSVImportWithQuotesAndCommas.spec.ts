@@ -121,7 +121,9 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
 
           for (const statusCell of rowStatus) {
             const statusText = await statusCell.textContent();
-            expect(statusText).toMatch(/success|Entity created|Entity updated/i);
+            expect(statusText).toMatch(
+              /success|Entity created|Entity updated/i
+            );
             expect(statusText).not.toContain('failure');
             expect(statusText).not.toContain('error');
           }
