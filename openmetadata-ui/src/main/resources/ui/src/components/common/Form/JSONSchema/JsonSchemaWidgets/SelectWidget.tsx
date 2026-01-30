@@ -26,10 +26,16 @@ const SelectWidget: FC<WidgetProps> = (props) => {
   return (
     <Select
       allowClear
+      showSearch
       autoFocus={rest.autofocus}
       className="d-block w-full"
       data-testid={`select-widget-${rest.id}`}
       disabled={rest.disabled}
+      filterOption={(input, option) =>
+        (option?.children as unknown as string)
+          ?.toLowerCase()
+          .includes(input.toLowerCase()) ?? false
+      }
       getPopupContainer={getPopupContainer}
       id={rest.id}
       mode={rest.multiple ? 'multiple' : undefined}
