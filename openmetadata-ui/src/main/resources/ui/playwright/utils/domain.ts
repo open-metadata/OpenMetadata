@@ -287,7 +287,9 @@ export const verifyAssetsInDomain = async (
 
   for (const table of tables) {
     const tableFqn = table.entityResponseData.fullyQualifiedName;
-    const tableCard = page.locator(`[data-testid="table-data-card_${tableFqn}"]`);
+    const tableCard = page.locator(
+      `[data-testid="table-data-card_${tableFqn}"]`
+    );
     if (expectedVisible) {
       await expect(tableCard).toBeVisible({ timeout: 10000 });
     } else {
@@ -343,32 +345,27 @@ export const checkAssetsCount = async (page: Page, count: number) => {
   );
 };
 
-export const checkAssetsCountWithRetry = async (
+export const verifyDomainOnAssetPages = async (
   page: Page,
-  count: number,
-  maxRetries = 3,
-  retryIntervalMs = 30000
+  assets: EntityClass[],
+  domainDisplayName: string,
+  renamedDomainName?: string
 ) => {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      await expect(
-        page.getByTestId('assets').getByTestId('count')
-      ).toContainText(count.toString(), { timeout: 5000 });
+  for (const asset of assets) {
+    await asset.visitEntityPage(page);
+    await expect(page.getByTestId('domain-link')).toContainText(
+      domainDisplayName
+    );
+  }
 
-      return;
-    } catch {
-      if (attempt === maxRetries) {
-        throw new Error(
-          `Assets count did not match expected value ${count} after ${maxRetries} retries`
-        );
-      }
-      await page.waitForTimeout(retryIntervalMs);
-      await page.reload();
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-    }
+  if (renamedDomainName) {
+    const domainRes = page.waitForResponse('/api/v1/domains/name/*');
+    await page.getByTestId('domain-link').click();
+    await domainRes;
+    await waitForAllLoadersToDisappear(page);
+    await expect(page.getByTestId('entity-header-name')).toContainText(
+      renamedDomainName
+    );
   }
 };
 
@@ -1279,6 +1276,156 @@ export const navigateToSubDomain = async (
 };
 
 /**
+ * Navigates to the Input/Output Ports tab on a data product page.
+ */
+export const navigateToPortsTab = async (page: Page) => {
+  await page.getByTestId('input_output_ports').click();
+  await waitForAllLoadersToDisappear(page);
+};
+
+/**
+ * Expands the lineage section in the InputOutputPortsTab.
+ * Only expands if currently collapsed.
+ */
+export const expandLineageSection = async (page: Page) => {
+  const portsViewRes = page.waitForResponse((response) =>
+    response.url().includes('/portsView')
+  );
+  await page.getByTestId('toggle-lineage-collapse').click();
+  await portsViewRes;
+  await waitForAllLoadersToDisappear(page);
+};
+
+/**
+ * Verifies the port counts displayed in the InputOutputPortsTab.
+ */
+export const verifyPortCounts = async (
+  page: Page,
+  expectedInputCount: number,
+  expectedOutputCount: number
+) => {
+  const inputPortsSection = page
+    .locator('[data-testid="input-output-ports-tab"]')
+    .locator('text=Input Ports')
+    .first();
+  const outputPortsSection = page
+    .locator('[data-testid="input-output-ports-tab"]')
+    .locator('text=Output Ports')
+    .first();
+
+  await expect(
+    inputPortsSection
+      .locator('..')
+      .locator('span')
+      .filter({ hasText: `(${expectedInputCount})` })
+  ).toBeVisible();
+  await expect(
+    outputPortsSection
+      .locator('..')
+      .locator('span')
+      .filter({ hasText: `(${expectedOutputCount})` })
+  ).toBeVisible();
+};
+
+/**
+ * Adds an input port to a data product via UI.
+ */
+export const addInputPortToDataProduct = async (
+  page: Page,
+  asset: EntityClass
+) => {
+  const name = get(asset, 'entityResponseData.name');
+  const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+  const displayName = get(asset, 'entityResponseData.displayName') ?? name;
+
+  await page.getByTestId('add-input-port-button').click();
+
+  await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+    state: 'visible',
+  });
+
+  const searchBar = page
+    .getByTestId('asset-selection-modal')
+    .getByTestId('searchbar');
+
+  const searchRes = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/search/query') &&
+      res.request().method() === 'GET'
+  );
+  await searchBar.fill(displayName);
+  await searchRes;
+
+  await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+
+  const addRes = page.waitForResponse(
+    (res) =>
+      res.url().includes('/inputPorts/add') && res.request().method() === 'PUT'
+  );
+  await page.getByTestId('save-btn').click();
+  await addRes;
+};
+
+/**
+ * Adds an output port to a data product via UI.
+ */
+export const addOutputPortToDataProduct = async (
+  page: Page,
+  asset: EntityClass
+) => {
+  const name = get(asset, 'entityResponseData.name');
+  const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+  const displayName = get(asset, 'entityResponseData.displayName') ?? name;
+
+  await page.getByTestId('add-output-port-button').click();
+
+  await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+    state: 'visible',
+  });
+
+  const searchBar = page
+    .getByTestId('asset-selection-modal')
+    .getByTestId('searchbar');
+
+  const searchRes = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/search/query') &&
+      res.request().method() === 'GET'
+  );
+  await searchBar.fill(displayName);
+  await searchRes;
+
+  await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+
+  const addRes = page.waitForResponse(
+    (res) =>
+      res.url().includes('/outputPorts/add') && res.request().method() === 'PUT'
+  );
+  await page.getByTestId('save-btn').click();
+  await addRes;
+};
+
+/**
+ * Removes a port from a data product via UI.
+ */
+export const removePortFromDataProduct = async (
+  page: Page,
+  portId: string,
+  portType: 'input' | 'output'
+) => {
+  await page.getByTestId(`port-actions-${portId}`).click();
+  await page.getByRole('menuitem', { name: 'Remove' }).click();
+
+  const removeRes = page.waitForResponse(
+    (res) =>
+      res.url().includes(`/${portType}Ports/remove`) &&
+      res.request().method() === 'PUT'
+  );
+  await page.getByRole('button', { name: 'Remove' }).click();
+  await removeRes;
+};
+
+/**
  * Renames a domain or subdomain via the UI.
  * Opens the manage menu, clicks rename, fills the new name and saves.
  */
@@ -1336,7 +1483,13 @@ export const selectDomainFromNavbar = async (
  */
 export const searchAndExpectEntityVisible = async (
   page: Page,
-  entity: { entityResponseData: { name: string; displayName?: string; fullyQualifiedName?: string } },
+  entity: {
+    entityResponseData: {
+      name: string;
+      displayName?: string;
+      fullyQualifiedName?: string;
+    };
+  },
   timeout?: number
 ) => {
   const name = get(
@@ -1361,7 +1514,13 @@ export const searchAndExpectEntityVisible = async (
  */
 export const searchAndExpectEntityNotVisible = async (
   page: Page,
-  entity: { entityResponseData: { name: string; displayName?: string; fullyQualifiedName?: string } }
+  entity: {
+    entityResponseData: {
+      name: string;
+      displayName?: string;
+      fullyQualifiedName?: string;
+    };
+  }
 ) => {
   const name = get(
     entity,
@@ -1386,7 +1545,12 @@ export const searchAndExpectEntityNotVisible = async (
 export const assignDomainToEntity = async (
   apiContext: APIRequestContext,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entity: { patch: (options: { apiContext: APIRequestContext; patchData: any[] }) => Promise<any> },
+  entity: {
+    patch: (options: {
+      apiContext: APIRequestContext;
+      patchData: any[];
+    }) => Promise<any>;
+  },
   domain: { responseData: { id?: string } }
 ) => {
   await entity.patch({

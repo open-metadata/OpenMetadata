@@ -50,7 +50,6 @@ import {
   addAssetsToDomain,
   addTagsAndGlossaryToDomain,
   checkAssetsCount,
-  checkAssetsCountWithRetry,
   createDataProduct,
   createDataProductForSubDomain,
   createDomain,
@@ -69,6 +68,7 @@ import {
   verifyDataProductAssetsAfterDelete,
   verifyDataProductsCount,
   verifyDomain,
+  verifyDomainOnAssetPages,
 } from '../../utils/domain';
 import {
   assignGlossaryTerm,
@@ -1960,11 +1960,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
       await addAssetsToDomain(page, domain, assets);
 
-      // Verify asset count before rename
-      await checkAssetsCount(page, assets.length);
-
-      // Navigate back to documentation tab for rename
-      await page.getByTestId('documentation').click();
+      // Verify assets before rename by visiting each asset page
+      await verifyDomainOnAssetPages(
+        page,
+        assets,
+        domain.responseData.displayName,
+        domain.responseData.name
+      );
 
       // Perform rename
       const newDomainName = `renamed-assets-domain-${uuid()}`;
@@ -1977,12 +1979,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
         newDomainName
       );
 
-      // Verify assets are still associated after rename
-      await page.getByTestId('assets').click();
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-
-      await checkAssetsCountWithRetry(page, assets.length);
+      // Verify assets are still associated after rename by visiting each asset page
+      await verifyDomainOnAssetPages(
+        page,
+        assets,
+        domain.responseData.displayName,
+        newDomainName
+      );
     } finally {
       try {
         await apiContext.delete(
@@ -2308,11 +2311,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
 
       // Verify ALL relationships are preserved after rename
 
-      // 1. Verify assets
-      await page.getByTestId('assets').click();
-      await page.waitForLoadState('networkidle');
-      await waitForAllLoadersToDisappear(page);
-      await checkAssetsCountWithRetry(page, assets.length);
+      // 1. Verify assets by visiting each asset page and clicking domain link
+      await verifyDomainOnAssetPages(
+        page,
+        assets,
+        domain.responseData.displayName,
+        newDomainName
+      );
 
       // 2. Verify subdomain
       const subdomainSearchResponse = page.waitForResponse(
@@ -2415,10 +2420,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
           newDomainName
         );
 
-        await page.getByTestId('assets').click();
-        await page.waitForLoadState('networkidle');
-        await waitForAllLoadersToDisappear(page);
-        await checkAssetsCountWithRetry(page, assets.length);
+        // Verify assets by visiting each asset page and clicking domain link
+        await verifyDomainOnAssetPages(
+          page,
+          assets,
+          domain.responseData.displayName,
+          newDomainName
+        );
 
         const subdomainSearchResponse = page.waitForResponse(
           (response) =>
@@ -3058,20 +3066,18 @@ test.describe('Domain Tree View Functionality', () => {
       await selectActiveGlossaryTerm(page, testGlossaryTerm.data.displayName);
 
       let apiRequestUrl: string | null = null;
-      const responsePromise = page.waitForResponse(
-        (response) => {
-          const url = response.url();
-          if (
-            url.includes('/api/v1/domains/name/') &&
-            url.includes('fields=') &&
-            response.status() === 200
-          ) {
-            apiRequestUrl = url;
-            return true;
-          }
-          return false;
+      const responsePromise = page.waitForResponse((response) => {
+        const url = response.url();
+        if (
+          url.includes('/api/v1/domains/name/') &&
+          url.includes('fields=') &&
+          response.status() === 200
+        ) {
+          apiRequestUrl = url;
+          return true;
         }
-      );
+        return false;
+      });
 
       await page.getByTestId('assets').click();
       await responsePromise;
@@ -3124,7 +3130,9 @@ test.describe('Domain Tree View Functionality', () => {
       await page
         .locator('[data-testid="tags-container"] [data-testid="add-tag"]')
         .click();
-      const input = page.locator('[data-testid="tags-container"] #tagsForm_tags');
+      const input = page.locator(
+        '[data-testid="tags-container"] #tagsForm_tags'
+      );
       await input.click();
       await input.fill(testTag.responseData.fullyQualifiedName);
       await page
@@ -3142,20 +3150,18 @@ test.describe('Domain Tree View Functionality', () => {
       await testTag.visitPage(page);
 
       let apiRequestUrl: string | null = null;
-      const responsePromise = page.waitForResponse(
-        (response) => {
-          const url = response.url();
-          if (
-            url.includes('/api/v1/domains/name/') &&
-            url.includes('fields=') &&
-            response.status() === 200
-          ) {
-            apiRequestUrl = url;
-            return true;
-          }
-          return false;
+      const responsePromise = page.waitForResponse((response) => {
+        const url = response.url();
+        if (
+          url.includes('/api/v1/domains/name/') &&
+          url.includes('fields=') &&
+          response.status() === 200
+        ) {
+          apiRequestUrl = url;
+          return true;
         }
-      );
+        return false;
+      });
 
       await page.getByTestId('assets').click();
       await responsePromise;
