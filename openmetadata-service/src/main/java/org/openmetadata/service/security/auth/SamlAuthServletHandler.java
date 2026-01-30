@@ -141,6 +141,9 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         email = String.format("%s@%s", username, SamlSettingsHolder.getInstance().getDomain());
       }
 
+      // Extract display name from SAML attributes (name, given_name, family_name)
+      String displayName = extractDisplayNameFromSamlAttributes(auth);
+
       // Extract team/group attributes from SAML response (supports multi-valued attributes)
       List<String> teamsFromClaim = new ArrayList<>();
       String teamClaimMapping = authConfig.getJwtTeamClaimMapping();
@@ -161,7 +164,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       }
 
       // Get or create user
-      User user = getOrCreateUser(username, email, teamsFromClaim);
+      User user = getOrCreateUser(username, email, displayName, teamsFromClaim);
 
       // Generate JWT tokens
       JWTAuthMechanism jwtAuthMechanism =
@@ -310,7 +313,61 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     }
   }
 
-  private User getOrCreateUser(String username, String email, List<String> teamsFromClaim) {
+  /**
+   * Extracts display name from SAML attributes.
+   *
+   * <p>Attempts to extract display name from SAML response attributes in the following priority:
+   *
+   * <ol>
+   *   <li>Direct 'name' attribute
+   *   <li>Combination of 'given_name' + 'family_name' attributes
+   *   <li>Returns null if neither pattern is found
+   * </ol>
+   *
+   * @param auth SAML Auth object containing the response attributes
+   * @return The extracted display name, or null if no suitable attributes found
+   */
+  private String extractDisplayNameFromSamlAttributes(Auth auth) {
+    try {
+      // Try direct 'name' attribute first
+      Collection<String> nameAttr = auth.getAttribute("name");
+      if (nameAttr != null && !nameAttr.isEmpty()) {
+        String name = nameAttr.iterator().next();
+        if (!nullOrEmpty(name)) {
+          return name.trim();
+        }
+      }
+
+      // Fall back to combining given_name + family_name
+      Collection<String> givenNameAttr = auth.getAttribute("given_name");
+      Collection<String> familyNameAttr = auth.getAttribute("family_name");
+
+      String givenName = null;
+      String familyName = null;
+
+      if (givenNameAttr != null && !givenNameAttr.isEmpty()) {
+        givenName = givenNameAttr.iterator().next();
+      }
+      if (familyNameAttr != null && !familyNameAttr.isEmpty()) {
+        familyName = familyNameAttr.iterator().next();
+      }
+
+      if (!nullOrEmpty(givenName) && !nullOrEmpty(familyName)) {
+        return (givenName.trim() + " " + familyName.trim()).trim();
+      } else if (!nullOrEmpty(givenName)) {
+        return givenName.trim();
+      } else if (!nullOrEmpty(familyName)) {
+        return familyName.trim();
+      }
+    } catch (Exception e) {
+      LOG.debug("[SAML] Could not extract display name from attributes: {}", e.getMessage());
+    }
+
+    return null;
+  }
+
+  private User getOrCreateUser(
+      String username, String email, String displayName, List<String> teamsFromClaim) {
     try {
       // Fetch user with teams relationship loaded to preserve existing team memberships
       User existingUser =
@@ -321,9 +378,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       boolean needsUpdate = false;
 
       LOG.info(
-          "SAML login - Username: {}, Email: {}, Should be admin: {}, Current admin status: {}",
+          "SAML login - Username: {}, Email: {}, DisplayName: {}, Should be admin: {}, Current admin status: {}",
           username,
           email,
+          displayName,
           shouldBeAdmin,
           existingUser.getIsAdmin());
       LOG.info("Admin principals list: {}", getAdminPrincipals());
@@ -331,6 +389,17 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       if (shouldBeAdmin && !Boolean.TRUE.equals(existingUser.getIsAdmin())) {
         LOG.info("Updating user {} to admin based on adminPrincipals", username);
         existingUser.setIsAdmin(true);
+        needsUpdate = true;
+      }
+
+      // Update display name if provided from SAML attributes
+      if (!nullOrEmpty(displayName) && !displayName.equals(existingUser.getDisplayName())) {
+        LOG.info(
+            "Updating display name for user {} from '{}' to '{}'",
+            username,
+            existingUser.getDisplayName(),
+            displayName);
+        existingUser.setDisplayName(displayName);
         needsUpdate = true;
       }
 
@@ -347,12 +416,21 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       LOG.info("User not found, creating new user: {}", username);
       if (authConfig.getEnableSelfSignup()) {
         boolean isAdmin = getAdminPrincipals().contains(username);
-        LOG.info("Creating new user - Username: {}, Should be admin: {}", username, isAdmin);
+        LOG.info(
+            "Creating new user - Username: {}, DisplayName: {}, Should be admin: {}",
+            username,
+            displayName,
+            isAdmin);
         LOG.info("Admin principals list: {}", getAdminPrincipals());
         User newUser =
             UserUtil.user(username, email.split("@")[1], username)
                 .withIsAdmin(isAdmin)
                 .withIsEmailVerified(true);
+
+        // Set display name if provided from SAML attributes
+        if (!nullOrEmpty(displayName)) {
+          newUser.withDisplayName(displayName);
+        }
 
         // Assign teams from claims if provided
         UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
