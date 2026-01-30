@@ -320,7 +320,7 @@ test.describe('User with Admin Roles', () => {
 
     // Check if the user details are visible in the right panel
     const userElement = adminPage.getByTestId(upperCasedName);
-    const isUserVisible = await userElement.isVisible().catch(() => false);
+    const isUserVisible = await userElement.isVisible();
 
     // If not visible, click on Custom Properties tab to see all custom properties
     if (!isUserVisible) {
