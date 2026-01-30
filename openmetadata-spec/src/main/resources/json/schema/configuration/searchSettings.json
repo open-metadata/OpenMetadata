@@ -4,7 +4,13 @@
   "title": "SearchSettings",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.search.SearchSettings",
+  "javaInterfaces": ["org.openmetadata.schema.configuration.OpenMetadataConfig"],
   "properties": {
+    "configSource": {
+      "description": "Determines where this configuration is read from.",
+      "$ref": "../type/configSource.json",
+      "default": "DB"
+    },
     "globalSettings": {
       "type": "object",
       "properties": {

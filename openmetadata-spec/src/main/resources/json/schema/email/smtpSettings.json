@@ -5,7 +5,13 @@
   "description": "This schema defines the SMTP Settings for sending Email",
   "type": "object",
   "javaType": "org.openmetadata.schema.email.SmtpSettings",
+  "javaInterfaces": ["org.openmetadata.schema.configuration.OpenMetadataConfig"],
   "properties": {
+    "configSource": {
+      "description": "Determines where this configuration is read from.",
+      "$ref": "../type/configSource.json",
+      "default": "ENV"
+    },
     "emailingEntity": {
       "description": "Emailing Entity",
       "type": "string",

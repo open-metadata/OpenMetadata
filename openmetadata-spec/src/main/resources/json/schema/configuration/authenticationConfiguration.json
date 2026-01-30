@@ -5,6 +5,7 @@
   "description": "This schema defines the Authentication Configuration.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.security.AuthenticationConfiguration",
+  "javaInterfaces": ["org.openmetadata.schema.configuration.OpenMetadataConfig"],
   "definitions": {
     "responseType": {
       "javaType": "org.openmetadata.schema.api.security.ResponseType",
@@ -18,6 +19,11 @@
     }
   },
   "properties": {
+    "configSource": {
+      "description": "Determines where this configuration is read from.",
+      "$ref": "../type/configSource.json",
+      "default": "ENV"
+    },
     "clientType": {
       "title": "Client Type",
       "javaType": "org.openmetadata.schema.api.security.ClientType",

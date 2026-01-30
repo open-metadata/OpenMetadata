@@ -15,6 +15,7 @@ import com.unboundid.util.ssl.SSLUtil;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -38,6 +39,7 @@ import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
+import org.openmetadata.schema.configuration.OpenMetadataConfig;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -54,6 +56,7 @@ import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.system.StepValidation;
 import org.openmetadata.schema.system.ValidationResponse;
+import org.openmetadata.schema.type.ConfigSource;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -86,6 +89,7 @@ import org.openmetadata.service.security.auth.validator.CustomOidcValidator;
 import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
+import org.openmetadata.service.util.ConfigSourceResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -121,6 +125,43 @@ public class SystemRepository {
     this.dao = Entity.getCollectionDAO().systemDAO();
     Entity.setSystemRepository(this);
     migrationValidationClient = MigrationValidationClient.getInstance();
+  }
+
+  public boolean isUpdateAllowed(Settings setting) {
+    Object configValue = setting.getConfigValue();
+    if (configValue instanceof OpenMetadataConfig openMetadataConfig) {
+      ConfigSource source = openMetadataConfig.getConfigSource();
+      return source != ConfigSource.ENV;
+    }
+    return true;
+  }
+
+  public String getEnvHash(String configType) {
+    return dao.getEnvHash(configType);
+  }
+
+  public Timestamp getEnvSyncTimestamp(String configType) {
+    return dao.getEnvSyncTimestamp(configType);
+  }
+
+  public Timestamp getDbModifiedTimestamp(String configType) {
+    return dao.getDbModifiedTimestamp(configType);
+  }
+
+  public void updateConfigMetadata(
+      String configType,
+      String envHash,
+      Timestamp envSyncTimestamp,
+      Timestamp dbModifiedTimestamp) {
+    dao.updateConfigMetadata(configType, envHash, envSyncTimestamp, dbModifiedTimestamp);
+  }
+
+  public void updateEnvHash(String configType, String envHash) {
+    dao.updateEnvHash(configType, envHash);
+  }
+
+  public void updateDbModifiedTimestamp(String configType, Timestamp dbModifiedTimestamp) {
+    dao.updateDbModifiedTimestamp(configType, dbModifiedTimestamp);
   }
 
   public EntitiesCount getAllEntitiesCount(ListFilter filter) {
@@ -373,9 +414,10 @@ public class SystemRepository {
         JsonUtils.validateJsonSchema(authorizerConfig, AuthorizerConfiguration.class);
         setting.setConfigValue(authorizerConfig);
       }
-      dao.insertSettings(
-          setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
-      // Invalidate Cache
+      String configType = setting.getConfigType().toString();
+      dao.insertSettings(configType, JsonUtils.pojoToJson(setting.getConfigValue()));
+      Timestamp now = ConfigSourceResolver.now();
+      dao.updateDbModifiedTimestamp(configType, now);
       SettingsCache.invalidateSettings(setting.getConfigType().value());
       postUpdate(setting.getConfigType());
     } catch (Exception ex) {

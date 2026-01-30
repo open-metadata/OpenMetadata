@@ -360,6 +360,11 @@ public class SystemResource {
     }
 
     authorizer.authorizeAdmin(securityContext);
+    if (!systemRepository.isUpdateAllowed(settingName)) {
+      throw new IllegalArgumentException(
+          "This setting is managed by ENV configuration and cannot be updated via API. "
+              + "Change configSource to DB or AUTO to enable API updates.");
+    }
     if (SettingsType.SEARCH_SETTINGS
         .value()
         .equalsIgnoreCase(settingName.getConfigType().toString())) {

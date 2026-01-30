@@ -5,7 +5,13 @@
   "description": "SCIM configuration for automatic provisioning through identity providers like Azure AD or Okta.",
   "type": "object",
   "javaType": "org.openmetadata.schema.security.scim.ScimConfiguration",
+  "javaInterfaces": ["org.openmetadata.schema.configuration.OpenMetadataConfig"],
   "properties": {
+    "configSource": {
+      "description": "Determines where this configuration is read from.",
+      "$ref": "../type/configSource.json",
+      "default": "ENV"
+    },
     "enabled": {
       "title": "Enabled",
       "description": "Whether SCIM provisioning is enabled.",
