@@ -178,7 +178,6 @@ test.describe('Data Contracts', () => {
           DATA_CONTRACT_DETAILS.description
         );
 
-        await page.getByTestId('select-owners').click();  
         const ownersResponse = page.waitForResponse((response) => {
           return (
             response.url().includes('/api/v1/search/query') &&
@@ -186,8 +185,8 @@ test.describe('Data Contracts', () => {
             response.status() === 200
           );
         });
-
-        await ownersResponse;
+        await page.getByTestId('select-owners').click();  
+        await ownersResponse; 
 
         await expect(
           page.getByTestId('selectable-virtual-list')
