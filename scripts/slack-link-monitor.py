@@ -9,14 +9,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Slack Link Monitor - validates Slack invite links are still active.
+Uses Playwright to render the page and check for expiration messages.
+"""
+
 import logging
-import requests
-from slack_sdk.webhook import WebhookClient
 import os
 from typing import Optional
 
+from playwright.sync_api import sync_playwright
+from slack_sdk.webhook import WebhookClient
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -25,25 +29,40 @@ logger = logging.getLogger(__name__)
 
 
 def get_required_env_var(var_name: str) -> str:
-    """
-    Retrieves an environment variable by name, raising RuntimeError if it's not set.
-    """
     value: Optional[str] = os.getenv(var_name)
     if value is None:
         raise RuntimeError(f"Required environment variable '{var_name}' is not set.")
     return value
 
 
-# Get the variables using the helper function
 slack_webhook_url: str = get_required_env_var("SLACK_WEBHOOK_URL")
-slack_webhook_type: str = get_required_env_var("SLACK_WEBHOOK_TYPE")
 github_server_url: str = get_required_env_var("GITHUB_SERVER_URL")
 github_repository: str = get_required_env_var("GITHUB_REPOSITORY")
 github_run_id: str = get_required_env_var("GITHUB_RUN_ID")
 
-# Now you can use the variables
 logger.info("Successfully loaded all required environment variables.")
 logger.info(f"Repo: {github_repository}, Run ID: {github_run_id}")
+
+
+def send_slack_alert(message: str) -> None:
+    slack_client = WebhookClient(url=slack_webhook_url)
+    full_message = f"{message}\nWorkflow run: {github_server_url}/{github_repository}/actions/runs/{github_run_id}"
+    slack_client.send(text=full_message)
+
+
+def validate_slack_link(url: str) -> bool:
+    """
+    Returns True if the Slack invite link is active, False if expired.
+    """
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        try:
+            page = browser.new_page()
+            page.goto(url, wait_until="networkidle", timeout=30000)
+            content = page.content()
+            return "This link is no longer active" not in content
+        finally:
+            browser.close()
 
 
 def main():
@@ -52,32 +71,29 @@ def main():
         "free-tier-support": "https://free-tier-support.getcollate.io/",
     }
 
-    for product_type, slack_url in slack_url_map.items():
-        res = None
-        try:
-            res = requests.post(
-                "https://linkmonitor.onrender.com/api/v1/validate",
-                headers={"Content-Type": "application/json"},
-                json={"url": slack_url},
-            )
-            logger.info(f"Status: {res.status_code} {res.text}")
+    errors = []
 
-            if res.json().get("status") != "active":
-                raise RuntimeError("Expired status!")
-        except RuntimeError as err:
-            error_msg = f"{product_type} slack link is expired"
-            logger.error(error_msg)
-            slack_client = WebhookClient(
-                url=slack_webhook_url,
-            )
-            error_msg = f"🔥 {product_type} slack link is expired 🔥 \n Workflow run: {github_server_url}/{github_repository}/actions/runs/{github_run_id}"
-            slack_client.send(text=error_msg)
+    for product_type, slack_url in slack_url_map.items():
+        try:
+            logger.info(f"Checking {product_type}: {slack_url}")
+            is_active = validate_slack_link(slack_url)
+
+            if is_active:
+                logger.info(f"{product_type} slack link is active")
+            else:
+                error_msg = f"🔥 {product_type} slack link is EXPIRED 🔥"
+                logger.error(error_msg)
+                send_slack_alert(error_msg)
+                errors.append(error_msg)
+
         except Exception as err:
-            error_msg = f"Something went wrong fetching the data - [{err}]"
-            if res is not None:
-                error_msg += f" [{res.text}]"
+            error_msg = f"🔥 {product_type} monitoring error: {err} 🔥"
             logger.error(error_msg)
-            raise err
+            send_slack_alert(error_msg)
+            errors.append(error_msg)
+
+    if errors:
+        raise RuntimeError(f"Monitoring failed with {len(errors)} error(s)")
 
 
 if __name__ == "__main__":
