@@ -527,11 +527,15 @@ public class TeamRepository extends EntityRepository<Team> {
     storeMany(entitiesToStore);
   }
 
+  /**
+   * Used during CSV import to clear relationships before re-establishing them.
+   * Only clears relationships that ARE in the CSV and will be re-added by storeRelationships().
+   * Relationships NOT in CSV (e.g., users, policies) are preserved to avoid data loss.
+   */
   @Override
   protected void clearEntitySpecificRelationshipsForMany(List<Team> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(Team::getId).toList();
-    deleteFromMany(ids, Entity.TEAM, Relationship.HAS, Entity.USER);
     deleteFromMany(ids, Entity.TEAM, Relationship.HAS, Entity.ROLE);
     deleteToMany(ids, Entity.TEAM, Relationship.PARENT_OF, Entity.TEAM);
     deleteFromMany(ids, Entity.TEAM, Relationship.PARENT_OF, Entity.TEAM);

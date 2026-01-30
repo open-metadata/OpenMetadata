@@ -1038,11 +1038,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
+        // Set FQN first so findMatchForImport can search by FQN
+        repository.setFullyQualifiedName(entity);
         // In case of updating entity, prepareInternal as update=True
         T original = repository.findMatchForImport(entity);
         boolean isUpdate = original != null;
         if (isUpdate) {
           entity.setId(original.getId());
+        } else {
+          entity.setId(UUID.randomUUID());
         }
 
         // Track the entity for immediate lookup by subsequent CSV rows in the same batch BEFORE
@@ -1120,11 +1124,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
     Response.Status responseStatus;
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
       try {
+        // Set FQN first so findMatchForImport can search by FQN
+        repository.setFullyQualifiedName(entity);
         // In case of updating entity, prepareInternal as update=True
         T original = (T) repository.findMatchForImport(entity);
         boolean isUpdate = original != null;
         if (isUpdate) {
           entity.setId(original.getId());
+        } else {
+          entity.setId(UUID.randomUUID());
         }
 
         // Track the entity for immediate lookup by subsequent CSV rows in the same batch BEFORE

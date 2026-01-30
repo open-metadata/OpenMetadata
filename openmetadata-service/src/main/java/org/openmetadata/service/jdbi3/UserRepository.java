@@ -351,14 +351,17 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
+  /**
+   * Used during CSV import to clear relationships before re-establishing them.
+   * Only clears relationships that ARE in the CSV and will be re-added by storeRelationships().
+   * Relationships NOT in CSV (e.g., personas) are preserved to avoid data loss.
+   */
   @Override
   protected void clearEntitySpecificRelationshipsForMany(List<User> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(User::getId).toList();
     deleteFromMany(ids, Entity.USER, Relationship.HAS, Entity.ROLE);
     deleteToMany(ids, Entity.USER, Relationship.HAS, Entity.TEAM);
-    deleteToMany(ids, Entity.USER, Relationship.APPLIED_TO, Entity.PERSONA);
-    deleteToMany(ids, Entity.USER, Relationship.DEFAULTS_TO, Entity.PERSONA);
   }
 
   @Override
