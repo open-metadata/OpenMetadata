@@ -280,15 +280,24 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   protected void deployPipelineBeforeUpdate(IngestionPipeline ingestionPipeline) {
+    IngestionPipeline decrypted = buildIngestionPipelineDecrypted(ingestionPipeline);
+
+    OpenMetadataConnection openMetadataServerConnection =
+        new org.openmetadata.service.util.OpenMetadataConnectionBuilder(
+                openMetadataApplicationConfig, decrypted)
+            .build();
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    decrypted.setOpenMetadataServerConnection(
+        secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
+
     ServiceEntityInterface service =
-        Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+        Entity.getEntity(decrypted.getService(), "", Include.NON_DELETED);
 
     if (isS3LogStorageEnabled() && getLogStorageConfiguration().getEnabled()) {
-      ingestionPipeline.setEnableStreamableLogs(true);
+      decrypted.setEnableStreamableLogs(true);
     }
 
-    PipelineServiceClientResponse deployResponse =
-        deployIngestionPipeline(ingestionPipeline, service);
+    PipelineServiceClientResponse deployResponse = deployIngestionPipeline(decrypted, service);
 
     if (deployResponse.getCode() != 200) {
       String errorContext = extractErrorContext(deployResponse.getReason());
@@ -298,7 +307,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     LOG.info(
         "Pipeline '{}' deployed successfully to {} with response: {}",
-        ingestionPipeline.getName(),
+        decrypted.getName(),
         deployResponse.getPlatform(),
         deployResponse.getReason());
   }
