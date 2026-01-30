@@ -2539,7 +2539,7 @@
     "minimum-value-error": "הערך המינימלי צריך להיות קטן מהערך המקסימלי.",
     "minute": "דקה",
     "missing-config-value": "חסר ערך הגדרה: {{field}}",
-    "missing-description": "Missing Description",
+    "missing-description": "תיאור חסר",
     "modified-time-ago-by": "עודכן {{time}} לפני {{by}}",
     "modify-hierarchy-entity-description": "שנה את ההיררכיה על ידי שינוי ה{{entity}} האב.",
     "most-active-users": "מציג את המשתמשים הפעילים ביותר בפלטפורמה על פי צפיות בדף.",

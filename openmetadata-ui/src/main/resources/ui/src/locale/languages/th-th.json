@@ -2539,7 +2539,7 @@
     "minimum-value-error": "The minimum value should be smaller than the maximum value.",
     "minute": "Minute",
     "missing-config-value": "ค่าการกำหนดค่าที่หายไป: {{field}}",
-    "missing-description": "Missing Description",
+    "missing-description": "ไม่มีคำอธิบาย",
     "modified-time-ago-by": "แก้ไข {{time}} ก่อนหน้า {{by}}",
     "modify-hierarchy-entity-description": "Modify the hierarchy by changing the Parent {{entity}}.",
     "most-active-users": "Displays the most active users on the platform based on Page Views.",

@@ -2539,7 +2539,7 @@
     "minimum-value-error": "Максимальное значение должно быть больше минимального.",
     "minute": "Минута",
     "missing-config-value": "Отсутствует значение конфигурации: {{field}}",
-    "missing-description": "Missing Description",
+    "missing-description": "Описание отсутствует",
     "modified-time-ago-by": "Изменено {{time}} назад {{by}}",
     "modify-hierarchy-entity-description": "Измените иерархию, изменив родительскую сущность для объекта «{{entity}}».",
     "most-active-users": "Отображает самых активных пользователей на платформе на основе просмотров страниц.",

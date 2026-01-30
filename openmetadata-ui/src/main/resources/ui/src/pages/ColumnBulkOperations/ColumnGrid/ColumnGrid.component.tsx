@@ -1112,8 +1112,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         if (data.jobId && data.jobId === activeJobIdRef.current) {
           if (data.status === 'COMPLETED' || data.status === 'SUCCESS') {
             activeJobIdRef.current = null;
-            columnGridListing
-              .refetch({ silent: true })
+            Promise.resolve(columnGridListing.refetch({ silent: true }))
               .then(() => {
                 setRecentlyUpdatedRowIds(
                   new Set(pendingHighlightRowIdsRef.current)
@@ -1125,6 +1124,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           } else if (data.status === 'FAILED' || data.status === 'FAILURE') {
             showErrorToast(t('server.entity-updating-error'));
             activeJobIdRef.current = null;
+            pendingHighlightRowIdsRef.current = new Set();
             setIsUpdating(false);
           }
         }

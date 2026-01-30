@@ -2539,7 +2539,7 @@
     "minimum-value-error": "Minimum değer maksimum değerden küçük olmalıdır.",
     "minute": "Dakika",
     "missing-config-value": "Eksik yapılandırma değeri: {{field}}",
-    "missing-description": "Missing Description",
+    "missing-description": "Açıklama eksik",
     "modified-time-ago-by": "{{time}} önce {{by}} tarafından değiştirildi",
     "modify-hierarchy-entity-description": "Üst {{entity}} değiştirerek hiyerarşiyi değiştirin.",
     "most-active-users": "Sayfa Görüntülemelerine göre platformdaki en aktif kullanıcıları görüntüler.",

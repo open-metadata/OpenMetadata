@@ -2539,7 +2539,7 @@
     "minimum-value-error": "La vleur minimum value doit être plus petite que la valeur maximum.",
     "minute": "Minute",
     "missing-config-value": "Valeur de configuration manquante : {{field}}",
-    "missing-description": "Missing Description",
+    "missing-description": "Description manquante",
     "modified-time-ago-by": "Modifié {{time}} par {{by}}",
     "modify-hierarchy-entity-description": "Modifier la hiérarchie en changeant le {{entity}} parent.",
     "most-active-users": "Affiche les utilisateurs les plus actifs en fonction du nombre de consultations de pages.",

@@ -2539,7 +2539,7 @@
     "minimum-value-error": "De minimale waarde moet kleiner zijn dan de maximale waarde.",
     "minute": "Minuut",
     "missing-config-value": "Ontbrekende configuratiewaarde: {{field}}",
-    "missing-description": "Missing Description",
+    "missing-description": "Beschrijving ontbreekt",
     "modified-time-ago-by": "Aangepast {{time}} geleden door {{by}}",
     "modify-hierarchy-entity-description": "Wijzig de hiërarchie door de Ouder {{entity}} te wijzigen.",
     "most-active-users": "Toont de meest actieve gebruikers op het platform op basis van paginaweergaven.",

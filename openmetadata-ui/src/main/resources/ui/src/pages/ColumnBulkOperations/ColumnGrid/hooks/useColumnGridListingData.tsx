@@ -165,12 +165,8 @@ export const useColumnGridListingData = (
       page: number,
       searchQuery: string,
       filters: ColumnGridFilters,
-      pageSize: number,
-      silent = false
+      pageSize: number
     ) => {
-      if (!silent) {
-        setLoading(true);
-      }
       try {
         // For page 1, start fresh (no cursor). For other pages, use stored cursor from previous page
         const pageCursor =
@@ -233,9 +229,7 @@ export const useColumnGridListingData = (
           console.error('Error loading column grid:', error);
         }
       } finally {
-        if (!silent) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     },
     []
@@ -412,29 +406,25 @@ export const useColumnGridListingData = (
     setCurrentPage(1);
   }, []);
 
-  const refetch = useCallback(
-    (options?: { silent?: boolean }): Promise<void> => {
-      cursorsByPageRef.current = new Map();
-      itemsByPageRef.current = new Map();
-      totalUniqueColumnsRef.current = 0;
-      totalOccurrencesRef.current = 0;
+  const refetch = useCallback((): Promise<void> => {
+    cursorsByPageRef.current = new Map();
+    itemsByPageRef.current = new Map();
+    totalUniqueColumnsRef.current = 0;
+    totalOccurrencesRef.current = 0;
 
-      return loadData(
-        urlState.currentPage,
-        urlState.searchQuery,
-        columnGridFilters,
-        urlState.pageSize,
-        options?.silent ?? false
-      );
-    },
-    [
+    return loadData(
       urlState.currentPage,
       urlState.searchQuery,
-      urlState.pageSize,
       columnGridFilters,
-      loadData,
-    ]
-  );
+      urlState.pageSize
+    );
+  }, [
+    urlState.currentPage,
+    urlState.searchQuery,
+    urlState.pageSize,
+    columnGridFilters,
+    loadData,
+  ]);
 
   // Clear all edited values (call after successful bulk update)
   const clearEditedValues = useCallback(() => {

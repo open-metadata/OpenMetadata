@@ -2539,7 +2539,7 @@
     "minimum-value-error": "يجب أن تكون القيمة الدنيا أصغر من القيمة القصوى.",
     "minute": "دقيقة",
     "missing-config-value": "قيمة التكوين مفقودة: {{field}}",
-    "missing-description": "Missing Description",
+    "missing-description": "وصف مفقود",
     "modified-time-ago-by": "تم التعديل قبل {{time}} بواسطة {{by}}",
     "modify-hierarchy-entity-description": "تعديل التسلسل الهرمي عن طريق تغيير {{entity}} الأصل.",
     "most-active-users": "يعرض المستخدمين الأكثر نشاطًا على المنصة بناءً على مشاهدات الصفحة.",

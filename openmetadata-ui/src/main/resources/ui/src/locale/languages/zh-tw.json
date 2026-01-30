@@ -2539,7 +2539,7 @@
     "minimum-value-error": "最小值應小於最大值。",
     "minute": "分鐘",
     "missing-config-value": "缺少組態值：{{field}}",
-    "missing-description": "Missing Description",
+    "missing-description": "缺少描述",
     "modified-time-ago-by": "{{time}} 前由 {{by}} 修改",
     "modify-hierarchy-entity-description": "透過變更父項 {{entity}} 來修改階層。",
     "most-active-users": "根據頁面檢視顯示平台上最活躍的使用者。",

@@ -2539,7 +2539,7 @@
     "minimum-value-error": "最小値は最大値より小さくする必要があります。",
     "minute": "分",
     "missing-config-value": "設定値が不足しています: {{field}}",
-    "missing-description": "Missing Description",
+    "missing-description": "説明なし",
     "modified-time-ago-by": "{{time}} 前に {{by}} によって更新されました",
     "modify-hierarchy-entity-description": "親{{entity}}を変更して階層を変更します。",
     "most-active-users": "ページビューに基づく最もアクティブなユーザーの表示。",
