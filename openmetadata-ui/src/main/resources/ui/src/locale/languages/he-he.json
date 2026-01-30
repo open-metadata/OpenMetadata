@@ -2931,6 +2931,7 @@
     "upload-file-to-validate": "Upload a file to validate",
     "upload-not-configured": "פונקציונליות ההעלאה אינה מוגדרת. אנא צור קשר עם המנהל שלך.",
     "upstream-depth-tooltip": "הצג עד 3 צמתים של יחידת יורשת לזיהוי מקור (רמות ההורים).",
+    "url-must-start-with-http-or-https": "כתובת ה-URL חייבת להתחיל ב-http:// או https://",
     "url-must-use-http-or-https": "URL חייב להשתמש בפרוטוקול http או https",
     "usage-ingestion-description": "ניתן להגדיר ולהפעיל את תהליך הספקת השימוש לאחר הגדרת השקפץ של מטה-דאטה. תהליך ספקת השימוש מקבל את לוגי השאילתות ופרטי יצירת הטבלה מהמסד נתונים התחתי ומספק אותם ל-{{brandName}}. יש רק פייפל אחד לשירות מסד נתונים. יש להגדיר משך לוגי השאילתות (בימים), מקום שמירת הקובץ הביניים, ומגבלת תוצאות להתחלה.",
     "use-fqn-for-filtering-message": "הקישור יימדד על שם מלא (FQN) (לדוגם service_name.db_name.schema_name.table_name) במקום שם גלוי (raw) (לדוגמה table_name).",
