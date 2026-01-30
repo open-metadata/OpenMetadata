@@ -221,38 +221,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     EntityReference entityReference =
         Entity.getEntityReference(ingestionPipeline.getService(), Include.NON_DELETED);
     ingestionPipeline.setService(entityReference);
-
-    if (update) {
-      IngestionPipeline original =
-          findByNameOrNull(ingestionPipeline.getFullyQualifiedName(), Include.ALL);
-
-      if (original != null && requiresRedeployment(original, ingestionPipeline)) {
-        LOG.info(
-            "Pipeline '{}' requires redeployment due to configuration changes. Deploying before DB update.",
-            ingestionPipeline.getName());
-
-        try {
-          deployPipelineBeforeUpdate(ingestionPipeline);
-          LOG.info(
-              "Successfully deployed pipeline '{}'. Proceeding with DB update.",
-              ingestionPipeline.getName());
-        } catch (PipelineServiceClientException e) {
-          LOG.error(
-              "Failed to deploy pipeline '{}' before update. Aborting DB update to maintain consistency.",
-              ingestionPipeline.getName(),
-              e);
-          String errorContext = extractErrorContext(e.getMessage());
-          throw new PipelineServiceClientException(
-              String.format("Deployment failed: %s. Changes not saved.", errorContext));
-        } catch (Exception e) {
-          LOG.error(
-              "Unexpected error deploying pipeline '{}' before update. Aborting DB update.",
-              ingestionPipeline.getName(),
-              e);
-          throw new PipelineServiceClientException("Deployment failed. Changes not saved.");
-        }
-      }
-    }
   }
 
   protected boolean requiresRedeployment(IngestionPipeline original, IngestionPipeline updated) {
@@ -667,6 +635,36 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError());
       updateEnableStreamableLogs(
           original.getEnableStreamableLogs(), updated.getEnableStreamableLogs());
+
+      deployIfRequired(original, updated);
+    }
+
+    private void deployIfRequired(IngestionPipeline original, IngestionPipeline updated) {
+      if (requiresRedeployment(original, updated)) {
+        LOG.info(
+            "Pipeline '{}' requires redeployment due to configuration changes. Deploying before DB update.",
+            updated.getName());
+
+        try {
+          deployPipelineBeforeUpdate(updated);
+          LOG.info(
+              "Successfully deployed pipeline '{}'. Proceeding with DB update.", updated.getName());
+        } catch (PipelineServiceClientException e) {
+          LOG.error(
+              "Failed to deploy pipeline '{}' before update. Aborting DB update to maintain consistency.",
+              updated.getName(),
+              e);
+          String errorContext = extractErrorContext(e.getMessage());
+          throw new PipelineServiceClientException(
+              String.format("Deployment failed: %s. Changes not saved.", errorContext));
+        } catch (Exception e) {
+          LOG.error(
+              "Unexpected error deploying pipeline '{}' before update. Aborting DB update.",
+              updated.getName(),
+              e);
+          throw new PipelineServiceClientException("Deployment failed. Changes not saved.");
+        }
+      }
     }
 
     protected void updateProcessingEngine(IngestionPipeline original, IngestionPipeline updated) {
