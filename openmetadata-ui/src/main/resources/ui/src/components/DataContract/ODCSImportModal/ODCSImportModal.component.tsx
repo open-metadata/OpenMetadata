@@ -1184,6 +1184,10 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       );
     }
 
+    const hasTypeMismatches =
+      serverValidation?.schemaValidation?.typeMismatchFields &&
+      serverValidation.schemaValidation.typeMismatchFields.length > 0;
+
     return (
       <Box
         data-testid="validation-success-panel"
@@ -1213,20 +1217,30 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           </Typography>
           <Chip
             icon={<TaskAltOutlined sx={{ fontSize: '12px !important' }} />}
-            label={t('label.passed')}
+            label={
+              hasTypeMismatches
+                ? t('label.passed-with-warnings')
+                : t('label.passed')
+            }
             size="small"
             sx={{
-              backgroundColor: theme.palette.allShades.success[50],
-              color: theme.palette.allShades.success[700],
+              backgroundColor: hasTypeMismatches
+                ? theme.palette.allShades.warning[50]
+                : theme.palette.allShades.success[50],
+              color: hasTypeMismatches
+                ? theme.palette.allShades.warning[700]
+                : theme.palette.allShades.success[700],
               fontSize: '12px',
               height: '22px',
               '& .MuiChip-icon': {
-                color: theme.palette.allShades.success[700],
+                color: hasTypeMismatches
+                  ? theme.palette.allShades.warning[700]
+                  : theme.palette.allShades.success[700],
               },
             }}
           />
         </Box>
-        <Box sx={{ flex: 1, minHeight: '200px' }}>
+        <Box sx={{ flex: 1, minHeight: '200px', overflowY: 'auto' }}>
           <Typography
             sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
             {serverValidation?.schemaValidation?.total &&
@@ -1236,6 +1250,46 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                 })
               : t('message.contract-syntax-valid')}
           </Typography>
+          {hasTypeMismatches && (
+            <Box sx={{ mt: '16px' }}>
+              <Typography
+                sx={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: theme.palette.allShades.warning[700],
+                  mb: '8px',
+                }}>
+                {t('label.type-mismatches')}
+              </Typography>
+              <Box
+                data-testid="type-mismatch-warnings-list"
+                sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {serverValidation.schemaValidation.typeMismatchFields.map(
+                  (field, index) => (
+                    <Box
+                      key={`typemismatch-warning-${index}`}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                      }}>
+                      <WarningAmberIcon
+                        sx={{
+                          fontSize: '14px',
+                          color: theme.palette.allShades.warning[600],
+                        }}
+                      />
+                      <Typography
+                        data-testid={`type-mismatch-warning-${index}`}
+                        sx={{ fontSize: '14px' }}>
+                        {field}
+                      </Typography>
+                    </Box>
+                  )
+                )}
+              </Box>
+            </Box>
+          )}
         </Box>
         <Box
           sx={{
