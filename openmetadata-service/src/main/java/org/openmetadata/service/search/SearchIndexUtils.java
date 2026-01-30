@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -33,6 +34,7 @@ import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.Utilities;
 
+@Slf4j
 public final class SearchIndexUtils {
 
   // Keeping the bots list static so we can call this from anywhere in the codebase
@@ -437,26 +439,38 @@ public final class SearchIndexUtils {
    * @return FlattenedCustomProperties containing keyword pairs and fuzzy text
    */
   public static FlattenedCustomProperties flattenCustomProperties(Object extension) {
+    // Add null check
+    if (extension == null) {
+      return new FlattenedCustomProperties(Collections.emptyList(), "");
+    }
+
     List<String> keyValuePairs = new ArrayList<>();
     StringBuilder fuzzyText = new StringBuilder();
 
-    if (extension != null) {
+    try {
       Map<String, Object> extensionMap = JsonUtils.getMap(extension);
+
+      // Add empty check
+      if (extensionMap == null || extensionMap.isEmpty()) {
+        return new FlattenedCustomProperties(Collections.emptyList(), "");
+      }
+
       for (Map.Entry<String, Object> entry : extensionMap.entrySet()) {
         String key = entry.getKey();
         Object value = entry.getValue();
         String valueStr = value != null ? flattenValue(value) : "";
-
         String pair = key + ":" + valueStr;
         keyValuePairs.add(pair);
-
         if (fuzzyText.length() > 0) {
           fuzzyText.append(" ");
         }
         fuzzyText.append(key).append(" ").append(valueStr);
       }
-    }
 
+    } catch (Exception e) {
+      LOG.warn("Failed to flatten custom properties", e);
+      return new FlattenedCustomProperties(Collections.emptyList(), "");
+    }
     return new FlattenedCustomProperties(keyValuePairs, fuzzyText.toString().trim());
   }
 

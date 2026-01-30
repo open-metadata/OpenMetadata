@@ -390,7 +390,12 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   }
 
   // For extension fields, use the new customPropertiesFlat field approach
-  if (isNestedExtensionField && entityType && value && value[0] !== undefined) {
+  if (
+    isNestedExtensionField &&
+    entityType &&
+    Array.isArray(value) &&
+    value.length > 0
+  ) {
     return buildExtensionQuery(
       extensionPropertyName,
       entityType,
