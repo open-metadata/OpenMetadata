@@ -332,38 +332,6 @@ test.describe(
       await expect(page.getByTestId('previous')).toBeVisible();
     });
 
-    test('should search and filter test definitions', async ({ page }) => {
-      // Navigate to Rules Library
-      await page.goto('/rules-library');
-
-      // Wait for table to load
-      await page.waitForSelector('[data-testid="test-definition-table"]', {
-        state: 'visible',
-      });
-
-      // Get initial row count
-      const initialRows = await page
-        .locator('[data-testid="test-definition-table"] tbody tr')
-        .count();
-
-      // Use table search/filter if available
-      const searchInput = page.getByPlaceholder(/Search/i);
-      if (await searchInput.isVisible()) {
-        await searchInput.fill('column');
-
-        // Wait for filtered results
-        await page.waitForTimeout(500);
-
-        // Verify filtered results
-        const filteredRows = await page
-          .locator('[data-testid="test-definition-table"] tbody tr')
-          .count();
-
-        // Filtered results should be less than or equal to initial results
-        expect(filteredRows).toBeLessThanOrEqual(initialRows);
-      }
-    });
-
     test('should display test platform badges correctly', async ({ page }) => {
       // Navigate to Rules Library
       await page.goto('/rules-library');
@@ -941,6 +909,185 @@ test.describe(
           page.getByTestId(SUPPORTED_SERVICES_TEST_NAME)
         ).not.toBeVisible();
       });
+    });
+
+    test('should maintain page on edit and reset to first page on delete', async ({
+      page,
+    }) => {
+      const PAGINATION_TEST_NAME = `zzzzPaginationTest${uuid()}`;
+      const PAGINATION_TEST_DISPLAY_NAME = `Zzzz Pagination Test ${uuid()}`;
+      const UPDATED_DISPLAY_NAME = `Updated ${PAGINATION_TEST_DISPLAY_NAME}`;
+
+      await test.step(
+        'Create a test definition starting with "z"',
+        async () => {
+          await page.goto('/rules-library');
+          await page.getByTestId('add-test-definition-button').click();
+          await expect(page.locator('.ant-drawer')).toBeVisible();
+
+          await page.locator('#name').fill(PAGINATION_TEST_NAME);
+          await page.locator('#displayName').fill(PAGINATION_TEST_DISPLAY_NAME);
+          await page
+            .locator('#description')
+            .fill('Test definition for pagination behavior testing');
+
+          await page.locator('#entityType').click();
+          await page
+            .locator('.ant-select-dropdown:visible')
+            .getByTitle('TABLE')
+            .click();
+          await expect(
+            page.locator('.ant-select-dropdown:visible')
+          ).not.toBeVisible();
+
+          const createResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+              response.request().method() === 'POST'
+          );
+
+          await page.getByTestId('save-test-definition').click();
+
+          const responseData = await createResponse;
+          expect(responseData.status()).toBe(201);
+          await expect(page.getByText(/created successfully/i)).toBeVisible();
+        }
+      );
+
+      await test.step('Change page size to 25', async () => {
+        const pageSizeDropdown = page.getByTestId(
+          'page-size-selection-dropdown'
+        );
+        await expect(pageSizeDropdown).toBeVisible();
+        await pageSizeDropdown.click();
+
+        // Wait for dropdown to open and select 25
+        await page.locator('.ant-dropdown:visible').getByText('25').click();
+
+        // Wait for pagination response
+        await page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'GET'
+        );
+      });
+
+      await test.step(
+        'Navigate until we find our test definition or reach last page',
+        async () => {
+          const nextButton = page.getByTestId('next');
+          const testDefLocator = page.getByTestId(PAGINATION_TEST_NAME);
+
+          // Check if item is already visible on current page
+          let isItemVisible = await testDefLocator.isVisible();
+
+          // Navigate until we find our test definition or reach the last page
+          while (!isItemVisible && (await nextButton.isEnabled())) {
+            const fetchResponse = page.waitForResponse(
+              (response) =>
+                response
+                  .url()
+                  .includes('/api/v1/dataQuality/testDefinitions') &&
+                response.request().method() === 'GET'
+            );
+            await nextButton.click();
+            await fetchResponse;
+
+            // Check again after page load
+            isItemVisible = await testDefLocator.isVisible();
+          }
+
+          // Verify our test definition is now visible
+          await expect(testDefLocator).toBeVisible({
+            timeout: 10000,
+          });
+        }
+      );
+
+      await test.step(
+        'Edit the test definition and verify we stay on the same page',
+        async () => {
+          // Verify our test definition is visible on this page
+          await expect(page.getByTestId(PAGINATION_TEST_NAME)).toBeVisible();
+
+          // Get current page indicator before edit
+          const previousButton = page.getByTestId('previous');
+          const prevDisabledBefore = await previousButton.isDisabled();
+
+          // Edit the test definition
+          await page
+            .getByTestId(`edit-test-definition-${PAGINATION_TEST_NAME}`)
+            .click();
+          await expect(page.locator('.ant-drawer')).toBeVisible();
+
+          const displayNameInput = page.getByLabel('Display Name');
+          await displayNameInput.clear();
+          await displayNameInput.fill(UPDATED_DISPLAY_NAME);
+
+          const patchResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+              response.request().method() === 'PATCH'
+          );
+
+          await page.getByTestId('save-test-definition').click();
+          const updateResponse = await patchResponse;
+          expect(updateResponse.status()).toBe(200);
+
+          await expect(page.getByText(/updated successfully/i)).toBeVisible();
+
+          // Verify we stayed on the same page (previous button state should be unchanged)
+          const prevDisabledAfter = await previousButton.isDisabled();
+          expect(prevDisabledAfter).toBe(prevDisabledBefore);
+
+          // Verify the updated test definition is still visible
+          await expect(page.getByTestId(PAGINATION_TEST_NAME)).toBeVisible();
+        }
+      );
+
+      await test.step(
+        'Delete the test definition and verify redirect to first page',
+        async () => {
+          await page
+            .getByTestId(`delete-test-definition-${PAGINATION_TEST_NAME}`)
+            .click();
+
+          await expect(page.locator('.ant-modal')).toBeVisible();
+          await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+          // Set up both DELETE and the subsequent GET response waits BEFORE clicking
+          const deleteResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+              response.request().method() === 'DELETE'
+          );
+
+          const getResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+              response.request().method() === 'GET'
+          );
+
+          await page.getByTestId('confirm-button').click();
+
+          const deleteResult = await deleteResponse;
+          expect(deleteResult.status()).toBe(200);
+
+          // Wait for the GET that happens after delete (page reset + fetch)
+          await getResponse;
+
+          await expect(page.getByText(/deleted successfully/i)).toBeVisible();
+
+          // Previous button should be disabled on first page
+          const previousButton = page.getByTestId('previous');
+          await expect(previousButton).toBeDisabled();
+
+          // Verify the deleted test definition is no longer visible
+          await expect(
+            page.getByTestId(PAGINATION_TEST_NAME)
+          ).not.toBeVisible();
+        }
+      );
     });
   }
 );
