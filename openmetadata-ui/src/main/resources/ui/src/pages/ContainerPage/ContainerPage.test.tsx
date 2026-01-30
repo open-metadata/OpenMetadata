@@ -235,6 +235,15 @@ jest.mock('../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
+jest.mock('../../utils/StringsUtils', () => ({
+  getErrorText: jest
+    .fn()
+    .mockImplementation(
+      (error: Error, defaultMessage: string) =>
+        error?.message || defaultMessage || 'Error'
+    ),
+}));
+
 const mockUseParams = jest.fn().mockReturnValue({
   fqn: MOCK_CONTAINER_DATA.fullyQualifiedName,
   tab: 'schema',
