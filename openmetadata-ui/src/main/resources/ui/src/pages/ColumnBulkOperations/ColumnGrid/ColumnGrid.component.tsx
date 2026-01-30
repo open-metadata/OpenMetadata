@@ -1091,8 +1091,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   }, [
     columnGridListing.allRows,
     columnGridListing.selectedEntities,
+    columnGridListing.isSelected,
     columnGridListing.clearEditedValues,
     columnGridListing.setAllRows,
+    columnGridListing.clearSelection,
     t,
   ]);
 
@@ -1117,6 +1119,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 setRecentlyUpdatedRowIds(
                   new Set(pendingHighlightRowIdsRef.current)
                 );
+                setIsUpdating(false);
               })
               .catch(() => {
                 setIsUpdating(false);
