@@ -1308,7 +1308,7 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    
+
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
