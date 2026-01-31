@@ -127,13 +127,59 @@ public class SystemRepository {
     migrationValidationClient = MigrationValidationClient.getInstance();
   }
 
-  public boolean isUpdateAllowed(Settings setting) {
-    Object configValue = setting.getConfigValue();
+  public boolean isUpdateAllowed(SettingsType configType) {
+    // Fetch the existing setting from DB to check its configSource
+    // We check the DB value, not the incoming request, to prevent bypass
+    Settings existingSetting = getConfigWithKey(configType.value());
+    if (existingSetting == null) {
+      return true;
+    }
+
+    Object configValue = existingSetting.getConfigValue();
+    if (configValue == null) {
+      return true;
+    }
+
+    // If already the correct type, use it directly
     if (configValue instanceof OpenMetadataConfig openMetadataConfig) {
       ConfigSource source = openMetadataConfig.getConfigSource();
       return source != ConfigSource.ENV;
     }
+
+    // Convert LinkedHashMap to proper class based on configType
+    OpenMetadataConfig config = convertToOpenMetadataConfig(configType, configValue);
+    if (config != null) {
+      ConfigSource source = config.getConfigSource();
+      return source != ConfigSource.ENV;
+    }
+
     return true;
+  }
+
+  private OpenMetadataConfig convertToOpenMetadataConfig(
+      SettingsType configType, Object configValue) {
+    if (configType == null || configValue == null) {
+      return null;
+    }
+    try {
+      return switch (configType) {
+        case EMAIL_CONFIGURATION -> JsonUtils.convertValue(configValue, SmtpSettings.class);
+        case AUTHENTICATION_CONFIGURATION -> JsonUtils.convertValue(
+            configValue, AuthenticationConfiguration.class);
+        case AUTHORIZER_CONFIGURATION -> JsonUtils.convertValue(
+            configValue, AuthorizerConfiguration.class);
+        case SEARCH_SETTINGS -> JsonUtils.convertValue(configValue, SearchSettings.class);
+        case CUSTOM_UI_THEME_PREFERENCE -> JsonUtils.convertValue(
+            configValue, UiThemePreference.class);
+        case SCIM_CONFIGURATION -> JsonUtils.convertValue(configValue, ScimConfiguration.class);
+        case ASSET_CERTIFICATION_SETTINGS -> JsonUtils.convertValue(
+            configValue, AssetCertificationSettings.class);
+        case WORKFLOW_SETTINGS -> JsonUtils.convertValue(configValue, WorkflowSettings.class);
+        default -> null;
+      };
+    } catch (Exception e) {
+      return null;
+    }
   }
 
   public String getEnvHash(String configType) {

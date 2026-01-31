@@ -360,7 +360,7 @@ public class SystemResource {
     }
 
     authorizer.authorizeAdmin(securityContext);
-    if (!systemRepository.isUpdateAllowed(settingName)) {
+    if (!systemRepository.isUpdateAllowed(settingName.getConfigType())) {
       throw new IllegalArgumentException(
           "This setting is managed by ENV configuration and cannot be updated via API. "
               + "Change configSource to DB or AUTO to enable API updates.");
@@ -489,6 +489,15 @@ public class SystemResource {
     }
 
     authorizer.authorizeAdmin(securityContext);
+
+    // Check if update is allowed based on configSource
+    SettingsType settingsType = SettingsType.fromValue(settingName);
+    if (!systemRepository.isUpdateAllowed(settingsType)) {
+      throw new IllegalArgumentException(
+          "This setting is managed by ENV configuration and cannot be updated via API. "
+              + "Change configSource to DB or AUTO to enable API updates.");
+    }
+
     return systemRepository.patchSetting(settingName, patch);
   }
 
@@ -645,6 +654,19 @@ public class SystemResource {
       @Valid SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
 
+    // Check if update is allowed based on configSource for both configs
+    if (!systemRepository.isUpdateAllowed(AUTHENTICATION_CONFIGURATION)) {
+      throw new IllegalArgumentException(
+          "Authentication configuration is managed by ENV and cannot be updated via API. "
+              + "Change configSource to DB or AUTO to enable API updates.");
+    }
+
+    if (!systemRepository.isUpdateAllowed(AUTHORIZER_CONFIGURATION)) {
+      throw new IllegalArgumentException(
+          "Authorizer configuration is managed by ENV and cannot be updated via API. "
+              + "Change configSource to DB or AUTO to enable API updates.");
+    }
+
     try {
       // Update both configurations in a transaction
       Settings authSettings =
@@ -699,6 +721,19 @@ public class SystemResource {
                       }))
           JsonPatch patch) {
     authorizer.authorizeAdmin(securityContext);
+
+    // Check if update is allowed based on configSource for both configs
+    if (!systemRepository.isUpdateAllowed(AUTHENTICATION_CONFIGURATION)) {
+      throw new IllegalArgumentException(
+          "Authentication configuration is managed by ENV and cannot be updated via API. "
+              + "Change configSource to DB or AUTO to enable API updates.");
+    }
+
+    if (!systemRepository.isUpdateAllowed(AUTHORIZER_CONFIGURATION)) {
+      throw new IllegalArgumentException(
+          "Authorizer configuration is managed by ENV and cannot be updated via API. "
+              + "Change configSource to DB or AUTO to enable API updates.");
+    }
 
     try {
       SecurityConfiguration originalConfig =

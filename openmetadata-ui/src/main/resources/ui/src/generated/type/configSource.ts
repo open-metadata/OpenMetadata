@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { TransportationStrategy } from '../generated/email/smtpSettings';
-
-export const TRANSPORTATION_STRATEGY_OPTIONS = Object.values(
-  TransportationStrategy
-).map((strategy) => ({
-  label: strategy,
-  value: strategy,
-}));
-
-export const NOT_INCLUDE_EMAIL_CONFIG_VALUE = ['templates', 'configSource'];
+/**
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+  ENV = 'ENV',
+  DB = 'DB',
+  AUTO = 'AUTO',
+}

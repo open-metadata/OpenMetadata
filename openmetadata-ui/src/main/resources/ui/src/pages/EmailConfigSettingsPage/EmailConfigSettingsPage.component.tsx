@@ -25,6 +25,7 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import ConfigSourceIndicator from '../../components/Settings/ConfigSourceIndicator';
 import TestEmail from '../../components/Settings/Email/TestEmail/TestEmail.component';
 import { ROUTES } from '../../constants/constants';
 import { NOT_INCLUDE_EMAIL_CONFIG_VALUE } from '../../constants/EmailConfig.constants';
@@ -32,6 +33,7 @@ import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.const
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { SettingType } from '../../generated/settings/settings';
+import { ConfigSource } from '../../generated/type/configSource';
 import { useAuth } from '../../hooks/authHooks';
 import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
 import { getEmailConfigFieldLabels } from '../../utils/EmailConfigUtils';
@@ -181,22 +183,31 @@ function EmailConfigSettingsPage() {
               {loading ? (
                 <ButtonSkeleton />
               ) : (
-                <Button
-                  className="m-l-md"
-                  icon={
-                    !isUndefined(emailConfigValues) && (
-                      <Icon component={IconEdit} size={12} />
-                    )
-                  }
-                  onClick={handleEditClick}>
-                  {isUndefined(emailConfigValues)
-                    ? t('label.add')
-                    : t('label.edit')}
-                </Button>
+                emailConfigValues?.configSource !== ConfigSource.ENV && (
+                  <Button
+                    className="m-l-md"
+                    icon={
+                      !isUndefined(emailConfigValues) && (
+                        <Icon component={IconEdit} size={12} />
+                      )
+                    }
+                    onClick={handleEditClick}>
+                    {isUndefined(emailConfigValues)
+                      ? t('label.add')
+                      : t('label.edit')}
+                  </Button>
+                )
               )}
             </Col>
           </Row>
         </Col>
+        {emailConfigValues?.configSource && (
+          <Col span={24}>
+            <ConfigSourceIndicator
+              configSource={emailConfigValues.configSource}
+            />
+          </Col>
+        )}
         <Col span={24}>{configValuesContainer}</Col>
       </Row>
 

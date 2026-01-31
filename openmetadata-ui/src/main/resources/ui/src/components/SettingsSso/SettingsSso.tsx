@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { AuthProvider } from '../../generated/settings/settings';
+import { ConfigSource } from '../../generated/type/configSource';
 import {
   getSecurityConfiguration,
   patchSecurityConfiguration,
@@ -29,6 +30,7 @@ import { getProviderDisplayName, getProviderIcon } from '../../utils/SSOUtils';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
+import ConfigSourceIndicator from '../Settings/ConfigSourceIndicator';
 import ProviderSelector from './ProviderSelector/ProviderSelector';
 import './settings-sso.less';
 import SSOConfigurationForm from './SSOConfigurationForm/SSOConfigurationForm';
@@ -327,6 +329,14 @@ const SettingsSso = () => {
     setActiveTab(key);
   }, []);
 
+  const isEnvManaged = useMemo(() => {
+    return (
+      securityConfig?.authenticationConfiguration?.configSource ===
+        ConfigSource.ENV ||
+      securityConfig?.authorizerConfiguration?.configSource === ConfigSource.ENV
+    );
+  }, [securityConfig]);
+
   const handleProviderSelect = useCallback(
     (provider: AuthProvider) => {
       setCurrentProvider(provider);
@@ -421,6 +431,12 @@ const SettingsSso = () => {
                 </Typography.Title>
               </div>
             </div>
+          </div>
+        )}
+
+        {isEnvManaged && (
+          <div className="m-b-md">
+            <ConfigSourceIndicator configSource={ConfigSource.ENV} />
           </div>
         )}
 
