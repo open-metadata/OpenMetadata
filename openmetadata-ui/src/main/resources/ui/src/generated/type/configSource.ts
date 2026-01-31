@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,7 +14,7 @@
  * Determines where configuration is read from.
  */
 export enum ConfigSource {
-  ENV = 'ENV',
-  DB = 'DB',
-  AUTO = 'AUTO',
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
 }

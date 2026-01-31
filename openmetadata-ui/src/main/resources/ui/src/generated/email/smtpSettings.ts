@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ConfigSource } from '../type/configSource';
-
 /**
  * This schema defines the SMTP Settings for sending Email
  */
@@ -55,6 +53,17 @@ export interface SMTPSettings {
      * Smtp Server Username
      */
     username?: string;
+}
+
+/**
+ * Determines where this configuration is read from.
+ *
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
 }
 
 export enum Templates {

@@ -31,6 +31,10 @@ export interface AuthenticationConfiguration {
      */
     clientType?: ClientType;
     /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
+    /**
      * Enable automatic redirect from the sign-in page to the configured SSO provider.
      */
     enableAutoRedirect?: boolean;
@@ -96,6 +100,17 @@ export interface AuthenticationConfiguration {
 export enum ClientType {
     Confidential = "confidential",
     Public = "public",
+}
+
+/**
+ * Determines where this configuration is read from.
+ *
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
 }
 
 /**

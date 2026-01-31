@@ -19,7 +19,22 @@ export interface AssetCertificationSettings {
      */
     allowedClassification: string;
     /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
+    /**
      * ISO 8601 duration for the validity period.
      */
     validityPeriod: string;
+}
+
+/**
+ * Determines where this configuration is read from.
+ *
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
 }

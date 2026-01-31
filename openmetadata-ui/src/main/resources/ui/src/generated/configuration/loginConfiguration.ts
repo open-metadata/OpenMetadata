@@ -19,6 +19,10 @@ export interface LoginConfiguration {
      */
     accessBlockTime?: number;
     /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
+    /**
      * Jwt Token Expiry time for login in seconds
      */
     jwtTokenExpiryTime?: number;
@@ -26,4 +30,15 @@ export interface LoginConfiguration {
      * Failed Login Attempts allowed for user.
      */
     maxLoginFailAttempts?: number;
+}
+
+/**
+ * Determines where this configuration is read from.
+ *
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
 }
