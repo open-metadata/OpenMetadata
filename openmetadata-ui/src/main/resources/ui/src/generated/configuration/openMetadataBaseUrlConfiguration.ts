@@ -10,10 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ConfigSource } from '../type/configSource';
+
 /**
  * This schema defines the OpenMetadata base URL configuration
  */
 export interface OpenMetadataBaseURLConfiguration {
+    /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
     /**
      * OpenMetadata Server Endpoint
      */

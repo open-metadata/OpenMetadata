@@ -332,8 +332,8 @@ const SettingsSso = () => {
   const isEnvManaged = useMemo(() => {
     return (
       securityConfig?.authenticationConfiguration?.configSource ===
-        ConfigSource.ENV ||
-      securityConfig?.authorizerConfiguration?.configSource === ConfigSource.ENV
+        ConfigSource.Env ||
+      securityConfig?.authorizerConfiguration?.configSource === ConfigSource.Env
     );
   }, [securityConfig]);
 
@@ -436,7 +436,7 @@ const SettingsSso = () => {
 
         {isEnvManaged && (
           <div className="m-b-md">
-            <ConfigSourceIndicator configSource={ConfigSource.ENV} />
+            <ConfigSourceIndicator configSource={ConfigSource.Env} />
           </div>
         )}
 

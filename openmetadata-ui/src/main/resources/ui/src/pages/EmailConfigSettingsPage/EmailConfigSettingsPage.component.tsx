@@ -183,7 +183,7 @@ function EmailConfigSettingsPage() {
               {loading ? (
                 <ButtonSkeleton />
               ) : (
-                emailConfigValues?.configSource !== ConfigSource.ENV && (
+                emailConfigValues?.configSource !== ConfigSource.Env && (
                   <Button
                     className="m-l-md"
                     icon={
