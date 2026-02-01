@@ -130,6 +130,14 @@ const SettingsSso = () => {
     return updatedBaseBreadcrumb;
   }, [searchParams, hasExistingConfig]);
 
+  const isEnvManaged = useMemo(() => {
+    return (
+      securityConfig?.authenticationConfiguration?.configSource ===
+        ConfigSource.Env ||
+      securityConfig?.authorizerConfiguration?.configSource === ConfigSource.Env
+    );
+  }, [securityConfig]);
+
   // If existing configuration, show tabs
   const tabItems = useMemo(() => {
     const items = [];
@@ -183,11 +191,17 @@ const SettingsSso = () => {
     items.push({
       key: 'configure',
       label: t('label.configure'),
+      disabled: isEnvManaged,
       children: (
         <div>
+          {isEnvManaged && (
+            <div className="m-b-md">
+              <ConfigSourceIndicator configSource={ConfigSource.Env} />
+            </div>
+          )}
           <SSOConfigurationForm
             hideBorder
-            forceEditMode={activeTab === 'configure'}
+            forceEditMode={activeTab === 'configure' && !isEnvManaged}
             securityConfig={securityConfig}
             onChangeProvider={handleChangeProvider}
           />
@@ -219,6 +233,7 @@ const SettingsSso = () => {
     activeTab,
     securityConfig,
     handleChangeProvider,
+    isEnvManaged,
   ]);
 
   // Combined effect to handle URL parameters and existing configuration
@@ -329,14 +344,6 @@ const SettingsSso = () => {
     setActiveTab(key);
   }, []);
 
-  const isEnvManaged = useMemo(() => {
-    return (
-      securityConfig?.authenticationConfiguration?.configSource ===
-        ConfigSource.Env ||
-      securityConfig?.authorizerConfiguration?.configSource === ConfigSource.Env
-    );
-  }, [securityConfig]);
-
   const handleProviderSelect = useCallback(
     (provider: AuthProvider) => {
       setCurrentProvider(provider);
@@ -373,8 +380,15 @@ const SettingsSso = () => {
           titleLinks={breadcrumb}
         />
 
+        {isEnvManaged && (
+          <div className="m-b-md m-t-md">
+            <ConfigSourceIndicator configSource={ConfigSource.Env} />
+          </div>
+        )}
+
         <div className="m-t-lg sso-provider-selection">
           <ProviderSelector
+            disabled={isEnvManaged}
             selectedProvider={currentProvider as AuthProvider | undefined}
             onProviderSelect={handleProviderSelect}
           />
