@@ -277,7 +277,7 @@ migrationConfiguration:
 
 # Authorizer Configuration
 authorizerConfiguration:
-  configSource: ${AUTHORIZER_CONFIG_SOURCE:-ENV}
+  configSource: ${AUTHORIZER_CONFIG_SOURCE:-AUTO}
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
   containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
@@ -289,7 +289,7 @@ authorizerConfiguration:
   useRolesFromProvider: ${AUTHORIZER_USE_ROLES_FROM_PROVIDER:-false}
 
 authenticationConfiguration:
-  configSource: ${AUTHENTICATION_CONFIG_SOURCE:-ENV}
+  configSource: ${AUTHENTICATION_CONFIG_SOURCE:-AUTO}
   clientType: ${AUTHENTICATION_CLIENT_TYPE:-public}
   provider: ${AUTHENTICATION_PROVIDER:-basic}
   # This is used by auth provider provide response as either id_token or code
