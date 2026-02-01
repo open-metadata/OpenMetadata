@@ -64,6 +64,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
@@ -127,32 +128,112 @@ public class SystemRepository {
     migrationValidationClient = MigrationValidationClient.getInstance();
   }
 
-  public boolean isUpdateAllowed(SettingsType configType) {
-    // Fetch the existing setting from DB to check its configSource
-    // We check the DB value, not the incoming request, to prevent bypass
-    Settings existingSetting = getConfigWithKey(configType.value());
-    if (existingSetting == null) {
-      return true;
+  /**
+   * Checks if a setting type is dual-source (exists in both ENV/YAML and DB).
+   * Dual-source settings can have their configSource controlled via ENV/YAML.
+   */
+  public static boolean isDualSourceSetting(SettingsType configType) {
+    return switch (configType) {
+      case AUTHENTICATION_CONFIGURATION,
+          AUTHORIZER_CONFIGURATION,
+          EMAIL_CONFIGURATION,
+          SCIM_CONFIGURATION,
+          OPEN_METADATA_BASE_URL_CONFIGURATION -> true;
+      default -> false;
+    };
+  }
+
+  /**
+   * Gets the configSource from the application config (ENV/YAML) for dual-source settings.
+   * Returns null for DB-only settings.
+   */
+  public static ConfigSource getConfigSourceFromApplicationConfig(
+      SettingsType configType, OpenMetadataApplicationConfig applicationConfig) {
+    if (applicationConfig == null || !isDualSourceSetting(configType)) {
+      return null;
     }
 
-    Object configValue = existingSetting.getConfigValue();
-    if (configValue == null) {
-      return true;
+    return switch (configType) {
+      case AUTHENTICATION_CONFIGURATION -> {
+        AuthenticationConfiguration authConfig = applicationConfig.getAuthenticationConfiguration();
+        yield authConfig != null ? authConfig.getConfigSource() : ConfigSource.AUTO;
+      }
+      case AUTHORIZER_CONFIGURATION -> {
+        AuthorizerConfiguration authzConfig = applicationConfig.getAuthorizerConfiguration();
+        yield authzConfig != null ? authzConfig.getConfigSource() : ConfigSource.AUTO;
+      }
+      case EMAIL_CONFIGURATION -> {
+        SmtpSettings emailConfig =
+            applicationConfig.getOperationalApplicationConfigProvider() != null
+                ? applicationConfig.getOperationalApplicationConfigProvider().getEmailSettings()
+                : null;
+        yield emailConfig != null ? emailConfig.getConfigSource() : ConfigSource.AUTO;
+      }
+      case SCIM_CONFIGURATION -> {
+        ScimConfiguration scimConfig = applicationConfig.getScimConfiguration();
+        yield scimConfig != null ? scimConfig.getConfigSource() : ConfigSource.AUTO;
+      }
+      case OPEN_METADATA_BASE_URL_CONFIGURATION -> {
+        // TODO: Add configSource to OpenMetadataBaseUrlConfiguration if needed
+        yield ConfigSource.AUTO;
+      }
+      default -> null;
+    };
+  }
+
+  /**
+   * Enforces the configSource from the application config onto the setting value.
+   * For dual-source settings, the configSource is always taken from ENV/YAML.
+   * For DB-only settings, the configSource is always DB and cannot be changed.
+   */
+  public static void enforceConfigSource(
+      Settings setting, OpenMetadataApplicationConfig applicationConfig) {
+    if (setting == null || setting.getConfigValue() == null) {
+      return;
     }
 
-    // If already the correct type, use it directly
+    SettingsType configType = setting.getConfigType();
+    Object configValue = setting.getConfigValue();
+
+    if (isDualSourceSetting(configType)) {
+      // For dual-source settings, always use configSource from application config
+      ConfigSource envConfigSource =
+          getConfigSourceFromApplicationConfig(configType, applicationConfig);
+      if (envConfigSource == null) {
+        envConfigSource = ConfigSource.AUTO; // Default to AUTO if not specified
+      }
+      setConfigSourceOnValue(configValue, envConfigSource, configType);
+    } else {
+      // For DB-only settings, always set configSource to DB
+      setConfigSourceOnValue(configValue, ConfigSource.DB, configType);
+    }
+  }
+
+  private static void setConfigSourceOnValue(
+      Object configValue, ConfigSource configSource, SettingsType configType) {
     if (configValue instanceof OpenMetadataConfig openMetadataConfig) {
-      ConfigSource source = openMetadataConfig.getConfigSource();
-      return source != ConfigSource.ENV;
+      openMetadataConfig.setConfigSource(configSource);
+    } else if (configValue instanceof java.util.Map) {
+      // For LinkedHashMap values, we need to set the configSource in the map
+      @SuppressWarnings("unchecked")
+      java.util.Map<String, Object> map = (java.util.Map<String, Object>) configValue;
+      map.put("configSource", configSource.value());
+    }
+  }
+
+  public boolean isUpdateAllowed(SettingsType configType) {
+    // Get configSource from the application config (ENV/YAML), not from the DB
+    // This ensures the operator controls whether updates are allowed
+    OpenMetadataApplicationConfig applicationConfig =
+        OpenMetadataApplicationConfigHolder.getInstance();
+    ConfigSource configSource = getConfigSourceFromApplicationConfig(configType, applicationConfig);
+
+    // If it's a dual-source setting, check the configSource from ENV/YAML
+    if (configSource != null) {
+      return configSource != ConfigSource.ENV;
     }
 
-    // Convert LinkedHashMap to proper class based on configType
-    OpenMetadataConfig config = convertToOpenMetadataConfig(configType, configValue);
-    if (config != null) {
-      ConfigSource source = config.getConfigSource();
-      return source != ConfigSource.ENV;
-    }
-
+    // For DB-only settings, updates are always allowed
     return true;
   }
 
@@ -417,6 +498,12 @@ public class SystemRepository {
 
   public void updateSetting(Settings setting) {
     try {
+      // Enforce configSource from application config (ENV/YAML)
+      // For dual-source settings: always use configSource from ENV/YAML
+      // For DB-only settings: always set configSource to DB
+      OpenMetadataApplicationConfig appConfig = OpenMetadataApplicationConfigHolder.getInstance();
+      enforceConfigSource(setting, appConfig);
+
       if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
         SmtpSettings emailConfig =
             JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);

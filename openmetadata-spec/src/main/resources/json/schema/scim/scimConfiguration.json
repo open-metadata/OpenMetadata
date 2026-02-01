@@ -10,7 +10,7 @@
     "configSource": {
       "description": "Determines where this configuration is read from.",
       "$ref": "../type/configSource.json",
-      "default": "ENV"
+      "default": "AUTO"
     },
     "enabled": {
       "title": "Enabled",
