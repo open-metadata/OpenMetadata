@@ -25,3 +25,14 @@ export interface OpenMetadataBaseURLConfiguration {
      */
     openMetadataUrl?: string;
 }
+
+/**
+ * Determines where this configuration is read from.
+ *
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
+}

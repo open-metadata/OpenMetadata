@@ -90,6 +90,10 @@ export enum TransportationStrategy {
  */
 export interface OpenMetadataBaseURLConfiguration {
     /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
+    /**
      * OpenMetadata Server Endpoint
      */
     openMetadataUrl?: string;
