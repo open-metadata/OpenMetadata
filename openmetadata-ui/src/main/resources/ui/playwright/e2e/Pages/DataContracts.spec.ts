@@ -1116,7 +1116,12 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       'KnowledgePanel.Tags',
       testTag.responseData.fullyQualifiedName
     );
-    await assignGlossaryTerm(page, testGlossaryTerm.responseData);
+    await assignGlossaryTerm(
+      page,
+      testGlossaryTerm.responseData,
+      'Add',
+      EntityTypeEndpoint.Table
+    );
 
     await navigateToContractTab(page);
 
@@ -1289,7 +1294,12 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       'KnowledgePanel.Tags',
       testTag.responseData.fullyQualifiedName
     );
-    await assignGlossaryTerm(page, testGlossaryTerm.responseData);
+    await assignGlossaryTerm(
+      page,
+      testGlossaryTerm.responseData,
+      'Add',
+      EntityTypeEndpoint.Table
+    );
 
     await navigateToContractTab(page);
 
