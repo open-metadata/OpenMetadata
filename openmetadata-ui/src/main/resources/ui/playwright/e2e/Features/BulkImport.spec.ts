@@ -158,7 +158,15 @@ test.describe('Bulk Import Export', () => {
       'should import and edit with two additional database',
       async () => {
         await dbService.visitEntityPage(page);
-        await page.click('[data-testid="manage-button"] > .anticon');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await page.getByTestId('manage-button').click();
+        await page.waitForSelector(
+          '[data-testid="manage-dropdown-list-container"]',
+          { state: 'visible' }
+        );
         await page.click('[data-testid="import-button-title"]');
         const fileInput = page.getByTestId('upload-file-widget');
         await fileInput?.setInputFiles([
@@ -409,15 +417,26 @@ test.describe('Bulk Import Export', () => {
       'should import and edit with two additional database schema',
       async () => {
         await dbEntity.visitEntityPage(page);
-        await page.click('[data-testid="manage-button"] > .anticon');
+
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await page.getByTestId('manage-button').click();
+        await page.waitForSelector(
+          '[data-testid="manage-dropdown-list-container"]',
+          { state: 'visible' }
+        );
         await page.click('[data-testid="import-button-title"]');
         const fileInput = await page.$('[type="file"]');
         await fileInput?.setInputFiles([
           'downloads/' + dbEntity.entity.name + '.csv',
         ]);
 
-        // Adding manual wait for the file to load
-        await page.waitForTimeout(500);
+        // Wait for upload widget to be hidden indicating file is loaded
+        await page.waitForSelector('[data-testid="upload-file-widget"]', {
+          state: 'hidden',
+        });
 
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
