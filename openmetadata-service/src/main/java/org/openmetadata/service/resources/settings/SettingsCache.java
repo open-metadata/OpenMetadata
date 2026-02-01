@@ -46,6 +46,7 @@ import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
@@ -107,16 +108,15 @@ public class SettingsCache {
     }
 
     // Initialise OM base url setting
-    Settings storedOpenMetadataBaseUrlConfiguration =
-        Entity.getSystemRepository()
-            .getConfigWithKey(OPEN_METADATA_BASE_URL_CONFIGURATION.toString());
-    if (storedOpenMetadataBaseUrlConfiguration == null) {
-      Settings setting =
-          new Settings()
-              .withConfigType(OPEN_METADATA_BASE_URL_CONFIGURATION)
-              .withConfigValue(
-                  applicationConfig.getOperationalApplicationConfigProvider().getServerUrl());
-      Entity.getSystemRepository().createNewSetting(setting);
+    OpenMetadataBaseUrlConfiguration serverUrlConfig =
+        applicationConfig.getOperationalApplicationConfigProvider().getServerUrl();
+    if (serverUrlConfig != null) {
+      ConfigSource serverUrlConfigSource =
+          serverUrlConfig.getConfigSource() != null
+              ? serverUrlConfig.getConfigSource()
+              : ConfigSource.ENV;
+      syncConfigWithSource(
+          OPEN_METADATA_BASE_URL_CONFIGURATION, serverUrlConfig, serverUrlConfigSource);
     }
 
     // Initialise Theme Setting

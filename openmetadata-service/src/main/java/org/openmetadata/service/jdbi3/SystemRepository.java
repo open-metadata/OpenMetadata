@@ -174,8 +174,11 @@ public class SystemRepository {
         yield scimConfig != null ? scimConfig.getConfigSource() : ConfigSource.AUTO;
       }
       case OPEN_METADATA_BASE_URL_CONFIGURATION -> {
-        // TODO: Add configSource to OpenMetadataBaseUrlConfiguration if needed
-        yield ConfigSource.AUTO;
+        OpenMetadataBaseUrlConfiguration serverUrlConfig =
+            applicationConfig.getOperationalApplicationConfigProvider() != null
+                ? applicationConfig.getOperationalApplicationConfigProvider().getServerUrl()
+                : null;
+        yield serverUrlConfig != null ? serverUrlConfig.getConfigSource() : ConfigSource.AUTO;
       }
       default -> null;
     };

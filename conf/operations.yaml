@@ -1,5 +1,5 @@
 email:
-  configSource: ${EMAIL_CONFIG_SOURCE:-ENV}
+  configSource: ${EMAIL_CONFIG_SOURCE:-AUTO}
   emailingEntity: ${OM_EMAIL_ENTITY:-"OpenMetadata"}
   supportUrl: ${OM_SUPPORT_URL:-"https://slack.open-metadata.org"}
   enableSmtpServer : ${AUTHORIZER_ENABLE_SMTP:-false}
@@ -12,6 +12,6 @@ email:
   templates: ${TEMPLATES:-"openmetadata"}
 
 serverUrl:
-  configSource: ${SERVER_URL_CONFIG_SOURCE:-ENV}
+  configSource: ${SERVER_URL_CONFIG_SOURCE:-AUTO}
   openMetadataUrl: ${OPENMETADATA_SERVER_URL:-"http://localhost:8585"}
   
