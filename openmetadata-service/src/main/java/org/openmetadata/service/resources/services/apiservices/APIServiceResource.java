@@ -78,7 +78,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 public class APIServiceResource
     extends ServiceEntityResource<ApiService, APIServiceRepository, ApiConnection> {
   private final APIServiceMapper mapper = new APIServiceMapper();
-  public static final String COLLECTION_PATH = "v1/services/apiServices/";
+  public static final String COLLECTION_PATH = "/v1/services/apiServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
 
   @Override
@@ -190,8 +190,18 @@ public class APIServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    ApiService apiService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
+    ApiService apiService =
+        getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
     return decryptOrNullify(securityContext, apiService);
   }
 
@@ -227,10 +237,24 @@ public class APIServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Per-relation include control. Format: field:value,field2:value2. "
+                      + "Example: owners:non-deleted,followers:all. "
+                      + "Valid values: all, deleted, non-deleted. "
+                      + "If not specified for a field, uses the entity's include value.",
+              schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
+          @QueryParam("includeRelations")
+          String includeRelations) {
     ApiService apiService =
         getByNameInternal(
-            uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
+            uriInfo,
+            securityContext,
+            EntityInterfaceUtil.quoteName(name),
+            fieldsParam,
+            include,
+            includeRelations);
     return decryptOrNullify(securityContext, apiService);
   }
 

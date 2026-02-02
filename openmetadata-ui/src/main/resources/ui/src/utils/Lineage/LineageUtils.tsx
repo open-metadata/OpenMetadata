@@ -131,24 +131,21 @@ export const prepareUpstreamColumnLevelNodesFromUpstreamEdges = (
 };
 
 export const getSearchNameEsQuery = (
-  searchText: string,
-  isColumnLevel = false
+  searchText: string
 ): QueryFieldInterface => {
   return {
     bool: {
       should: [
         {
           wildcard: {
-            [isColumnLevel ? 'columns.name.keyword' : 'name.keyword']: {
+            ['name.keyword']: {
               value: `*${searchText}*`,
             },
           },
         },
         {
           wildcard: {
-            [isColumnLevel
-              ? 'columns.displayName.keyword'
-              : 'displayName.keyword']: {
+            ['displayName.keyword']: {
               value: `*${searchText}*`,
             },
           },

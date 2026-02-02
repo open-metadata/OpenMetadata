@@ -23,11 +23,13 @@ on:
       - reopened
       - ready_for_review
     paths-ignore:
-      - '.github/**'
-      - 'openmetadata-dist/**'
-      - 'docker/**'
-      - '!docker/development/docker-compose.yml'
-      - '!docker/development/docker-compose-postgres.yml'  
+      - ".github/**"
+      - "openmetadata-dist/**"
+      - "docker/**"
+      - "!docker/development/docker-compose.yml"
+      - "!docker/development/docker-compose-postgres.yml"
+      - "openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
+      - "openmetadata-ui/src/main/resources/ui/playwright/docs/**"
 
 permissions:
   contents: read
@@ -124,7 +126,7 @@ jobs:
           PLAYWRIGHT_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
           PLAYWRIGHT_PROJECT_ID: ${{ steps.cypress-project-id.outputs.CYPRESS_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
-          PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
+          PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.PLAYWRIGHT_BQ_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
           PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
           PLAYWRIGHT_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}

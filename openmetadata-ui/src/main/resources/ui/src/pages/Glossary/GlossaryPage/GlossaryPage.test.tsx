@@ -12,6 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
 import * as useGlossaryStoreModule from '../../../components/Glossary/useGlossary.store';
 import { MOCK_GLOSSARY } from '../../../mocks/Glossary.mock';
 import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
@@ -66,7 +67,13 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => {
 });
 
 jest.mock('../../../hoc/withPageLayout', () => ({
-  withPageLayout: jest.fn().mockImplementation((Component) => Component),
+  withPageLayout: jest.fn().mockImplementation((Component) => {
+    const WrappedComponent = (props: Record<string, unknown>) => (
+      <Component {...props} />
+    );
+
+    return WrappedComponent;
+  }),
 }));
 
 jest.mock('../../../context/AsyncDeleteProvider/AsyncDeleteProvider', () => ({
@@ -328,5 +335,18 @@ describe('Test GlossaryComponent page', () => {
       ]);
       expect(mockNavigate).toHaveBeenCalledWith('/glossary/Glossary%201');
     });
+  });
+
+  it('should pass entity name as pageTitle to withPageLayout', async () => {
+    await act(async () => {
+      render(<GlossaryPage {...mockProps} />);
+    });
+
+    expect(ResizableLeftPanels).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageTitle: 'Business glossary',
+      }),
+      expect.anything()
+    );
   });
 });

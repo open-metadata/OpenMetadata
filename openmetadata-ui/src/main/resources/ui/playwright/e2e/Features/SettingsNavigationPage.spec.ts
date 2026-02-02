@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -59,7 +59,7 @@ const navigateToPersonaNavigation = async (page: Page) => {
   await page.waitForLoadState('networkidle');
 };
 
-test.describe('Settings Navigation Page Tests', () => {
+test.describe.serial('Settings Navigation Page Tests', () => {
   test('should update navigation sidebar', async ({ page }) => {
     // Create and set default persona
     await redirectToHomePage(page);
@@ -166,6 +166,9 @@ test.describe('Settings Navigation Page Tests', () => {
 
     await navigateSwitch.click();
 
+    // Verify save button is enabled to ensure change is registered
+    await expect(page.getByTestId('save-button')).toBeEnabled();
+
     // Try to navigate away
     await page
       .getByTestId('left-sidebar')
@@ -173,7 +176,7 @@ test.describe('Settings Navigation Page Tests', () => {
       .click();
 
     // Click "Save changes" to save and navigate
-    const saveResponse = page.waitForResponse('api/v1/docStore');
+    const saveResponse = page.waitForResponse('**/api/v1/docStore/**');
     await page.getByTestId('unsaved-changes-modal-save').click();
     await saveResponse;
     await page.waitForLoadState('networkidle');
@@ -245,6 +248,102 @@ test.describe('Settings Navigation Page Tests', () => {
 
     // Verify reset worked - save button disabled and state reverted
     expect(await domainSwitch.isChecked()).toBeTruthy();
+    await expect(page.getByTestId('save-button')).not.toBeEnabled();
+  });
+
+  test('should support drag and drop reordering of navigation items', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await setUserDefaultPersona(page, persona.responseData.displayName);
+    await navigateToPersonaNavigation(page);
+
+    const treeItems = page.locator('.ant-tree-node-content-wrapper');
+    const firstItem = treeItems.first();
+    const secondItem = treeItems.nth(1);
+
+    const firstItemText = await firstItem.textContent();
+
+    const firstItemBox = await firstItem.boundingBox();
+    const secondItemBox = await secondItem.boundingBox();
+
+    expect(firstItemBox).not.toBeNull();
+    expect(secondItemBox).not.toBeNull();
+
+    if (firstItemBox && secondItemBox) {
+      await firstItem.dragTo(secondItem, {
+        force: true,
+        sourcePosition: {
+          x: firstItemBox.width / 2,
+          y: firstItemBox.height / 2,
+        },
+        targetPosition: {
+          x: secondItemBox.width / 2,
+          y: secondItemBox.height / 2 + 10,
+        },
+      });
+
+      // Adding wait so that drop action can complete
+      await page.waitForTimeout(500);
+
+      await expect(page.getByTestId('save-button')).toBeEnabled();
+
+      const newFirstItemText = await treeItems.first().textContent();
+
+      expect(newFirstItemText).not.toBe(firstItemText);
+    }
+  });
+
+  test('should handle multiple items being hidden at once', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await setUserDefaultPersona(page, persona.responseData.displayName);
+    await navigateToPersonaNavigation(page);
+
+    const exploreSwitchLocator = page
+      .locator('.ant-tree-title:has-text("Explore")')
+      .locator('.ant-switch');
+    const insightsSwitchLocator = page
+      .locator('.ant-tree-title:has-text("Insights")')
+      .locator('.ant-switch');
+
+    const exploreSwitch = exploreSwitchLocator.first();
+    const insightsSwitch = insightsSwitchLocator.first();
+
+    await exploreSwitch.click();
+    await insightsSwitch.click();
+
     await expect(page.getByTestId('save-button')).toBeEnabled();
+
+    const saveResponse = page.waitForResponse('**/api/v1/docStore/**');
+    await page.getByTestId('save-button').click();
+    await saveResponse;
+
+    await redirectToHomePage(page);
+
+    await page.locator('[data-testid="dropdown-profile"]').click();
+    await page.waitForSelector('[role="menu"].profile-dropdown', {
+      state: 'visible',
+    });
+
+    // Verify personas section is visible
+    await expect(page.getByText('Switch Persona')).toBeVisible();
+
+    // Initially should show limited personas (2 by default)
+    const initialPersonaLabels = page.locator(
+      '[data-testid="persona-label"]'
+    ).locator('input[type="radio"]');
+    await initialPersonaLabels.first().click();
+    await expect(page.getByTestId('app-bar-item-explore')).not.toBeVisible();
+    await expect(page.getByTestId('app-bar-item-insights')).not.toBeVisible();
+
+    await navigateToPersonaNavigation(page);
+    await exploreSwitch.click();
+    await insightsSwitch.click();
+
+    const restoreResponse = page.waitForResponse('**/api/v1/docStore/**');
+    await page.getByTestId('save-button').click();
+    await restoreResponse;
   });
 });

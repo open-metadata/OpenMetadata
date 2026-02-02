@@ -70,10 +70,6 @@ test.describe('Large Glossary Performance Tests', () => {
 
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    // // Clean up all terms and glossary
-    for (const term of glossaryTerms.reverse()) {
-      await term.delete(apiContext);
-    }
     await glossary.delete(apiContext);
 
     await afterAction();
@@ -387,10 +383,6 @@ test.describe('Large Glossary Child Term Performace', () => {
 
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    // // Clean up all terms and glossary
-    for (const term of glossaryTerms.reverse()) {
-      await term.delete(apiContext);
-    }
     await glossary.delete(apiContext);
 
     await afterAction();

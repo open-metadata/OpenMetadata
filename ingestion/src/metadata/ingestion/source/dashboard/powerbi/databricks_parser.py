@@ -1,6 +1,9 @@
 import re
 from typing import List, Optional
 
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.source.dashboard.powerbi.models import Dataset
@@ -44,7 +47,9 @@ def resolve_database(database: str, dataset: Dataset) -> str:
 
 
 def parse_databricks_native_query_source(
-    source_expression: str, dataset: Dataset
+    source_expression: str,
+    dataset: Dataset,
+    parser_type: QueryParserType = QueryParserType.Auto,
 ) -> Optional[List[dict]]:
     # cleanup new lines and excessive spaces
     source_expression = source_expression.replace("\n", " ")
@@ -114,7 +119,10 @@ def parse_databricks_native_query_source(
             return [{"database": database, "schema": schema, "table": table}]
         try:
             parser = LineageParser(
-                parser_query, dialect=Dialect.DATABRICKS, timeout_seconds=30
+                parser_query,
+                dialect=Dialect.DATABRICKS,
+                timeout_seconds=30,
+                parser_type=parser_type,
             )
             query_hash = parser.query_hash
             if parser.query_parsing_success is False:

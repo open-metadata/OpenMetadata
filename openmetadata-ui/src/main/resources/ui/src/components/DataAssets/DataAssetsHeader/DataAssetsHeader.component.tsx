@@ -97,6 +97,7 @@ import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.comp
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import { VotingDataProps } from '../../Entity/Voting/voting.interface';
+import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
@@ -111,6 +112,7 @@ import {
 
 export const DataAssetsHeader = ({
   allowSoftDelete = true,
+  allowRename = false,
   showDomain = true,
   afterDeleteAction,
   dataAsset,
@@ -621,6 +623,7 @@ export const DataAssetsHeader = ({
                 isFollowingLoading={isFollowingLoading}
                 name={dataAsset?.name}
                 serviceName={dataAssetServiceName}
+                suffix={<LearningIcon pageId={entityType} />}
               />
             </Col>
             <Col className="flex items-center">
@@ -685,6 +688,7 @@ export const DataAssetsHeader = ({
                   <ManageButton
                     isAsyncDelete
                     afterDeleteAction={afterDeleteAction}
+                    allowRename={allowRename}
                     allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
                     canDelete={permissions.Delete}
                     deleted={dataAsset.deleted}

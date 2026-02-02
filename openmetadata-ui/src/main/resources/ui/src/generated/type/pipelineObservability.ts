@@ -16,6 +16,10 @@
  */
 export interface PipelineObservability {
     /**
+     * Average runtime of the pipeline in milliseconds.
+     */
+    averageRunTime?: number;
+    /**
      * End time of the pipeline schedule.
      */
     endTime?: number;
@@ -127,6 +131,7 @@ export enum PipelineServiceType {
     KafkaConnect = "KafkaConnect",
     KinesisFirehose = "KinesisFirehose",
     Matillion = "Matillion",
+    MicrosoftFabricPipeline = "MicrosoftFabricPipeline",
     Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",

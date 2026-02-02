@@ -171,7 +171,7 @@ describe('TestSummaryGraph', () => {
     expect(screen.getByText('Legend')).toBeInTheDocument();
     expect(screen.getByTestId('min')).toBeInTheDocument();
     expect(screen.getByTestId('max')).toBeInTheDocument();
-    expect(screen.getByTestId('Incident')).toBeInTheDocument();
+    expect(screen.getByTestId('label.incident')).toBeInTheDocument();
   });
 
   it("legend filter should update the graph's activeKeys", async () => {
@@ -196,7 +196,7 @@ describe('TestSummaryGraph', () => {
 
   it('legend should not filter on Incident click', async () => {
     render(<TestSummaryGraph {...mockProps} />);
-    const incidentButton = screen.getByTestId('Incident');
+    const incidentButton = screen.getByTestId('label.incident');
     const minLineChart = screen.getByTestId('line-min');
     const maxLineChart = screen.getByTestId('line-max');
 

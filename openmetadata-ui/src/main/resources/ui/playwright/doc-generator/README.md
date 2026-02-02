@@ -33,7 +33,7 @@ To regenerate the documentation manually:
 
 ```bash
 # From the project root
-node openmetadata-ui/src/main/resources/ui/playwright/doc-generator/generate.js
+yarn generate:e2e-docs
 ```
 
 ## 🛠️ Key Features
@@ -43,22 +43,57 @@ node openmetadata-ui/src/main/resources/ui/playwright/doc-generator/generate.js
 *   **Domain Categorization**: Tests are automatically grouped into domains (Discovery, Governance, etc.) based on file paths and explicit overrides in `generate.js`.
 *   **Zero New Dependencies**: Uses existing project dependencies (`playwright`, `typescript`, `dotenv`).
 
-## 🔄 Workflow Integration (Rock Solid Automation)
+## 🔄 Workflow Integration
 
-Documentation is automatically kept in sync through two layers of automation:
+### Automation
+A GitHub Actions workflow is available to automate the documentation update process and ensure the `main` branch always has the latest E2E docs.
 
-### 1. Pre-commit Hook (Local)
-Defined in `.lintstagedrc.yaml`.
-*   **Trigger**: Any change to `playwright/e2e/**/*.spec.ts`.
-*   **Action**: Automatically runs `node playwright/doc-generator/generate.js`.
-*   **Result**: The updated `docs/` are generated and `git add`ed to your commit automatically. You don't need to do anything manually.
+*   **Workflow Name**: `Update Playwright E2E Documentation`
+*   **File**: `.github/workflows/update-playwright-e2e-docs.yml`
+*   **Trigger**: Manual trigger via `workflow_dispatch`.
+*   **Logic**:
+    1.  Runs against the `main` branch.
+    2.  Installs dependencies using `yarn install --frozen-lockfile`.
+    3.  Executes documentation generation via `yarn generate:e2e-docs`.
+    4.  **Detection**: Uses `git status` to detect if any documentation files were modified.
+    5.  **Auto PR**: If changes are found, it creates/updates the `chore/update-playwright-docs` branch and automatically opens a Pull Request to `main`.
 
-### 2. GitHub Actions (CI Safety Net)
-Defined in `.github/workflows/playwright-docs-check.yml`.
-*   **Trigger**: Pull Requests to `main`.
-*   **Action**: Checks if the documentation matches the code.
-*   **Auto-Fix**: If docs are outdated (e.g., if the pre-commit hook was bypassed), the CI job will:
-    1.  Fail the initial check.
-    2.  Regenerate the documentation.
-    3.  **Automatically commit and push** the fixes to your PR branch.
+### Manual Generation
+You can still run the generator manually in your local environment before pushing:
+```bash
+yarn generate:e2e-docs
+```
+
+## 🏷️ Classification & Tagging Guide
+
+The generator decides which Domain and Component a test belongs to using the following priority logic:
+
+### 1. Explicit Tag Override (Highest Priority)
+If you want full control over the Domain and Component name, use the format `@Domain:Component`.
+
+*   **Format**: `@<Domain>:<Component_Name>`
+*   **Underscores**: Use underscores in the component name to represent spaces.
+*   **Example**:
+    ```javascript
+    // Result: Domain = Observability, Component = Data Quality
+    test.describe('My Test', { tag: '@Observability:Data_Quality' }, () => ...
+    ```
+
+### 2. Domain Tag + Filename Match
+If you provide a valid Domain tag (e.g., `@Observability`, `@Governance`), the generator enforces that domain.
+It then checks if the **Filename** matches any known component within that domain.
+
+*   **Valid Domains**: `Governance`, `Discovery`, `Platform`, `Observability`, `Integration`.
+*   **Example**:
+    *   File: `AddTestCaseNewFlow.spec.ts`
+    *   Tag: `@Observability` (from `${DOMAIN_TAGS.OBSERVABILITY}`)
+    *   Result: The filename contains "TestCase", which maps to "Data Quality". Since "Data Quality" is in the "Observability" domain, it is correctly classified as **Observability / Data Quality**.
+
+### 3. Filename Fallback (Lowest Priority)
+If no valid tags are found (or if the tag is ignored, like `@ingestion`), the generator falls back to strict filename matching against `DOMAIN_MAPPING`.
+
+*   **Example**:
+    *   File: `IncidentManager.spec.ts`
+    *   Tag: `@ingestion` (Ignored)
+    *   Result: `IncidentManager` maps to **Observability / Incident Manager** in `DOMAIN_MAPPING`.
 

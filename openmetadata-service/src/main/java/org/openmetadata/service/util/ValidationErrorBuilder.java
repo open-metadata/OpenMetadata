@@ -18,6 +18,8 @@ public class ValidationErrorBuilder {
     public static final String AUTH_CLIENT_TYPE = "authenticationConfiguration.clientType";
     public static final String AUTH_JWT_PRINCIPAL_CLAIMS =
         "authenticationConfiguration.jwtPrincipalClaims";
+    public static final String AUTH_JWT_PRINCIPAL_CLAIMS_MAPPING =
+        "authenticationConfiguration.jwtPrincipalClaimsMapping";
     public static final String AUTH_PUBLIC_KEY_URLS = "authenticationConfiguration.publicKeyUrls";
     public static final String AUTH_AUTHORITY = "authenticationConfiguration.authority";
     public static final String AUTH_CLIENT_ID = "authenticationConfiguration.clientId";
@@ -56,6 +58,16 @@ public class ValidationErrorBuilder {
         "authenticationConfiguration.ldapConfiguration.truststorePath";
     public static final String LDAP_TRUSTSTORE_PASSWORD =
         "authenticationConfiguration.ldapConfiguration.truststorePassword";
+    public static final String LDAP_AUTH_ROLES_MAPPING =
+        "authenticationConfiguration.ldapConfiguration.authRolesMapping";
+    public static final String LDAP_GROUP_BASE_DN =
+        "authenticationConfiguration.ldapConfiguration.groupBaseDN";
+    public static final String LDAP_GROUP_ATTRIBUTE_NAME =
+        "authenticationConfiguration.ldapConfiguration.groupAttributeName";
+    public static final String LDAP_GROUP_ATTRIBUTE_VALUE =
+        "authenticationConfiguration.ldapConfiguration.groupAttributeValue";
+    public static final String LDAP_GROUP_MEMBER_ATTRIBUTE_NAME =
+        "authenticationConfiguration.ldapConfiguration.groupMemberAttributeName";
 
     // SAML Configuration
     public static final String SAML_DEBUG_MODE =

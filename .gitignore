@@ -87,10 +87,13 @@ openmetadata-ui/src/main/resources/ui/playwright/e2e/.cache/
 openmetadata-ui/src/main/resources/ui/.env
 openmetadata-ui/src/main/resources/ui/playwright/.auth
 openmetadata-ui/src/main/resources/ui/blob-report
+openmetadata-ui/src/main/resources/ui/test-results/
 
 #UI - Dereferenced Schemas
 openmetadata-ui/src/main/resources/ui/src/jsons/*
 
+# UI - Contracts Downloads
+openmetadata-ui/src/main/resources/ui/downloads/*
 
 #vscode
 */.vscode/*
@@ -153,6 +156,7 @@ ingestion/.nox/
 
 # BMAD Method
 .bmad-core/
+_bmad/
 
 # Claude Flow generated files
 .claude/settings.local.json
@@ -178,8 +182,8 @@ claude-flow
 claude-flow.bat
 claude-flow.ps1
 hive-mind-prompt-*.txt
-.claude/
 .claude-flow/
 memory
-
+.claude/agents
+ingestion/.claude/agents
 

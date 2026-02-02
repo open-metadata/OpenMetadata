@@ -59,6 +59,7 @@
     }
   ],
   "provider": "system",
+  "enabled": true,
   "dataQualityDimension": "Consistency",
   "supportedServices": [
     "Snowflake",
@@ -71,6 +72,7 @@
     "Oracle",
     "Trino",
     "SapHana"
-  ]
+  ],
+  "validatorClass": "TableDiffValidator"
 }
   

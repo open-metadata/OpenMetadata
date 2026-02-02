@@ -51,5 +51,7 @@
     ],
     "supportsRowLevelPassedFailed": true,
     "provider": "system",
-    "dataQualityDimension": "Uniqueness"
+  "enabled": true,
+    "dataQualityDimension": "Uniqueness",
+    "validatorClass": "ColumnValuesToBeUniqueValidator"
 }

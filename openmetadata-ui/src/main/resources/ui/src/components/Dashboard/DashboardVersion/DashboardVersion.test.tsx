@@ -72,6 +72,7 @@ jest.mock('react-router-dom', () => ({
     tab: 'dashboard',
   }),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
 
 jest.mock(

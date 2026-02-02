@@ -24,6 +24,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.AuthenticationException;
@@ -94,6 +95,13 @@ public class SecurityConfigurationManager {
   }
 
   public SecurityConfiguration getCurrentSecurityConfig() {
+    // Apply LDAP default values before returning to prevent JSON PATCH errors
+    // when updating fields that were previously null in the database
+    if (currentAuthConfig != null && currentAuthConfig.getLdapConfiguration() != null) {
+      Entity.getSystemRepository()
+          .ensureLdapConfigDefaultValues(currentAuthConfig.getLdapConfiguration());
+    }
+
     return new SecurityConfiguration()
         .withAuthenticationConfiguration(currentAuthConfig)
         .withAuthorizerConfiguration(currentAuthzConfig);

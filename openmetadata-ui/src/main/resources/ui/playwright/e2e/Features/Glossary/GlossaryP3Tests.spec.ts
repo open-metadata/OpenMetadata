@@ -589,19 +589,16 @@ test.describe('Glossary P3 Tests', () => {
     try {
       await glossary.create(apiContext);
 
-      // Simulate slow network
-      await page.route('**/*', async (route) => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        await route.continue();
-      });
+      const glossariesPromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/glossaries') &&
+          response.status() === 200
+      );
 
       await sidebarClick(page, SidebarItem.GLOSSARY);
 
-      // Page should eventually load despite delays
-      await page.waitForLoadState('networkidle', { timeout: 30000 });
-
-      // Clear route handler
-      await page.unroute('**/*');
+      const response = await glossariesPromise;
+      expect(response.status()).toBe(200);
 
       // Verify page is functional
       await expect(
@@ -893,6 +890,109 @@ test.describe('Glossary P3 Tests', () => {
       // Either error state OR redirect to glossary is acceptable behavior
       expect(hasValidResponse).toBeTruthy();
     } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  // Test for URL validation when creating a glossary term
+  test('should validate reference URL requires http/https prefix when creating term', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+
+    try {
+      await glossary.create(apiContext);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+
+      await page.getByTestId('add-new-tag-button-header').click();
+      await page.waitForSelector('[data-testid="name"]');
+
+      await page.fill('[data-testid="name"]', 'TestTerm');
+      await page.locator(descriptionBox).fill('Test description');
+
+      const addReferenceBtn = page.getByTestId('add-reference');
+      await addReferenceBtn.click();
+
+      await page.locator('#name-0').fill('BBC');
+      await page.locator('#url-0').fill('www.bbc.co.uk');
+
+      await page.getByTestId('save-glossary-term').click();
+
+      const errorMessage = await page
+        .getByText('URL must start with http:// or https://')
+        .isVisible();
+
+      expect(errorMessage).toBe(true);
+
+      await page.locator('#url-0').clear();
+      await page.locator('#url-0').fill('https://www.bbc.co.uk');
+
+      const saveResponse = page.waitForResponse('/api/v1/glossaryTerms');
+      await page.getByTestId('save-glossary-term').click();
+      await saveResponse;
+
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  // Test for URL validation when editing a glossary term reference
+  test('should validate reference URL requires http/https prefix when editing term', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+
+      await page
+        .getByRole('link', { name: glossaryTerm.data.displayName })
+        .click();
+
+      await page.getByTestId('term-references-add-button').click();
+
+      await expect(
+        page
+          .getByTestId('glossary-term-references-modal')
+          .getByText('References')
+      ).toBeVisible();
+
+      await page.locator('#references_0_name').fill('Wikipedia');
+      await page.locator('#references_0_endpoint').fill('en.wikipedia.org');
+
+      await page.getByTestId('save-btn').click();
+
+      const errorMessage = await page
+        .getByText('URL must start with http:// or https://')
+        .isVisible();
+
+      expect(errorMessage).toBe(true);
+
+      await page.locator('#references_0_endpoint').clear();
+      await page
+        .locator('#references_0_endpoint')
+        .fill('https://en.wikipedia.org');
+
+      const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
+      await page.getByTestId('save-btn').click();
+      await saveRes;
+
+      await expect(page.getByTestId('reference-link-Wikipedia')).toBeVisible();
+    } finally {
+      await glossaryTerm.delete(apiContext);
       await glossary.delete(apiContext);
       await afterAction();
     }

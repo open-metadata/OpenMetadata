@@ -75,6 +75,7 @@ import org.openmetadata.service.util.RestUtil;
 @Collection(name = "TestCaseResults")
 public class TestCaseResultResource
     extends EntityTimeSeriesResource<TestCaseResult, TestCaseResultRepository> {
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseResults";
   private final TestCaseResultMapper mapper = new TestCaseResultMapper();
   static final String FIELDS = "testCase,testDefinition";
 

@@ -44,7 +44,7 @@ if [ -z "$DIFF" ]; then
     exit 0
 fi
 
-# Run Claude Code with the diff as context
+# Run Claude Code with the diff as context (-p for non-interactive mode)
 claude "
 ## Task: Validate Code Changes
 
@@ -62,14 +62,24 @@ $DIFF
 
 ### Instructions:
 1. Analyze which files changed and what functionality was affected
-2. Determine which tests are relevant:
+2. Provide a throrough code review of the changes validating for:
+   - Code quality
+   - Adherence to project conventions
+   - Potential bugs or issues
+   - Missing tests or documentation
+   - Security implications
+   - Performance considerations
+3. Determine which tests are relevant:
    - Unit tests for changed modules
-   - Integration tests if APIs/services changed  
+   - Integration tests if APIs/services changed (for python integration tests assume docker and test DB are available)
    - E2E tests (via Playwright MCP) if UI/flows changed
-3. Run the relevant tests:
+4. Run the relevant tests:
    - For unit/integration: use the project's test runner (npm test, pytest, etc.)
    - For E2E: use Playwright MCP to validate on http://localhost:8585
-4. Report results in this exact format:
+5. Report results in this exact format:
+
+## Code Review
+[Detailed code review comments by files changed]
 
 ## Validation Results
 

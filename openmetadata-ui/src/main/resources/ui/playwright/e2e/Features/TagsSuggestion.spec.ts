@@ -84,7 +84,7 @@ test.describe('Tags Suggestions Table Entity', () => {
       // All Column Suggestions Card should be visible
       await expect(
         page.getByTestId('suggested-SuggestTagLabel-card')
-      ).toHaveCount(8);
+      ).toHaveCount(table.entityLinkColumnsName.length);
 
       // Close the suggestions
       await page.getByTestId('close-suggestion').click();

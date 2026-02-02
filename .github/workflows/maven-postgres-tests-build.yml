@@ -18,6 +18,8 @@ on:
     paths:
       - "openmetadata-service/**"
       - "openmetadata-ui/**"
+      - "!openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
+      - "!openmetadata-ui/src/main/resources/ui/playwright/docs/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-dist/**"
       - "openmetadata-clients/**"
@@ -45,7 +47,7 @@ permissions:
   contents: read
   checks: write
 
-concurrency: 
+concurrency:
   group: maven-build-postgres-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 jobs:
@@ -53,6 +55,16 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.3.4
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -84,7 +96,7 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
- 
+
       - name: Set up JDK 21
         if: steps.cache-output.outputs.exit-code == 0
         uses: actions/setup-java@v4

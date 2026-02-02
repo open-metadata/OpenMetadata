@@ -117,9 +117,38 @@ class LightdashApiClient:
             )
         return []
 
+    def test_get_dashboards_list(self) -> List[LightdashDashboard]:
+        """
+        Get List of dashboards without exception handling for test connections.
+        This method will raise exceptions to properly fail test connections.
+        """
+        response = self.client.get(
+            f"api/v1/projects/{self.config.projectUUID}/spaces/{self.config.spaceUUID}"
+        )
+        results = response.get("results")
+        if results is None:
+            logger.warning(
+                "Failed to fetch the dashboard list for the Lightdash Connector"
+            )
+            return []
+
+        space_name = results["name"]
+        dashboards_raw = results["dashboards"]
+
+        if len(dashboards_raw) > 0:
+            dashboards_list = []
+            for dashboard in dashboards_raw:
+                dashboards_list.append(
+                    LightdashDashboard(**dashboard, spaceName=space_name)
+                )
+
+            self.add_dashboard_lineage(dashboards_list=dashboards_list)
+            return dashboards_list
+        return []
+
     def get_dashboards_list(self) -> List[LightdashDashboard]:
         """
-        Get List of all charts
+        Get List of all dashboards
         """
 
         try:

@@ -9,7 +9,6 @@ import org.jdbi.v3.core.statement.StatementContext;
 /** Row mapper for {@link AuditLogRecord}. */
 @Slf4j
 public class AuditLogRecordMapper implements RowMapper<AuditLogRecord> {
-
   @Override
   public AuditLogRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
     return AuditLogRecord.builder()

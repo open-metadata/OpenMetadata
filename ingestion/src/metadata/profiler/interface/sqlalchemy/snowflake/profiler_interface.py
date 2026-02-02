@@ -54,6 +54,7 @@ class SnowflakeProfilerInterface(SQAProfilerInterface):
             session=self.session,
             runner=runner,
             service_connection_config=self.service_connection_config,
+            table_entity=self.table_entity,
         )
         return instance.get_system_metrics()
 

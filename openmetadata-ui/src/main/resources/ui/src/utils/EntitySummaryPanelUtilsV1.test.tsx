@@ -206,7 +206,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
           mockEntityInfo.fullyQualifiedName,
           expect.objectContaining({
             offset: 0,
-            fields: 'tags,customMetrics,description',
+            fields: 'tags,customMetrics,description,extension',
           })
         );
       });
@@ -251,7 +251,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
           mockEntityInfo.fullyQualifiedName,
           expect.objectContaining({
             offset: 0,
-            fields: 'tags,customMetrics,description',
+            fields: 'tags,customMetrics,description,extension',
           })
         );
       });
@@ -302,7 +302,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
           mockEntityInfo.fullyQualifiedName,
           expect.objectContaining({
             offset: 0,
-            fields: 'tags,customMetrics,description',
+            fields: 'tags,customMetrics,description,extension',
           })
         );
       });
@@ -347,7 +347,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
           mockEntityInfo.fullyQualifiedName,
           expect.objectContaining({
             offset: 0,
-            fields: 'tags,customMetrics,description',
+            fields: 'tags,customMetrics,description,extension',
           })
         );
       });
@@ -391,7 +391,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
           mockEntityInfo.fullyQualifiedName,
           expect.objectContaining({
             offset: 0,
-            fields: 'tags,customMetrics,description',
+            fields: 'tags,customMetrics,description,extension',
           })
         );
       });
@@ -443,7 +443,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
           mockEntityInfo.fullyQualifiedName,
           expect.objectContaining({
             offset: 0,
-            fields: 'tags,customMetrics,description',
+            fields: 'tags,customMetrics,description,extension',
           })
         );
       });
@@ -502,7 +502,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
           mockEntityInfo.fullyQualifiedName,
           expect.objectContaining({
             offset: 0,
-            fields: 'tags,customMetrics,description',
+            fields: 'tags,customMetrics,description,extension',
           })
         );
       });
@@ -555,7 +555,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
           mockEntityInfo.fullyQualifiedName,
           expect.objectContaining({
             offset: 0,
-            fields: 'tags,customMetrics,description',
+            fields: 'tags,customMetrics,description,extension',
           })
         );
       });
@@ -623,7 +623,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
           mockEntityInfo.fullyQualifiedName,
           expect.objectContaining({
             offset: 0,
-            fields: 'tags,customMetrics,description',
+            fields: 'tags,customMetrics,description,extension',
           })
         );
       });
@@ -690,7 +690,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
           mockEntityInfo.fullyQualifiedName,
           expect.objectContaining({
             offset: 0,
-            fields: 'tags,customMetrics,description',
+            fields: 'tags,customMetrics,description,extension',
           })
         );
       });
@@ -787,7 +787,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
           mockEntityInfo.fullyQualifiedName,
           expect.objectContaining({
             offset: 0,
-            fields: 'tags,customMetrics,description',
+            fields: 'tags,customMetrics,description,extension',
           })
         );
       });
@@ -832,7 +832,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
           mockEntityInfo.fullyQualifiedName,
           expect.objectContaining({
             offset: 0,
-            fields: 'tags,customMetrics,description',
+            fields: 'tags,customMetrics,description,extension',
           })
         );
       });
@@ -902,7 +902,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
           mockEntityInfo.fullyQualifiedName,
           expect.objectContaining({
             offset: 0,
-            fields: 'tags,customMetrics,description',
+            fields: 'tags,customMetrics,description,extension',
           })
         );
       });
@@ -946,7 +946,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Columns', () => {
           mockEntityInfo.fullyQualifiedName,
           expect.objectContaining({
             offset: 0,
-            fields: 'tags,customMetrics,description',
+            fields: 'tags,customMetrics,description,extension',
           })
         );
       });

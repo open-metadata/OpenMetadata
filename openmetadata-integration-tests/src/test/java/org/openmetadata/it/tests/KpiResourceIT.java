@@ -24,6 +24,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.services.kpi.KpiService;
+import org.openmetadata.service.resources.kpi.KpiResource;
 
 /**
  * Integration tests for KPI entity operations.
@@ -42,6 +43,12 @@ public class KpiResourceIT extends BaseEntityIT<Kpi, CreateKpiRequest> {
     supportsDataProducts = false;
     supportsCustomExtension = false;
     supportsSearchIndex = false; // KPI doesn't have a search index
+    supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return KpiResource.COLLECTION_PATH;
   }
 
   // ===================================================================

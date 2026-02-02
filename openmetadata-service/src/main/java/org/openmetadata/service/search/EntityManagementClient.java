@@ -269,6 +269,78 @@ public interface EntityManagementClient {
       String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition);
 
   /**
+   * Updates classification tags across all entities by replacing old FQN prefix with new FQN prefix.
+   * This method finds all documents matching the prefix condition and updates classification tags
+   * that start with the old FQN prefix to use the new FQN prefix.
+   *
+   * @param indexName the name of the index
+   * @param oldFqnPrefix the old fully qualified name prefix to be replaced
+   * @param newFqnPrefix the new fully qualified name prefix to replace with
+   * @param prefixFieldCondition the field to match on (e.g., "fullyQualifiedName")
+   */
+  void updateClassificationTagByFqnPrefix(
+      String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition);
+
+  /**
+   * Updates data product references in search indexes when a data product is renamed.
+   * This method finds all assets that have the data product in their dataProducts array
+   * and updates the fullyQualifiedName to the new value.
+   *
+   * @param oldFqn the old fully qualified name of the data product
+   * @param newFqn the new fully qualified name of the data product
+   */
+  void updateDataProductReferences(String oldFqn, String newFqn);
+
+  /**
+   * Updates domain references for assets when a data product's domain changes. This method finds
+   * all assets linked to the data product and updates their domains array to replace old domains
+   * with new domains.
+   *
+   * @param dataProductFqn the fully qualified name of the data product
+   * @param oldDomainFqns list of old domain FQNs to remove from assets
+   * @param newDomains list of new domain references to add to assets
+   */
+  default void updateAssetDomainsForDataProduct(
+      String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    // Default no-op implementation - overridden by search-specific implementations
+  }
+
+  /**
+   * Updates domain references for assets by their IDs. This method performs a bulk update using
+   * document IDs rather than querying by data product FQN.
+   *
+   * @param assetIds list of asset document IDs to update
+   * @param oldDomainFqns list of old domain FQNs to remove from assets
+   * @param newDomains list of new domain references to add to assets
+   */
+  default void updateAssetDomainsByIds(
+      List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    // Default no-op implementation - overridden by search-specific implementations
+  }
+
+  /**
+   * Updates domain entity FQNs in the search index by prefix replacement.
+   * This is used during domain renaming to update all nested domain documents.
+   *
+   * @param oldFqn the old domain FQN prefix to replace
+   * @param newFqn the new domain FQN prefix
+   */
+  default void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    // Default no-op implementation - overridden by search-specific implementations
+  }
+
+  /**
+   * Updates asset domain references in the search index by prefix replacement.
+   * This is used during domain renaming to update domain references in all asset documents.
+   *
+   * @param oldFqn the old domain FQN prefix to replace
+   * @param newFqn the new domain FQN prefix
+   */
+  default void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    // Default no-op implementation - overridden by search-specific implementations
+  }
+
+  /**
    * Reindexes multiple entities across indices.
    * This method takes a list of entity references, fetches the full entity data,
    * rebuilds the search index documents, and performs a bulk update.

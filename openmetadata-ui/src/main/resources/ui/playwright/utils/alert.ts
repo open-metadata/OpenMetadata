@@ -15,14 +15,14 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { isEmpty, startCase } from 'lodash';
 import {
   ALERT_DESCRIPTION,
-  ALERT_WITHOUT_PERMISSION_POLICY_DETAILS,
-  ALERT_WITHOUT_PERMISSION_POLICY_NAME,
-  ALERT_WITHOUT_PERMISSION_ROLE_DETAILS,
-  ALERT_WITHOUT_PERMISSION_ROLE_NAME,
   ALERT_WITH_PERMISSION_POLICY_DETAILS,
   ALERT_WITH_PERMISSION_POLICY_NAME,
   ALERT_WITH_PERMISSION_ROLE_DETAILS,
   ALERT_WITH_PERMISSION_ROLE_NAME,
+  ALERT_WITHOUT_PERMISSION_POLICY_DETAILS,
+  ALERT_WITHOUT_PERMISSION_POLICY_NAME,
+  ALERT_WITHOUT_PERMISSION_ROLE_DETAILS,
+  ALERT_WITHOUT_PERMISSION_ROLE_NAME,
 } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
 import { DELETE_TERM } from '../constant/common';
@@ -274,21 +274,25 @@ export const addOwnerFilter = async ({
 }) => {
   // Select owner filter
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-  await page.click(`[data-testid="${selectId}-filter-option"]:visible`);
+  const ownerOption = page.locator(
+    `.ant-select-dropdown:visible [data-testid="${selectId}-filter-option"]`
+  );
+  await expect(ownerOption).toBeVisible();
+  await ownerOption.click({ force: true });
 
   // Search and select owner
   const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
-  await page.fill(
-    '[data-testid="owner-name-select"] [role="combobox"]',
-    ownerName,
-    {
-      force: true,
-    }
+  const ownerInput = page.locator(
+    '[data-testid="owner-name-select"] [role="combobox"]'
   );
+  await ownerInput.click({ force: true });
+  await ownerInput.fill(ownerName, { force: true });
   await getSearchResult;
-  await page
-    .locator(`.ant-select-dropdown:visible [title="${ownerName}"]`)
-    .click();
+  const searchResult = page.locator(
+    `.ant-select-dropdown:visible [title="${ownerName}"]`
+  );
+  await expect(searchResult).toBeVisible();
+  await searchResult.click({ force: true });
 
   await expect(
     page.getByTestId('owner-name-select').getByTitle(ownerName)
@@ -315,19 +319,23 @@ export const addEntityFQNFilter = async ({
 }) => {
   // Select entity FQN filter
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-  await page.click(`[data-testid="${selectId}-filter-option"]:visible`);
+  const entityFilterOption = page.locator(
+    `.ant-select-dropdown:visible [data-testid="${selectId}-filter-option"]`
+  );
+  await expect(entityFilterOption).toBeVisible();
+  await expect(entityFilterOption).toBeEnabled();
+  await entityFilterOption.click();
 
   // Search and select entity
   const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
   await page.fill(
     '[data-testid="fqn-list-select"] [role="combobox"]',
-    entityFQN,
-    {
-      force: true,
-    }
+    entityFQN
   );
   await getSearchResult;
-  await page.click(`.ant-select-dropdown:visible [title="${entityFQN}"]`);
+  await page
+    .locator(`.ant-select-dropdown:visible [title="${entityFQN}"]`)
+    .click();
 
   await expect(
     page.getByTestId('fqn-list-select').getByTitle(entityFQN)
@@ -352,25 +360,31 @@ export const addEventTypeFilter = async ({
 }) => {
   // Select event type filter
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-  await page.click(`[data-testid="Event Type-filter-option"]:visible`);
+  const eventTypeOption = page.locator(
+    `.ant-select-dropdown:visible [data-testid="Event Type-filter-option"]`
+  );
+  await expect(eventTypeOption).toBeVisible();
+  await eventTypeOption.click({ force: true });
 
   for (const eventType of eventTypes) {
     // Search and select event type
-    await page.fill(
-      '[data-testid="event-type-select"] [role="combobox"]',
-      eventType,
-      {
-        force: true,
-      }
+    const eventTypeInput = page.locator(
+      '[data-testid="event-type-select"] [role="combobox"]'
     );
-    await page.click(
+    await eventTypeInput.click({ force: true });
+    await eventTypeInput.fill(eventType, { force: true });
+    const searchResult = page.locator(
       `.ant-select-dropdown:visible [title="${startCase(eventType)}"]`
     );
+    await expect(searchResult).toBeVisible();
+    await searchResult.click({ force: true });
 
     await expect(
       page.getByTestId('event-type-select').getByTitle(startCase(eventType))
     ).toBeAttached();
   }
+
+  await clickOutside(page);
 
   if (exclude) {
     // Change filter effect
@@ -391,33 +405,56 @@ export const addDomainFilter = async ({
   domainDisplayName: string;
   exclude?: boolean;
 }) => {
-  // Select domain filter
+  // Open filter dropdown
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-  await page.click(`[data-testid="Domain-filter-option"]:visible`);
 
-  // Search and select domain
-  const getSearchResult = page.waitForResponse(
-    '/api/v1/search/query?q=**index=domain_search_index*'
+  // Select Domain filter option - chain :visible selector inline to avoid stale references
+  const domainOption = page
+    .locator('.ant-select-dropdown:visible')
+    .getByTestId('Domain-filter-option');
+  await expect(domainOption).toBeVisible();
+  await domainOption.click();
+
+  // Verify filter dropdown closed before next interaction
+  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
+
+  // Open domain select dropdown
+  const domainInput = page.locator(
+    '[data-testid="domain-select"] [role="combobox"]'
   );
-  await page.fill(
-    '[data-testid="domain-select"] [role="combobox"]',
-    domainName,
-    {
-      force: true,
-    }
-  );
-  await getSearchResult;
-  await page.click(
-    `.ant-select-dropdown:visible [title="${domainDisplayName}"]`
+  await expect(domainInput).toBeVisible();
+  await domainInput.click();
+
+  const awaitResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query?q=') &&
+      response.url().includes('index=domain_search_index')
   );
 
+  // Fill search term and wait for API response
+  await domainInput.fill(domainName);
+  await awaitResponse;
+
+  // Select domain from search results - chain :visible selector inline
+  const searchResult = page
+    .locator('.ant-select-dropdown:visible')
+    .locator(`[title="${domainDisplayName}"]`);
+  await expect(searchResult).toBeVisible();
+  await searchResult.click();
+
+  await clickOutside(page);
+
+  // Verify dropdown closed and domain is selected in UI
+  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
   await expect(
     page.getByTestId('domain-select').getByTitle(domainDisplayName)
-  ).toBeAttached();
+  ).toBeVisible();
 
   if (exclude) {
-    // Change filter effect
-    await page.click(`[data-testid="filter-switch-${filterNumber}"]`);
+    // Toggle filter to exclude mode
+    const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
+    await expect(filterSwitch).toBeVisible();
+    await filterSwitch.click();
   }
 };
 
@@ -432,9 +469,11 @@ export const addGMEFilter = async ({
 }) => {
   // Select general metadata events filter
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-  await page.click(
+  const gmeOption = page.locator(
     `[data-testid="General Metadata Events-filter-option"]:visible`
   );
+  await expect(gmeOption).toBeVisible();
+  await gmeOption.click({ force: true });
 
   if (exclude) {
     // Change filter effect
@@ -457,19 +496,17 @@ const checkActionOrFilterDetails = async ({
 
       await expect(page.getByTestId(`filter-${index}`)).toBeAttached();
 
-      filter.effect === 'include'
-        ? await expect(
-            page.getByTestId(
-              `${isFilter ? 'filter' : 'trigger'}-switch-${index}`
-            )
-          ).toHaveClass('ant-switch ant-switch-checked ant-switch-disabled')
-        : await expect(
-            page.getByTestId(
-              `${isFilter ? 'filter' : 'trigger'}-switch-${index}`
-            )
-          ).not.toHaveClass(
-            'ant-switch ant-switch-checked ant-switch-disabled'
-          );
+      const switchTestId = `${isFilter ? 'filter' : 'trigger'}-switch-${index}`;
+
+      if (filter.effect === 'include') {
+        await expect(page.getByTestId(switchTestId)).toHaveClass(
+          'ant-switch ant-switch-checked ant-switch-disabled'
+        );
+      } else {
+        await expect(page.getByTestId(switchTestId)).not.toHaveClass(
+          'ant-switch ant-switch-checked ant-switch-disabled'
+        );
+      }
     }
   }
 };
@@ -558,7 +595,11 @@ export const addGetSchemaChangesAction = async ({
 }) => {
   // Select owner filter
   await page.click(`[data-testid="trigger-select-${filterNumber}"]`);
-  await page.click(`[data-testid="Get Schema Changes-filter-option"]:visible`);
+  const schemaChangesOption = page.locator(
+    `[data-testid="Get Schema Changes-filter-option"]:visible`
+  );
+  await expect(schemaChangesOption).toBeVisible();
+  await schemaChangesOption.click({ force: true });
 
   if (exclude) {
     // Change filter effect
@@ -579,19 +620,22 @@ export const addPipelineStatusUpdatesAction = async ({
 }) => {
   // Select pipeline status action
   await page.click(`[data-testid="trigger-select-${filterNumber}"]`);
-  await page.click(
+  const pipelineStatusOption = page.locator(
     `[data-testid="Get Pipeline Status Updates-filter-option"]:visible`
   );
+  await expect(pipelineStatusOption).toBeVisible();
+  await pipelineStatusOption.click({ force: true });
 
   // Search and select pipeline status input
-  await page.fill(
-    '[data-testid="pipeline-status-select"] [role="combobox"]',
-    statusName,
-    {
-      force: true,
-    }
+  const pipelineStatusInput = page.locator(
+    '[data-testid="pipeline-status-select"] [role="combobox"]'
   );
-  await page.click(`[title="${statusName}"]:visible`);
+  await pipelineStatusInput.click({ force: true });
+  await pipelineStatusInput.fill(statusName, { force: true });
+
+  const searchResult = page.locator(`[title="${statusName}"]:visible`);
+  await expect(searchResult).toBeVisible();
+  await searchResult.click({ force: true });
 
   await expect(page.getByTestId('pipeline-status-select')).toHaveText(
     statusName

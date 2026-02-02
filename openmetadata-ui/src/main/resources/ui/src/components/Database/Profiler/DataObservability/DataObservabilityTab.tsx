@@ -86,7 +86,10 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
           EntityTabs.PROFILER,
           newValue as ProfilerTabPath
         ),
-        search: Qs.stringify(searchData),
+        search:
+          newValue === ProfilerTabPath.INCIDENTS
+            ? undefined
+            : Qs.stringify(searchData),
       },
       {
         replace: true,
@@ -186,8 +189,8 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
                   backgroundColor: `${theme.palette.primary.main} !important`,
                   color: `${theme.palette.primary.contrastText} !important`,
                 },
-                'MuiTabs-root': {
-                  minHeight: 'none',
+                '.MuiButtonBase-root': {
+                  minHeight: 'unset',
                 },
                 '.MuiTabs-indicator': {
                   display: 'none',

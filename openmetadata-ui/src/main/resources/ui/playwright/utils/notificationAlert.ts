@@ -39,14 +39,22 @@ import { sidebarClick } from './sidebar';
 export const visitNotificationAlertPage = async (page: Page) => {
   await redirectToHomePage(page);
   await sidebarClick(page, SidebarItem.SETTINGS);
+
+  // Ensure notifications menu item is visible before clicking
+  await expect(page.getByTestId('notifications')).toBeVisible();
   await page.click('[data-testid="notifications"]');
-  const getAlerts = page.waitForResponse('/api/v1/events/subscriptions?*');
-  const getActivityFeedAlertDetails = page.waitForResponse(
-    '/api/v1/events/subscriptions/name/ActivityFeedAlert?include=all'
-  );
-  await page.click('[data-testid="notifications.alerts"]');
-  await getAlerts;
-  await getActivityFeedAlertDetails;
+
+  // Wait for both API calls and the click to complete
+  await Promise.all([
+    page.waitForResponse('/api/v1/events/subscriptions?*'),
+    page.waitForResponse(
+      '/api/v1/events/subscriptions/name/ActivityFeedAlert?include=all'
+    ),
+    page.click('[data-testid="notifications.alerts"]'),
+  ]);
+
+  // Ensure UI is ready after API responses
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
 export const addFilterWithUsersListInput = async ({
@@ -62,27 +70,58 @@ export const addFilterWithUsersListInput = async ({
   updaterName: string;
   exclude?: boolean;
 }) => {
-  // Select updater name filter
+  // Open filter dropdown
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
-  await page.click(`[data-testid="${filterTestId}"]:visible`);
 
-  // Search and select user
-  const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
-  await page.fill(
-    '[data-testid="user-name-select"] [role="combobox"]',
-    updaterName,
-    {
-      force: true,
-    }
+  // Select filter option - chain :visible selector inline
+  // Wait for dropdown animation to complete and element to be actionable
+  const filterOption = page
+    .locator('.ant-select-dropdown:visible')
+    .getByTestId(filterTestId);
+  await expect(filterOption).toBeVisible();
+  await expect(filterOption).toBeEnabled();
+  await filterOption.click();
+
+  // Verify dropdown closed
+  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
+
+  // Open user select dropdown
+  const userSelectInput = page.locator(
+    '[data-testid="user-name-select"] [role="combobox"]'
   );
-  await getSearchResult;
-  await page.click(`.ant-select-dropdown:visible [title="${updaterName}"]`);
+  await expect(userSelectInput).toBeVisible();
+  await userSelectInput.click();
+  const awaitResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query?q=') &&
+      response.url().includes(encodeURIComponent(updaterName)) &&
+      response.url().includes('index=user_search_index')
+  );
+  // Fill search term and wait for API response
+  await userSelectInput.fill(updaterName);
+  await awaitResponse;
 
+  // Select user from search results - chain :visible selector inline
+  const userOption = page
+    .locator('.ant-select-dropdown:visible')
+    .locator(`[title="${updaterName}"]`);
+  await expect(userOption).toBeVisible();
+  await userOption.click();
+
+  // Verify user is selected
   await expect(page.getByTestId('user-name-select')).toHaveText(updaterName);
+
+  // Manually close dropdown if it doesn't auto-close
+  await clickOutside(page);
+
+  // Verify dropdown closed
+  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
 
   if (exclude) {
     // Change filter effect
-    await page.click(`[data-testid="filter-switch-${filterNumber}"]`);
+    const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
+    await expect(filterSwitch).toBeVisible();
+    await filterSwitch.click();
   }
 };
 
@@ -101,46 +140,93 @@ export const addInternalDestination = async ({
   type?: string;
   searchText?: string;
 }) => {
-  // Select destination category
-  await page.click(
-    `[data-testid="destination-category-select-${destinationNumber}"]`
+  // Open destination category dropdown
+  const categorySelect = page.getByTestId(
+    `destination-category-select-${destinationNumber}`
   );
-  await page.click(`[data-testid="${category}-internal-option"]:visible`);
+  await expect(categorySelect).toBeVisible();
+  await categorySelect.click();
 
-  // Select the receivers
+  // Select category option - chain :visible selector inline
+  const categoryOption = page
+    .locator('.ant-select-dropdown:visible')
+    .locator(`[data-testid="${category}-internal-option"]`);
+  await expect(categoryOption).toBeVisible();
+  await categoryOption.click();
+
+  // Verify dropdown closed
+  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
+
+  // Select the receivers with proper waiting
   if (typeId) {
     if (category === 'Teams' || category === 'Users') {
-      await page.click(
+      const dropdownTrigger = page.locator(
         `[data-testid="destination-${destinationNumber}"] [data-testid="dropdown-trigger-button"]`
       );
-      const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
-      await page.fill(
-        `[data-testid="team-user-select-dropdown-${destinationNumber}"]:visible [data-testid="search-input"]`,
-        searchText
-      );
+      await expect(dropdownTrigger).toBeVisible();
+      await dropdownTrigger.click();
 
-      await getSearchResult;
-      await page.click(
-        `.ant-dropdown:visible [data-testid="${searchText}-option-label"]`
+      const searchInput = page.locator(
+        `[data-testid="team-user-select-dropdown-${destinationNumber}"]:visible [data-testid="search-input"]`
       );
-    } else {
+      await expect(searchInput).toBeVisible();
+
       const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
-      await page.fill(`[data-testid="${typeId}"]`, searchText);
+      await searchInput.fill(searchText);
       await getSearchResult;
-      await page.click(`.ant-select-dropdown:visible [title="${searchText}"]`);
+
+      // Wait for search results to render
+      const resultsDropdown = page.locator('.ant-dropdown:visible');
+      await resultsDropdown.waitFor({ state: 'visible' });
+
+      const option = resultsDropdown.locator(
+        `[data-testid="${searchText}-option-label"]`
+      );
+      await expect(option).toBeVisible();
+      await option.click();
+    } else {
+      const input = page.getByTestId(typeId);
+      await expect(input).toBeVisible();
+
+      const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
+      await input.fill(searchText);
+      await getSearchResult;
+
+      // Select option from search results - chain :visible selector inline
+      const option = page
+        .locator('.ant-select-dropdown:visible')
+        .locator(`[title="${searchText}"]`);
+      await expect(option).toBeVisible();
+      await option.click();
     }
+
+    // Manually close dropdown
     await clickOutside(page);
+
+    // Verify dropdown closed
+    await expect(
+      page.locator('.ant-select-dropdown:visible')
+    ).not.toBeVisible();
   }
 
-  // Select destination type
-  await page.click(
-    `[data-testid="destination-type-select-${destinationNumber}"]`
+  // Select destination type with proper waiting
+  const typeSelect = page.getByTestId(
+    `destination-type-select-${destinationNumber}`
   );
-  await page.click(
-    `.select-options-container [data-testid="${type}-external-option"]:visible`
-  );
+  await expect(typeSelect).toBeVisible();
+  await typeSelect.click();
 
-  // Check the added destination type
+  // Wait for type dropdown to be visible
+  const typeDropdown = page.locator('.select-options-container:visible');
+  await typeDropdown.waitFor({ state: 'visible' });
+
+  const typeOption = typeDropdown.locator(
+    `[data-testid="${type}-external-option"]`
+  );
+  await expect(typeOption).toBeVisible();
+  await typeOption.click();
+
+  // Verify the selection
   await expect(
     page
       .getByTestId(`destination-type-select-${destinationNumber}`)

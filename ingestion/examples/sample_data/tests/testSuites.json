@@ -419,6 +419,10 @@
                         {
                             "name": "table2",
                             "value": "sample_data.ecommerce_db.shopify.production_dim_address"
+                        },
+                        {
+                            "name": "keyColumns",
+                            "value": "[\"address_id\"]"
                         }
                     ],
                     "resolutions": {}

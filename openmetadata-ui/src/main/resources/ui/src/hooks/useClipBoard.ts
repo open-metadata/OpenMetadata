@@ -59,39 +59,44 @@ export const useClipboard = (
   const [valueState, setValueState] = useState(value);
 
   // handlers
-  const handleCopy = useCallback(async () => {
-    try {
-      let success = false;
-      if (navigator.clipboard && window.isSecureContext) {
-        // Try modern clipboard API first
-        await navigator.clipboard.writeText(valueState);
-        success = true;
-      } else {
-        // Fallback for older browsers or non-HTTPS contexts
-        success = fallbackCopyTextToClipboard(valueState);
-      }
+  const handleCopy = useCallback(
+    async (text?: string) => {
+      const textToCopy = typeof text === 'string' ? text : valueState;
 
-      if (success) {
-        setHasCopied(true);
-        callBack && callBack();
-      } else {
-        setHasCopied(false);
-      }
-    } catch (error) {
-      // If modern API fails, try fallback
       try {
-        const success = fallbackCopyTextToClipboard(valueState);
+        let success = false;
+        if (navigator.clipboard && window.isSecureContext) {
+          // Try modern clipboard API first
+          await navigator.clipboard.writeText(textToCopy);
+          success = true;
+        } else {
+          // Fallback for older browsers or non-HTTPS contexts
+          success = fallbackCopyTextToClipboard(textToCopy);
+        }
+
         if (success) {
           setHasCopied(true);
           callBack && callBack();
         } else {
           setHasCopied(false);
         }
-      } catch (fallbackError) {
-        setHasCopied(false);
+      } catch (error) {
+        // If modern API fails, try fallback
+        try {
+          const success = fallbackCopyTextToClipboard(textToCopy);
+          if (success) {
+            setHasCopied(true);
+            callBack && callBack();
+          } else {
+            setHasCopied(false);
+          }
+        } catch (fallbackError) {
+          setHasCopied(false);
+        }
       }
-    }
-  }, [valueState, callBack]);
+    },
+    [valueState, callBack]
+  );
 
   const handlePaste = useCallback(async () => {
     try {

@@ -35,6 +35,11 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
 
+  {
+    supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
+  }
+
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================
@@ -1086,5 +1091,57 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     Pipeline pipeline = createEntity(request);
     assertEquals("Extract Data Task", pipeline.getTasks().get(0).getDisplayName());
     assertEquals("extract_task", pipeline.getTasks().get(0).getName());
+  }
+
+  @Test
+  void test_pipelineStatusWithTaskTiming_200_OK(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_with_timing"));
+    request.setService(service.getFullyQualifiedName());
+
+    List<Task> tasks = Arrays.asList(new Task().withName("task1").withDescription("Task 1"));
+    request.setTasks(tasks);
+
+    Pipeline pipeline = createEntity(request);
+    assertNotNull(pipeline);
+
+    // Create status with task timing data
+    long startTime = System.currentTimeMillis();
+    long endTime = startTime + 600000; // 10 minutes duration
+
+    org.openmetadata.schema.type.Status taskStatus =
+        new org.openmetadata.schema.type.Status()
+            .withName("task1")
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful)
+            .withStartTime(startTime)
+            .withEndTime(endTime);
+
+    org.openmetadata.schema.entity.data.PipelineStatus pipelineStatus =
+        new org.openmetadata.schema.entity.data.PipelineStatus()
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful)
+            .withTimestamp(endTime)
+            .withEndTime(endTime)
+            .withTaskStatus(Arrays.asList(taskStatus));
+
+    // Add status
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), pipelineStatus);
+
+    // Verify status was stored with timing data
+    Pipeline updatedPipeline =
+        client.pipelines().get(pipeline.getId().toString(), "pipelineStatus");
+
+    assertNotNull(updatedPipeline.getPipelineStatus());
+    assertNotNull(updatedPipeline.getPipelineStatus().getTaskStatus());
+    assertEquals(1, updatedPipeline.getPipelineStatus().getTaskStatus().size());
+
+    org.openmetadata.schema.type.Status retrievedTask =
+        updatedPipeline.getPipelineStatus().getTaskStatus().get(0);
+    assertNotNull(retrievedTask.getStartTime());
+    assertNotNull(retrievedTask.getEndTime());
+    assertEquals(startTime, retrievedTask.getStartTime());
+    assertEquals(endTime, retrievedTask.getEndTime());
   }
 }

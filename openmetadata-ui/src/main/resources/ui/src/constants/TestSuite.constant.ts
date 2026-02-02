@@ -15,6 +15,7 @@ import i18next from 'i18next';
 import { StepperStepType } from 'Models';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
+import i18n from '../utils/i18next/LocalUtil';
 
 const TEST_SUITE_LABEL = i18next.t('label.test-suite');
 const ADD_TEST_SUITE_LABEL = i18next.t('label.add-entity', {
@@ -77,6 +78,16 @@ export const TEST_CASE_STATUS: Record<
     TestCaseResolutionStatusTypes.Resolved,
   ],
   [TestCaseResolutionStatusTypes.Resolved]: [],
+};
+
+export const TEST_CASE_RESOLUTION_STATUS_LABELS: Record<
+  TestCaseResolutionStatusTypes,
+  string
+> = {
+  [TestCaseResolutionStatusTypes.New]: i18n.t('label.new'),
+  [TestCaseResolutionStatusTypes.ACK]: i18n.t('label.ack'),
+  [TestCaseResolutionStatusTypes.Assigned]: i18n.t('label.assigned'),
+  [TestCaseResolutionStatusTypes.Resolved]: i18n.t('label.resolved'),
 };
 
 export const TABLE_DIFF = 'tableDiff';

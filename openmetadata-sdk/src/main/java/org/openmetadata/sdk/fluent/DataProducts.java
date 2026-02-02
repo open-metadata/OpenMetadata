@@ -3,9 +3,6 @@ package org.openmetadata.sdk.fluent;
 import java.util.*;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.entity.domains.DataProduct;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.api.BulkAssets;
-import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
 /**
@@ -121,26 +118,6 @@ public final class DataProducts {
       return this;
     }
 
-    public DataProductCreator withInputPorts(List<EntityReference> ports) {
-      request.setInputPorts(ports);
-      return this;
-    }
-
-    public DataProductCreator withInputPorts(EntityReference... ports) {
-      request.setInputPorts(java.util.Arrays.asList(ports));
-      return this;
-    }
-
-    public DataProductCreator withOutputPorts(List<EntityReference> ports) {
-      request.setOutputPorts(ports);
-      return this;
-    }
-
-    public DataProductCreator withOutputPorts(EntityReference... ports) {
-      request.setOutputPorts(java.util.Arrays.asList(ports));
-      return this;
-    }
-
     public DataProduct execute() {
       return client.dataProducts().create(request);
     }
@@ -179,24 +156,7 @@ public final class DataProducts {
     }
 
     public DataProductFinder includeAll() {
-      includes.addAll(
-          Arrays.asList("owners", "tags", "followers", "domains", "inputPorts", "outputPorts"));
-      return this;
-    }
-
-    public DataProductFinder includeInputPorts() {
-      includes.add("inputPorts");
-      return this;
-    }
-
-    public DataProductFinder includeOutputPorts() {
-      includes.add("outputPorts");
-      return this;
-    }
-
-    public DataProductFinder includePorts() {
-      includes.add("inputPorts");
-      includes.add("outputPorts");
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 
@@ -336,54 +296,9 @@ public final class DataProducts {
       return new DataProductDeleter(client, dataProduct.getId().toString());
     }
 
-    // ==================== Bulk Port Operations ====================
-
-    public BulkOperationResult addInputPorts(EntityReference... ports) {
-      return addInputPorts(Arrays.asList(ports));
-    }
-
-    public BulkOperationResult addInputPorts(List<EntityReference> ports) {
-      BulkAssets request = new BulkAssets().withAssets(ports);
-      return client.dataProducts().bulkAddInputPorts(dataProduct.getFullyQualifiedName(), request);
-    }
-
-    public BulkOperationResult removeInputPorts(EntityReference... ports) {
-      return removeInputPorts(Arrays.asList(ports));
-    }
-
-    public BulkOperationResult removeInputPorts(List<EntityReference> ports) {
-      BulkAssets request = new BulkAssets().withAssets(ports);
-      return client
-          .dataProducts()
-          .bulkRemoveInputPorts(dataProduct.getFullyQualifiedName(), request);
-    }
-
-    public BulkOperationResult addOutputPorts(EntityReference... ports) {
-      return addOutputPorts(Arrays.asList(ports));
-    }
-
-    public BulkOperationResult addOutputPorts(List<EntityReference> ports) {
-      BulkAssets request = new BulkAssets().withAssets(ports);
-      return client.dataProducts().bulkAddOutputPorts(dataProduct.getFullyQualifiedName(), request);
-    }
-
-    public BulkOperationResult removeOutputPorts(EntityReference... ports) {
-      return removeOutputPorts(Arrays.asList(ports));
-    }
-
-    public BulkOperationResult removeOutputPorts(List<EntityReference> ports) {
-      BulkAssets request = new BulkAssets().withAssets(ports);
-      return client
-          .dataProducts()
-          .bulkRemoveOutputPorts(dataProduct.getFullyQualifiedName(), request);
-    }
-
-    public List<EntityReference> getInputPorts() {
-      return dataProduct.getInputPorts();
-    }
-
-    public List<EntityReference> getOutputPorts() {
-      return dataProduct.getOutputPorts();
-    }
+    // ==================== Port Operations ====================
+    // Use the fluent API: client.dataProducts().inputPorts(name).add/remove/list()
+    // Use the fluent API: client.dataProducts().outputPorts(name).add/remove/list()
+    // Use the fluent API: client.dataProducts().portsView(name).get()
   }
 }

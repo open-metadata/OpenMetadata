@@ -19,11 +19,18 @@ export interface AuditLogEntry {
   eventTs?: number;
   eventType?: string;
   userName?: string;
+  actorType?: string;
+  impersonatedBy?: string;
+  serviceName?: string;
   entityType?: string;
   entityId?: string;
   entityFQN?: string;
   createdAt?: number;
   changeEvent?: ChangeEvent;
+  /** Human-readable summary of the change event */
+  summary?: string;
+  /** Raw JSON of the change event - fallback when changeEvent deserialization fails */
+  rawEventJson?: string;
 }
 
 export interface AuditLogListResponse {
@@ -35,10 +42,58 @@ export interface AuditLogListResponse {
 export interface AuditLogListParams {
   limit?: number;
   after?: string;
+  before?: string;
   userName?: string;
+  actorType?: string;
+  serviceName?: string;
   entityType?: string;
   entityFQN?: string;
   eventType?: string;
   startTs?: number;
   endTs?: number;
+  /** Search term for full-text search across multiple columns */
+  q?: string;
+}
+
+/** Filter category types for GitHub-style filter dropdown */
+export type AuditLogFilterCategoryType = 'time' | 'user' | 'bot' | 'entityType';
+
+/** Individual filter value with display info */
+export interface AuditLogFilterValue {
+  key: string;
+  label: string;
+  value: string;
+}
+
+/** Active filter representing a selected category and value */
+export interface AuditLogActiveFilter {
+  category: AuditLogFilterCategoryType;
+  categoryLabel: string;
+  value: AuditLogFilterValue;
+}
+
+/** Time filter preset options */
+export type TimeFilterPreset = 'yesterday' | 'thisWeek' | 'custom';
+
+export interface TimeFilterValue extends AuditLogFilterValue {
+  startTs?: number;
+  endTs?: number;
+}
+
+export interface AuditLogExportParams {
+  startTs: number;
+  endTs: number;
+  limit?: number;
+  userName?: string;
+  actorType?: string;
+  serviceName?: string;
+  entityType?: string;
+  eventType?: string;
+  /** Search term for full-text search */
+  q?: string;
+}
+
+export interface AuditLogExportResponse {
+  jobId: string;
+  message: string;
 }

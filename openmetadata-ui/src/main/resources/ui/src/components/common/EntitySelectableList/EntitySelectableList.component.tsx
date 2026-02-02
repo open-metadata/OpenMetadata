@@ -26,6 +26,7 @@ export const EntitySelectableList = <T,>({
   popoverProps,
   listHeight = ADD_USER_CONTAINER_HEIGHT,
   config,
+  multiSelect = true,
 }: EntitySelectableListProps<T>) => {
   const [popupVisible, setPopupVisible] = useState(false);
 
@@ -41,10 +42,10 @@ export const EntitySelectableList = <T,>({
       content={
         <FocusTrapWithContainer active={popoverProps?.open || popupVisible}>
           <SelectableList
-            multiSelect
             customTagRenderer={config.customTagRenderer}
             fetchOptions={config.fetchOptions}
             height={listHeight}
+            multiSelect={multiSelect}
             searchBarDataTestId={config.searchBarDataTestId}
             searchPlaceholder={config.searchPlaceholder}
             selectedItems={config.toEntityReference(selectedItems)}

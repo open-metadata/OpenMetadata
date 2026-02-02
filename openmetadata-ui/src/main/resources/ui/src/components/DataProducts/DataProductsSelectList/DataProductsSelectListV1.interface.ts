@@ -30,4 +30,5 @@ export interface DataProductsSelectListV1Props {
     paging: { total: number; after?: string };
   }>;
   onCancel: () => void;
+  multiSelect?: boolean;
 }

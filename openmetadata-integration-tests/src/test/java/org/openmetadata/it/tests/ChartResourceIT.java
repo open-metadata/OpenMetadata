@@ -39,6 +39,11 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
 
+  {
+    supportsLifeCycle = true;
+    supportsListHistoryByTimestamp = true;
+  }
+
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================
@@ -757,12 +762,14 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     // Delete chart
     deleteEntity(chart.getId().toString());
 
-    // Verify dashboard still has the deleted chart reference (soft delete behavior)
+    // Verify dashboard no longer shows the deleted chart (default behavior filters deleted
+    // entities)
     Dashboard afterDelete = client.dashboards().get(dashboard.getId().toString(), "charts");
-    assertTrue(
+    assertFalse(
         afterDelete.getCharts().stream()
             .map(EntityReference::getId)
-            .anyMatch(chart.getId()::equals));
+            .anyMatch(chart.getId()::equals),
+        "Deleted charts should not appear in dashboard.charts by default");
   }
 
   @Test

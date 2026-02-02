@@ -23,7 +23,11 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, toastNotification } from '../../utils/common';
+import {
+  clickOutside,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addPipelineBetweenNodes,
@@ -32,6 +36,7 @@ import {
   performExpand,
   performZoomOut,
   verifyColumnLayerActive,
+  verifyExpandHandleHover,
   verifyNodePresent,
   visitLineageTab,
 } from '../../utils/lineage';
@@ -201,12 +206,16 @@ test.describe('Lineage Settings Tests', () => {
         await performZoomOut(page);
         await verifyNodePresent(page, topic);
         await verifyNodePresent(page, mlModel);
+
+        await verifyExpandHandleHover(page, mlModel, false);
+        await clickOutside(page);
+        await verifyExpandHandleHover(page, topic, true);
+
         await performExpand(page, mlModel, false, searchIndex);
         await performExpand(page, searchIndex, false, container);
         await performExpand(page, container, false, metric);
         await performExpand(page, topic, true, table);
 
-        // perform collapse
         await performCollapse(page, mlModel, false, [
           searchIndex,
           container,

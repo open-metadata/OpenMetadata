@@ -13,6 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
+import { Table } from '../../../src/generated/entity/data/table';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { fullUuid, uuid } from '../../utils/common';
@@ -26,7 +27,7 @@ import {
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
-interface TableColumn {
+export interface TableColumn {
   name: string;
   dataType: string;
   dataLength?: number;
@@ -72,15 +73,18 @@ export class TableClass extends EntityClass {
     {} as ResponseDataWithServiceType;
   schemaResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
-  entityResponseData: ResponseDataWithServiceType =
-    {} as ResponseDataWithServiceType;
+  entityResponseData: Table = {} as Table;
   testSuiteResponseData: ResponseDataType = {} as ResponseDataType;
   testSuitePipelineResponseData: ResponseDataType[] = [];
   testCasesResponseData: ResponseDataType[] = [];
   queryResponseData: ResponseDataType[] = [];
   additionalEntityTableResponseData: ResponseDataType[] = [];
 
-  constructor(name?: string, tableType?: string) {
+  constructor(
+    name?: string,
+    tableType?: string,
+    service?: Record<string, unknown>
+  ) {
     super(EntityTypeEndpoint.Table);
     this.serviceCategory = SERVICE_TYPE.Database;
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
@@ -109,6 +113,7 @@ export class TableClass extends EntityClass {
           supportsQueryComment: true,
         },
       },
+      ...service,
     };
 
     this.database = {
@@ -130,6 +135,7 @@ export class TableClass extends EntityClass {
       `address${uuid()}`,
       `mail${uuid()}`,
       `email${uuid()}`,
+      `created_at${uuid()}`,
     ];
 
     this.entityLinkColumnsName = [
@@ -141,6 +147,7 @@ export class TableClass extends EntityClass {
       `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[5]}`,
       `${this.columnsName[2]}.${this.columnsName[4]}.${this.columnsName[6]}`,
       this.columnsName[7],
+      this.columnsName[8],
     ];
 
     this.children = [
@@ -153,8 +160,8 @@ export class TableClass extends EntityClass {
       },
       {
         name: this.columnsName[1],
-        dataType: 'NUMERIC',
-        dataTypeDisplay: 'numeric',
+        dataType: 'INT',
+        dataTypeDisplay: 'int',
         description:
           'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
       },
@@ -204,6 +211,13 @@ export class TableClass extends EntityClass {
         dataLength: 100,
         dataTypeDisplay: 'varchar',
         description: 'Email address of the staff member.',
+      },
+      {
+        name: this.columnsName[8],
+        dataType: 'TIMESTAMP',
+        dataLength: 100,
+        dataTypeDisplay: 'timestamp',
+        description: 'entity created time',
       },
     ];
 
@@ -295,7 +309,7 @@ export class TableClass extends EntityClass {
   }
 
   set(entityData: {
-    entity: ResponseDataWithServiceType;
+    entity: Table;
     service: ResponseDataType;
     database: ResponseDataWithServiceType;
     schema: ResponseDataWithServiceType;
@@ -309,9 +323,11 @@ export class TableClass extends EntityClass {
   async visitEntityPage(page: Page, searchTerm?: string) {
     await visitEntityPage({
       page,
-      searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.entityResponseData.service.name ?? this.service.name
-        }-${this.entityResponseData.name ?? this.entity.name}`,
+      searchTerm:
+        searchTerm ?? this.entityResponseData.fullyQualifiedName ?? '',
+      dataTestId: `${
+        this.entityResponseData.service?.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 

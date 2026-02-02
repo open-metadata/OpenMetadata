@@ -199,23 +199,28 @@ public final class EntityUtil {
   }
 
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) {
-    if (list == null || list.isEmpty()) {
+    if (nullOrEmpty(list)) {
       return list;
     }
 
     long startTime = System.currentTimeMillis();
 
+    // Create a mutable copy to avoid UnsupportedOperationException on immutable lists
+    List<EntityReference> mutableList = new ArrayList<>(list);
+
     // Group references by type and whether they have ID or need name-based lookup
     Map<String, List<EntityReference>> byIdByType =
-        list.stream()
+        mutableList.stream()
             .filter(ref -> ref.getId() != null)
             .collect(Collectors.groupingBy(EntityReference::getType));
 
     Map<String, List<EntityReference>> byNameByType =
-        list.stream()
+        mutableList.stream()
             .filter(ref -> ref.getId() == null && ref.getFullyQualifiedName() != null)
             .collect(Collectors.groupingBy(EntityReference::getType));
 
+    // Track which references were successfully populated (not orphaned)
+    Set<EntityReference> populatedRefs = new HashSet<>();
     int queryCount = 0;
 
     // Batch fetch by ID (most common case) - one query per entity type
@@ -235,6 +240,9 @@ public final class EntityUtil {
           EntityReference fetched2 = fetchedMap.get(ref.getId());
           if (fetched2 != null) {
             copy(fetched2, ref);
+            populatedRefs.add(ref);
+          } else {
+            LOG.info("Skipping orphaned entity reference: {} {}", ref.getType(), ref.getId());
           }
         }
       } catch (Exception e) {
@@ -247,9 +255,10 @@ public final class EntityUtil {
           try {
             EntityReference ref2 = Entity.getEntityReference(ref, ALL);
             copy(ref2, ref);
+            populatedRefs.add(ref);
           } catch (EntityNotFoundException ex) {
             LOG.info(
-                "Skipping deleted entity reference: {} {} - {}",
+                "Skipping orphaned entity reference: {} {} - {}",
                 ref.getType(),
                 ref.getId(),
                 ex.getMessage());
@@ -266,9 +275,10 @@ public final class EntityUtil {
           EntityReference ref2 =
               Entity.getEntityReferenceByName(ref.getType(), ref.getFullyQualifiedName(), ALL);
           copy(ref2, ref);
+          populatedRefs.add(ref);
         } catch (EntityNotFoundException e) {
           LOG.info(
-              "Skipping deleted entity reference: {} {} - {}",
+              "Skipping orphaned entity reference: {} {} - {}",
               ref.getType(),
               ref.getFullyQualifiedName(),
               e.getMessage());
@@ -276,14 +286,29 @@ public final class EntityUtil {
       }
     }
 
-    list.sort(compareEntityReference);
+    // Remove orphaned references (those that weren't successfully populated)
+    mutableList.removeIf(ref -> !populatedRefs.contains(ref));
+
+    mutableList.sort(compareEntityReference);
 
     LOG.debug(
         "populateEntityReferences: {} refs -> {} queries in {}ms",
-        list.size(),
+        mutableList.size(),
         queryCount,
         System.currentTimeMillis() - startTime);
 
+    return mutableList;
+  }
+
+  public static List<EntityReference> validateAndPopulateEntityReferences(
+      List<EntityReference> list) {
+    if (list != null) {
+      for (EntityReference ref : list) {
+        EntityReference ref2 = Entity.getEntityReference(ref, ALL);
+        EntityUtil.copy(ref2, ref);
+      }
+      list.sort(compareEntityReference);
+    }
     return list;
   }
 
@@ -457,6 +482,18 @@ public final class EntityUtil {
         .collect(Collectors.toList());
   }
 
+  public static List<EntityReference> validateToEntityReferences(
+      List<UUID> ids, String entityType) {
+    if (ids == null) {
+      return null;
+    }
+    List<EntityReference> refs = new ArrayList<>();
+    for (UUID id : ids) {
+      refs.add(Entity.getEntityReferenceById(entityType, id, ALL));
+    }
+    return refs;
+  }
+
   public static List<UUID> refToIds(List<EntityReference> refs) {
     if (refs == null) {
       return null;
@@ -547,6 +584,73 @@ public final class EntityUtil {
     @Override
     public @org.jetbrains.annotations.NotNull Iterator<String> iterator() {
       return fieldList.iterator();
+    }
+  }
+
+  /**
+   * Holds include values for relation fields, allowing per-field control over whether to include
+   * deleted, non-deleted, or all related entities.
+   *
+   * <p>Usage: API parameter format is "field:include_value,field2:include_value2" Example:
+   * "owners:non_deleted,followers:all,experts:deleted"
+   */
+  @Getter
+  public static class RelationIncludes {
+    private final Include defaultInclude;
+    private final Map<String, Include> fieldIncludes;
+
+    public RelationIncludes(Include defaultInclude) {
+      this.defaultInclude = defaultInclude != null ? defaultInclude : ALL;
+      this.fieldIncludes = new HashMap<>();
+    }
+
+    public RelationIncludes(Include defaultInclude, String includeRelationsParam) {
+      this.defaultInclude = defaultInclude != null ? defaultInclude : ALL;
+      this.fieldIncludes = parseIncludeRelations(includeRelationsParam);
+    }
+
+    public RelationIncludes(Include defaultInclude, Map<String, Include> fieldIncludes) {
+      this.defaultInclude = defaultInclude != null ? defaultInclude : ALL;
+      this.fieldIncludes = fieldIncludes != null ? new HashMap<>(fieldIncludes) : new HashMap<>();
+    }
+
+    public Include getIncludeFor(String fieldName) {
+      return fieldIncludes.getOrDefault(fieldName, defaultInclude);
+    }
+
+    public boolean hasFieldSpecificInclude(String fieldName) {
+      return fieldIncludes.containsKey(fieldName);
+    }
+
+    private static Map<String, Include> parseIncludeRelations(String includeRelationsParam) {
+      Map<String, Include> result = new HashMap<>();
+      if (nullOrEmpty(includeRelationsParam)) {
+        return result;
+      }
+      String[] pairs = includeRelationsParam.split(",");
+      for (String pair : pairs) {
+        String[] parts = pair.trim().split(":");
+        if (parts.length == 2) {
+          String fieldName = parts[0].trim();
+          String includeValue = parts[1].trim().toUpperCase().replace("-", "_");
+          try {
+            Include include = Include.valueOf(includeValue);
+            result.put(fieldName, include);
+          } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                "Invalid include value '"
+                    + parts[1].trim()
+                    + "' for field '"
+                    + fieldName
+                    + "'. Valid values are: all, deleted, non-deleted");
+          }
+        }
+      }
+      return result;
+    }
+
+    public static RelationIncludes fromInclude(Include include) {
+      return new RelationIncludes(include);
     }
   }
 

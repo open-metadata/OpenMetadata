@@ -158,6 +158,72 @@ public abstract class SecretsManager {
   }
 
   /**
+   * Encrypts QueryRunner config secrets using a path structure that groups secrets under the
+   * database service: /{cluster}/DatabaseService/{serviceName}/queryrunner/{configType}/{field}
+   *
+   * @param authConfig The auth config object containing password fields to encrypt
+   * @param serviceName The database service name (e.g., "my-snowflake-prod")
+   * @param configType The config type (ADMIN or USER)
+   * @return The auth config with password fields replaced by secret references
+   */
+  public Object encryptQueryRunnerConfig(Object authConfig, String serviceName, String configType) {
+    if (authConfig == null) {
+      return null;
+    }
+    try {
+      // Path: /argo/DatabaseService/my-snowflake-prod/queryrunner/admin/clientsecret
+      return encryptPasswordFields(
+          authConfig,
+          buildSecretId(true, "DatabaseService", serviceName, "queryrunner", configType),
+          true);
+    } catch (Exception e) {
+      throw new SecretsManagerException(
+          Response.Status.BAD_REQUEST,
+          String.format(
+              "Failed to encrypt query runner config for service [%s], type [%s]",
+              serviceName, configType));
+    }
+  }
+
+  public Object decryptQueryRunnerConfig(Object authConfig) {
+    if (authConfig == null) {
+      return null;
+    }
+    try {
+      return decryptPasswordFields(authConfig);
+    } catch (Exception e) {
+      throw new SecretsManagerException(
+          Response.Status.BAD_REQUEST, "Failed to decrypt query runner config");
+    }
+  }
+
+  /**
+   * Deletes QueryRunner config secrets from the secrets manager.
+   * Uses the same path structure as encryptQueryRunnerConfig:
+   * /{cluster}/DatabaseService/{serviceName}/queryrunner/{configType}/{field}
+   *
+   * @param authConfig The auth config object to identify which fields to delete
+   * @param serviceName The database service name
+   * @param configType The config type: "admin" or "user"
+   */
+  public void deleteQueryRunnerConfigSecrets(
+      Object authConfig, String serviceName, String configType) {
+    if (authConfig != null) {
+      try {
+        deleteSecrets(
+            authConfig,
+            buildSecretId(true, "DatabaseService", serviceName, "queryrunner", configType));
+      } catch (Exception e) {
+        throw new SecretsManagerException(
+            Response.Status.BAD_REQUEST,
+            String.format(
+                "Failed to delete secrets for query runner config, service [%s], type [%s]",
+                serviceName, configType));
+      }
+    }
+  }
+
+  /**
    * This is used to handle the JWT Token internally, in the JWTFilter, when
    * calling for the auth-mechanism in the UI, etc.
    * If using SM, we need to decrypt and GET the secret to ensure we are comparing
@@ -384,7 +450,8 @@ public abstract class SecretsManager {
                   String fieldValue = (String) obj;
                   // get setMethod
                   Method toSet = ReflectionUtil.getToSetMethod(toDecryptObject, obj, fieldName);
-                  // set new value
+                  // Only Fernet-decrypt. Secret references (secret:/path) are returned as-is
+                  // for the ingestion client to resolve. The server does not fetch secrets.
                   ReflectionUtil.setValueInMethod(
                       toDecryptObject,
                       Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue,
@@ -422,7 +489,7 @@ public abstract class SecretsManager {
                   String fieldValue = (String) obj;
                   // get setMethod
                   Method toSet = ReflectionUtil.getToSetMethod(toDecryptObject, obj, fieldName);
-                  // set new value
+                  // Fetch from SM if it's a secret reference
                   ReflectionUtil.setValueInMethod(
                       toDecryptObject,
                       Boolean.TRUE.equals(isSecret(fieldValue))

@@ -57,6 +57,7 @@ import {
   updateGlossaryTermVotes,
   updateGlossaryVotes,
 } from '../../../rest/glossaryAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
@@ -520,7 +521,7 @@ const GlossaryPage = () => {
         ),
       }}
       hideFirstPanel={isImportAction}
-      pageTitle={t('label.glossary')}
+      pageTitle={getEntityName(activeGlossary)}
       secondPanel={{
         children: glossaryElement,
         className: 'content-resizable-panel-container',
