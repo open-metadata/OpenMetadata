@@ -649,28 +649,44 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
 
     private void deployIfRequired(IngestionPipeline original, IngestionPipeline updated) {
-      if (requiresRedeployment(original, updated)) {
-        LOG.info(
-            "Pipeline '{}' requires redeployment due to configuration changes. Deploying before DB update.",
-            updated.getName());
+      if (!requiresRedeployment(original, updated)) {
+        return;
+      }
 
-        try {
-          deployPipelineBeforeUpdate(updated);
-          LOG.info(
-              "Successfully deployed pipeline '{}'. Proceeding with DB update.", updated.getName());
-        } catch (PipelineServiceClientException e) {
-          LOG.error(
-              "Failed to deploy pipeline '{}' before update. Aborting DB update to maintain consistency.",
-              updated.getName(),
-              e);
-          throw e;
-        } catch (Exception e) {
-          LOG.error(
-              "Unexpected error deploying pipeline '{}' before update. Aborting DB update.",
-              updated.getName(),
-              e);
-          throw new PipelineServiceClientException("Deployment failed. Changes not saved.");
-        }
+      if (!Boolean.TRUE.equals(original.getDeployed())) {
+        LOG.debug(
+            "Pipeline '{}' requires redeployment but was never deployed. Skipping automatic redeployment.",
+            updated.getName());
+        return;
+      }
+
+      if (pipelineServiceClient == null) {
+        LOG.warn(
+            "Pipeline '{}' requires redeployment but pipeline service client is not configured. Skipping deployment.",
+            updated.getName());
+        return;
+      }
+
+      LOG.info(
+          "Pipeline '{}' requires redeployment due to configuration changes. Deploying before DB update.",
+          updated.getName());
+
+      try {
+        deployPipelineBeforeUpdate(updated);
+        LOG.info(
+            "Successfully deployed pipeline '{}'. Proceeding with DB update.", updated.getName());
+      } catch (PipelineServiceClientException e) {
+        LOG.error(
+            "Failed to deploy pipeline '{}' before update. Aborting DB update to maintain consistency.",
+            updated.getName(),
+            e);
+        throw e;
+      } catch (Exception e) {
+        LOG.error(
+            "Unexpected error deploying pipeline '{}' before update. Aborting DB update.",
+            updated.getName(),
+            e);
+        throw new PipelineServiceClientException("Deployment failed. Changes not saved.");
       }
     }
 
