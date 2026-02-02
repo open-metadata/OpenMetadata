@@ -84,7 +84,7 @@ describe('Test Emoji Component', () => {
     expect(tooltip).toBeInTheDocument();
 
     expect(tooltip).toHaveTextContent(
-      `${mockProps.reactionList[0].user.name} message.reacted-with-emoji`
+      `${mockProps.reactionList[0].user.displayName} message.reacted-with-emoji`
     );
   });
 
