@@ -26,6 +26,8 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const COLUMN_BULK_OPERATIONS_URL = '/column-bulk-operations';
 
+const METADATA_STATUS_FILTER_TESTID = 'search-dropdown-Has / Missing Metadata';
+
 async function visitColumnBulkOperationsPage(page: Page) {
   await redirectToHomePage(page);
   const dataRes = page.waitForResponse('/api/v1/columns/grid?size=25');
@@ -107,75 +109,83 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
   });
 
   test('should filter by MISSING metadata status', async ({ page }) => {
-    const metadataStatusButton = page.getByRole('button', {
-      name: 'Metadata Status',
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
+
+    await page.getByTestId('MISSING_DESCRIPTION').click();
+    await page.getByTestId('update-btn').click();
+
+    const metadataStatusChip = page.locator('.filter-selection-chip').filter({
+      has: page.locator('.filter-selection-value', {
+        hasText: /Missing Description|MISSING_DESCRIPTION/,
+      }),
     });
-    await metadataStatusButton.click();
-
-    await page.getByRole('menuitem', { name: 'Missing Description' }).click();
-    await page.getByRole('button', { name: 'Update' }).click();
-
-    await expect(metadataStatusButton).toContainText('Missing Description');
-
-    const metadataStatusChip = page
-      .locator('.filter-selection-chip')
-      .filter({ has: page.locator('.filter-selection-value', { hasText: /Missing Description|MISSING_DESCRIPTION/ }) });
     await expect(metadataStatusChip).toBeVisible();
-    await expect(metadataStatusChip.locator('.filter-selection-label')).toContainText('Metadata');
+    await expect(
+      metadataStatusChip.locator('.filter-selection-label')
+    ).toContainText('Has / Missing Metadata');
   });
 
   test('should filter by Has Description metadata status', async ({ page }) => {
-    const metadataStatusButton = page.getByRole('button', {
-      name: 'Metadata Status',
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
+
+    await page.getByTestId('HAS_DESCRIPTION').click();
+    await page.getByTestId('update-btn').click();
+
+    const metadataStatusChip = page.locator('.filter-selection-chip').filter({
+      has: page.locator('.filter-selection-value', {
+        hasText: /Has Description|HAS_DESCRIPTION/,
+      }),
     });
-    await metadataStatusButton.click();
-
-    await page.getByRole('menuitem', { name: 'Has Description' }).click();
-    await page.getByRole('button', { name: 'Update' }).click();
-
-    await expect(metadataStatusButton).toContainText('Has Description');
-
-    const metadataStatusChip = page
-      .locator('.filter-selection-chip')
-      .filter({ has: page.locator('.filter-selection-value', { hasText: /Has Description|HAS_DESCRIPTION/ }) });
     await expect(metadataStatusChip).toBeVisible();
-    await expect(metadataStatusChip.locator('.filter-selection-label')).toContainText('Metadata');
+    await expect(
+      metadataStatusChip.locator('.filter-selection-label')
+    ).toContainText('Has / Missing Metadata');
   });
 
   test('should filter by Has Tags metadata status', async ({ page }) => {
-    const metadataStatusButton = page.getByRole('button', {
-      name: 'Metadata Status',
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
+
+    await page.getByTestId('HAS_TAGS').click();
+    await page.getByTestId('update-btn').click();
+
+    const metadataStatusChip = page.locator('.filter-selection-chip').filter({
+      has: page.locator('.filter-selection-value', {
+        hasText: /Has Tags|HAS_TAGS/,
+      }),
     });
-    await metadataStatusButton.click();
-
-    await page.getByRole('menuitem', { name: 'Has Tags' }).click();
-    await page.getByRole('button', { name: 'Update' }).click();
-
-    await expect(metadataStatusButton).toContainText('Has Tags');
-
-    const metadataStatusChip = page
-      .locator('.filter-selection-chip')
-      .filter({ has: page.locator('.filter-selection-value', { hasText: /Has Tags|HAS_TAGS/ }) });
     await expect(metadataStatusChip).toBeVisible();
-    await expect(metadataStatusChip.locator('.filter-selection-label')).toContainText('Metadata');
+    await expect(
+      metadataStatusChip.locator('.filter-selection-label')
+    ).toContainText('Has / Missing Metadata');
   });
 
   test('should filter by Has Glossary metadata status', async ({ page }) => {
-    const metadataStatusButton = page.getByRole('button', {
-      name: 'Metadata Status',
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
+
+    await page.getByTestId('HAS_GLOSSARY').click();
+    await page.getByTestId('update-btn').click();
+
+    const metadataStatusChip = page.locator('.filter-selection-chip').filter({
+      has: page.locator('.filter-selection-value', {
+        hasText: /Has Glossary|HAS_GLOSSARY/,
+      }),
     });
-    await metadataStatusButton.click();
-
-    await page.getByRole('menuitem', { name: 'Has Glossary' }).click();
-    await page.getByRole('button', { name: 'Update' }).click();
-
-    await expect(metadataStatusButton).toContainText('Has Glossary');
-
-    const metadataStatusChip = page
-      .locator('.filter-selection-chip')
-      .filter({ has: page.locator('.filter-selection-value', { hasText: /Has Glossary|HAS_GLOSSARY/ }) });
     await expect(metadataStatusChip).toBeVisible();
-    await expect(metadataStatusChip.locator('.filter-selection-label')).toContainText('Metadata');
+    await expect(
+      metadataStatusChip.locator('.filter-selection-label')
+    ).toContainText('Has / Missing Metadata');
   });
 
   test('should make API call when filtering by metadata status', async ({
@@ -188,13 +198,13 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
       { timeout: 10000 }
     );
 
-    const metadataStatusButton = page.getByRole('button', {
-      name: 'Metadata Status',
-    });
-    await metadataStatusButton.click();
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
 
-    await page.getByRole('menuitem', { name: 'Missing Description' }).click();
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('MISSING_DESCRIPTION').click();
+    await page.getByTestId('update-btn').click();
 
     const apiRequest = await apiCallPromise;
     expect(apiRequest.url()).toContain('metadataStatus=MISSING_DESCRIPTION');
@@ -566,23 +576,16 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     const displayNameInput = drawer.getByPlaceholder('Display Name');
     await displayNameInput.fill(uniqueDisplayName);
 
-    // Wait for API response
-    const responsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/columns/bulk-update-async') &&
-        response.status() === 200,
-      { timeout: 15000 }
-    );
-
     // Click update button
     const updateButton = drawer.getByRole('button', { name: 'Update' });
     await updateButton.click();
 
-    // Wait for API response
-    await responsePromise;
+    await waitForAllLoadersToDisappear(page);
 
-    // Verify success toast appears
-    await expect(page.getByText(/bulk update initiated/i)).toBeVisible({
+    // Verify success toast appears (shown after update completes)
+    await expect(
+      page.getByText(/bulk update (initiated|completed)/i)
+    ).toBeVisible({
       timeout: 10000,
     });
   });
@@ -1073,21 +1076,23 @@ test.describe('Column Bulk Operations - Combined Filters', () => {
     });
 
     // Apply Metadata Status filter
-    const metadataStatusButton = page.getByRole('button', {
-      name: 'Metadata Status',
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
+
+    await page.getByTestId('MISSING_DESCRIPTION').click();
+    await page.getByTestId('update-btn').click();
+
+    const metadataStatusChip = page.locator('.filter-selection-chip').filter({
+      has: page.locator('.filter-selection-value', {
+        hasText: /Missing Description|MISSING_DESCRIPTION/,
+      }),
     });
-    await metadataStatusButton.click();
-
-    await page.getByRole('menuitem', { name: 'Missing Description' }).click();
-    await page.getByRole('button', { name: 'Update' }).click();
-
-    await expect(metadataStatusButton).toContainText('Missing Description');
-
-    const metadataStatusChip = page
-      .locator('.filter-selection-chip')
-      .filter({ has: page.locator('.filter-selection-value', { hasText: /Missing Description|MISSING_DESCRIPTION/ }) });
     await expect(metadataStatusChip).toBeVisible();
-    await expect(metadataStatusChip.locator('.filter-selection-label')).toContainText('Metadata');
+    await expect(
+      metadataStatusChip.locator('.filter-selection-label')
+    ).toContainText('Has / Missing Metadata');
   });
 
   test('should clear individual filters', async ({ page }) => {
@@ -1097,26 +1102,30 @@ test.describe('Column Bulk Operations - Combined Filters', () => {
     await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
-    const metadataStatusButton = page.getByRole('button', {
-      name: 'Metadata Status',
-    });
-    await expect(metadataStatusButton).toContainText('Missing Description');
-
     const metadataStatusChipBefore = page
       .locator('.filter-selection-chip')
-      .filter({ has: page.locator('.filter-selection-value', { hasText: /Missing Description|MISSING_DESCRIPTION/ }) });
+      .filter({
+        has: page.locator('.filter-selection-value', {
+          hasText: /Missing Description|MISSING_DESCRIPTION/,
+        }),
+      });
     await expect(metadataStatusChipBefore).toBeVisible();
 
-    await metadataStatusButton.click();
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
 
-    await page.getByRole('menuitem', { name: 'Missing Description' }).click();
-    await page.getByRole('button', { name: 'Update' }).click();
-
-    await expect(metadataStatusButton).not.toContainText('Missing Description');
+    await page.getByTestId('MISSING_DESCRIPTION').click();
+    await page.getByTestId('update-btn').click();
 
     const metadataStatusChipAfter = page
       .locator('.filter-selection-chip')
-      .filter({ has: page.locator('.filter-selection-value', { hasText: /Missing Description|MISSING_DESCRIPTION/ }) });
+      .filter({
+        has: page.locator('.filter-selection-value', {
+          hasText: /Missing Description|MISSING_DESCRIPTION/,
+        }),
+      });
     await expect(metadataStatusChipAfter).not.toBeVisible();
 
     const url = page.url();
@@ -1130,16 +1139,15 @@ test.describe('Column Bulk Operations - URL State Persistence', () => {
     await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
-    const metadataStatusButton = page.getByRole('button', {
-      name: /Metadata Status/,
+    const metadataStatusChip = page.locator('.filter-selection-chip').filter({
+      has: page.locator('.filter-selection-value', {
+        hasText: /Has Tags|HAS_TAGS/,
+      }),
     });
-    await expect(metadataStatusButton).toContainText('Has Tags');
-
-    const metadataStatusChip = page
-      .locator('.filter-selection-chip')
-      .filter({ has: page.locator('.filter-selection-value', { hasText: /Has Tags|HAS_TAGS/ }) });
     await expect(metadataStatusChip).toBeVisible();
-    await expect(metadataStatusChip.locator('.filter-selection-label')).toContainText('Metadata');
+    await expect(
+      metadataStatusChip.locator('.filter-selection-label')
+    ).toContainText('Has / Missing Metadata');
   });
 
   test('should persist search query in URL', async ({ page }) => {
@@ -1283,16 +1291,24 @@ test.describe('Column Bulk Operations - Service Filter', () => {
     page,
   }) => {
     await page.goto(
-      `${COLUMN_BULK_OPERATIONS_URL}?service.displayName.keyword=${encodeURIComponent('sample_data')}`
+      `${COLUMN_BULK_OPERATIONS_URL}?service.displayName.keyword=${encodeURIComponent(
+        'sample_data'
+      )}`
     );
     await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
     const serviceChip = page
       .locator('.filter-selection-chip')
-      .filter({ has: page.locator('.filter-selection-value', { hasText: 'sample_data' }) });
+      .filter({
+        has: page.locator('.filter-selection-value', {
+          hasText: 'sample_data',
+        }),
+      });
     await expect(serviceChip).toBeVisible();
-    await expect(serviceChip.locator('.filter-selection-label')).toContainText('Service');
+    await expect(serviceChip.locator('.filter-selection-label')).toContainText(
+      'Service'
+    );
   });
 
   test('should have filter bar with search and filter options', async ({
@@ -1309,9 +1325,9 @@ test.describe('Column Bulk Operations - Service Filter', () => {
     await expect(assetTypeFilter).toBeVisible();
 
     // Check that Metadata Status filter is visible
-    const metadataStatusFilter = page.getByRole('button', {
-      name: /metadata status/i,
-    });
+    const metadataStatusFilter = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
     await expect(metadataStatusFilter).toBeVisible();
 
     // The Service filter is part of quick filters and may not always be visible
@@ -2265,17 +2281,16 @@ test.describe('Column Bulk Operations - Empty/Edge Values', () => {
 
   test('should handle column with no existing metadata', async ({ page }) => {
     // Filter by MISSING metadata status to find columns without metadata
-    const metadataStatusButton = page.getByRole('button', {
-      name: /metadata status/i,
-    });
-    await metadataStatusButton.click();
-
-    const missingOption = page.locator(
-      '[title="Missing Description"], [data-testid="Missing Description"]'
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
     );
+    await metadataStatusTrigger.click();
+
+    const missingOption = page.getByTestId('MISSING_DESCRIPTION');
 
     if ((await missingOption.count()) > 0) {
       await missingOption.click();
+      await page.getByTestId('update-btn').click();
 
       // Select first column (should have no metadata)
       const firstCheckbox = page
@@ -2380,9 +2395,9 @@ test.describe('Column Bulk Operations - Filter Edge Cases', () => {
 
   test('should allow interacting with filters', async ({ page }) => {
     // Verify filter buttons exist
-    const metadataStatusButton = page.getByRole('button', {
-      name: /metadata status/i,
-    });
+    const metadataStatusButton = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
     const assetTypeButton = page.getByRole('button', { name: /asset type/i });
 
     // At least one filter button should be visible
@@ -2427,16 +2442,18 @@ test.describe('Column Bulk Operations - Filter Edge Cases', () => {
     await searchColumn(page, 'id');
 
     // Apply metadata filter
-    const metadataStatusButton = page.getByRole('button', {
-      name: /metadata status/i,
-    });
-    await metadataStatusButton.click();
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
     await page.waitForTimeout(300);
 
-    const option = page.locator('[title="Has Tags"], [data-testid="Has Tags"]');
+    const option = page.getByTestId('HAS_TAGS');
 
     if ((await option.count()) > 0) {
       await option.click();
+      await page.getByTestId('update-btn').click();
+      await waitForAllLoadersToDisappear(page);
     }
 
     // Grid should show results (or empty state if no matches)
