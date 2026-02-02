@@ -603,6 +603,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               <IncidentManagerDetailPage />
             </AdminProtectedRoute>
           }
+          key={route}
           path={route}
         />
       ))}

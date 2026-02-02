@@ -13,7 +13,6 @@
 
 import { removeSession } from '@analytics/session-utils';
 import { Auth0Provider } from '@auth0/auth0-react';
-
 import {
   Configuration,
   IPublicClientApplication,
