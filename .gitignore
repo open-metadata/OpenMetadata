@@ -182,3 +182,6 @@ hive-mind-prompt-*.txt
 .claude-flow/
 docs
 memory
+.claude/agents
+ingestion/.claude/agents
+
