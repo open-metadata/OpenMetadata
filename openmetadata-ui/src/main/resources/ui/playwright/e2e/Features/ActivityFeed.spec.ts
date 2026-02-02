@@ -103,23 +103,6 @@ test.describe('FeedWidget on landing page', () => {
     }
   );
 
-  test.afterAll(
-    'cleanup: delete entities, users, and persona',
-    async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      try {
-        await entity.delete(apiContext);
-        await extraEntity.delete(apiContext);
-        await user1.delete(apiContext);
-        await testPersona.delete(apiContext);
-        await adminUser.delete(apiContext);
-      } finally {
-        await afterAction();
-      }
-    }
-  );
-
   test.beforeEach(async ({ page }) => {
     await adminUser.login(page);
     await redirectToHomePage(page);
@@ -691,19 +674,6 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
           type: 'Conversation',
         },
       });
-
-      await afterAction();
-    }
-  );
-
-  test.afterAll(
-    'Cleanup: delete database and apiEndpoint',
-    async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      await database.delete(apiContext);
-      await apiEndpoint.delete(apiContext);
-      await adminUser.delete(apiContext);
 
       await afterAction();
     }
