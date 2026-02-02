@@ -333,8 +333,8 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
     if (lineageGraphBuilder == null) {
-      throw new IllegalStateException(
-          "LineageGraphBuilder not initialized. Ensure Phase 2 initialization has completed.");
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
     }
     return lineageGraphBuilder.searchLineage(lineageRequest);
   }
@@ -354,8 +354,8 @@ public class ElasticSearchClient implements SearchClient {
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
     if (lineageGraphBuilder == null) {
-      throw new IllegalStateException(
-          "LineageGraphBuilder not initialized. Ensure Phase 2 initialization has completed.");
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
     }
     return lineageGraphBuilder.searchLineageWithDirection(lineageRequest);
   }
@@ -370,8 +370,8 @@ public class ElasticSearchClient implements SearchClient {
       String entityType)
       throws IOException {
     if (lineageGraphBuilder == null) {
-      throw new IllegalStateException(
-          "LineageGraphBuilder not initialized. Ensure Phase 2 initialization has completed.");
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
     }
     return lineageGraphBuilder.getLineagePaginationInfo(
         fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
@@ -381,8 +381,8 @@ public class ElasticSearchClient implements SearchClient {
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
     if (lineageGraphBuilder == null) {
-      throw new IllegalStateException(
-          "LineageGraphBuilder not initialized. Ensure Phase 2 initialization has completed.");
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
     }
     return lineageGraphBuilder.searchLineageByEntityCount(request);
   }
@@ -391,8 +391,8 @@ public class ElasticSearchClient implements SearchClient {
   public SearchLineageResult searchPlatformLineage(
       String index, String queryFilter, boolean deleted) throws IOException {
     if (lineageGraphBuilder == null) {
-      throw new IllegalStateException(
-          "LineageGraphBuilder not initialized. Ensure Phase 2 initialization has completed.");
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
     }
     return lineageGraphBuilder.getPlatformLineage(index, queryFilter, deleted);
   }
