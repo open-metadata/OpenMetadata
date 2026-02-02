@@ -14,6 +14,10 @@
  * Generate JWT Token Request.
  */
 export interface GenerateToken {
+    /**
+     * User ID for which to generate the token.
+     */
+    id?:            string;
     JWTTokenExpiry: JWTTokenExpiry;
 }
 

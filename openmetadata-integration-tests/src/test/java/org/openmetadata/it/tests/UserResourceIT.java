@@ -2077,6 +2077,90 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertFalse(user.getIsAdmin() != null && user.getIsAdmin());
   }
 
+  // ===================================================================
+  // TOKEN GENERATION TESTS
+  // ===================================================================
+
+  @Test
+  void test_generateToken_adminForBotUser_200_ok(TestNamespace ns) {
+    // Create a bot user
+    String botName = ns.prefix("tokenTestBot");
+    org.openmetadata.schema.entity.teams.AuthenticationMechanism authMechanism =
+        new org.openmetadata.schema.entity.teams.AuthenticationMechanism()
+            .withAuthType(org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(botName)
+            .withEmail(toValidEmail(botName))
+            .withIsBot(true)
+            .withAuthenticationMechanism(authMechanism)
+            .withDescription("Bot user for token generation test");
+
+    User botUser = createEntity(createRequest);
+    assertTrue(botUser.getIsBot());
+
+    // Admin generates token for bot user
+    JWTAuthMechanism jwtAuth =
+        SdkClients.adminClient().users().generateToken(botUser.getId(), JWTTokenExpiry.Seven);
+    assertNotNull(jwtAuth);
+    assertNotNull(jwtAuth.getJWTToken());
+  }
+
+  @Test
+  void test_generateToken_nonAdminForBotUser_forbidden(TestNamespace ns) {
+    // Create a bot user
+    String botName = ns.prefix("tokenTestBot2");
+    org.openmetadata.schema.entity.teams.AuthenticationMechanism authMechanism =
+        new org.openmetadata.schema.entity.teams.AuthenticationMechanism()
+            .withAuthType(org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(botName)
+            .withEmail(toValidEmail(botName))
+            .withIsBot(true)
+            .withAuthenticationMechanism(authMechanism)
+            .withDescription("Bot user for forbidden token test");
+
+    User botUser = createEntity(createRequest);
+    assertTrue(botUser.getIsBot());
+
+    // Non-admin user should NOT be able to generate token for bot user (no EDIT permission)
+    assertThrows(
+        Exception.class,
+        () ->
+            SdkClients.testUserClient()
+                .users()
+                .generateToken(botUser.getId(), JWTTokenExpiry.Seven),
+        "Non-admin user without EDIT permission should not be able to generate token for bot user");
+  }
+
+  @Test
+  void test_generateToken_forRegularUser_forbidden(TestNamespace ns) {
+    // Create a regular user
+    String userName = ns.prefix("regularTokenUser");
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(toValidEmail(userName))
+            .withDescription("Regular user for token test");
+
+    User regularUser = createEntity(createRequest);
+    assertFalse(regularUser.getIsBot() != null && regularUser.getIsBot());
+
+    // Admin should NOT be able to generate token for regular user (prevents impersonation)
+    assertThrows(
+        Exception.class,
+        () ->
+            SdkClients.adminClient()
+                .users()
+                .generateToken(regularUser.getId(), JWTTokenExpiry.Seven),
+        "Admin should not be able to generate token for regular user");
+  }
+
   @Test
   void testUserContextCachePerformance(TestNamespace ns) throws HttpResponseException {
     // Create a test user with multiple roles and teams to properly test cache performance

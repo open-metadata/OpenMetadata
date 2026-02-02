@@ -21,7 +21,7 @@ import {
 } from '../generated/api/teams/createUser';
 import { PersonalAccessToken } from '../generated/auth/personalAccessToken';
 import { Bot } from '../generated/entity/bot';
-import { User } from '../generated/entity/teams/user';
+import { JWTTokenExpiry, User } from '../generated/entity/teams/user';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -59,7 +59,7 @@ export const getOnlineUsers = async (params: OnlineUsersQueryParams) => {
     '/users/online',
     {
       params,
-    }
+    },
   );
 
   return response.data;
@@ -68,7 +68,7 @@ export const getOnlineUsers = async (params: OnlineUsersQueryParams) => {
 export const updateUserDetail = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<Operation[], AxiosResponse<User>>(
     `/users/${id}`,
-    data
+    data,
   );
 
   return response.data;
@@ -77,7 +77,7 @@ export const updateUserDetail = async (id: string, data: Operation[]) => {
 export const getUserByName = async (name: string, params?: ListParams) => {
   const response = await APIClient.get<User>(
     `/users/name/${getEncodedFqn(name)}`,
-    { params }
+    { params },
   );
 
   return response.data;
@@ -98,7 +98,7 @@ export const getLoggedInUser = async (params?: ListParams) => {
 export const createUser = async (userDetails: CreateUser) => {
   const response = await APIClient.post<CreateUser, AxiosResponse<User>>(
     `/users`,
-    userDetails
+    userDetails,
   );
 
   return response.data;
@@ -107,7 +107,7 @@ export const createUser = async (userDetails: CreateUser) => {
 export const restoreUser = async (id: string) => {
   const response = await APIClient.put<RestoreRequestType, AxiosResponse<User>>(
     `/users/restore`,
-    { id }
+    { id },
   );
 
   return response.data;
@@ -116,15 +116,34 @@ export const restoreUser = async (id: string) => {
 export const revokeUserToken = async (id: string) => {
   const response = await APIClient.put<{ id: string }, AxiosResponse<User>>(
     '/users/revokeToken',
-    { id }
+    { id },
   );
+
+  return response.data;
+};
+
+/**
+ * Request interface for generating user JWT tokens via POST /users/generateToken.
+ * Note: While the JSON schema has `id` as optional for backward compatibility with
+ * the PUT endpoint, the POST endpoint requires the `id` field.
+ */
+export interface GenerateTokenRequest {
+  id: string;
+  JWTTokenExpiry: JWTTokenExpiry;
+}
+
+export const generateUserToken = async (request: GenerateTokenRequest) => {
+  const response = await APIClient.post<
+    GenerateTokenRequest,
+    AxiosResponse<AuthenticationMechanism['config']>
+  >('/users/generateToken', request);
 
   return response.data;
 };
 
 export const getAuthMechanismForBotUser = async (botId: string) => {
   const response = await APIClient.get<AuthenticationMechanism>(
-    `/users/auth-mechanism/${botId}`
+    `/users/auth-mechanism/${botId}`,
   );
 
   return response.data;
@@ -133,7 +152,7 @@ export const getAuthMechanismForBotUser = async (botId: string) => {
 export const getBotByName = async (name: string, params?: ListParams) => {
   const response = await APIClient.get<Bot>(
     `/bots/name/${getEncodedFqn(name)}`,
-    { params }
+    { params },
   );
 
   return response.data;
@@ -142,7 +161,7 @@ export const getBotByName = async (name: string, params?: ListParams) => {
 export const updateBotDetail = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<Operation[], AxiosResponse<Bot>>(
     `/bots/${id}`,
-    data
+    data,
   );
 
   return response.data;
@@ -151,7 +170,7 @@ export const updateBotDetail = async (id: string, data: Operation[]) => {
 export const createUserWithPut = async (userDetails: CreateUser) => {
   const response = await APIClient.put<CreateUser, AxiosResponse<User>>(
     `/users`,
-    userDetails
+    userDetails,
   );
 
   return response.data;
@@ -188,7 +207,7 @@ export const updateUserAccessToken = async ({
 
 export const revokeAccessToken = async (params: string) => {
   const response = await APIClient.put<PersonalAccessToken[]>(
-    '/users/security/token/revoke?' + params
+    '/users/security/token/revoke?' + params,
   );
 
   return response.data;
