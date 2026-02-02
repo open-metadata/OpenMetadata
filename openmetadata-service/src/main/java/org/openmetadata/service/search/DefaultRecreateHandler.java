@@ -88,34 +88,6 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           }
         }
 
-        // Before swapping aliases, delete any old indices whose names conflict with aliases
-        // This is necessary because Elasticsearch/OpenSearch doesn't allow an alias with the
-        // same name as an existing index
-        Set<String> conflictingIndices = new HashSet<>();
-        for (String oldIndex : oldIndicesToDelete) {
-          if (aliasesToAttach.contains(oldIndex)) {
-            conflictingIndices.add(oldIndex);
-          }
-        }
-        for (String conflictingIndex : conflictingIndices) {
-          try {
-            if (searchClient.indexExists(conflictingIndex)) {
-              searchClient.deleteIndexWithBackoff(conflictingIndex);
-              LOG.info(
-                  "Deleted conflicting index '{}' before alias swap for entity '{}'.",
-                  conflictingIndex,
-                  entityType);
-              oldIndicesToDelete.remove(conflictingIndex);
-            }
-          } catch (Exception deleteEx) {
-            LOG.error(
-                "Failed to delete conflicting index '{}' for entity '{}'. Alias swap may fail.",
-                conflictingIndex,
-                entityType,
-                deleteEx);
-          }
-        }
-
         // Atomically swap aliases from old indices to staged index
         // This ensures zero-downtime: aliases point to new index before old ones are deleted
         if (!aliasesToAttach.isEmpty()) {
@@ -220,34 +192,6 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       for (String oldIndex : allEntityIndices) {
         if (!oldIndex.equals(stagedIndex)) {
           oldIndicesToDelete.add(oldIndex);
-        }
-      }
-
-      // Before swapping aliases, delete any old indices whose names conflict with aliases
-      // This is necessary because Elasticsearch/OpenSearch doesn't allow an alias with the
-      // same name as an existing index
-      Set<String> conflictingIndices = new HashSet<>();
-      for (String oldIndex : oldIndicesToDelete) {
-        if (aliasesToAttach.contains(oldIndex)) {
-          conflictingIndices.add(oldIndex);
-        }
-      }
-      for (String conflictingIndex : conflictingIndices) {
-        try {
-          if (searchClient.indexExists(conflictingIndex)) {
-            searchClient.deleteIndexWithBackoff(conflictingIndex);
-            LOG.info(
-                "Deleted conflicting index '{}' before alias swap for entity '{}'.",
-                conflictingIndex,
-                entityType);
-            oldIndicesToDelete.remove(conflictingIndex);
-          }
-        } catch (Exception deleteEx) {
-          LOG.error(
-              "Failed to delete conflicting index '{}' for entity '{}'. Alias swap may fail.",
-              conflictingIndex,
-              entityType,
-              deleteEx);
         }
       }
 
