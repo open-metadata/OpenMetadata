@@ -28,6 +28,9 @@ import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.findColumnWithChildren;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 
@@ -355,7 +358,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     for (String owner : owners) {
       List<String> ownerTypes = listOrEmpty(fieldToEntities(owner));
       if (ownerTypes.size() != 2) {
-        importFailure(printer, invalidMessageCreator.apply(fieldNumber), csvRecord);
+        deferredFailure(csvRecord, invalidMessageCreator.apply(fieldNumber));
         return Collections.emptyList();
       }
       EntityReference ownerRef =
@@ -423,8 +426,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (field.equals(Boolean.FALSE.toString())) {
       return false;
     }
-    importFailure(printer, invalidBoolean(fieldNumber, field), csvRecord);
-    processRecord = false;
+    deferredFailure(csvRecord, invalidBoolean(fieldNumber, field));
     return false;
   }
 
@@ -456,8 +458,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     EntityInterface entity = getEntityByName(entityType, fqn);
     if (entity == null) {
-      importFailure(printer, entityNotFound(fieldNumber, entityType, fqn), csvRecord);
-      processRecord = false;
+      deferredFailure(csvRecord, entityNotFound(fieldNumber, entityType, fqn));
       return null;
     }
     return entity.getEntityReference();
@@ -502,8 +503,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     for (String fqn : fqnList) {
       EntityInterface entity = getEntityByName(Entity.GLOSSARY_TERM, fqn);
       if (entity == null) {
-        importFailure(printer, entityNotFound(fieldNumber, Entity.GLOSSARY_TERM, fqn), csvRecord);
-        processRecord = false;
+        deferredFailure(csvRecord, entityNotFound(fieldNumber, Entity.GLOSSARY_TERM, fqn));
         return null;
       }
 
@@ -515,15 +515,13 @@ public abstract class EntityCsv<T extends EntityInterface> {
             "[VALIDATION] VALIDATION FAILED! Term '{}' status is {} not APPROVED",
             fqn,
             term.getEntityStatus());
-        importFailure(
-            printer,
+        deferredFailure(
+            csvRecord,
             invalidField(
                 fieldNumber,
                 String.format(
                     "Glossary term '%s' must have APPROVED status to be linked. Current status: %s",
-                    fqn, term.getEntityStatus())),
-            csvRecord);
-        processRecord = false;
+                    fqn, term.getEntityStatus())));
         return null;
       }
       refs.add(entity.getEntityReference());
@@ -554,6 +552,19 @@ public abstract class EntityCsv<T extends EntityInterface> {
         }
       }
     }
+
+    // Validate tag mutual exclusivity for dry run to match actual import validation
+    if (Boolean.TRUE.equals(importResult.getDryRun()) && !nullOrEmpty(tagLabels)) {
+      try {
+        List<TagLabel> derivedTags = addDerivedTags(tagLabels);
+        checkMutuallyExclusive(derivedTags);
+        checkDisabledTags(derivedTags);
+      } catch (IllegalArgumentException ex) {
+        deferredFailure(csvRecord, ex.getMessage());
+        return null;
+      }
+    }
+
     return tagLabels;
   }
 
@@ -584,18 +595,18 @@ public abstract class EntityCsv<T extends EntityInterface> {
       int separatorIndex = extensions.indexOf(ENTITY_TYPE_SEPARATOR);
 
       if (separatorIndex == -1) {
-        importFailure(printer, invalidExtension(fieldNumber, extensions, "null"), csvRecord);
-        continue;
+        deferredFailure(csvRecord, invalidExtension(fieldNumber, extensions, "null"));
+        return null;
       }
 
       String key = extensions.substring(0, separatorIndex);
       String value = extensions.substring(separatorIndex + 1);
 
       if (key.isEmpty() || value.isEmpty()) {
-        importFailure(printer, invalidExtension(fieldNumber, key, value), csvRecord);
-      } else {
-        extensionMap.put(key, value);
+        deferredFailure(csvRecord, invalidExtension(fieldNumber, key, value));
+        return null;
       }
+      extensionMap.put(key, value);
     }
 
     validateExtension(printer, fieldNumber, csvRecord, extensionMap);
@@ -611,7 +622,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
       Schema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
       if (jsonSchema == null) {
-        importFailure(printer, invalidCustomPropertyKey(fieldNumber, fieldName), csvRecord);
+        deferredFailure(csvRecord, invalidCustomPropertyKey(fieldNumber, fieldName));
         return;
       }
       String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
@@ -720,10 +731,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
         default -> throw new IllegalStateException("Unexpected value: " + fieldType);
       };
     } catch (DateTimeParseException e) {
-      importFailure(
-          printer,
-          invalidCustomPropertyFieldFormat(fieldNumber, fieldName, fieldType, propertyConfig),
-          csvRecord);
+      deferredFailure(
+          csvRecord,
+          invalidCustomPropertyFieldFormat(fieldNumber, fieldName, fieldType, propertyConfig));
       return null;
     }
   }
@@ -738,18 +748,16 @@ public abstract class EntityCsv<T extends EntityInterface> {
         timestampMap.put("start", Long.parseLong(timestampValues.get(0)));
         timestampMap.put("end", Long.parseLong(timestampValues.get(1)));
       } catch (NumberFormatException e) {
-        importFailure(
-            printer,
+        deferredFailure(
+            csvRecord,
             invalidCustomPropertyValue(
-                fieldNumber, fieldName, "timeInterval", fieldValue.toString()),
-            csvRecord);
+                fieldNumber, fieldName, "timeInterval", fieldValue.toString()));
         return null;
       }
     } else {
-      importFailure(
-          printer,
-          invalidCustomPropertyFieldFormat(fieldNumber, fieldName, "timeInterval", "start:end"),
-          csvRecord);
+      deferredFailure(
+          csvRecord,
+          invalidCustomPropertyFieldFormat(fieldNumber, fieldName, "timeInterval", "start:end"));
       return null;
     }
     return timestampMap;
@@ -766,11 +774,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
     try {
       return Long.parseLong(fieldValue.toString());
     } catch (NumberFormatException e) {
-      importFailure(
-          printer,
+      deferredFailure(
+          csvRecord,
           invalidCustomPropertyValue(
-              fieldNumber, fieldName, customPropertyType, fieldValue.toString()),
-          csvRecord);
+              fieldNumber, fieldName, customPropertyType, fieldValue.toString()));
       return null;
     }
   }
@@ -795,14 +802,13 @@ public abstract class EntityCsv<T extends EntityInterface> {
       Iterator<String> valueIterator = columns.iterator();
 
       if (columns.size() > tableConfig.getColumns().size()) {
-        importFailure(
-            printer,
+        deferredFailure(
+            csvRecord,
             invalidCustomPropertyValue(
                 fieldNumber,
                 fieldName,
                 "table",
-                "Column count should be less than or equal to " + tableConfig.getColumns().size()),
-            csvRecord);
+                "Column count should be less than or equal to " + tableConfig.getColumns().size()));
         return null;
       }
 
@@ -832,10 +838,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     try {
       EntityRepository.validateEnumKeys(fieldName, JsonUtils.valueToTree(enumKeys), propertyConfig);
     } catch (Exception e) {
-      importFailure(
-          printer,
-          invalidCustomPropertyValue(fieldNumber, fieldName, customPropertyType, e.getMessage()),
-          csvRecord);
+      deferredFailure(
+          csvRecord,
+          invalidCustomPropertyValue(fieldNumber, fieldName, customPropertyType, e.getMessage()));
     }
     return enumKeys.isEmpty() ? null : enumKeys;
   }
@@ -855,11 +860,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
       List<Error> validationMessages = jsonSchema.validate(jsonNodeValue);
       if (!validationMessages.isEmpty()) {
-        importFailure(
-            printer,
+        deferredFailure(
+            csvRecord,
             invalidCustomPropertyValue(
-                fieldNumber, fieldName, customPropertyType, validationMessages.toString()),
-            csvRecord);
+                fieldNumber, fieldName, customPropertyType, validationMessages.toString()));
       } else {
         extensionMap.put(fieldName, fieldValue);
       }
@@ -995,8 +999,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     CSVRecord csvRecord = csvRecords.get(recordIndex++);
     // Every row must have total fields corresponding to the number of headers
     if (csvHeaders.size() != csvRecord.size()) {
-      importFailure(
-          resultsPrinter, invalidFieldCount(expectedHeaders.size(), csvRecord.size()), csvRecord);
+      deferredFailure(csvRecord, invalidFieldCount(expectedHeaders.size(), csvRecord.size()));
       return null;
     }
 
@@ -1974,7 +1977,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
                     .withFullyQualifiedName(
                         table.getFullyQualifiedName() + Entity.SEPARATOR + parentFqn);
           } else {
-            importFailure(printer, "Parent column not found: " + parentFqn, csvRecord);
+            deferredFailure(csvRecord, "Parent column not found: " + parentFqn);
             return;
           }
         }
@@ -2118,6 +2121,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
     printer.printRecord(recordList);
     importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
     importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
+  }
+
+  /** Helper method for deferred error handling to maintain CSV record ordering */
+  private void deferredFailure(CSVRecord csvRecord, String errorMessage) {
+    pendingCsvResults.put(csvRecord, errorMessage);
+    importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+    importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
+    importResult.setStatus(ApiStatus.FAILURE);
+    processRecord = false;
   }
 
   protected void importFailure(CSVPrinter printer, String failedReason, CSVRecord inputRecord)

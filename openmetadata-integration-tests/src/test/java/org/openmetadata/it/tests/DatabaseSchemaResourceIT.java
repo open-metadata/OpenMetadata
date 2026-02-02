@@ -1400,6 +1400,107 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   }
 
   /**
+   * Test that importing a schema with mutually exclusive tags in dry run mode fails with
+   * appropriate error message.
+   */
+  @Test
+  void test_importCsv_mutualExclusivityTags_dryRun_fails(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database = createDatabase(ns, service);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("mutualExclusiveTagsSchema"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = createEntity(createSchema);
+
+    // Create classification with mutually exclusive tags
+    org.openmetadata.schema.api.classification.CreateClassification createClassification =
+        new org.openmetadata.schema.api.classification.CreateClassification()
+            .withName(ns.prefix("mutuallyExclusiveClassification"))
+            .withMutuallyExclusive(true)
+            .withDescription("Classification with mutually exclusive tags for CSV test");
+    org.openmetadata.schema.entity.classification.Classification classification =
+        client.classifications().create(createClassification);
+
+    // Create two mutually exclusive tags
+    org.openmetadata.schema.api.classification.CreateTag createTag1 =
+        new org.openmetadata.schema.api.classification.CreateTag()
+            .withName(ns.prefix("exclusiveTag1"))
+            .withClassification(classification.getName())
+            .withDescription("First mutually exclusive tag");
+    org.openmetadata.schema.entity.classification.Tag tag1 = client.tags().create(createTag1);
+
+    org.openmetadata.schema.api.classification.CreateTag createTag2 =
+        new org.openmetadata.schema.api.classification.CreateTag()
+            .withName(ns.prefix("exclusiveTag2"))
+            .withClassification(classification.getName())
+            .withDescription("Second mutually exclusive tag");
+    org.openmetadata.schema.entity.classification.Tag tag2 = client.tags().create(createTag2);
+
+    log.info("TEST: Creating CSV with mutually exclusive tags for dry run import");
+    log.info("TEST: Tag 1 FQN: {}", tag1.getFullyQualifiedName());
+    log.info("TEST: Tag 2 FQN: {}", tag2.getFullyQualifiedName());
+    log.info("TEST: Schema FQN: {}", schema.getFullyQualifiedName());
+
+    // Create CSV with both mutually exclusive tags
+    String csv =
+        "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension\n"
+            + ns.prefix("mutualExclusiveTagsSchema") // field 1: name
+            + ",Test Schema with Mutual Exclusive Tags" // field 2: displayName
+            + ",Schema with mutually exclusive tags test" // field 3: description
+            + ",," // field 4: owner (empty), field 5: tags starts
+            + "\""
+            + tag1.getFullyQualifiedName()
+            + ";"
+            + tag2.getFullyQualifiedName()
+            + "\"" // field 5: tags
+            + "," // field 6: glossaryTerms (empty)
+            + "," // field 7: tiers (empty)
+            + "," // field 8: certification (empty)
+            + "," // field 9: retentionPeriod (empty)
+            + "," // field 10: sourceUrl (empty)
+            + "," // field 11: domains (empty)
+            + "," // field 12: extension (empty)
+            + ""; // End of line
+
+    log.info("TEST: CSV to import in dry run mode:\n{}", csv);
+    log.info("TEST: CSV header field count: {}", csv.split("\n")[0].split(",").length);
+    log.info("TEST: CSV data field count: {}", csv.split("\n")[1].split(",", -1).length);
+
+    // Attempt to import with dry run = true, recursive = false - should fail
+    log.info(
+        "TEST: Attempting CSV import in dry run mode for schema: {}",
+        schema.getFullyQualifiedName());
+    String resultCsv =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), csv, true, false);
+
+    // Log the result for debugging
+    log.info("TEST: CSV Import completed in dry run mode");
+    log.info("TEST: Result CSV: {}", resultCsv);
+    log.info("TEST: Result contains 'failure': {}", resultCsv.contains("failure"));
+    log.info("TEST: Result contains 'exclusive': {}", resultCsv.contains("exclusive"));
+    log.info("TEST: Result contains 'mutually': {}", resultCsv.contains("mutually"));
+
+    assertNotNull(resultCsv);
+    // Verify import failed with mutual exclusivity error
+    assertTrue(
+        resultCsv.contains("failure"),
+        "Dry run import should fail with mutually exclusive tags. Result: " + resultCsv);
+    assertTrue(
+        resultCsv.contains("mutually exclusive") || resultCsv.contains("exclusive"),
+        "Error message should mention mutual exclusivity. Result: " + resultCsv);
+
+    // Verify no changes were made to the schema (dry run behavior)
+    DatabaseSchema unchangedSchema = getEntity(schema.getId().toString());
+    assertNotNull(unchangedSchema);
+    // Schema should not have the problematic tags
+    assertTrue(
+        unchangedSchema.getTags() == null || unchangedSchema.getTags().isEmpty(),
+        "Schema should not have tags applied in dry run mode");
+  }
+
+  /**
    * Test that importing a table with APPROVED glossary terms as tags succeeds.
    */
   @Test
