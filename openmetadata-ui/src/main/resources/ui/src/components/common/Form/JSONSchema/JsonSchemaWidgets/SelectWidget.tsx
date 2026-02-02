@@ -12,6 +12,7 @@
  */
 import { WidgetProps } from '@rjsf/utils';
 import { Select } from 'antd';
+import { capitalize } from 'lodash';
 import { FC } from 'react';
 import { filterSelectOptions } from '../../../../../utils/CommonUtils';
 import { getPopupContainer } from '../../../../../utils/formUtils';
@@ -19,14 +20,10 @@ import TreeSelectWidget from './TreeSelectWidget';
 
 const getDisplayLabel = (
   label: string | number | boolean | null,
-  capitalize: boolean
+  shouldCapitalize: boolean
 ): string | number | boolean | null => {
-  if (!capitalize) {
-    return label;
-  }
-
-  if (typeof label === 'string') {
-    return label.charAt(0).toUpperCase() + label.slice(1);
+  if (shouldCapitalize && typeof label === 'string') {
+    return capitalize(label);
   }
 
   return label;
