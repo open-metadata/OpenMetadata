@@ -159,6 +159,63 @@ await expect(page.getByText("Policy").first()).toBeVisible();
 
 ---
 
+## Test Timeouts
+
+**IMPORTANT**: Use `test.slow()` to handle long-running tests - this is the preferred OpenMetadata pattern.
+
+### ✅ RECOMMENDED: test.slow()
+
+```typescript
+test("complex operation", async ({ page }) => {
+  // Triples the default timeout (from 30s to 90s)
+  test.slow();
+  
+  await test.step("Long running operation", async () => {
+    // Your test logic
+  });
+});
+```
+
+**When to use `test.slow()`:**
+- Tests with multiple API calls
+- Tests that involve file uploads/downloads
+- Tests with complex UI interactions
+- Tests that wait for background processing
+- **This is used 145+ times in the OpenMetadata codebase**
+
+### ⚠️ RARE: test.setTimeout()
+
+```typescript
+test("special case requiring exact timeout", async ({ page }) => {
+  // Only use when you need a specific timeout value
+  test.setTimeout(300_000); // 5 minutes
+  
+  await test.step("Very long operation", async () => {
+    // Your test logic
+  });
+});
+```
+
+**Only use `test.setTimeout()` when:**
+- You need a specific timeout value that doesn't fit the 3x multiplier
+- Extremely long operations like bulk imports or large file processing
+- **This is used only 28 times in the OpenMetadata codebase - use sparingly**
+
+### ❌ AVOID: test.describe.configure()
+
+```typescript
+// AVOID - Don't set timeouts at describe block level
+test.describe.configure({ timeout: 300000 }); // Not recommended
+```
+
+**Why avoid:**
+- Setting timeout at describe level affects ALL tests in the suite
+- Individual tests may need different timeouts
+- Less flexible and harder to maintain
+- Prefer `test.slow()` inside individual tests instead
+
+---
+
 ## Selector Priority
 
 Use selectors in this order (most to least preferred):
@@ -187,7 +244,6 @@ import { uuid } from "../../utils/common";
 const table = new TableClass();
 const user = new UserClass();
 
-test.describe.configure({ timeout: 300000 });
 test.describe(
   "Feature Name - Category",
   { tag: ["@Features", "@Discovery"] },
@@ -222,6 +278,9 @@ test.describe(
     });
 
     test("test scenario description", async ({ page }) => {
+      // Use test.slow() to triple the timeout for slow operations
+      test.slow();
+
       await test.step("Step description", async () => {
         // Setup API response listener BEFORE action
         const updateResponse = page.waitForResponse("/api/v1/endpoint*");
