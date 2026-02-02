@@ -126,6 +126,70 @@
       "default": false
     }
   },
-  "required": ["provider", "providerName", "publicKeyUrls", "authority", "callbackUrl", "clientId", "jwtPrincipalClaims"],
+  "required": ["provider", "providerName", "jwtPrincipalClaims"],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "provider": { "const": "ldap" }
+        }
+      },
+      "then": {
+        "required": ["ldapConfiguration"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "provider": { "const": "saml" }
+        }
+      },
+      "then": {
+        "required": ["samlConfiguration"]
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "properties": {
+              "provider": {
+                "enum": ["google", "azure", "okta", "auth0", "aws-cognito", "custom-oidc"]
+              }
+            }
+          },
+          {
+            "properties": {
+              "clientType": { "const": "public" }
+            }
+          }
+        ]
+      },
+      "then": {
+        "required": ["publicKeyUrls", "authority", "callbackUrl", "clientId"]
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "properties": {
+              "provider": {
+                "enum": ["google", "azure", "okta", "auth0", "aws-cognito", "custom-oidc"]
+              }
+            }
+          },
+          {
+            "properties": {
+              "clientType": { "const": "confidential" }
+            }
+          }
+        ]
+      },
+      "then": {
+        "required": ["authority", "callbackUrl", "clientId", "oidcConfiguration"]
+      }
+    }
+  ],
   "additionalProperties": false
 }

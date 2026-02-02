@@ -6,27 +6,6 @@ slug: /main-concepts/metadata-standard/schemas/security/client/ldap-auth
 
 LDAP authentication enables users to log in with their LDAP directory credentials (Active Directory, OpenLDAP, etc.).
 
-## <span data-id="clientId">Client ID</span>
-
-- **Definition:** Client identifier for the LDAP authentication configuration.
-- **Example:** ldap-client-123
-- **Why it matters:** Used to identify this specific LDAP configuration.
-- **Note:** Optional for LDAP, mainly used for tracking and configuration management
-
-## <span data-id="callbackUrl">Callback URL</span>
-
-- **Definition:** URL where users are redirected after LDAP authentication.
-- **Example:** https://yourapp.company.com/callback
-- **Why it matters:** Defines where users land after successful LDAP authentication.
-- **Note:** Usually your OpenMetadata application URL
-
-## <span data-id="authority">Authority</span>
-
-- **Definition:** Authentication authority URL for the LDAP provider.
-- **Example:** https://yourapp.company.com/auth/ldap
-- **Why it matters:** Specifies the authentication endpoint for LDAP.
-- **Note:** Used by the authentication system to route LDAP requests
-
 ## <span data-id="enableSelfSignup">Enable Self Signup</span>
 
 - **Definition:** Allows users to automatically create accounts on first LDAP login.
@@ -112,63 +91,99 @@ LDAP authentication enables users to log in with their LDAP directory credential
 
 ## <span data-id="roleAdminName">Admin Role Name</span>
 
-- **Definition:** LDAP group name that should have admin privileges.
-- **Example:** OpenMetadata-Admins
-- **Why it matters:** Members of this group get admin access to OpenMetadata.
-- **Note:** Must be an existing LDAP group
+- **Definition:** Special marker used in role mapping to grant admin privileges instead of regular roles.
+- **Example:** Admin
+- **Why it matters:** When this value appears in role mapping, users get admin access instead of the specified role being created.
+- **Note:**
+  - This is NOT an LDAP group name
+  - It's a special string used in the Auth Roles Mapping to indicate admin access
+  - Example: Map `cn=admins,ou=groups,dc=company,dc=com` → `["Admin"]` to grant admin privileges
 
 ## <span data-id="allAttributeName">All Attribute Name</span>
 
-- **Definition:** LDAP attribute that contains all user attributes.
-- **Example:** \* or memberOf
-- **Why it matters:** Used to retrieve comprehensive user information.
-- **Note:** Use "\*" to retrieve all attributes
+- **Definition:** Special wildcard character to retrieve all attributes from LDAP group objects.
+- **Default:** \*
+- **Why it matters:** When searching for user's groups, this determines which attributes are returned.
+- **Note:**
+  - Always use "\*" (asterisk) to retrieve all attributes
+  - This is used internally when querying groups - you rarely need to change this
 
 ## <span data-id="mailAttributeName">Email Attribute Name</span>
 
 - **Definition:** LDAP attribute that contains user email addresses.
-- **Example:** mail or email
-- **Why it matters:** OpenMetadata uses email as the primary user identifier.
-- **Note:** Common values: mail, email, userPrincipalName
-
-## <span data-id="usernameAttributeName">Username Attribute Name</span>
-
-- **Definition:** LDAP attribute that contains the username.
-- **Example:** sAMAccountName or uid
-- **Why it matters:** Specifies which attribute users enter as their username.
-- **Note:**
-  - Active Directory: sAMAccountName or userPrincipalName
-  - OpenLDAP: uid or cn
+- **Example:** mail
+- **Why it matters:** OpenMetadata searches LDAP for users by email and uses this attribute as the primary identifier.
+- **Critical:**
+  - This is the most important LDAP field - if wrong, authentication will fail
+  - The email address determines the OpenMetadata username
+  - Username is automatically derived as the part before @ (e.g., john.doe@company.com → username: john.doe)
+  - **The LDAP CN or UID attribute is NOT used** - only the email matters
+- **Common values:**
+  - Active Directory: `mail`, `userPrincipalName`
+  - OpenLDAP: `mail`, `email`
+- **How to find in phpLDAPadmin:** Open a user object and look for the attribute containing their email address
+- **Validation:** OpenMetadata verifies this attribute exists on actual users before saving
 
 ## <span data-id="groupAttributeName">Group Attribute Name</span>
 
-- **Definition:** LDAP attribute that defines group membership.
-- **Example:** memberOf or member
-- **Why it matters:** Used to determine user's group memberships.
-- **Note:**
-  - memberOf: Groups the user belongs to
-  - member: Users in the group
+- **Definition:** Attribute name used to identify and filter group objects in LDAP.
+- **Example:** objectClass
+- **Why it matters:** Used together with Group Attribute Value to find groups in the Group Base DN.
+- **How it's used:** Creates LDAP filter: `(groupAttributeName=groupAttributeValue)`
+- **Common usage:**
+  - `objectClass` with value `groupOfNames` → finds all groupOfNames objects
+  - `objectClass` with value `groupOfUniqueNames` → finds all groupOfUniqueNames objects
+- **How to find in phpLDAPadmin:**
+  1. Open a group object (e.g., `cn=users,ou=groups,dc=company,dc=com`)
+  2. Look for `objectClass` attribute
+  3. Use `objectClass` as the attribute name
+  4. Use one of its values (e.g., `groupOfNames`) as the attribute value
+- **Validation:** OpenMetadata verifies groups can be found with this filter
 
 ## <span data-id="groupAttributeValue">Group Attribute Value</span>
 
-- **Definition:** Value format for group attribute matching.
-- **Example:** cn or dn
-- **Why it matters:** Determines how group membership is evaluated.
-- **Note:** Depends on your LDAP schema structure
+- **Definition:** Value for the group attribute to identify group objects.
+- **Example:** groupOfNames
+- **Why it matters:** Specifies which type of group objects to search for.
+- **How it's used:** Creates LDAP filter: `(groupAttributeName=groupAttributeValue)`
+  - Example: `(objectClass=groupOfNames)` finds all groupOfNames objects
+- **Common values:**
+  - `groupOfNames` - standard LDAP group type
+  - `groupOfUniqueNames` - LDAP group with unique members
+  - `posixGroup` - Unix/Linux style group
+- **How to find in phpLDAPadmin:**
+  1. Open a group object
+  2. Find the `objectClass` attribute
+  3. Use one of the objectClass values here (e.g., `groupOfNames`)
+- **Validation:** OpenMetadata tests that groups exist with this combination
 
 ## <span data-id="groupMemberAttributeName">Group Member Attribute Name</span>
 
-- **Definition:** Attribute in group objects that lists members.
-- **Example:** member or uniqueMember
-- **Why it matters:** Used when querying group membership from group objects.
-- **Note:** Common values: member, uniqueMember, memberUid
+- **Definition:** Attribute in group objects that lists the members of that group.
+- **Example:** member
+- **Why it matters:** OpenMetadata checks if a user is a member of a group by looking for the user's DN in this attribute.
+- **How it's used:** Creates filter: `(groupMemberAttributeName=userDN)` to find which groups contain the user
+- **Common values by group type:**
+  - `groupOfNames` → use `member`
+  - `groupOfUniqueNames` → use `uniqueMember`
+  - `posixGroup` → use `memberUid` (contains usernames, not full DNs)
+- **How to find in phpLDAPadmin:**
+  1. Open a group object
+  2. Look for attributes containing user DNs or usernames
+  3. The attribute name is what you need (e.g., `member`, `uniqueMember`)
+  4. Example: `member: cn=john,ou=users,dc=company,dc=com` → use `member`
+- **Validation:** OpenMetadata checks this attribute exists on actual group objects
 
 ## <span data-id="authRolesMapping">Auth Roles Mapping</span>
 
-- **Definition:** JSON mapping between LDAP groups and OpenMetadata roles.
-- **Example:** {"LDAP-Admins": "Admin", "LDAP-Users": "User"}
+- **Definition:** Mapping between LDAP groups and OpenMetadata roles.
+- **Example:** Map "cn=admins,ou=groups,dc=company,dc=com" to "Admin" role
 - **Why it matters:** Automatically assigns OpenMetadata roles based on LDAP group membership.
-- **Note:** Use JSON format with LDAP group names as keys
+- **Note:**
+  - Use full LDAP Group Distinguished Names (DN) as keys
+  - Map to existing OpenMetadata role names
+  - Users in mapped LDAP groups will automatically receive the corresponding roles
+  - Validation ensures all mapped roles exist in OpenMetadata
 
 ## <span data-id="authReassignRoles">Auth Reassign Roles</span>
 
@@ -176,6 +191,53 @@ LDAP authentication enables users to log in with their LDAP directory credential
 - **Example:** ["Admin", "DataConsumer"]
 - **Why it matters:** Ensures role assignments stay synchronized with LDAP.
 - **Note:** Leave empty to only assign roles on first login
+
+---
+
+## Authorizer Configuration
+
+The following settings control authorization and access control across OpenMetadata. These settings apply globally to all authentication providers.
+
+### <span data-id="adminPrincipals">Admin Principals</span>
+
+- **Definition:** List of user principals who will have admin access to OpenMetadata.
+- **Example:** ["john.doe", "jane.admin", "admin"]
+- **Why it matters:** These users will have full administrative privileges in OpenMetadata.
+- **Note:**
+  - Use usernames (NOT full email addresses) - these are derived from the email prefix (part before @)
+  - At least one admin principal is required
+  - **Critical:** If a user's email is `john.doe@company.com`, their username will be `john.doe`
+  - The username is NOT derived from LDAP CN or UID attributes - only from the email address
+
+### <span data-id="principalDomain">Principal Domain</span>
+
+- **Definition:** Default domain for user principals.
+- **Example:** company.com
+- **Why it matters:** Used to construct full user principals when only username is provided.
+- **Note:** Typically your organization's domain
+
+### <span data-id="enforcePrincipalDomain">Enforce Principal Domain</span>
+
+- **Definition:** Whether to enforce that all users belong to the principal domain.
+- **Default:** false
+- **Example:** true
+- **Why it matters:** Adds an extra layer of security by restricting access to users from specific domains.
+- **Note:** When enabled, only users from the configured principal domain can access OpenMetadata
+
+### <span data-id="allowedDomains">Allowed Domains</span>
+
+- **Definition:** List of email domains that are permitted to access OpenMetadata.
+- **Example:** ["company.com", "partner.com", "contractor-company.com"]
+- **Why it matters:** Provides fine-grained control over which email domains can authenticate via LDAP.
+- **Note:**
+  - Works in conjunction with `enforcePrincipalDomain`
+  - When `enforcePrincipalDomain` is enabled, only users with email addresses from these domains can access OpenMetadata
+  - Leave empty or use single `principalDomain` if you only have one domain
+  - Use this field for multi-domain organizations (e.g., company.com + partner.com)
+
+---
+
+## Advanced Configuration
 
 ## <span data-id="truststoreFormat">Truststore Format</span>
 
@@ -278,38 +340,3 @@ LDAP authentication enables users to log in with their LDAP directory credential
 - **Example:** ["ldap.company.com", "ldap-backup.company.com"]
 - **Why it matters:** Defines which hostnames are trusted for connections.
 - **Note:** Add all valid LDAP server hostnames
-
-## <span data-id="publicKeyUrls">Public Key URLs</span>
-
-- **Definition:** List of URLs where public keys are published for token verification.
-- **Example:** ["https://yourapp.company.com/.well-known/jwks.json"]
-- **Why it matters:** Used to verify JWT token signatures if LDAP is configured with token-based authentication.
-- **Note:** Usually auto-discovered, rarely needs manual configuration for pure LDAP
-
-## <span data-id="jwtPrincipalClaims">JWT Principal Claims</span>
-
-- **Definition:** JWT claims used to identify the user principal when LDAP is combined with JWT tokens.
-- **Example:** ["preferred_username", "email", "sub"]
-- **Why it matters:** Determines which claim from JWT tokens identifies the LDAP user.
-- **Note:** Only applicable when LDAP authentication generates JWT tokens
-  - Order matters - first matching claim is used
-
-## <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
-
-- **Definition:** Maps JWT claims to OpenMetadata user attributes for LDAP users. (Overrides JWT Principal Claims if set)
-- **Example:** ["email:email", "username:preferred_username"]
-- **Why it matters:** Controls how LDAP user information maps to OpenMetadata user profiles.
-- **Note:** Format: "openmetadata_field:ldap_attribute" or "openmetadata_field:jwt_claim"
-- **Validation Requirements:**
-  - Both `username` and `email` mappings must be present when this field is used
-  - Only `username` and `email` keys are allowed; no other keys are permitted
-  - If validation fails, errors will be displayed on this specific field
-
-## <span data-id="tokenValidationAlgorithm">Token Validation Algorithm</span>
-
-- **Definition:** Algorithm used to validate JWT token signatures when LDAP uses token-based authentication.
-- **Options:** RS256 | RS384 | RS512
-- **Default:** RS256
-- **Example:** RS256
-- **Why it matters:** Must match the algorithm used to sign tokens in hybrid LDAP+JWT setups.
-- **Note:** Only relevant when LDAP authentication generates or validates JWT tokens
