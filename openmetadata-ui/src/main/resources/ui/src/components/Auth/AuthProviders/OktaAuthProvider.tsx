@@ -13,7 +13,13 @@
 
 import { EVENT_RENEWED, OktaAuth, OktaAuthOptions } from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
-import { FunctionComponent, ReactNode, useEffect, useMemo } from 'react';
+import {
+  FunctionComponent,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+} from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { OktaCustomStorage } from '../../../utils/OktaCustomStorage';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
@@ -87,7 +93,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
     };
   }, [oktaAuth]);
 
-  const restoreOriginalUri = async () => {
+  const restoreOriginalUri = useCallback(async () => {
     const idToken = oktaAuth.getIdToken() ?? '';
     const scopes =
       oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
@@ -113,7 +119,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
       console.error('Failed to restore original URI:', error);
       await oktaAuth.signInWithRedirect();
     }
-  };
+  }, [oktaAuth, handleSuccessfulLogin]);
 
   return (
     <Security oktaAuth={oktaAuth} restoreOriginalUri={restoreOriginalUri}>

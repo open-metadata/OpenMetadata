@@ -66,9 +66,9 @@ export class OktaCustomStorage implements StorageProvider {
     return this.memoryCache[key] || null;
   }
 
-  setItem(key: string, value: string): void {
+  async setItem(key: string, value: string): Promise<void> {
     this.memoryCache[key] = value;
-    this.persistToStorage();
+    await this.persistToStorage();
   }
 
   removeItem(key: string): void {
