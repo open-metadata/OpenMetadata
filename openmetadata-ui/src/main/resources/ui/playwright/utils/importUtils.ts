@@ -65,6 +65,8 @@ export const fillTextInputDetails = async (page: Page, text: string) => {
     .locator('.ant-layout-content')
     .getByRole('textbox');
 
+  await expect(textboxLocator).toBeVisible();
+
   await textboxLocator.fill(text);
   await textboxLocator.press('Enter', { delay: 100 });
 };

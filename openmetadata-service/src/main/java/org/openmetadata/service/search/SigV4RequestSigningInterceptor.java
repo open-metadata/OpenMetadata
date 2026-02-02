@@ -87,7 +87,8 @@ public class SigV4RequestSigningInterceptor implements HttpRequestInterceptor {
       String headerName = header.getName().toLowerCase();
       if (!headerName.equals("host")
           && !headerName.equals("content-length")
-          && !headerName.equals("content-type")) {
+          && !headerName.equals("content-type")
+          && !headerName.equals("transfer-encoding")) {
         builder.appendHeader(header.getName(), header.getValue());
       }
     }
