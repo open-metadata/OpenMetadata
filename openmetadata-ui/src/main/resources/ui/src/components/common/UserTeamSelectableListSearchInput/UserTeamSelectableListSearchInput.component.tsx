@@ -15,6 +15,7 @@ import { noop } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { EntityReference } from '../../../generated/entity/teams/user';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { UserTag } from '../UserTag/UserTag.component';
 import { UserTagSize } from '../UserTag/UserTag.interface';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
@@ -98,7 +99,7 @@ const UserTeamSelectableListSearchInput: React.FC<UserTeamSelectableListSearchPr
 
       const tagProps = {
         id: selectedAssignee?.name ?? value,
-        name: selectedAssignee?.name ?? value,
+        name: getEntityName(selectedAssignee) || value,
         closable: closable,
         onRemove: onClose,
         size: UserTagSize.small,

@@ -132,4 +132,37 @@ describe('Test SelectWidget Component', () => {
     expect(treeSelectWidget).toBeInTheDocument();
     expect(selectWidget).not.toBeInTheDocument();
   });
+
+  it('Should filter options when searching', async () => {
+    render(<SelectWidget {...mockSelectProps} />);
+
+    const selectInput = await findByRole(
+      screen.getByTestId('select-widget-root/searchIndexMappingLanguage'),
+      'combobox'
+    );
+
+    // Open dropdown using mouseDown which is more reliable for Ant Design Select
+    await act(async () => {
+      fireEvent.mouseDown(selectInput);
+    });
+
+    // Wait for dropdown to open and show all options
+    await waitFor(() => screen.getByTestId('select-option-EN'));
+
+    expect(screen.getByTestId('select-option-JP')).toBeInTheDocument();
+    expect(screen.getByTestId('select-option-RU')).toBeInTheDocument();
+    expect(screen.getByTestId('select-option-ZH')).toBeInTheDocument();
+
+    // Type to search/filter using fireEvent.change for search input
+    fireEvent.change(selectInput, { target: { value: 'EN' } });
+
+    // After filtering, only EN should be visible
+    await waitFor(() => {
+      expect(screen.getByTestId('select-option-EN')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('select-option-JP')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('select-option-RU')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('select-option-ZH')).not.toBeInTheDocument();
+  });
 });

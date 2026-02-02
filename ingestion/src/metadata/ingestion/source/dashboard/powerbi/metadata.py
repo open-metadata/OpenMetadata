@@ -805,6 +805,28 @@ class PowerbiSource(DashboardServiceSource):
                 )
             )
 
+    def _get_dataset_ids_from_report_datasources(self, report_id: str) -> List[str]:
+        """
+        Fetch report datasources and extract dataset IDs from connectionDetails.database.
+        The database field follows the pattern: sobe_wowvirtualserver-{DATASET_ID}
+        """
+        dataset_ids = []
+        workspace_id = self.context.get().workspace.id
+        datasources = self.client.api_client.fetch_report_datasources(
+            group_id=workspace_id, report_id=report_id
+        )
+        if not datasources:
+            return dataset_ids
+        for datasource in datasources:
+            if datasource.connectionDetails and datasource.connectionDetails.database:
+                match = re.match(
+                    r"sobe_wowvirtualserver-(.+)",
+                    datasource.connectionDetails.database,
+                )
+                if match:
+                    dataset_ids.append(match.group(1))
+        return dataset_ids
+
     def create_datamodel_report_lineage(
         self,
         db_service_prefix: Optional[str],
@@ -813,7 +835,6 @@ class PowerbiSource(DashboardServiceSource):
         """
         create the lineage between datamodel and report
         """
-
         try:
             report_fqn = fqn.build(
                 self.metadata,
@@ -825,22 +846,34 @@ class PowerbiSource(DashboardServiceSource):
                 entity=Dashboard,
                 fqn=report_fqn,
             )
+            dataset_ids = []
             if dashboard_details.datasetId:
-                datamodel_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=DashboardDataModel,
-                    service_name=self.context.get().dashboard_service,
-                    data_model_name=dashboard_details.datasetId,
-                )
-                datamodel_entity = self.metadata.get_by_name(
-                    entity=DashboardDataModel,
-                    fqn=datamodel_fqn,
+                dataset_ids = [dashboard_details.datasetId]
+            else:
+                dataset_ids = self._get_dataset_ids_from_report_datasources(
+                    report_id=dashboard_details.id
                 )
 
-                if datamodel_entity and report_entity:
-                    yield self._get_add_lineage_request(
-                        to_entity=report_entity, from_entity=datamodel_entity
+            if dataset_ids:
+                for dataset_id in dataset_ids:
+                    datamodel_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=DashboardDataModel,
+                        service_name=self.context.get().dashboard_service,
+                        data_model_name=dataset_id,
                     )
+                    datamodel_entity = self.metadata.get_by_name(
+                        entity=DashboardDataModel,
+                        fqn=datamodel_fqn,
+                    )
+                    if datamodel_entity and report_entity:
+                        logger.debug(
+                            f"Creating lineage between datamodel={str(dataset_id)} and report={str(dashboard_details.id)}"
+                        )
+                        yield self._get_add_lineage_request(
+                            to_entity=report_entity,
+                            from_entity=datamodel_entity,
+                        )
             else:
                 logger.debug(
                     f"Skipping datamodel and report lineage for"
@@ -850,7 +883,7 @@ class PowerbiSource(DashboardServiceSource):
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
-                    name=f"Datamodel and Report Lineage",
+                    name="Datamodel and Report Lineage",
                     error=(
                         f"Error to yield datamodel and report lineage details: {exc}"
                     ),
