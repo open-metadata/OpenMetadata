@@ -152,4 +152,127 @@ class SecurityUtilTest {
 
     assertTrue(teams.isEmpty());
   }
+
+  @Test
+  void testExtractDisplayNameFromClaims_WithNullClaims() {
+    // Null claims should return null
+    String displayName = SecurityUtil.extractDisplayNameFromClaims(null);
+
+    assertEquals(null, displayName);
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaims_WithEmptyClaims() {
+    // Empty claims map should return null
+    Map<String, Object> claims = new HashMap<>();
+
+    String displayName = SecurityUtil.extractDisplayNameFromClaims(claims);
+
+    assertEquals(null, displayName);
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaims_WithDirectNameClaim() {
+    // Direct 'name' claim should be returned with priority
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("name", "John Doe");
+
+    String displayName = SecurityUtil.extractDisplayNameFromClaims(claims);
+
+    assertEquals("John Doe", displayName);
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaims_WithNameClaimAndGivenFamilyNames() {
+    // Direct 'name' claim should be prioritized over given_name + family_name
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("name", "John Doe");
+    claims.put("given_name", "Jane");
+    claims.put("family_name", "Smith");
+
+    String displayName = SecurityUtil.extractDisplayNameFromClaims(claims);
+
+    assertEquals("John Doe", displayName);
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaims_WithBothGivenAndFamilyNames() {
+    // Should combine given_name and family_name when name claim is absent
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("given_name", "Jane");
+    claims.put("family_name", "Smith");
+
+    String displayName = SecurityUtil.extractDisplayNameFromClaims(claims);
+
+    assertEquals("Jane Smith", displayName);
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaims_WithOnlyGivenName() {
+    // Should return only given_name when family_name is absent
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("given_name", "Jane");
+
+    String displayName = SecurityUtil.extractDisplayNameFromClaims(claims);
+
+    assertEquals("Jane", displayName);
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaims_WithOnlyFamilyName() {
+    // Should return only family_name when given_name is absent
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("family_name", "Smith");
+
+    String displayName = SecurityUtil.extractDisplayNameFromClaims(claims);
+
+    assertEquals("Smith", displayName);
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaims_WithWhitespace() {
+    // Should trim whitespace from all claims
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("given_name", "  Jane  ");
+    claims.put("family_name", "  Smith  ");
+
+    String displayName = SecurityUtil.extractDisplayNameFromClaims(claims);
+
+    assertEquals("Jane Smith", displayName);
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaims_WithWhitespaceInNameClaim() {
+    // Should trim whitespace from direct name claim
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("name", "  John Doe  ");
+
+    String displayName = SecurityUtil.extractDisplayNameFromClaims(claims);
+
+    assertEquals("John Doe", displayName);
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaims_WithEmptyStrings() {
+    // Empty strings should be treated as no value
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("given_name", "");
+    claims.put("family_name", "");
+
+    String displayName = SecurityUtil.extractDisplayNameFromClaims(claims);
+
+    assertEquals(null, displayName);
+  }
+
+  @Test
+  void testExtractDisplayNameFromClaims_WithNoSuitableClaims() {
+    // Claims without name, given_name, or family_name should return null
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("email", "john.doe@example.com");
+    claims.put("sub", "123456");
+
+    String displayName = SecurityUtil.extractDisplayNameFromClaims(claims);
+
+    assertEquals(null, displayName);
+  }
 }
