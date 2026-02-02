@@ -1354,10 +1354,22 @@ public class IngestionPipelineResource
       ingestionPipeline.getSourceConfig().setConfig(null);
     }
     secretsManager.decryptIngestionPipeline(ingestionPipeline);
-    OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, ingestionPipeline).build();
-    ingestionPipeline.setOpenMetadataServerConnection(
-        secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
+
+    // SECURITY: Only include OpenMetadataServerConnection for deploy operations
+    // (forceNotMask=true).
+    // The connection contains the bot's JWT token which should NOT be exposed in GET/LIST
+    // responses.
+    // For API responses, we nullify this field to prevent token leakage.
+    if (forceNotMask) {
+      OpenMetadataConnection openMetadataServerConnection =
+          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, ingestionPipeline)
+              .build();
+      ingestionPipeline.setOpenMetadataServerConnection(
+          secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
+    } else {
+      ingestionPipeline.setOpenMetadataServerConnection(null);
+    }
+
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
       EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(ingestionPipeline);
     }
