@@ -92,7 +92,7 @@ describe('extractNameFromUserProfile', () => {
       expect(result).toBe('Johnson');
     });
 
-    it('should trim outer whitespace when combining given_name and family_name', () => {
+    it('should trim individual names when combining given_name and family_name', () => {
       const userProfile = {
         given_name: '  John  ',
         family_name: '  Doe  ',
@@ -102,7 +102,7 @@ describe('extractNameFromUserProfile', () => {
 
       const result = extractNameFromUserProfile(userProfile);
 
-      expect(result).toBe('John     Doe');
+      expect(result).toBe('John Doe');
     });
   });
 

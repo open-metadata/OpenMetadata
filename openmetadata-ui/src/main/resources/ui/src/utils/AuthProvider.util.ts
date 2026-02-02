@@ -290,7 +290,7 @@ export const extractNameFromUserProfile = (user: UserProfile): string => {
   const familyName = get(user, 'family_name', '');
 
   if (givenName && familyName) {
-    return `${givenName} ${familyName}`.trim();
+    return `${givenName.trim()} ${familyName.trim()}`;
   }
 
   if (givenName) {

@@ -127,6 +127,10 @@ export const checkIfUpdateRequired = async (
 
   const jsonPatch = compare(existingUserDetails, finalData);
 
+  if (jsonPatch.length === 0) {
+    return existingUserDetails;
+  }
+
   try {
     const res = await updateUserDetail(existingUserDetails.id, jsonPatch);
 
