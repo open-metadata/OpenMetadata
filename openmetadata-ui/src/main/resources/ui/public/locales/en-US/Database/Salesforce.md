@@ -55,9 +55,11 @@ Salesforce Organization ID is the unique identifier for your Salesforce identity
 $$
 
 $$section
-### Object Name $(id="sobjectName")
+### Object Names $(id="sobjectNames")
 
-Specify the Salesforce Object Name in case you want to ingest a specific object. If left blank, we will ingest all the Objects.
+Specify a list of Salesforce Object Names to ingest. Use this when you want to ingest metadata from specific objects (e.g., Contact, Account, Lead, Opportunity).
+
+If specified, only these objects will be ingested. Leave empty to ingest all objects (which can then be filtered using Table Filter Pattern).
 $$
 
 $$section
