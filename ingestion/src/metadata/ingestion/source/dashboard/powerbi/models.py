@@ -213,48 +213,6 @@ class DatasetResponse(BaseModel):
     value: List[Dataset]
 
 
-class ConnectionDetails(BaseModel):
-    """
-    PowerBI ConnectionDetails Model
-    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/get-datasources-in-group#datasourceconnectiondetails
-    """
-
-    account: Optional[str] = None
-    classInfo: Optional[str] = None
-    database: Optional[str] = None
-    domain: Optional[str] = None
-    emailAddress: Optional[str] = None
-    kind: Optional[str] = None
-    loginServer: Optional[str] = None
-    path: Optional[str] = None
-    server: Optional[str] = None
-    url: Optional[str] = None
-
-
-class Datasource(BaseModel):
-    """
-    PowerBI Datasource Model
-    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/get-datasources-in-group#datasource
-    """
-
-    datasourceType: Optional[str] = None
-    connectionDetails: Optional[ConnectionDetails] = None
-    datasourceId: Optional[str] = None
-    gatewayId: Optional[str] = None
-    connectionString: Optional[str] = None
-    name: Optional[str] = None
-
-
-class DatasourcesResponse(BaseModel):
-    """
-    PowerBI DatasourcesResponse Model
-    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/get-datasources-in-group
-    """
-
-    odata_context: str = Field(alias="@odata.context")
-    value: List[Datasource]
-
-
 class Dataflow(BaseModel):
     id: str = Field(alias="objectId")
     name: str
