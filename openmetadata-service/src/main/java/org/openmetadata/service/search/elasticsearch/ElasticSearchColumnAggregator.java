@@ -450,14 +450,9 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
   private void addServiceTypeFilter(
       BoolQuery.Builder boolBuilder, ColumnAggregationRequest request) {
     if (request.getServiceTypes() != null && !request.getServiceTypes().isEmpty()) {
-      List<FieldValue> values =
-          request.getServiceTypes().stream().map(FieldValue::of).toList();
+      List<FieldValue> values = request.getServiceTypes().stream().map(FieldValue::of).toList();
       boolBuilder.filter(
-          Query.of(
-              q ->
-                  q.terms(
-                      t ->
-                          t.field("serviceType").terms(tv -> tv.value(values)))));
+          Query.of(q -> q.terms(t -> t.field("serviceType").terms(tv -> tv.value(values)))));
     }
   }
 
