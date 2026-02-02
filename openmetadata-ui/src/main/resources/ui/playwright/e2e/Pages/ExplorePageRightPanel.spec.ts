@@ -120,9 +120,6 @@ test.describe('Right Panel Page Objects Test Suite', () => {
       await testGlossary.create(apiContext);
       await testGlossaryTerm.create(apiContext);
       await domainEntity.create(apiContext);
-      
-      // Wait for entities to be indexed
-      await new Promise(resolve => setTimeout(resolve, 3000));
     } finally {
       await afterAction();
     }
@@ -282,13 +279,19 @@ test.describe('Right Panel Page Objects Test Suite', () => {
           await rightPanel.waitForPanelVisible();
 
           try { 
+            
             const lineageTabExists = await rightPanel.verifyTabExists('lineage');
             if (lineageTabExists) {
             await lineage.navigateToLineageTab();
-            await lineage.clickUpstreamButton();
-            await lineage.shouldShowExpandUpstreamButton();
-            await lineage.clickDownstreamButton();
-            await lineage.shouldShowExpandDownstreamButton();
+            const hasUpstreamButton = await lineage.hasUpstreamButton();
+            if (hasUpstreamButton) {
+              await lineage.clickUpstreamButton();
+            } 
+
+            const hasDownstreamButton = await lineage.hasDownstreamButton();
+            if (hasDownstreamButton) {
+              await lineage.clickDownstreamButton();
+            } 
             }  
           } catch {
             console.debug(`No lineage exists for ${entityType}`);

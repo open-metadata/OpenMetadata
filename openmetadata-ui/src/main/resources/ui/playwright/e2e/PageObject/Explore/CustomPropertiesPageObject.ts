@@ -122,12 +122,22 @@ export class CustomPropertiesPageObject {
    */
   async shouldShowCustomPropertyWithValue(propertyName: string, expectedValue: string): Promise<void> {
     // Use semantic selectors - find property card and then its value
+    // const propertyCard = this.propertyCard.filter({ hasText: propertyName });
+    // await propertyCard.waitFor({ state: 'visible' });
+
+    // await this.valueElement.waitFor({ state: 'visible' });
+    // const actualValue = await this.valueElement.textContent();
+    // if (!actualValue?.includes(expectedValue)) {
+    //   throw new Error(`Custom property "${propertyName}" should show value "${expectedValue}" but shows "${actualValue}"`);
+    // }
+
     const propertyCard = this.propertyCard.filter({ hasText: propertyName });
     await propertyCard.waitFor({ state: 'visible' });
 
-    await this.valueElement.waitFor({ state: 'visible' });
-    const actualValue = await this.valueElement.textContent();
-    if (!actualValue?.includes(expectedValue)) {
+    const valueElement = propertyCard.locator('.value, [class*="value"], [data-testid="value"]');
+    await valueElement.waitFor({ state: 'visible' });
+    const actualValue = await valueElement.textContent();
+     if (!actualValue?.includes(expectedValue)) {
       throw new Error(`Custom property "${propertyName}" should show value "${expectedValue}" but shows "${actualValue}"`);
     }
   }

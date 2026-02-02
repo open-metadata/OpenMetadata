@@ -578,9 +578,6 @@ export async function navigateToExploreAndSelectEntity(
     await page.waitForLoadState('networkidle');
   }
 
-  // Get the asset type title for the left panel
-  const assetTypeTitle = getAssetTypeFromEntityType(entityType);
-
   // Wait for the explore tree to be visible
   await page.waitForSelector('[data-testid="explore-tree-title-Databases"]', {
     state: 'visible',

@@ -132,6 +132,14 @@ export class LineagePageObject {
     }
   }
 
+  async hasUpstreamButton(): Promise<boolean> {
+    return await this.upstreamButton.isVisible();
+  }
+
+  async hasDownstreamButton(): Promise<boolean> {
+    return await this.downstreamButton.isVisible();
+  }
+
   /**
    * Verify lineage visualization controls are available
    */
