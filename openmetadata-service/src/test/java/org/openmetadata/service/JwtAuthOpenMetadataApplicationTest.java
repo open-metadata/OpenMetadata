@@ -68,9 +68,12 @@ import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
+import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -283,15 +286,16 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
             "", // flywayPath - empty string as placeholder
             config,
             forceMigrations);
-    // Initialize search repository
-    SearchRepository searchRepository = new SearchRepository(getEsConfig(), 50);
-    Entity.setSearchRepository(searchRepository);
+    OpenMetadataApplicationConfigHolder.initialize(config);
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
     workflow.runMigrationWorkflows(false);
     WorkflowHandler.initialize(config);
+    // Initialize MigrationValidationClient after migrations, before SystemRepository
+    MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), config);
+    Entity.setSystemRepository(new SystemRepository());
     SettingsCache.initialize(config);
     ApplicationHandler.initialize(config);
     ApplicationContext.initialize();

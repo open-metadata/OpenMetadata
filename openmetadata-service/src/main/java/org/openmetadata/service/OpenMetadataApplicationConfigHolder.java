@@ -25,15 +25,10 @@ public final class OpenMetadataApplicationConfigHolder {
 
   public static void initialize(OpenMetadataApplicationConfig config) {
     Objects.requireNonNull(config, "OpenMetadataApplicationConfig cannot be null");
-    if (instance != null) {
-      throw new IllegalStateException("OpenMetadataApplicationConfig has already been initialized");
-    }
     synchronized (OpenMetadataApplicationConfigHolder.class) {
-      if (instance != null) {
-        throw new IllegalStateException(
-            "OpenMetadataApplicationConfig has already been initialized");
+      if (instance == null) {
+        instance = config;
       }
-      instance = config;
     }
   }
 
