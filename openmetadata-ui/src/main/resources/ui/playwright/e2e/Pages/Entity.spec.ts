@@ -2042,6 +2042,89 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         await customPolicy.delete(cleanupContext);
         await cleanupAfterAction();
       });
+
+      /**
+       * Tests access control for column side panel with deny policy
+       * @description Tests that a data consumer assigned a role with deny rules for EditTags and EditGlossaryTerms
+       * cannot edit tags or glossary terms in the column detail panel
+       */
+      test('Data Consumer should be denied edit access in column detail panel when deny policy rule is applied', async ({
+        page,
+        dataConsumerPage,
+      }) => {
+        test.slow(true);
+        await redirectToHomePage(page);
+
+        await tableEntity.visitEntityPage(page);
+
+        const { apiContext } = await getApiContext(page);
+
+        // Create policy with deny rules for tags and glossary terms
+        const customPolicy = new PolicyClass();
+        await customPolicy.create(apiContext, [
+          ...DATA_CONSUMER_RULES,
+          {
+            name: 'DenyEditTagsAndGlossary-Rule',
+            resources: ['All'],
+            operations: ['EditTags', 'EditGlossaryTerms', 'EditDescription'],
+            effect: 'deny',
+          },
+        ]);
+
+        // Create role with the custom policy
+        const customRole = new RolesClass();
+        await customRole.create(apiContext, [customPolicy.responseData.name]);
+
+        // Assign the custom role to the data consumer user
+        await dataConsumerUser.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'replace',
+              path: '/roles',
+              value: [
+                {
+                  id: customRole.responseData.id,
+                  type: 'role',
+                  name: customRole.responseData.name,
+                },
+              ],
+            },
+          ],
+        });
+
+        await tableEntity.visitEntityPage(dataConsumerPage);
+
+        // Open column detail panel
+        const columnNameTestId = 'column-name';
+        const panelContainer = await openColumnDetailPanel({
+          page: dataConsumerPage,
+          rowSelector: 'data-row-key',
+          columnId: tableEntity.childrenSelectorId ?? '',
+          columnNameTestId,
+          entityType: 'table',
+        });
+
+        // Verify edit buttons are NOT visible
+        await expect(
+          panelContainer.getByTestId('edit-icon-tags')
+        ).not.toBeVisible();
+        await expect(
+          panelContainer.getByTestId('edit-glossary-terms')
+        ).not.toBeVisible();
+        await expect(
+          panelContainer.getByTestId('edit-description')
+        ).not.toBeVisible();
+
+        // Close panel
+        await panelContainer.getByTestId('close-button').click();
+
+        const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+          await getApiContext(page);
+        await customRole.delete(cleanupContext);
+        await customPolicy.delete(cleanupContext);
+        await cleanupAfterAction();
+      });
     }
   });
 
