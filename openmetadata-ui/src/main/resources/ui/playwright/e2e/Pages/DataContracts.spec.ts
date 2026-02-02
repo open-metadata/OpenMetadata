@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
@@ -111,7 +111,6 @@ const entitySupportsQuality = (entityType: string): boolean => {
 
 test.describe('Data Contracts', () => {
   const user = new UserClass();
-
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction, page } = await performAdminLogin(browser);
     await user.create(apiContext);
@@ -181,10 +180,19 @@ test.describe('Data Contracts', () => {
           DATA_CONTRACT_DETAILS.description
         );
 
-        await page.getByTestId('select-owners').click();
-        await page.locator('.rc-virtual-list-holder-inner li').first().click();
+        // Add owner using created user to verify displayName is shown in UserTag
+        await addOwnerWithoutValidation({
+          page,
+          owner: user.responseData.displayName,
+          type: 'Users',
+          initiatorId: 'select-owners',
+        });
 
+        // Verify the UserTag shows the user's displayName (not name)
         await expect(page.getByTestId('user-tag')).toBeVisible();
+        await expect(
+          page.getByTestId('user-tag').getByText(user.responseData.displayName)
+        ).toBeVisible();
       });
 
       await test.step('Fill the Terms of Service Detail', async () => {
