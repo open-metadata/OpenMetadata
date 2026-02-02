@@ -1052,7 +1052,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
       {errorMessage && (
         <div className="floating-error-alert">
           <AlertBar
-            defafultExpand
+            defaultExpand
             className="test-case-form-alert custom-alert-description"
             message={errorMessage}
             type="error"
@@ -1302,7 +1302,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           <Row gutter={[20, 20]}>
             <Col span={24}>
               <AlertBar
-                defafultExpand
+                defaultExpand
                 className="test-case-form-alert custom-alert-description"
                 message={
                   <Transi18next

@@ -953,7 +953,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       {localToast.open && (
         <div className="floating-error-alert">
           <AlertBar
-            defafultExpand
+            defaultExpand
             className="column-detail-panel-alert"
             message={localToast.message || 'test'}
             type={localToast.type}
