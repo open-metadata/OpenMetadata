@@ -4259,6 +4259,207 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   // ===================================================================
+  // TABLE CONSTRAINTS PRESERVATION TESTS
+  // ===================================================================
+
+  @Test
+  void test_tableConstraintsCsvBulkOperation_preservesConstraints(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    // Create table with multiple types of constraints
+    Column idColumn = ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build();
+    Column emailColumn = ColumnBuilder.of("email", "VARCHAR").dataLength(255).build();
+    Column usernameColumn = ColumnBuilder.of("username", "VARCHAR").dataLength(100).build();
+
+    // Create table constraints - UNIQUE and PRIMARY_KEY
+    TableConstraint uniqueConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+            .withColumns(List.of("email"));
+
+    TableConstraint primaryKeyConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.PRIMARY_KEY)
+            .withColumns(List.of("id"));
+
+    TableConstraint multiColumnUniqueConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+            .withColumns(List.of("username", "email"));
+
+    CreateTable createRequest = new CreateTable();
+    createRequest.setName(ns.prefix("constraints_bulk_test"));
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setColumns(List.of(idColumn, emailColumn, usernameColumn));
+    createRequest.setTableConstraints(
+        List.of(uniqueConstraint, primaryKeyConstraint, multiColumnUniqueConstraint));
+
+    // Create the table
+    Table originalTable = createEntity(createRequest);
+
+    // Verify constraints were created correctly
+    assertNotNull(originalTable.getTableConstraints(), "Table should have constraints");
+    assertEquals(3, originalTable.getTableConstraints().size(), "Should have 3 constraints");
+
+    // Get the table's current version before any operations
+    Double originalVersion = originalTable.getVersion();
+
+    // Simulate the exact scenario that caused the bug:
+    // 1. Load table with minimal fields (like CSV import does)
+    // 2. Trigger bulk operation versioning
+    // 3. Verify constraints survive
+
+    Table tableForUpdate =
+        client.tables().getByName(originalTable.getFullyQualifiedName(), "tableConstraints");
+
+    // Verify constraints are present before update
+    assertNotNull(
+        tableForUpdate.getTableConstraints(), "Constraints should exist before bulk operation");
+    assertEquals(
+        3,
+        tableForUpdate.getTableConstraints().size(),
+        "Should have 3 constraints before bulk operation");
+
+    // Perform update that triggers createChangeEventForBulkOperation
+    // This is the critical path that was deleting constraints
+    tableForUpdate.setDescription("Updated via bulk operation");
+    Table updatedTable = client.tables().update(tableForUpdate.getId(), tableForUpdate);
+
+    // CRITICAL TEST: Verify constraints survived the bulk operation
+    assertNotNull(
+        updatedTable.getTableConstraints(),
+        "Constraints should survive bulk operation (this was the bug)");
+    assertEquals(
+        3,
+        updatedTable.getTableConstraints().size(),
+        "Should still have 3 constraints after bulk operation");
+
+    // Verify specific constraints are preserved
+    List<TableConstraint> constraints = updatedTable.getTableConstraints();
+
+    // Check UNIQUE constraint on email
+    assertTrue(
+        constraints.stream()
+            .anyMatch(
+                c ->
+                    c.getConstraintType() == TableConstraint.ConstraintType.UNIQUE
+                        && c.getColumns().size() == 1
+                        && c.getColumns().contains("email")),
+        "UNIQUE constraint on email should be preserved");
+
+    // Check PRIMARY_KEY constraint on id
+    assertTrue(
+        constraints.stream()
+            .anyMatch(
+                c ->
+                    c.getConstraintType() == TableConstraint.ConstraintType.PRIMARY_KEY
+                        && c.getColumns().contains("id")),
+        "PRIMARY_KEY constraint should be preserved");
+
+    // Check multi-column UNIQUE constraint
+    assertTrue(
+        constraints.stream()
+            .anyMatch(
+                c ->
+                    c.getConstraintType() == TableConstraint.ConstraintType.UNIQUE
+                        && c.getColumns().size() == 2
+                        && c.getColumns().containsAll(List.of("username", "email"))),
+        "Multi-column UNIQUE constraint should be preserved");
+
+    // Verify version was incremented (indicating change event was created)
+    assertTrue(
+        updatedTable.getVersion() > originalVersion,
+        "Version should be incremented after bulk operation");
+
+    // Test version history preservation
+    EntityHistory history = getVersionHistory(updatedTable.getId());
+    assertNotNull(history, "Should have version history");
+    assertTrue(history.getVersions().size() >= 2, "Should have at least 2 versions");
+
+    // Get the original version from history and verify it has constraints
+    Table historicalVersion = getVersion(updatedTable.getId(), originalVersion);
+    assertNotNull(historicalVersion, "Should be able to retrieve historical version");
+    assertNotNull(
+        historicalVersion.getTableConstraints(), "Historical version should preserve constraints");
+    assertEquals(
+        3,
+        historicalVersion.getTableConstraints().size(),
+        "Historical version should have all 3 constraints");
+  }
+
+  @Test
+  void test_tableConstraintsVersioning_multipleBulkOperations(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    // Create table with constraints
+    CreateTable createRequest = new CreateTable();
+    createRequest.setName(ns.prefix("multi_bulk_constraints"));
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("code", "VARCHAR").dataLength(50).build()));
+
+    TableConstraint uniqueConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+            .withColumns(List.of("code"));
+    createRequest.setTableConstraints(List.of(uniqueConstraint));
+
+    Table originalTable = createEntity(createRequest);
+    Double version1 = originalTable.getVersion();
+
+    // Multiple bulk operations to test constraint preservation across versions
+    for (int i = 0; i < 3; i++) {
+      Table currentTable =
+          client.tables().getByName(originalTable.getFullyQualifiedName(), "tableConstraints");
+      currentTable.setDescription("Bulk update iteration " + (i + 1));
+
+      Table updated = client.tables().update(currentTable.getId(), currentTable);
+
+      // Verify constraints survive each bulk operation
+      assertNotNull(
+          updated.getTableConstraints(),
+          "Constraints should survive bulk operation iteration " + (i + 1));
+      assertEquals(
+          1,
+          updated.getTableConstraints().size(),
+          "Should have 1 constraint after bulk operation iteration " + (i + 1));
+      assertEquals(
+          TableConstraint.ConstraintType.UNIQUE,
+          updated.getTableConstraints().get(0).getConstraintType(),
+          "Constraint type should be preserved in iteration " + (i + 1));
+
+      assertTrue(
+          updated.getVersion() > version1, "Version should increment in iteration " + (i + 1));
+    }
+
+    // Verify all versions in history preserve constraints
+    EntityHistory history = getVersionHistory(originalTable.getId());
+    assertNotNull(history, "Should have version history");
+    assertTrue(
+        history.getVersions().size() > 1, "Should have multiple versions (original + updates)");
+
+    // Check that each historical version preserved constraints
+    for (Object versionObj : history.getVersions()) {
+      if (versionObj instanceof String versionJson) {
+        assertTrue(
+            versionJson.contains("tableConstraints"),
+            "Historical version should contain tableConstraints in JSON");
+        assertTrue(
+            versionJson.contains("UNIQUE"),
+            "Historical version should contain UNIQUE constraint type");
+      }
+    }
+  }
+
+  // ===================================================================
   // VERSION HISTORY SUPPORT
   // ===================================================================
 

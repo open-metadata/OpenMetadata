@@ -7495,6 +7495,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void createChangeEventForBulkOperation(
       T original, CsvImportResult result, String updatedBy) {
     // Get a complete view of the entity for history
+    original = find(original.getId(), NON_DELETED);
     setFieldsInternal(original, getPutFields());
     setInheritedFields(original, getPutFields());
 
