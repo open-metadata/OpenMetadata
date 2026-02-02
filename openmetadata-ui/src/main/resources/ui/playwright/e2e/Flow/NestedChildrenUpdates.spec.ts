@@ -23,9 +23,10 @@ import { getNestedColumnDetails } from '../../utils/nestedColumnUpdatesUtils';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-for (const [entityType, { CreationClass, tabSelector }] of Object.entries(
-  nestedChildrenTestData
-)) {
+for (const [
+  entityType,
+  { CreationClass, tabSelector, supportDisplayNameUpdate },
+] of Object.entries(nestedChildrenTestData)) {
   test.describe(entityType, () => {
     const entity = new CreationClass();
 
@@ -119,34 +120,36 @@ for (const [entityType, { CreationClass, tabSelector }] of Object.entries(
         ).not.toBeVisible();
       });
 
-      test('should update nested column displayName immediately without refresh', async ({
-        page,
-      }) => {
-        const newDisplayName = 'Customer Full Name';
-        const { level1Key } = getNestedColumnDetails(entityType, entity);
-
-        await expandNestedColumn(page, level1Key);
-
-        await expect(
-          page.locator(`[data-row-key="${level1Key}"]`)
-        ).toBeVisible();
-
-        await updateDisplayNameForEntityChildren(
+      if (supportDisplayNameUpdate) {
+        test('should update nested column displayName immediately without refresh', async ({
           page,
-          {
-            oldDisplayName: '',
-            newDisplayName: newDisplayName,
-          },
-          level1Key,
-          'data-row-key'
-        );
+        }) => {
+          const newDisplayName = 'Customer Full Name';
+          const { level1Key } = getNestedColumnDetails(entityType, entity);
 
-        await expect(
-          page
-            .locator(`[data-row-key="${level1Key}"]`)
-            .getByTestId('column-display-name')
-        ).toHaveText(newDisplayName);
-      });
+          await expandNestedColumn(page, level1Key);
+
+          await expect(
+            page.locator(`[data-row-key="${level1Key}"]`)
+          ).toBeVisible();
+
+          await updateDisplayNameForEntityChildren(
+            page,
+            {
+              oldDisplayName: '',
+              newDisplayName: newDisplayName,
+            },
+            level1Key,
+            'data-row-key'
+          );
+
+          await expect(
+            page
+              .locator(`[data-row-key="${level1Key}"]`)
+              .getByTestId('column-display-name')
+          ).toHaveText(newDisplayName);
+        });
+      }
     });
 
     test.describe('Level 2 Deeply Nested Columns', () => {
@@ -231,32 +234,34 @@ for (const [entityType, { CreationClass, tabSelector }] of Object.entries(
         ).not.toBeVisible();
       });
 
-      test('should update nested column displayName immediately without refresh', async ({
-        page,
-      }) => {
-        const newDisplayName = 'Street Full Name';
-        const { level2Key } = getNestedColumnDetails(entityType, entity);
-
-        await expect(
-          page.locator(`[data-row-key="${level2Key}"]`)
-        ).toBeVisible();
-
-        await updateDisplayNameForEntityChildren(
+      if (supportDisplayNameUpdate) {
+        test('should update nested column displayName immediately without refresh', async ({
           page,
-          {
-            oldDisplayName: '',
-            newDisplayName: newDisplayName,
-          },
-          level2Key,
-          'data-row-key'
-        );
+        }) => {
+          const newDisplayName = 'Street Full Name';
+          const { level2Key } = getNestedColumnDetails(entityType, entity);
 
-        await expect(
-          page
-            .locator(`[data-row-key="${level2Key}"]`)
-            .getByTestId('column-display-name')
-        ).toHaveText(newDisplayName);
-      });
+          await expect(
+            page.locator(`[data-row-key="${level2Key}"]`)
+          ).toBeVisible();
+
+          await updateDisplayNameForEntityChildren(
+            page,
+            {
+              oldDisplayName: '',
+              newDisplayName: newDisplayName,
+            },
+            level2Key,
+            'data-row-key'
+          );
+
+          await expect(
+            page
+              .locator(`[data-row-key="${level2Key}"]`)
+              .getByTestId('column-display-name')
+          ).toHaveText(newDisplayName);
+        });
+      }
     });
   });
 }

@@ -29,45 +29,32 @@ export const nestedChildrenTestData: Record<
       | typeof TableClass
       | typeof TopicClass
       | typeof WorksheetClass;
-    level1ChildFieldName: string;
-    level2ChildFieldName: string;
     tabSelector?: string;
+    supportDisplayNameUpdate?: boolean;
   }
 > = {
   'API Endpoint': {
     CreationClass: ApiEndpointClass,
-    level1ChildFieldName: 'requestSchema.schemaFields',
-    level2ChildFieldName: 'children',
   },
   'Data Model': {
     CreationClass: DashboardDataModelClass,
-    level1ChildFieldName: 'fields',
-    level2ChildFieldName: 'children',
+    supportDisplayNameUpdate: true,
   },
   File: {
     CreationClass: FileClass,
-    level1ChildFieldName: 'columns',
-    level2ChildFieldName: 'children',
     tabSelector: '.ant-tabs-nav-list [data-node-key="schema"]',
   },
   'Search Index': {
     CreationClass: SearchIndexClass,
-    level1ChildFieldName: 'fields',
-    level2ChildFieldName: 'children',
   },
   Table: {
     CreationClass: TableClass,
-    level1ChildFieldName: 'columns',
-    level2ChildFieldName: 'children',
+    supportDisplayNameUpdate: true,
   },
   Topic: {
     CreationClass: TopicClass,
-    level1ChildFieldName: 'messageSchema.schemaFields',
-    level2ChildFieldName: 'children',
   },
   Worksheet: {
     CreationClass: WorksheetClass,
-    level1ChildFieldName: 'columns',
-    level2ChildFieldName: 'children',
   },
 };
