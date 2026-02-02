@@ -100,6 +100,7 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn().mockReturnValue({
     type: 'container',
+    setDisplayedColumns: jest.fn(),
   }),
 }));
 

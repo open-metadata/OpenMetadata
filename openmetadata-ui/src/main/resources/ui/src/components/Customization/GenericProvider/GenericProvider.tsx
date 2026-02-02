@@ -102,6 +102,9 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     null
   );
 
+  // State to store the displayed columns (sorted/filtered) from SchemaTable
+  const [displayedColumns, setDisplayedColumns] = useState<ColumnOrTask[]>([]);
+
   // Derive isColumnDetailOpen from selectedColumn - if a column is selected, panel is open
   const isColumnDetailOpen = useMemo(
     () => selectedColumn !== null,
@@ -114,6 +117,11 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const extractedColumns = useMemo(() => {
     return extractColumnsFromData(data, type) as ColumnOrTask[];
   }, [data, type]);
+
+  // Use displayed columns if available (sorted), otherwise fall back to extracted columns
+  const columnsForPanel = useMemo(() => {
+    return displayedColumns.length > 0 ? displayedColumns : extractedColumns;
+  }, [displayedColumns, extractedColumns]);
 
   // Helper to clean column by removing empty children array
   const cleanColumn = useCallback((column: ColumnOrTask): ColumnOrTask => {
@@ -400,6 +408,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       isColumnDetailOpen,
       openColumnDetailPanel,
       closeColumnDetailPanel,
+      setDisplayedColumns,
     }),
     [
       data,
@@ -420,6 +429,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       isColumnDetailOpen,
       openColumnDetailPanel,
       closeColumnDetailPanel,
+      setDisplayedColumns,
     ]
   );
 
@@ -438,9 +448,9 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
           onCancel={onThreadPanelClose}
         />
       ) : null}
-      {extractedColumns.length > 0 && (
+      {columnsForPanel.length > 0 && (
         <ColumnDetailPanel
-          allColumns={extractedColumns as Column[]}
+          allColumns={columnsForPanel as Column[]}
           column={selectedColumn as Column}
           deleted={deleted}
           entityType={type}

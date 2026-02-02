@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
+import { ThemeColors } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { SearchIndex } from '../../enums/search.enum';
 import {
@@ -24,10 +26,24 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+  Link: ({
+    children,
+    to,
+    ...props
+  }: {
+    children: React.ReactNode;
+    to: string;
+    [key: string]: unknown;
+  }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 jest.mock('../Explore/ExploreTree/ExploreTree', () => {
@@ -86,6 +102,68 @@ jest.mock('../SearchedData/SearchedData', () =>
   jest.fn().mockReturnValue(<div>SearchedData</div>)
 );
 
+jest.mock('../Explore/EntitySummaryPanel/EntitySummaryPanel.component', () =>
+  jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="entity-summary-panel">EntitySummaryPanel</div>
+    )
+);
+
+jest.mock('react-i18next', () => ({
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key: string) => key,
+  }),
+  Trans: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+jest.mock('../../utils/CommonUtils', () => ({
+  Transi18next: jest
+    .fn()
+    .mockImplementation(({ i18nKey, renderElement, values }) => (
+      <div data-testid="trans-component">
+        {i18nKey} {values && JSON.stringify(values)}
+        {renderElement}
+      </div>
+    )),
+}));
+
+jest.mock('../../utils/AdvancedSearchUtils', () => ({
+  getDropDownItems: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../utils/EntityUtils', () => ({
+  highlightEntityNameAndDescription: jest
+    .fn()
+    .mockImplementation((entity) => entity),
+}));
+
+jest.mock('../../utils/RouterUtils', () => ({
+  getApplicationDetailsPath: jest.fn().mockReturnValue('/settings'),
+}));
+
+jest.mock('../../utils/SearchClassBase', () => ({
+  __esModule: true,
+  default: {
+    getTabsInfo: jest.fn(() => ({
+      table_search_index: {
+        sortingFields: [],
+      },
+    })),
+    getEntityLink: jest.fn().mockReturnValue('/test-entity'),
+    getEntityIcon: jest.fn().mockReturnValue(<span>Icon</span>),
+    getEntitySummaryComponent: jest.fn().mockReturnValue(null),
+  },
+}));
+
+// Mock window.location
+Object.defineProperty(window, 'location', {
+  value: {
+    search: '',
+  },
+  writable: true,
+});
+
 const onChangeAdvancedSearchQuickFilters = jest.fn();
 const onChangeSearchIndex = jest.fn();
 const onChangeSortOder = jest.fn();
@@ -132,15 +210,46 @@ const props = {
   },
 };
 
+const mockThemeColors: ThemeColors = {
+  white: '#FFFFFF',
+  blue: {
+    50: '#E6F4FF',
+    100: '#BAE0FF',
+    600: '#1677FF',
+    700: '#0958D9',
+  },
+  blueGray: {
+    50: '#F8FAFC',
+  },
+  gray: {
+    300: '#D1D5DB',
+    700: '#374151',
+    900: '#111827',
+  },
+} as ThemeColors;
+
+const theme: Theme = createTheme({
+  palette: {
+    allShades: mockThemeColors,
+    background: {
+      paper: '#FFFFFF',
+    },
+  },
+});
+
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider theme={theme}>{children}</ThemeProvider>
+);
+
 describe('ExploreV1', () => {
   it('renders component without errors', async () => {
-    render(<ExploreV1 {...props} />);
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
     expect(screen.getByText('ExploreTree')).toBeInTheDocument();
   });
 
   it('changes sort order when sort button is clicked', () => {
-    render(<ExploreV1 {...props} />);
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
     fireEvent.click(screen.getByTestId('sort-order-button'));
 
@@ -148,7 +257,7 @@ describe('ExploreV1', () => {
   });
 
   it('should show the index not found alert, if get isElasticSearchIssue true in prop', () => {
-    render(<ExploreV1 {...props} isElasticSearchIssue />);
+    render(<ExploreV1 {...props} isElasticSearchIssue />, { wrapper: Wrapper });
 
     expect(screen.getByText('Index Not Found Alert')).toBeInTheDocument();
 

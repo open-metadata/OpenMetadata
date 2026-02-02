@@ -258,15 +258,23 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     [allColumns]
   );
 
-  // Find the actual index in the flattened array
-  const actualColumnIndex = useMemo(() => {
+  // Find the actual index in the flattened array and track if column was found
+  const { actualColumnIndex, isColumnInList } = useMemo(() => {
     if (!activeColumn?.fullyQualifiedName) {
-      return 0;
+      return {
+        actualColumnIndex: 0,
+        isColumnInList: flattenedColumns.length > 0,
+      };
     }
 
-    return flattenedColumns.findIndex(
+    const index = flattenedColumns.findIndex(
       (col) => col.fullyQualifiedName === activeColumn.fullyQualifiedName
     );
+
+    return {
+      actualColumnIndex: index === -1 ? 0 : index,
+      isColumnInList: index !== -1,
+    };
   }, [activeColumn, flattenedColumns]);
 
   const breadcrumbPath = useMemo(() => {
@@ -575,8 +583,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     [handleColumnNavigation]
   );
 
-  const isPreviousDisabled = actualColumnIndex === 0;
-  const isNextDisabled = actualColumnIndex === flattenedColumns.length - 1;
+  const isPreviousDisabled = !isColumnInList || actualColumnIndex === 0;
+  const isNextDisabled =
+    !isColumnInList || actualColumnIndex === flattenedColumns.length - 1;
 
   const dataQualityTests = useMemo(
     () => [
@@ -926,10 +935,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 width={16}
               />
             </IconButton>
-            <Typography.Text className="pagination-header-text text-medium">
-              {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
-              {flattenedColumns.length} {t('label.column-plural').toLowerCase()}
-            </Typography.Text>
+            {isColumnInList && flattenedColumns.length > 0 && (
+              <Typography.Text className="pagination-header-text text-medium">
+                {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
+                {flattenedColumns.length}{' '}
+                {t('label.column-plural').toLowerCase()}
+              </Typography.Text>
+            )}
           </div>
         </div>
       }
