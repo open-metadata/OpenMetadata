@@ -11,16 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  AccessToken,
-  EVENT_RENEWED,
-  IDToken,
-  OktaAuth,
-  OktaAuthOptions,
-} from '@okta/okta-auth-js';
+import { EVENT_RENEWED, OktaAuth, OktaAuthOptions } from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
 import { FunctionComponent, ReactNode, useEffect, useMemo } from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { OktaCustomStorage } from '../../../utils/OktaCustomStorage';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from './AuthProvider';
 
@@ -34,35 +29,54 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
   const { authConfig } = useApplicationStore();
   const { handleSuccessfulLogin } = useAuthProvider();
 
-  const { clientId, issuer, redirectUri, scopes, pkce } =
-    authConfig as unknown as OktaAuthOptions;
+  const config = authConfig as unknown as OktaAuthOptions;
+  const { clientId, issuer, redirectUri, scopes, pkce } = config;
 
-  const oktaAuth = useMemo(
-    () =>
-      new OktaAuth({
-        clientId,
-        issuer,
-        redirectUri,
-        scopes,
-        pkce,
-        tokenManager: {
-          autoRenew: true,
-          storage: 'memory',
-          syncStorage: true,
-          expireEarlySeconds: 60,
-          secure: true,
-        },
-      }),
-    [clientId, issuer, redirectUri, scopes, pkce]
-  );
+  const customStorage = useMemo(() => new OktaCustomStorage(), []);
+
+  const oktaAuth = useMemo(() => {
+    const oktaConfig: OktaAuthOptions = {
+      clientId,
+      issuer,
+      redirectUri,
+      scopes,
+      pkce,
+      tokenManager: {
+        autoRenew: true,
+        storage: customStorage,
+        syncStorage: true,
+        secure: true,
+      },
+      cookies: {
+        secure: true,
+        sameSite: 'lax',
+      },
+      services: {
+        autoRenew: true,
+        renewOnTabActivation: true,
+      },
+    };
+
+    return new OktaAuth(oktaConfig);
+  }, [customStorage]);
 
   useEffect(() => {
-    const handleTokenRenewed = async (
-      key: string,
-      newToken: IDToken | AccessToken
-    ) => {
-      if (key === 'idToken' && 'idToken' in newToken && newToken.idToken) {
-        await setOidcToken(newToken.idToken);
+    const initializeTokenManager = async () => {
+      if (!oktaAuth.tokenManager.isStarted()) {
+        await customStorage.waitForInit();
+        await oktaAuth.tokenManager.start();
+      }
+    };
+
+    // Force initialization
+    initializeTokenManager();
+
+    const handleTokenRenewed = async (key: string, newToken: unknown) => {
+      if (key === 'idToken' && newToken && typeof newToken === 'object') {
+        const idToken = (newToken as { idToken?: string }).idToken;
+        if (idToken) {
+          await setOidcToken(idToken);
+        }
       }
     };
 
@@ -81,14 +95,14 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
     await setOidcToken(idToken);
 
     try {
-      const info = await oktaAuth.getUser();
+      const info = await oktaAuth.getUser<{ imageUrl?: string }>();
       const user = {
         id_token: idToken,
         scope: scopes,
         profile: {
           email: info.email ?? '',
           name: info.name ?? '',
-          picture: (info as any).imageUrl ?? '',
+          picture: info.imageUrl ?? '',
           locale: info.locale ?? '',
           sub: info.sub,
         },

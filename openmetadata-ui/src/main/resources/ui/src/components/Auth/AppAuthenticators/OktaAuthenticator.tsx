@@ -13,7 +13,6 @@
 
 import { useOktaAuth } from '@okta/okta-react';
 import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
-import { getOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
@@ -38,8 +37,9 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
       }
     };
 
-    const renewToken = async () => {
-      return await getOidcToken();
+    const renewToken: AuthenticatorRef['renewIdToken'] = async () => {
+      // Okta handles autoRenewal we don't need to do it
+      return oktaAuth.getIdToken() ?? '';
     };
 
     useImperativeHandle(ref, () => ({
