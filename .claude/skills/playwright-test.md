@@ -159,6 +159,63 @@ await expect(page.getByText("Policy").first()).toBeVisible();
 
 ---
 
+## Test Timeouts
+
+**IMPORTANT**: Use `test.slow()` to handle long-running tests - this is the preferred OpenMetadata pattern.
+
+### ✅ RECOMMENDED: test.slow()
+
+```typescript
+test("complex operation", async ({ page }) => {
+  // Triples the default timeout (from 30s to 90s)
+  test.slow();
+  
+  await test.step("Long running operation", async () => {
+    // Your test logic
+  });
+});
+```
+
+**When to use `test.slow()`:**
+- Tests with multiple API calls
+- Tests that involve file uploads/downloads
+- Tests with complex UI interactions
+- Tests that wait for background processing
+- **This is used 145+ times in the OpenMetadata codebase**
+
+### ⚠️ RARE: test.setTimeout()
+
+```typescript
+test("special case requiring exact timeout", async ({ page }) => {
+  // Only use when you need a specific timeout value
+  test.setTimeout(300_000); // 5 minutes
+  
+  await test.step("Very long operation", async () => {
+    // Your test logic
+  });
+});
+```
+
+**Only use `test.setTimeout()` when:**
+- You need a specific timeout value that doesn't fit the 3x multiplier
+- Extremely long operations like bulk imports or large file processing
+- **This is used only 28 times in the OpenMetadata codebase - use sparingly**
+
+### ❌ AVOID: test.describe.configure()
+
+```typescript
+// AVOID - Don't set timeouts at describe block level
+test.describe.configure({ timeout: 300000 }); // Not recommended
+```
+
+**Why avoid:**
+- Setting timeout at describe level affects ALL tests in the suite
+- Individual tests may need different timeouts
+- Less flexible and harder to maintain
+- Prefer `test.slow()` inside individual tests instead
+
+---
+
 ## Selector Priority
 
 Use selectors in this order (most to least preferred):
@@ -182,7 +239,7 @@ import { waitForAllLoadersToDisappear } from "../../utils/entity";
 import { TableClass } from "../../support/entity/TableClass";
 import { UserClass } from "../../support/user/UserClass";
 import { DOMAIN_TAGS } from "../../constant/config";
-import { uuid } from "../../utils/uuid";
+import { uuid } from "../../utils/common";
 
 const table = new TableClass();
 const user = new UserClass();
@@ -191,7 +248,6 @@ test.describe(
   "Feature Name - Category",
   { tag: ["@Features", "@Discovery"] },
   () => {
-    test.setTimeout(300000);
 
     test.beforeAll("Setup entities", async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -222,6 +278,9 @@ test.describe(
     });
 
     test("test scenario description", async ({ page }) => {
+      // Use test.slow() to triple the timeout for slow operations
+      test.slow();
+
       await test.step("Step description", async () => {
         // Setup API response listener BEFORE action
         const updateResponse = page.waitForResponse("/api/v1/endpoint*");
@@ -440,7 +499,7 @@ await test.step("Navigate between tabs", async () => {
 Located in `playwright/support/entity/`:
 
 - TableClass, DatabaseClass, DatabaseSchemaClass
-- DashboardClass, ChartClass, DataModelClass
+- DashboardClass, ChartClass, DashboardDataModelClass
 - PipelineClass, TopicClass, ContainerClass
 - MlModelClass, SearchIndexClass, StoredProcedureClass
 - APIEndpointClass, APICollectionClass, MetricClass
@@ -620,6 +679,6 @@ test.beforeAll("Setup with relationships", async ({ browser }) => {
 - **Test Independence**: Each test must run independently in any order
 - **Parallel Execution**: Tests run in parallel by default. Only use `test.describe.configure({ mode: 'serial' })` when tests have dependencies
 - **Cleanup Reliability**: Always delete in afterAll, even if test fails
-- **Reference Examples**: See `playwright/e2e/Pages/DataContractInheritance.spec.ts`, `playwright/e2e/Features/TableOwner.spec.ts`, `playwright/e2e/Features/DataAssetRulesDisabled.spec.ts` for comprehensive patterns
+- **Reference Examples**: See `playwright/e2e/Pages/DataContractInheritance.spec.ts`, `playwright/e2e/Features/Table.spec.ts`, `playwright/e2e/Features/DataAssetRulesDisabled.spec.ts` for comprehensive patterns
 
 Generate tests that are **production-ready, maintainable, and zero-flakiness** by following these patterns exactly.
