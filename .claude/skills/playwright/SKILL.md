@@ -23,6 +23,39 @@ Scenarios:
 Roles: <admin|dataConsumer|dataSteward|owner> (optional, defaults to admin)
 ```
 
+## Quick Example
+
+```
+/playwright-test
+Feature: Data Quality Rules
+Category: Features
+Entity: Table
+Domain: Observability
+Scenarios:
+  - Admin can create and configure data quality rules
+  - Data consumer can view test results but not edit rules
+  - Test results are persisted after page reload
+Roles: admin, dataConsumer
+```
+
+---
+
+## Developer Handbook Reference
+
+**IMPORTANT**: Before generating any tests, read and apply the OpenMetadata Playwright Developer Handbook:
+
+```
+openmetadata-ui/src/main/resources/ui/playwright/PLAYWRIGHT_DEVELOPER_HANDBOOK.md
+```
+
+This handbook provides:
+- Testing philosophy (user-centric, behavior-focused)
+- Test standards and best practices
+- API setup patterns for test data
+- Locator priority guidelines
+
+**Apply handbook principles in addition to the patterns below.**
+
 ---
 
 ## Core Principles
@@ -162,14 +195,13 @@ await expect(page.getByText("Policy").first()).toBeVisible();
 
 ## Test Timeouts
 
-**IMPORTANT**: Use `test.slow()` to handle long-running tests - this is the preferred OpenMetadata pattern.
-
 ### ✅ RECOMMENDED: test.slow()
+
+**Default approach** - Use `test.slow()` to triple timeouts (30s → 90s):
 
 ```typescript
 test("complex operation", async ({ page }) => {
-  // Triples the default timeout (from 30s to 90s)
-  test.slow();
+  test.slow(); // PREFERRED - triples the timeout
 
   await test.step("Long running operation", async () => {
     // Your test logic
@@ -177,46 +209,32 @@ test("complex operation", async ({ page }) => {
 });
 ```
 
-**When to use `test.slow()`:**
-
-- Tests with multiple API calls
-- Tests that involve file uploads/downloads
-- Tests with complex UI interactions
-- Tests that wait for background processing
-- **This is used 145+ times in the OpenMetadata codebase**
+**When to use**: Tests with multiple API calls, file uploads/downloads, complex UI interactions, or background processing. Used 145+ times in the codebase.
 
 ### ⚠️ RARE: test.setTimeout()
 
-```typescript
-test("special case requiring exact timeout", async ({ page }) => {
-  // Only use when you need a specific timeout value
-  test.setTimeout(300_000); // 5 minutes
+**Only for specific timeout values** that don't fit the 3x multiplier:
 
-  await test.step("Very long operation", async () => {
-    // Your test logic
+```typescript
+test("extremely long operation", async ({ page }) => {
+  test.setTimeout(300_000); // 5 minutes - only when 3x isn't suitable
+
+  await test.step("Bulk import", async () => {
+    // Very long operation
   });
 });
 ```
 
-**Only use `test.setTimeout()` when:**
-
-- You need a specific timeout value that doesn't fit the 3x multiplier
-- Extremely long operations like bulk imports or large file processing
-- **This is used only 28 times in the OpenMetadata codebase - use sparingly**
+**When to use**: Extremely long operations like bulk imports or large file processing. Used only 28 times in the codebase - use sparingly.
 
 ### ❌ AVOID: test.describe.configure()
 
 ```typescript
-// AVOID - Don't set timeouts at describe block level
-test.describe.configure({ timeout: 300000 }); // Not recommended
+// AVOID - affects ALL tests in the suite
+test.describe.configure({ timeout: 300000 });
 ```
 
-**Why avoid:**
-
-- Setting timeout at describe level affects ALL tests in the suite
-- Individual tests may need different timeouts
-- Less flexible and harder to maintain
-- Prefer `test.slow()` inside individual tests instead
+**Why avoid**: Less flexible, harder to maintain, affects all tests. Prefer `test.slow()` inside individual tests instead.
 
 ---
 
