@@ -275,18 +275,47 @@ public class PartitionWorker {
    * Wait for pending async sink operations to complete, then flush stats.
    * This ensures that stats from async bulk callbacks are captured before the tracker is abandoned.
    *
+   * <p>When vector indexing is enabled, the sink may have long-running vector embedding tasks.
+   * We wait for both:
+   * <ul>
+   *   <li>The StageStatsTracker's pending operations (for stats accuracy)</li>
+   *   <li>The BulkSink's pending vector tasks (for vector completion)</li>
+   * </ul>
+   *
    * @param statsTracker The stats tracker to flush after waiting
    */
   private void waitForSinkOperations(StageStatsTracker statsTracker) {
-    // Wait for all pending sink operations to complete (with 30 second timeout)
-    // This ensures the async bulk callbacks have run and updated the tracker
-    boolean completed = statsTracker.awaitSinkCompletion(30000);
-    if (!completed) {
+    // Check if there are pending vector tasks - if so, we need a longer timeout
+    int pendingVectorTasks = searchIndexSink.getPendingVectorTaskCount();
+    boolean hasVectorTasks = pendingVectorTasks > 0;
+
+    if (hasVectorTasks) {
+      LOG.debug(
+          "Waiting for {} pending vector tasks before completing partition for entity {}",
+          pendingVectorTasks,
+          statsTracker.getEntityType());
+
+      // Wait for vector operations to complete first (up to 120 seconds for vectors)
+      boolean vectorComplete = searchIndexSink.awaitVectorCompletion(120);
+      if (!vectorComplete) {
+        LOG.warn(
+            "Timed out waiting for vector completion, {} tasks still pending for entity {}",
+            searchIndexSink.getPendingVectorTaskCount(),
+            statsTracker.getEntityType());
+      }
+    }
+
+    // Now wait for the stats tracker to have all callbacks accounted for
+    // Use a longer timeout if we had vector tasks since callbacks may be delayed
+    long statsTimeout = hasVectorTasks ? 60000 : 30000;
+    boolean statsComplete = statsTracker.awaitSinkCompletion(statsTimeout);
+    if (!statsComplete) {
       LOG.warn(
-          "Timed out waiting for sink completion, {} operations still pending for entity {}",
+          "Timed out waiting for sink stats completion, {} operations still pending for entity {}",
           statsTracker.getPendingSinkOps(),
           statsTracker.getEntityType());
     }
+
     statsTracker.flush();
   }
 
