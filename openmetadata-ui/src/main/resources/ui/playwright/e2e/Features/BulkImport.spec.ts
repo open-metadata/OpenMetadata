@@ -175,7 +175,10 @@ test.describe('Bulk Import Export', () => {
 
         // Adding manual wait for the file to load
         await page.waitForTimeout(500);
-
+ // Wait for upload widget to be hidden indicating file is loaded
+ await page.waitForSelector('[data-testid="upload-file-widget"]', {
+  state: 'hidden',
+});
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -636,7 +639,10 @@ test.describe('Bulk Import Export', () => {
 
         // Adding manual wait for the file to load
         await page.waitForTimeout(500);
-
+ // Wait for upload widget to be hidden indicating file is loaded
+ await page.waitForSelector('[data-testid="upload-file-widget"]', {
+  state: 'hidden',
+});
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -799,7 +805,10 @@ test.describe('Bulk Import Export', () => {
 
         // Adding manual wait for the file to load
         await page.waitForTimeout(500);
-
+  // Wait for upload widget to be hidden indicating file is loaded
+  await page.waitForSelector('[data-testid="upload-file-widget"]', {
+    state: 'hidden',
+  });
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -1079,6 +1088,10 @@ test.describe('Bulk Import Export', () => {
       await fileInput?.setInputFiles([
         'downloads/' + dbEntity.entity.name + '.csv',
       ]);
+       // Wait for upload widget to be hidden indicating file is loaded
+       await page.waitForSelector('[data-testid="upload-file-widget"]', {
+        state: 'hidden',
+      });
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
