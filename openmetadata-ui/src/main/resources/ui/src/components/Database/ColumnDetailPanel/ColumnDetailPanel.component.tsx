@@ -327,20 +327,27 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       }
 
       const response = onColumnFieldUpdate
-        ? await onColumnFieldUpdate(activeColumn.fullyQualifiedName, update)
+        ? await onColumnFieldUpdate(
+            activeColumn.fullyQualifiedName,
+            update,
+            'fieldUpdateFromColumnDetailPanel'
+          )
         : // Fallback to direct API call for Table entities when used outside GenericProvider
           ((await updateTableColumn(
             activeColumn.fullyQualifiedName,
             update
           )) as T);
 
-      setLocalToast({
-        open: true,
-        message: t('server.update-entity-success', {
-          entity: t(successMessageKey),
-        }),
-        type: 'success',
-      });
+      // Only show success toast if we got a valid response
+      if (response) {
+        setLocalToast({
+          open: true,
+          message: t('server.update-entity-success', {
+            entity: t(successMessageKey),
+          }),
+          type: 'success',
+        });
+      }
 
       return response;
     },
@@ -955,7 +962,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           <AlertBar
             defaultExpand
             className="column-detail-panel-alert"
-            message={localToast.message || 'test'}
+            message={localToast.message}
             type={localToast.type}
           />
         </div>

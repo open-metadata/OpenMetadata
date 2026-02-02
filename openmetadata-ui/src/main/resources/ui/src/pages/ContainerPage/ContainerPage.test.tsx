@@ -212,6 +212,14 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 
 jest.mock('../../utils/StringsUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
+  getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
+  stringToHTML: jest.fn().mockImplementation((str) => str),
+  getErrorText: jest
+    .fn()
+    .mockImplementation(
+      (error: Error, defaultMessage: string) =>
+        error?.message || defaultMessage || 'Error'
+    ),
 }));
 
 jest.mock('../../utils/TableUtils', () => {
@@ -233,15 +241,6 @@ jest.mock('../../utils/TagsUtils', () => ({
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
-}));
-
-jest.mock('../../utils/StringsUtils', () => ({
-  getErrorText: jest
-    .fn()
-    .mockImplementation(
-      (error: Error, defaultMessage: string) =>
-        error?.message || defaultMessage || 'Error'
-    ),
 }));
 
 const mockUseParams = jest.fn().mockReturnValue({

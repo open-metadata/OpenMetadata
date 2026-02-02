@@ -272,7 +272,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   // Wrapper for onColumnFieldUpdate that updates
   const handleColumnFieldUpdate = useCallback(
-    async (fqn: string, update: ColumnFieldUpdate) => {
+    async (fqn: string, update: ColumnFieldUpdate, source?: string) => {
       let apiResponseColumn: Column | undefined;
 
       // For Table entities, use the specific column update endpoint instead of generic patch
@@ -281,6 +281,10 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
         try {
           apiResponseColumn = await updateTableColumn(fqn, update);
         } catch (error) {
+          // If called from ColumnDetailPanel, re-throw error so it can show local toast
+          if (source) {
+            throw error;
+          }
           showErrorToast(error as AxiosError);
 
           return;
