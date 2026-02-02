@@ -108,6 +108,13 @@ class ServiceBaseClass {
 
     if (await runnerSelector.isVisible()) {
       await runnerSelector.click();
+      await page.waitForSelector('.ant-select-dropdown:visible', {
+        state: 'visible',
+      });
+
+      // Search for the runner using the search input
+      await runnerSelector.locator('input').fill('Collate SaaS');
+
       await page.waitForSelector(
         '.ant-select-dropdown:visible [data-testid="select-option-Collate SaaS Runner"]',
         { state: 'visible' }

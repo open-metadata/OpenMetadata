@@ -83,12 +83,22 @@ class UnityCatalogClient(DatabricksClient):
             logger.debug(
                 f"Fetching table lineage from Databricks API for: {table_name}"
             )
-            response = self.client.get(
+            raw_response = self.client.get(
                 f"{self.base_url}{TABLE_LINEAGE_PATH}",
                 headers=self.headers,
                 data=json.dumps(data),
                 timeout=API_TIMEOUT,
-            ).json()
+            )
+            try:
+                response = raw_response.json()
+            except json.JSONDecodeError as json_err:
+                logger.error(
+                    f"Failed to parse JSON response for table lineage {table_name}. "
+                    f"Status code: {raw_response.status_code}, "
+                    f"Raw response: {raw_response.text}"
+                )
+                raise json_err
+
             if response:
                 return LineageTableStreams(**response)
 
@@ -115,12 +125,21 @@ class UnityCatalogClient(DatabricksClient):
             logger.debug(
                 f"Fetching column lineage from Databricks API for: {table_name}.{column_name}"
             )
-            response = self.client.get(
+            raw_response = self.client.get(
                 f"{self.base_url}{COLUMN_LINEAGE_PATH}",
                 headers=self.headers,
                 data=json.dumps(data),
                 timeout=API_TIMEOUT,
-            ).json()
+            )
+            try:
+                response = raw_response.json()
+            except json.JSONDecodeError as json_err:
+                logger.error(
+                    f"Failed to parse JSON response for column lineage {table_name}.{column_name}. "
+                    f"Status code: {raw_response.status_code}, "
+                    f"Raw response: {raw_response.text}"
+                )
+                raise json_err
 
             if response:
                 return LineageColumnStreams(**response)

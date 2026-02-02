@@ -370,6 +370,39 @@ class ReportPagesAPIResponse(BaseModel):
     value: Optional[List[ReportPage]] = None
 
 
+class DatasourceConnectionDetails(BaseModel):
+    """
+    PowerBI Datasource Connection Details
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-datasources-in-group#datasourceconnectiondetails
+    """
+
+    server: Optional[str] = None
+    database: Optional[str] = None
+
+
+class Datasource(BaseModel):
+    """
+    PowerBI Datasource Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-datasources-in-group#datasource
+    """
+
+    name: Optional[str] = None
+    datasourceType: Optional[str] = None
+    connectionDetails: Optional[DatasourceConnectionDetails] = None
+    datasourceId: Optional[str] = None
+    gatewayId: Optional[str] = None
+
+
+class DatasourcesResponse(BaseModel):
+    """
+    PowerBI DatasourcesResponse Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-datasources-in-group
+    """
+
+    odata_context: str = Field(alias="@odata.context")
+    value: List[Datasource]
+
+
 class DataflowEntityAttribute(BaseModel):
     """
     PowerBI Dataflow Entity Attribute Model
