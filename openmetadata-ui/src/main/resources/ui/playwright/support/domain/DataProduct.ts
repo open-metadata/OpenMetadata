@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { selectDataProduct } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
@@ -39,14 +40,14 @@ type ResponseDataType = {
 export class DataProduct extends EntityClass {
   id: string;
   data: ResponseDataType;
-  private domains: Domain[];
+  private readonly domains: Domain[];
   createDomain = true;
-  private subDomains?: SubDomain[];
+  private readonly subDomains?: SubDomain[];
 
   responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(domains?: Domain[], name?: string, subDomains?: SubDomain[]) {
-    super(EntityTypeEndpoint.DATA_PRODUCT);
+    super(EntityTypeEndpoint.DATA_PRODUCT, EntityType.DATA_PRODUCT);
 
     this.id = uuid();
     this.domains = domains ?? [new Domain()];
@@ -91,6 +92,7 @@ export class DataProduct extends EntityClass {
     });
     const data = await response.json();
     this.responseData = data;
+    this.entityResponseData = data;
 
     return data;
   }

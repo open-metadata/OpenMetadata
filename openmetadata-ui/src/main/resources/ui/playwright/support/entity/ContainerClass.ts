@@ -15,6 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -75,7 +76,7 @@ export class ContainerClass extends EntityClass {
   childArrayResponseData: ResponseDataType[] = [];
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.Container);
+    super(EntityTypeEndpoint.Container, EntityType.CONTAINER);
 
     this.containerName = `pw-container-${uuid()}`;
     this.childContainerName = `pw-container-${uuid()}`;

@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -24,8 +25,8 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class ApiEndpointClass extends EntityClass {
-  private serviceName: string;
-  private apiCollectionName: string;
+  private readonly serviceName: string;
+  private readonly apiCollectionName: string;
   service: {
     name: string;
     displayName: string;
@@ -44,8 +45,8 @@ export class ApiEndpointClass extends EntityClass {
     service: string;
   };
 
-  private apiEndpointName: string;
-  private fqn: string;
+  private readonly apiEndpointName: string;
+  private readonly fqn: string;
 
   children: Array<{
     name: string;
@@ -91,7 +92,7 @@ export class ApiEndpointClass extends EntityClass {
     {} as ResponseDataWithServiceType;
 
   constructor(name?: string, apiEndpointName?: string) {
-    super(EntityTypeEndpoint.API_ENDPOINT);
+    super(EntityTypeEndpoint.API_ENDPOINT, EntityType.API_ENDPOINT);
 
     this.serviceName = name ?? `pw-api-service-${uuid()}`;
     this.apiCollectionName = `pw-api-collection-${uuid()}`;

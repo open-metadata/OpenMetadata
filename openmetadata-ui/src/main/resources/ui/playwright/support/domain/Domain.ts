@@ -13,6 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SidebarItem } from '../../constant/sidebar';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { selectDomain } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
@@ -42,7 +43,7 @@ export class Domain extends EntityClass {
   responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(data?: ResponseDataType) {
-    super(EntityTypeEndpoint.Domain);
+    super(EntityTypeEndpoint.Domain, EntityType.DOMAIN);
     const id = uuid();
     this.data = data ?? {
       name: `PW%domain.${id}`,
@@ -66,6 +67,7 @@ export class Domain extends EntityClass {
     });
     const data = await response.json();
     this.responseData = data;
+    this.entityResponseData = data;
 
     return data;
   }
@@ -102,6 +104,7 @@ export class Domain extends EntityClass {
     );
 
     this.responseData = await response.json();
+    this.entityResponseData = await response.json();
 
     return {
       entity: this.responseData,

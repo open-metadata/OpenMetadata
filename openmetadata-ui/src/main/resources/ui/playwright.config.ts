@@ -82,6 +82,7 @@ export default defineConfig({
       dependencies: ['setup', 'entity-data-setup'],
       grepInvert: /data-insight/,
       teardown: 'entity-data-teardown',
+      testMatch: '**/CustomPropertyAdvancedSearch*.spec.ts',
       testIgnore: [
         '**/nightly/**',
         '**/DataAssetRulesEnabled.spec.ts',

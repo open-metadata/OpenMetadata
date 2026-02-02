@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -40,8 +41,8 @@ export class SearchIndexClass extends EntityClass {
       };
     };
   };
-  private searchIndexName: string;
-  private fqn: string;
+  private readonly searchIndexName: string;
+  private readonly fqn: string;
 
   children: Array<{
     name: string;
@@ -78,7 +79,7 @@ export class SearchIndexClass extends EntityClass {
     {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.SearchIndex);
+    super(EntityTypeEndpoint.SearchIndex, EntityType.SEARCH_INDEX);
 
     this.service = {
       name: name ?? `pw-search-service-${uuid()}`,

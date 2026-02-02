@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class MetricClass extends EntityClass {
-  private metricName: string;
+  private readonly metricName: string;
 
   entity: {
     name: string;
@@ -35,7 +36,7 @@ export class MetricClass extends EntityClass {
   entityResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor() {
-    super(EntityTypeEndpoint.METRIC);
+    super(EntityTypeEndpoint.METRIC, EntityType.METRIC);
 
     this.metricName = `playwright-metric-${uuid()}`;
 
