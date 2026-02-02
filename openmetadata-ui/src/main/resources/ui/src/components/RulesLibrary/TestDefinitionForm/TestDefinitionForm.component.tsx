@@ -43,7 +43,7 @@ import CodeEditor from '../../Database/SchemaEditor/CodeEditor';
 
 interface TestDefinitionFormProps {
   initialValues?: TestDefinition;
-  onSuccess: () => void;
+  onSuccess: (data?: TestDefinition) => void;
   onCancel: () => void;
 }
 
@@ -87,13 +87,17 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
         };
         const patch = compare(initialValues, updatedValues);
         if (patch.length > 0) {
-          await patchTestDefinition(initialValues?.id ?? '', patch);
+          const result = await patchTestDefinition(
+            initialValues?.id ?? '',
+            patch
+          );
+          onSuccess(result);
+          showSuccessToast(
+            t('server.entity-updated-success', {
+              entity: t('label.test-definition'),
+            })
+          );
         }
-        showSuccessToast(
-          t('server.entity-updated-success', {
-            entity: t('label.test-definition'),
-          })
-        );
       } else {
         let validatorClass: string | undefined;
         if (values.sqlExpression) {
@@ -122,9 +126,8 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
             entity: t('label.test-definition'),
           })
         );
+        onSuccess();
       }
-
-      onSuccess();
     } catch (error) {
       const errorMsg =
         (error as AxiosError<{ message: string }>)?.response?.data?.message ||
