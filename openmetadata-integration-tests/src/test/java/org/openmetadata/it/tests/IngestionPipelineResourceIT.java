@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -1180,5 +1181,176 @@ public class IngestionPipelineResourceIT
     assertTrue(
         result.getData().stream().anyMatch(p -> p.getId().equals(automationPipeline.getId())),
         "Automation pipeline should be found with multiple filters");
+  }
+
+  // ===================================================================
+  // SECURITY TESTS - JWT Token Exposure Prevention
+  // ===================================================================
+
+  @Test
+  void get_ingestionPipeline_doesNotExposeJwtToken_security(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("security_get_test"))
+            .withDescription("Security test pipeline")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline created = createEntity(request);
+
+    IngestionPipeline fetched = getEntity(created.getId().toString());
+    assertNull(
+        fetched.getOpenMetadataServerConnection(),
+        "SECURITY: GET by ID must NOT return openMetadataServerConnection to prevent JWT token exposure");
+
+    IngestionPipeline fetchedByName = getEntityByName(created.getFullyQualifiedName());
+    assertNull(
+        fetchedByName.getOpenMetadataServerConnection(),
+        "SECURITY: GET by name must NOT return openMetadataServerConnection to prevent JWT token exposure");
+  }
+
+  @Test
+  void list_ingestionPipelines_doesNotExposeJwtToken_security(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request1 =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("security_list_1"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    CreateIngestionPipeline request2 =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("security_list_2"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    createEntity(request1);
+    createEntity(request2);
+
+    ListParams params = new ListParams().withService(service.getFullyQualifiedName());
+    ListResponse<IngestionPipeline> pipelines = listEntities(params);
+
+    for (IngestionPipeline pipeline : pipelines.getData()) {
+      assertNull(
+          pipeline.getOpenMetadataServerConnection(),
+          String.format(
+              "SECURITY: LIST must NOT return openMetadataServerConnection for pipeline [%s]",
+              pipeline.getName()));
+    }
+  }
+
+  @Test
+  void get_ingestionPipelineVersion_doesNotExposeJwtToken_security(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("security_version_test"))
+            .withDescription("Security test for versions")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline created = createEntity(request);
+
+    created.setDescription("Updated description for version test");
+    patchEntity(created.getId().toString(), created);
+
+    IngestionPipeline version = getVersion(created.getId(), created.getVersion());
+    assertNull(
+        version.getOpenMetadataServerConnection(),
+        "SECURITY: GET version must NOT return openMetadataServerConnection");
+  }
+
+  @Test
+  void bot_canAccessPipeline_butApiDoesNotExposeJwt_security(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("security_bot_test"))
+            .withDescription("Security test for bot access")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline created = createEntity(request);
+
+    IngestionPipeline fetchedByBot =
+        SdkClients.ingestionBotClient().ingestionPipelines().get(created.getId().toString());
+    assertNull(
+        fetchedByBot.getOpenMetadataServerConnection(),
+        "SECURITY: Even bot users must NOT see openMetadataServerConnection via GET API. "
+            + "JWT should only be passed to pipeline service during deploy.");
+  }
+
+  @Test
+  void put_ingestionPipeline_doesNotExposeJwtToken_security(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("security_put_test"))
+            .withDescription("Security test for PUT")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline created = createEntity(request);
+
+    created.setDescription("Updated description for security test");
+    IngestionPipeline updated = patchEntity(created.getId().toString(), created);
+    assertNull(
+        updated.getOpenMetadataServerConnection(),
+        "SECURITY: PUT response must NOT return openMetadataServerConnection");
+  }
+
+  @Test
+  void create_ingestionPipeline_doesNotExposeJwtToken_security(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("security_create_test"))
+            .withDescription("Security test for CREATE")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline created = createEntity(request);
+    assertNull(
+        created.getOpenMetadataServerConnection(),
+        "SECURITY: CREATE response must NOT return openMetadataServerConnection");
   }
 }
