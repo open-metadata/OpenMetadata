@@ -1,6 +1,7 @@
 ---
 name: playwright-test
 description: Generate robust, zero-flakiness Playwright E2E tests following OpenMetadata patterns. Creates comprehensive test files with proper waits, API validation, multi-role permissions, and complete entity lifecycle management.
+user-invocable: true
 ---
 
 # Playwright Test Generator - OpenMetadata
@@ -169,7 +170,7 @@ await expect(page.getByText("Policy").first()).toBeVisible();
 test("complex operation", async ({ page }) => {
   // Triples the default timeout (from 30s to 90s)
   test.slow();
-  
+
   await test.step("Long running operation", async () => {
     // Your test logic
   });
@@ -177,6 +178,7 @@ test("complex operation", async ({ page }) => {
 ```
 
 **When to use `test.slow()`:**
+
 - Tests with multiple API calls
 - Tests that involve file uploads/downloads
 - Tests with complex UI interactions
@@ -189,7 +191,7 @@ test("complex operation", async ({ page }) => {
 test("special case requiring exact timeout", async ({ page }) => {
   // Only use when you need a specific timeout value
   test.setTimeout(300_000); // 5 minutes
-  
+
   await test.step("Very long operation", async () => {
     // Your test logic
   });
@@ -197,6 +199,7 @@ test("special case requiring exact timeout", async ({ page }) => {
 ```
 
 **Only use `test.setTimeout()` when:**
+
 - You need a specific timeout value that doesn't fit the 3x multiplier
 - Extremely long operations like bulk imports or large file processing
 - **This is used only 28 times in the OpenMetadata codebase - use sparingly**
@@ -209,6 +212,7 @@ test.describe.configure({ timeout: 300000 }); // Not recommended
 ```
 
 **Why avoid:**
+
 - Setting timeout at describe level affects ALL tests in the suite
 - Individual tests may need different timeouts
 - Less flexible and harder to maintain
@@ -248,7 +252,6 @@ test.describe(
   "Feature Name - Category",
   { tag: ["@Features", "@Discovery"] },
   () => {
-
     test.beforeAll("Setup entities", async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
