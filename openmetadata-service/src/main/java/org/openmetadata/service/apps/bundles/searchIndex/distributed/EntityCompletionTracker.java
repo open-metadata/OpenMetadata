@@ -82,7 +82,10 @@ public class EntityCompletionTracker {
     }
 
     if (partitionFailed) {
-      failedPartitions.get(entityType).incrementAndGet();
+      AtomicInteger failed = failedPartitions.get(entityType);
+      if (failed != null) {
+        failed.incrementAndGet();
+      }
     }
 
     int newCompleted = completed.incrementAndGet();
