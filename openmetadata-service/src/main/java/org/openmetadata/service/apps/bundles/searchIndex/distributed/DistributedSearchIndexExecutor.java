@@ -915,15 +915,27 @@ public class DistributedSearchIndexExecutor {
     }
 
     LOG.info(
-        "Initialized entity tracker for job {} with {} entity types",
+        "Initialized entity tracker for job {} with {} entity types: {}",
         jobId,
-        partitionCountByEntity.size());
+        partitionCountByEntity.size(),
+        partitionCountByEntity);
 
     // Set up per-entity promotion callback if recreating indices
     if (recreateIndex && recreateContext != null) {
       this.recreateIndexHandler = Entity.getSearchRepository().createReindexHandler();
       entityTracker.setOnEntityComplete(
           (entityType, success) -> promoteEntityIndex(entityType, success));
+      LOG.info(
+          "Per-entity promotion callback SET for job {} (recreateIndex={}, recreateContext entities={})",
+          jobId,
+          recreateIndex,
+          recreateContext.getEntities());
+    } else {
+      LOG.info(
+          "Per-entity promotion callback NOT set for job {} (recreateIndex={}, recreateContext={})",
+          jobId,
+          recreateIndex,
+          recreateContext != null ? "present" : "null");
     }
   }
 

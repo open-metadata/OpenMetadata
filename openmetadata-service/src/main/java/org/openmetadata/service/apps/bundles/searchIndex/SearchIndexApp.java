@@ -737,29 +737,33 @@ public class SearchIndexApp extends AbstractNativeApplication {
     Set<String> promotedEntities = Collections.emptySet();
     if (distributedExecutor != null && distributedExecutor.getEntityTracker() != null) {
       promotedEntities = distributedExecutor.getEntityTracker().getPromotedEntities();
-      if (!promotedEntities.isEmpty()) {
-        LOG.info(
-            "Skipping {} already-promoted entities in finalizeAllEntityReindex",
-            promotedEntities.size());
-      }
     }
 
+    // Calculate entities that still need finalization
+    Set<String> entitiesToFinalize = new HashSet<>(recreateContext.getEntities());
+    entitiesToFinalize.removeAll(promotedEntities);
+
+    if (entitiesToFinalize.isEmpty()) {
+      LOG.info(
+          "All {} entities already promoted during execution, skipping finalizeAllEntityReindex",
+          promotedEntities.size());
+      recreateContext = null;
+      return;
+    }
+
+    LOG.info(
+        "Finalizing {} remaining entities (already promoted: {})",
+        entitiesToFinalize.size(),
+        promotedEntities.size());
+
     try {
-      final Set<String> skipEntities = promotedEntities;
-      recreateContext
-          .getEntities()
-          .forEach(
-              entityType -> {
-                if (skipEntities.contains(entityType)) {
-                  LOG.debug("Skipping finalizeReindex for '{}' - already promoted", entityType);
-                  return;
-                }
-                try {
-                  finalizeEntityReindex(entityType, true);
-                } catch (Exception ex) {
-                  LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
-                }
-              });
+      for (String entityType : entitiesToFinalize) {
+        try {
+          finalizeEntityReindex(entityType, finalSuccess);
+        } catch (Exception ex) {
+          LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
+        }
+      }
     } finally {
       recreateContext = null;
     }

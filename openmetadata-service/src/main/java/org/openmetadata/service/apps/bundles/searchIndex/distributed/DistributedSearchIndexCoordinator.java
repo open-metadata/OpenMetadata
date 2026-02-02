@@ -407,7 +407,13 @@ public class DistributedSearchIndexCoordinator {
 
     // Record partition completion for per-entity index promotion
     if (entityTracker != null) {
+      LOG.debug(
+          "Recording partition completion for entity '{}' (failed={}) in tracker",
+          record.entityType(),
+          failedCount > 0);
       entityTracker.recordPartitionComplete(record.entityType(), failedCount > 0);
+    } else {
+      LOG.debug("Entity tracker is null, skipping per-entity completion tracking");
     }
 
     // Check if job should be marked as complete
