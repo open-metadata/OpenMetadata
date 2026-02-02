@@ -1,0 +1,1 @@
+-- No changes needed for PostgreSQL - TIMESTAMP already has microsecond precision.

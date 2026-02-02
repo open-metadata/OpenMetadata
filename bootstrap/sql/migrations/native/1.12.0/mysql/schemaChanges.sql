@@ -111,6 +111,11 @@ CREATE INDEX idx_api_endpoint_entity_updated_at_id ON api_endpoint_entity(update
 -- Add metadata column to tag_usage table
 ALTER TABLE tag_usage ADD metadata JSON NULL;
 
+-- Upgrade appliedAt to microsecond precision to match PostgreSQL behavior.
+-- Without this, MySQL returns second-precision timestamps which cause spurious
+-- diffs in JSON patch operations, leading to deserialization failures.
+ALTER TABLE tag_usage MODIFY appliedAt TIMESTAMP(6) NULL DEFAULT CURRENT_TIMESTAMP(6);
+
 -- Distributed Search Indexing Tables
 
 -- Table to track reindex jobs across distributed servers
@@ -240,3 +245,28 @@ CREATE TABLE IF NOT EXISTS learning_resource_entity (
   PRIMARY KEY (id),
   UNIQUE KEY fqnHash (fqnHash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Add process and vector stage columns to search_index_server_stats table
+-- These columns support the 4-stage pipeline model (Reader, Process, Sink, Vector) for search indexing stats
+
+ALTER TABLE search_index_server_stats ADD COLUMN processSuccess BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN processFailed BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN vectorSuccess BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN vectorFailed BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN vectorWarnings BIGINT DEFAULT 0;
+
+-- Add entityType column to support per-entity stats tracking
+-- Stats are now tracked per (jobId, serverId, entityType) instead of (jobId, serverId)
+ALTER TABLE search_index_server_stats ADD COLUMN entityType VARCHAR(128) NOT NULL DEFAULT 'unknown';
+
+-- Drop old unique index and create new one with entityType
+ALTER TABLE search_index_server_stats DROP INDEX idx_search_index_server_stats_job_server;
+CREATE UNIQUE INDEX idx_search_index_server_stats_job_server_entity
+    ON search_index_server_stats (jobId, serverId, entityType);
+
+-- Remove deprecated columns (entityBuildFailures is redundant - failures are tracked as processFailed)
+-- sinkTotal and sinkWarnings are not needed
+ALTER TABLE search_index_server_stats DROP COLUMN entityBuildFailures;
+ALTER TABLE search_index_server_stats DROP COLUMN sinkTotal;
+ALTER TABLE search_index_server_stats DROP COLUMN sinkWarnings;
+
