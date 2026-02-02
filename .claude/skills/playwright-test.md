@@ -182,16 +182,16 @@ import { waitForAllLoadersToDisappear } from "../../utils/entity";
 import { TableClass } from "../../support/entity/TableClass";
 import { UserClass } from "../../support/user/UserClass";
 import { DOMAIN_TAGS } from "../../constant/config";
-import { uuid } from "../../utils/uuid";
+import { uuid } from "../../utils/common";
 
 const table = new TableClass();
 const user = new UserClass();
 
+test.describe.configure({ timeout: 300000 });
 test.describe(
   "Feature Name - Category",
   { tag: ["@Features", "@Discovery"] },
   () => {
-    test.setTimeout(300000);
 
     test.beforeAll("Setup entities", async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -440,7 +440,7 @@ await test.step("Navigate between tabs", async () => {
 Located in `playwright/support/entity/`:
 
 - TableClass, DatabaseClass, DatabaseSchemaClass
-- DashboardClass, ChartClass, DataModelClass
+- DashboardClass, ChartClass, DashboardDataModelClass
 - PipelineClass, TopicClass, ContainerClass
 - MlModelClass, SearchIndexClass, StoredProcedureClass
 - APIEndpointClass, APICollectionClass, MetricClass
@@ -620,6 +620,6 @@ test.beforeAll("Setup with relationships", async ({ browser }) => {
 - **Test Independence**: Each test must run independently in any order
 - **Parallel Execution**: Tests run in parallel by default. Only use `test.describe.configure({ mode: 'serial' })` when tests have dependencies
 - **Cleanup Reliability**: Always delete in afterAll, even if test fails
-- **Reference Examples**: See `playwright/e2e/Pages/DataContractInheritance.spec.ts`, `playwright/e2e/Features/TableOwner.spec.ts`, `playwright/e2e/Features/DataAssetRulesDisabled.spec.ts` for comprehensive patterns
+- **Reference Examples**: See `playwright/e2e/Pages/DataContractInheritance.spec.ts`, `playwright/e2e/Features/Table.spec.ts`, `playwright/e2e/Features/DataAssetRulesDisabled.spec.ts` for comprehensive patterns
 
 Generate tests that are **production-ready, maintainable, and zero-flakiness** by following these patterns exactly.
