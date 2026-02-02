@@ -14,6 +14,7 @@ import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 const navigateToAuditLogsPage = async (page: Page) => {
   await settingClick(page, GlobalSettingOptions.AUDIT_LOGS);
@@ -22,7 +23,7 @@ const navigateToAuditLogsPage = async (page: Page) => {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Audit Logs Page', () => {
+test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await navigateToAuditLogsPage(page);

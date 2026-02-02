@@ -20,6 +20,7 @@ import {
   uuid,
 } from '../../utils/common';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -33,7 +34,7 @@ async function searchResource(page: Page, searchText: string) {
   await page.locator('.search-input input').fill(searchText);
 }
 
-test.describe('Learning Resources Admin Page', () => {
+test.describe('Learning Resources Admin Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);

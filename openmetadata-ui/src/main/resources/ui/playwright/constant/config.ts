@@ -19,6 +19,11 @@ export const PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ = {
   tag: '@sample-data',
 };
 
+// Aim to support tests which are independent of metadata / ingestion framework to run with DataAssetRules tests
+export const PLAYWRIGHT_BASIC_TEST_TAG_OBJ = {
+  tag: '@basic',
+};
+
 export const DOMAIN_TAGS = {
   GOVERNANCE: '@Governance',
   DISCOVERY: '@Discovery',

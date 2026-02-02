@@ -32,7 +32,6 @@ import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 const user = new UserClass();
 
@@ -69,7 +68,7 @@ const test = base.extend<{
 entities.forEach((EntityClass) => {
   const entity = new EntityClass();
 
-  test.describe(entity.getType(), PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
+  test.describe(entity.getType(), () => {
     const rowSelector =
       entity.type === 'MlModel' ? 'data-testid' : 'data-row-key';
 
