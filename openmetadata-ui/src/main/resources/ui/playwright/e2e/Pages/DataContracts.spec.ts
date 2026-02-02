@@ -1133,7 +1133,12 @@ test.describe('Data Contracts', () => {
       'KnowledgePanel.Tags',
       testTag.responseData.fullyQualifiedName
     );
-    await assignGlossaryTerm(page, testGlossaryTerm.responseData);
+    await assignGlossaryTerm(
+      page,
+      testGlossaryTerm.responseData,
+      'Add',
+      EntityTypeEndpoint.Table
+    );
 
     await navigateToContractTab(page);
 
@@ -1143,7 +1148,7 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    
+
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -1306,7 +1311,12 @@ test.describe('Data Contracts', () => {
       'KnowledgePanel.Tags',
       testTag.responseData.fullyQualifiedName
     );
-    await assignGlossaryTerm(page, testGlossaryTerm.responseData);
+    await assignGlossaryTerm(
+      page,
+      testGlossaryTerm.responseData,
+      'Add',
+      EntityTypeEndpoint.Table
+    );
 
     await navigateToContractTab(page);
 
@@ -1316,7 +1326,7 @@ test.describe('Data Contracts', () => {
 
     await page.reload();
 
-    
+
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
