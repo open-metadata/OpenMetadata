@@ -64,31 +64,6 @@ export const visitEntityPage = async (data: {
   // Unified loader handling
   await waitForAllLoadersToDisappear(page);
 
-  // Dismiss "What's New" alert if visible
-  try {
-    const whatsNewCloseButton = page
-      .getByTestId('whats-new-alert-card')
-      .locator('.whats-new-alert-close');
-    await whatsNewCloseButton.waitFor({ state: 'visible', timeout: 2000 });
-    await whatsNewCloseButton.click();
-    await page.waitForTimeout(300);
-  } catch {
-    // Popup not present, continue
-  }
-
-  // Dismiss GitHub star popup if visible
-  try {
-    const githubStarPopup = page.getByTestId('github-star-popup-card');
-    await githubStarPopup.waitFor({ state: 'visible', timeout: 2000 });
-    const closeButton = page.locator(
-      '[data-testid="close-github-star-popup-card"]'
-    );
-    await closeButton.click({ force: true });
-    await page.waitForTimeout(300);
-  } catch {
-    // Popup not present, continue
-  }
-
   // Dismiss welcome screen if visible
   const isWelcomeScreenVisible = await page
     .getByTestId('welcome-screen')
@@ -352,7 +327,7 @@ export const addMultiOwner = async (data: {
     clearAll = true,
   } = data;
   const isMultipleOwners = Array.isArray(ownerNames);
-  const owners = isMultipleOwners ? ownerNames : [ownerNames];
+  const owners = isMultipleOwners ? ownerNames : [ownerNames]
 
   await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
 
@@ -398,9 +373,15 @@ export const addMultiOwner = async (data: {
       .getByTestId('clear-all-button');
 
     await clearButton.click();
+
+    await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
   }
 
   for (const ownerName of owners) {
+    await expect(
+      page.locator('[data-testid="owner-select-users-search-bar"]')
+    ).toBeVisible();
+
     const searchOwner = page.waitForResponse(
       'api/v1/search/query?q=*&index=user_search_index*'
     );
@@ -950,7 +931,8 @@ type GlossaryTermOption = {
 export const assignGlossaryTerm = async (
   page: Page,
   glossaryTerm: GlossaryTermOption,
-  action: 'Add' | 'Edit' = 'Add'
+  action: 'Add' | 'Edit' = 'Add',
+  entityEndpoint?: string
 ) => {
   await page
     .getByTestId('KnowledgePanel.GlossaryTerms')
@@ -978,10 +960,18 @@ export const assignGlossaryTerm = async (
     page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
   ).toBeEnabled();
 
+  const patchRequest = entityEndpoint
+    ? page.waitForResponse(`/api/v1/${entityEndpoint}/*`)
+    : undefined;
+
   await page
     .getByTestId('custom-drop-down-menu')
     .getByTestId('saveAssociatedTag')
     .click();
+
+  if (patchRequest) {
+    await patchRequest;
+  }
 
   await expect(
     page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')

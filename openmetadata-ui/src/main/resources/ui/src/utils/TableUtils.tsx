@@ -794,6 +794,24 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
   });
 };
 
+export const updateFieldDisplayName = <T extends TableFieldsInfoCommonEntities>(
+  changedFieldFQN: string,
+  displayName: string,
+  searchIndexFields?: Array<T>
+) => {
+  searchIndexFields?.forEach((field) => {
+    if (field.fullyQualifiedName === changedFieldFQN) {
+      field.displayName = displayName;
+    } else {
+      updateFieldDisplayName(
+        changedFieldFQN,
+        displayName,
+        field?.children as Array<T>
+      );
+    }
+  });
+};
+
 export const updateFieldExtension = <T extends TableFieldsInfoCommonEntities>(
   changedFieldFQN: string,
   extension: Record<string, unknown>,

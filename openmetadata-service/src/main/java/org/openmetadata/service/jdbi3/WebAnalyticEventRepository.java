@@ -169,7 +169,8 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   private int getOffset(String offset) {
-    return offset != null ? Integer.parseInt(RestUtil.decodeCursor(offset)) : 0;
+    String decoded = RestUtil.decodeCursor(offset);
+    return offset != null && decoded != null ? Integer.parseInt(decoded) : 0;
   }
 
   private Map<String, List<?>> getEntityList(List<String> jsons, boolean skipErrors) {
