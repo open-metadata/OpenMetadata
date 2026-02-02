@@ -2,7 +2,7 @@
 
 # Platform
 
-> **12 Components** | **78 Files** | **1574 Tests** | **2099 Scenarios** 🚀
+> **12 Components** | **78 Files** | **1574 Tests** | **2221 Scenarios** 🚀
 
 ## Table of Contents
 - [Other](#other)
@@ -230,7 +230,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>InputOutputPorts.spec.ts</b> (30 tests, 40 scenarios)</summary>
+<summary>📄 <b>InputOutputPorts.spec.ts</b> (30 tests, 142 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/InputOutputPorts.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/InputOutputPorts.spec.ts)
 
@@ -239,13 +239,41 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Input Output Ports** - Tab renders with empty state when no ports exist | Tab renders with empty state when no ports exist |
+| | ↳ *Create data product via API* | |
+| | ↳ *Navigate to data product* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify empty states* | |
+| | ↳ *Verify lineage section shows zero counts* | |
+| | ↳ *Cleanup* | |
 | 2 | **Input Output Ports** - Tab displays correct port counts | Tab displays correct port counts |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to data product ports tab* | |
+| | ↳ *Verify port counts* | |
+| | ↳ *Cleanup* | |
 | 3 | **Input Output Ports** - Lineage section is collapsed by default | Lineage section is collapsed by default |
+| | ↳ *Create data product via API* | |
+| | ↳ *Navigate to data product* | |
+| | ↳ *Verify lineage is collapsed* | |
+| | ↳ *Cleanup* | |
 | 4 | **Input Output Ports** - Add single input port | Add single input port |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Add input port* | |
+| | ↳ *Verify port was added* | |
+| | ↳ *Cleanup* | |
 | 5 | **Input Output Ports** - Add single output port | Add single output port |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Add output port* | |
+| | ↳ *Verify port was added* | |
+| | ↳ *Cleanup* | |
 | 6 | **Input Output Ports** - Add multiple input ports at once | Add multiple input ports at once |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Add multiple input ports* | |
+| | ↳ *Verify both ports were added* | |
+| | ↳ *Cleanup* | |
 | 7 | **Input Output Ports** - Add different entity types as ports | Add different entity types as ports |
-| 8 | **Input Output Ports** - Cancel adding port | Cancel adding port |
 | | ↳ *Setup* | |
 | | ↳ *Navigate to ports tab* | |
 | | ↳ *Add table as input port* | |
@@ -253,33 +281,135 @@
 | | ↳ *Add dashboard as output port* | |
 | | ↳ *Verify different entity types are shown* | |
 | | ↳ *Cleanup* | |
+| 8 | **Input Output Ports** - Cancel adding port | Cancel adding port |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Open and cancel input port drawer* | |
+| | ↳ *Verify empty state still shown* | |
+| | ↳ *Cleanup* | |
 | 9 | **Input Output Ports** - Input ports list displays entity cards | Input ports list displays entity cards |
+| | ↳ *Create data product with input ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify input ports list* | |
+| | ↳ *Cleanup* | |
 | 10 | **Input Output Ports** - Output ports list displays entity cards | Output ports list displays entity cards |
+| | ↳ *Create data product with output ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify output ports list* | |
+| | ↳ *Cleanup* | |
 | 11 | **Input Output Ports** - Port action dropdown visible with EditAll permission | Port action dropdown visible with EditAll permission |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify action dropdown is visible* | |
+| | ↳ *Cleanup* | |
 | 12 | **Input Output Ports** - Remove single input port | Remove single input port |
-| 13 | **Input Output Ports** - Remove single output port | Remove single output port |
 | | ↳ *Create data product with input ports via API* | |
 | | ↳ *Navigate to ports tab* | |
 | | ↳ *Remove first input port* | |
 | | ↳ *Verify port was removed* | |
 | | ↳ *Cleanup* | |
+| 13 | **Input Output Ports** - Remove single output port | Remove single output port |
+| | ↳ *Create data product with output ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Remove first output port* | |
+| | ↳ *Verify port was removed* | |
+| | ↳ *Cleanup* | |
 | 14 | **Input Output Ports** - Cancel port removal | Cancel port removal |
+| | ↳ *Create data product with input port via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Open and cancel removal dialog* | |
+| | ↳ *Verify port still exists* | |
+| | ↳ *Cleanup* | |
 | 15 | **Input Output Ports** - Remove last port shows empty state | Remove last port shows empty state |
+| | ↳ *Create data product with single input port via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Remove the only input port* | |
+| | ↳ *Verify empty state appears* | |
+| | ↳ *Cleanup* | |
 | 16 | **Input Output Ports** - Lineage loads on expand | Lineage loads on expand |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Expand lineage section* | |
+| | ↳ *Verify lineage view is visible* | |
+| | ↳ *Cleanup* | |
 | 17 | **Input Output Ports** - Lineage displays data product center node | Lineage displays data product center node |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to ports tab and expand lineage* | |
+| | ↳ *Verify data product node is visible* | |
+| | ↳ *Cleanup* | |
 | 18 | **Input Output Ports** - Lineage displays input and output ports | Lineage displays input and output ports |
+| | ↳ *Create data product with input and output ports* | |
+| | ↳ *Navigate to ports tab and expand lineage* | |
+| | ↳ *Verify input port nodes are visible* | |
+| | ↳ *Verify output port nodes are visible* | |
+| | ↳ *Cleanup* | |
 | 19 | **Input Output Ports** - Lineage with only input ports | Lineage with only input ports |
+| | ↳ *Create data product with only input ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Verify only input port is shown* | |
+| | ↳ *Cleanup* | |
 | 20 | **Input Output Ports** - Lineage with only output ports | Lineage with only output ports |
+| | ↳ *Create data product with only output ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Verify only output port is shown* | |
+| | ↳ *Cleanup* | |
 | 21 | **Input Output Ports** - Lineage controls work | Lineage controls work |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Verify ReactFlow controls are visible* | |
+| | ↳ *Cleanup* | |
 | 22 | **Input Output Ports** - Lineage section collapse/expand | Lineage section collapse/expand |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify initially collapsed* | |
+| | ↳ *Expand lineage* | |
+| | ↳ *Collapse lineage* | |
+| | ↳ *Cleanup* | |
 | 23 | **Input Output Ports** - Input ports section collapse/expand | Input ports section collapse/expand |
+| | ↳ *Create data product with input port* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify initially expanded* | |
+| | ↳ *Collapse input ports section* | |
+| | ↳ *Expand input ports section* | |
+| | ↳ *Cleanup* | |
 | 24 | **Input Output Ports** - Output ports section collapse/expand | Output ports section collapse/expand |
+| | ↳ *Create data product with output port* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify initially expanded* | |
+| | ↳ *Collapse output ports section* | |
+| | ↳ *Expand output ports section* | |
+| | ↳ *Cleanup* | |
 | 25 | **Input Output Ports** - Multiple sections can be collapsed independently | Multiple sections can be collapsed independently |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Collapse input ports only* | |
+| | ↳ *Expand lineage while keeping input collapsed* | |
+| | ↳ *Cleanup* | |
 | 26 | **Input Output Ports** - Toggle fullscreen mode | Toggle fullscreen mode |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter fullscreen mode* | |
+| | ↳ *Cleanup* | |
 | 27 | **Input Output Ports** - Exit fullscreen with button | Exit fullscreen with button |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter and exit fullscreen mode* | |
+| | ↳ *Cleanup* | |
 | 28 | **Input Output Ports** - Exit fullscreen with Escape key | Exit fullscreen with Escape key |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter fullscreen and exit with Escape* | |
+| | ↳ *Cleanup* | |
 | 29 | **Input Output Ports** - Fullscreen lineage is interactive | Fullscreen lineage is interactive |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter fullscreen and verify controls* | |
+| | ↳ *Cleanup* | |
 | 30 | **Input Output Ports** - Input ports list pagination | Input ports list pagination |
+| | ↳ *Create data product with many input ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify ports list displays* | |
+| | ↳ *Cleanup* | |
 
 </details>
 
@@ -1839,7 +1969,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>ServiceEntity.spec.ts</b> (140 tests, 140 scenarios)</summary>
+<summary>📄 <b>ServiceEntity.spec.ts</b> (140 tests, 158 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/ServiceEntity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ServiceEntity.spec.ts)
 
@@ -1847,206 +1977,239 @@
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Api Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Api Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Api Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Api Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Api Service** - Update description | Update description |
-| 6 | **Api Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Api Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Api Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Api Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Api Service** - Update displayName | Update displayName |
+| 1 | **Api Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Api Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Api Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Api Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Api Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Api Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Api Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Api Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Api Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Api Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Api Collection
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Api Collection** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Api Collection** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Api Collection** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Api Collection** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Api Collection** - Update description | Update description |
-| 6 | **Api Collection** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Api Collection** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Api Collection** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Api Collection** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Api Collection** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
-| 11 | **Api Collection** - Update displayName | Update displayName |
+| 1 | **Api Collection** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Api Collection** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Api Collection** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Api Collection** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Api Collection** - Update description | Tests description updates  Edits the service description |
+| 6 | **Api Collection** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Api Collection** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Api Collection** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Api Collection** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Api Collection** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
+| 11 | **Api Collection** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Database Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Database Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Database Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Database Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Database Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Database Service** - Update description | Update description |
-| 6 | **Database Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Database Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Database Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Database Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Database Service** - Follow & Un-follow entity for Database Entity | Follow & Un-follow entity for Database Entity |
-| 11 | **Database Service** - Update displayName | Update displayName |
+| 1 | **Database Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Database Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Database Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Database Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Database Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Database Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Database Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Database Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Database Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Database Service** - Follow & Un-follow entity for Database Entity | Tests follow and unfollow actions  Follows the service and then unfollows it to verify state changes |
+| 11 | **Database Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Dashboard Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Dashboard Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Dashboard Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Dashboard Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Dashboard Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Dashboard Service** - Update description | Update description |
-| 6 | **Dashboard Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Dashboard Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Dashboard Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Dashboard Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Dashboard Service** - Update displayName | Update displayName |
+| 1 | **Dashboard Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Dashboard Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Dashboard Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Dashboard Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Dashboard Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Dashboard Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Dashboard Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Dashboard Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Dashboard Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Dashboard Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Messaging Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Messaging Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Messaging Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Messaging Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Messaging Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Messaging Service** - Update description | Update description |
-| 6 | **Messaging Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Messaging Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Messaging Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Messaging Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Messaging Service** - Update displayName | Update displayName |
+| 1 | **Messaging Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Messaging Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Messaging Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Messaging Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Messaging Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Messaging Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Messaging Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Messaging Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Messaging Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Messaging Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Mlmodel Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Mlmodel Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Mlmodel Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Mlmodel Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Mlmodel Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Mlmodel Service** - Update description | Update description |
-| 6 | **Mlmodel Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Mlmodel Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Mlmodel Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Mlmodel Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Mlmodel Service** - Update displayName | Update displayName |
+| 1 | **Mlmodel Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Mlmodel Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Mlmodel Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Mlmodel Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Mlmodel Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Mlmodel Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Mlmodel Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Mlmodel Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Mlmodel Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Mlmodel Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Pipeline Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Pipeline Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Pipeline Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Pipeline Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Pipeline Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Pipeline Service** - Update description | Update description |
-| 6 | **Pipeline Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Pipeline Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Pipeline Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Pipeline Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Pipeline Service** - Update displayName | Update displayName |
+| 1 | **Pipeline Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Pipeline Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Pipeline Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Pipeline Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Pipeline Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Pipeline Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Pipeline Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Pipeline Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Pipeline Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Pipeline Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Search Index Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Search Index Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Search Index Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Search Index Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Search Index Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Search Index Service** - Update description | Update description |
-| 6 | **Search Index Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Search Index Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Search Index Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Search Index Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Search Index Service** - Update displayName | Update displayName |
+| 1 | **Search Index Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Search Index Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Search Index Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Search Index Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Search Index Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Search Index Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Search Index Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Search Index Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Search Index Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Search Index Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Storage Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Storage Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Storage Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Storage Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Storage Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Storage Service** - Update description | Update description |
-| 6 | **Storage Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Storage Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Storage Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Storage Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Storage Service** - Update displayName | Update displayName |
+| 1 | **Storage Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Storage Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Storage Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Storage Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Storage Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Storage Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Storage Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Storage Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Storage Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Storage Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Database
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Database** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Database** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Database** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Database** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Database** - Certification Add Remove | Certification Add Remove |
-| 6 | **Database** - Update description | Update description |
-| 7 | **Database** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 8 | **Database** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 9 | **Database** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 10 | **Database** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 11 | **Database** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
-| 12 | **Database** - Follow & Un-follow entity for Database Entity | Follow & Un-follow entity for Database Entity |
-| 13 | **Database** - Update displayName | Update displayName |
+| 1 | **Database** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Database** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Database** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Database** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Database** - Certification Add Remove | Tests certification lifecycle  Adds a certification to the service, updates it, and removes it |
+| 6 | **Database** - Update description | Tests description updates  Edits the service description |
+| 7 | **Database** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 8 | **Database** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 9 | **Database** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 10 | **Database** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 11 | **Database** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
+| 12 | **Database** - Follow & Un-follow entity for Database Entity | Tests follow and unfollow actions  Follows the service and then unfollows it to verify state changes |
+| 13 | **Database** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Database Schema
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Database Schema** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Database Schema** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Database Schema** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Database Schema** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Database Schema** - Certification Add Remove | Certification Add Remove |
-| 6 | **Database Schema** - Update description | Update description |
-| 7 | **Database Schema** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 8 | **Database Schema** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 9 | **Database Schema** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 10 | **Database Schema** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 11 | **Database Schema** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
-| 12 | **Database Schema** - Follow & Un-follow entity for Database Entity | Follow & Un-follow entity for Database Entity |
-| 13 | **Database Schema** - Update displayName | Update displayName |
+| 1 | **Database Schema** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Database Schema** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Database Schema** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Database Schema** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Database Schema** - Certification Add Remove | Tests certification lifecycle  Adds a certification to the service, updates it, and removes it |
+| 6 | **Database Schema** - Update description | Tests description updates  Edits the service description |
+| 7 | **Database Schema** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 8 | **Database Schema** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 9 | **Database Schema** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 10 | **Database Schema** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 11 | **Database Schema** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
+| 12 | **Database Schema** - Follow & Un-follow entity for Database Entity | Tests follow and unfollow actions  Follows the service and then unfollows it to verify state changes |
+| 13 | **Database Schema** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Drive Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Drive Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Drive Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Drive Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Drive Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Drive Service** - Update description | Update description |
-| 6 | **Drive Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Drive Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Drive Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Drive Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Drive Service** - Update displayName | Update displayName |
+| 1 | **Drive Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Drive Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Drive Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Drive Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Drive Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Drive Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Drive Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Drive Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Drive Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Drive Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Standalone Tests
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | Delete Api Service | Delete Api Service |
-| 2 | Delete Api Collection | Delete Api Collection |
-| 3 | Delete Database Service | Delete Database Service |
-| 4 | Delete Dashboard Service | Delete Dashboard Service |
-| 5 | Delete Messaging Service | Delete Messaging Service |
-| 6 | Delete Mlmodel Service | Delete Mlmodel Service |
-| 7 | Delete Pipeline Service | Delete Pipeline Service |
-| 8 | Delete Search Index Service | Delete Search Index Service |
-| 9 | Delete Storage Service | Delete Storage Service |
-| 10 | Delete Database | Delete Database |
-| 11 | Delete Database Schema | Delete Database Schema |
-| 12 | Delete Drive Service | Delete Drive Service |
+| 1 | Delete Api Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 2 | Delete Api Collection | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 3 | Delete Database Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 4 | Delete Dashboard Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 5 | Delete Messaging Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 6 | Delete Mlmodel Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 7 | Delete Pipeline Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 8 | Delete Search Index Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 9 | Delete Storage Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 10 | Delete Database | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 11 | Delete Database Schema | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 12 | Delete Drive Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 
 </details>
 
@@ -2286,7 +2449,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>RightEntityPanelFlow.spec.ts</b> (46 tests, 46 scenarios)</summary>
+<summary>📄 <b>RightEntityPanelFlow.spec.ts</b> (46 tests, 48 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts)
 
@@ -2310,6 +2473,9 @@
 | 14 | **Right Entity Panel - Admin User Flow** - Admin - Schema Tab - View Schema | Admin - Schema Tab - View Schema |
 | 15 | **Right Entity Panel - Admin User Flow** - Lineage Tab - No Lineage | Lineage Tab - No Lineage |
 | 16 | **Right Entity Panel - Admin User Flow** - Lineage Tab - With Upstream and Downstream | Lineage Tab - With Upstream and Downstream |
+| | ↳ *Create lineage connections* | |
+| | ↳ *Verify overview tab lineage* | |
+| | ↳ *Verify lineage tab content* | |
 | 17 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - No Test Cases | Data Quality Tab - No Test Cases |
 | 18 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - Incidents Empty State | Data Quality Tab - Incidents Empty State |
 | 19 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - With Test Cases | Data Quality Tab - With Test Cases |

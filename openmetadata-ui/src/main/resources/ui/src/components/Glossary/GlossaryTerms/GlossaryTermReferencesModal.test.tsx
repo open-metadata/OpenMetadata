@@ -68,4 +68,51 @@ describe('GlossaryTermReferencesModal', () => {
       [[{ name: 'google', endpoint: 'https://www.google.com' }]],
     ]);
   });
+
+  it('should reject URLs without http:// or https:// prefix', async () => {
+    const { getAllByPlaceholderText, getByTestId, findByText } = render(
+      <GlossaryTermReferencesModal {...{ ...defaultProps, references: [] }} />
+    );
+
+    const nameInputs = getAllByPlaceholderText('label.name');
+    const endpointInputs = getAllByPlaceholderText('label.endpoint');
+
+    await act(async () => {
+      fireEvent.change(nameInputs[0], { target: { value: 'BBC' } });
+      fireEvent.change(endpointInputs[0], {
+        target: { value: 'www.bbc.co.uk' },
+      });
+
+      fireEvent.click(getByTestId('save-btn'));
+    });
+
+    const errorMessage = await findByText(
+      'message.url-must-start-with-http-or-https'
+    );
+
+    expect(errorMessage).toBeInTheDocument();
+    expect(mockOnSave).not.toHaveBeenCalled();
+  });
+
+  it('should accept URLs with http:// prefix', async () => {
+    const { getAllByPlaceholderText, getByTestId } = render(
+      <GlossaryTermReferencesModal {...{ ...defaultProps, references: [] }} />
+    );
+
+    const nameInputs = getAllByPlaceholderText('label.name');
+    const endpointInputs = getAllByPlaceholderText('label.endpoint');
+
+    await act(async () => {
+      fireEvent.change(nameInputs[0], { target: { value: 'BBC' } });
+      fireEvent.change(endpointInputs[0], {
+        target: { value: 'http://www.bbc.co.uk' },
+      });
+
+      fireEvent.click(getByTestId('save-btn'));
+    });
+
+    expect(mockOnSave).toHaveBeenCalledWith([
+      { name: 'BBC', endpoint: 'http://www.bbc.co.uk' },
+    ]);
+  });
 });
