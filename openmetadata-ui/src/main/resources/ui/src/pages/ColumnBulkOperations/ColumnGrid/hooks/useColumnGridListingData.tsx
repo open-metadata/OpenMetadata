@@ -235,7 +235,7 @@ export const useColumnGridListingData = (
         setLoading(false);
       }
     },
-    []
+    [] // No dependencies - all values passed as parameters
   );
 
   const applyClientSideFilters = useCallback(
@@ -267,6 +267,7 @@ export const useColumnGridListingData = (
         expandedStructRows
       );
 
+      // Merge edited values from ref into transformed rows
       const rowsWithEdits =
         editedValuesRef.current.size > 0
           ? transformedRows.map((row) => {
@@ -410,6 +411,9 @@ export const useColumnGridListingData = (
   }, []);
 
   const refetch = useCallback((): Promise<void> => {
+    // Clear ALL caches to ensure fresh data is fetched from the server
+    // This is especially important after bulk updates when the search index
+    // has been refreshed with new data
     cursorsByPageRef.current = new Map();
     itemsByPageRef.current = new Map();
     totalUniqueColumnsRef.current = 0;

@@ -1033,6 +1033,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
       const response = await bulkUpdateColumnsAsync(request);
 
+      // Store the jobId to listen for WebSocket notification when job completes
       activeJobIdRef.current = response.jobId;
 
       const updatedRowIds = new Set(
@@ -1046,6 +1047,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       closeDrawerRef.current();
       columnGridListing.clearSelection();
 
+      // Clear edited state in both allRows and the editedValuesRef
+      // The page will automatically refresh when the WebSocket notification arrives
       columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
         prev.map((r: ColumnGridRowData) => ({
           ...r,
@@ -1068,62 +1071,64 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     t,
   ]);
 
-  // Listen for WebSocket notifications when bulk update completes
+  const handleBulkAssetsNotification = useCallback(
+    async (message: string) => {
+      let data: { jobId?: string; status?: string };
+      try {
+        data = JSON.parse(message) as { jobId?: string; status?: string };
+      } catch {
+        return;
+      }
+
+      if (!data.jobId || data.jobId !== activeJobIdRef.current) {
+        return;
+      }
+
+      const clearJobState = () => {
+        setPendingRefetchRowIds(new Set());
+        activeJobIdRef.current = null;
+        setIsUpdating(false);
+      };
+
+      if (data.status === 'COMPLETED' || data.status === 'SUCCESS') {
+        columnGridListing.setGridItems([]);
+        columnGridListing.setExpandedRows(new Set());
+        try {
+          await columnGridListing.refetch();
+          setPendingRefetchRowIds(new Set());
+          setRecentlyUpdatedRowIds(new Set(pendingHighlightRowIdsRef.current));
+          clearJobState();
+          const count = lastBulkUpdateCountRef.current;
+          if (count > 0) {
+            showSuccessToast(
+              t('server.bulk-update-initiated', {
+                entity: t('label.column-plural'),
+                count,
+              })
+            );
+          }
+        } catch {
+          showErrorToast(t('server.entity-updating-error'));
+          clearJobState();
+        }
+      } else if (data.status === 'FAILED' || data.status === 'FAILURE') {
+        showErrorToast(t('server.entity-updating-error'));
+        clearJobState();
+        pendingHighlightRowIdsRef.current = new Set();
+      }
+    },
+    [
+      columnGridListing.refetch,
+      columnGridListing.setExpandedRows,
+      columnGridListing.setGridItems,
+      t,
+    ]
+  );
+
   useEffect(() => {
     if (!socket) {
       return;
     }
-
-    const handleBulkAssetsNotification = (message: string) => {
-      try {
-        const data = JSON.parse(message) as {
-          jobId?: string;
-          status?: string;
-        };
-
-        if (data.jobId && data.jobId === activeJobIdRef.current) {
-          if (data.status === 'COMPLETED' || data.status === 'SUCCESS') {
-            columnGridListing.setGridItems([]);
-            columnGridListing.setExpandedRows(new Set());
-            const refetchPromise = columnGridListing.refetch() as
-              | Promise<void>
-              | undefined;
-            refetchPromise
-              ?.then(() => {
-                setPendingRefetchRowIds(new Set());
-                setRecentlyUpdatedRowIds(
-                  new Set(pendingHighlightRowIdsRef.current)
-                );
-                activeJobIdRef.current = null;
-                setIsUpdating(false);
-                const count = lastBulkUpdateCountRef.current;
-                if (count > 0) {
-                  showSuccessToast(
-                    t('server.bulk-update-initiated', {
-                      entity: t('label.column-plural'),
-                      count,
-                    })
-                  );
-                }
-              })
-              .catch(() => {
-                setPendingRefetchRowIds(new Set());
-                activeJobIdRef.current = null;
-                setIsUpdating(false);
-              });
-          } else if (data.status === 'FAILED' || data.status === 'FAILURE') {
-            showErrorToast(t('server.entity-updating-error'));
-            setPendingRefetchRowIds(new Set());
-            activeJobIdRef.current = null;
-            pendingHighlightRowIdsRef.current = new Set();
-            setIsUpdating(false);
-          }
-        }
-      } catch {
-        // Ignore JSON parse errors
-      }
-    };
-
     socket.on(SOCKET_EVENTS.BULK_ASSETS_CHANNEL, handleBulkAssetsNotification);
 
     return () => {
@@ -1132,7 +1137,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         handleBulkAssetsNotification
       );
     };
-  }, [socket, columnGridListing.refetch, t]);
+  }, [socket, handleBulkAssetsNotification]);
 
   // Clear highlighted rows after 1s and collapse their expanded state
   useEffect(() => {
@@ -1697,7 +1702,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <Paper className="stat-card-group" elevation={0}>
           <Box className="stat-cards-inner">
             <Box className="stat-card" data-testid="total-unique-columns-card">
-              <UniqueColumnsIcon className="stat-icon" />
+              <UniqueColumnsIcon height={47} width={47} />
               <Box className="stat-content">
                 <Typography
                   color={theme.palette.grey[900]}
@@ -1723,7 +1728,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             </Box>
 
             <Box className="stat-card" data-testid="total-occurrences-card">
-              <OccurrencesIcon className="stat-icon" />
+              <OccurrencesIcon height={47} width={47} />
               <Box className="stat-content">
                 <Typography
                   color={theme.palette.grey[900]}
@@ -1749,7 +1754,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             </Box>
 
             <Box className="stat-card" data-testid="pending-changes-card">
-              <PendingChangesIcon className="stat-icon" />
+              <PendingChangesIcon height={47} width={47} />
               <Box className="stat-content">
                 <Typography
                   color={theme.palette.grey[900]}
