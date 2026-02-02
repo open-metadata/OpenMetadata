@@ -13,6 +13,7 @@
 
 import { StorageProvider } from '@okta/okta-auth-js';
 import { swTokenStorage } from './SwTokenStorage';
+import { isServiceWorkerAvailable } from './SwTokenStorageUtils';
 
 const OKTA_TOKENS_KEY = 'okta_tokens';
 
@@ -22,8 +23,7 @@ export class OktaCustomStorage implements StorageProvider {
   private initPromise: Promise<void>;
 
   constructor() {
-    this.isServiceWorkerAvailable =
-      'serviceWorker' in navigator && 'indexedDB' in window;
+    this.isServiceWorkerAvailable = isServiceWorkerAvailable();
     this.initPromise = this.initializeFromStorage();
   }
 

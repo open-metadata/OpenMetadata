@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { EVENT_RENEWED, OktaAuth, OktaAuthOptions } from '@okta/okta-auth-js';
+import {
+  EVENT_RENEWED,
+  isIDToken,
+  OktaAuth,
+  OktaAuthOptions,
+  Token,
+} from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
 import {
   FunctionComponent,
@@ -64,7 +70,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
     };
 
     return new OktaAuth(oktaConfig);
-  }, [customStorage]);
+  }, [customStorage, clientId, issuer, redirectUri, scopes, pkce]);
 
   useEffect(() => {
     const initializeTokenManager = async () => {
@@ -74,12 +80,14 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
       }
     };
 
-    // Force initialization
-    initializeTokenManager();
+    initializeTokenManager().catch((error) => {
+      // eslint-disable-next-line no-console
+      console.error('Failed to initialize Okta token manager:', error);
+    });
 
-    const handleTokenRenewed = async (key: string, newToken: unknown) => {
-      if (key === 'idToken' && newToken && typeof newToken === 'object') {
-        const idToken = (newToken as { idToken?: string }).idToken;
+    const handleTokenRenewed = async (key: string, newToken: Token) => {
+      if (key === 'idToken' && isIDToken(newToken)) {
+        const idToken = newToken.idToken;
         if (idToken) {
           await setOidcToken(idToken);
         }
@@ -91,7 +99,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
     return () => {
       oktaAuth.tokenManager.off(EVENT_RENEWED, handleTokenRenewed);
     };
-  }, [oktaAuth]);
+  }, [oktaAuth, customStorage]);
 
   const restoreOriginalUri = useCallback(async () => {
     const idToken = oktaAuth.getIdToken() ?? '';
