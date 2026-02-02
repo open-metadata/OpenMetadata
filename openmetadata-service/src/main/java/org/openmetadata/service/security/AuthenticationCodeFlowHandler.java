@@ -800,7 +800,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
       // Update display name if provided from SSO claims
       if (!nullOrEmpty(displayName) && !displayName.equals(user.getDisplayName())) {
-        LOG.info("Updating display name for user {} from '{}' to '{}'", userName, user.getDisplayName(), displayName);
+        LOG.info(
+            "Updating display name for user {} from '{}' to '{}'",
+            userName,
+            user.getDisplayName(),
+            displayName);
         user.setDisplayName(displayName);
         needsUpdate = true;
       }
