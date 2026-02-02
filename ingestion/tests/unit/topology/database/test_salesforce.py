@@ -34,6 +34,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.salesforce.metadata import SalesforceSource
 
 mock_salesforce_config = {
@@ -46,7 +47,6 @@ mock_salesforce_config = {
                 "username": "username",
                 "password": "password",
                 "securityToken": "securityToken",
-                "sobjectName": "sobjectName",
             }
         },
         "sourceConfig": {
@@ -80,7 +80,38 @@ mock_salesforce_oauth_config = {
                 "consumerKey": "test_consumer_key",
                 "consumerSecret": "test_consumer_secret",
                 "salesforceDomain": "login",
-                "sobjectName": "sobjectName",
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "type": "DatabaseMetadata",
+            }
+        },
+    },
+    "sink": {
+        "type": "metadata-rest",
+        "config": {},
+    },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "salesforce"},
+        }
+    },
+}
+
+mock_salesforce_multi_objects_config = {
+    "source": {
+        "type": "salesforce",
+        "serviceName": "local_salesforce_multi",
+        "serviceConnection": {
+            "config": {
+                "type": "Salesforce",
+                "username": "username",
+                "password": "password",
+                "securityToken": "securityToken",
+                "sobjectNames": ["Contact", "Account", "Lead"],
             }
         },
         "sourceConfig": {
@@ -473,16 +504,18 @@ class SalesforceUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_salesforce_config)
         self.salesforce_source = SalesforceSource.create(
             mock_salesforce_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(config=self.config.workflowConfig.openMetadataServerConfig),
         )
 
         self.salesforce_source.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE
-        self.salesforce_source.context.get().__dict__["database"] = MOCK_DATABASE
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.salesforce_source.context.get().__dict__[
+            "database"
+        ] = MOCK_DATABASE.name.root
         self.salesforce_source.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
     @patch(
         "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.get_table_column_description"
@@ -512,7 +545,7 @@ class SalesforceUnitTest(TestCase):
         )
         self.salesforce_source = SalesforceSource.create(
             mock_salesforce_oauth_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(config=self.config.workflowConfig.openMetadataServerConfig),
         )
         self.assertTrue(
             self.salesforce_source.config.serviceConnection.root.config.consumerKey
@@ -553,8 +586,141 @@ class SalesforceUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_salesforce_config)
         self.salesforce_source = SalesforceSource.create(
             mock_salesforce_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(config=self.config.workflowConfig.openMetadataServerConfig),
         )
         self.assertTrue(self.salesforce_source.ssl_manager.ca_file_path)
         self.assertTrue(self.salesforce_source.ssl_manager.cert_file_path)
         self.assertTrue(self.salesforce_source.ssl_manager.key_file_path)
+
+    @patch(
+        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
+    )
+    @patch("simple_salesforce.api.Salesforce")
+    def test_sobject_names_config(self, salesforce, test_connection) -> None:
+        """Test that sobjectNames array is properly parsed from config"""
+        test_connection.return_value = False
+        config = OpenMetadataWorkflowConfig.model_validate(
+            mock_salesforce_multi_objects_config
+        )
+        salesforce_source = SalesforceSource.create(
+            mock_salesforce_multi_objects_config["source"],
+            OpenMetadata(config=self.config.workflowConfig.openMetadataServerConfig),
+        )
+        self.assertEqual(
+            salesforce_source.service_connection.sobjectNames,
+            ["Contact", "Account", "Lead"],
+        )
+
+    @patch(
+        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
+    )
+    @patch("simple_salesforce.api.Salesforce")
+    def test_ingestion_with_sobject_names_list(
+        self, salesforce, test_connection
+    ) -> None:
+        """Test that sobjectNames list correctly filters which objects to ingest"""
+        test_connection.return_value = False
+        config = OpenMetadataWorkflowConfig.model_validate(
+            mock_salesforce_multi_objects_config
+        )
+        salesforce_source = SalesforceSource.create(
+            mock_salesforce_multi_objects_config["source"],
+            OpenMetadata(config=config.workflowConfig.openMetadataServerConfig),
+        )
+        salesforce_source.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
+        salesforce_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        salesforce_source.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
+
+        # Mock describe to return many objects
+        salesforce_source.client.describe = lambda: {
+            "sobjects": [
+                {"name": "Contact"},
+                {"name": "Account"},
+                {"name": "Lead"},
+                {"name": "Opportunity"},
+                {"name": "Case"},
+            ]
+        }
+
+        # Get tables - should only return the ones in sobjectNames
+        tables = list(salesforce_source.get_tables_name_and_type())
+
+        # Should only get Contact, Account, Lead (from config)
+        table_names = [table[0] for table in tables]
+        self.assertEqual(len(table_names), 3)
+        self.assertIn("Contact", table_names)
+        self.assertIn("Account", table_names)
+        self.assertIn("Lead", table_names)
+
+        self.assertNotIn("Opportunity", table_names)
+        self.assertNotIn("Case", table_names)
+
+    @patch(
+        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
+    )
+    @patch("simple_salesforce.api.Salesforce")
+    def test_ingestion_without_sobject_names(self, salesforce, test_connection) -> None:
+        """Test that without sobjectNames, all objects from describe are ingested"""
+        test_connection.return_value = False
+        # Use config without sobjectNames
+        config_without_filters = {
+            "source": {
+                "type": "salesforce",
+                "serviceName": "local_salesforce_all",
+                "serviceConnection": {
+                    "config": {
+                        "type": "Salesforce",
+                        "username": "username",
+                        "password": "password",
+                        "securityToken": "securityToken",
+                    }
+                },
+                "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+            },
+            "sink": {"type": "metadata-rest", "config": {}},
+            "workflowConfig": {
+                "openMetadataServerConfig": {
+                    "hostPort": "http://localhost:8585/api",
+                    "authProvider": "openmetadata",
+                    "securityConfig": {"jwtToken": "salesforce"},
+                }
+            },
+        }
+
+        config = OpenMetadataWorkflowConfig.model_validate(config_without_filters)
+        salesforce_source = SalesforceSource.create(
+            config_without_filters["source"],
+            OpenMetadata(config=config.workflowConfig.openMetadataServerConfig),
+        )
+        salesforce_source.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
+        salesforce_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        salesforce_source.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
+
+        # Mock describe to return specific objects
+        salesforce_source.client.describe = lambda: {
+            "sobjects": [
+                {"name": "Contact"},
+                {"name": "Account"},
+                {"name": "Lead"},
+                {"name": "Opportunity"},
+            ]
+        }
+
+        # Get tables - should return all objects from describe
+        tables = list(salesforce_source.get_tables_name_and_type())
+
+        # Should get all 4 objects
+        table_names = [table[0] for table in tables]
+        self.assertEqual(len(table_names), 4)
+        self.assertIn("Contact", table_names)
+        self.assertIn("Account", table_names)
+        self.assertIn("Lead", table_names)
+        self.assertIn("Opportunity", table_names)
