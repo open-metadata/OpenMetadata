@@ -175,7 +175,9 @@ export const tokenExpirationForDays = async (page: Page) => {
       `ccc d'th' MMMM, yyyy`
     );
 
+    const saveTokenResponse = page.waitForResponse('/api/v1/users');
     await page.click('[data-testid="save-edit"]');
+    await saveTokenResponse;
 
     await expect(
       page.locator('[data-testid="center-panel"] [data-testid="revoke-button"]')
@@ -198,7 +200,9 @@ export const tokenExpirationUnlimitedDays = async (page: Page) => {
   // Select unlimited days
   await page.getByText('Unlimited').click();
   // Save the selected changes
+  const saveTokenResponse = page.waitForResponse('/api/v1/users');
   await page.click('[data-testid="save-edit"]');
+  await saveTokenResponse;
 
   // Verify the updated expiry time
   const revokeButton = page.locator(
