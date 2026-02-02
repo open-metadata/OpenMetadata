@@ -779,4 +779,76 @@ public final class SearchIndexUtils {
     entry.put("propertyType", propertyType);
     return entry;
   }
+
+  /**
+   * Transforms column extensions to typed custom properties within the search document.
+   * This modifies the columns in-place to add customPropertiesTyped for each column
+   * that has an extension, keeping the field count bounded.
+   *
+   * @param doc The search document containing columns
+   * @param columnEntityType The entity type for column custom properties (e.g., "tableColumn")
+   */
+  @SuppressWarnings("unchecked")
+  public static void transformColumnExtensions(Map<String, Object> doc, String columnEntityType) {
+    transformColumnExtensionsAtPath(doc, "columns", columnEntityType);
+  }
+
+  /**
+   * Transforms column extensions to typed custom properties at a nested path.
+   * This is useful for entities like Container where columns are at "dataModel.columns".
+   *
+   * @param doc The search document
+   * @param path The path to the columns (e.g., "columns" or "dataModel.columns")
+   * @param columnEntityType The entity type for column custom properties
+   */
+  @SuppressWarnings("unchecked")
+  public static void transformColumnExtensionsAtPath(
+      Map<String, Object> doc, String path, String columnEntityType) {
+    String[] pathParts = path.split("\\.");
+    Object current = doc;
+
+    // Navigate to the parent of the columns
+    for (int i = 0; i < pathParts.length - 1; i++) {
+      if (current instanceof Map) {
+        current = ((Map<String, Object>) current).get(pathParts[i]);
+      } else {
+        return;
+      }
+    }
+
+    if (current instanceof Map) {
+      Object columnsObj = ((Map<String, Object>) current).get(pathParts[pathParts.length - 1]);
+      if (columnsObj instanceof List) {
+        List<Map<String, Object>> columns = (List<Map<String, Object>>) columnsObj;
+        transformColumnExtensionsRecursive(columns, columnEntityType);
+      }
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void transformColumnExtensionsRecursive(
+      List<Map<String, Object>> columns, String columnEntityType) {
+    if (columns == null || columns.isEmpty()) {
+      return;
+    }
+
+    for (Map<String, Object> column : columns) {
+      // Transform extension to customPropertiesTyped
+      Object extensionObj = column.get("extension");
+      if (extensionObj != null) {
+        List<Map<String, Object>> typedProps =
+            buildTypedCustomProperties(extensionObj, columnEntityType);
+        if (!typedProps.isEmpty()) {
+          column.put("customPropertiesTyped", typedProps);
+        }
+      }
+
+      // Process nested children recursively
+      Object childrenObj = column.get("children");
+      if (childrenObj instanceof List) {
+        List<Map<String, Object>> children = (List<Map<String, Object>>) childrenObj;
+        transformColumnExtensionsRecursive(children, columnEntityType);
+      }
+    }
+  }
 }

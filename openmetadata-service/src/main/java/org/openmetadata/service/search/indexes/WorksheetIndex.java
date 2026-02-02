@@ -9,6 +9,7 @@ import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 
 public record WorksheetIndex(Worksheet worksheet) implements ColumnIndex {
@@ -48,6 +49,9 @@ public record WorksheetIndex(Worksheet worksheet) implements ColumnIndex {
       // Add flat column names field for fuzzy search to avoid array-based clause multiplication
       doc.put("columnNamesFuzzy", String.join(" ", columnsWithChildrenName));
       doc.put("columnDescriptionStatus", getColumnDescriptionStatus(worksheet));
+
+      // Transform column extensions to typed custom properties
+      SearchIndexUtils.transformColumnExtensions(doc, Entity.TABLE_COLUMN);
     }
 
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.WORKSHEET, worksheet));
