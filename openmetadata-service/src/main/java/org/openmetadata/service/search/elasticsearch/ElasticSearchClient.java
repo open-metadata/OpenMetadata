@@ -91,7 +91,7 @@ public class ElasticSearchClient implements SearchClient {
 
   private final String clusterAlias;
 
-  private final ESLineageGraphBuilder lineageGraphBuilder;
+  private volatile ESLineageGraphBuilder lineageGraphBuilder;
   private final ESEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
   private final ElasticSearchIndexManager indexManager;
   private final ElasticSearchEntityManager entityManager;
@@ -142,7 +142,7 @@ public class ElasticSearchClient implements SearchClient {
     isNewClientAvailable = newClient != null;
     queryBuilderFactory = new ElasticQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
-    lineageGraphBuilder = new ESLineageGraphBuilder(newClient);
+    // Note: lineageGraphBuilder initialization deferred to Phase 2 (after settings are available)
     entityRelationshipGraphBuilder = new ESEntityRelationshipGraphBuilder(newClient);
     this.nlqService = nlqService;
     indexManager = new ElasticSearchIndexManager(newClient, clusterAlias);
@@ -332,6 +332,10 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new IllegalStateException(
+          "LineageGraphBuilder not initialized. Ensure Phase 2 initialization has completed.");
+    }
     return lineageGraphBuilder.searchLineage(lineageRequest);
   }
 
@@ -349,6 +353,10 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new IllegalStateException(
+          "LineageGraphBuilder not initialized. Ensure Phase 2 initialization has completed.");
+    }
     return lineageGraphBuilder.searchLineageWithDirection(lineageRequest);
   }
 
@@ -361,6 +369,10 @@ public class ElasticSearchClient implements SearchClient {
       boolean includeDeleted,
       String entityType)
       throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new IllegalStateException(
+          "LineageGraphBuilder not initialized. Ensure Phase 2 initialization has completed.");
+    }
     return lineageGraphBuilder.getLineagePaginationInfo(
         fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
   }
@@ -368,12 +380,20 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new IllegalStateException(
+          "LineageGraphBuilder not initialized. Ensure Phase 2 initialization has completed.");
+    }
     return lineageGraphBuilder.searchLineageByEntityCount(request);
   }
 
   @Override
   public SearchLineageResult searchPlatformLineage(
       String index, String queryFilter, boolean deleted) throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new IllegalStateException(
+          "LineageGraphBuilder not initialized. Ensure Phase 2 initialization has completed.");
+    }
     return lineageGraphBuilder.getPlatformLineage(index, queryFilter, deleted);
   }
 
@@ -956,5 +976,20 @@ public class ElasticSearchClient implements SearchClient {
       throws IOException {
     return entityManager.getSchemaEntityRelationship(
         schemaFqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
+  }
+
+  @Override
+  public void initializeLineageBuilders() {
+    if (lineageGraphBuilder == null && newClient != null) {
+      synchronized (this) {
+        if (lineageGraphBuilder == null) {
+          LOG.info("Initializing ESLineageGraphBuilder with settings now available");
+          lineageGraphBuilder = new ESLineageGraphBuilder(newClient);
+          LOG.info("ESLineageGraphBuilder initialization completed");
+        }
+      }
+    } else {
+      LOG.debug("ESLineageGraphBuilder already initialized or newClient is null");
+    }
   }
 }
