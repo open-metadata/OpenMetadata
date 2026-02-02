@@ -1157,10 +1157,22 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       verifyTestCases(testSuiteBeforeReindex.getTests(), testSuiteAfterReindex.getTests());
     }
 
-    // Compare test case result summaries
+    // testCaseResultSummary is computed during reindex from DB (not stored per-result).
+    // Before reindex, the ES document has no summary because updateTestSuiteSummary()
+    // no longer runs on each result POST. After reindex, the summary is populated from DB.
+    assertFalse(
+        testSuiteAfterReindex.getTestCaseResultSummary().isEmpty(),
+        "After reindex, testCaseResultSummary should be populated from DB");
     assertEquals(
-        testSuiteBeforeReindex.getTestCaseResultSummary(),
-        testSuiteAfterReindex.getTestCaseResultSummary());
+        1,
+        testSuiteAfterReindex.getTestCaseResultSummary().size(),
+        "Should have exactly one test case result summary entry");
+    assertEquals(
+        testCase.getFullyQualifiedName(),
+        testSuiteAfterReindex.getTestCaseResultSummary().get(0).getTestCaseName());
+    assertEquals(
+        TestCaseStatus.Success,
+        testSuiteAfterReindex.getTestCaseResultSummary().get(0).getStatus());
   }
 
   private void postTriggerSearchIndexingApp(Map<String, String> authHeaders) throws IOException {

@@ -30,7 +30,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -43,7 +42,6 @@ import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition;
-import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -54,7 +52,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
@@ -464,42 +461,17 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     setFieldFromMap(true, entities, ingestionPipelineMap, TestSuite::setPipelines);
   }
 
-  @SneakyThrows
   private List<ResultSummary> getResultSummary(UUID testSuiteId) {
-    List<ResultSummary> resultSummaries = new ArrayList<>();
-    ResultList<TestCaseResult> latestTestCaseResultResults = null;
-    String groupBy = "testCaseFQN.keyword";
-    SearchListFilter searchListFilter = new SearchListFilter();
-    searchListFilter.addQueryParam("testSuiteId", testSuiteId.toString());
-    TestCaseResultRepository entityTimeSeriesRepository =
+    TestCaseResultRepository repository =
         (TestCaseResultRepository) getEntityTimeSeriesRepository(TEST_CASE_RESULT);
-    try {
-      latestTestCaseResultResults =
-          entityTimeSeriesRepository.listLatestFromSearch(
-              EntityUtil.Fields.EMPTY_FIELDS, searchListFilter, groupBy, null);
-    } catch (Exception e) {
-      LOG.debug(
-          "Error fetching test case result from search. Fetching from test case results from database",
-          e);
-    }
-
-    if (latestTestCaseResultResults == null || nullOrEmpty(latestTestCaseResultResults.getData())) {
-      latestTestCaseResultResults =
-          entityTimeSeriesRepository.listLastTestCaseResultsForTestSuite(testSuiteId);
-    }
-
-    latestTestCaseResultResults
-        .getData()
-        .forEach(
-            testCaseResult -> {
-              ResultSummary resultSummary =
-                  new ResultSummary()
-                      .withTestCaseName(testCaseResult.getTestCaseFQN())
-                      .withStatus(testCaseResult.getTestCaseStatus())
-                      .withTimestamp(testCaseResult.getTimestamp());
-              resultSummaries.add(resultSummary);
-            });
-    return resultSummaries;
+    return repository.listLastTestCaseResultsForTestSuite(testSuiteId).getData().stream()
+        .map(
+            result ->
+                new ResultSummary()
+                    .withTestCaseName(result.getTestCaseFQN())
+                    .withStatus(result.getTestCaseStatus())
+                    .withTimestamp(result.getTimestamp()))
+        .toList();
   }
 
   @Override
@@ -673,10 +645,15 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
       PipelineStatusType state = pipeline.getPipelineStatuses().getPipelineState();
 
-      // Create consolidated TestSuite ChangeEvent
-      createTestSuiteCompletionChangeEvent(testSuite, state);
+      Double previousVersion = testSuite.getVersion();
+      testSuite.setVersion(EntityUtil.nextVersion(previousVersion));
+      testSuite.setUpdatedBy(pipeline.getUpdatedBy());
+      testSuite.setUpdatedAt(System.currentTimeMillis());
+      storeEntity(testSuite, true);
+      searchRepository.updateEntityIndex(testSuite);
 
-      // Update DataContract if linked (existing logic)
+      createTestSuiteCompletionChangeEvent(testSuite, previousVersion, state);
+
       if (testSuite.getDataContract() != null) {
         LOG.info(
             "Pipeline {} completed with status {}. Updating data contract {}.",
@@ -699,12 +676,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   private void createTestSuiteCompletionChangeEvent(
-      TestSuite testSuite, PipelineStatusType pipelineState) {
-    // Load fresh summary data
-    List<ResultSummary> resultSummary = getResultSummary(testSuite.getId());
-    TestSummary summary = getTestSummary(resultSummary);
+      TestSuite testSuite, Double previousVersion, PipelineStatusType pipelineState) {
+    List<ResultSummary> resultSummary = testSuite.getTestCaseResultSummary();
+    TestSummary summary = testSuite.getSummary();
 
-    // Create ChangeEvent manually (similar to DataContract pattern)
     ChangeEvent changeEvent =
         new ChangeEvent()
             .withId(UUID.randomUUID())
@@ -712,10 +687,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
             .withEntityId(testSuite.getId())
             .withEntityType(Entity.TEST_SUITE)
             .withEntityFullyQualifiedName(testSuite.getFullyQualifiedName())
-            .withUserName("admin")
+            .withUserName(testSuite.getUpdatedBy())
             .withTimestamp(System.currentTimeMillis())
             .withCurrentVersion(testSuite.getVersion())
-            .withPreviousVersion(testSuite.getVersion())
+            .withPreviousVersion(previousVersion)
             .withChangeDescription(
                 new ChangeDescription()
                     .withFieldsUpdated(
@@ -725,20 +700,18 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
                                 .withNewValue(resultSummary))))
             .withEntity(testSuite);
 
-    // Populate domains if available
     if (testSuite.getDomains() != null) {
       changeEvent.withDomains(testSuite.getDomains().stream().map(EntityReference::getId).toList());
     }
 
-    // Insert directly into change event DAO
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
 
     LOG.info(
         "Created consolidated ChangeEvent for TestSuite {} with status: {} (passed: {}/{})",
         testSuite.getFullyQualifiedName(),
         pipelineState,
-        summary.getSuccess(),
-        summary.getTotal());
+        summary != null ? summary.getSuccess() : 0,
+        summary != null ? summary.getTotal() : 0);
   }
 
   private class TestSuitePipelineStatusHandler implements EntityLifecycleEventHandler {
