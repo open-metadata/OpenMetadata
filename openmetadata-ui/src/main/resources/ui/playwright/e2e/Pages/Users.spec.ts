@@ -332,11 +332,9 @@ test.describe('User with Admin Roles', () => {
     await expect(rightPanelSection).toBeVisible();
 
     // Verify User Link
-    const userLink = rightPanelSection
-      .getByRole('button')
-      .locator('.ant-typography');
+    const userLink = adminPage.getByTestId(upperCasedName).getByRole('link');
 
-    await expect(userElement.getByRole('button')).toContainText(upperCasedName);
+    await expect(userLink).toContainText(upperCasedName);
 
     // Click User Link and Verify Navigation
     const userDetailsResponse = adminPage.waitForResponse(
