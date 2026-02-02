@@ -41,6 +41,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
@@ -71,6 +72,7 @@ import org.openmetadata.service.rules.LogicOps;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -641,11 +643,14 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     try {
+      AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+
+      // Auto-populate publicKeyUrls for OIDC confidential clients before saving
+      systemRepository.autoPopulatePublicKeyUrlsIfNeeded(authConfig);
+
       // Update both configurations in a transaction
       Settings authSettings =
-          new Settings()
-              .withConfigType(AUTHENTICATION_CONFIGURATION)
-              .withConfigValue(securityConfig.getAuthenticationConfiguration());
+          new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig);
 
       Settings authzSettings =
           new Settings()
@@ -710,8 +715,10 @@ public class SystemResource {
       SecurityConfiguration updatedConfig =
           JsonUtils.readValue(jsonString, SecurityConfiguration.class);
 
+      String currentUsername = SecurityUtil.getUserName(securityContext);
       SecurityValidationResponse validationResponse =
-          systemRepository.validateSecurityConfiguration(updatedConfig, applicationConfig);
+          systemRepository.validateSecurityConfiguration(
+              updatedConfig, applicationConfig, currentUsername);
 
       boolean isValidConfig =
           validationResponse.getStatus() == SecurityValidationResponse.Status.SUCCESS;
@@ -775,7 +782,9 @@ public class SystemResource {
   public SecurityValidationResponse validateSecurityConfig(
       @Context SecurityContext securityContext, @Valid SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
-    return systemRepository.validateSecurityConfiguration(securityConfig, applicationConfig);
+    String currentUsername = SecurityUtil.getUserName(securityContext);
+    return systemRepository.validateSecurityConfiguration(
+        securityConfig, applicationConfig, currentUsername);
   }
 
   @GET
