@@ -50,7 +50,7 @@ def mask_literals_with_sqlparse(
     Mask literals in a query using SqlParse.
     """
     try:
-        parsed = parser._parsed_result
+        parsed_statements = parser._parsed_result
 
         def mask_token(token):
             # Mask all literals: strings, numbers, or other literal values
@@ -67,17 +67,21 @@ def mask_literals_with_sqlparse(
                 for t in token.tokens:
                     mask_token(t)
 
-        # Process all tokens
-        for token in parsed.tokens:
-            if isinstance(token, Comparison):
-                # In comparisons, mask both sides if literals
-                for t in token.tokens:
-                    mask_token(t)
-            else:
-                mask_token(token)
+        # Process each statement
+        masked_statements = []
+        for statement in parsed_statements:
+            for token in statement.tokens:
+                if isinstance(token, Comparison):
+                    # In comparisons, mask both sides if literals
+                    for t in token.tokens:
+                        mask_token(t)
+                else:
+                    mask_token(token)
+            masked_statements.append(str(statement))
 
-        # Return the formatted masked query
-        return str(parsed)
+        # Reconstruct the query with masked literals
+        return "".join(masked_statements)
+
     except Exception as exc:
         hash_prefix = f"[{query_hash}] " if query_hash else ""
         logger.debug(f"{hash_prefix}Failed to mask query with SqlParse: {exc}")
