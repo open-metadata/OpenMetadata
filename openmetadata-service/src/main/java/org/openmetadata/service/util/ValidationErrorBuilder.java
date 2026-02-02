@@ -58,6 +58,16 @@ public class ValidationErrorBuilder {
         "authenticationConfiguration.ldapConfiguration.truststorePath";
     public static final String LDAP_TRUSTSTORE_PASSWORD =
         "authenticationConfiguration.ldapConfiguration.truststorePassword";
+    public static final String LDAP_AUTH_ROLES_MAPPING =
+        "authenticationConfiguration.ldapConfiguration.authRolesMapping";
+    public static final String LDAP_GROUP_BASE_DN =
+        "authenticationConfiguration.ldapConfiguration.groupBaseDN";
+    public static final String LDAP_GROUP_ATTRIBUTE_NAME =
+        "authenticationConfiguration.ldapConfiguration.groupAttributeName";
+    public static final String LDAP_GROUP_ATTRIBUTE_VALUE =
+        "authenticationConfiguration.ldapConfiguration.groupAttributeValue";
+    public static final String LDAP_GROUP_MEMBER_ATTRIBUTE_NAME =
+        "authenticationConfiguration.ldapConfiguration.groupMemberAttributeName";
 
     // SAML Configuration
     public static final String SAML_DEBUG_MODE =
