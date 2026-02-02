@@ -148,6 +148,7 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
     data: mockData,
     permissions: DEFAULT_ENTITY_PERMISSION,
     onUpdate: mockHandleFeaturesUpdate,
+    setDisplayedColumns: jest.fn(),
   })),
 }));
 
