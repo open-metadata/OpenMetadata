@@ -13,6 +13,7 @@ import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
@@ -182,7 +183,7 @@ public class PaginatedEntityTimeSeriesSource
   }
 
   public ListFilter getFilter() {
-    ListFilter filter = new ListFilter(null);
+    ListFilter filter = new ListFilter(Include.ALL);
     if (ReindexingUtil.isDataInsightIndex(entityType)) {
       filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(entityType));
     }

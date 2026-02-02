@@ -88,6 +88,15 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           }
         }
 
+        // Canonical Indexes needs to be removed before attached that as aliases
+        if (oldIndicesToDelete.contains(canonicalIndex)) {
+          if (searchClient.indexExists(canonicalIndex)) {
+            searchClient.deleteIndexWithBackoff(canonicalIndex);
+            oldIndicesToDelete.remove(canonicalIndex);
+            LOG.info("Cleaned up old index '{}' for entity '{}'.", canonicalIndex, entityType);
+          }
+        }
+
         // Atomically swap aliases from old indices to staged index
         // This ensures zero-downtime: aliases point to new index before old ones are deleted
         if (!aliasesToAttach.isEmpty()) {
@@ -192,6 +201,15 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       for (String oldIndex : allEntityIndices) {
         if (!oldIndex.equals(stagedIndex)) {
           oldIndicesToDelete.add(oldIndex);
+        }
+      }
+
+      // Canonical Indexes needs to be removed before attached that as aliases
+      if (oldIndicesToDelete.contains(canonicalIndex)) {
+        if (searchClient.indexExists(canonicalIndex)) {
+          searchClient.deleteIndexWithBackoff(canonicalIndex);
+          oldIndicesToDelete.remove(canonicalIndex);
+          LOG.info("Cleaned up old index '{}' for entity '{}'.", canonicalIndex, entityType);
         }
       }
 

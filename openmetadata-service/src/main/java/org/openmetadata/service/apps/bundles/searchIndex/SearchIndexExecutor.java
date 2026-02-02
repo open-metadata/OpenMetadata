@@ -234,8 +234,6 @@ public class SearchIndexExecutor implements AutoCloseable {
       LOG.error("Reindexing failed", e);
       listeners.onJobFailed(stats.get(), e);
       return ExecutionResult.fromStats(stats.get(), ExecutionResult.Status.FAILED, startTime);
-    } finally {
-      cleanup();
     }
   }
 
