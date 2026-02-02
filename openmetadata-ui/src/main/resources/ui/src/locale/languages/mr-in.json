@@ -2968,7 +2968,7 @@
     "add-entity-error": "{{entity}} जोडताना त्रुटी!",
     "article-fetch-error": "Error fetching article content",
     "auth-provider-not-supported-renewing": "प्रमाणीकरण प्रदाता {{provider}} टोकन नूतनीकरणासाठी समर्थित नाही.",
-    "bulk-update-initiated": "{{count}} {{entity}} साठी एकत्रित अद्यतन सुरू केले.",
+    "bulk-update-initiated": "{{count}} {{entity}} साठी एकत्रित अद्यतन पूर्ण झाले.",
     "can-not-renew-token-authentication-not-present": "id टोकन नूतनीकरण करू शकत नाही. प्रमाणीकरण प्रदाता उपस्थित नाही.",
     "column-fetch-error": "स्तंभ चाचणी प्रकरण मिळवताना त्रुटी!",
     "connection-tested-successfully": "कनेक्शन यशस्वीरित्या चाचणी केले",

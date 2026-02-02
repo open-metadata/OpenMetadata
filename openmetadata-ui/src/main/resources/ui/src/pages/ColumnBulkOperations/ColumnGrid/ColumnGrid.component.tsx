@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { DownOutlined, EditOutlined, RightOutlined } from '@ant-design/icons';
+import { DownOutlined, RightOutlined } from '@ant-design/icons';
 import {
   Box,
   Button as MUIButton,
@@ -35,9 +35,10 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as OccurrencesIcon } from '../../../assets/svg/ic-occurences.svg';
-import { ReactComponent as PendingChangesIcon } from '../../../assets/svg/ic-pending-changes.svg';
-import { ReactComponent as UniqueColumnsIcon } from '../../../assets/svg/ic-unique-column.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as OccurrencesIcon } from '../../../assets/svg/ic_occurrences.svg';
+import { ReactComponent as PendingChangesIcon } from '../../../assets/svg/ic_pending-changes.svg';
+import { ReactComponent as UniqueColumnsIcon } from '../../../assets/svg/ic_unique-column.svg';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
@@ -112,6 +113,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   );
   const editorRef = React.useRef<EditorContentRef>(null);
   const activeJobIdRef = useRef<string | null>(null);
+  const lastBulkUpdateCountRef = useRef<number>(0);
   const pendingHighlightRowIdsRef = useRef<Set<string>>(new Set());
   const closeDrawerRef = useRef<() => void>(() => {});
   const openDrawerRef = useRef<() => void>(() => {});
@@ -1038,13 +1040,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       );
       setPendingRefetchRowIds(updatedRowIds);
       pendingHighlightRowIdsRef.current = updatedRowIds;
-
-      showSuccessToast(
-        t('server.bulk-update-initiated', {
-          entity: t('label.column-plural'),
-          count: cleanedUpdates.length,
-        })
-      );
+      lastBulkUpdateCountRef.current = cleanedUpdates.length;
 
       setIsUpdating(false);
       closeDrawerRef.current();
@@ -1100,6 +1096,15 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 );
                 activeJobIdRef.current = null;
                 setIsUpdating(false);
+                const count = lastBulkUpdateCountRef.current;
+                if (count > 0) {
+                  showSuccessToast(
+                    t('server.bulk-update-initiated', {
+                      entity: t('label.column-plural'),
+                      count,
+                    })
+                  );
+                }
               })
               .catch(() => {
                 setPendingRefetchRowIds(new Set());
@@ -1351,8 +1356,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       entities: filteredEntities,
       columns,
       renderers: finalRenderers,
-      loading:
-        pendingRefetchRowIds.size > 0 ? false : columnGridListing.loading,
+      loading: columnGridListing.loading,
     },
     enableSelection: true,
     entityLabelKey: 'label.column',
@@ -1691,62 +1695,78 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       {/* Summary Stats Cards - combined in single container */}
       <Box className="stats-row">
         <Paper className="stat-card-group" elevation={0}>
-          <Box className="stat-card" data-testid="total-unique-columns-card">
-            <UniqueColumnsIcon className="stat-icon" />
-            <Box className="stat-content">
-              <Typography
-                color={theme.palette.grey[900]}
-                data-testid="total-unique-columns-value"
-                fontSize="18px"
-                fontWeight={600}>
-                {columnGridListing.totalUniqueColumns.toLocaleString()}
-              </Typography>
-              <Typography
-                color={theme.palette.grey[700]}
-                fontSize="14px"
-                fontWeight={400}>
-                {t('label.total-unique-columns')}
-              </Typography>
+          <Box className="stat-cards-inner">
+            <Box className="stat-card" data-testid="total-unique-columns-card">
+              <UniqueColumnsIcon className="stat-icon" />
+              <Box className="stat-content">
+                <Typography
+                  color={theme.palette.grey[900]}
+                  data-testid="total-unique-columns-value"
+                  fontSize="18px"
+                  fontWeight={600}>
+                  {columnGridListing.totalUniqueColumns.toLocaleString()}
+                </Typography>
+                <Typography
+                  color={theme.palette.grey[700]}
+                  fontSize="14px"
+                  fontWeight={400}>
+                  {t('label.total-unique-columns')}
+                </Typography>
+              </Box>
             </Box>
-          </Box>
 
-          <Box className="stat-card" data-testid="total-occurrences-card">
-            <OccurrencesIcon className="stat-icon" />
-            <Box className="stat-content">
-              <Typography
-                color={theme.palette.grey[900]}
-                data-testid="total-occurrences-value"
-                fontSize="18px"
-                fontWeight={600}>
-                {columnGridListing.totalOccurrences.toLocaleString()}
-              </Typography>
-              <Typography
-                color={theme.palette.grey[700]}
-                fontSize="14px"
-                fontWeight={400}>
-                {t('label.total-occurrences')}
-              </Typography>
+            <Box
+              aria-hidden
+              className="stat-card-divider-wrapper"
+              data-testid="stat-divider-1">
+              <Box className="stat-card-divider" />
             </Box>
-          </Box>
 
-          <Box className="stat-card" data-testid="pending-changes-card">
-            <PendingChangesIcon className="stat-icon" />
-            <Box className="stat-content">
-              <Typography
-                color={theme.palette.grey[900]}
-                data-testid="pending-changes-value"
-                fontSize="18px"
-                fontWeight={600}>
-                {editedCount > 0
-                  ? `${editedCount}/${selectedCount || editedCount}`
-                  : '0'}
-              </Typography>
-              <Typography
-                color={theme.palette.grey[700]}
-                fontSize="14px"
-                fontWeight={400}>
-                {t('label.pending-changes')}
-              </Typography>
+            <Box className="stat-card" data-testid="total-occurrences-card">
+              <OccurrencesIcon className="stat-icon" />
+              <Box className="stat-content">
+                <Typography
+                  color={theme.palette.grey[900]}
+                  data-testid="total-occurrences-value"
+                  fontSize="18px"
+                  fontWeight={600}>
+                  {columnGridListing.totalOccurrences.toLocaleString()}
+                </Typography>
+                <Typography
+                  color={theme.palette.grey[700]}
+                  fontSize="14px"
+                  fontWeight={400}>
+                  {t('label.total-occurrences')}
+                </Typography>
+              </Box>
+            </Box>
+
+            <Box
+              aria-hidden
+              className="stat-card-divider-wrapper"
+              data-testid="stat-divider-2">
+              <Box className="stat-card-divider" />
+            </Box>
+
+            <Box className="stat-card" data-testid="pending-changes-card">
+              <PendingChangesIcon className="stat-icon" />
+              <Box className="stat-content">
+                <Typography
+                  color={theme.palette.grey[900]}
+                  data-testid="pending-changes-value"
+                  fontSize="18px"
+                  fontWeight={600}>
+                  {editedCount > 0
+                    ? `${editedCount}/${selectedCount || editedCount}`
+                    : '0'}
+                </Typography>
+                <Typography
+                  color={theme.palette.grey[700]}
+                  fontSize="14px"
+                  fontWeight={400}>
+                  {t('label.pending-changes')}
+                </Typography>
+              </Box>
             </Box>
           </Box>
         </Paper>
@@ -1796,7 +1816,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                     className="edit-button-primary"
                     data-testid="edit-button"
                     disabled={isUpdating}
-                    startIcon={<EditOutlined />}
+                    startIcon={<EditIcon height={14} width={14} />}
                     sx={{
                       borderRadius: '8px',
                       border: `1px solid ${theme.palette.primary.main}`,
@@ -1834,7 +1854,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   disabled
                   className="edit-button"
                   data-testid="edit-button-disabled"
-                  startIcon={<EditOutlined />}
+                  startIcon={<EditIcon height={14} width={14} />}
                   sx={{ color: theme.palette.grey[500] }}
                   variant="text"
                   onClick={openDrawer}>

@@ -2968,7 +2968,7 @@
     "add-entity-error": "添加{{entity}}时发生错误！",
     "article-fetch-error": "Error fetching article content",
     "auth-provider-not-supported-renewing": "{{provider}}不支持续订令牌。",
-    "bulk-update-initiated": "已为{{count}}个{{entity}}启动批量更新。",
+    "bulk-update-initiated": "已为{{count}}个{{entity}}完成批量更新。",
     "can-not-renew-token-authentication-not-present": "无法续订 ID 令牌, 鉴权服务不存在。",
     "column-fetch-error": "在获取列测试用例时发生错误！",
     "connection-tested-successfully": "连接测试成功",

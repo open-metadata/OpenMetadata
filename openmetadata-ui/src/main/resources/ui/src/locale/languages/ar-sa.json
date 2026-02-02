@@ -2968,7 +2968,7 @@
     "add-entity-error": "خطأ أثناء إضافة {{entity}}!",
     "article-fetch-error": "Error fetching article content",
     "auth-provider-not-supported-renewing": "مزود المصادقة {{provider}} غير مدعوم لتجديد الرموز المميزة.",
-    "bulk-update-initiated": "تم بدء التحديث المجمع لـ {{count}} {{entity}}.",
+    "bulk-update-initiated": "تم إكمال التحديث المجمع لـ {{count}} {{entity}}.",
     "can-not-renew-token-authentication-not-present": "لا يمكن تجديد رمز الهوية المميز. مزود المصادقة غير موجود.",
     "column-fetch-error": "خطأ أثناء جلب حالة اختبار العمود!",
     "connection-tested-successfully": "تم اختبار الاتصال بنجاح",

@@ -2968,7 +2968,7 @@
     "add-entity-error": "Ошибка при добавлении объекта «{{entity}}!»",
     "article-fetch-error": "Error fetching article content",
     "auth-provider-not-supported-renewing": "Поставщик аутентификации {{provider}} не поддерживает обновление токенов.",
-    "bulk-update-initiated": "Массовое обновление инициировано для {{count}} {{entity}}.",
+    "bulk-update-initiated": "Массовое обновление завершено для {{count}} {{entity}}.",
     "can-not-renew-token-authentication-not-present": "Не удается обновить токен идентификатора. Поставщик аутентификации отсутствует.",
     "column-fetch-error": "Ошибка при получении тестового примера столбца!",
     "connection-tested-successfully": "Соединение проверено",

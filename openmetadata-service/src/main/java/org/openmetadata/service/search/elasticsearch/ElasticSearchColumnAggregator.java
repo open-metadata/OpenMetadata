@@ -419,6 +419,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
     addEntityTypeFilter(boolBuilder, request);
     addServiceFilter(boolBuilder, request);
+    addServiceTypeFilter(boolBuilder, request);
     addDatabaseFilter(boolBuilder, request);
     addSchemaFilter(boolBuilder, request);
     addDomainFilter(boolBuilder, request);
@@ -443,6 +444,20 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       boolBuilder.filter(
           Query.of(
               q -> q.term(t -> t.field("service.name.keyword").value(request.getServiceName()))));
+    }
+  }
+
+  private void addServiceTypeFilter(
+      BoolQuery.Builder boolBuilder, ColumnAggregationRequest request) {
+    if (request.getServiceTypes() != null && !request.getServiceTypes().isEmpty()) {
+      List<FieldValue> values =
+          request.getServiceTypes().stream().map(FieldValue::of).toList();
+      boolBuilder.filter(
+          Query.of(
+              q ->
+                  q.terms(
+                      t ->
+                          t.field("serviceType").terms(tv -> tv.value(values)))));
     }
   }
 

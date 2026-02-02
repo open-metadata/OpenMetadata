@@ -2968,7 +2968,7 @@
     "add-entity-error": "خطا در افزودن {{entity}}!",
     "article-fetch-error": "Error fetching article content",
     "auth-provider-not-supported-renewing": "ارائه‌دهنده احراز هویت {{provider}} برای تجدید توکن پشتیبانی نمی‌شود.",
-    "bulk-update-initiated": "به‌روزرسانی انبوه برای {{count}} {{entity}} آغاز شد.",
+    "bulk-update-initiated": "به‌روزرسانی انبوه برای {{count}} {{entity}} تکمیل شد.",
     "can-not-renew-token-authentication-not-present": "عدم توانایی در تجدید توکن id. ارائه‌دهنده احراز هویت موجود نیست.",
     "column-fetch-error": "خطا در بازیابی آزمون ستون!",
     "connection-tested-successfully": "اتصال با موفقیت تست شد.",

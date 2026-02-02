@@ -2968,7 +2968,7 @@
     "add-entity-error": "{{entity}} eklenirken hata oluştu!",
     "article-fetch-error": "Error fetching article content",
     "auth-provider-not-supported-renewing": "Auth Sağlayıcısı {{provider}}, anahtarları yenilemek için desteklenmiyor.",
-    "bulk-update-initiated": "{{count}} {{entity}} için toplu güncelleme başlatıldı.",
+    "bulk-update-initiated": "{{count}} {{entity}} için toplu güncelleme tamamlandı.",
     "can-not-renew-token-authentication-not-present": "Kimlik anahtarı yenilenemiyor. Kimlik Doğrulama Sağlayıcısı mevcut değil.",
     "column-fetch-error": "Sütun test senaryosu alınırken hata oluştu!",
     "connection-tested-successfully": "Bağlantı başarıyla test edildi",

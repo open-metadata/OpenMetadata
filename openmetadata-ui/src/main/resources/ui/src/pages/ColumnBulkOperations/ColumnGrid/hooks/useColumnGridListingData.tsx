@@ -169,6 +169,7 @@ export const useColumnGridListingData = (
       filters: ColumnGridFilters,
       pageSize: number
     ) => {
+      setLoading(true);
       try {
         // For page 1, start fresh (no cursor). For other pages, use stored cursor from previous page
         const pageCursor =

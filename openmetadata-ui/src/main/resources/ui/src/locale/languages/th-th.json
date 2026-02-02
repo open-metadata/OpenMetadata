@@ -2968,7 +2968,7 @@
     "add-entity-error": "เกิดข้อผิดพลาดขณะเพิ่ม {{entity}}!",
     "article-fetch-error": "Error fetching article content",
     "auth-provider-not-supported-renewing": "ผู้ให้บริการรับรองสิทธิ์ {{provider}} ไม่ได้รับการสนับสนุนสำหรับการต่ออายุโทเค็น",
-    "bulk-update-initiated": "เริ่มการอัปเดตจำนวนมากสำหรับ {{count}} {{entity}}",
+    "bulk-update-initiated": "อัปเดตจำนวนมากสำหรับ {{count}} {{entity}} เสร็จสิ้นแล้ว",
     "can-not-renew-token-authentication-not-present": "ไม่สามารถต่ออายุโทเค็นไอดีได้ ผู้ให้บริการรับรองสิทธิ์ไม่สามารถใช้งานได้",
     "column-fetch-error": "เกิดข้อผิดพลาดขณะดึงกรณีทดสอบคอลัมน์!",
     "connection-tested-successfully": "การทดสอบการเชื่อมต่อสำเร็จ",

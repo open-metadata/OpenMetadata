@@ -2968,7 +2968,7 @@
     "add-entity-error": "Erreur lors de l'ajout de {{entity}} !",
     "article-fetch-error": "Error fetching article content",
     "auth-provider-not-supported-renewing": "Le fournisseur d'authentification {{provider}} n'est pas pris en charge pour le renouvellement des jetons.",
-    "bulk-update-initiated": "Mise à jour en masse initiée pour {{count}} {{entity}}.",
+    "bulk-update-initiated": "Mise à jour en masse terminée pour {{count}} {{entity}}.",
     "can-not-renew-token-authentication-not-present": "Impossible de renouveler le jeton d'identification. L'authentification n'est pas présente.",
     "column-fetch-error": "Erreur lors de la récupération de la colonne de cas de test !",
     "connection-tested-successfully": "Connexion testée avec succès",

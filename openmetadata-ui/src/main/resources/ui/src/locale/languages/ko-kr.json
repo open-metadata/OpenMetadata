@@ -2968,7 +2968,7 @@
     "add-entity-error": "{{entity}} 추가 중 오류가 발생했습니다!",
     "article-fetch-error": "Error fetching article content",
     "auth-provider-not-supported-renewing": "{{provider}} 인증 제공자는 토큰 갱신을 지원하지 않습니다.",
-    "bulk-update-initiated": "{{count}}개의 {{entity}}에 대한 대량 업데이트가 시작되었습니다.",
+    "bulk-update-initiated": "{{count}}개의 {{entity}}에 대한 대량 업데이트가 완료되었습니다.",
     "can-not-renew-token-authentication-not-present": "ID 토큰을 갱신할 수 없습니다. 인증 제공자가 존재하지 않습니다.",
     "column-fetch-error": "컬럼 테스트 케이스를 가져오는 중 오류가 발생했습니다!",
     "connection-tested-successfully": "연결이 성공적으로 테스트되었습니다",

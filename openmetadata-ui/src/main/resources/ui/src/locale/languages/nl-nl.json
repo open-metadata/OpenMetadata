@@ -2968,7 +2968,7 @@
     "add-entity-error": "Fout bij het toevoegen van {{entity}}!",
     "article-fetch-error": "Error fetching article content",
     "auth-provider-not-supported-renewing": "Auth-provider {{provider}} wordt niet ondersteund voor het vernieuwen van tokens.",
-    "bulk-update-initiated": "Bulkupdate gestart voor {{count}} {{entity}}.",
+    "bulk-update-initiated": "Bulkupdate voltooid voor {{count}} {{entity}}.",
     "can-not-renew-token-authentication-not-present": "Kan id-token niet vernieuwen. Authenticatieprovider is niet aanwezig.",
     "column-fetch-error": "Fout bij het ophalen van kolomtestgeval!",
     "connection-tested-successfully": "Verbinding succesvol getest",

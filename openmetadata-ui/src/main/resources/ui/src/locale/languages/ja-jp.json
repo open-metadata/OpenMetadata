@@ -2968,7 +2968,7 @@
     "add-entity-error": "{{entity}}の追加中にエラーが発生しました！",
     "article-fetch-error": "Error fetching article content",
     "auth-provider-not-supported-renewing": "トークンの更新はAuth Provider {{provider}}ではサポートされていません。",
-    "bulk-update-initiated": "{{count}}個の{{entity}}の一括更新を開始しました。",
+    "bulk-update-initiated": "{{count}}個の{{entity}}の一括更新が完了しました。",
     "can-not-renew-token-authentication-not-present": "IDトークンを更新できません。認証プロバイダーが存在しません。",
     "column-fetch-error": "カラムのテストケース取得中にエラーが発生しました！",
     "connection-tested-successfully": "接続テストが成功しました",

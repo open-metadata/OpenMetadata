@@ -2968,7 +2968,7 @@
     "add-entity-error": "新增 {{entity}} 時發生錯誤！",
     "article-fetch-error": "Error fetching article content",
     "auth-provider-not-supported-renewing": "驗證提供者 {{provider}} 不支援更新權杖。",
-    "bulk-update-initiated": "已為{{count}}個{{entity}}啟動批量更新。",
+    "bulk-update-initiated": "已為{{count}}個{{entity}}完成批量更新。",
     "can-not-renew-token-authentication-not-present": "無法更新 ID 權杖。驗證提供者不存在。",
     "column-fetch-error": "擷取欄位測試案例時發生錯誤！",
     "connection-tested-successfully": "連線測試成功",

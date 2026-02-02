@@ -2968,7 +2968,7 @@
     "add-entity-error": "Erro ao adicionar {{entity}}!",
     "article-fetch-error": "Error fetching article content",
     "auth-provider-not-supported-renewing": "Provedor de autenticação {{provider}} não suportado para renovação de tokens.",
-    "bulk-update-initiated": "Atualização em massa iniciada para {{count}} {{entity}}.",
+    "bulk-update-initiated": "Atualização em massa concluída para {{count}} {{entity}}.",
     "can-not-renew-token-authentication-not-present": "Não é possível renovar o token de identificação. O provedor de autenticação não está presente.",
     "column-fetch-error": "Erro ao buscar caso de teste de coluna!",
     "connection-tested-successfully": "Conexão testada com sucesso",

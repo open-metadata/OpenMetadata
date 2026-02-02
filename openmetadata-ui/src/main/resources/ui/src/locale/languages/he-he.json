@@ -2968,7 +2968,7 @@
     "add-entity-error": "שגיאה במהלך הוספת {{entity}}!",
     "article-fetch-error": "Error fetching article content",
     "auth-provider-not-supported-renewing": "ספק האימות {{provider}} אינו נתמך לחידוש טוקנים.",
-    "bulk-update-initiated": "עדכון מרוכז הופעל עבור {{count}} {{entity}}.",
+    "bulk-update-initiated": "עדכון מרוכז הושלם עבור {{count}} {{entity}}.",
     "can-not-renew-token-authentication-not-present": "אין אפשרות לחדש טוקן ID. ספק האימות אינו נמצא.",
     "column-fetch-error": "שגיאה במהלך אחזור מבחן העמודה!",
     "connection-tested-successfully": "החיבור נבדק בהצלחה",

@@ -2968,7 +2968,7 @@
     "add-entity-error": "Fehler beim Hinzufügen von {{entity}}!",
     "article-fetch-error": "Error fetching article content",
     "auth-provider-not-supported-renewing": "Authentifizierungsanbieter {{provider}} wird nicht für die Erneuerung von Tokens unterstützt.",
-    "bulk-update-initiated": "Massenaktualisierung für {{count}} {{entity}} initiiert.",
+    "bulk-update-initiated": "Massenaktualisierung für {{count}} {{entity}} abgeschlossen.",
     "can-not-renew-token-authentication-not-present": "Das ID-Token kann nicht erneuert werden. Der Authentifizierungsanbieter ist nicht vorhanden.",
     "column-fetch-error": "Fehler beim Abrufen des Spaltentestfalls!",
     "connection-tested-successfully": "Verbindung erfolgreich getestet",
