@@ -13,6 +13,7 @@
 
 import { Locator, Page, expect } from '@playwright/test';
 import { RightPanelPageObject } from './RightPanelPageObject';
+import { lowerCase } from 'lodash';
 
 /**
  * PROPER PAGE OBJECT PATTERN FOR OVERVIEW TAB
@@ -48,6 +49,15 @@ export class OverviewPageObject {
   private readonly tierList: Locator;
   private readonly glossaryTermListItem: Locator;
   private readonly glossaryTermListContainer: Locator;
+  private readonly teamSearchBar: Locator;
+  private readonly userSearchBar: Locator;
+  private readonly userListItem: Locator;
+  private readonly teamListItem: Locator;
+  private readonly userListContainer: Locator;
+  private readonly teamListContainer: Locator;
+  private readonly editOwnersIcon: Locator;
+  private readonly ownerDisplayName: Locator;
+  private readonly updateOwnersButton: Locator;
 
 
   constructor(rightPanel: RightPanelPageObject, page: Page) {
@@ -80,6 +90,16 @@ export class OverviewPageObject {
     this.tierList = this.page.getByTestId('Tier');
     this.glossaryTermListItem = this.page.locator('.ant-list-item-main');
     this.glossaryTermListContainer = this.page.getByTestId('glossary-container');
+    this.userSearchBar = this.page.getByTestId('owner-select-users-search-bar');
+    this.teamSearchBar = this.page.getByTestId('owner-select-teams-search-bar');
+    this.userListItem = this.page.locator('.ant-list-item-main');
+    this.userListContainer = this.page.getByTestId('user-tag');
+    this.editOwnersIcon = this.page.getByTestId('edit-owners');
+    this.ownerDisplayName = this.page.getByTestId('owner-label');
+    this.teamListItem = this.page.locator('.ant-list-item-main');
+    this.teamListContainer = this.page.locator('.teams-section');
+    this.updateOwnersButton = this.page.getByTestId('selectable-list-update-btn');
+
   }
 
   // ============ NAVIGATION METHODS (Fluent Interface) ============
@@ -238,6 +258,57 @@ export class OverviewPageObject {
     return this;
   }
 
+  async addOwnerWithoutValidation(owner: string, type: 'Teams' | 'Users' = 'Users'): Promise<OverviewPageObject> {
+  await this.editOwnersIcon.click();
+  if (type === 'Users') {
+    const userListResponse = this.page.waitForResponse(
+      '/api/v1/search/query?q=&index=user_search_index&*'
+    );
+    await this.page.getByRole('tab', { name: type }).click();
+    await userListResponse;
+  }
+
+  await this.userSearchBar.waitFor({ state: 'visible' });
+
+  if (!this.userSearchBar) {
+    await this.page.getByRole('tab', { name: type }).click();
+  }
+
+  const searchUser = this.page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
+  );
+  await this.userSearchBar.fill(owner);
+
+  await searchUser;
+
+  if (type === 'Teams') {
+    await this.page.getByRole('listitem', { name: owner, exact: true }).click();
+  } else {
+    await this.page.getByRole('listitem', { name: owner, exact: true }).click();
+    await this.updateOwnersButton.click();
+  }
+  await this.loader.waitFor({ state: 'detached' });
+  return this;
+}
+
+  async editOwners(ownerName: string): Promise<OverviewPageObject> {
+    await this.editOwnersIcon.scrollIntoViewIfNeeded();
+    await this.editOwnersIcon.click({force: true});
+    await this.userSearchBar.waitFor({ state: 'visible' });
+    await this.userSearchBar.scrollIntoViewIfNeeded();
+    await this.userSearchBar.fill(ownerName);
+    await this.loader.waitFor({ state: 'hidden' });
+    await this.userListItem.filter({ hasText: ownerName }).waitFor({ state: 'visible' });
+    await this.userListItem.filter({ hasText: ownerName }).click();
+    await this.updateButton.waitFor({ state: 'visible' });
+    await this.updateButton.click();
+    await this.loader.waitFor({ state: 'hidden' });
+    await this.userListContainer.waitFor({ state: 'visible' });
+    expect(this.userListContainer).toContainText(ownerName);
+    return this;
+  }
+  
+
   // ============ VERIFICATION METHODS (BDD Style) ============
 
   /**
@@ -279,9 +350,8 @@ export class OverviewPageObject {
   /**
    * Verify owners section is visible
    */
-  async shouldShowOwnersSection(): Promise<void> {
-    const ownersSection = this.container.locator('.owners-section, [class*="owner"]');
-    await ownersSection.waitFor({ state: 'visible' });
+  async shouldShowOwner(ownerName: string): Promise<void> {
+    await this.page.getByTestId(`${ownerName}`).waitFor({ state: 'visible' });
   }
 
   /**

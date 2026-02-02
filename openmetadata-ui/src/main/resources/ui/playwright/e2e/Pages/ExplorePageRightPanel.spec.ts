@@ -49,6 +49,7 @@ import { ContainerClass } from '../../support/entity/ContainerClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { Domain } from '../../support/domain/Domain';
+import { UserClass } from '../../support/user/UserClass';
 
 // Test data setup
 const tableEntity = new TableClass();
@@ -207,7 +208,10 @@ test.describe('Right Panel Page Objects Test Suite', () => {
         await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
         await rightPanel.waitForPanelVisible();
 
-        const ownerToUpdate = [EntityDataClass.user1.getUserDisplayName()];
+        const ownerToUpdate = 'Aaron Johnson'
+        await overview.addOwnerWithoutValidation(ownerToUpdate);
+        await overview.shouldShowOwner(ownerToUpdate);
+        // await overview.shouldShowOwner(ownerToUpdate);
    
       })
 
