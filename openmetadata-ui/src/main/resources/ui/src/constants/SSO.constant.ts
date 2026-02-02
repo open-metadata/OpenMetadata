@@ -25,7 +25,11 @@ export const DEFAULT_CALLBACK_URL = getCallbackUrl();
 export const OIDC_SSO_DEFAULTS = {
   tokenValidity: 3600,
   serverUrl: getServerUrl(),
+  callbackUrl: getCallbackUrl(),
   sessionExpiry: 604800,
+  preferredJwsAlgorithm: 'RS256',
+  responseType: 'code',
+  tokenValidationAlgorithm: 'RS256',
 };
 
 // Google-specific default values
@@ -38,6 +42,8 @@ export const GOOGLE_SSO_DEFAULTS = {
 // SAML-specific default values
 export const SAML_SSO_DEFAULTS = {
   authority: getAuthorityUrl(),
+  clientType: 'public',
+  jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
   idp: {},
   sp: {
     entityId: getServerUrl(),
@@ -45,6 +51,20 @@ export const SAML_SSO_DEFAULTS = {
     callback: getCallbackUrl(),
   },
 };
+
+// Provider-specific schema field lists
+export const OIDC_SPECIFIC_FIELDS = [
+  'callbackUrl',
+  'clientId',
+  'authority',
+  'publicKeyUrls',
+];
+
+export const NON_OIDC_SPECIFIC_FIELDS = [
+  'ldapConfiguration',
+  'samlConfiguration',
+  'clientType',
+];
 
 // Common UI field configurations to reduce duplication
 export const COMMON_UI_FIELDS = {
@@ -170,13 +190,15 @@ export const LDAP_UI_SCHEMA = {
     roleAdminName: { 'ui:title': 'Admin Role Name' },
     allAttributeName: { 'ui:title': 'All Attribute Name' },
     mailAttributeName: { 'ui:title': 'Mail Attribute Name' },
-    usernameAttributeName: { 'ui:title': 'Username Attribute Name' },
+    usernameAttributeName: { 'ui:widget': 'hidden', 'ui:hideError': true },
     groupAttributeName: { 'ui:title': 'Group Attribute Name' },
     groupAttributeValue: { 'ui:title': 'Group Attribute Value' },
     groupMemberAttributeName: { 'ui:title': 'Group Member Attribute Name' },
     authRolesMapping: {
       'ui:title': 'Auth Roles Mapping',
-      'ui:placeholder': 'Enter JSON string for role mappings',
+      'ui:widget': 'LdapRoleMappingWidget',
+      'ui:help':
+        'Map LDAP groups to OpenMetadata roles. Users in mapped LDAP groups will automatically be assigned the corresponding roles.',
     },
     authReassignRoles: {
       'ui:title': 'Auth Reassign Roles',
@@ -246,6 +268,16 @@ export const LDAP_UI_SCHEMA = {
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
   // Hide clientType for LDAP as it defaults to public
   clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide jwtPrincipalClaims for LDAP - default value auto-filled to prevent lockouts
+  jwtPrincipalClaims: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide jwtPrincipalClaimsMapping for LDAP - not needed
+  jwtPrincipalClaimsMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide jwtTeamClaimMapping for LDAP - uses LDAP group mapping instead
+  jwtTeamClaimMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide publicKeyUrls for LDAP - uses internal LocalJwkProvider
+  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide tokenValidationAlgorithm for LDAP - global setting, default RS256 works correctly
+  tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // SAML Configuration UI Schema
@@ -269,9 +301,19 @@ export const SAML_UI_SCHEMA = {
     },
     sp: {
       'ui:title': 'Service Provider (SP)',
-      entityId: { 'ui:title': 'SP Entity ID' },
-      acs: { 'ui:title': 'Assertion Consumer Service URL' },
-      callback: { 'ui:title': 'Callback URL' },
+      entityId: {
+        'ui:title': 'SP Entity ID',
+        'ui:readonly': true,
+        'ui:help':
+          'Auto-generated Service Provider Entity ID. Copy this value and paste it as Entity ID in your SAML Identity Provider configuration.',
+      },
+      acs: {
+        'ui:title': 'Assertion Consumer Service URL',
+        'ui:readonly': true,
+        'ui:help':
+          'Auto-generated Assertion Consumer Service URL. Copy this value and paste it as ACS URL (or Reply URL) in your SAML Identity Provider configuration.',
+      },
+      callback: { 'ui:widget': 'hidden', 'ui:hideError': true },
       spX509Certificate: {
         'ui:title': 'SP X.509 Certificate',
         'ui:widget': 'textarea',
@@ -302,7 +344,12 @@ export const SAML_UI_SCHEMA = {
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  jwtPrincipalClaims: { 'ui:title': 'JWT Principal Claims' },
+  // Hide jwtPrincipalClaims for SAML - default value auto-filled to prevent lockouts
+  jwtPrincipalClaims: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide jwtPrincipalClaimsMapping for SAML - not used in SAML flow
+  jwtPrincipalClaimsMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide jwtTeamClaimMapping for SAML - not used in SAML flow
+  jwtTeamClaimMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
   // Hide clientType for SAML as it defaults to public
   clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -310,7 +357,8 @@ export const SAML_UI_SCHEMA = {
   authority: { 'ui:widget': 'hidden', 'ui:hideError': true },
   clientId: COMMON_UI_FIELDS.clientId,
   callbackUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  publicKeyUrls: { 'ui:title': 'Public Key URLs' },
+  // Hide publicKeyUrls for SAML - uses internal LocalJwkProvider
+  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // OIDC Configuration UI Schema
@@ -323,16 +371,21 @@ export const OIDC_UI_SCHEMA = {
     scope: COMMON_UI_FIELDS.oidcScope,
     discoveryUri: COMMON_UI_FIELDS.oidcDiscoveryUri,
     useNonce: COMMON_UI_FIELDS.oidcUseNonce,
-    preferredJwsAlgorithm: COMMON_UI_FIELDS.oidcPreferredJwsAlgorithm,
-    responseType: COMMON_UI_FIELDS.oidcResponseType,
+    preferredJwsAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
     disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
     maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
     clientAuthenticationMethod: COMMON_UI_FIELDS.oidcClientAuthenticationMethod,
     tokenValidity: COMMON_UI_FIELDS.oidcTokenValidity,
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
     tenant: COMMON_UI_FIELDS.oidcTenant,
-    serverUrl: COMMON_UI_FIELDS.oidcServerUrl,
-    callbackUrl: COMMON_UI_FIELDS.oidcCallbackUrl,
+    serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    callbackUrl: {
+      'ui:title': 'OIDC Callback URL',
+      'ui:readonly': true,
+      'ui:help':
+        'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.',
+    },
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
@@ -340,36 +393,46 @@ export const OIDC_UI_SCHEMA = {
   // Hide LDAP/SAML specific fields for OIDC
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
+  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
-// Standard OAuth/OIDC providers (Auth0, Azure, Okta)
+// Standard OAuth/OIDC providers (Auth0, AWS Cognito) - hides clientAuthenticationMethod and tenant
 export const STANDARD_OAUTH_UI_SCHEMA = {
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcConfiguration: {
     ...COMMON_UI_FIELDS.oidcConfiguration,
-    type: COMMON_UI_FIELDS.oidcIdpType,
+    type: { 'ui:widget': 'hidden', 'ui:hideError': true },
     id: COMMON_UI_FIELDS.oidcClientId,
     secret: COMMON_UI_FIELDS.oidcClientSecret,
     scope: COMMON_UI_FIELDS.oidcScope,
     discoveryUri: COMMON_UI_FIELDS.oidcDiscoveryUri,
     useNonce: COMMON_UI_FIELDS.oidcUseNonce,
-    preferredJwsAlgorithm: COMMON_UI_FIELDS.oidcPreferredJwsAlgorithm,
-    responseType: COMMON_UI_FIELDS.oidcResponseType,
+    preferredJwsAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
     disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
     maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
-    clientAuthenticationMethod: COMMON_UI_FIELDS.oidcClientAuthenticationMethod,
+    clientAuthenticationMethod: { 'ui:widget': 'hidden', 'ui:hideError': true },
     tokenValidity: COMMON_UI_FIELDS.oidcTokenValidity,
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
-    tenant: COMMON_UI_FIELDS.oidcTenant,
-    serverUrl: COMMON_UI_FIELDS.oidcServerUrl,
-    callbackUrl: COMMON_UI_FIELDS.oidcCallbackUrl,
+    tenant: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    callbackUrl: {
+      'ui:title': 'OIDC Callback URL',
+      'ui:readonly': true,
+      'ui:help':
+        'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.',
+    },
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
   },
-  // Hide universal settings managed in overview tab
+  tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
+  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Azure-specific UI schema with required tenant for confidential client
@@ -378,28 +441,72 @@ export const AZURE_OAUTH_UI_SCHEMA = {
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcConfiguration: {
     ...COMMON_UI_FIELDS.oidcConfiguration,
-    type: COMMON_UI_FIELDS.oidcIdpType,
+    type: { 'ui:widget': 'hidden', 'ui:hideError': true },
     id: COMMON_UI_FIELDS.oidcClientId,
     secret: COMMON_UI_FIELDS.oidcClientSecret,
     scope: COMMON_UI_FIELDS.oidcScope,
     discoveryUri: COMMON_UI_FIELDS.oidcDiscoveryUri,
     useNonce: COMMON_UI_FIELDS.oidcUseNonce,
-    preferredJwsAlgorithm: COMMON_UI_FIELDS.oidcPreferredJwsAlgorithm,
-    responseType: COMMON_UI_FIELDS.oidcResponseType,
+    preferredJwsAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
+    maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
+    clientAuthenticationMethod: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    tokenValidity: COMMON_UI_FIELDS.oidcTokenValidity,
+    customParams: COMMON_UI_FIELDS.oidcCustomParameters,
+    tenant: COMMON_UI_FIELDS.oidcTenant,
+    serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    callbackUrl: {
+      'ui:title': 'OIDC Callback URL',
+      'ui:readonly': true,
+      'ui:help':
+        'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.',
+    },
+    maxAge: COMMON_UI_FIELDS.oidcMaxAge,
+    prompt: COMMON_UI_FIELDS.oidcPrompt,
+    sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
+  },
+  tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
+  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
+};
+
+// Okta-specific UI schema - keeps clientAuthenticationMethod visible, hides tenant
+export const OKTA_OAUTH_UI_SCHEMA = {
+  ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  oidcConfiguration: {
+    ...COMMON_UI_FIELDS.oidcConfiguration,
+    type: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    id: COMMON_UI_FIELDS.oidcClientId,
+    secret: COMMON_UI_FIELDS.oidcClientSecret,
+    scope: COMMON_UI_FIELDS.oidcScope,
+    discoveryUri: COMMON_UI_FIELDS.oidcDiscoveryUri,
+    useNonce: COMMON_UI_FIELDS.oidcUseNonce,
+    preferredJwsAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
     disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
     maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
     clientAuthenticationMethod: COMMON_UI_FIELDS.oidcClientAuthenticationMethod,
     tokenValidity: COMMON_UI_FIELDS.oidcTokenValidity,
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
-    tenant: COMMON_UI_FIELDS.oidcTenant,
-    serverUrl: COMMON_UI_FIELDS.oidcServerUrl,
-    callbackUrl: COMMON_UI_FIELDS.oidcCallbackUrl,
+    tenant: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    callbackUrl: {
+      'ui:title': 'OIDC Callback URL',
+      'ui:readonly': true,
+      'ui:help':
+        'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.',
+    },
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
   },
-  // Hide universal settings managed in overview tab
+  tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
+  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Google-specific UI schema
@@ -408,7 +515,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcConfiguration: {
     ...COMMON_UI_FIELDS.oidcConfiguration,
-    type: { 'ui:widget': 'hidden', 'ui:hideError': true }, // Hide type field for Google (same as provider name)
+    type: { 'ui:widget': 'hidden', 'ui:hideError': true },
     id: COMMON_UI_FIELDS.oidcClientId,
     secret: COMMON_UI_FIELDS.oidcClientSecret,
     scope: COMMON_UI_FIELDS.oidcScope,
@@ -417,22 +524,24 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
       'ui:placeholder': GOOGLE_SSO_DEFAULTS.discoveryUri,
     },
     useNonce: COMMON_UI_FIELDS.oidcUseNonce,
-    preferredJwsAlgorithm: COMMON_UI_FIELDS.oidcPreferredJwsAlgorithm,
-    responseType: COMMON_UI_FIELDS.oidcResponseType,
+    preferredJwsAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
     disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
     maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
-    clientAuthenticationMethod: COMMON_UI_FIELDS.oidcClientAuthenticationMethod,
+    clientAuthenticationMethod: { 'ui:widget': 'hidden', 'ui:hideError': true },
     tokenValidity: {
       'ui:title': 'OIDC Token Validity',
       'ui:placeholder': `Default: ${OIDC_SSO_DEFAULTS.tokenValidity}`,
     },
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
-    tenant: { 'ui:widget': 'hidden', 'ui:hideError': true }, // Hide tenant for Google (not applicable)
-    serverUrl: {
-      'ui:title': 'OIDC Server URL',
-      'ui:placeholder': 'e.g. http://localhost:8585',
+    tenant: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    callbackUrl: {
+      'ui:title': 'OIDC Callback URL',
+      'ui:readonly': true,
+      'ui:help':
+        'Auto-generated callback URL. Copy this and register it as Redirect URI in your OIDC provider configuration.',
     },
-    callbackUrl: COMMON_UI_FIELDS.oidcCallbackUrl,
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: {
@@ -440,16 +549,13 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
       'ui:placeholder': `Default: ${OIDC_SSO_DEFAULTS.sessionExpiry}`,
     },
   },
-  // For public client mode
   authority: {
     'ui:title': 'Authority',
     'ui:placeholder': GOOGLE_SSO_DEFAULTS.authority,
   },
-  publicKeyUrls: {
-    'ui:title': 'Public Key URLs',
-    'ui:placeholder': `Enter value (default: ${GOOGLE_SSO_DEFAULTS.publicKeyUrls[0]}) and press ENTER`,
-  },
-  // Hide universal settings managed in overview tab
+  // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
+  publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
 };
 
@@ -474,6 +580,11 @@ export const COMMON_FIELD_TITLES = {
   jwtPrincipalClaims: {
     'ui:title': 'JWT Principal Claims',
     'ui:placeholder': 'Enter value (e.g. email, sub, name) and press ENTER',
+    'ui:help':
+      '⚠️ CRITICAL: Incorrect claims will lock out ALL users including admins! ' +
+      'Order matters - first matching claim is used. ' +
+      'These claims must exist in JWT tokens from your provider. ' +
+      'Default values work for most configurations.',
   },
   jwtPrincipalClaimsMapping: {
     'ui:title': 'JWT Principal Claims Mapping',
@@ -514,6 +625,12 @@ export const AUTHORIZER_FIELD_TITLES = {
   enableSecureSocketConnection: {
     'ui:title': 'Enable Secure Socket Connection',
   },
+  useRolesFromProvider: { 'ui:title': 'Use Roles From Provider' },
+  allowedEmailRegistrationDomains: {
+    'ui:title': 'Allowed Email Registration Domains',
+    'ui:placeholder':
+      'Enter domain (e.g. example.com) and press ENTER. Use "all" to allow all domains.',
+  },
 };
 
 // Type definitions for UI Schema
@@ -536,7 +653,7 @@ export const PROVIDER_UI_SCHEMAS: Record<string, UISchemaObject> = {
   google: GOOGLE_OAUTH_UI_SCHEMA,
   auth0: STANDARD_OAUTH_UI_SCHEMA,
   azure: AZURE_OAUTH_UI_SCHEMA,
-  okta: STANDARD_OAUTH_UI_SCHEMA,
+  okta: OKTA_OAUTH_UI_SCHEMA,
   basic: STANDARD_OAUTH_UI_SCHEMA,
   'aws-cognito': STANDARD_OAUTH_UI_SCHEMA,
 };
@@ -551,6 +668,26 @@ export const BOT_PRINCIPALS_VISIBILITY: Record<string, UISchemaField> = {
   ldap: { 'ui:widget': 'hidden', 'ui:hideError': true },
   saml: { 'ui:widget': 'hidden', 'ui:hideError': true },
   'custom-oidc': { 'ui:widget': 'hidden', 'ui:hideError': true },
+};
+
+export const USE_ROLES_FROM_PROVIDER_VISIBILITY: Record<string, UISchemaField> =
+  {
+    ldap: { 'ui:widget': 'hidden', 'ui:hideError': true },
+    saml: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  };
+
+export const ALLOWED_EMAIL_REGISTRATION_DOMAINS_VISIBILITY: Record<
+  string,
+  UISchemaField
+> = {
+  ldap: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  saml: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  customoidc: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  google: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  auth0: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  azure: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  okta: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  'aws-cognito': { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Provider-specific field removal mapping for cleanup
@@ -654,6 +791,12 @@ export const getSSOUISchema = (
       botPrincipals:
         BOT_PRINCIPALS_VISIBILITY[provider] ||
         AUTHORIZER_FIELD_TITLES.botPrincipals,
+      useRolesFromProvider:
+        USE_ROLES_FROM_PROVIDER_VISIBILITY[provider] ||
+        AUTHORIZER_FIELD_TITLES.useRolesFromProvider,
+      allowedEmailRegistrationDomains:
+        ALLOWED_EMAIL_REGISTRATION_DOMAINS_VISIBILITY[provider] ||
+        AUTHORIZER_FIELD_TITLES.allowedEmailRegistrationDomains,
     },
   };
 

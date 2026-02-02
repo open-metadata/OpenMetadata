@@ -145,3 +145,27 @@
     padding: @size-md;
   }
 }
+
+.ant-collapse.sso-advanced-properties-collapse {
+  border-radius: @border-rad-xs;
+
+  .ant-collapse-item {
+    border-radius: @border-rad-xs;
+
+    .ant-collapse-header {
+      background: @grey-9;
+      border-radius: @border-rad-xs;
+    }
+    .ant-collapse-content {
+      border: none;
+      border-radius: 0 0 @border-rad-xs @border-rad-xs;
+      .ant-collapse-content-box {
+        padding: 0px;
+        border-radius: 0 0 @border-rad-xs @border-rad-xs;
+        .sso-field-group-box {
+          border-radius: 0 0 @border-rad-xs @border-rad-xs;
+        }
+      }
+    }
+  }
+}
