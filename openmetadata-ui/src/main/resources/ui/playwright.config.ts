@@ -108,7 +108,6 @@ export default defineConfig({
     {
       name: 'DataAssetRulesEnabled',
       testMatch: '**/DataAssetRulesEnabled.spec.ts',
-      grep: /@basic/,
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
       fullyParallel: true,
@@ -118,6 +117,13 @@ export default defineConfig({
       testMatch: '**/DataAssetRulesDisabled.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['DataAssetRulesEnabled'],
+      fullyParallel: true,
+    },
+    {
+      name: 'Basic',
+      grep: [/@basic/],
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
       fullyParallel: true,
     },
     {

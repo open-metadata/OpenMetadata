@@ -122,6 +122,7 @@ jobs:
               --project=setup \
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled \
+              --project=Basic \
           
           elif [ "${{ matrix.shardIndex }}" -eq "2" ]; then
             echo "🔹 Running ingestion tests tests on shard 2"
