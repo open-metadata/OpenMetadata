@@ -1185,7 +1185,12 @@ test.describe('Glossary tests', () => {
       await glossary1.create(apiContext);
       await glossaryTerm1.create(apiContext);
       await table.visitEntityPage(page);
-      await assignGlossaryTerm(page, glossaryTerm1.responseData);
+      await assignGlossaryTerm(
+        page,
+        glossaryTerm1.responseData,
+        'Add',
+        EntityTypeEndpoint.Table
+      );
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
       await goToAssetsTab(page, glossaryTerm1.data.displayName, 1);
