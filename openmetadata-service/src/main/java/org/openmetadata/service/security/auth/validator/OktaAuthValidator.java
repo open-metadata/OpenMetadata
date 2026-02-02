@@ -96,7 +96,6 @@ public class OktaAuthValidator {
       }
 
       // Step 3: Validate against OIDC discovery document (scopes, response types, etc.)
-      //   String discoveryUri = oktaDomain + OKTA_WELL_KNOWN_PATH;
       FieldError discoveryCheck =
           discoveryValidator.validateAgainstDiscovery(
               oidcConfig.getDiscoveryUri(), authConfig, oidcConfig);
@@ -234,8 +233,11 @@ public class OktaAuthValidator {
       AuthenticationConfiguration authConfig, String oktaDomain, @Nullable String discoveryUri) {
     try {
       List<String> publicKeyUrls = authConfig.getPublicKeyUrls();
+      // Skip validation if publicKeyUrls is empty - it's auto-populated for confidential clients
       if (publicKeyUrls == null || publicKeyUrls.isEmpty()) {
-        throw new IllegalArgumentException("Public key URLs are required");
+        LOG.debug(
+            "publicKeyUrls is empty, skipping validation (auto-populated for confidential clients)");
+        return null;
       }
 
       // Determine expected JWKS URL based on client type
