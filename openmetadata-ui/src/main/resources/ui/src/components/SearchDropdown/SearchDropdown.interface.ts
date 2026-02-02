@@ -39,4 +39,5 @@ export interface SearchDropdownOption {
   label: string;
   labelKeyOptions?: Record<string, string | number | boolean>;
   count?: number;
+  description?: string;
 }

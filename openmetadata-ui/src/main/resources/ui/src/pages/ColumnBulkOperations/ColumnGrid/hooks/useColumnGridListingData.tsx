@@ -90,6 +90,7 @@ export const useColumnGridListingData = (
 
   // Local pagination state (cursor-based, not in URL)
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
 
   // URL state management (search and filters only, pagination is local)
   const urlState = useMemo(() => {
@@ -113,9 +114,9 @@ export const useColumnGridListingData = (
       searchQuery,
       filters,
       currentPage,
-      pageSize: PAGE_SIZE,
+      pageSize,
     };
-  }, [searchParams, currentPage]);
+  }, [searchParams, currentPage, pageSize]);
 
   const parsedFilters: ExploreQuickFilterField[] = useMemo(() => {
     return COLUMN_GRID_FILTERS.map((filter) => ({
@@ -403,8 +404,13 @@ export const useColumnGridListingData = (
     setCurrentPage(page);
   }, []);
 
-  const handlePageSizeChange = useCallback((_size: number) => {
+  const handlePageSizeChange = useCallback((size: number) => {
+    setPageSize(size);
     setCurrentPage(1);
+    cursorsByPageRef.current = new Map();
+    itemsByPageRef.current = new Map();
+    totalUniqueColumnsRef.current = 0;
+    totalOccurrencesRef.current = 0;
   }, []);
 
   const refetch = useCallback(() => {

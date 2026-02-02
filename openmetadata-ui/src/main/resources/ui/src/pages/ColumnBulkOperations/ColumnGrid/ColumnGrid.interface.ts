@@ -15,6 +15,7 @@ import {
   ColumnChild,
   ColumnGridItem,
   ColumnMetadataGroup,
+  ColumnOccurrenceRef,
   MetadataStatus,
 } from '../../../generated/api/data/columnGridResponse';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -57,6 +58,7 @@ export interface ColumnGridRowData {
   // Path information for display
   path?: string;
   additionalPathsCount?: number;
+  occurrence?: ColumnOccurrenceRef;
   // Coverage information
   coverageCount?: number;
   totalCount?: number;
