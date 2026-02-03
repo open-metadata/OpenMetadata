@@ -2,7 +2,7 @@
 
 # Governance
 
-> **6 Components** | **53 Files** | **814 Tests** | **1397 Scenarios** 🚀
+> **6 Components** | **55 Files** | **846 Tests** | **1439 Scenarios** 🚀
 
 ## Table of Contents
 - [Custom Properties](#custom-properties)
@@ -19,7 +19,7 @@
 ## Custom Properties
 
 <details open>
-<summary>📄 <b>Customproperties-part1.spec.ts</b> (171 tests, 171 scenarios)</summary>
+<summary>📄 <b>Customproperties-part1.spec.ts</b> (190 tests, 190 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Customproperties-part1.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Customproperties-part1.spec.ts)
 
@@ -369,6 +369,44 @@
 | | ↳ *Verify Custom Property Persistence on Reload* | |
 | 171 | **Custom properties without custom property config** - Add Timestamp custom property for tableColumn | Add Timestamp custom property for tableColumn |
 | | ↳ *Verify Custom Property Persistence on Reload* | |
+| 172 | **Custom properties without custom property config** - Add Hyperlink custom property for container | Add Hyperlink custom property for container |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 173 | **Custom properties without custom property config** - Add Hyperlink custom property for dashboard | Add Hyperlink custom property for dashboard |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 174 | **Custom properties without custom property config** - Add Hyperlink custom property for database | Add Hyperlink custom property for database |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 175 | **Custom properties without custom property config** - Add Hyperlink custom property for databaseSchema | Add Hyperlink custom property for databaseSchema |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 176 | **Custom properties without custom property config** - Add Hyperlink custom property for glossaryTerm | Add Hyperlink custom property for glossaryTerm |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 177 | **Custom properties without custom property config** - Add Hyperlink custom property for mlmodel | Add Hyperlink custom property for mlmodel |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 178 | **Custom properties without custom property config** - Add Hyperlink custom property for pipeline | Add Hyperlink custom property for pipeline |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 179 | **Custom properties without custom property config** - Add Hyperlink custom property for searchIndex | Add Hyperlink custom property for searchIndex |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 180 | **Custom properties without custom property config** - Add Hyperlink custom property for storedProcedure | Add Hyperlink custom property for storedProcedure |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 181 | **Custom properties without custom property config** - Add Hyperlink custom property for table | Add Hyperlink custom property for table |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 182 | **Custom properties without custom property config** - Add Hyperlink custom property for topic | Add Hyperlink custom property for topic |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 183 | **Custom properties without custom property config** - Add Hyperlink custom property for apiCollection | Add Hyperlink custom property for apiCollection |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 184 | **Custom properties without custom property config** - Add Hyperlink custom property for apiEndpoint | Add Hyperlink custom property for apiEndpoint |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 185 | **Custom properties without custom property config** - Add Hyperlink custom property for dataProduct | Add Hyperlink custom property for dataProduct |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 186 | **Custom properties without custom property config** - Add Hyperlink custom property for domain | Add Hyperlink custom property for domain |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 187 | **Custom properties without custom property config** - Add Hyperlink custom property for dashboardDataModel | Add Hyperlink custom property for dashboardDataModel |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 188 | **Custom properties without custom property config** - Add Hyperlink custom property for metric | Add Hyperlink custom property for metric |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 189 | **Custom properties without custom property config** - Add Hyperlink custom property for chart | Add Hyperlink custom property for chart |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
+| 190 | **Custom properties without custom property config** - Add Hyperlink custom property for tableColumn | Add Hyperlink custom property for tableColumn |
+| | ↳ *Verify Custom Property Persistence on Reload* | |
 
 </details>
 
@@ -651,7 +689,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>CustomPropertyAdvanceSeach.spec.ts</b> (18 tests, 18 scenarios)</summary>
+<summary>📄 <b>CustomPropertyAdvanceSeach.spec.ts</b> (19 tests, 19 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/AdvanceSearchFilter/CustomPropertyAdvanceSeach.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/AdvanceSearchFilter/CustomPropertyAdvanceSeach.spec.ts)
 
@@ -674,9 +712,26 @@
 | 13 | **Custom Property Advanced Search Filter for Dashboard** - Date CP with all operators | Date CP with all operators |
 | 14 | **Custom Property Advanced Search Filter for Dashboard** - Enum CP with all operators | Enum CP with all operators |
 | 15 | **Custom Property Advanced Search Filter for Dashboard** - Time Interval CP with operators | Time Interval CP with operators |
-| 16 | **Custom Property Advanced Search Filter for Dashboard** - Table CP - Name column with all operators | Table CP - Name column with all operators |
-| 17 | **Custom Property Advanced Search Filter for Dashboard** - Table CP - Role column with all operators | Table CP - Role column with all operators |
-| 18 | **Custom Property Advanced Search Filter for Dashboard** - Table CP - Sr No column with all operators | Table CP - Sr No column with all operators |
+| 16 | **Custom Property Advanced Search Filter for Dashboard** - Hyperlink CP with operators | Hyperlink CP with operators |
+| 17 | **Custom Property Advanced Search Filter for Dashboard** - Table CP - Name column with all operators | Table CP - Name column with all operators |
+| 18 | **Custom Property Advanced Search Filter for Dashboard** - Table CP - Role column with all operators | Table CP - Role column with all operators |
+| 19 | **Custom Property Advanced Search Filter for Dashboard** - Table CP - Sr No column with all operators | Table CP - Sr No column with all operators |
+
+</details>
+
+<details open>
+<summary>📄 <b>HyperlinkCustomProperty.spec.ts</b> (4 tests, 4 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/HyperlinkCustomProperty.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/HyperlinkCustomProperty.spec.ts)
+
+### Hyperlink Custom Property Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Hyperlink Custom Property Tests** - should reject javascript: protocol URLs for XSS protection | Reject javascript: protocol URLs for XSS protection |
+| 2 | **Hyperlink Custom Property Tests** - should accept valid http and https URLs | Accept valid http and https URLs |
+| 3 | **Hyperlink Custom Property Tests** - should display URL when no display text is provided | Display URL when no display text is provided |
+| 4 | **Hyperlink Custom Property Tests** - should show No Data placeholder when hyperlink has no value | Show No Data placeholder when hyperlink has no value |
 
 </details>
 
@@ -803,7 +858,7 @@
 ## Domains & Data Products
 
 <details open>
-<summary>📄 <b>Domains.spec.ts</b> (38 tests, 61 scenarios)</summary>
+<summary>📄 <b>Domains.spec.ts</b> (40 tests, 69 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts)
 
@@ -846,19 +901,29 @@
 | | ↳ *Delete subdomain and verify its data products are not visible in domain* | |
 | | ↳ *Verify deeply nested subdomain data products are visible at each level* | |
 | 12 | **Domains** - Verify domain tags and glossary terms | Domain tags and glossary terms |
-| 13 | **Domains** - Verify data product tags and glossary terms | Data product tags and glossary terms |
-| 14 | **Domains** - Verify clicking All Domains sets active domain to default value | Clicking All Domains sets active domain to default value |
-| 15 | **Domains** - Verify redirect path on data product delete | Redirect path on data product delete |
-| 16 | **Domains** - Verify duplicate domain creation | Duplicate domain creation |
-| 17 | **Domains** - Create domain custom property and verify value persistence | Create domain custom property and verify value persistence |
+| 13 | **Domains** - Create domain with tags using MUITagSuggestion | Create domain with tags using MUITagSuggestion |
+| | ↳ *Navigate to add domain* | |
+| | ↳ *Fill domain form* | |
+| | ↳ *Search and select tag via MUITagSuggestion* | |
+| | ↳ *Save domain and verify tag is applied* | |
+| 14 | **Domains** - Create subdomain with tags using MUITagSuggestion | Create subdomain with tags using MUITagSuggestion |
+| | ↳ *Navigate to domain and open subdomain modal* | |
+| | ↳ *Fill subdomain form* | |
+| | ↳ *Search and select tag via MUITagSuggestion* | |
+| | ↳ *Save subdomain and verify tag is applied* | |
+| 15 | **Domains** - Verify data product tags and glossary terms | Data product tags and glossary terms |
+| 16 | **Domains** - Verify clicking All Domains sets active domain to default value | Clicking All Domains sets active domain to default value |
+| 17 | **Domains** - Verify redirect path on data product delete | Redirect path on data product delete |
+| 18 | **Domains** - Verify duplicate domain creation | Duplicate domain creation |
+| 19 | **Domains** - Create domain custom property and verify value persistence | Create domain custom property and verify value persistence |
 | | ↳ *Create custom property for domain entity* | |
 | | ↳ *Navigate to domain and assign custom property value* | |
 | | ↳ *Reload and verify custom property value persists* | |
 | | ↳ *Cleanup custom property* | |
-| 18 | **Domains** - Domain announcement create, edit & delete | Domain announcement create, edit & delete |
-| 19 | **Domains** - Data Product announcement create, edit & delete | Data Product announcement create, edit & delete |
-| 20 | **Domains** - should handle domain after description is deleted | Tests that verify UI handles entities with deleted descriptions gracefully. The issue occurs when: 1. An entity is created with a description 2. The description is later deleted/cleared via API patch 3. The API returns the entity without a description field (due to @JsonInclude(NON_NULL)) 4. UI should handle this gracefully instead of crashing |
-| 21 | **Domains** - should handle data product after description is deleted | Handle data product after description is deleted |
+| 20 | **Domains** - Domain announcement create, edit & delete | Domain announcement create, edit & delete |
+| 21 | **Domains** - Data Product announcement create, edit & delete | Data Product announcement create, edit & delete |
+| 22 | **Domains** - should handle domain after description is deleted | Tests that verify UI handles entities with deleted descriptions gracefully. The issue occurs when: 1. An entity is created with a description 2. The description is later deleted/cleared via API patch 3. The API returns the entity without a description field (due to @JsonInclude(NON_NULL)) 4. UI should handle this gracefully instead of crashing |
+| 23 | **Domains** - should handle data product after description is deleted | Handle data product after description is deleted |
 
 ### Domain Rename Comprehensive Tests
 
@@ -1136,7 +1201,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>DataProducts.spec.ts</b> (7 tests, 38 scenarios)</summary>
+<summary>📄 <b>DataProducts.spec.ts</b> (8 tests, 43 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/DataProducts.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataProducts.spec.ts)
 
@@ -1189,6 +1254,12 @@
 | | ↳ *Follow data product* | |
 | | ↳ *Verify follow button is changed to unfollow* | |
 | | ↳ *Cleanup test data product* | |
+| 8 | **Data Products** - Create data product with tags using MUITagSuggestion | Create data product with tags using MUITagSuggestion |
+| | ↳ *Navigate to add data product* | |
+| | ↳ *Fill data product form* | |
+| | ↳ *Search and select tag via MUITagSuggestion* | |
+| | ↳ *Save and verify tag is applied* | |
+| | ↳ *Cleanup* | |
 
 </details>
 
@@ -1254,6 +1325,21 @@
 | 1 | **Data Product Permissions** - Data Product allow operations | Data Product allow operations |
 | 2 | **Data Product Permissions** - Data Product deny operations | Data Product deny operations |
 | 3 | **Data Product Permissions** - Data Product expert can edit data product details | Data Product expert can edit data product details |
+
+</details>
+
+<details open>
+<summary>📄 <b>SampleDataDomainDataProduct.spec.ts</b> (3 tests, 3 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/SampleDataDomainDataProduct.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SampleDataDomainDataProduct.spec.ts)
+
+### Sample Data Domain and Data Product Validation
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Sample Data Domain and Data Product Validation** - Verify TestDomain exists from sample data ingestion | TestDomain exists from sample data ingestion |
+| 2 | **Sample Data Domain and Data Product Validation** - Verify TestDataProduct exists under TestDomain | TestDataProduct exists under TestDomain |
+| 3 | **Sample Data Domain and Data Product Validation** - Verify TestDataProduct shows correct details and domain association | TestDataProduct shows correct details and domain association |
 
 </details>
 
@@ -1469,7 +1555,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>GlossaryP3Tests.spec.ts</b> (21 tests, 21 scenarios)</summary>
+<summary>📄 <b>GlossaryP3Tests.spec.ts</b> (23 tests, 23 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts)
 
@@ -1498,6 +1584,8 @@
 | 19 | **Glossary P3 Tests** - should handle multiple rapid API calls | Handle multiple rapid API calls |
 | 20 | **Glossary P3 Tests** - should show error state when navigating to non-existent glossary | Show error state when navigating to non-existent glossary |
 | 21 | **Glossary P3 Tests** - should show error state when navigating to non-existent term | Show error state when navigating to non-existent term |
+| 22 | **Glossary P3 Tests** - should validate reference URL requires http/https prefix when creating term | Validate reference URL requires http/https prefix when creating term |
+| 23 | **Glossary P3 Tests** - should validate reference URL requires http/https prefix when editing term | Validate reference URL requires http/https prefix when editing term |
 
 </details>
 
