@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -1432,6 +1433,10 @@ public class SearchRepository {
         fieldAddParams.put("customPropertiesTyped", customPropertiesTyped);
         scriptTxt.append("ctx._source.customPropertiesTyped = params.customPropertiesTyped;");
       }
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
+        fieldAddParams.put(FIELD_DESCRIPTION, entity.getDescription());
+        scriptTxt.append("ctx._source.description = params.description;");
+      }
     }
 
     for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
@@ -1444,9 +1449,16 @@ public class SearchRepository {
         scriptTxt.append(
             "ctx._source.followers.removeAll(Collections.singleton(params.followers));");
       }
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
+        scriptTxt.append("ctx._source.description = null;");
+      }
     }
 
     for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
+        fieldAddParams.put(FIELD_DESCRIPTION, entity.getDescription());
+        scriptTxt.append("ctx._source.description = params.description;");
+      }
       if (fieldChange.getName().equalsIgnoreCase(FIELD_USAGE_SUMMARY)) {
         UsageDetails usageSummary = (UsageDetails) fieldChange.getNewValue();
         fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
