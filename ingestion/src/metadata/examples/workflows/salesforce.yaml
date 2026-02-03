@@ -8,7 +8,12 @@ source:
       password: password
       securityToken: securityToken
       organizationId: organizationId
-      sobjectName: sobjectName
+      # Use sobjectNames for multiple objects
+      # sobjectNames:
+      #   - Contact
+      #   - Account
+      #   - Lead
+      #   - Opportunity
       # sslConfig:
       #   caCertificate: |
       #     -----BEGIN CERTIFICATE-----

@@ -2194,7 +2194,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
     };
   }
 
-  private String sanitizeName(String name) {
+  String sanitizeName(String name) {
     // K8s names must be lowercase, alphanumeric, or '-'
     // Must start with alphanumeric, max 63 chars
     String sanitized =
@@ -2204,7 +2204,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
             .replaceAll("^-+|-+$", "");
 
     if (sanitized.length() > 53) { // Leave room for prefixes
-      sanitized = sanitized.substring(0, 53);
+      sanitized = sanitized.substring(0, 53).replaceAll("-+$", "");
     }
 
     if (!sanitized.matches("^[a-z0-9].*")) {
