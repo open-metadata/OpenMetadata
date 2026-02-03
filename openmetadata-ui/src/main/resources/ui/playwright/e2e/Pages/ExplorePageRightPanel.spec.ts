@@ -11,17 +11,6 @@
  *  limitations under the License.
  */
 
-/**
- * RIGHT PANEL TEST SUITE
- *
- * Comprehensive tests for all right panel page objects
- * - OverviewPageObject: Full CRUD operations (edit, assign, verify)
- * - SchemaPageObject: Field and data type visibility
- * - LineagePageObject: Navigation and expansion controls
- * - DataQualityPageObject: Stat cards and test case filtering
- * - CustomPropertiesPageObject: Search and property management
- */
-
 import { test } from '../../support/fixtures/userPages';
 import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
@@ -36,7 +25,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import {  uuid } from '../../utils/common';
 import { performAdminLogin } from '../../utils/admin';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
@@ -47,9 +36,7 @@ import { DashboardDataModelClass } from '../../support/entity/DashboardDataModel
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { Domain } from '../../support/domain/Domain';
-import { UserClass } from '../../support/user/UserClass';
 
 // Test data setup
 const tableEntity = new TableClass();
@@ -95,13 +82,12 @@ let dataQuality: DataQualityPageObject;
 let customProperties: CustomPropertiesPageObject;
 
 const domainToUpdate = domainEntity.responseData?.displayName ?? domainEntity.data.displayName;
-const ownerToUpdate = [EntityDataClass.user1.getUserDisplayName()];
 const glossaryTermToUpdate = testGlossaryTerm.responseData?.displayName ?? testGlossaryTerm.data.displayName;
 const tagToUpdate = testTag.responseData?.displayName ?? testTag.data.displayName;
 const testTier = 'Tier1';
 
 
-test.describe('Right Panel Page Objects Test Suite', () => {
+test.describe('Right Panel Test Suite', () => {
 
   // Setup test data and page objects
   test.beforeAll(async ({ browser }) => {
@@ -362,10 +348,6 @@ test.describe('Right Panel Page Objects Test Suite', () => {
             const customPropertiesTabExists = await rightPanel.verifyTabExists('Custom Property');
             if (customPropertiesTabExists) {
               await customProperties.navigateToCustomPropertiesTab();
-              
-              // await customProperties.shouldBeVisible();
-              // await customProperties.shouldHaveSearchBar();
-
               //Right now we are checking for empty custom properties container
               await customProperties.shouldShowEmptyCustomPropertiesContainer();
             }
@@ -385,11 +367,6 @@ test.describe('Right Panel Page Objects Test Suite', () => {
             if (customPropertiesTabExists) {
               await customProperties.navigateToCustomPropertiesTab();
               await customProperties.shouldBeVisible();
-              // await customProperties.shouldHaveSearchBar();
-              // await customProperties.searchCustomProperties('test-property');
-              // await customProperties.shouldShowSearchText('test-property');
-              // await customProperties.clearSearch();
-              // await customProperties.shouldShowSearchText('');
             }
           } catch {
             console.debug(`No custom properties exists for ${entityType}`);

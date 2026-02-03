@@ -26,7 +26,6 @@ export class CustomPropertiesPageObject {
   private readonly container: Locator;
   private readonly searchBar: Locator;
   private readonly propertyCard: Locator;
-  private readonly valueElement: Locator;
   private readonly emptyCustomPropertiesContainer: Locator;
 
   constructor(rightPanel: RightPanelPageObject) {
@@ -38,7 +37,6 @@ export class CustomPropertiesPageObject {
     // Sub-components within the container
     this.searchBar = this.container.locator('.searchbar-container input, .searchbar-container input[type="text"]');
     this.propertyCard = this.container.locator('.custom-property, [class*="property"]');
-    this.valueElement = this.propertyCard.locator('.value, [class*="value"], [data-testid="value"]');
     this.emptyCustomPropertiesContainer = this.rightPanel.page.getByTestId('no-data-placeholder');
   }
 

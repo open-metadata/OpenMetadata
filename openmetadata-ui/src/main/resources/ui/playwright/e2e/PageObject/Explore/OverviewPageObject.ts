@@ -13,7 +13,6 @@
 
 import { Locator, Page, expect } from '@playwright/test';
 import { RightPanelPageObject } from './RightPanelPageObject';
-import { lowerCase } from 'lodash';
 
 /**
  * PROPER PAGE OBJECT PATTERN FOR OVERVIEW TAB
@@ -49,14 +48,10 @@ export class OverviewPageObject {
   private readonly tierList: Locator;
   private readonly glossaryTermListItem: Locator;
   private readonly glossaryTermListContainer: Locator;
-  private readonly teamSearchBar: Locator;
   private readonly userSearchBar: Locator;
   private readonly userListItem: Locator;
-  private readonly teamListItem: Locator;
   private readonly userListContainer: Locator;
-  private readonly teamListContainer: Locator;
   private readonly editOwnersIcon: Locator;
-  private readonly ownerDisplayName: Locator;
   private readonly updateOwnersButton: Locator;
 
 
@@ -91,13 +86,9 @@ export class OverviewPageObject {
     this.glossaryTermListItem = this.page.locator('.ant-list-item-main');
     this.glossaryTermListContainer = this.page.getByTestId('glossary-container');
     this.userSearchBar = this.page.getByTestId('owner-select-users-search-bar');
-    this.teamSearchBar = this.page.getByTestId('owner-select-teams-search-bar');
     this.userListItem = this.page.locator('.ant-list-item-main');
     this.userListContainer = this.page.getByTestId('user-tag');
     this.editOwnersIcon = this.page.getByTestId('edit-owners');
-    this.ownerDisplayName = this.page.getByTestId('owner-label');
-    this.teamListItem = this.page.locator('.ant-list-item-main');
-    this.teamListContainer = this.page.locator('.teams-section');
     this.updateOwnersButton = this.page.getByTestId('selectable-list-update-btn');
 
   }
@@ -131,7 +122,6 @@ export class OverviewPageObject {
     await this.markdownEditor.clear();
     await this.markdownEditor.fill(description);
     await this.saveButton.click();
-    await this.rightPanel.waitForPatchResponse();
     return this;
   }
 
@@ -220,8 +210,6 @@ export class OverviewPageObject {
     await this.updateTierButton.waitFor({ state: 'visible' });
     await this.updateTierButton.click();
 
-    await this.rightPanel.waitForPatchResponse();
-
     // Wait for loader to disappear
     await this.loader.waitFor({ state: 'hidden' });
     await this.tierList.waitFor({ state: 'visible' });
@@ -248,8 +236,6 @@ export class OverviewPageObject {
 
     await this.page.locator('.ant-tree-treenode').filter({ hasText: domainName }).waitFor({ state: 'visible' });
     await this.page.locator('.ant-tree-treenode').filter({ hasText: domainName }).click();
- 
-    await this.rightPanel.waitForPatchResponse();
 
     // Wait for loader to disappear
     await this.loader.waitFor({ state: 'hidden' });
