@@ -1149,7 +1149,7 @@ export const removeGlossaryTerm = async (
       .getByTestId('edit-button')
       .click();
       //small timeout to avoid popup collide with click
-      page.waitForTimeout(500)
+      await page.waitForTimeout(500)
 
     await page
       .getByTestId('glossary-container')
