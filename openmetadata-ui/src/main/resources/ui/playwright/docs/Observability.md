@@ -2,7 +2,7 @@
 
 # Observability
 
-> **5 Components** | **19 Files** | **114 Tests** | **243 Scenarios** 🚀
+> **5 Components** | **19 Files** | **116 Tests** | **258 Scenarios** 🚀
 
 ## Table of Contents
 - [Data Quality](#data-quality)
@@ -472,7 +472,7 @@
 ## Rules Library
 
 <details open>
-<summary>📄 <b>RulesLibrary.spec.ts</b> (12 tests, 15 scenarios)</summary>
+<summary>📄 <b>RulesLibrary.spec.ts</b> (14 tests, 30 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/RulesLibrary.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/RulesLibrary.spec.ts)
 
@@ -491,11 +491,29 @@
 | 5 | **Rules Library** - should validate required fields in create form | Validate required fields in create form |
 | 6 | **Rules Library** - should cancel form and close drawer | Cancel form and close drawer |
 | 7 | **Rules Library** - should display pagination when test definitions exceed page size | Display pagination when test definitions exceed page size |
-| 8 | **Rules Library** - should search and filter test definitions | Search and filter test definitions |
-| 9 | **Rules Library** - should display test platform badges correctly | Display test platform badges correctly |
-| 10 | **Rules Library** - should not show edit and delete buttons for system test definitions | Not show edit and delete buttons for system test definitions |
-| 11 | **Rules Library** - should allow enabling/disabling system test definitions | Allow enabling/disabling system test definitions |
-| 12 | **Rules Library** - should display correct provider type for test definitions | Display correct provider type for test definitions |
+| 8 | **Rules Library** - should display test platform badges correctly | Display test platform badges correctly |
+| 9 | **Rules Library** - should not show edit and delete buttons for system test definitions | Not show edit and delete buttons for system test definitions |
+| 10 | **Rules Library** - should allow enabling/disabling system test definitions | Allow enabling/disabling system test definitions |
+| 11 | **Rules Library** - should disable toggle for external test definitions | Disable toggle for external test definitions |
+| 12 | **Rules Library** - should handle external test definitions with read-only fields | Handle external test definitions with read-only fields |
+| | ↳ *Create external test definition* | |
+| | ↳ *Verify fields are read-only in edit mode* | |
+| | ↳ *Verify allowed fields can be edited* | |
+| | ↳ *Delete external test definition* | |
+| 13 | **Rules Library** - should handle supported services field correctly | Handle supported services field correctly |
+| | ↳ *Create test definition with specific supported services* | |
+| | ↳ *Verify supported services are saved correctly* | |
+| | ↳ *Verify test definition appears when filtering by supported services* | |
+| | ↳ *Edit and change supported services* | |
+| | ↳ *Verify updated supported services are persisted* | |
+| | ↳ *Clear all supported services (should apply to all services)* | |
+| | ↳ *Delete test definition* | |
+| 14 | **Rules Library** - should maintain page on edit and reset to first page on delete | Maintain page on edit and reset to first page on delete |
+| | ↳ *Create a test definition starting with "z"* | |
+| | ↳ *Change page size to 25* | |
+| | ↳ *Navigate until we find our test definition or reach last page* | |
+| | ↳ *Edit the test definition and verify we stay on the same page* | |
+| | ↳ *Delete the test definition and verify redirect to first page* | |
 
 </details>
 
