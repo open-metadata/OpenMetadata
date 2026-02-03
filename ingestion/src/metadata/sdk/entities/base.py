@@ -396,6 +396,42 @@ class BaseEntity(Generic[TEntity, TCreate]):
         return cls._coerce_entity(updated)
 
     @classmethod
+    def delete_by_name(
+        cls,
+        fqn: Union[str, FullyQualifiedEntityName],
+        *,
+        recursive: bool = False,
+        hard_delete: bool = False,
+    ) -> None:
+        """Delete an entity by its fully-qualified name."""
+        client = cls._get_client()
+        rest_client = cls._get_rest_client(client)
+        endpoint = cls._get_endpoint_path(client)
+        params = {
+            "recursive": str(recursive).lower(),
+            "hardDelete": str(hard_delete).lower(),
+        }
+        rest_client.delete(f"{endpoint}/name/{fqn}", data=params)
+
+    @classmethod
+    def add_vote(cls, entity_id: UuidLike, vote_type: str = "votedUp") -> TEntity:
+        """Add a vote to an entity. vote_type should be 'votedUp' or 'votedDown'."""
+        client = cls._get_client()
+        rest_client = cls._get_rest_client(client)
+        endpoint = cls._get_endpoint_path(client)
+        entity_id_str = cls._stringify_identifier(entity_id)
+        rest_client.put(
+            f"{endpoint}/{entity_id_str}/vote",
+            json={"updatedVoteType": vote_type},
+        )
+        return cls.retrieve(entity_id)
+
+    @classmethod
+    def remove_vote(cls, entity_id: UuidLike) -> TEntity:
+        """Remove a vote from an entity."""
+        return cls.add_vote(entity_id, vote_type="unVoted")
+
+    @classmethod
     def restore(cls, entity_id: UuidLike) -> TEntity:
         """Restore a soft-deleted entity."""
 
