@@ -247,6 +247,9 @@ export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const name = get(node, 'entityResponseData.displayName');
   const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
 
+  await lineageNode.waitFor({ state: 'attached'});
+  await lineageNode.scrollIntoViewIfNeeded();
+
   await expect(lineageNode).toBeVisible();
 
   const entityHeaderName = lineageNode.locator(
