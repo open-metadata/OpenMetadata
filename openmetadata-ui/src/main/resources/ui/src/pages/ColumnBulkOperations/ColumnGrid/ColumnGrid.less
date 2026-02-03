@@ -137,31 +137,50 @@
 
 .stat-card-group {
   display: flex;
-  gap: 0;
+  align-items: stretch;
   width: 100%;
-  padding: 0;
   background: @white;
   border: 1px solid @grey-200;
   border-radius: @border-rad-xs;
   overflow: hidden;
   box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
-  padding: @size-lg;
+  padding: @size-lg @size-mlg;
+  justify-content: flex-start;
+
+  .stat-cards-inner {
+    display: flex;
+    align-items: stretch;
+    width: 80%;
+  }
+
+  .stat-card-divider-wrapper {
+    flex: 0 0 200px;
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+  }
+
+  .stat-card-divider {
+    width: 1px;
+    flex-shrink: 0;
+    align-self: stretch;
+    background: @grey-200;
+  }
 
   .stat-card {
-    flex: 1;
+    flex: 1 1 auto;
     display: flex;
     align-items: center;
     gap: @size-md;
-    margin-right: @size-lg;
+    padding-left: @size-mlg;
     background: @white;
-    border-right: 1px solid @grey-200;
 
-    &:last-child {
-      border-right: none;
+    &:first-child {
+      padding-left: 0;
     }
 
-    .stat-icon {
-      flex-shrink: 0;
+    &:last-child {
+      padding-right: 0;
     }
 
     .stat-content {
