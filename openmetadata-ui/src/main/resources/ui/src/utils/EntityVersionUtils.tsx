@@ -259,7 +259,7 @@ export const getTagsDiff = (
   oldTagList: Array<TagLabel>,
   newTagList: Array<TagLabel>
 ) => {
-  const tagDiff = diffArrays<TagLabel, TagLabel>(oldTagList, newTagList);
+  const tagDiff = diffArrays<TagLabel>(oldTagList, newTagList);
   const result = tagDiff
     .map((part: ArrayChange<TagLabel>) =>
       part.value.map((tag) => ({
@@ -1249,7 +1249,7 @@ export const getTextDiffElements = (
   oldText: string,
   newText: string
 ): React.ReactNode[] => {
-  const diffArr = diffWords(toString(oldText), toString(newText));
+  const diffArr = diffWordsWithSpace(toString(oldText), toString(newText));
 
   return diffArr.map((diff) => {
     if (diff.added) {
