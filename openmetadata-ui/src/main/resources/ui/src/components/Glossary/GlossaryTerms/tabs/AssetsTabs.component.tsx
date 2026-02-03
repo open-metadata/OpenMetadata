@@ -598,9 +598,20 @@ const AssetsTabs = forwardRef(
       const assetsToDelete = Array.from(
         selectedItems.values()
       ) as unknown as SourceType[];
-      setConfirmationBodyText(getRemovalWarningContent(assetsToDelete));
-      setShowBulkDeleteModal(true);
-    }, [selectedItems, getRemovalWarningContent]);
+      const assetsInOutputPorts = getAssetsInOutputPorts(assetsToDelete);
+
+      if (assetsInOutputPorts.length > 0) {
+        setConfirmationBodyText(getRemovalWarningContent(assetsToDelete));
+        setShowBulkDeleteModal(true);
+      } else {
+        deleteSelectedItems();
+      }
+    }, [
+      selectedItems,
+      getAssetsInOutputPorts,
+      getRemovalWarningContent,
+      deleteSelectedItems,
+    ]);
 
     const confirmBulkDelete = useCallback(() => {
       setShowBulkDeleteModal(false);
