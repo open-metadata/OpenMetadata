@@ -6,6 +6,13 @@
 - [Test Standards to Follow](#test-standards-to-follow)
 - [API Setups for Test Data](#api-setups-for-test-data)
 - [Locator Priority Order](#locator-priority-order)
+- [Anti-Flakiness Patterns](#anti-flakiness-patterns)
+- [Test Timeouts](#test-timeouts)
+- [Test File Structure Template](#test-file-structure-template)
+- [Common Test Patterns](#common-test-patterns)
+- [Support Classes Reference](#support-classes-reference)
+- [Domain Tags](#domain-tags)
+- [Validation Checklist](#validation-checklist)
 
 ---
 
@@ -285,3 +292,377 @@ When adding `data-testid` to components:
 <button data-testid="btn">Submit</button>
 <div data-testid="card">...</div>
 ```
+
+---
+
+## Anti-Flakiness Patterns
+
+### ❌ FORBIDDEN - Never Use These
+
+```typescript
+// WRONG - Hard waits
+await page.waitForTimeout(5000);
+
+// WRONG - Brittle positional selectors
+await page.locator(".ant-btn-primary").first();
+await page.locator(".table-row").last();
+await page.locator(".option").nth(2);
+
+// WRONG - Actions without waiting
+await page.click("button", { force: true }); // NEVER use force: true!
+
+// WRONG - networkidle (unreliable with websockets, polling)
+await page.waitForLoadState("networkidle");
+
+// WRONG - Storing :visible locator references (becomes stale)
+const dropdown = page.locator(".dropdown:visible");
+await dropdown.waitFor({ state: "visible" });
+const option = dropdown.locator(".option"); // This will fail!
+```
+
+### ✅ REQUIRED - Always Use These
+
+```typescript
+// CORRECT - Wait for specific elements
+await expect(page.getByTestId("content")).toBeVisible();
+await waitForAllLoadersToDisappear(page);
+
+// CORRECT - Wait for API responses BEFORE action
+const updateResponse = page.waitForResponse("/api/v1/tables/*");
+await page.click("button");
+const response = await updateResponse;
+expect(response.status()).toBe(200);
+
+// CORRECT - Wait for BOTH network AND UI update
+await Promise.all([
+  page.waitForResponse((r) => r.url().includes("/api/v1/") && r.status() === 200),
+  page.getByRole("button", { name: "Save" }).click(),
+]);
+await waitForAllLoadersToDisappear(page);
+
+// CORRECT - Check element is enabled before clicking
+const saveButton = page.getByRole("button", { name: "Save" });
+await expect(saveButton).toBeVisible();
+await expect(saveButton).toBeEnabled();
+await saveButton.click();
+```
+
+### ⚠️ CRITICAL: The :visible Selector Chain Pattern
+
+**This is the #1 cause of dropdown flakiness!**
+
+```typescript
+// ❌ WRONG - Storing :visible locator (becomes stale)
+const dropdown = page.locator(".ant-select-dropdown:visible");
+await dropdown.waitFor({ state: "visible" });
+const option = dropdown.locator('[title="Option"]');
+await option.click(); // FAILS - dropdown reference is stale!
+
+// ✅ CORRECT - Chain :visible selector directly (never store it)
+await page.click('[data-testid="select"]');
+const option = page
+  .locator(".ant-select-dropdown:visible")
+  .locator('[title="Option"]');
+await expect(option).toBeVisible();
+await option.click();
+
+// Verify dropdown closed
+await expect(page.locator(".ant-select-dropdown:visible")).not.toBeVisible();
+```
+
+**Why**: Stored `:visible` locators become stale when re-queried. Always chain them inline!
+
+### Modal and Scrollable Container Patterns
+
+```typescript
+// ✅ CORRECT - Scroll before interaction in modals
+const option = page.locator('[data-testid="option"]');
+await option.scrollIntoViewIfNeeded();
+await expect(option).toBeVisible();
+await option.click();
+
+// ✅ CORRECT - Manually close stubborn dropdowns
+await page.getByText("Header Text").click();
+await expect(page.locator(".ant-select-dropdown:visible")).not.toBeVisible();
+
+// ✅ CORRECT - Scope to specific container
+await expect(
+  modalContainer.locator(".selected").filter({ hasText: "Policy" })
+).toBeVisible();
+```
+
+---
+
+## Test Timeouts
+
+### ✅ RECOMMENDED: test.slow()
+
+**Default approach** - Use `test.slow()` to triple timeouts (30s → 90s):
+
+```typescript
+test("complex operation", async ({ page }) => {
+  test.slow(); // PREFERRED - triples the timeout
+
+  await test.step("Long running operation", async () => {
+    // Your test logic
+  });
+});
+```
+
+**When to use**: Tests with multiple API calls, file uploads/downloads, complex UI interactions, or background processing. Used 145+ times in the codebase.
+
+### ⚠️ RARE: test.setTimeout()
+
+**Only for specific timeout values** that don't fit the 3x multiplier:
+
+```typescript
+test("extremely long operation", async ({ page }) => {
+  test.setTimeout(300_000); // 5 minutes - only when 3x isn't suitable
+});
+```
+
+### ❌ AVOID: test.describe.configure()
+
+```typescript
+// AVOID - affects ALL tests in the suite
+test.describe.configure({ timeout: 300000 });
+```
+
+**Why avoid**: Less flexible, harder to maintain. Prefer `test.slow()` inside individual tests.
+
+---
+
+## Test File Structure Template
+
+Use this structure for all generated tests:
+
+```typescript
+import { test, expect } from "@playwright/test";
+import { performAdminLogin } from "../../utils/admin";
+import { redirectToHomePage } from "../../utils/common";
+import { sidebarClick } from "../../utils/sidebar";
+import { waitForAllLoadersToDisappear } from "../../utils/entity";
+import { <EntityClass> } from "../../support/entity/<EntityClass>";
+import { UserClass } from "../../support/user/UserClass";
+import { uuid } from "../../utils/common";
+
+const entity = new <EntityClass>();
+const user = new UserClass();
+
+test.describe(
+  "<Feature Name> - <Category>",
+  { tag: ["@<Category>", "@<Domain>"] },
+  () => {
+    test.beforeAll("Setup entities", async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      // Create test entities via API
+      await entity.create(apiContext);
+      await user.create(apiContext);
+
+      // Setup relationships via API if needed
+      // const patchResponse = await apiContext.patch(`/api/v1/...`, { data: ... });
+      // expect(patchResponse.status()).toBe(200);
+
+      await afterAction();
+    });
+
+    test.afterAll("Cleanup entities", async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await entity.delete(apiContext);
+      await user.delete(apiContext);
+      await afterAction();
+    });
+
+    test("scenario description", async ({ page }) => {
+      test.slow(); // Use for tests with multiple API calls or complex interactions
+
+      await test.step("Step description", async () => {
+        // 1. Setup API response listener BEFORE action
+        const updateResponse = page.waitForResponse("/api/v1/endpoint*");
+
+        // 2. Perform action
+        await page.getByRole("button", { name: "Action" }).click();
+
+        // 3. Wait for API and validate
+        const response = await updateResponse;
+        expect(response.status()).toBe(200);
+
+        // 4. Wait for UI update
+        await waitForAllLoadersToDisappear(page);
+
+        // 5. Verify UI state
+        await expect(page.getByTestId("result")).toBeVisible();
+      });
+    });
+  },
+);
+```
+
+---
+
+## Common Test Patterns
+
+### Pattern: Form Submission with API Validation
+
+```typescript
+await test.step("Update description", async () => {
+  await page.getByTestId("edit-description").click();
+  await page.getByTestId("description-input").fill("New description");
+
+  const updateResponse = page.waitForResponse("/api/v1/tables/*");
+  await page.getByRole("button", { name: "Save" }).click();
+
+  const response = await updateResponse;
+  expect(response.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId("description")).toContainText("New description");
+});
+```
+
+### Pattern: Dropdown Selection
+
+```typescript
+await test.step("Select from dropdown", async () => {
+  await page.getByTestId("dropdown-trigger").click();
+
+  // CRITICAL: Chain :visible selector directly - never store it!
+  const option = page
+    .locator(".ant-select-dropdown:visible")
+    .locator('[title="Option Name"]');
+
+  await expect(option).toBeVisible();
+  await option.click();
+
+  // Verify dropdown closed
+  await expect(page.locator(".ant-select-dropdown:visible")).not.toBeVisible();
+});
+```
+
+### Pattern: Multi-Role Permission Testing
+
+```typescript
+// Admin test with default page fixture
+test("admin can edit", async ({ page }) => {
+  await entity.visitEntityPage(page);
+  await waitForAllLoadersToDisappear(page);
+
+  const editButton = page.getByTestId("edit-description");
+  await expect(editButton).toBeVisible();
+  await expect(editButton).toBeEnabled();
+});
+
+// Data Consumer test with custom fixture
+test("data consumer has restricted access", async ({ dataConsumerPage: page }) => {
+  await redirectToHomePage(page);
+  await entity.visitEntityPage(page);
+  await waitForAllLoadersToDisappear(page);
+
+  const editButton = page.getByTestId("edit-description");
+  const isVisible = await editButton.isVisible();
+
+  if (isVisible) {
+    await expect(editButton).toBeDisabled();
+  } else {
+    await expect(editButton).not.toBeVisible();
+  }
+});
+```
+
+### Pattern: Data Persistence Verification
+
+```typescript
+await test.step("Verify persistence after reload", async () => {
+  await page.reload();
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId("description")).toContainText(testValue);
+});
+```
+
+---
+
+## Support Classes Reference
+
+### Entity Classes
+
+Located in `playwright/support/entity/`:
+- TableClass, DatabaseClass, DatabaseSchemaClass
+- DashboardClass, ChartClass, DashboardDataModelClass
+- PipelineClass, TopicClass, ContainerClass
+- MlModelClass, SearchIndexClass, StoredProcedureClass
+- APIEndpointClass, APICollectionClass, MetricClass
+- TagClass, GlossaryClass, GlossaryTermClass
+- DataProductClass, DomainClass
+
+### User & Access Control Classes
+
+Located in `playwright/support/user/` and `playwright/support/access-control/`:
+- UserClass, TeamClass
+- RoleClass, PolicyClass
+
+### Common Methods
+
+```typescript
+await entity.create(apiContext); // Create via API
+await entity.visitEntityPage(page); // Navigate to entity
+await entity.delete(apiContext); // Delete via API
+await entity.rename(newName, page); // Rename entity
+```
+
+---
+
+## Domain Tags
+
+Use appropriate domain tags based on feature area:
+
+```typescript
+test.describe("Feature Name", { tag: ["@Features", "@Governance"] }, () => {
+  // Tests for Governance features
+});
+```
+
+Available domain tags (from `DOMAIN_TAGS` in `playwright/constant/config.ts`):
+- `@Governance` - Policies, Glossary, Classification, Domains
+- `@Discovery` - Tables, Dashboards, Pipelines, Topics, Data Assets
+- `@Platform` - Settings, Users, Teams, Roles, Authentication
+- `@Observability` - Incidents, Data Quality, Profiling, Monitoring
+- `@Integration` - Ingestion, Connectors, External Integrations
+
+---
+
+## Validation Checklist
+
+Before finalizing tests, verify:
+
+### Structure & Organization
+- [ ] Test uses `test.step()` for clear organization
+- [ ] Domain tags added to `test.describe()`
+- [ ] Proper imports from utils and support classes
+- [ ] `beforeAll` creates entities via API
+- [ ] `afterAll` deletes entities in reverse order
+
+### Anti-Flakiness (CRITICAL)
+- [ ] No `waitForTimeout()` or hard waits
+- [ ] No `networkidle` usage
+- [ ] No `{ force: true }` on clicks/fills
+- [ ] No positional selectors (`.first()`, `.last()`, `.nth()`)
+- [ ] No stored `:visible` locator references
+- [ ] All dropdowns use `:visible` chain pattern correctly
+- [ ] All buttons check `.toBeEnabled()` before clicking
+- [ ] Elements in modals use `scrollIntoViewIfNeeded()`
+
+### API & Network
+- [ ] All API calls have `.waitForResponse()` listeners set up BEFORE action
+- [ ] All API responses validate status code (200, 201, 204)
+
+### Waits & Assertions
+- [ ] All actions followed by `waitForAllLoadersToDisappear(page)`
+- [ ] Semantic locators (getByRole, getByTestId) used
+- [ ] Assertions use `.toBeVisible()` instead of `.waitForSelector()`
+
+### Coverage & Roles
+- [ ] Multi-role tests use appropriate fixtures
+- [ ] Data persistence verified after reload/navigation
+- [ ] Error states handled gracefully

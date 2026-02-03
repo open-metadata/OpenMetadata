@@ -12,9 +12,9 @@
 PowerBI Models
 """
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing_extensions import Annotated
 
 
@@ -135,9 +135,16 @@ class PowerBiMeasures(BaseModel):
     """
 
     name: str
-    expression: str
+    expression: Optional[Union[str, List[str]]] = None
     description: Optional[str] = None
     isHidden: Optional[bool] = False
+
+    @field_validator("expression", mode="before")
+    @classmethod
+    def normalize_expression(cls, v):
+        if isinstance(v, list):
+            return "\n".join(v)
+        return v
 
 
 class PowerBITableSource(BaseModel):
@@ -145,7 +152,14 @@ class PowerBITableSource(BaseModel):
     PowerBI Table Source
     """
 
-    expression: Optional[str] = None
+    expression: Optional[Union[str, List[str]]] = None
+
+    @field_validator("expression", mode="before")
+    @classmethod
+    def normalize_expression(cls, v):
+        if isinstance(v, list):
+            return "\n".join(v)
+        return v
 
 
 class PowerBiTable(BaseModel):
@@ -173,7 +187,14 @@ class TablesResponse(BaseModel):
 
 class DatasetExpression(BaseModel):
     name: str
-    expression: Optional[str] = None
+    expression: Optional[Union[str, List[str]]] = None
+
+    @field_validator("expression", mode="before")
+    @classmethod
+    def normalize_expression(cls, v):
+        if isinstance(v, list):
+            return "\n".join(v)
+        return v
 
 
 class UpstreaDataflow(BaseModel):
@@ -323,6 +344,39 @@ class ReportPagesAPIResponse(BaseModel):
 
     odata_context: str = Field(alias="@odata.context")
     value: Optional[List[ReportPage]] = None
+
+
+class DatasourceConnectionDetails(BaseModel):
+    """
+    PowerBI Datasource Connection Details
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-datasources-in-group#datasourceconnectiondetails
+    """
+
+    server: Optional[str] = None
+    database: Optional[str] = None
+
+
+class Datasource(BaseModel):
+    """
+    PowerBI Datasource Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-datasources-in-group#datasource
+    """
+
+    name: Optional[str] = None
+    datasourceType: Optional[str] = None
+    connectionDetails: Optional[DatasourceConnectionDetails] = None
+    datasourceId: Optional[str] = None
+    gatewayId: Optional[str] = None
+
+
+class DatasourcesResponse(BaseModel):
+    """
+    PowerBI DatasourcesResponse Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-datasources-in-group
+    """
+
+    odata_context: str = Field(alias="@odata.context")
+    value: List[Datasource]
 
 
 class DataflowEntityAttribute(BaseModel):

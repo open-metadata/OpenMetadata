@@ -2166,7 +2166,8 @@ test.describe(
         const nodeSuggestion = page.getByTestId(
           `node-suggestion-${serviceFqn}`
         );
-        await expect(nodeSuggestion).toBeVisible();
+        //small timeout to wait for the node suggestion to be visible in dropdown
+        await expect(nodeSuggestion).toBeVisible({ timeout: 10000 });
 
         const lineageResponse = page.waitForResponse((response) =>
           response.url().includes('/api/v1/lineage/getLineage')
