@@ -35,6 +35,9 @@ export const HTTP_STATUS_CODE = {
 
 export const UN_AUTHORIZED_EXCLUDED_PATHS = [
   '/users/refresh',
+  // For Basci auth
   'auth/refresh',
+  // For Okta
+  '/auth/refresh',
   '/users/login',
 ];

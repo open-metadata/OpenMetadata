@@ -10042,14 +10042,16 @@ public interface CollectionDAO {
         String id,
         String jobId,
         String serverId,
+        String entityType,
         long readerSuccess,
         long readerFailed,
         long readerWarnings,
-        long sinkTotal,
         long sinkSuccess,
         long sinkFailed,
-        long sinkWarnings,
-        long entityBuildFailures,
+        long processSuccess,
+        long processFailed,
+        long vectorSuccess,
+        long vectorFailed,
         int partitionsCompleted,
         int partitionsFailed,
         long lastUpdatedAt) {}
@@ -10058,55 +10060,163 @@ public interface CollectionDAO {
         long readerSuccess,
         long readerFailed,
         long readerWarnings,
-        long sinkTotal,
         long sinkSuccess,
         long sinkFailed,
-        long sinkWarnings,
-        long entityBuildFailures,
+        long processSuccess,
+        long processFailed,
+        long vectorSuccess,
+        long vectorFailed,
         int partitionsCompleted,
         int partitionsFailed) {}
 
+    record EntityStats(
+        String entityType,
+        long readerSuccess,
+        long readerFailed,
+        long readerWarnings,
+        long sinkSuccess,
+        long sinkFailed,
+        long processSuccess,
+        long processFailed,
+        long vectorSuccess,
+        long vectorFailed) {}
+
+    /**
+     * Increment stats using delta values. This is the primary method for updating stats -
+     * it adds the delta values to existing values, creating the row if it doesn't exist.
+     */
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO search_index_server_stats (id, jobId, serverId, readerSuccess, readerFailed, "
-                + "readerWarnings, sinkTotal, sinkSuccess, sinkFailed, sinkWarnings, entityBuildFailures, "
+            "INSERT INTO search_index_server_stats (id, jobId, serverId, entityType, "
+                + "readerSuccess, readerFailed, readerWarnings, sinkSuccess, sinkFailed, "
+                + "processSuccess, processFailed, vectorSuccess, vectorFailed, "
                 + "partitionsCompleted, partitionsFailed, lastUpdatedAt) "
-                + "VALUES (:id, :jobId, :serverId, :readerSuccess, :readerFailed, :readerWarnings, "
-                + ":sinkTotal, :sinkSuccess, :sinkFailed, :sinkWarnings, :entityBuildFailures, "
+                + "VALUES (:id, :jobId, :serverId, :entityType, "
+                + ":readerSuccess, :readerFailed, :readerWarnings, :sinkSuccess, :sinkFailed, "
+                + ":processSuccess, :processFailed, :vectorSuccess, :vectorFailed, "
                 + ":partitionsCompleted, :partitionsFailed, :lastUpdatedAt) "
-                + "ON DUPLICATE KEY UPDATE readerSuccess = :readerSuccess, readerFailed = :readerFailed, "
-                + "readerWarnings = :readerWarnings, sinkTotal = :sinkTotal, sinkSuccess = :sinkSuccess, "
-                + "sinkFailed = :sinkFailed, sinkWarnings = :sinkWarnings, "
-                + "entityBuildFailures = :entityBuildFailures, partitionsCompleted = :partitionsCompleted, "
-                + "partitionsFailed = :partitionsFailed, lastUpdatedAt = :lastUpdatedAt",
+                + "ON DUPLICATE KEY UPDATE "
+                + "readerSuccess = readerSuccess + VALUES(readerSuccess), "
+                + "readerFailed = readerFailed + VALUES(readerFailed), "
+                + "readerWarnings = readerWarnings + VALUES(readerWarnings), "
+                + "sinkSuccess = sinkSuccess + VALUES(sinkSuccess), "
+                + "sinkFailed = sinkFailed + VALUES(sinkFailed), "
+                + "processSuccess = processSuccess + VALUES(processSuccess), "
+                + "processFailed = processFailed + VALUES(processFailed), "
+                + "vectorSuccess = vectorSuccess + VALUES(vectorSuccess), "
+                + "vectorFailed = vectorFailed + VALUES(vectorFailed), "
+                + "partitionsCompleted = partitionsCompleted + VALUES(partitionsCompleted), "
+                + "partitionsFailed = partitionsFailed + VALUES(partitionsFailed), "
+                + "lastUpdatedAt = VALUES(lastUpdatedAt)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO search_index_server_stats (id, jobId, serverId, readerSuccess, readerFailed, "
-                + "readerWarnings, sinkTotal, sinkSuccess, sinkFailed, sinkWarnings, entityBuildFailures, "
+            "INSERT INTO search_index_server_stats (id, jobId, serverId, entityType, "
+                + "readerSuccess, readerFailed, readerWarnings, sinkSuccess, sinkFailed, "
+                + "processSuccess, processFailed, vectorSuccess, vectorFailed, "
                 + "partitionsCompleted, partitionsFailed, lastUpdatedAt) "
-                + "VALUES (:id, :jobId, :serverId, :readerSuccess, :readerFailed, :readerWarnings, "
-                + ":sinkTotal, :sinkSuccess, :sinkFailed, :sinkWarnings, :entityBuildFailures, "
+                + "VALUES (:id, :jobId, :serverId, :entityType, "
+                + ":readerSuccess, :readerFailed, :readerWarnings, :sinkSuccess, :sinkFailed, "
+                + ":processSuccess, :processFailed, :vectorSuccess, :vectorFailed, "
                 + ":partitionsCompleted, :partitionsFailed, :lastUpdatedAt) "
-                + "ON CONFLICT (jobId, serverId) DO UPDATE SET readerSuccess = :readerSuccess, "
-                + "readerFailed = :readerFailed, readerWarnings = :readerWarnings, "
-                + "sinkTotal = :sinkTotal, sinkSuccess = :sinkSuccess, sinkFailed = :sinkFailed, "
-                + "sinkWarnings = :sinkWarnings, entityBuildFailures = :entityBuildFailures, "
-                + "partitionsCompleted = :partitionsCompleted, partitionsFailed = :partitionsFailed, "
-                + "lastUpdatedAt = :lastUpdatedAt",
+                + "ON CONFLICT (jobId, serverId, entityType) DO UPDATE SET "
+                + "readerSuccess = search_index_server_stats.readerSuccess + EXCLUDED.readerSuccess, "
+                + "readerFailed = search_index_server_stats.readerFailed + EXCLUDED.readerFailed, "
+                + "readerWarnings = search_index_server_stats.readerWarnings + EXCLUDED.readerWarnings, "
+                + "sinkSuccess = search_index_server_stats.sinkSuccess + EXCLUDED.sinkSuccess, "
+                + "sinkFailed = search_index_server_stats.sinkFailed + EXCLUDED.sinkFailed, "
+                + "processSuccess = search_index_server_stats.processSuccess + EXCLUDED.processSuccess, "
+                + "processFailed = search_index_server_stats.processFailed + EXCLUDED.processFailed, "
+                + "vectorSuccess = search_index_server_stats.vectorSuccess + EXCLUDED.vectorSuccess, "
+                + "vectorFailed = search_index_server_stats.vectorFailed + EXCLUDED.vectorFailed, "
+                + "partitionsCompleted = search_index_server_stats.partitionsCompleted + EXCLUDED.partitionsCompleted, "
+                + "partitionsFailed = search_index_server_stats.partitionsFailed + EXCLUDED.partitionsFailed, "
+                + "lastUpdatedAt = EXCLUDED.lastUpdatedAt",
         connectionType = POSTGRES)
-    void upsert(
+    void incrementStats(
         @Bind("id") String id,
         @Bind("jobId") String jobId,
         @Bind("serverId") String serverId,
+        @Bind("entityType") String entityType,
         @Bind("readerSuccess") long readerSuccess,
         @Bind("readerFailed") long readerFailed,
         @Bind("readerWarnings") long readerWarnings,
-        @Bind("sinkTotal") long sinkTotal,
         @Bind("sinkSuccess") long sinkSuccess,
         @Bind("sinkFailed") long sinkFailed,
-        @Bind("sinkWarnings") long sinkWarnings,
-        @Bind("entityBuildFailures") long entityBuildFailures,
+        @Bind("processSuccess") long processSuccess,
+        @Bind("processFailed") long processFailed,
+        @Bind("vectorSuccess") long vectorSuccess,
+        @Bind("vectorFailed") long vectorFailed,
+        @Bind("partitionsCompleted") int partitionsCompleted,
+        @Bind("partitionsFailed") int partitionsFailed,
+        @Bind("lastUpdatedAt") long lastUpdatedAt);
+
+    /**
+     * Replace stats with absolute values. Used by distributed coordinator to persist
+     * aggregate stats for the server.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO search_index_server_stats (id, jobId, serverId, entityType, "
+                + "readerSuccess, readerFailed, readerWarnings, sinkSuccess, sinkFailed, "
+                + "processSuccess, processFailed, vectorSuccess, vectorFailed, "
+                + "partitionsCompleted, partitionsFailed, lastUpdatedAt) "
+                + "VALUES (:id, :jobId, :serverId, :entityType, "
+                + ":readerSuccess, :readerFailed, :readerWarnings, :sinkSuccess, :sinkFailed, "
+                + ":processSuccess, :processFailed, :vectorSuccess, :vectorFailed, "
+                + ":partitionsCompleted, :partitionsFailed, :lastUpdatedAt) "
+                + "ON DUPLICATE KEY UPDATE "
+                + "readerSuccess = VALUES(readerSuccess), "
+                + "readerFailed = VALUES(readerFailed), "
+                + "readerWarnings = VALUES(readerWarnings), "
+                + "sinkSuccess = VALUES(sinkSuccess), "
+                + "sinkFailed = VALUES(sinkFailed), "
+                + "processSuccess = VALUES(processSuccess), "
+                + "processFailed = VALUES(processFailed), "
+                + "vectorSuccess = VALUES(vectorSuccess), "
+                + "vectorFailed = VALUES(vectorFailed), "
+                + "partitionsCompleted = VALUES(partitionsCompleted), "
+                + "partitionsFailed = VALUES(partitionsFailed), "
+                + "lastUpdatedAt = VALUES(lastUpdatedAt)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO search_index_server_stats (id, jobId, serverId, entityType, "
+                + "readerSuccess, readerFailed, readerWarnings, sinkSuccess, sinkFailed, "
+                + "processSuccess, processFailed, vectorSuccess, vectorFailed, "
+                + "partitionsCompleted, partitionsFailed, lastUpdatedAt) "
+                + "VALUES (:id, :jobId, :serverId, :entityType, "
+                + ":readerSuccess, :readerFailed, :readerWarnings, :sinkSuccess, :sinkFailed, "
+                + ":processSuccess, :processFailed, :vectorSuccess, :vectorFailed, "
+                + ":partitionsCompleted, :partitionsFailed, :lastUpdatedAt) "
+                + "ON CONFLICT (jobId, serverId, entityType) DO UPDATE SET "
+                + "readerSuccess = EXCLUDED.readerSuccess, "
+                + "readerFailed = EXCLUDED.readerFailed, "
+                + "readerWarnings = EXCLUDED.readerWarnings, "
+                + "sinkSuccess = EXCLUDED.sinkSuccess, "
+                + "sinkFailed = EXCLUDED.sinkFailed, "
+                + "processSuccess = EXCLUDED.processSuccess, "
+                + "processFailed = EXCLUDED.processFailed, "
+                + "vectorSuccess = EXCLUDED.vectorSuccess, "
+                + "vectorFailed = EXCLUDED.vectorFailed, "
+                + "partitionsCompleted = EXCLUDED.partitionsCompleted, "
+                + "partitionsFailed = EXCLUDED.partitionsFailed, "
+                + "lastUpdatedAt = EXCLUDED.lastUpdatedAt",
+        connectionType = POSTGRES)
+    void replaceStats(
+        @Bind("id") String id,
+        @Bind("jobId") String jobId,
+        @Bind("serverId") String serverId,
+        @Bind("entityType") String entityType,
+        @Bind("readerSuccess") long readerSuccess,
+        @Bind("readerFailed") long readerFailed,
+        @Bind("readerWarnings") long readerWarnings,
+        @Bind("sinkSuccess") long sinkSuccess,
+        @Bind("sinkFailed") long sinkFailed,
+        @Bind("processSuccess") long processSuccess,
+        @Bind("processFailed") long processFailed,
+        @Bind("vectorSuccess") long vectorSuccess,
+        @Bind("vectorFailed") long vectorFailed,
         @Bind("partitionsCompleted") int partitionsCompleted,
         @Bind("partitionsFailed") int partitionsFailed,
         @Bind("lastUpdatedAt") long lastUpdatedAt);
@@ -10116,26 +10226,47 @@ public interface CollectionDAO {
     List<ServerStatsRecord> findByJobId(@Bind("jobId") String jobId);
 
     @SqlQuery(
-        "SELECT * FROM search_index_server_stats WHERE jobId = :jobId AND serverId = :serverId")
+        "SELECT * FROM search_index_server_stats WHERE jobId = :jobId AND serverId = :serverId AND entityType = :entityType")
     @RegisterRowMapper(ServerStatsMapper.class)
-    ServerStatsRecord findByJobIdAndServerId(
-        @Bind("jobId") String jobId, @Bind("serverId") String serverId);
+    ServerStatsRecord findByJobIdServerIdEntityType(
+        @Bind("jobId") String jobId,
+        @Bind("serverId") String serverId,
+        @Bind("entityType") String entityType);
 
+    /** Get aggregated stats across all servers and entity types for a job */
     @SqlQuery(
         "SELECT "
             + "COALESCE(SUM(readerSuccess), 0) as readerSuccess, "
             + "COALESCE(SUM(readerFailed), 0) as readerFailed, "
             + "COALESCE(SUM(readerWarnings), 0) as readerWarnings, "
-            + "COALESCE(SUM(sinkTotal), 0) as sinkTotal, "
             + "COALESCE(SUM(sinkSuccess), 0) as sinkSuccess, "
             + "COALESCE(SUM(sinkFailed), 0) as sinkFailed, "
-            + "COALESCE(SUM(sinkWarnings), 0) as sinkWarnings, "
-            + "COALESCE(SUM(entityBuildFailures), 0) as entityBuildFailures, "
+            + "COALESCE(SUM(processSuccess), 0) as processSuccess, "
+            + "COALESCE(SUM(processFailed), 0) as processFailed, "
+            + "COALESCE(SUM(vectorSuccess), 0) as vectorSuccess, "
+            + "COALESCE(SUM(vectorFailed), 0) as vectorFailed, "
             + "COALESCE(SUM(partitionsCompleted), 0) as partitionsCompleted, "
             + "COALESCE(SUM(partitionsFailed), 0) as partitionsFailed "
             + "FROM search_index_server_stats WHERE jobId = :jobId")
     @RegisterRowMapper(AggregatedServerStatsMapper.class)
     AggregatedServerStats getAggregatedStats(@Bind("jobId") String jobId);
+
+    /** Get stats grouped by entity type for a job */
+    @SqlQuery(
+        "SELECT entityType, "
+            + "COALESCE(SUM(readerSuccess), 0) as readerSuccess, "
+            + "COALESCE(SUM(readerFailed), 0) as readerFailed, "
+            + "COALESCE(SUM(readerWarnings), 0) as readerWarnings, "
+            + "COALESCE(SUM(sinkSuccess), 0) as sinkSuccess, "
+            + "COALESCE(SUM(sinkFailed), 0) as sinkFailed, "
+            + "COALESCE(SUM(processSuccess), 0) as processSuccess, "
+            + "COALESCE(SUM(processFailed), 0) as processFailed, "
+            + "COALESCE(SUM(vectorSuccess), 0) as vectorSuccess, "
+            + "COALESCE(SUM(vectorFailed), 0) as vectorFailed "
+            + "FROM search_index_server_stats WHERE jobId = :jobId "
+            + "GROUP BY entityType")
+    @RegisterRowMapper(EntityStatsMapper.class)
+    List<EntityStats> getStatsByEntityType(@Bind("jobId") String jobId);
 
     @SqlUpdate("DELETE FROM search_index_server_stats WHERE jobId = :jobId")
     void deleteByJobId(@Bind("jobId") String jobId);
@@ -10147,14 +10278,16 @@ public interface CollectionDAO {
             rs.getString("id"),
             rs.getString("jobId"),
             rs.getString("serverId"),
+            rs.getString("entityType"),
             rs.getLong("readerSuccess"),
             rs.getLong("readerFailed"),
             rs.getLong("readerWarnings"),
-            rs.getLong("sinkTotal"),
             rs.getLong("sinkSuccess"),
             rs.getLong("sinkFailed"),
-            rs.getLong("sinkWarnings"),
-            rs.getLong("entityBuildFailures"),
+            rs.getLong("processSuccess"),
+            rs.getLong("processFailed"),
+            rs.getLong("vectorSuccess"),
+            rs.getLong("vectorFailed"),
             rs.getInt("partitionsCompleted"),
             rs.getInt("partitionsFailed"),
             rs.getLong("lastUpdatedAt"));
@@ -10168,13 +10301,31 @@ public interface CollectionDAO {
             rs.getLong("readerSuccess"),
             rs.getLong("readerFailed"),
             rs.getLong("readerWarnings"),
-            rs.getLong("sinkTotal"),
             rs.getLong("sinkSuccess"),
             rs.getLong("sinkFailed"),
-            rs.getLong("sinkWarnings"),
-            rs.getLong("entityBuildFailures"),
+            rs.getLong("processSuccess"),
+            rs.getLong("processFailed"),
+            rs.getLong("vectorSuccess"),
+            rs.getLong("vectorFailed"),
             rs.getInt("partitionsCompleted"),
             rs.getInt("partitionsFailed"));
+      }
+    }
+
+    class EntityStatsMapper implements RowMapper<EntityStats> {
+      @Override
+      public EntityStats map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new EntityStats(
+            rs.getString("entityType"),
+            rs.getLong("readerSuccess"),
+            rs.getLong("readerFailed"),
+            rs.getLong("readerWarnings"),
+            rs.getLong("sinkSuccess"),
+            rs.getLong("sinkFailed"),
+            rs.getLong("processSuccess"),
+            rs.getLong("processFailed"),
+            rs.getLong("vectorSuccess"),
+            rs.getLong("vectorFailed"));
       }
     }
   }

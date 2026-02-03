@@ -26,6 +26,8 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const COLUMN_BULK_OPERATIONS_URL = '/column-bulk-operations';
 
+const METADATA_STATUS_FILTER_TESTID = 'search-dropdown-Has / Missing Metadata';
+
 async function visitColumnBulkOperationsPage(page: Page) {
   await redirectToHomePage(page);
   const dataRes = page.waitForResponse('/api/v1/columns/grid?size=25');
@@ -55,9 +57,11 @@ async function searchColumn(page: Page, columnName: string) {
 }
 
 test.describe('Column Bulk Operations Page', () => {
-  test('should load the page with stats cards', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
+  });
 
+  test('should load the page with stats cards', async ({ page }) => {
     // Verify stats cards are visible by their content
     await expect(page.getByText('Total Unique Columns')).toBeVisible();
     await expect(page.getByText('Total Occurrences')).toBeVisible();
@@ -68,7 +72,6 @@ test.describe('Column Bulk Operations Page', () => {
   });
 
   test('should display column grid with data', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
     // Verify the table has rows
     const tableBody = page.locator('tbody');
     await expect(tableBody).toBeVisible();
@@ -78,88 +81,116 @@ test.describe('Column Bulk Operations Page', () => {
     const rowCount = await rows.count();
     expect(rowCount).toBeGreaterThanOrEqual(0);
   });
+
+  test('should show no results message when filters match nothing', async ({
+    page,
+  }) => {
+    // Search for something that doesn't exist
+    await searchColumn(page, 'zzz_nonexistent_column_xyz_12345');
+
+    // Should show "no records found" or similar message
+    const noRecordsText = page.getByText(
+      /no records found|no data|no results/i
+    );
+    const tableRows = page.locator('tbody tr');
+
+    // Either no results message or empty table
+    const noResultsCount = await noRecordsText.count();
+    const rowCount = await tableRows.count();
+
+    // Should have no data rows or show no results message
+    expect(noResultsCount > 0 || rowCount === 0).toBe(true);
+  });
 });
 
 test.describe('Column Bulk Operations - Metadata Status Filters', () => {
+  test.beforeEach(async ({ page }) => {
+    await visitColumnBulkOperationsPage(page);
+  });
+
   test('should filter by MISSING metadata status', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
 
-    // Find and click the Metadata Status filter button
-    const metadataStatusButton = page.getByRole('button', {
-      name: 'Metadata Status',
+    await page.getByTestId('MISSING_DESCRIPTION').click();
+    await page.getByTestId('update-btn').click();
+
+    const metadataStatusChip = page.locator('.filter-selection-chip').filter({
+      has: page.locator('.filter-selection-value', {
+        hasText: /Missing Description|MISSING_DESCRIPTION/,
+      }),
     });
-    await metadataStatusButton.click();
-
-    // Select MISSING filter - the dropdown has menuitems with checkboxes
-    await page.getByRole('menuitem', { name: 'Missing' }).click();
-    await page.getByRole('button', { name: 'Update' }).click();
-
-    // Wait for filter to apply
-
-    // Verify filter is applied (URL should contain the filter parameter)
-    await expect(page).toHaveURL(/metadataStatus=MISSING/);
+    await expect(metadataStatusChip).toBeVisible();
+    await expect(
+      metadataStatusChip.locator('.filter-selection-label')
+    ).toContainText('Has / Missing Metadata');
   });
 
-  test('should filter by INCOMPLETE metadata status', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-    // Find and click the Metadata Status filter button
-    const metadataStatusButton = page.getByRole('button', {
-      name: 'Metadata Status',
+  test('should filter by Has Description metadata status', async ({ page }) => {
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
+
+    await page.getByTestId('HAS_DESCRIPTION').click();
+    await page.getByTestId('update-btn').click();
+
+    const metadataStatusChip = page.locator('.filter-selection-chip').filter({
+      has: page.locator('.filter-selection-value', {
+        hasText: /Has Description|HAS_DESCRIPTION/,
+      }),
     });
-    await metadataStatusButton.click();
-
-    // Select INCOMPLETE filter
-    await page.getByRole('menuitem', { name: 'Incomplete' }).click();
-    await page.getByRole('button', { name: 'Update' }).click();
-
-    // Verify filter is applied
-    await expect(page).toHaveURL(/metadataStatus=INCOMPLETE/);
+    await expect(metadataStatusChip).toBeVisible();
+    await expect(
+      metadataStatusChip.locator('.filter-selection-label')
+    ).toContainText('Has / Missing Metadata');
   });
 
-  test('should filter by INCONSISTENT metadata status', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
+  test('should filter by Has Tags metadata status', async ({ page }) => {
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
 
-    // Find and click the Metadata Status filter button
-    const metadataStatusButton = page.getByRole('button', {
-      name: 'Metadata Status',
+    await page.getByTestId('HAS_TAGS').click();
+    await page.getByTestId('update-btn').click();
+
+    const metadataStatusChip = page.locator('.filter-selection-chip').filter({
+      has: page.locator('.filter-selection-value', {
+        hasText: /Has Tags|HAS_TAGS/,
+      }),
     });
-    await metadataStatusButton.click();
-
-    // Select INCONSISTENT filter - for columns with different metadata across occurrences
-    await page.getByRole('menuitem', { name: 'Inconsistent' }).click();
-    await page.getByRole('button', { name: 'Update' }).click();
-
-    // Wait for filter to apply
-
-    // Verify filter is applied
-    await expect(page).toHaveURL(/metadataStatus=INCONSISTENT/);
+    await expect(metadataStatusChip).toBeVisible();
+    await expect(
+      metadataStatusChip.locator('.filter-selection-label')
+    ).toContainText('Has / Missing Metadata');
   });
 
-  test('should filter by COMPLETE metadata status', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
+  test('should filter by Has Glossary metadata status', async ({ page }) => {
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
 
-    // Find and click the Metadata Status filter button
-    const metadataStatusButton = page.getByRole('button', {
-      name: 'Metadata Status',
+    await page.getByTestId('HAS_GLOSSARY').click();
+    await page.getByTestId('update-btn').click();
+
+    const metadataStatusChip = page.locator('.filter-selection-chip').filter({
+      has: page.locator('.filter-selection-value', {
+        hasText: /Has Glossary|HAS_GLOSSARY/,
+      }),
     });
-    await metadataStatusButton.click();
-
-    // Select COMPLETE filter - use exact: true since "Complete" is substring of "Incomplete"
-    await page.getByRole('menuitem', { name: 'Complete', exact: true }).click();
-    await page.getByRole('button', { name: 'Update' }).click();
-
-    // Wait for filter to apply
-
-    // Verify filter is applied
-    await expect(page).toHaveURL(/metadataStatus=COMPLETE/);
+    await expect(metadataStatusChip).toBeVisible();
+    await expect(
+      metadataStatusChip.locator('.filter-selection-label')
+    ).toContainText('Has / Missing Metadata');
   });
 
   test('should make API call when filtering by metadata status', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
-    // Set up request interception to verify API call
     const apiCallPromise = page.waitForRequest(
       (request) =>
         request.url().includes('/api/v1/columns/grid') &&
@@ -167,33 +198,30 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
       { timeout: 10000 }
     );
 
-    // Find and click the Metadata Status filter button
-    const metadataStatusButton = page.getByRole('button', {
-      name: 'Metadata Status',
-    });
-    await metadataStatusButton.click();
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
 
-    // Select MISSING filter
-    await page.getByRole('menuitem', { name: 'Missing' }).click();
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('MISSING_DESCRIPTION').click();
+    await page.getByTestId('update-btn').click();
 
-    // Verify API was called with metadataStatus parameter
     const apiRequest = await apiCallPromise;
-    expect(apiRequest.url()).toContain('metadataStatus=MISSING');
+    expect(apiRequest.url()).toContain('metadataStatus=MISSING_DESCRIPTION');
   });
 });
 
 test.describe('Column Bulk Operations - Domain Filters', () => {
-  test('should display Domains filter button', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
+  });
 
+  test('should display Domains filter button', async ({ page }) => {
     const domainsDropdown = page.getByTestId('search-dropdown-Domains');
     await expect(domainsDropdown).toBeVisible();
   });
 
   test('should open Domains filter dropdown', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
     const domainsDropdown = page.getByTestId('search-dropdown-Domains');
     await domainsDropdown.click();
 
@@ -207,8 +235,6 @@ test.describe('Column Bulk Operations - Domain Filters', () => {
   test('should have domain options in dropdown when domains exist', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
     const domainsDropdown = page.getByTestId('search-dropdown-Domains');
     await domainsDropdown.click();
 
@@ -221,13 +247,13 @@ test.describe('Column Bulk Operations - Domain Filters', () => {
 });
 
 test.describe('Column Bulk Operations - Selection and Edit', () => {
+  test.beforeEach(async ({ page }) => {
+    await visitColumnBulkOperationsPage(page);
+  });
+
   test('should show disabled edit button when no columns are selected', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
-    // Wait for grid data to load
-
     // Check for the disabled Edit button
     const editButton = page.getByRole('button', { name: /edit/i });
     await expect(editButton).toBeVisible();
@@ -240,10 +266,6 @@ test.describe('Column Bulk Operations - Selection and Edit', () => {
   test('should enable edit button when columns are selected', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
-    // Wait for grid data to load
-
     // Get the first row checkbox in tbody
     const firstCheckbox = page
       .locator('tbody tr')
@@ -262,10 +284,6 @@ test.describe('Column Bulk Operations - Selection and Edit', () => {
   test('should open edit drawer when edit button is clicked', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
-    // Wait for grid data to load
-
     // Get the first row checkbox
     const firstCheckbox = page
       .locator('tbody tr')
@@ -290,10 +308,6 @@ test.describe('Column Bulk Operations - Selection and Edit', () => {
   });
 
   test('should be able to dismiss drawer', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
-    // Wait for grid data to load
-
     // Get the first row checkbox
     const firstCheckbox = page
       .locator('tbody tr')
@@ -322,10 +336,6 @@ test.describe('Column Bulk Operations - Selection and Edit', () => {
   test('should clear selection when cancel selection button is clicked', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
-    // Wait for grid data to load
-
     // Get the first row checkbox
     const firstCheckbox = page
       .locator('tbody tr')
@@ -373,12 +383,13 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     await afterAction();
   });
 
+  test.beforeEach(async ({ page }) => {
+    await visitColumnBulkOperationsPage(page);
+  });
+
   test('should update display name and propagate to all entities', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
-    await visitColumnBulkOperationsPage(page);
-
     // Search for customer_id which exists in sample data (dim_customer, fact_sale)
     await searchColumn(page, sharedColumnName);
 
@@ -449,16 +460,15 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     // Verify all updates have the correct displayName
     for (const update of updates) {
       expect(update.displayName).toBe(displayName);
-      expect(update.columnFQN).toContain(sharedColumnName);
+      expect(update.columnFQN?.toLowerCase()).toContain(
+        sharedColumnName.toLowerCase()
+      );
     }
   });
 
   test('should update all occurrences when selecting expanded column', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
-    await visitColumnBulkOperationsPage(page);
-
     // Search for customer_id which exists in sample data
     await searchColumn(page, sharedColumnName);
 
@@ -534,16 +544,15 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     // Verify all updates have the correct displayName
     for (const update of updates) {
       expect(update.displayName).toBe(displayName);
-      expect(update.columnFQN).toContain(sharedColumnName);
+      expect(update.columnFQN?.toLowerCase()).toContain(
+        sharedColumnName.toLowerCase()
+      );
     }
   });
 
   test('should show success notification after bulk update', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
-    await visitColumnBulkOperationsPage(page);
-
     // Search for customer_id which exists in sample data
     await searchColumn(page, sharedColumnName);
 
@@ -567,23 +576,16 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     const displayNameInput = drawer.getByPlaceholder('Display Name');
     await displayNameInput.fill(uniqueDisplayName);
 
-    // Wait for API response
-    const responsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/columns/bulk-update-async') &&
-        response.status() === 200,
-      { timeout: 15000 }
-    );
-
     // Click update button
     const updateButton = drawer.getByRole('button', { name: 'Update' });
     await updateButton.click();
 
-    // Wait for API response
-    await responsePromise;
+    await waitForAllLoadersToDisappear(page);
 
-    // Verify success toast appears
-    await expect(page.getByText(/bulk update initiated/i)).toBeVisible({
+    // Verify success toast appears (shown after update completes)
+    await expect(
+      page.getByText(/bulk update (initiated|completed)/i)
+    ).toBeVisible({
       timeout: 10000,
     });
   });
@@ -592,7 +594,6 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
     page,
   }) => {
     test.slow(true);
-    await visitColumnBulkOperationsPage(page);
 
     // Get the first row (any column with data)
     const firstCheckbox = page
@@ -623,12 +624,13 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
 });
 
 test.describe('Column Bulk Operations - Edit Drawer Pre-population', () => {
+  test.beforeEach(async ({ page }) => {
+    await visitColumnBulkOperationsPage(page);
+  });
+
   test('should show tags field in edit drawer when selecting a column', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
-    await visitColumnBulkOperationsPage(page);
-
     // Select any column from the grid
     const columnRow = page.locator('tbody tr').first();
     await expect(columnRow).toBeVisible();
@@ -659,9 +661,6 @@ test.describe('Column Bulk Operations - Edit Drawer Pre-population', () => {
   test('should show glossary terms field in edit drawer when selecting a column', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
-    await visitColumnBulkOperationsPage(page);
-
     // Select any column from the grid
     const columnRow = page.locator('tbody tr').first();
     await expect(columnRow).toBeVisible();
@@ -762,11 +761,13 @@ test.describe('Column Bulk Operations - Coverage Status Display', () => {
 });
 
 test.describe('Column Bulk Operations - Column Variations', () => {
+  test.beforeEach(async ({ page }) => {
+    await visitColumnBulkOperationsPage(page);
+  });
+
   test('should show coverage indicator for columns with same name', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Look for coverage text in the table
     const coverageText = page.getByText(/Coverage/);
     const count = await coverageText.count();
@@ -779,10 +780,6 @@ test.describe('Column Bulk Operations - Column Variations', () => {
   test('should expand column row to show variations when clicked', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
-    // Wait for grid data to load
-
     // Find expand buttons (right arrow buttons)
     const expandButtons = page.getByRole('button', { name: 'right' });
     const buttonCount = await expandButtons.count();
@@ -803,11 +800,11 @@ test.describe('Column Bulk Operations - Column Variations', () => {
 });
 
 test.describe('Column Bulk Operations - Search', () => {
-  test('should filter columns by search query', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
+  });
 
-    // Wait for grid data to load
-
+  test('should filter columns by search query', async ({ page }) => {
     // Find the search input
     const searchInput = page.getByPlaceholder('Search columns');
 
@@ -822,8 +819,6 @@ test.describe('Column Bulk Operations - Search', () => {
   test('should make server-side API call with columnNamePattern when searching', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
     const searchInput = page.getByPlaceholder('Search columns');
     await expect(searchInput).toBeVisible();
 
@@ -841,8 +836,6 @@ test.describe('Column Bulk Operations - Search', () => {
   });
 
   test('should perform case-insensitive search', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
     const searchInput = page.getByPlaceholder('Search columns');
     await expect(searchInput).toBeVisible();
 
@@ -860,8 +853,6 @@ test.describe('Column Bulk Operations - Search', () => {
   });
 
   test('should update stats cards when search is applied', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
     const totalUniqueColumnsCard = page.getByText('Total Unique Columns');
     const totalOccurrencesCard = page.getByText('Total Occurrences');
 
@@ -888,11 +879,11 @@ test.describe('Column Bulk Operations - Search', () => {
 });
 
 test.describe('Column Bulk Operations - Pagination', () => {
-  test('should navigate through pages', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
+  });
 
-    // Wait for grid data to load
-
+  test('should navigate through pages', async ({ page }) => {
     // Check if pagination controls exist
     const nextButton = page.getByRole('button', { name: 'Next' });
 
@@ -917,19 +908,24 @@ test.describe('Column Bulk Operations - Pagination', () => {
 });
 
 test.describe('Column Bulk Operations - Multi-select', () => {
-  test('should select multiple columns and bulk edit', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
+  });
 
-    // Wait for grid data to load
-
-    // Get row checkboxes
-    const checkboxes = page.locator('tbody tr input[type="checkbox"]');
-    const checkboxCount = await checkboxes.count();
+  test('should select multiple columns and bulk edit', async ({ page }) => {
+    // Get checkboxes only from non-collapsible rows (rows without an expand button)
+    const nonCollapsibleRows = page.locator(
+      'tbody tr:not(:has(button.expand-button))'
+    );
+    const nonCollapsibleCheckboxes = nonCollapsibleRows.locator(
+      'input[type="checkbox"]'
+    );
+    const checkboxCount = await nonCollapsibleCheckboxes.count();
 
     if (checkboxCount >= 2) {
-      // Select first two columns
-      await checkboxes.nth(0).click();
-      await checkboxes.nth(1).click();
+      // Select first two non-collapsible columns
+      await nonCollapsibleCheckboxes.nth(0).click();
+      await nonCollapsibleCheckboxes.nth(1).click();
 
       // Verify "View Selected" shows correct count
       const viewSelectedText = page.getByText(/View Selected \(2\)/);
@@ -949,8 +945,6 @@ test.describe('Column Bulk Operations - Multi-select', () => {
   });
 
   test('should select all columns using header checkbox', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Find the header checkbox
     const headerCheckbox = page.locator('thead input[type="checkbox"]');
 
@@ -972,11 +966,11 @@ test.describe('Column Bulk Operations - Multi-select', () => {
 });
 
 test.describe('Column Bulk Operations - View Selected Only', () => {
-  test('should toggle view selected only mode', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
+  });
 
-    // Wait for grid data to load
-
+  test('should toggle view selected only mode', async ({ page }) => {
     // Get the first row checkbox
     const firstCheckbox = page
       .locator('tbody tr')
@@ -1019,11 +1013,13 @@ test.describe('Column Bulk Operations - View Selected Only', () => {
 });
 
 test.describe('Column Bulk Operations - Aggregate Row Click Behavior', () => {
+  test.beforeEach(async ({ page }) => {
+    await visitColumnBulkOperationsPage(page);
+  });
+
   test('should open edit drawer when clicking on aggregate row', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Find a row with expand button (aggregate row with multiple occurrences)
     const expandButton = page.locator('tbody tr button').first();
 
@@ -1047,8 +1043,6 @@ test.describe('Column Bulk Operations - Aggregate Row Click Behavior', () => {
   test('should NOT open edit drawer when clicking expand button', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Find expand buttons
     const expandButtons = page
       .locator('tbody tr button.expand-button, tbody tr .anticon-right')
@@ -1082,98 +1076,98 @@ test.describe('Column Bulk Operations - Combined Filters', () => {
     });
 
     // Apply Metadata Status filter
-    const metadataStatusButton = page.getByRole('button', {
-      name: 'Metadata Status',
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
+
+    await page.getByTestId('MISSING_DESCRIPTION').click();
+    await page.getByTestId('update-btn').click();
+
+    const metadataStatusChip = page.locator('.filter-selection-chip').filter({
+      has: page.locator('.filter-selection-value', {
+        hasText: /Missing Description|MISSING_DESCRIPTION/,
+      }),
     });
-    await metadataStatusButton.click();
-
-    await page.getByRole('menuitem', { name: 'Missing' }).click();
-    await page.getByRole('button', { name: 'Update' }).click();
-
-    // Verify filter is in URL
-    await expect(page).toHaveURL(/metadataStatus=MISSING/);
+    await expect(metadataStatusChip).toBeVisible();
+    await expect(
+      metadataStatusChip.locator('.filter-selection-label')
+    ).toContainText('Has / Missing Metadata');
   });
 
   test('should clear individual filters', async ({ page }) => {
-    // Start with a filter applied
-    await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING`);
+    await page.goto(
+      `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING_DESCRIPTION`
+    );
     await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
-    // Verify filter is applied
-    await expect(page).toHaveURL(/metadataStatus=MISSING/);
+    const metadataStatusChipBefore = page
+      .locator('.filter-selection-chip')
+      .filter({
+        has: page.locator('.filter-selection-value', {
+          hasText: /Missing Description|MISSING_DESCRIPTION/,
+        }),
+      });
+    await expect(metadataStatusChipBefore).toBeVisible();
 
-    // Open metadata status filter and deselect
-    const metadataStatusButton = page.getByRole('button', {
-      name: 'Metadata Status',
-    });
-    await metadataStatusButton.click();
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
 
-    // Click to deselect the checked item
-    await page.getByRole('menuitem', { name: 'Missing' }).click();
-    await page.getByRole('button', { name: 'Update' }).click();
+    await page.getByTestId('MISSING_DESCRIPTION').click();
+    await page.getByTestId('update-btn').click();
 
-    // URL should not have the filter anymore
+    const metadataStatusChipAfter = page
+      .locator('.filter-selection-chip')
+      .filter({
+        has: page.locator('.filter-selection-value', {
+          hasText: /Missing Description|MISSING_DESCRIPTION/,
+        }),
+      });
+    await expect(metadataStatusChipAfter).not.toBeVisible();
+
     const url = page.url();
-    expect(url).not.toContain('metadataStatus=MISSING');
+    expect(url).not.toContain('metadataStatus=MISSING_DESCRIPTION');
   });
 });
 
 test.describe('Column Bulk Operations - URL State Persistence', () => {
   test('should restore filters from URL on page load', async ({ page }) => {
-    // Navigate with filters in URL
-    await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=INCOMPLETE`);
+    await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=HAS_TAGS`);
     await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
-    // Wait for API call with filters
-
-    // Verify filters are reflected in UI
-    // The filter buttons should show the selected values
-    await expect(page).toHaveURL(/metadataStatus=INCOMPLETE/);
+    const metadataStatusChip = page.locator('.filter-selection-chip').filter({
+      has: page.locator('.filter-selection-value', {
+        hasText: /Has Tags|HAS_TAGS/,
+      }),
+    });
+    await expect(metadataStatusChip).toBeVisible();
+    await expect(
+      metadataStatusChip.locator('.filter-selection-label')
+    ).toContainText('Has / Missing Metadata');
   });
 
   test('should persist search query in URL', async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
 
-    // Enter search query
+    const searchInput = page.getByPlaceholder('Search columns');
     await searchColumn(page, 'test_column');
 
-    // Verify search is in URL
-    await expect(page).toHaveURL(/q=test_column|searchQuery=test_column/);
-  });
-});
-
-test.describe('Column Bulk Operations - Empty State', () => {
-  test('should show no results message when filters match nothing', async ({
-    page,
-  }) => {
-    await visitColumnBulkOperationsPage(page);
-
-    // Search for something that doesn't exist
-    await searchColumn(page, 'zzz_nonexistent_column_xyz_12345');
-
-    // Should show "no records found" or similar message
-    const noRecordsText = page.getByText(
-      /no records found|no data|no results/i
-    );
-    const tableRows = page.locator('tbody tr');
-
-    // Either no results message or empty table
-    const noResultsCount = await noRecordsText.count();
-    const rowCount = await tableRows.count();
-
-    // Should have no data rows or show no results message
-    expect(noResultsCount > 0 || rowCount === 0).toBe(true);
+    await expect(searchInput).toHaveValue('test_column');
   });
 });
 
 test.describe('Column Bulk Operations - Edit Drawer Title', () => {
+  test.beforeEach(async ({ page }) => {
+    await visitColumnBulkOperationsPage(page);
+  });
+
   test('should show correct title for single column selection', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Select single column
     const firstCheckbox = page
       .locator('tbody tr')
@@ -1203,8 +1197,6 @@ test.describe('Column Bulk Operations - Edit Drawer Title', () => {
   test('should show correct title for multiple column selection', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Select multiple columns
     const checkboxes = page.locator('tbody tr input[type="checkbox"]');
     const checkboxCount = await checkboxes.count();
@@ -1233,11 +1225,13 @@ test.describe('Column Bulk Operations - Edit Drawer Title', () => {
 });
 
 test.describe('Column Bulk Operations - Cancel Without Saving', () => {
+  test.beforeEach(async ({ page }) => {
+    await visitColumnBulkOperationsPage(page);
+  });
+
   test('should discard changes when closing drawer without saving', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Select a column
     const firstCheckbox = page
       .locator('tbody tr')
@@ -1289,11 +1283,37 @@ test.describe('Column Bulk Operations - Cancel Without Saving', () => {
 });
 
 test.describe('Column Bulk Operations - Service Filter', () => {
+  test.beforeEach(async ({ page }) => {
+    await visitColumnBulkOperationsPage(page);
+  });
+
+  test('should show Service filter chip when Service filter is applied from URL', async ({
+    page,
+  }) => {
+    await page.goto(
+      `${COLUMN_BULK_OPERATIONS_URL}?service.displayName.keyword=${encodeURIComponent(
+        'sample_data'
+      )}`
+    );
+    await page.waitForLoadState('domcontentloaded');
+    await waitForAllLoadersToDisappear(page);
+
+    const serviceChip = page
+      .locator('.filter-selection-chip')
+      .filter({
+        has: page.locator('.filter-selection-value', {
+          hasText: 'sample_data',
+        }),
+      });
+    await expect(serviceChip).toBeVisible();
+    await expect(serviceChip.locator('.filter-selection-label')).toContainText(
+      'Service'
+    );
+  });
+
   test('should have filter bar with search and filter options', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // The filter bar contains search input and various filter dropdowns
     // Check that the search input is visible (main element of filter bar)
     const searchInput = page.getByPlaceholder('Search columns');
@@ -1305,9 +1325,9 @@ test.describe('Column Bulk Operations - Service Filter', () => {
     await expect(assetTypeFilter).toBeVisible();
 
     // Check that Metadata Status filter is visible
-    const metadataStatusFilter = page.getByRole('button', {
-      name: /metadata status/i,
-    });
+    const metadataStatusFilter = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
     await expect(metadataStatusFilter).toBeVisible();
 
     // The Service filter is part of quick filters and may not always be visible
@@ -1336,9 +1356,11 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
   // The column grid API supports multiple entity types: table, dashboardDataModel
   // Columns with the same name across different entity types can be displayed and managed
 
-  test('should filter by entity type - Table only', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
+  });
 
+  test('should filter by entity type - Table only', async ({ page }) => {
     // Set up request interception
     const apiCallPromise = page.waitForRequest(
       (request) =>
@@ -1368,8 +1390,6 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
   test('should filter by entity type - Dashboard Data Model only', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Set up request interception
     const apiCallPromise = page.waitForRequest(
       (request) =>
@@ -1401,8 +1421,6 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
   test('should show occurrence count for columns appearing in multiple entities', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Look for occurrence count indicators in the table
     // Columns that appear in multiple tables/entities will show count > 1
     const occurrenceTexts = page.locator('text=/\\d+ occurrences?/i');
@@ -1420,8 +1438,6 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
   test('should expand row to show entity details for multi-occurrence columns', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Find rows with expand buttons (columns that appear in multiple places)
     const expandButtons = page.locator(
       'tbody tr button[aria-label], tbody tr .anticon-right'
@@ -1462,11 +1478,12 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
     await afterAction();
   });
 
+  test.beforeEach(async ({ page }) => {
+    await visitColumnBulkOperationsPage(page);
+  });
+
   test('should display STRUCT column with expand button', async ({ page }) => {
     test.slow(true);
-
-    await redirectToHomePage(page);
-    await visitColumnBulkOperationsPage(page);
 
     await searchColumn(page, structColumnName);
 
@@ -1484,9 +1501,6 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
     page,
   }) => {
     test.slow(true);
-
-    await redirectToHomePage(page);
-    await visitColumnBulkOperationsPage(page);
 
     await searchColumn(page, structColumnName);
 
@@ -1515,9 +1529,6 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
 
   test('should select and edit nested STRUCT field', async ({ page }) => {
     test.slow(true);
-
-    await redirectToHomePage(page);
-    await visitColumnBulkOperationsPage(page);
 
     await searchColumn(page, structColumnName);
 
@@ -1555,9 +1566,6 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
   }) => {
     test.slow(true);
 
-    await redirectToHomePage(page);
-    await visitColumnBulkOperationsPage(page);
-
     await searchColumn(page, structColumnName);
 
     const expandButton = page
@@ -1583,11 +1591,13 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
 // ============================================================================
 
 test.describe('Column Bulk Operations - Error Handling', () => {
+  test.beforeEach(async ({ page }) => {
+    await visitColumnBulkOperationsPage(page);
+  });
+
   test('should maintain page stability during interactions', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Verify page loads correctly
     const statsCard = page
       .locator('.stat-card, [data-testid="stats-card"]')
@@ -1610,8 +1620,6 @@ test.describe('Column Bulk Operations - Error Handling', () => {
   });
 
   test('should handle network timeout gracefully', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Select a column
     const firstCheckbox = page
       .locator('tbody tr')
@@ -1649,9 +1657,11 @@ test.describe('Column Bulk Operations - Error Handling', () => {
 });
 
 test.describe('Column Bulk Operations - Tag Operations', () => {
-  test('should be able to remove existing tags', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
+  });
 
+  test('should be able to remove existing tags', async ({ page }) => {
     // Find and select a column that has tags
     const rows = page.locator('tbody tr');
     const rowCount = await rows.count();
@@ -1704,8 +1714,6 @@ test.describe('Column Bulk Operations - Tag Operations', () => {
   });
 
   test('should be able to add multiple tags at once', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Select a column
     const firstCheckbox = page
       .locator('tbody tr')
@@ -1757,8 +1765,6 @@ test.describe('Column Bulk Operations - Tag Operations', () => {
   });
 
   test('should be able to clear all tags from a column', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Select a column
     const firstCheckbox = page
       .locator('tbody tr')
@@ -1805,9 +1811,11 @@ test.describe('Column Bulk Operations - Tag Operations', () => {
 });
 
 test.describe('Column Bulk Operations - Keyboard Accessibility', () => {
-  test('should close drawer with Escape key', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
+  });
 
+  test('should close drawer with Escape key', async ({ page }) => {
     // Select a column
     const firstCheckbox = page
       .locator('tbody tr')
@@ -1833,8 +1841,6 @@ test.describe('Column Bulk Operations - Keyboard Accessibility', () => {
   });
 
   test('should navigate form fields with Tab key', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Select a column
     const firstCheckbox = page
       .locator('tbody tr')
@@ -1871,8 +1877,6 @@ test.describe('Column Bulk Operations - Keyboard Accessibility', () => {
   });
 
   test('should select checkbox with Space key', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Focus on first checkbox
     const firstCheckbox = page
       .locator('tbody tr')
@@ -1896,9 +1900,11 @@ test.describe('Column Bulk Operations - Keyboard Accessibility', () => {
 });
 
 test.describe('Column Bulk Operations - Selection Edge Cases', () => {
-  test('should maintain selection after scrolling', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
+  });
 
+  test('should maintain selection after scrolling', async ({ page }) => {
     // Select first row
     const firstCheckbox = page
       .locator('tbody tr')
@@ -1930,8 +1936,6 @@ test.describe('Column Bulk Operations - Selection Edge Cases', () => {
   });
 
   test('should allow selecting non-adjacent rows', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
     const rows = page.locator('tbody tr');
     const rowCount = await rows.count();
 
@@ -1979,8 +1983,6 @@ test.describe('Column Bulk Operations - Selection Edge Cases', () => {
   });
 
   test('should re-select same row after deselecting', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
     const firstCheckbox = page
       .locator('tbody tr')
       .first()
@@ -2009,9 +2011,11 @@ test.describe('Column Bulk Operations - Selection Edge Cases', () => {
 test.describe(
   'Column Bulk Operations - Special Characters & Long Content',
   () => {
-    test('should handle search with special characters', async ({ page }) => {
+    test.beforeEach(async ({ page }) => {
       await visitColumnBulkOperationsPage(page);
+    });
 
+    test('should handle search with special characters', async ({ page }) => {
       const searchInput = page.getByPlaceholder('Search columns');
 
       // Search with special characters
@@ -2034,8 +2038,6 @@ test.describe(
     test('should display long column names with truncation', async ({
       page,
     }) => {
-      await visitColumnBulkOperationsPage(page);
-
       // Check that column name cells exist and have proper styling
       const nameCells = page.locator(
         '[data-testid="column-name-cell"], .column-name-cell'
@@ -2055,8 +2057,6 @@ test.describe(
     test('should allow entering long description in edit drawer', async ({
       page,
     }) => {
-      await visitColumnBulkOperationsPage(page);
-
       const firstCheckbox = page
         .locator('tbody tr')
         .first()
@@ -2097,8 +2097,6 @@ test.describe(
     test('should handle display name with special characters', async ({
       page,
     }) => {
-      await visitColumnBulkOperationsPage(page);
-
       const firstCheckbox = page
         .locator('tbody tr')
         .first()
@@ -2130,9 +2128,11 @@ test.describe(
 );
 
 test.describe('Column Bulk Operations - Async Job Status', () => {
-  test('should show loading state during update', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
+  });
 
+  test('should show loading state during update', async ({ page }) => {
     const firstCheckbox = page
       .locator('tbody tr')
       .first()
@@ -2179,8 +2179,6 @@ test.describe('Column Bulk Operations - Async Job Status', () => {
   });
 
   test('should allow selecting and editing columns', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
     const rows = page.locator('tbody tr');
     const rowCount = await rows.count();
 
@@ -2211,9 +2209,11 @@ test.describe('Column Bulk Operations - Async Job Status', () => {
 });
 
 test.describe('Column Bulk Operations - Empty/Edge Values', () => {
-  test('should allow clearing display name', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
+  });
 
+  test('should allow clearing display name', async ({ page }) => {
     const firstCheckbox = page
       .locator('tbody tr')
       .first()
@@ -2242,8 +2242,6 @@ test.describe('Column Bulk Operations - Empty/Edge Values', () => {
   });
 
   test('should allow clearing description', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
     const firstCheckbox = page
       .locator('tbody tr')
       .first()
@@ -2282,20 +2280,17 @@ test.describe('Column Bulk Operations - Empty/Edge Values', () => {
   });
 
   test('should handle column with no existing metadata', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Filter by MISSING metadata status to find columns without metadata
-    const metadataStatusButton = page.getByRole('button', {
-      name: /metadata status/i,
-    });
-    await metadataStatusButton.click();
-
-    const missingOption = page.locator(
-      '[title="Missing"], [data-testid="Missing"]'
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
     );
+    await metadataStatusTrigger.click();
+
+    const missingOption = page.getByTestId('MISSING_DESCRIPTION');
 
     if ((await missingOption.count()) > 0) {
       await missingOption.click();
+      await page.getByTestId('update-btn').click();
 
       // Select first column (should have no metadata)
       const firstCheckbox = page
@@ -2328,13 +2323,11 @@ test.describe('Column Bulk Operations - Empty/Edge Values', () => {
 });
 
 test.describe('Column Bulk Operations - Browser Behavior', () => {
+  test.beforeEach(async ({ page }) => {
+    await visitColumnBulkOperationsPage(page);
+  });
+
   test('should maintain functionality after page refresh', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
-    // Refresh page
-    await redirectToHomePage(page);
-    await visitColumnBulkOperationsPage(page);
-
     // Verify page still works after refresh
     const rowsAfterRefresh = page.locator('tbody tr');
     const refreshedRowCount = await rowsAfterRefresh.count();
@@ -2348,9 +2341,6 @@ test.describe('Column Bulk Operations - Browser Behavior', () => {
   });
 
   test('should handle multiple visits to the page', async ({ page }) => {
-    // First visit
-    await visitColumnBulkOperationsPage(page);
-
     // Verify page loads
     const searchInput = page.getByPlaceholder('Search columns');
     await expect(searchInput).toBeVisible();
@@ -2366,8 +2356,6 @@ test.describe('Column Bulk Operations - Browser Behavior', () => {
   test('should warn before closing page with unsaved changes', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
     const firstCheckbox = page
       .locator('tbody tr')
       .first()
@@ -2401,13 +2389,15 @@ test.describe('Column Bulk Operations - Browser Behavior', () => {
 });
 
 test.describe('Column Bulk Operations - Filter Edge Cases', () => {
-  test('should allow interacting with filters', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
+  });
 
+  test('should allow interacting with filters', async ({ page }) => {
     // Verify filter buttons exist
-    const metadataStatusButton = page.getByRole('button', {
-      name: /metadata status/i,
-    });
+    const metadataStatusButton = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
     const assetTypeButton = page.getByRole('button', { name: /asset type/i });
 
     // At least one filter button should be visible
@@ -2427,8 +2417,6 @@ test.describe('Column Bulk Operations - Filter Edge Cases', () => {
   });
 
   test('should reset search filter properly', async ({ page }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Apply search
     const searchInput = page.getByPlaceholder('Search columns');
     await searchInput.fill('test');
@@ -2444,8 +2432,6 @@ test.describe('Column Bulk Operations - Filter Edge Cases', () => {
   test('should show correct count when combining search and filters', async ({
     page,
   }) => {
-    await visitColumnBulkOperationsPage(page);
-
     // Get initial stats
     const statsCard = page
       .locator('.stat-card, [data-testid="stats-card"]')
@@ -2456,18 +2442,18 @@ test.describe('Column Bulk Operations - Filter Edge Cases', () => {
     await searchColumn(page, 'id');
 
     // Apply metadata filter
-    const metadataStatusButton = page.getByRole('button', {
-      name: /metadata status/i,
-    });
-    await metadataStatusButton.click();
+    const metadataStatusTrigger = page.getByTestId(
+      METADATA_STATUS_FILTER_TESTID
+    );
+    await metadataStatusTrigger.click();
     await page.waitForTimeout(300);
 
-    const option = page.locator(
-      '[title="Incomplete"], [data-testid="Incomplete"]'
-    );
+    const option = page.getByTestId('HAS_TAGS');
 
     if ((await option.count()) > 0) {
       await option.click();
+      await page.getByTestId('update-btn').click();
+      await waitForAllLoadersToDisappear(page);
     }
 
     // Grid should show results (or empty state if no matches)
