@@ -141,7 +141,7 @@ export interface ListingData<T> {
   handleFilterChange: (filters: ExploreQuickFilterField[]) => void;
   handlePageChange: (page: number) => void;
   handlePageSizeChange?: (pageSize: number) => void;
-  refetch: () => void;
+  refetch: (options?: { silent?: boolean }) => void | Promise<void>;
 }
 
 export interface TableViewConfig<T> {
