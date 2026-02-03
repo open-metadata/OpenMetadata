@@ -64,6 +64,7 @@ export type ExploreSearchIndex =
   | SearchIndex.DASHBOARD
   | SearchIndex.DATABASE
   | SearchIndex.DATABASE_SCHEMA
+  | SearchIndex.CHART
   | SearchIndex.MLMODEL
   | SearchIndex.TOPIC
   | SearchIndex.CONTAINER

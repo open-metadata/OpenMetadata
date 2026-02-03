@@ -414,7 +414,7 @@ test.describe('Explore page', () => {
     const dashboardNode = page.getByTestId('explore-tree-title-Dashboards');
     await expect(dashboardNode).toBeVisible();
 
-    const expandResponse = page.waitForResponse(
+    const dashboardNodeClickResponse = page.waitForResponse(
       (resp) =>
         resp.url().includes('/api/v1/search/query') &&
         resp.url().includes('index=dataAsset') &&
@@ -423,12 +423,40 @@ test.describe('Explore page', () => {
 
     await page.getByTestId('explore-tree-title-Dashboards').click();
 
-    await expandResponse;
+    await dashboardNodeClickResponse;
 
-    await page.getByTestId('search-dropdown-Data Assets').click();
+    await page
+      .locator('.ant-tree-treenode', {
+        has: page.getByTestId('explore-tree-title-Dashboards'),
+      })
+      .locator('.ant-tree-switcher')
+      .click();
 
-    await expect(page.getByTestId('chart-checkbox')).toBeChecked();
-    await expect(page.getByTestId('dashboarddatamodel-checkbox')).toBeChecked();
+    const supersetNode = page.getByTestId('explore-tree-title-superset');
+    await expect(supersetNode).toBeVisible();
+
+    await page
+      .locator('.ant-tree-treenode', {
+        has: page.getByTestId('explore-tree-title-superset'),
+      })
+      .locator('.ant-tree-switcher')
+      .click();
+
+    const sampleSupersetNode = page.getByTestId(
+      'explore-tree-title-sample_superset'
+    );
+    await expect(sampleSupersetNode).toBeVisible();
+
+    await page
+      .locator('.ant-tree-treenode', {
+        has: page.getByTestId('explore-tree-title-sample_superset'),
+      })
+      .locator('.ant-tree-switcher')
+      .click();
+
+    const chartsNode = page.getByTestId('explore-tree-title-chart');
+    await expect(chartsNode).toBeVisible();
+    await expect(chartsNode).toContainText('Charts');
 
     const searchInput = page.getByTestId('searchBox');
     await searchInput.click();
@@ -442,6 +470,13 @@ test.describe('Explore page', () => {
     );
 
     await expect(chartCard).toBeVisible();
+
+    const exploreLeftPanel = page.getByTestId('explore-left-panel');
+    await expect(exploreLeftPanel).toBeVisible();
+
+    const chartsTab = page.getByTestId('charts-tab');
+    await expect(chartsTab).toBeVisible();
+    await expect(chartsTab).toContainText('Charts');
   });
 
   DATA_ASSETS.forEach((asset) => {
