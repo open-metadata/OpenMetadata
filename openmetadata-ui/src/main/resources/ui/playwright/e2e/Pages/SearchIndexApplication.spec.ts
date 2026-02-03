@@ -71,8 +71,7 @@ const verifyLastExecutionRun = async (page: Page, response: Response) => {
 };
 
 test('Search Index Application', async ({ page }) => {
-  // Increase timeout since SearchIndexApp can take several minutes to complete
-  test.setTimeout(360_000);
+  test.slow();
 
   await test.step('Visit Application page', async () => {
     await redirectToHomePage(page);
