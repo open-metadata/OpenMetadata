@@ -13,7 +13,6 @@ PowerBI Models
 """
 from datetime import datetime
 from typing import List, Optional, Union
-from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing_extensions import Annotated
@@ -137,16 +136,8 @@ class PowerBiMeasures(BaseModel):
 
     name: str
     expression: Optional[Union[str, List[str]]] = None
-    expression: Optional[Union[str, List[str]]] = None
     description: Optional[str] = None
     isHidden: Optional[bool] = False
-
-    @field_validator("expression", mode="before")
-    @classmethod
-    def normalize_expression(cls, v):
-        if isinstance(v, list):
-            return "\n".join(v)
-        return v
 
     @field_validator("expression", mode="before")
     @classmethod
@@ -220,14 +211,6 @@ class TablesResponse(BaseModel):
 
 class DatasetExpression(BaseModel):
     name: str
-    expression: Optional[Union[str, List[str]]] = None
-
-    @field_validator("expression", mode="before")
-    @classmethod
-    def normalize_expression(cls, v):
-        if isinstance(v, list):
-            return "\n".join(v)
-        return v
     expression: Optional[Union[str, List[str]]] = None
 
     @field_validator("expression", mode="before")
