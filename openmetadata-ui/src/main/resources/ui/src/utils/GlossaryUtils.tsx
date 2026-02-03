@@ -138,6 +138,7 @@ export const StatusClass = {
   [EntityStatus.Draft]: StatusType.Pending,
   [EntityStatus.Rejected]: StatusType.Failure,
   [EntityStatus.Deprecated]: StatusType.Deprecated,
+  [EntityStatus.Retired]: StatusType.Retired,
   [EntityStatus.InReview]: StatusType.InReview,
   [EntityStatus.Unprocessed]: StatusType.Unprocessed,
 };

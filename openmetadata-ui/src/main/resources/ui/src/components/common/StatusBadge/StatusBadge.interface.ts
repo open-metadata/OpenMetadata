@@ -22,6 +22,7 @@ export enum StatusType {
   Aborted = 'aborted',
   InReview = 'inReview',
   Deprecated = 'deprecated',
+  Retired = 'retired',
   Version = 'version',
   Acknowledged = 'acknowledged',
   Unprocessed = 'unprocessed',

@@ -38,6 +38,7 @@ export const icons: Partial<Record<AllStatusTypes, IconComponent>> = {
   [EntityStatus.InReview]: InReviewIcon,
   [EntityStatus.Draft]: DraftIcon,
   [EntityStatus.Deprecated]: DeprecatedIcon,
+  [EntityStatus.Retired]: StoppedIcon,
   [AppStatus.Active]: ApprovedIcon,
   [AppStatus.Completed]: CompletedIcon,
   [AppStatus.Failed]: RejectedIcon,
@@ -61,5 +62,6 @@ export const iconsV2: Partial<Record<StatusType, IconComponent>> = {
   [StatusType.Pending]: PendingIcon,
   [StatusType.InReview]: InReviewIcon,
   [StatusType.Deprecated]: DeprecatedIcon,
+  [StatusType.Retired]: StoppedIcon,
   [StatusType.Aborted]: AbortedIcon,
 };
