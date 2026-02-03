@@ -124,7 +124,7 @@ class ESMixin(Generic[T]):
 
     # sort_field needs to be unique for the pagination to work, so we can use the FQN
     paginate_query = (
-        "/search/query?q=&size={size}&deleted=false{filter}&index={index}{include_fields}"
+        "/search/query?q={search_query}&size={size}&deleted=false{filter}&index={index}{include_fields}"
         "&sort_field={sort_field}&sort_order={sort_order}{after}"
     )
 
@@ -352,6 +352,7 @@ class ESMixin(Generic[T]):
         entity: Type[T],
         query_filter: Optional[str] = None,
         size: int = 100,
+        search_query: str = "",
         include_fields: Optional[List[str]] = None,
         sort_field: str = "fullyQualifiedName",
         sort_order: str = "desc",
@@ -363,6 +364,7 @@ class ESMixin(Generic[T]):
             entity: The entity type to paginate
             query_filter: Optional ES query filter in JSON format
             size: Number of results per page (default: 100)
+            search_query: Optional query string used to filter results (default: "").
             include_fields: Optional list of fields to include in ES response (optimization)
             sort_field: Field to sort by (default: "fullyQualifiedName").
                        Special field "_score" is supported for relevance sorting.
@@ -382,6 +384,7 @@ class ESMixin(Generic[T]):
         query = functools.partial(
             self.paginate_query.format,
             index=ES_INDEX_MAP[entity.__name__],
+            search_query=search_query,
             filter="&query_filter=" + quote_plus(query_filter) if query_filter else "",
             size=size,
             include_fields=self._get_include_fields_query(include_fields),
@@ -416,6 +419,7 @@ class ESMixin(Generic[T]):
         entity: Type[T],
         query_filter: Optional[str] = None,
         size: int = 100,
+        search_query: str = "",
         fields: Optional[List[str]] = None,
         sort_field: str = "fullyQualifiedName",
         sort_order: str = "desc",
@@ -427,6 +431,7 @@ class ESMixin(Generic[T]):
             entity: The entity type to paginate
             query_filter: Optional ES query filter in JSON format
             size: Number of results per page (default: 100)
+            search_query: Optional query string used to filter results (default: "").
             fields: Optional list of fields to fetch from the API for each entity
             sort_field: Field to sort by (default: "fullyQualifiedName").
                        Must be an indexed ES field. Special field "_score" is supported
@@ -437,7 +442,12 @@ class ESMixin(Generic[T]):
             Full entity objects fetched from the OpenMetadata API
         """
         for response in self._paginate_es_internal(
-            entity, query_filter, size, sort_order=sort_order, sort_field=sort_field
+            entity,
+            query_filter,
+            size,
+            search_query=search_query,
+            sort_order=sort_order,
+            sort_field=sort_field,
         ):
             yield from self._yield_hits_from_api(
                 response=response, entity=entity, fields=fields
