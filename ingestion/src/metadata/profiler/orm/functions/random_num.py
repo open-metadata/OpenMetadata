@@ -117,3 +117,13 @@ def _(*_, **__):
     We need to cast it to integer to perform the modulo
     """
     return "(RANDOM() * 100)::INTEGER"
+
+
+@compiles(RandomNumFn, Dialects.PinotDB)
+def _(*_, **__):
+    """
+    PinotDB does not support RANDOM() function in all versions/configurations.
+    The PinotDBSampler uses hash-based sampling instead of RandomNumFn.
+    Return 0 to ensure compatibility, similar to Snowflake/Teradata approach.
+    """
+    return "0"

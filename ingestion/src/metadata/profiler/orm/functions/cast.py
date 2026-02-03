@@ -10,36 +10,31 @@
 #  limitations under the License.
 
 """
-Define Concat function
+Define Cast function
 """
-# Keep SQA docs style defining custom constructs
-
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.elements import ClauseElement
 from sqlalchemy.sql.functions import FunctionElement
+from sqlalchemy.sql.type_api import TypeEngine
 
 from metadata.profiler.metrics.core import CACHE
-from metadata.profiler.orm.registry import Dialects
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
 
-class Substr(FunctionElement):
+class CastFn(FunctionElement):
     inherit_cache = CACHE
+    name = "CAST"
+
+    def __init__(self, expr: ClauseElement, target_type: TypeEngine, **kwargs):
+        self._target_type = target_type
+        super().__init__(expr, **kwargs)
 
 
-@compiles(Substr)
+@compiles(CastFn)
 def _(element, compiler, **kw):
-    return f"SUBSTRING({compiler.process(element.clauses, **kw)})"
+    expr = compiler.process(element.clauses.clauses[0], **kw)
+    type_name = compiler.dialect.type_compiler.process(element._target_type, **kw)
 
-
-@compiles(Substr, Dialects.PinotDB)
-def _(element, compiler, **kw):
-    if len(element.clauses) != 3:
-        raise TypeError(
-            "Substr(String <CHARACTER>, StartPos <INT>, EndPos <INT>) requires 3 clauses"
-        )
-
-    value, start, end = [compiler.process(el, **kw) for el in element.clauses]
-
-    return f"SUBSTR({value}, {start}, {end})"
+    return f"CAST({expr} AS {type_name})"

@@ -49,3 +49,8 @@ def _(element, compiler, **kw):
     return (
         f"HASH_MD5(CAST({compiler.process(element.clauses, **kw)} AS VARCHAR(32000)))"
     )
+
+
+@compiles(MD5, PythonDialects.PinotDB.value)
+def _(element, compiler, **kw):
+    return f"MD5(toUtf8({compiler.process(element.clauses, **kw)}))"
