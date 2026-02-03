@@ -19,10 +19,17 @@ import i18n from '../../../../utils/i18next/LocalUtil';
 export const COLUMN_TAG_FIELD = 'columnTags';
 export const COLUMN_GLOSSARY_FIELD = 'columnGlossaryTerms';
 
+export const RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS = 1000;
+
 export const COLUMN_GRID_FILTERS: ExploreQuickFilterField[] = [
   {
     label: i18n.t('label.service'),
     key: EntityFields.SERVICE,
+    hideCounts: true,
+  },
+  {
+    label: i18n.t('label.service-type'),
+    key: EntityFields.SERVICE_TYPE,
     hideCounts: true,
   },
   {
@@ -61,10 +68,13 @@ export const COLUMN_GRID_FILTERS: ExploreQuickFilterField[] = [
     hideSearchBar: true,
     key: 'metadataStatus',
     options: [
-      { key: 'MISSING', label: 'Missing' },
-      { key: 'INCOMPLETE', label: 'Incomplete' },
-      { key: 'INCONSISTENT', label: 'Inconsistent' },
-      { key: 'COMPLETE', label: 'Complete' },
+      { key: 'HAS_DESCRIPTION', label: i18n.t('message.has-description') },
+      {
+        key: 'MISSING_DESCRIPTION',
+        label: i18n.t('message.missing-description'),
+      },
+      { key: 'HAS_TAGS', label: i18n.t('message.has-tags') },
+      { key: 'HAS_GLOSSARY', label: i18n.t('message.has-glossary') },
     ],
   },
 ];
