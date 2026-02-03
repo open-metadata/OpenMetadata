@@ -20,5 +20,7 @@ export interface TagsSectionProps {
   hasPermission?: boolean;
   entityId?: string;
   entityType?: EntityType;
-  onTagsUpdate?: (updatedTags: TagLabel[]) => void;
+  onTagsUpdate?: (
+    updatedTags: TagLabel[]
+  ) => Promise<TagLabel[] | undefined> | void;
 }
