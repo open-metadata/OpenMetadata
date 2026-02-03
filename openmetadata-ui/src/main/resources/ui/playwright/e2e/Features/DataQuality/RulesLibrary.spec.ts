@@ -961,15 +961,15 @@ test.describe(
         await expect(pageSizeDropdown).toBeVisible();
         await pageSizeDropdown.click();
 
-        // Wait for dropdown to open and select 25
-        await page.locator('.ant-dropdown:visible').getByText('25').click();
-
-        // Wait for pagination response
-        await page.waitForResponse(
+        const pageChangeResponse = page.waitForResponse(
+          // Wait for pagination response
           (response) =>
             response.url().includes('/api/v1/dataQuality/testDefinitions') &&
             response.request().method() === 'GET'
         );
+        // Wait for dropdown to open and select 25
+        await page.locator('.ant-dropdown:visible').getByText('25').click();
+        await pageChangeResponse;
       });
 
       await test.step(
