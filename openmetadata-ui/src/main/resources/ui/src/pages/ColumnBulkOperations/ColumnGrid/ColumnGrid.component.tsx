@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { DownOutlined, EditOutlined, RightOutlined } from '@ant-design/icons';
+import { DownOutlined, RightOutlined } from '@ant-design/icons';
 import {
   Box,
   Button as MUIButton,
@@ -25,7 +25,7 @@ import {
 } from '@mui/material';
 import { Tag01 as TagIcon } from '@untitledui/icons';
 import { Button, Tag, Typography as AntTypography } from 'antd';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined, some } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -35,9 +35,10 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as OccurrencesIcon } from '../../../assets/svg/ic-occurences.svg';
-import { ReactComponent as PendingChangesIcon } from '../../../assets/svg/ic-pending-changes.svg';
-import { ReactComponent as UniqueColumnsIcon } from '../../../assets/svg/ic-unique-column.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as OccurrencesIcon } from '../../../assets/svg/ic_occurrences.svg';
+import { ReactComponent as PendingChangesIcon } from '../../../assets/svg/ic_pending-changes.svg';
+import { ReactComponent as UniqueColumnsIcon } from '../../../assets/svg/ic_unique-column.svg';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
@@ -82,11 +83,19 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
 import './ColumnGrid.less';
 import { ColumnGridTableRow } from './components/ColumnGridTableRow';
+import { RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS } from './constants/ColumnGrid.constants';
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';
 // Removed React Data Grid - using MUI Table instead
 
 const { Text } = AntTypography;
+
+const EDITED_ROW_KEYS: ReadonlyArray<
+  'editedDisplayName' | 'editedDescription' | 'editedTags'
+> = ['editedDisplayName', 'editedDescription', 'editedTags'];
+
+const hasEditedValues = (r: ColumnGridRowData): boolean =>
+  some(EDITED_ROW_KEYS, (key) => !isUndefined(r[key]));
 
 const ColumnGrid: React.FC<ColumnGridProps> = ({
   filters: externalFilters,
@@ -96,8 +105,16 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const { socket } = useWebSocketConnector();
   const [isUpdating, setIsUpdating] = useState(false);
   const [viewSelectedOnly, setViewSelectedOnly] = useState(false);
+  const [recentlyUpdatedRowIds, setRecentlyUpdatedRowIds] = useState<
+    Set<string>
+  >(new Set());
+  const [pendingRefetchRowIds, setPendingRefetchRowIds] = useState<Set<string>>(
+    new Set()
+  );
   const editorRef = React.useRef<EditorContentRef>(null);
   const activeJobIdRef = useRef<string | null>(null);
+  const lastBulkUpdateCountRef = useRef<number>(0);
+  const pendingHighlightRowIdsRef = useRef<Set<string>>(new Set());
   const closeDrawerRef = useRef<() => void>(() => {});
   const openDrawerRef = useRef<() => void>(() => {});
   const handleGroupSelectRef = useRef<
@@ -935,12 +952,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       (r: ColumnGridRowData) => columnGridListing.isSelected(r.id)
     );
 
-    const updatesCount = selectedRowsData.filter(
-      (r: ColumnGridRowData) =>
-        r.editedDisplayName !== undefined ||
-        r.editedDescription !== undefined ||
-        r.editedTags !== undefined
-    ).length;
+    const updatesCount = selectedRowsData.filter(hasEditedValues).length;
 
     if (updatesCount === 0) {
       showErrorToast(t('message.no-changes-to-save'));
@@ -954,11 +966,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       const columnUpdates: ColumnUpdate[] = [];
 
       for (const row of selectedRowsData) {
-        if (
-          row.editedDisplayName === undefined &&
-          row.editedDescription === undefined &&
-          row.editedTags === undefined
-        ) {
+        if (!hasEditedValues(row)) {
           continue;
         }
 
@@ -1035,12 +1043,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       // Store the jobId to listen for WebSocket notification when job completes
       activeJobIdRef.current = response.jobId;
 
-      showSuccessToast(
-        t('server.bulk-update-initiated', {
-          entity: t('label.column-plural'),
-          count: cleanedUpdates.length,
-        })
+      const updatedRowIds = new Set(
+        selectedRowsData.map((r: ColumnGridRowData) => r.id)
       );
+      setPendingRefetchRowIds(updatedRowIds);
+      pendingHighlightRowIdsRef.current = updatedRowIds;
+      lastBulkUpdateCountRef.current = cleanedUpdates.length;
 
       setIsUpdating(false);
       closeDrawerRef.current();
@@ -1065,41 +1073,69 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     columnGridListing.allRows,
     columnGridListing.selectedEntities,
     columnGridListing.clearEditedValues,
+    columnGridListing.setAllRows,
+    columnGridListing.clearSelection,
     t,
-    columnGridListing.refetch,
   ]);
 
-  // Listen for WebSocket notifications when bulk update completes
+  const handleBulkAssetsNotification = useCallback(
+    async (message: string) => {
+      let data: { jobId?: string; status?: string };
+      try {
+        data = JSON.parse(message) as { jobId?: string; status?: string };
+      } catch {
+        return;
+      }
+
+      if (!data.jobId || data.jobId !== activeJobIdRef.current) {
+        return;
+      }
+
+      const clearJobState = () => {
+        setPendingRefetchRowIds(new Set());
+        activeJobIdRef.current = null;
+        setIsUpdating(false);
+      };
+
+      if (data.status === 'COMPLETED' || data.status === 'SUCCESS') {
+        columnGridListing.setGridItems([]);
+        columnGridListing.setExpandedRows(new Set());
+        try {
+          await columnGridListing.refetch();
+          setPendingRefetchRowIds(new Set());
+          setRecentlyUpdatedRowIds(new Set(pendingHighlightRowIdsRef.current));
+          clearJobState();
+          const count = lastBulkUpdateCountRef.current;
+          if (count > 0) {
+            showSuccessToast(
+              t('server.bulk-update-initiated', {
+                entity: t('label.column-plural'),
+                count,
+              })
+            );
+          }
+        } catch {
+          showErrorToast(t('server.entity-updating-error'));
+          clearJobState();
+        }
+      } else if (data.status === 'FAILED' || data.status === 'FAILURE') {
+        showErrorToast(t('server.entity-updating-error'));
+        clearJobState();
+        pendingHighlightRowIdsRef.current = new Set();
+      }
+    },
+    [
+      columnGridListing.refetch,
+      columnGridListing.setExpandedRows,
+      columnGridListing.setGridItems,
+      t,
+    ]
+  );
+
   useEffect(() => {
     if (!socket) {
       return;
     }
-
-    const handleBulkAssetsNotification = (message: string) => {
-      try {
-        const data = JSON.parse(message) as {
-          jobId?: string;
-          status?: string;
-        };
-
-        // Check if this notification is for our active job
-        if (data.jobId && data.jobId === activeJobIdRef.current) {
-          // Job completed - refresh the grid data
-          if (data.status === 'COMPLETED' || data.status === 'SUCCESS') {
-            columnGridListing.setGridItems([]);
-            columnGridListing.setExpandedRows(new Set());
-            columnGridListing.refetch();
-            activeJobIdRef.current = null;
-          } else if (data.status === 'FAILED' || data.status === 'FAILURE') {
-            showErrorToast(t('server.entity-updating-error'));
-            activeJobIdRef.current = null;
-          }
-        }
-      } catch {
-        // Ignore JSON parse errors
-      }
-    };
-
     socket.on(SOCKET_EVENTS.BULK_ASSETS_CHANNEL, handleBulkAssetsNotification);
 
     return () => {
@@ -1108,7 +1144,29 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         handleBulkAssetsNotification
       );
     };
-  }, [socket, columnGridListing.refetch, t]);
+  }, [socket, handleBulkAssetsNotification]);
+
+  // Clear highlighted rows after 1s and collapse their expanded state
+  useEffect(() => {
+    if (recentlyUpdatedRowIds.size === 0) {
+      return;
+    }
+    const idsToCollapse = new Set(recentlyUpdatedRowIds);
+    const timer = setTimeout(() => {
+      setRecentlyUpdatedRowIds(new Set());
+      setIsUpdating(false);
+
+      columnGridListing.setExpandedRows((prev: Set<string>) => {
+        const next = new Set(prev);
+
+        idsToCollapse.forEach((id) => next.delete(id));
+
+        return next;
+      });
+    }, RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS);
+
+    return () => clearTimeout(timer);
+  }, [recentlyUpdatedRowIds, columnGridListing.setExpandedRows]);
 
   // Set up filters
   const { quickFilters, defaultFilters } = useColumnGridFilters({
@@ -1261,6 +1319,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <ColumnGridTableRow
           entity={entity}
           isIndeterminate={isIndeterminate}
+          isPendingRefetch={pendingRefetchRowIds.has(entity.id)}
+          isRecentlyUpdated={recentlyUpdatedRowIds.has(entity.id)}
           isSelected={isSelected}
           renderColumnNameCell={renderColumnNameCellFinal}
           renderDescriptionCell={renderDescriptionCellAdapter}
@@ -1273,6 +1333,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       );
     },
     [
+      pendingRefetchRowIds,
+      recentlyUpdatedRowIds,
       renderColumnNameCellFinal,
       renderPathCellAdapter,
       renderDescriptionCellAdapter,
@@ -1307,6 +1369,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       entities: filteredEntities,
       columns,
       renderers: finalRenderers,
+      loading: columnGridListing.loading,
     },
     enableSelection: true,
     entityLabelKey: 'label.column',
@@ -1324,12 +1387,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   });
 
   const editedCount = useMemo(() => {
-    return columnGridListing.allRows.filter(
-      (r: ColumnGridRowData) =>
-        r.editedDisplayName !== undefined ||
-        r.editedDescription !== undefined ||
-        r.editedTags !== undefined
-    ).length;
+    return columnGridListing.allRows.filter(hasEditedValues).length;
   }, [columnGridListing.allRows]);
 
   const selectedCount = columnGridListing.selectedEntities.length;
@@ -1663,62 +1721,78 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       {/* Summary Stats Cards - combined in single container */}
       <Box className="stats-row">
         <Paper className="stat-card-group" elevation={0}>
-          <Box className="stat-card" data-testid="total-unique-columns-card">
-            <UniqueColumnsIcon className="stat-icon" />
-            <Box className="stat-content">
-              <Typography
-                color={theme.palette.grey[900]}
-                data-testid="total-unique-columns-value"
-                fontSize="18px"
-                fontWeight={600}>
-                {columnGridListing.totalUniqueColumns.toLocaleString()}
-              </Typography>
-              <Typography
-                color={theme.palette.grey[700]}
-                fontSize="14px"
-                fontWeight={400}>
-                {t('label.total-unique-columns')}
-              </Typography>
+          <Box className="stat-cards-inner">
+            <Box className="stat-card" data-testid="total-unique-columns-card">
+              <UniqueColumnsIcon height={47} width={47} />
+              <Box className="stat-content">
+                <Typography
+                  color={theme.palette.grey[900]}
+                  data-testid="total-unique-columns-value"
+                  fontSize="18px"
+                  fontWeight={600}>
+                  {columnGridListing.totalUniqueColumns.toLocaleString()}
+                </Typography>
+                <Typography
+                  color={theme.palette.grey[700]}
+                  fontSize="14px"
+                  fontWeight={400}>
+                  {t('label.total-unique-columns')}
+                </Typography>
+              </Box>
             </Box>
-          </Box>
 
-          <Box className="stat-card" data-testid="total-occurrences-card">
-            <OccurrencesIcon className="stat-icon" />
-            <Box className="stat-content">
-              <Typography
-                color={theme.palette.grey[900]}
-                data-testid="total-occurrences-value"
-                fontSize="18px"
-                fontWeight={600}>
-                {columnGridListing.totalOccurrences.toLocaleString()}
-              </Typography>
-              <Typography
-                color={theme.palette.grey[700]}
-                fontSize="14px"
-                fontWeight={400}>
-                {t('label.total-occurrences')}
-              </Typography>
+            <Box
+              aria-hidden
+              className="stat-card-divider-wrapper"
+              data-testid="stat-divider-1">
+              <Box className="stat-card-divider" />
             </Box>
-          </Box>
 
-          <Box className="stat-card" data-testid="pending-changes-card">
-            <PendingChangesIcon className="stat-icon" />
-            <Box className="stat-content">
-              <Typography
-                color={theme.palette.grey[900]}
-                data-testid="pending-changes-value"
-                fontSize="18px"
-                fontWeight={600}>
-                {editedCount > 0
-                  ? `${editedCount}/${selectedCount || editedCount}`
-                  : '0'}
-              </Typography>
-              <Typography
-                color={theme.palette.grey[700]}
-                fontSize="14px"
-                fontWeight={400}>
-                {t('label.pending-changes')}
-              </Typography>
+            <Box className="stat-card" data-testid="total-occurrences-card">
+              <OccurrencesIcon height={47} width={47} />
+              <Box className="stat-content">
+                <Typography
+                  color={theme.palette.grey[900]}
+                  data-testid="total-occurrences-value"
+                  fontSize="18px"
+                  fontWeight={600}>
+                  {columnGridListing.totalOccurrences.toLocaleString()}
+                </Typography>
+                <Typography
+                  color={theme.palette.grey[700]}
+                  fontSize="14px"
+                  fontWeight={400}>
+                  {t('label.total-occurrences')}
+                </Typography>
+              </Box>
+            </Box>
+
+            <Box
+              aria-hidden
+              className="stat-card-divider-wrapper"
+              data-testid="stat-divider-2">
+              <Box className="stat-card-divider" />
+            </Box>
+
+            <Box className="stat-card" data-testid="pending-changes-card">
+              <PendingChangesIcon height={47} width={47} />
+              <Box className="stat-content">
+                <Typography
+                  color={theme.palette.grey[900]}
+                  data-testid="pending-changes-value"
+                  fontSize="18px"
+                  fontWeight={600}>
+                  {editedCount > 0
+                    ? `${editedCount}/${selectedCount || editedCount}`
+                    : '0'}
+                </Typography>
+                <Typography
+                  color={theme.palette.grey[700]}
+                  fontSize="14px"
+                  fontWeight={400}>
+                  {t('label.pending-changes')}
+                </Typography>
+              </Box>
             </Box>
           </Box>
         </Paper>
@@ -1768,7 +1842,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                     className="edit-button-primary"
                     data-testid="edit-button"
                     disabled={isUpdating}
-                    startIcon={<EditOutlined />}
+                    startIcon={<EditIcon height={14} width={14} />}
                     sx={{
                       borderRadius: '8px',
                       border: `1px solid ${theme.palette.primary.main}`,
@@ -1806,7 +1880,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   disabled
                   className="edit-button"
                   data-testid="edit-button-disabled"
-                  startIcon={<EditOutlined />}
+                  startIcon={<EditIcon height={14} width={14} />}
                   sx={{ color: theme.palette.grey[500] }}
                   variant="text"
                   onClick={openDrawer}>

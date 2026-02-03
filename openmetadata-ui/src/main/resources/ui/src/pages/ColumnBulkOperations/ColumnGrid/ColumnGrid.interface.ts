@@ -27,6 +27,7 @@ export interface ColumnGridProps {
 export interface ColumnGridFilters {
   entityTypes?: string[];
   serviceName?: string;
+  serviceTypes?: string[];
   databaseName?: string;
   schemaName?: string;
   columnNamePattern?: string;
