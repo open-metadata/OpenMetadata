@@ -660,19 +660,6 @@ test.describe('Large Table Column Search & Copy Link', PLAYWRIGHT_SAMPLE_DATA_TA
     await afterAction();
   });
 
-  test.afterAll('Cleanup large table', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    // We need to delete the specific table we created
-    if (createdTable && createdTable.id) {
-      await apiContext.delete(
-        `/api/v1/tables/${createdTable.id}?hardDelete=true&recursive=true`
-      );
-    }
-    // Clean up the rest (service/db/schema)
-    await largeTable.delete(apiContext);
-    await afterAction();
-  });
-
   test('Search for column, copy link, and verify side panel behavior', async ({
     page,
   }) => {
@@ -740,5 +727,116 @@ test.describe('Large Table Column Search & Copy Link', PLAYWRIGHT_SAMPLE_DATA_TA
     await expect(page).toHaveURL(
       new RegExp(`/table/${createdTable.fullyQualifiedName}$`)
     );
+  });
+});
+
+test.describe('dbt Tab Visibility for Seed Files', () => {
+  const tableWithDbtData = new TableClass();
+
+  test.beforeAll('Setup table with dbt dataModel', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    // Create a table
+    await tableWithDbtData.create(apiContext);
+
+    await afterAction();
+  });
+
+  test('should show dbt tab if only path is present', async ({ page }) => {
+    await redirectToHomePage(page);
+
+    // Intercept the table API call to add dataModel field to save test time
+    // Since dataModel can only be added through ingestion
+    await page.route(
+      '**/api/v1/tables/name/**?fields=columns*dataModel*',
+      async (route) => {
+        const response = await route.fetch();
+        const json = await response.json();
+
+        // Add the dataModel field to the response
+        json.dataModel = {
+          modelType: 'DBT',
+          resourceType: 'seed',
+          path: 'seeds/sample_seed.csv',
+        };
+
+        await route.fulfill({
+          response,
+          json,
+        });
+      }
+    );
+
+    // Visit the table page
+    await tableWithDbtData.visitEntityPage(page);
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify dbt tab is visible
+    const dbtTab = page.getByTestId('dbt');
+    await expect(dbtTab).toBeVisible();
+
+    // Click on dbt tab
+    await dbtTab.click();
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify path is displayed
+    await expect(page.getByText('seeds/sample_seed.csv')).toBeVisible();
+
+    // Verify SQL-related elements are NOT visible since this is a seed file (no SQL query)
+    await expect(page.getByTestId('query-line')).not.toBeVisible();
+    await expect(
+      page.getByTestId('query-entity-copy-button')
+    ).not.toBeVisible();
+  });
+
+  test('should show dbt tab if only source project is present', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+
+    // Intercept the table API call to add dataModel field to save test time
+    // Since dataModel can only be added through ingestion
+    await page.route(
+      '**/api/v1/tables/name/**?fields=columns*dataModel*',
+      async (route) => {
+        const response = await route.fetch();
+        const json = await response.json();
+
+        // Add the dataModel field to the response
+        json.dataModel = {
+          modelType: 'DBT',
+          resourceType: 'seed',
+          dbtSourceProject: 'test_dbt_project',
+        };
+
+        await route.fulfill({
+          response,
+          json,
+        });
+      }
+    );
+
+    // Visit the table page
+    await tableWithDbtData.visitEntityPage(page);
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify dbt tab is visible
+    const dbtTab = page.getByTestId('dbt');
+    await expect(dbtTab).toBeVisible();
+
+    // Click on dbt tab
+    await dbtTab.click();
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify dbt Source Project info is displayed
+    await expect(page.getByTestId('dbt-source-project-id')).toContainText(
+      'test_dbt_project'
+    );
+
+    // Verify SQL-related elements are NOT visible since this is a seed file (no SQL query)
+    await expect(page.getByTestId('query-line')).not.toBeVisible();
+    await expect(
+      page.getByTestId('query-entity-copy-button')
+    ).not.toBeVisible();
   });
 });
