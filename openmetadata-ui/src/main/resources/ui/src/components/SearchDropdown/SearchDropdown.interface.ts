@@ -15,6 +15,7 @@ import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 
 export interface SearchDropdownProps {
   triggerButtonSize?: 'large' | 'middle' | 'small';
+  dropdownClassName?: string;
   label: string;
   isSuggestionsLoading?: boolean;
   options: SearchDropdownOption[];

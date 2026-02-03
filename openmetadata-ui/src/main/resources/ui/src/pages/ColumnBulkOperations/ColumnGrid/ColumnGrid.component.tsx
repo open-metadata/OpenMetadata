@@ -296,42 +296,48 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
           if (isExpanded) {
             for (const group of item.groups) {
-              const groupPathInfo = getUniquePaths(group.occurrences);
-              const childRowId = `${item.columnName}-${group.groupId}`;
               const hasStructChildren =
                 group.children && group.children.length > 0;
-              const isStructExpanded = expandedStructRows.has(childRowId);
-              const childRow: ColumnGridRowData = {
-                id: childRowId,
-                columnName: item.columnName,
-                displayName: group.displayName,
-                description: group.description,
-                dataType: group.dataType,
-                tags: group.tags,
-                occurrenceCount: group.occurrences.length,
-                hasVariations: false,
-                groupId: group.groupId,
-                isGroup: false,
-                parentId: item.columnName,
-                group,
-                path: groupPathInfo.primary,
-                additionalPathsCount: groupPathInfo.additionalCount,
-                occurrence: group.occurrences[0],
-                children: group.children,
-                isExpanded: isStructExpanded,
-              };
-              rows.push(childRow);
+              for (const occurrence of group.occurrences) {
+                const occPath = buildPath(occurrence);
+                const childRowId = `${item.columnName}-${occurrence.columnFQN}`;
+                const isStructExpanded = expandedStructRows.has(childRowId);
+                const childRow: ColumnGridRowData = {
+                  id: childRowId,
+                  columnName: item.columnName,
+                  displayName: group.displayName,
+                  description: group.description,
+                  dataType: group.dataType,
+                  tags: group.tags,
+                  occurrenceCount: 1,
+                  hasVariations: false,
+                  groupId: group.groupId,
+                  isGroup: false,
+                  parentId: item.columnName,
+                  group,
+                  path: occPath,
+                  additionalPathsCount: 0,
+                  occurrence,
+                  occurrenceRef: {
+                    columnFQN: occurrence.columnFQN,
+                    entityType: occurrence.entityType,
+                    entityFQN: occurrence.entityFQN,
+                  },
+                  children: group.children,
+                  isExpanded: isStructExpanded,
+                };
+                rows.push(childRow);
 
-              // Add STRUCT children if expanded
-              if (isStructExpanded && hasStructChildren && group.children) {
-                rows.push(
-                  ...createStructChildRows(
-                    group.children,
-                    childRowId,
-                    1,
-                    expandedStructRows
-                  )
-                );
+                if (isStructExpanded && hasStructChildren && group.children) {
+                  rows.push(
+                    ...createStructChildRows(
+                      group.children,
+                      childRowId,
+                      1,
+                      expandedStructRows
+                    )
+                  );
+                }
               }
             }
           }
@@ -395,6 +401,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 path: occPath,
                 additionalPathsCount: 0,
                 occurrence,
+                occurrenceRef: {
+                  columnFQN: occurrence.columnFQN,
+                  entityType: occurrence.entityType,
+                  entityFQN: occurrence.entityFQN,
+                },
                 children: group.children,
               };
               rows.push(occurrenceRow);
@@ -468,9 +479,17 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   // Get column link function - defined before use
   const getColumnLink = useCallback((row: ColumnGridRowData) => {
-    let occurrence = null;
+    let occurrence: ColumnOccurrenceRef | null = null;
 
-    if (row.group?.occurrences && row.group.occurrences.length > 0) {
+    if (row.occurrence) {
+      occurrence = row.occurrence;
+    } else if (row.occurrenceRef) {
+      occurrence = {
+        columnFQN: row.occurrenceRef.columnFQN,
+        entityType: row.occurrenceRef.entityType,
+        entityFQN: row.occurrenceRef.entityFQN,
+      } as ColumnOccurrenceRef;
+    } else if (row.group?.occurrences && row.group.occurrences.length > 0) {
       occurrence = row.group.occurrences[0];
     } else if (
       row.gridItem?.groups &&
@@ -970,15 +989,21 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           continue;
         }
 
-        // Collect all occurrences from the row
         const allOccurrences: { columnFQN: string; entityType: string }[] = [];
 
-        // If this is a child row with a specific group, use that group's occurrences
-        if (row.group?.occurrences && row.group.occurrences.length > 0) {
+        if (row.occurrence) {
+          allOccurrences.push({
+            columnFQN: row.occurrence.columnFQN,
+            entityType: row.occurrence.entityType,
+          });
+        } else if (row.occurrenceRef) {
+          allOccurrences.push({
+            columnFQN: row.occurrenceRef.columnFQN,
+            entityType: row.occurrenceRef.entityType,
+          });
+        } else if (row.group?.occurrences && row.group.occurrences.length > 0) {
           allOccurrences.push(...row.group.occurrences);
-        }
-        // If this is a parent row (gridItem), iterate through ALL groups
-        else if (row.gridItem && row.gridItem.groups.length > 0) {
+        } else if (row.gridItem && row.gridItem.groups.length > 0) {
           for (const group of row.gridItem.groups) {
             if (group.occurrences && group.occurrences.length > 0) {
               allOccurrences.push(...group.occurrences);
@@ -1203,8 +1228,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       const gridItem = parentRow.gridItem;
 
       if (gridItem.hasVariations && gridItem.groups.length > 1) {
-        return gridItem.groups.map(
-          (group) => `${gridItem.columnName}-${group.groupId}`
+        return gridItem.groups.flatMap((group) =>
+          group.occurrences.map(
+            (occ) => `${gridItem.columnName}-${occ.columnFQN}`
+          )
         );
       } else if (gridItem.totalOccurrences > 1 && gridItem.groups[0]) {
         return gridItem.groups[0].occurrences.map(

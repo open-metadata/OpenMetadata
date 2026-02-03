@@ -72,6 +72,8 @@ export interface ColumnGridRowData {
   isStructChild?: boolean;
   structParentId?: string;
   nestingLevel?: number;
+  // Specific occurrence for occurrence rows (links to correct table)
+  occurrenceRef?: { columnFQN: string; entityType: string; entityFQN?: string };
 }
 
 export interface ColumnGridState {

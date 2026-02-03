@@ -11,37 +11,35 @@
  *  limitations under the License.
  */
 
-import {
-  AppstoreOutlined,
-  DeleteOutlined,
-  DownOutlined,
-  EditOutlined,
-  MenuOutlined,
-  PlusOutlined,
-  SearchOutlined,
-} from '@ant-design/icons';
-import { Button, Input, Modal, Select, Space, Table, Tag, Tooltip } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { Box, Paper, TableContainer, useTheme } from '@mui/material';
+import { Trash01 } from '@untitledui/icons';
+import { Button, Modal, Space, Table, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import { DateTime } from 'luxon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArticalIcon } from '../../assets/svg/artical.svg';
+import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as StoryLaneIcon } from '../../assets/svg/story-lane.svg';
 import { ReactComponent as VideoIcon } from '../../assets/svg/video.svg';
+import { useSearch } from '../../components/common/atoms/navigation/useSearch';
+import { useViewToggle } from '../../components/common/atoms/navigation/useViewToggle';
+import { usePaginationControls } from '../../components/common/atoms/pagination/usePaginationControls';
+import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { LEARNING_CATEGORIES } from '../../components/Learning/Learning.interface';
+import { LearningResourceCard } from '../../components/Learning/LearningResourceCard/LearningResourceCard.component';
 import { ResourcePlayerModal } from '../../components/Learning/ResourcePlayer/ResourcePlayerModal.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
-  CATEGORIES,
   DEFAULT_PAGE_SIZE,
-  LEARNING_RESOURCE_STATUSES,
   MAX_VISIBLE_CONTEXTS,
   MAX_VISIBLE_TAGS,
   PAGE_IDS,
-  RESOURCE_TYPE_VALUES,
 } from '../../constants/Learning.constants';
 import {
   deleteLearningResource,
@@ -50,11 +48,13 @@ import {
 } from '../../rest/learningResourceAPI';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useLearningResourceFilters } from './hooks/useLearningResourceFilters';
 import { LearningResourceForm } from './LearningResourceForm.component';
 import './LearningResourcesPage.less';
 
 export const LearningResourcesPage: React.FC = () => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const [resources, setResources] = useState<LearningResource[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -64,13 +64,27 @@ export const LearningResourcesPage: React.FC = () => {
   const [editingResource, setEditingResource] =
     useState<LearningResource | null>(null);
   const [searchText, setSearchText] = useState('');
-  const [filterType, setFilterType] = useState<string | undefined>();
-  const [filterCategory, setFilterCategory] = useState<string | undefined>();
-  const [filterContent, setFilterContent] = useState<string | undefined>();
-  const [filterStatus, setFilterStatus] = useState<string | undefined>();
-  const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
+  const [filterState, setFilterState] = useState<{
+    type?: string;
+    category?: string;
+    context?: string;
+    status?: string;
+  }>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(DEFAULT_PAGE_SIZE);
+
+  const { view, viewToggle } = useViewToggle({ defaultView: 'table' });
+  const { search } = useSearch({
+    searchPlaceholder: t('label.search-entity', {
+      entity: t('label.resource'),
+    }),
+    onSearchChange: setSearchText,
+    initialSearchQuery: searchText,
+  });
+  const { quickFilters, filterSelectionDisplay } = useLearningResourceFilters({
+    filterState,
+    onFilterChange: setFilterState,
+  });
 
   const fetchResources = useCallback(async () => {
     setIsLoading(true);
@@ -94,6 +108,16 @@ export const LearningResourcesPage: React.FC = () => {
     fetchResources();
   }, [fetchResources]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    searchText,
+    filterState.type,
+    filterState.category,
+    filterState.context,
+    filterState.status,
+  ]);
+
   const filteredResources = useMemo(() => {
     return resources.filter((resource) => {
       const matchesSearch =
@@ -101,11 +125,12 @@ export const LearningResourcesPage: React.FC = () => {
         resource.name.toLowerCase().includes(searchText.toLowerCase()) ||
         resource.displayName?.toLowerCase().includes(searchText.toLowerCase());
 
-      const matchesType = !filterType || resource.resourceType === filterType;
+      const matchesType =
+        !filterState.type || resource.resourceType === filterState.type;
       const matchesCategory =
-        !filterCategory ||
+        !filterState.category ||
         resource.categories?.includes(
-          filterCategory as
+          filterState.category as
             | 'Discovery'
             | 'Administration'
             | 'DataGovernance'
@@ -113,10 +138,11 @@ export const LearningResourcesPage: React.FC = () => {
             | 'Observability'
         );
       const matchesContent =
-        !filterContent ||
-        resource.contexts?.some((ctx) => ctx.pageId === filterContent);
+        !filterState.context ||
+        resource.contexts?.some((ctx) => ctx.pageId === filterState.context);
       const matchesStatus =
-        !filterStatus || (resource.status || 'Active') === filterStatus;
+        !filterState.status ||
+        (resource.status || 'Active') === filterState.status;
 
       return (
         matchesSearch &&
@@ -126,14 +152,25 @@ export const LearningResourcesPage: React.FC = () => {
         matchesStatus
       );
     });
-  }, [
-    resources,
-    searchText,
-    filterType,
-    filterCategory,
-    filterContent,
-    filterStatus,
-  ]);
+  }, [resources, searchText, filterState]);
+
+  const totalFiltered = filteredResources.length;
+  const totalPages = Math.ceil(totalFiltered / pageSize) || 1;
+
+  const paginatedResources = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+
+    return filteredResources.slice(start, start + pageSize);
+  }, [filteredResources, currentPage, pageSize]);
+
+  const { paginationControls } = usePaginationControls({
+    currentPage,
+    totalPages,
+    totalEntities: totalFiltered,
+    pageSize,
+    onPageChange: setCurrentPage,
+    loading: isLoading,
+  });
 
   const handleCreate = useCallback(() => {
     setEditingResource(null);
@@ -353,37 +390,37 @@ export const LearningResourcesPage: React.FC = () => {
       fixed: 'right',
       key: 'actions',
       render: (_, record) => (
-        <Space className="action-buttons" size="small">
-          <Tooltip title={t('label.edit')}>
+        <Space align="center" size={8}>
+          <Tooltip placement="topRight" title={t('label.edit')}>
             <Button
-              className="action-btn"
+              className="p-0 flex-center"
               data-testid={`edit-${record.name}`}
-              icon={<EditOutlined />}
               size="small"
               type="text"
               onClick={(e) => {
                 e.stopPropagation();
                 handleEdit(record);
-              }}
-            />
+              }}>
+              <IconEdit height={14} name={t('label.edit')} width={14} />
+            </Button>
           </Tooltip>
-          <Tooltip title={t('label.delete')}>
+          <Tooltip placement="topRight" title={t('label.delete')}>
             <Button
-              className="action-btn delete-btn"
+              className="p-0 flex-center"
               data-testid={`delete-${record.name}`}
-              icon={<DeleteOutlined />}
               size="small"
               type="text"
               onClick={(e) => {
                 e.stopPropagation();
                 handleDelete(record);
-              }}
-            />
+              }}>
+              <Trash01 size={14} />
+            </Button>
           </Tooltip>
         </Space>
       ),
-      title: t('label.more-action'),
-      width: 100,
+      title: t('label.action-plural'),
+      width: 80,
     },
   ];
 
@@ -412,104 +449,92 @@ export const LearningResourcesPage: React.FC = () => {
           </Button>
         </div>
 
-        <div className="content-card">
-          <div className="filter-bar">
-            <Input
-              allowClear
-              className="search-input"
-              placeholder={t('label.search-entity', {
-                entity: t('label.resource'),
-              })}
-              prefix={<SearchOutlined className="search-icon" />}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-            />
-
-            <Select
-              allowClear
-              className="filter-select"
-              dropdownStyle={{ minWidth: 120 }}
-              options={RESOURCE_TYPE_VALUES.map((type) => ({
-                label: type,
-                value: type,
-              }))}
-              placeholder={t('label.type')}
-              suffixIcon={<DownOutlined className="filter-arrow" />}
-              value={filterType}
-              onChange={setFilterType}
-            />
-
-            <Select
-              allowClear
-              className="filter-select"
-              dropdownStyle={{ minWidth: 140 }}
-              options={CATEGORIES.map((cat) => ({
-                label: cat.label,
-                value: cat.value,
-              }))}
-              placeholder={t('label.category')}
-              suffixIcon={<DownOutlined className="filter-arrow" />}
-              value={filterCategory}
-              onChange={setFilterCategory}
-            />
-
-            <Select
-              allowClear
-              className="filter-select"
-              dropdownStyle={{ minWidth: 160 }}
-              options={PAGE_IDS}
-              placeholder={t('label.context')}
-              suffixIcon={<DownOutlined className="filter-arrow" />}
-              value={filterContent}
-              onChange={setFilterContent}
-            />
-
-            <Select
-              allowClear
-              className="filter-select"
-              dropdownStyle={{ minWidth: 120 }}
-              options={LEARNING_RESOURCE_STATUSES.map((status) => ({
-                label: status,
-                value: status,
-              }))}
-              placeholder={t('label.status')}
-              suffixIcon={<DownOutlined className="filter-arrow" />}
-              value={filterStatus}
-              onChange={setFilterStatus}
-            />
-
-            <div className="view-toggle">
-              <Button
-                className={viewMode === 'list' ? 'active' : ''}
-                icon={<MenuOutlined />}
-                type="text"
-                onClick={() => setViewMode('list')}
+        <TableContainer
+          component={Paper}
+          sx={{
+            mb: 5,
+            backgroundColor: 'background.paper',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+              px: 6,
+              py: 4,
+              borderBottom: `1px solid`,
+              borderColor: theme.palette.allShades?.gray?.[200],
+            }}>
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 5,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+              }}>
+              {search}
+              {quickFilters}
+              <Box ml="auto" />
+              {viewToggle}
+            </Box>
+            {filterSelectionDisplay}
+          </Box>
+          {view === 'table' ? (
+            <Box data-testid="table-view-container">
+              <Table
+                columns={columns}
+                dataSource={paginatedResources}
+                loading={isLoading}
+                pagination={false}
+                rowKey="id"
+                scroll={{ x: 1000, y: 'calc(100vh - 320px)' }}
               />
-              <Button
-                className={viewMode === 'card' ? 'active' : ''}
-                icon={<AppstoreOutlined />}
-                type="text"
-                onClick={() => setViewMode('card')}
-              />
-            </div>
-          </div>
-
-          <Table
-            columns={columns}
-            dataSource={filteredResources}
-            loading={isLoading}
-            pagination={{
-              current: currentPage,
-              pageSize: pageSize,
-              showSizeChanger: false,
-              onChange: (page: number) => {
-                setCurrentPage(page);
-              },
-            }}
-            rowKey="id"
-            scroll={{ x: 1000 }}
-          />
-        </div>
+              {paginationControls}
+            </Box>
+          ) : (
+            <Box data-testid="card-view-container" sx={{ minHeight: 200 }}>
+              {isLoading ? (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    py: 8,
+                  }}>
+                  <Loader />
+                </Box>
+              ) : isEmpty(paginatedResources) ? (
+                <Box
+                  sx={{
+                    textAlign: 'center',
+                    margin: '16px 24px',
+                    padding: '9px 0',
+                  }}>
+                  {t('server.no-records-found')}
+                </Box>
+              ) : (
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: 4,
+                    m: 6,
+                  }}>
+                  {paginatedResources.map((resource) => (
+                    <LearningResourceCard
+                      key={resource.id}
+                      resource={resource}
+                      onClick={handlePreview}
+                    />
+                  ))}
+                </Box>
+              )}
+              {paginationControls}
+            </Box>
+          )}
+        </TableContainer>
 
         {isFormOpen && (
           <LearningResourceForm
