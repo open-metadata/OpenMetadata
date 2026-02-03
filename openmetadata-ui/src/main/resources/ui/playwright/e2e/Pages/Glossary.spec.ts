@@ -550,8 +550,8 @@ test.describe('Glossary tests', () => {
         await page.getByText(glossaryTerm1.data.displayName).click();
         await page.waitForSelector(
           '[data-testid="tag-selector"]:has-text("' +
-          glossaryTerm1.data.displayName +
-          '")'
+            glossaryTerm1.data.displayName +
+            '")'
         );
 
         // Select 2nd term
@@ -570,8 +570,8 @@ test.describe('Glossary tests', () => {
 
         await page.waitForSelector(
           '[data-testid="tag-selector"]:has-text("' +
-          glossaryTerm2.data.displayName +
-          '")'
+            glossaryTerm2.data.displayName +
+            '")'
         );
 
         const patchRequest = page.waitForResponse(`/api/v1/dashboards/*`);
@@ -606,8 +606,8 @@ test.describe('Glossary tests', () => {
         await page.getByText(glossaryTerm3.data.displayName).click();
         await page.waitForSelector(
           '[data-testid="tag-selector"]:has-text("' +
-          glossaryTerm3.data.displayName +
-          '")'
+            glossaryTerm3.data.displayName +
+            '")'
         );
 
         // Select 2nd term
@@ -626,8 +626,8 @@ test.describe('Glossary tests', () => {
 
         await page.waitForSelector(
           '[data-testid="tag-selector"]:has-text("' +
-          glossaryTerm4.data.displayName +
-          '")'
+            glossaryTerm4.data.displayName +
+            '")'
         );
 
         const patchRequest2 = page.waitForResponse(`/api/v1/dashboards/*`);
@@ -683,8 +683,8 @@ test.describe('Glossary tests', () => {
 
         await page.waitForSelector(
           '[data-testid="tag-selector"]:has-text("' +
-          glossaryTerm3.data.displayName +
-          '")'
+            glossaryTerm3.data.displayName +
+            '")'
         );
 
         const patchRequest3 = page.waitForResponse(`/api/v1/charts/*`);
@@ -997,8 +997,6 @@ test.describe('Glossary tests', () => {
         }
       );
     } finally {
-      await glossaryTerm1.delete(apiContext);
-      await glossaryTerm2.delete(apiContext);
       await glossary1.delete(apiContext);
       await afterAction();
     }
@@ -1059,8 +1057,6 @@ test.describe('Glossary tests', () => {
       });
     } finally {
       await user1.delete(apiContext);
-      await glossaryTerm1.delete(apiContext);
-      await glossaryTerm2.delete(apiContext);
       await glossary1.delete(apiContext);
       await afterAction();
     }
@@ -1106,8 +1102,6 @@ test.describe('Glossary tests', () => {
         })
       ).toBeVisible();
     } finally {
-      await glossaryTerm1.delete(apiContext);
-      await glossaryTerm2.delete(apiContext);
       await glossary1.delete(apiContext);
       await afterAction();
     }
@@ -1170,8 +1164,6 @@ test.describe('Glossary tests', () => {
         await expect(page.getByTestId('alert-bar')).not.toBeVisible();
       });
     } finally {
-      await glossaryTerm1.delete(apiContext);
-      await glossaryTerm2.delete(apiContext);
       await glossary2.delete(apiContext);
       await afterAction();
     }
@@ -1193,7 +1185,12 @@ test.describe('Glossary tests', () => {
       await glossary1.create(apiContext);
       await glossaryTerm1.create(apiContext);
       await table.visitEntityPage(page);
-      await assignGlossaryTerm(page, glossaryTerm1.responseData);
+      await assignGlossaryTerm(
+        page,
+        glossaryTerm1.responseData,
+        'Add',
+        EntityTypeEndpoint.Table
+      );
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
       await goToAssetsTab(page, glossaryTerm1.data.displayName, 1);
@@ -1204,7 +1201,6 @@ test.describe('Glossary tests', () => {
       ).toBeVisible();
     } finally {
       await table.delete(apiContext);
-      await glossaryTerm1.delete(apiContext);
       await glossary1.delete(apiContext);
       await afterAction();
     }
@@ -1844,7 +1840,9 @@ test.describe('Glossary tests', () => {
     }
   });
 
-  test('Check for duplicate Glossary Term with Glossary having dot in name', async ({ browser }) => {
+  test('Check for duplicate Glossary Term with Glossary having dot in name', async ({
+    browser,
+  }) => {
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(
@@ -2841,6 +2839,10 @@ test.describe('Glossary tests', () => {
       const updateNameResponse = page.waitForResponse('/api/v1/glossaries/*');
       await page.click('[data-testid="save-button"]');
       await updateNameResponse;
+
+      // Since rename updates left sidebar as well makes multiple requests, wait for network idle
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
 
       // Verify the name was updated in the header
       await expect(

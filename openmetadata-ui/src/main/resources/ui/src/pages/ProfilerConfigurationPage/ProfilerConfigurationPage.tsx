@@ -32,6 +32,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import {
   DEFAULT_PROFILER_CONFIG_VALUE,
   PROFILER_METRICS_TYPE_OPTIONS,
@@ -168,6 +169,8 @@ const ProfilerConfigurationPage = () => {
                 'message.page-sub-header-for-profiler-configuration'
               ),
             }}
+            learningPageId={LEARNING_PAGE_IDS.PROFILER_CONFIGURATION}
+            title={t('label.profiler-configuration')}
           />
         </Col>
         <Col span={24}>

@@ -195,7 +195,13 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
           flex: 1,
           minHeight: 0,
         }}>
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            minHeight: 0,
+          }}>
           <Row gutter={[16, 16]}>
             {ports.map((port) => (
               <Col key={port.id} span={24}>
@@ -210,12 +216,9 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                               key: 'delete',
                               label: (
                                 <ManageButtonItemLabel
-                                  description={t(
-                                    'label.remove-entity',
-                                    {
-                                      entity: t('label.port'),
-                                    }
-                                  )}
+                                  description={t('label.remove-entity', {
+                                    entity: t('label.port'),
+                                  })}
                                   icon={DeleteIcon}
                                   id="delete-port"
                                   name={t('label.remove')}
@@ -241,6 +244,7 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                   }
                   className="m-b-sm"
                   id={port.id ?? ''}
+                  showTags={false}
                   source={port}
                 />
               </Col>

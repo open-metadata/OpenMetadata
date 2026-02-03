@@ -287,7 +287,9 @@ export const verifyAssetsInDomain = async (
 
   for (const table of tables) {
     const tableFqn = table.entityResponseData.fullyQualifiedName;
-    const tableCard = page.locator(`[data-testid="table-data-card_${tableFqn}"]`);
+    const tableCard = page.locator(
+      `[data-testid="table-data-card_${tableFqn}"]`
+    );
     if (expectedVisible) {
       await expect(tableCard).toBeVisible({ timeout: 10000 });
     } else {
@@ -341,6 +343,30 @@ export const checkAssetsCount = async (page: Page, count: number) => {
   await expect(page.getByTestId('assets').getByTestId('count')).toContainText(
     count.toString()
   );
+};
+
+export const verifyDomainOnAssetPages = async (
+  page: Page,
+  assets: EntityClass[],
+  domainDisplayName: string,
+  renamedDomainName?: string
+) => {
+  for (const asset of assets) {
+    await asset.visitEntityPage(page);
+    await expect(page.getByTestId('domain-link')).toContainText(
+      domainDisplayName
+    );
+  }
+
+  if (renamedDomainName) {
+    const domainRes = page.waitForResponse('/api/v1/domains/name/*');
+    await page.getByTestId('domain-link').click();
+    await domainRes;
+    await waitForAllLoadersToDisappear(page);
+    await expect(page.getByTestId('entity-header-name')).toContainText(
+      renamedDomainName
+    );
+  }
 };
 
 export const checkDataProductCount = async (page: Page, count: number) => {
@@ -1253,7 +1279,13 @@ export const navigateToSubDomain = async (
  * Navigates to the Input/Output Ports tab on a data product page.
  */
 export const navigateToPortsTab = async (page: Page) => {
+  await page.waitForTimeout(2000);
+
+  const portsViewResponse = page.waitForResponse(
+    (response) => response.url().includes('/portsView')
+  );
   await page.getByTestId('input_output_ports').click();
+  await portsViewResponse;
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -1278,11 +1310,27 @@ export const verifyPortCounts = async (
   expectedInputCount: number,
   expectedOutputCount: number
 ) => {
-  const inputPortsSection = page.locator('[data-testid="input-output-ports-tab"]').locator('text=Input Ports').first();
-  const outputPortsSection = page.locator('[data-testid="input-output-ports-tab"]').locator('text=Output Ports').first();
+  const inputPortsSection = page
+    .locator('[data-testid="input-output-ports-tab"]')
+    .locator('text=Input Ports')
+    .first();
+  const outputPortsSection = page
+    .locator('[data-testid="input-output-ports-tab"]')
+    .locator('text=Output Ports')
+    .first();
 
-  await expect(inputPortsSection.locator('..').locator('span').filter({ hasText: `(${expectedInputCount})` })).toBeVisible();
-  await expect(outputPortsSection.locator('..').locator('span').filter({ hasText: `(${expectedOutputCount})` })).toBeVisible();
+  await expect(
+    inputPortsSection
+      .locator('..')
+      .locator('span')
+      .filter({ hasText: `(${expectedInputCount})` })
+  ).toBeVisible();
+  await expect(
+    outputPortsSection
+      .locator('..')
+      .locator('span')
+      .filter({ hasText: `(${expectedOutputCount})` })
+  ).toBeVisible();
 };
 
 /**
@@ -1295,6 +1343,10 @@ export const addInputPortToDataProduct = async (
   const name = get(asset, 'entityResponseData.name');
   const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
   const displayName = get(asset, 'entityResponseData.displayName') ?? name;
+
+  await expect(page.getByTestId('add-input-port-button')).toBeEnabled({
+    timeout: 10000
+  });
 
   await page.getByTestId('add-input-port-button').click();
 
@@ -1318,8 +1370,7 @@ export const addInputPortToDataProduct = async (
 
   const addRes = page.waitForResponse(
     (res) =>
-      res.url().includes('/inputPorts/add') &&
-      res.request().method() === 'PUT'
+      res.url().includes('/inputPorts/add') && res.request().method() === 'PUT'
   );
   await page.getByTestId('save-btn').click();
   await addRes;
@@ -1335,6 +1386,10 @@ export const addOutputPortToDataProduct = async (
   const name = get(asset, 'entityResponseData.name');
   const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
   const displayName = get(asset, 'entityResponseData.displayName') ?? name;
+
+  await expect(page.getByTestId('add-output-port-button')).toBeEnabled({
+    timeout: 10000
+  });
 
   await page.getByTestId('add-output-port-button').click();
 
@@ -1358,8 +1413,7 @@ export const addOutputPortToDataProduct = async (
 
   const addRes = page.waitForResponse(
     (res) =>
-      res.url().includes('/outputPorts/add') &&
-      res.request().method() === 'PUT'
+      res.url().includes('/outputPorts/add') && res.request().method() === 'PUT'
   );
   await page.getByTestId('save-btn').click();
   await addRes;
@@ -1402,6 +1456,128 @@ export const renameDomain = async (page: Page, newName: string) => {
   await page.getByTestId('save-button').click();
   await patchRes;
 
+  const domainRes = page.waitForResponse('/api/v1/domains/name/*');
   await page.reload();
+  await domainRes;
+};
+
+/**
+ * Selects a domain from the navbar dropdown.
+ * Clicks the domain dropdown, searches for the domain, and selects it.
+ */
+export const selectDomainFromNavbar = async (
+  page: Page,
+  domain: Domain['responseData']
+) => {
+  await page.getByTestId('domain-dropdown').click();
+  await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+    state: 'visible',
+  });
+
+  const searchDomainRes = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('domain_search_index')
+  );
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.displayName);
+  await searchDomainRes;
+
+  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  await tagSelector.waitFor({ state: 'visible' });
+  await tagSelector.click();
   await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('networkidle');
+};
+
+/**
+ * Searches for an entity in the explore page and verifies it is visible.
+ */
+export const searchAndExpectEntityVisible = async (
+  page: Page,
+  entity: {
+    entityResponseData: {
+      name: string;
+      displayName?: string;
+      fullyQualifiedName?: string;
+    };
+  },
+  timeout?: number
+) => {
+  const name = get(
+    entity,
+    'entityResponseData.displayName',
+    entity.entityResponseData.name
+  );
+  await page.getByTestId('searchBox').fill(name);
+  await page.getByTestId('searchBox').press('Enter');
+  await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(
+    page.locator(
+      `[data-testid="table-data-card_${entity.entityResponseData.fullyQualifiedName}"]`
+    )
+  ).toBeVisible(timeout ? { timeout } : undefined);
+};
+
+/**
+ * Searches for an entity in the explore page and verifies it is NOT visible.
+ */
+export const searchAndExpectEntityNotVisible = async (
+  page: Page,
+  entity: {
+    entityResponseData: {
+      name: string;
+      displayName?: string;
+      fullyQualifiedName?: string;
+    };
+  }
+) => {
+  const name = get(
+    entity,
+    'entityResponseData.displayName',
+    entity.entityResponseData.name
+  );
+  await page.getByTestId('searchBox').fill(name);
+  await page.getByTestId('searchBox').press('Enter');
+  await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(
+    page.locator(
+      `[data-testid="table-data-card_${entity.entityResponseData.fullyQualifiedName}"]`
+    )
+  ).not.toBeVisible();
+};
+
+/**
+ * Assigns a domain to an entity via API patch.
+ */
+export const assignDomainToEntity = async (
+  apiContext: APIRequestContext,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  entity: {
+    patch: (options: {
+      apiContext: APIRequestContext;
+      patchData: any[];
+    }) => Promise<any>;
+  },
+  domain: { responseData: { id?: string } }
+) => {
+  await entity.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: domain.responseData.id,
+          type: 'domain',
+        },
+      },
+    ],
+  });
 };

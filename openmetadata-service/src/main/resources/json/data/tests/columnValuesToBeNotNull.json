@@ -9,5 +9,6 @@
   "supportsRowLevelPassedFailed": true,
   "provider": "system",
   "enabled": true,
-  "dataQualityDimension": "Completeness"
+  "dataQualityDimension": "Completeness",
+  "validatorClass": "ColumnValuesToBeNotNullValidator"
 }

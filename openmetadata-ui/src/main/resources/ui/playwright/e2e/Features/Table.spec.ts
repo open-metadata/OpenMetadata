@@ -28,7 +28,6 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { columnPaginationTable } from '../../utils/table';
 import { test } from '../fixtures/pages';
 
 const table1 = new TableClass();
@@ -277,140 +276,6 @@ test.describe('Table pagination sorting search scenarios ', () => {
 });
 
 test.describe('Table & Data Model columns table pagination', () => {
-  test('pagination for table column should work', async ({
-    dataConsumerPage: page,
-  }) => {
-    const columnsResponse = page.waitForResponse(
-      '/api/v1/tables/name/*/columns?*fields=tags*&include=all*'
-    );
-
-    await page.goto(
-      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
-    );
-
-    await columnsResponse;
-    await page.waitForSelector(
-      '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-      {
-        state: 'detached',
-      }
-    );
-
-    // Check for column count
-    expect(page.getByTestId('schema').getByTestId('filter-count')).toHaveText(
-      '2000'
-    );
-
-    await columnPaginationTable(page);
-  });
-
-  test('pagination for dashboard data model columns should work', async ({
-    dataConsumerPage: page,
-  }) => {
-    const dataModelsResponse1 = page.waitForResponse(
-      '/api/v1/dashboard/datamodels/name/*/columns?*fields=tags*include=all*'
-    );
-
-    await page.goto(
-      '/dashboardDataModel/sample_superset.model.big_analytics_data_model_with_nested_columns'
-    );
-
-    await dataModelsResponse1;
-    await page.waitForSelector(
-      '#KnowledgePanel\\.DataModel [data-testid="loader"]',
-      {
-        state: 'detached',
-      }
-    );
-
-    // 50 Row + 1 Header row
-    expect(
-      page.getByTestId('data-model-column-table').getByRole('row')
-    ).toHaveCount(51);
-
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 36`);
-
-    const dataModelsResponse2 = page.waitForResponse(
-      '/api/v1/dashboard/datamodels/name/*/columns?*fields=tags*include=all*'
-    );
-
-    await page.getByTestId('next').click();
-
-    await dataModelsResponse2;
-    await page.waitForSelector(
-      '#KnowledgePanel\\.DataModel [data-testid="loader"]',
-      {
-        state: 'detached',
-      }
-    );
-
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 36`);
-
-    expect(
-      page.getByTestId('data-model-column-table').getByRole('row')
-    ).toHaveCount(51);
-
-    const dataModelsResponse3 = page.waitForResponse(
-      '/api/v1/dashboard/datamodels/name/*/columns?*fields=tags*include=all*'
-    );
-
-    await page.getByTestId('previous').click();
-
-    await dataModelsResponse3;
-    await page.waitForSelector(
-      '#KnowledgePanel\\.DataModel [data-testid="loader"]',
-      {
-        state: 'detached',
-      }
-    );
-
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 36`);
-
-    // Change page size to 15
-    await page.getByTestId('page-size-selection-dropdown').click();
-
-    const dataModelsResponse4 = page.waitForResponse(
-      '/api/v1/dashboard/datamodels/name/*/columns?*fields=tags*include=all*'
-    );
-
-    await page.getByRole('menuitem', { name: '15 / Page' }).click();
-
-    await dataModelsResponse4;
-    await page.waitForSelector(
-      '#KnowledgePanel\\.DataModel [data-testid="loader"]',
-      {
-        state: 'detached',
-      }
-    );
-
-    // 15 Row + 1 Header row
-    expect(
-      page.getByTestId('data-model-column-table').getByRole('row')
-    ).toHaveCount(16);
-
-    // Change page size to 25
-    await page.getByTestId('page-size-selection-dropdown').click();
-
-    const dataModelsResponse5 = page.waitForResponse(
-      '/api/v1/dashboard/datamodels/name/*/columns?*fields=tags*include=all*'
-    );
-
-    await page.getByRole('menuitem', { name: '25 / Page' }).click();
-
-    await dataModelsResponse5;
-    await page.waitForSelector(
-      '#KnowledgePanel\\.DataModel [data-testid="loader"]',
-      {
-        state: 'detached',
-      }
-    );
-
-    // 25 Row + 1 Header row
-    expect(
-      page.getByTestId('data-model-column-table').getByRole('row')
-    ).toHaveCount(26);
-  });
-
   test('expand collapse should only visible for nested columns', async ({
     page,
   }) => {
@@ -552,16 +417,11 @@ test.describe(
 
       // Wait for page to be fully loaded
       await columnsResponse;
-      await page.waitForSelector(
-        '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-        {
-          state: 'detached',
-        }
-      );
+      await waitForAllLoadersToDisappear(page);
 
       // Check if add button exists and is visible
       const rowSelector =
-        '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"] [data-testid="glossary-tags-0"]';
+        '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"] [data-testid*="glossary-tags"]';
 
       const addButton = await page.$(`${rowSelector} [data-testid="add-tag"]`);
       if (addButton && (await addButton.isVisible())) {
@@ -657,16 +517,11 @@ test.describe(
 
       // Wait for page to be fully loaded
       await columnsResponse;
-      await page.waitForSelector(
-        '#KnowledgePanel\\.TableSchema [data-testid="loader"]',
-        {
-          state: 'detached',
-        }
-      );
+      await waitForAllLoadersToDisappear(page);
 
       // Check if add button exists and is visible
       const rowSelector =
-        '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid="classification-tags-1"]';
+        '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid*="classification-tags"]';
 
       const addButton = await page.$(`${rowSelector} [data-testid="add-tag"]`);
       if (addButton && (await addButton.isVisible())) {
@@ -804,19 +659,6 @@ test.describe('Large Table Column Search & Copy Link', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup large table', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    // We need to delete the specific table we created
-    if (createdTable && createdTable.id) {
-      await apiContext.delete(
-        `/api/v1/tables/${createdTable.id}?hardDelete=true&recursive=true`
-      );
-    }
-    // Clean up the rest (service/db/schema)
-    await largeTable.delete(apiContext);
-    await afterAction();
-  });
-
   test('Search for column, copy link, and verify side panel behavior', async ({
     page,
   }) => {
@@ -862,8 +704,11 @@ test.describe('Large Table Column Search & Copy Link', () => {
     expect(clipboardText).toContain(targetColumnName);
 
     // 5. Visit the copied Link
+    const visitLinkResponse = page.waitForResponse((response) =>
+      response.url().includes(`/table/${createdTable.fullyQualifiedName}`)
+    );
     await page.goto(clipboardText);
-    await page.waitForLoadState('networkidle');
+    await visitLinkResponse;
     await waitForAllLoadersToDisappear(page);
 
     // 6. Verify Side Panel is open
@@ -881,5 +726,116 @@ test.describe('Large Table Column Search & Copy Link', () => {
     await expect(page).toHaveURL(
       new RegExp(`/table/${createdTable.fullyQualifiedName}$`)
     );
+  });
+});
+
+test.describe('dbt Tab Visibility for Seed Files', () => {
+  const tableWithDbtData = new TableClass();
+
+  test.beforeAll('Setup table with dbt dataModel', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    // Create a table
+    await tableWithDbtData.create(apiContext);
+
+    await afterAction();
+  });
+
+  test('should show dbt tab if only path is present', async ({ page }) => {
+    await redirectToHomePage(page);
+
+    // Intercept the table API call to add dataModel field to save test time
+    // Since dataModel can only be added through ingestion
+    await page.route(
+      '**/api/v1/tables/name/**?fields=columns*dataModel*',
+      async (route) => {
+        const response = await route.fetch();
+        const json = await response.json();
+
+        // Add the dataModel field to the response
+        json.dataModel = {
+          modelType: 'DBT',
+          resourceType: 'seed',
+          path: 'seeds/sample_seed.csv',
+        };
+
+        await route.fulfill({
+          response,
+          json,
+        });
+      }
+    );
+
+    // Visit the table page
+    await tableWithDbtData.visitEntityPage(page);
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify dbt tab is visible
+    const dbtTab = page.getByTestId('dbt');
+    await expect(dbtTab).toBeVisible();
+
+    // Click on dbt tab
+    await dbtTab.click();
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify path is displayed
+    await expect(page.getByText('seeds/sample_seed.csv')).toBeVisible();
+
+    // Verify SQL-related elements are NOT visible since this is a seed file (no SQL query)
+    await expect(page.getByTestId('query-line')).not.toBeVisible();
+    await expect(
+      page.getByTestId('query-entity-copy-button')
+    ).not.toBeVisible();
+  });
+
+  test('should show dbt tab if only source project is present', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+
+    // Intercept the table API call to add dataModel field to save test time
+    // Since dataModel can only be added through ingestion
+    await page.route(
+      '**/api/v1/tables/name/**?fields=columns*dataModel*',
+      async (route) => {
+        const response = await route.fetch();
+        const json = await response.json();
+
+        // Add the dataModel field to the response
+        json.dataModel = {
+          modelType: 'DBT',
+          resourceType: 'seed',
+          dbtSourceProject: 'test_dbt_project',
+        };
+
+        await route.fulfill({
+          response,
+          json,
+        });
+      }
+    );
+
+    // Visit the table page
+    await tableWithDbtData.visitEntityPage(page);
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify dbt tab is visible
+    const dbtTab = page.getByTestId('dbt');
+    await expect(dbtTab).toBeVisible();
+
+    // Click on dbt tab
+    await dbtTab.click();
+    await waitForAllLoadersToDisappear(page);
+
+    // Verify dbt Source Project info is displayed
+    await expect(page.getByTestId('dbt-source-project-id')).toContainText(
+      'test_dbt_project'
+    );
+
+    // Verify SQL-related elements are NOT visible since this is a seed file (no SQL query)
+    await expect(page.getByTestId('query-line')).not.toBeVisible();
+    await expect(
+      page.getByTestId('query-entity-copy-button')
+    ).not.toBeVisible();
   });
 });

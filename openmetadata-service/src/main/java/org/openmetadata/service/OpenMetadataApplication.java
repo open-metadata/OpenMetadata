@@ -82,9 +82,12 @@ import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedJobParticipant;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.audit.AuditLogEventPublisher;
 import org.openmetadata.service.audit.AuditLogRepository;
+import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
@@ -102,6 +105,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
@@ -239,19 +243,22 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Metrics initialization now handled by MicrometerBundle
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+    // Initialize the MigrationValidationClient, used in the Settings Repository
+    MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setEntityRelationshipRepository(
         new EntityRelationshipRepository(Entity.getCollectionDAO()));
+    Entity.setSystemRepository(new SystemRepository());
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
 
     // Initialize bulk operation executor for bounded concurrent processing
     BulkExecutor.initialize(catalogConfig.getBulkOperationConfiguration());
 
-    initializeSearchRepository(catalogConfig);
-    // Initialize the MigrationValidationClient, used in the Settings Repository
-    MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
-    // as first step register all the repositories
+    // Phase 1: Core search infrastructure (needed by repositories)
+    initializeCoreSearchInfrastructure(catalogConfig);
+
+    // as first step register all the repositories (now they can access SearchRepository)
     Entity.initializeRepositories(catalogConfig, jdbi);
     auditLogRepository = new AuditLogRepository(Entity.getCollectionDAO());
     Entity.setAuditLogRepository(auditLogRepository);
@@ -264,8 +271,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Initialize Workflow Handler
     WorkflowHandler.initialize(catalogConfig);
 
-    // Init Settings Cache after repositories
+    // Init Settings Cache after repositories and Fernet (needed for database access and encryption)
     SettingsCache.initialize(catalogConfig);
+
+    // Phase 2: Advanced search features (after settings are available)
+    initializeAdvancedSearchFeatures();
 
     SecurityConfigurationManager.getInstance().initialize(this, catalogConfig, environment);
 
@@ -347,6 +357,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment
         .lifecycle()
         .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
+
+    // Register Distributed Job Participant for distributed search indexing
+    registerDistributedJobParticipant(environment, jdbi, catalogConfig.getCacheConfig());
 
     // Register Event publishers
     registerEventPublisher(catalogConfig);
@@ -525,23 +538,46 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  protected void initializeSearchRepository(OpenMetadataApplicationConfig config) {
-    // initialize Search Repository, all repositories use SearchRepository this line should always
-    // before initializing repository
+  /**
+   * Phase 1: Initialize core search infrastructure without advanced features.
+   * This creates the basic SearchRepository and SearchClient but defers
+   * lineage builders that depend on settings.
+   */
+  protected void initializeCoreSearchInfrastructure(OpenMetadataApplicationConfig config) {
     Integer databaseMaxSize = config.getDataSourceFactory().getMaxSize();
     LOG.info(
-        "AUTO-TUNE INIT: Initializing SearchRepository with database max pool size: {}",
+        "Phase 1: Initializing core search infrastructure with database max pool size: {}",
         databaseMaxSize);
+
     SearchRepository searchRepository =
         new SearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
     Entity.setSearchRepository(searchRepository);
 
-    // Initialize RDF if enabled
+    // Initialize RDF if enabled (core infrastructure)
     RdfConfiguration rdfConfig = config.getRdfConfiguration();
     if (rdfConfig != null && rdfConfig.getEnabled() != null && rdfConfig.getEnabled()) {
       RdfUpdater.initialize(rdfConfig);
       LOG.info("RDF knowledge graph support initialized");
+    }
+
+    LOG.info("Core search infrastructure initialization completed");
+  }
+
+  /**
+   * Phase 2: Initialize advanced search features that depend on settings.
+   * This includes lineage builders and other components that require
+   * database settings to be available.
+   */
+  protected void initializeAdvancedSearchFeatures() {
+    LOG.info("Phase 2: Initializing advanced search features");
+
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    if (searchRepository != null) {
+      searchRepository.initializeLineageComponents();
+      LOG.info("Advanced search features initialization completed");
+    } else {
+      LOG.warn("SearchRepository not found during advanced features initialization");
     }
   }
 
@@ -1017,6 +1053,29 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
+    }
+  }
+
+  protected void registerDistributedJobParticipant(
+      Environment environment, Jdbi jdbi, CacheConfig cacheConfig) {
+    try {
+      CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
+      SearchRepository searchRepository = Entity.getSearchRepository();
+      String serverId = ServerIdentityResolver.getInstance().getServerId();
+
+      DistributedJobParticipant participant =
+          new DistributedJobParticipant(collectionDAO, searchRepository, serverId, cacheConfig);
+      environment.lifecycle().manage(participant);
+
+      String notifierType =
+          (cacheConfig != null && cacheConfig.provider == CacheConfig.Provider.redis)
+              ? "Redis Pub/Sub"
+              : "database polling";
+      LOG.info(
+          "Registered DistributedJobParticipant for distributed search indexing using {}",
+          notifierType);
+    } catch (Exception e) {
+      LOG.warn("Failed to register DistributedJobParticipant: {}", e.getMessage());
     }
   }
 

@@ -31,6 +31,9 @@ from metadata.generated.schema.api.data.createDataContract import (
     CreateDataContractRequest,
 )
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.domains.createDataProduct import (
+    CreateDataProductRequest,
+)
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
@@ -210,6 +213,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 entity_request,
                 (
                     CreateDomainRequest,
+                    CreateDataProductRequest,
                     CreateDataContractRequest,
                     CreateTeamRequest,
                     CreateContainerRequest,
@@ -434,6 +438,18 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self, record: OMetaTagAndClassification
     ) -> Either[Tag]:
         """PUT Classification and Tag to OM API"""
+        tag_name = (
+            record.tag_request.name.root
+            if hasattr(record.tag_request.name, "root")
+            else str(record.tag_request.name)
+        )
+        if not tag_name or not tag_name.strip():
+            logger.warning(
+                f"Skipping tag with empty name for classification "
+                f"'{record.classification_request.name}'"
+            )
+            return Either(right=None)
+
         self.metadata.create_or_update(record.classification_request)
         tag = self.metadata.create_or_update(record.tag_request)
         return Either(right=tag)

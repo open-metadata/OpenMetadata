@@ -64,6 +64,11 @@ export interface EventPublisherJob {
      */
     name?: string;
     /**
+     * Number of entities per partition for distributed indexing. Smaller values create more
+     * partitions for better distribution across servers. Range: 1000-50000.
+     */
+    partitionSize?: number;
+    /**
      * Payload size in bytes depending on config.
      */
     payLoadSize?: number;
@@ -98,6 +103,12 @@ export interface EventPublisherJob {
      */
     status?:    Status;
     timestamp?: number;
+    /**
+     * Enable distributed indexing across multiple servers. When enabled, reindexing work is
+     * partitioned and can be processed by multiple servers concurrently with crash recovery
+     * support.
+     */
+    useDistributedIndexing?: boolean;
 }
 
 /**
@@ -156,6 +167,10 @@ export interface Stats {
      */
     jobStats?: StepStats;
     /**
+     * Stats for the process step (building search index documents)
+     */
+    processStats?: StepStats;
+    /**
      * Stats for the reader step (reading from database)
      */
     readerStats?: StepStats;
@@ -163,6 +178,10 @@ export interface Stats {
      * Stats for the sink step (writing to search index)
      */
     sinkStats?: StepStats;
+    /**
+     * Stats for the vector step (generating and indexing vector embeddings)
+     */
+    vectorStats?: StepStats;
 }
 
 /**
@@ -170,9 +189,13 @@ export interface Stats {
  *
  * Stats for the job
  *
+ * Stats for the process step (building search index documents)
+ *
  * Stats for the reader step (reading from database)
  *
  * Stats for the sink step (writing to search index)
+ *
+ * Stats for the vector step (generating and indexing vector embeddings)
  */
 export interface StepStats {
     /**
@@ -187,6 +210,10 @@ export interface StepStats {
      * Count of Total Failed Records
      */
     totalRecords?: number;
+    /**
+     * Count of Records with Warnings (e.g., stale references that were skipped)
+     */
+    warningRecords?: number;
 }
 
 /**

@@ -31,6 +31,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -1045,15 +1047,15 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertEquals(10, response.getData().size());
     assertEquals(10, response.getPaging().getTotal());
 
-    // Test with custom limit
-    response = client.tables().getColumns(table.getId(), 5, null, null, null);
+    // Test with custom limit, sorted by ordinalPosition for predictable order
+    response = client.tables().getColumns(table.getId(), 5, 0, null, null, "ordinalPosition");
     assertEquals(5, response.getData().size());
     assertEquals(10, response.getPaging().getTotal());
     assertEquals("column1", response.getData().get(0).getName());
     assertEquals("column5", response.getData().get(4).getName());
 
-    // Test with offset
-    response = client.tables().getColumns(table.getId(), 5, 5, null, null);
+    // Test with offset, sorted by ordinalPosition
+    response = client.tables().getColumns(table.getId(), 5, 5, null, null, "ordinalPosition");
     assertEquals(5, response.getData().size());
     assertEquals(10, response.getPaging().getTotal());
     assertEquals("column6", response.getData().get(0).getName());
@@ -1063,6 +1065,46 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     response = client.tables().getColumns(table.getId(), 5, 15, null, null);
     assertEquals(0, response.getData().size());
     assertEquals(10, response.getPaging().getTotal());
+  }
+
+  @Test
+  void test_getTableColumnsSortByOrdinalPosition_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create table with columns that have non-sequential ordinal positions
+    // Names: zebra(ord=3), apple(ord=1), mango(ord=2)
+    List<Column> columns = new ArrayList<>();
+    columns.add(ColumnBuilder.of("zebra", "STRING").ordinalPosition(3).build());
+    columns.add(ColumnBuilder.of("apple", "STRING").ordinalPosition(1).build());
+    columns.add(ColumnBuilder.of("mango", "STRING").ordinalPosition(2).build());
+
+    CreateTable createRequest = createRequest(ns.prefix("sort_test_table"), ns);
+    createRequest.setColumns(columns);
+    Table table = createEntity(createRequest);
+
+    // Default sort should be by name (alphabetical)
+    TableColumnList response = client.tables().getColumns(table.getId(), 10, 0, null, null, null);
+    assertEquals(3, response.getData().size());
+    assertEquals("apple", response.getData().get(0).getName());
+    assertEquals("mango", response.getData().get(1).getName());
+    assertEquals("zebra", response.getData().get(2).getName());
+
+    // Sort by name explicitly
+    response = client.tables().getColumns(table.getId(), 10, 0, null, null, "name");
+    assertEquals(3, response.getData().size());
+    assertEquals("apple", response.getData().get(0).getName());
+    assertEquals("mango", response.getData().get(1).getName());
+    assertEquals("zebra", response.getData().get(2).getName());
+
+    // Sort by ordinalPosition
+    response = client.tables().getColumns(table.getId(), 10, 0, null, null, "ordinalPosition");
+    assertEquals(3, response.getData().size());
+    assertEquals("apple", response.getData().get(0).getName()); // ordinal 1
+    assertEquals(1, response.getData().get(0).getOrdinalPosition());
+    assertEquals("mango", response.getData().get(1).getName()); // ordinal 2
+    assertEquals(2, response.getData().get(1).getOrdinalPosition());
+    assertEquals("zebra", response.getData().get(2).getName()); // ordinal 3
+    assertEquals(3, response.getData().get(2).getOrdinalPosition());
   }
 
   @Test
@@ -1153,6 +1195,67 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         Exception.class,
         () -> client.tables().updateSampleData(table.getId(), invalidData),
         "Invalid sample data should fail");
+  }
+
+  // ===================================================================
+  // PIPELINE OBSERVABILITY TESTS
+  // ===================================================================
+
+  @Test
+  void pipelineObservability_excludesDeletedPipelines(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable createTableRequest = createRequest(ns.prefix("observability_table"), ns);
+    Table table = createEntity(createTableRequest);
+
+    String shortId = UUID.randomUUID().toString().substring(0, 8);
+    org.openmetadata.schema.api.services.CreatePipelineService createPipelineService =
+        new org.openmetadata.schema.api.services.CreatePipelineService()
+            .withName("airflow_" + shortId)
+            .withServiceType(
+                org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType
+                    .Airflow);
+    org.openmetadata.schema.entity.services.PipelineService pipelineService =
+        client.pipelineServices().create(createPipelineService);
+
+    CreatePipeline createPipelineRequest =
+        new CreatePipeline()
+            .withName("pipe_" + shortId)
+            .withService(pipelineService.getFullyQualifiedName())
+            .withDescription("Test pipeline for observability");
+    Pipeline pipeline = client.pipelines().create(createPipelineRequest);
+
+    EntityReference pipelineRef =
+        new EntityReference()
+            .withId(pipeline.getId())
+            .withType("pipeline")
+            .withFullyQualifiedName(pipeline.getFullyQualifiedName());
+
+    org.openmetadata.schema.type.PipelineObservability observability =
+        new org.openmetadata.schema.type.PipelineObservability()
+            .withPipeline(pipelineRef)
+            .withStartTime(System.currentTimeMillis())
+            .withEndTime(System.currentTimeMillis() + 10000);
+
+    client.tables().addPipelineObservability(table.getId(), Arrays.asList(observability));
+
+    List<org.openmetadata.schema.type.PipelineObservability> fetchedObservability =
+        client.tables().getPipelineObservability(table.getId());
+    assertNotNull(fetchedObservability);
+    assertEquals(1, fetchedObservability.size());
+    assertEquals(pipeline.getId(), fetchedObservability.get(0).getPipeline().getId());
+
+    java.util.Map<String, String> deleteParams = new java.util.HashMap<>();
+    deleteParams.put("hardDelete", "true");
+    client.pipelines().delete(pipeline.getId().toString(), deleteParams);
+
+    List<org.openmetadata.schema.type.PipelineObservability> observabilityAfterDelete =
+        client.tables().getPipelineObservability(table.getId());
+    assertNotNull(observabilityAfterDelete);
+    assertEquals(
+        0,
+        observabilityAfterDelete.size(),
+        "Pipeline observability should be empty after pipeline is deleted");
   }
 
   // ===================================================================

@@ -46,6 +46,16 @@ UPDATE test_definition
   SET json = jsonb_set(json::jsonb, '{enabled}', 'true'::jsonb, true)::json
   WHERE json ->> 'enabled' IS NULL;
 
+-- Migrate termsOfUse from string to object with content and inherited fields
+-- This converts existing termsOfUse string values to the new object structure: { "content": "...", "inherited": false }
+UPDATE data_contract_entity
+  SET json = jsonb_set(
+    json::jsonb,
+    '{termsOfUse}',
+    jsonb_build_object('content', json ->> 'termsOfUse', 'inherited', false)
+  )::json
+  WHERE jsonb_typeof((json::jsonb) -> 'termsOfUse') = 'string';
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_audit_log_event_change_event_id
 ON audit_log_event (change_event_id);
 
@@ -113,3 +123,280 @@ CREATE INDEX IF NOT EXISTS idx_test_suite_updated_at_id ON test_suite(updatedAt 
 CREATE INDEX IF NOT EXISTS idx_test_case_updated_at_id ON test_case(updatedAt DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_api_collection_entity_updated_at_id ON api_collection_entity(updatedAt DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_api_endpoint_entity_updated_at_id ON api_endpoint_entity(updatedAt DESC, id DESC);
+
+
+-- Add metadata column to tag_usage table
+ALTER TABLE tag_usage ADD COLUMN IF NOT EXISTS metadata JSON;
+
+-- Distributed Search Indexing Tables
+
+-- Table to track reindex jobs across distributed servers
+CREATE TABLE IF NOT EXISTS search_index_job (
+    id VARCHAR(36) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    jobConfiguration JSONB NOT NULL,
+    targetIndexPrefix VARCHAR(255),
+    stagedIndexMapping JSONB,
+    totalRecords BIGINT NOT NULL DEFAULT 0,
+    processedRecords BIGINT NOT NULL DEFAULT 0,
+    successRecords BIGINT NOT NULL DEFAULT 0,
+    failedRecords BIGINT NOT NULL DEFAULT 0,
+    stats JSONB,
+    createdBy VARCHAR(256) NOT NULL,
+    createdAt BIGINT NOT NULL,
+    startedAt BIGINT,
+    completedAt BIGINT,
+    updatedAt BIGINT NOT NULL,
+    errorMessage TEXT,
+    -- Legacy fields (no longer used but kept for compatibility)
+    registrationDeadline BIGINT,
+    registeredServerCount INT,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_search_index_job_status ON search_index_job(status);
+CREATE INDEX IF NOT EXISTS idx_search_index_job_created ON search_index_job(createdAt DESC);
+
+-- Table to track partitions within a reindex job
+CREATE TABLE IF NOT EXISTS search_index_partition (
+    id VARCHAR(36) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    entityType VARCHAR(128) NOT NULL,
+    partitionIndex INT NOT NULL,
+    rangeStart BIGINT NOT NULL,
+    rangeEnd BIGINT NOT NULL,
+    estimatedCount BIGINT NOT NULL,
+    workUnits BIGINT NOT NULL,
+    priority INT NOT NULL DEFAULT 50,
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    processingCursor BIGINT NOT NULL DEFAULT 0,
+    processedCount BIGINT NOT NULL DEFAULT 0,
+    successCount BIGINT NOT NULL DEFAULT 0,
+    failedCount BIGINT NOT NULL DEFAULT 0,
+    assignedServer VARCHAR(255),
+    claimedAt BIGINT,
+    startedAt BIGINT,
+    completedAt BIGINT,
+    lastUpdateAt BIGINT,
+    lastError TEXT,
+    retryCount INT NOT NULL DEFAULT 0,
+    claimableAt BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE (jobId, entityType, partitionIndex),
+    CONSTRAINT fk_partition_job FOREIGN KEY (jobId) REFERENCES search_index_job(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_partition_job ON search_index_partition(jobId);
+CREATE INDEX IF NOT EXISTS idx_partition_status_priority ON search_index_partition(status, priority DESC);
+CREATE INDEX IF NOT EXISTS idx_partition_claimed ON search_index_partition(claimedAt);
+CREATE INDEX IF NOT EXISTS idx_partition_assigned_server ON search_index_partition(jobId, assignedServer);
+CREATE INDEX IF NOT EXISTS idx_partition_claimable ON search_index_partition(jobId, status, claimableAt);
+
+-- Table for distributed lock to ensure only one reindex job runs at a time
+CREATE TABLE IF NOT EXISTS search_reindex_lock (
+    lockKey VARCHAR(64) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    serverId VARCHAR(255) NOT NULL,
+    acquiredAt BIGINT NOT NULL,
+    lastHeartbeat BIGINT NOT NULL,
+    expiresAt BIGINT NOT NULL,
+    PRIMARY KEY (lockKey)
+);
+
+-- Search Index Failures Table
+-- Purpose: Store individual failure records for entities that fail during reindexing
+
+CREATE TABLE IF NOT EXISTS search_index_failures (
+    id VARCHAR(36) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    serverId VARCHAR(256) NOT NULL,
+    entityType VARCHAR(256) NOT NULL,
+    entityId VARCHAR(36),
+    entityFqn VARCHAR(1024),
+    failureStage VARCHAR(32) NOT NULL,
+    errorMessage TEXT,
+    stackTrace TEXT,
+    timestamp BIGINT NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_search_index_failures_job_id ON search_index_failures(jobId);
+CREATE INDEX IF NOT EXISTS idx_search_index_failures_server_id ON search_index_failures(serverId);
+CREATE INDEX IF NOT EXISTS idx_search_index_failures_entity_type ON search_index_failures(entityType);
+CREATE INDEX IF NOT EXISTS idx_search_index_failures_timestamp ON search_index_failures(timestamp);
+
+-- Search Index Server Stats Table
+-- Purpose: Track per-server stats in distributed indexing mode
+
+CREATE TABLE IF NOT EXISTS search_index_server_stats (
+    id VARCHAR(36) NOT NULL,
+    jobId VARCHAR(36) NOT NULL,
+    serverId VARCHAR(256) NOT NULL,
+    readerSuccess BIGINT DEFAULT 0,
+    readerFailed BIGINT DEFAULT 0,
+    readerWarnings BIGINT DEFAULT 0,
+    sinkTotal BIGINT DEFAULT 0,
+    sinkSuccess BIGINT DEFAULT 0,
+    sinkFailed BIGINT DEFAULT 0,
+    sinkWarnings BIGINT DEFAULT 0,
+    entityBuildFailures BIGINT DEFAULT 0,
+    partitionsCompleted INT DEFAULT 0,
+    partitionsFailed INT DEFAULT 0,
+    lastUpdatedAt BIGINT NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (jobId, serverId)
+);
+
+CREATE INDEX IF NOT EXISTS idx_search_index_server_stats_job_id ON search_index_server_stats(jobId);
+
+-- Create Learning Resource Entity Table
+CREATE TABLE IF NOT EXISTS learning_resource_entity (
+    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    name character varying(3072) GENERATED ALWAYS AS ((json ->> 'fullyQualifiedName'::text)) STORED,
+    fqnhash character varying(256) NOT NULL,
+    json jsonb NOT NULL,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    updatedby character varying(256) GENERATED ALWAYS AS ((json ->> 'updatedBy'::text)) STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnhash)
+);
+
+-- Add process and vector stage columns to search_index_server_stats table
+-- These columns support the 4-stage pipeline model (Reader, Process, Sink, Vector) for search indexing stats
+
+ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS processSuccess BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS processFailed BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS vectorSuccess BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS vectorFailed BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS vectorWarnings BIGINT DEFAULT 0;
+
+-- Add entityType column to support per-entity stats tracking
+-- Stats are now tracked per (jobId, serverId, entityType) instead of (jobId, serverId)
+ALTER TABLE search_index_server_stats ADD COLUMN IF NOT EXISTS entityType VARCHAR(128) NOT NULL DEFAULT 'unknown';
+
+-- Drop old unique constraint and index, then create new one with entityType
+ALTER TABLE search_index_server_stats DROP CONSTRAINT IF EXISTS search_index_server_stats_jobid_serverid_key;
+DROP INDEX IF EXISTS idx_search_index_server_stats_job_server;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_search_index_server_stats_job_server_entity
+    ON search_index_server_stats (jobId, serverId, entityType);
+
+-- Remove deprecated columns (entityBuildFailures is redundant - failures are tracked as processFailed)
+-- sinkTotal and sinkWarnings are not needed
+ALTER TABLE search_index_server_stats DROP COLUMN IF EXISTS entityBuildFailures;
+ALTER TABLE search_index_server_stats DROP COLUMN IF EXISTS sinkTotal;
+ALTER TABLE search_index_server_stats DROP COLUMN IF EXISTS sinkWarnings;
+
+-- AI Application and LLM Model entities for AI/LLM governance
+-- Version 1.12.0
+
+-- Create ai_application_entity table
+CREATE TABLE IF NOT EXISTS ai_application_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json->>'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json->>'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'updatedBy') STORED NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'impersonatedBy') STORED,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json->>'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+
+CREATE INDEX IF NOT EXISTS ai_application_name_index ON ai_application_entity(name);
+CREATE INDEX IF NOT EXISTS ai_application_deleted_index ON ai_application_entity(deleted);
+
+COMMENT ON TABLE ai_application_entity IS 'AI Application entities';
+
+-- Create llm_model_entity table
+CREATE TABLE IF NOT EXISTS llm_model_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json->>'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json->>'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'updatedBy') STORED NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'impersonatedBy') STORED,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json->>'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+
+CREATE INDEX IF NOT EXISTS llm_model_name_index ON llm_model_entity(name);
+CREATE INDEX IF NOT EXISTS llm_model_deleted_index ON llm_model_entity(deleted);
+
+COMMENT ON TABLE llm_model_entity IS 'LLM Model entities';
+
+-- Create prompt_template_entity table
+CREATE TABLE IF NOT EXISTS prompt_template_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json->>'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json->>'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'updatedBy') STORED NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'impersonatedBy') STORED,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json->>'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+
+CREATE INDEX IF NOT EXISTS prompt_template_name_index ON prompt_template_entity(name);
+CREATE INDEX IF NOT EXISTS prompt_template_deleted_index ON prompt_template_entity(deleted);
+
+COMMENT ON TABLE prompt_template_entity IS 'Prompt Template entities';
+
+-- Create agent_execution_entity table
+CREATE TABLE IF NOT EXISTS agent_execution_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
+    agentId VARCHAR(36) GENERATED ALWAYS AS (json->>'agentId') STORED NOT NULL,
+    json JSONB NOT NULL,
+    timestamp BIGINT GENERATED ALWAYS AS ((json->>'timestamp')::bigint) STORED NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS agent_execution_agent_index ON agent_execution_entity(agentId);
+CREATE INDEX IF NOT EXISTS agent_execution_timestamp_index ON agent_execution_entity(timestamp);
+
+COMMENT ON TABLE agent_execution_entity IS 'AI Agent Execution logs';
+
+-- Create ai_governance_policy_entity table
+CREATE TABLE IF NOT EXISTS ai_governance_policy_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json->>'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json->>'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'updatedBy') STORED NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'impersonatedBy') STORED,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json->>'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+
+CREATE INDEX IF NOT EXISTS ai_governance_policy_name_index ON ai_governance_policy_entity(name);
+CREATE INDEX IF NOT EXISTS ai_governance_policy_deleted_index ON ai_governance_policy_entity(deleted);
+
+COMMENT ON TABLE ai_governance_policy_entity IS 'AI Governance Policy entities';
+
+-- Create llm_service_entity table
+CREATE TABLE IF NOT EXISTS llm_service_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS ((json ->> 'name'::text)) STORED NOT NULL,
+    serviceType VARCHAR(256) GENERATED ALWAYS AS ((json ->> 'serviceType'::text)) STORED NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS ((json ->> 'updatedBy'::text)) STORED NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'impersonatedBy') STORED,
+    deleted BOOLEAN GENERATED ALWAYS AS (((json ->> 'deleted'::text))::boolean) STORED,
+    nameHash VARCHAR(256) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (nameHash)
+);
+
+CREATE INDEX IF NOT EXISTS llm_service_name_index ON llm_service_entity(name);
+CREATE INDEX IF NOT EXISTS llm_service_type_index ON llm_service_entity(serviceType);
+CREATE INDEX IF NOT EXISTS llm_service_deleted_index ON llm_service_entity(deleted);
+
+COMMENT ON TABLE llm_service_entity IS 'LLM Service entities';

@@ -4,7 +4,7 @@ import static org.openmetadata.service.search.SearchUtils.buildHttpHosts;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 import static org.openmetadata.service.util.AwsCredentialsUtil.buildCredentialsProvider;
-import static org.openmetadata.service.util.AwsCredentialsUtil.isAwsConfigured;
+import static org.openmetadata.service.util.AwsCredentialsUtil.isAwsIamAuthEnabled;
 
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
@@ -84,7 +84,7 @@ public class OpenSearchClient implements SearchClient {
   private final boolean isNewClientAvailable;
   private final os.org.opensearch.client.RestClient lowLevelClient;
 
-  private final OSLineageGraphBuilder lineageGraphBuilder;
+  private volatile OSLineageGraphBuilder lineageGraphBuilder;
   private final OSEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
 
   private final String clusterAlias;
@@ -117,7 +117,7 @@ public class OpenSearchClient implements SearchClient {
     isNewClientAvailable = newClient != null;
     QueryBuilderFactory queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
-    lineageGraphBuilder = new OSLineageGraphBuilder(newClient);
+    // Note: lineageGraphBuilder initialization deferred to Phase 2 (after settings are available)
     entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(newClient);
     this.nlqService = nlqService;
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
@@ -221,6 +221,11 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases) {
+    return indexManager.swapAliases(oldIndices, newIndex, aliases);
+  }
+
+  @Override
   public Set<String> getIndicesByAlias(String aliasName) {
     return indexManager.getIndicesByAlias(aliasName);
   }
@@ -228,6 +233,11 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public Set<String> listIndicesByPrefix(String prefix) {
     return indexManager.listIndicesByPrefix(prefix);
+  }
+
+  @Override
+  public List<IndexStats> getAllIndexStats() throws IOException {
+    return indexManager.getAllIndexStats();
   }
 
   @Override
@@ -318,11 +328,19 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
     return lineageGraphBuilder.searchLineage(lineageRequest);
   }
 
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
     return lineageGraphBuilder.searchLineageWithDirection(lineageRequest);
   }
 
@@ -335,6 +353,10 @@ public class OpenSearchClient implements SearchClient {
       boolean includeDeleted,
       String entityType)
       throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
     return lineageGraphBuilder.getLineagePaginationInfo(
         fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
   }
@@ -342,12 +364,20 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
     return lineageGraphBuilder.searchLineageByEntityCount(request);
   }
 
   @Override
   public SearchLineageResult searchPlatformLineage(
       String index, String queryFilter, boolean deleted) throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
     return lineageGraphBuilder.getPlatformLineage(index, queryFilter, deleted);
   }
 
@@ -625,8 +655,8 @@ public class OpenSearchClient implements SearchClient {
         RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
 
         AwsConfiguration awsConfig = esConfig.getAws();
-        // Enable IAM auth if AWS region is configured (region is required for SigV4 signing)
-        boolean useIamAuth = isAwsConfigured(awsConfig);
+        // Enable IAM auth only if explicitly enabled and region is configured
+        boolean useIamAuth = isAwsIamAuthEnabled(awsConfig);
 
         restClientBuilder.setHttpClientConfigCallback(
             httpAsyncClientBuilder -> {
@@ -914,5 +944,20 @@ public class OpenSearchClient implements SearchClient {
       throws IOException {
     return entityManager.getSchemaEntityRelationship(
         schemaFqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
+  }
+
+  @Override
+  public void initializeLineageBuilders() {
+    if (lineageGraphBuilder == null && newClient != null) {
+      synchronized (this) {
+        if (lineageGraphBuilder == null) {
+          LOG.info("Initializing OSLineageGraphBuilder with settings now available");
+          lineageGraphBuilder = new OSLineageGraphBuilder(newClient);
+          LOG.info("OSLineageGraphBuilder initialization completed");
+        }
+      }
+    } else {
+      LOG.debug("OSLineageGraphBuilder already initialized or newClient is null");
+    }
   }
 }

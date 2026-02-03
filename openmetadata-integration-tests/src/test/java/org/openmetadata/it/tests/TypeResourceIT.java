@@ -48,8 +48,10 @@ public class TypeResourceIT {
   private static Type INT_TYPE;
   private static Type STRING_TYPE;
   private static Type ENUM_TYPE;
+  private static Type HYPERLINK_TYPE;
   private static Type TOPIC_ENTITY_TYPE;
   private static Type TABLE_ENTITY_TYPE;
+  private static Type CONTAINER_ENTITY_TYPE;
 
   @BeforeAll
   static void setupTypes() throws Exception {
@@ -58,8 +60,10 @@ public class TypeResourceIT {
     INT_TYPE = getTypeByName(client, "integer");
     STRING_TYPE = getTypeByName(client, "string");
     ENUM_TYPE = getTypeByName(client, "enum");
+    HYPERLINK_TYPE = getTypeByName(client, "hyperlink-cp");
     TOPIC_ENTITY_TYPE = getTypeByName(client, "topic");
     TABLE_ENTITY_TYPE = getTypeByName(client, "table");
+    CONTAINER_ENTITY_TYPE = getTypeByName(client, "container");
   }
 
   @Test
@@ -425,6 +429,117 @@ public class TypeResourceIT {
 
     assertNotNull(createdType.getSchema());
     assertEquals(STRING_TYPE.getSchema(), createdType.getSchema());
+  }
+
+  @Test
+  void test_hyperlinkTypeExists() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Type hyperlinkType = getTypeByName(client, "hyperlink-cp");
+
+    assertNotNull(hyperlinkType);
+    assertEquals("hyperlink-cp", hyperlinkType.getName());
+    assertEquals(Category.Field, hyperlinkType.getCategory());
+    assertNotNull(hyperlinkType.getSchema());
+  }
+
+  @Test
+  void test_addHyperlinkCustomProperty(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Add a hyperlink custom property - hyperlink-cp type doesn't require any config
+    String propertyName = ns.prefix("hyperlinkProp");
+    CustomProperty hyperlinkProperty = new CustomProperty();
+    hyperlinkProperty.setName(propertyName);
+    hyperlinkProperty.setDescription("Hyperlink custom property for integration testing");
+    hyperlinkProperty.setPropertyType(HYPERLINK_TYPE.getEntityReference());
+    hyperlinkProperty.setDisplayName("Test Hyperlink");
+
+    Type updatedType = addCustomProperty(client, CONTAINER_ENTITY_TYPE.getId(), hyperlinkProperty);
+
+    assertNotNull(updatedType);
+    assertNotNull(updatedType.getCustomProperties());
+
+    CustomProperty addedProperty =
+        updatedType.getCustomProperties().stream()
+            .filter(cp -> propertyName.equals(cp.getName()))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(addedProperty, "Container type should have the new hyperlink custom property");
+    assertEquals(propertyName, addedProperty.getName());
+    assertEquals(
+        "Hyperlink custom property for integration testing", addedProperty.getDescription());
+    assertEquals("Test Hyperlink", addedProperty.getDisplayName());
+    assertEquals(HYPERLINK_TYPE.getId(), addedProperty.getPropertyType().getId());
+  }
+
+  @Test
+  void test_updateHyperlinkCustomPropertyDescription(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // First, add the hyperlink custom property
+    String propertyName = ns.prefix("hyperlinkUpdateProp");
+    CustomProperty hyperlinkProperty = new CustomProperty();
+    hyperlinkProperty.setName(propertyName);
+    hyperlinkProperty.setDescription("Initial hyperlink description");
+    hyperlinkProperty.setPropertyType(HYPERLINK_TYPE.getEntityReference());
+    hyperlinkProperty.setDisplayName("Initial Display Name");
+
+    Type typeWithProperty =
+        addCustomProperty(client, CONTAINER_ENTITY_TYPE.getId(), hyperlinkProperty);
+
+    // Update the description and displayName
+    hyperlinkProperty.setDescription("Updated hyperlink description");
+    hyperlinkProperty.setDisplayName("Updated Display Name");
+    Type updatedType = addCustomProperty(client, typeWithProperty.getId(), hyperlinkProperty);
+
+    CustomProperty updatedProperty =
+        updatedType.getCustomProperties().stream()
+            .filter(cp -> propertyName.equals(cp.getName()))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(updatedProperty);
+    assertEquals("Updated hyperlink description", updatedProperty.getDescription());
+    assertEquals("Updated Display Name", updatedProperty.getDisplayName());
+  }
+
+  @Test
+  void test_addMultipleHyperlinkCustomProperties(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Add first hyperlink property
+    String prop1Name = ns.prefix("hyperlinkMulti1");
+    CustomProperty hyperlinkProp1 = new CustomProperty();
+    hyperlinkProp1.setName(prop1Name);
+    hyperlinkProp1.setDescription("First hyperlink property");
+    hyperlinkProp1.setPropertyType(HYPERLINK_TYPE.getEntityReference());
+    hyperlinkProp1.setDisplayName("Hyperlink 1");
+
+    Type typeWithProp1 = addCustomProperty(client, CONTAINER_ENTITY_TYPE.getId(), hyperlinkProp1);
+
+    // Add second hyperlink property
+    String prop2Name = ns.prefix("hyperlinkMulti2");
+    CustomProperty hyperlinkProp2 = new CustomProperty();
+    hyperlinkProp2.setName(prop2Name);
+    hyperlinkProp2.setDescription("Second hyperlink property");
+    hyperlinkProp2.setPropertyType(HYPERLINK_TYPE.getEntityReference());
+    hyperlinkProp2.setDisplayName("Hyperlink 2");
+
+    Type typeWithBothProps = addCustomProperty(client, typeWithProp1.getId(), hyperlinkProp2);
+
+    assertNotNull(typeWithBothProps.getCustomProperties());
+
+    boolean hasProp1 =
+        typeWithBothProps.getCustomProperties().stream()
+            .anyMatch(cp -> prop1Name.equals(cp.getName()));
+    boolean hasProp2 =
+        typeWithBothProps.getCustomProperties().stream()
+            .anyMatch(cp -> prop2Name.equals(cp.getName()));
+
+    assertTrue(hasProp1, "Type should have first hyperlink custom property");
+    assertTrue(hasProp2, "Type should have second hyperlink custom property");
   }
 
   private static Type createType(OpenMetadataClient client, CreateType createRequest)

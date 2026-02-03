@@ -1005,7 +1005,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
       Map<String, String> cursorMap =
-          parseCursorMap(after == null ? "" : RestUtil.decodeCursor(after));
+          parseCursorMap(after == null || after.isEmpty() ? "" : RestUtil.decodeCursor(after));
       String afterName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
       String afterId = cursorMap.get("id");
       List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
@@ -1019,7 +1019,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String beforeCursor;
       String afterCursor = null;
-      beforeCursor = after == null ? null : getCursorValue(entities.get(0));
+      beforeCursor = after == null || after.isEmpty() ? null : getCursorValue(entities.get(0));
       if (entities.size()
           > limitParam) { // If extra result exists, then next page exists - return after cursor
         entities.remove(limitParam);
@@ -2685,6 +2685,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   .collect(Collectors.toList());
           jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
         }
+        case "hyperlink-cp" -> validateHyperlinkUrl(fieldValue, fieldName);
         default -> {}
       }
     }
@@ -2700,6 +2701,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     Object transformedExtension = validateAndTransformExtension(entity.getExtension(), entityType);
     entity.setExtension(transformedExtension);
+  }
+
+  private static void validateHyperlinkUrl(JsonNode fieldValue, String fieldName) {
+    if (fieldValue == null || fieldValue.isNull()) {
+      return;
+    }
+    JsonNode urlNode = fieldValue.get("url");
+    if (urlNode == null || urlNode.isNull() || urlNode.asText().isEmpty()) {
+      return;
+    }
+    String url = urlNode.asText();
+    try {
+      java.net.URI uri = new java.net.URI(url);
+      String scheme = uri.getScheme();
+      if (scheme == null
+          || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid URL protocol for field '%s': URL must use http or https protocol",
+                fieldName));
+      }
+    } catch (java.net.URISyntaxException e) {
+      throw new IllegalArgumentException(
+          String.format("Invalid URL format for field '%s': %s", fieldName, e.getMessage()));
+    }
   }
 
   private static String getFormattedDateTimeField(
@@ -2927,7 +2953,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getLabelType().ordinal(),
                 tagLabel.getState().ordinal(),
                 tagLabel.getReason(),
-                tagLabel.getAppliedBy());
+                tagLabel.getAppliedBy(),
+                tagLabel.getMetadata());
 
         // Update RDF store
         org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
@@ -4131,6 +4158,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   public CsvImportResult importFromCsv(
       String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    throw new IllegalArgumentException(csvNotSupported(entityType));
+  }
+
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      String targetEntityType)
+      throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
 
@@ -5745,8 +5783,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Delete tags related to deleted columns
       deletedColumns.forEach(
-          deleted ->
-              daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+          deleted -> {
+            daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName());
+            String extensionKey = FullyQualifiedName.buildHash(deleted.getFullyQualifiedName());
+            daoCollection.entityExtensionDAO().delete(updated.getId(), extensionKey);
+          });
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {
@@ -5780,6 +5821,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             stored.getTags(),
             updated.getTags());
         updateColumnConstraint(stored, updated);
+        updateColumnExtension(stored, updated);
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           String childrenFieldName = EntityUtil.getFieldName(fieldName, updated.getName());
@@ -5824,6 +5866,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateColumnConstraint(Column origColumn, Column updatedColumn) {
       String columnField = getColumnField(origColumn, "constraint");
       recordChange(columnField, origColumn.getConstraint(), updatedColumn.getConstraint());
+    }
+
+    private void updateColumnExtension(Column origColumn, Column updatedColumn) {
+      if (updatedColumn.getExtension() != null) {
+        String extensionKey = FullyQualifiedName.buildHash(updatedColumn.getFullyQualifiedName());
+        daoCollection
+            .entityExtensionDAO()
+            .insert(
+                updated.getId(),
+                extensionKey,
+                "columnExtension",
+                JsonUtils.pojoToJson(updatedColumn.getExtension()));
+      }
     }
 
     protected void updateColumnDataLength(Column origColumn, Column updatedColumn) {

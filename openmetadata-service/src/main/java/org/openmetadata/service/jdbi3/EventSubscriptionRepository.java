@@ -21,8 +21,11 @@ import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.Argument;
@@ -47,9 +50,10 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
-  static final String ALERT_PATCH_FIELDS = "trigger,enabled,batchSize,notificationTemplate";
+  static final String ALERT_PATCH_FIELDS =
+      "trigger,enabled,batchSize,notificationTemplate,destinations";
   static final String ALERT_UPDATE_FIELDS =
-      "trigger,enabled,batchSize,input,filteringRules,notificationTemplate";
+      "trigger,enabled,batchSize,input,filteringRules,notificationTemplate,destinations";
 
   public EventSubscriptionRepository() {
     super(
@@ -153,6 +157,13 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
   }
 
+  private void ensureDestinationIds(EventSubscription entity) {
+    // Ensure all destinations have unique IDs assigned before storage
+    Optional.ofNullable(entity.getDestinations()).orElse(Collections.emptyList()).stream()
+        .filter(destination -> nullOrEmpty(destination.getId()))
+        .forEach(destination -> destination.withId(UUID.randomUUID()));
+  }
+
   public EventSubscriptionOffset syncEventSubscriptionOffset(String eventSubscriptionName) {
     EventSubscription eventSubscription = getByName(null, eventSubscriptionName, getFields("*"));
     long latestOffset = daoCollection.changeEventDAO().getLatestOffset();
@@ -178,6 +189,9 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Override
   public void storeEntity(EventSubscription entity, boolean update) {
+    // Ensure all destinations have unique IDs before storage (handles all operations: POST, PUT,
+    // PATCH)
+    ensureDestinationIds(entity);
     store(entity, update);
   }
 

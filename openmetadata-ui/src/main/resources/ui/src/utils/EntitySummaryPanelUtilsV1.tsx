@@ -266,7 +266,7 @@ const SchemaFieldCardsV1: React.FC<{
         const params = {
           offset,
           limit: columnsPaging.limit,
-          fields: 'tags,customMetrics,description',
+          fields: 'tags,customMetrics,description,extension',
           ...(search && { q: search }),
         };
 
