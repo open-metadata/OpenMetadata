@@ -104,7 +104,7 @@ test.describe('Column Bulk Operations Page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () 
   });
 });
 
-test.describe('Column Bulk Operations - Metadata Status Filters', () => {
+test.describe('Column Bulk Operations - Metadata Status Filters', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -212,7 +212,7 @@ test.describe('Column Bulk Operations - Metadata Status Filters', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Domain Filters', () => {
+test.describe('Column Bulk Operations - Domain Filters', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -247,7 +247,7 @@ test.describe('Column Bulk Operations - Domain Filters', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Selection and Edit', () => {
+test.describe('Column Bulk Operations - Selection and Edit', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -360,7 +360,7 @@ test.describe('Column Bulk Operations - Selection and Edit', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Bulk Update Flow', () => {
+test.describe('Column Bulk Operations - Bulk Update Flow', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
   const classification = new ClassificationClass();
@@ -624,7 +624,7 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Edit Drawer Pre-population', () => {
+test.describe('Column Bulk Operations - Edit Drawer Pre-population', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -694,7 +694,7 @@ test.describe('Column Bulk Operations - Edit Drawer Pre-population', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Coverage Status Display', () => {
+test.describe('Column Bulk Operations - Coverage Status Display', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   // Note: Coverage status display tests are best done with unit tests
   // since they don't depend on search index timing.
   // The coverage logic has been updated to show:
@@ -761,7 +761,7 @@ test.describe('Column Bulk Operations - Coverage Status Display', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Column Variations', () => {
+test.describe('Column Bulk Operations - Column Variations', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -800,7 +800,7 @@ test.describe('Column Bulk Operations - Column Variations', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Search', () => {
+test.describe('Column Bulk Operations - Search', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -879,7 +879,7 @@ test.describe('Column Bulk Operations - Search', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Pagination', () => {
+test.describe('Column Bulk Operations - Pagination', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -908,7 +908,7 @@ test.describe('Column Bulk Operations - Pagination', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Multi-select', () => {
+test.describe('Column Bulk Operations - Multi-select', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -966,7 +966,7 @@ test.describe('Column Bulk Operations - Multi-select', () => {
   });
 });
 
-test.describe('Column Bulk Operations - View Selected Only', () => {
+test.describe('Column Bulk Operations - View Selected Only', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -1013,7 +1013,7 @@ test.describe('Column Bulk Operations - View Selected Only', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Aggregate Row Click Behavior', () => {
+test.describe('Column Bulk Operations - Aggregate Row Click Behavior', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -1064,7 +1064,7 @@ test.describe('Column Bulk Operations - Aggregate Row Click Behavior', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Combined Filters', () => {
+test.describe('Column Bulk Operations - Combined Filters', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test('should apply multiple filters together', async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
 
@@ -1134,7 +1134,7 @@ test.describe('Column Bulk Operations - Combined Filters', () => {
   });
 });
 
-test.describe('Column Bulk Operations - URL State Persistence', () => {
+test.describe('Column Bulk Operations - URL State Persistence', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test('should restore filters from URL on page load', async ({ page }) => {
     await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=HAS_TAGS`);
     await page.waitForLoadState('domcontentloaded');
@@ -1161,7 +1161,7 @@ test.describe('Column Bulk Operations - URL State Persistence', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Edit Drawer Title', () => {
+test.describe('Column Bulk Operations - Edit Drawer Title', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -1225,7 +1225,7 @@ test.describe('Column Bulk Operations - Edit Drawer Title', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Cancel Without Saving', () => {
+test.describe('Column Bulk Operations - Cancel Without Saving', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -1283,7 +1283,7 @@ test.describe('Column Bulk Operations - Cancel Without Saving', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Service Filter', () => {
+test.describe('Column Bulk Operations - Service Filter', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -1353,7 +1353,7 @@ test.describe('Column Bulk Operations - Service Filter', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
+test.describe('Column Bulk Operations - Cross Entity Type Support', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   // The column grid API supports multiple entity types: table, dashboardDataModel
   // Columns with the same name across different entity types can be displayed and managed
 
@@ -1462,7 +1462,7 @@ test.describe('Column Bulk Operations - Cross Entity Type Support', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
+test.describe('Column Bulk Operations - Nested STRUCT Columns', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   const table = new TableClass();
   let structColumnName: string;
 
@@ -1591,7 +1591,7 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
 // EDGE CASE TESTS
 // ============================================================================
 
-test.describe('Column Bulk Operations - Error Handling', () => {
+test.describe('Column Bulk Operations - Error Handling', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -1657,7 +1657,7 @@ test.describe('Column Bulk Operations - Error Handling', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Tag Operations', () => {
+test.describe('Column Bulk Operations - Tag Operations', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -1811,7 +1811,7 @@ test.describe('Column Bulk Operations - Tag Operations', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Keyboard Accessibility', () => {
+test.describe('Column Bulk Operations - Keyboard Accessibility', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -1900,7 +1900,7 @@ test.describe('Column Bulk Operations - Keyboard Accessibility', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Selection Edge Cases', () => {
+test.describe('Column Bulk Operations - Selection Edge Cases', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -2010,7 +2010,7 @@ test.describe('Column Bulk Operations - Selection Edge Cases', () => {
 });
 
 test.describe(
-  'Column Bulk Operations - Special Characters & Long Content',
+  'Column Bulk Operations - Special Characters & Long Content', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
     test.beforeEach(async ({ page }) => {
       await visitColumnBulkOperationsPage(page);
@@ -2128,7 +2128,7 @@ test.describe(
   }
 );
 
-test.describe('Column Bulk Operations - Async Job Status', () => {
+test.describe('Column Bulk Operations - Async Job Status', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -2209,7 +2209,7 @@ test.describe('Column Bulk Operations - Async Job Status', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Empty/Edge Values', () => {
+test.describe('Column Bulk Operations - Empty/Edge Values', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -2323,7 +2323,7 @@ test.describe('Column Bulk Operations - Empty/Edge Values', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Browser Behavior', () => {
+test.describe('Column Bulk Operations - Browser Behavior', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
@@ -2389,7 +2389,7 @@ test.describe('Column Bulk Operations - Browser Behavior', () => {
   });
 });
 
-test.describe('Column Bulk Operations - Filter Edge Cases', () => {
+test.describe('Column Bulk Operations - Filter Edge Cases', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
   });
