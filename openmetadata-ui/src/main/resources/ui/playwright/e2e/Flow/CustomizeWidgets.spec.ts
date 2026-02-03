@@ -39,6 +39,7 @@ import {
   verifyTaskFilters,
   verifyTotalDataAssetsFilters,
 } from '../../utils/widgetFilters';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 const adminUser = new UserClass();
 const persona = new PersonaClass();
@@ -157,7 +158,7 @@ test.beforeEach(async ({ page }) => {
   await waitForAllLoadersToDisappear(page);
 });
 
-test('Activity Feed Widget', async ({ page }) => {
+test('Activity Feed Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.ActivityFeed';

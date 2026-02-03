@@ -53,6 +53,7 @@ import {
   verifyDeletedEntityNotVisible,
 } from '../../utils/entityPanel';
 import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 let adminTestEntity: TableClass;
 const dataStewardTestEntity = new TableClass();
@@ -89,7 +90,7 @@ test.beforeAll('Setup shared test data', async ({ browser }) => {
   await afterAction();
 });
 
-test.describe('Right Entity Panel - Admin User Flow', () => {
+test.describe('Right Entity Panel - Admin User Flow', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeAll('Setup lineage test entities', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await Promise.all([
@@ -995,9 +996,8 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       const testCase2 = await adminTestEntity.createTestCase(apiContext, {
         name: `pw_test_case_failed_${uuid()}`,
-        entityLink: `<#E::table::${
-          adminTestEntity.entityResponseData?.['fullyQualifiedName']
-        }::columns::${(adminTestEntity.entity?.columns as Column[])[0].name}>`,
+        entityLink: `<#E::table::${adminTestEntity.entityResponseData?.['fullyQualifiedName']
+          }::columns::${(adminTestEntity.entity?.columns as Column[])[0].name}>`,
         testDefinition: 'columnValueLengthsToBeBetween',
         parameterValues: [
           { name: 'minLength', value: 3 },
@@ -1683,7 +1683,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
   });
 });
 
-test.describe('Right Entity Panel - Data Steward User Flow', () => {
+test.describe('Right Entity Panel - Data Steward User Flow', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach('Navigate to explore page', async ({ dataStewardPage }) => {
     await navigateToExploreAndSelectTable(
       dataStewardPage,
@@ -1947,7 +1947,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
   });
 });
 
-test.describe('Right Entity Panel - Data Consumer User Flow', () => {
+test.describe('Right Entity Panel - Data Consumer User Flow', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach('Navigate to explore page', async ({ dataConsumerPage }) => {
     await navigateToExploreAndSelectTable(
       dataConsumerPage,
