@@ -407,8 +407,6 @@ test.describe('Explore page', () => {
   });
 
   test('Verify charts are visible in explore tree', async ({ page }) => {
-    await page.reload();
-    await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -419,36 +417,31 @@ test.describe('Explore page', () => {
     const expandResponse = page.waitForResponse(
       (resp) =>
         resp.url().includes('/api/v1/search/query') &&
-        resp.url().includes('index=dataAsset')
+        resp.url().includes('index=dataAsset') &&
+        resp.url().includes('query_filter')
     );
 
-    await page
-      .locator('div')
-      .filter({ hasText: /^Dashboards$/ })
-      .locator('svg')
-      .first()
-      .click();
+    await page.getByTestId('explore-tree-title-Dashboards').click();
 
     await expandResponse;
-    await page.waitForLoadState('networkidle');
 
-    const chartTreeNode = page.locator('[data-testid*="explore-tree-title"]', {
-      hasText: 'Charts',
-    });
-    await expect(chartTreeNode).toBeVisible();
+    await page.getByTestId('search-dropdown-Data Assets').click();
 
-    const chartClickResponse = page.waitForResponse(
-      (resp) =>
-        resp.url().includes('/api/v1/search/query') &&
-        resp.url().includes('index=dataAsset')
+    await expect(page.getByTestId('chart-checkbox')).toBeChecked();
+    await expect(page.getByTestId('dashboarddatamodel-checkbox')).toBeChecked();
+
+    const searchInput = page.getByTestId('searchBox');
+    await searchInput.click();
+    await searchInput.clear();
+    await searchInput.fill(chart.entityResponseData.name);
+    await searchInput.press('Enter');
+
+    const searchResults = page.getByTestId('search-results');
+    const chartCard = searchResults.getByTestId(
+      `table-data-card_${chart.entityResponseData.fullyQualifiedName}`
     );
 
-    await chartTreeNode.click();
-    await chartClickResponse;
-
-    await expect(
-      page.getByTestId('search-dropdown-Data Assets')
-    ).toContainText('Data Assets: chart');
+    await expect(chartCard).toBeVisible();
   });
 
   DATA_ASSETS.forEach((asset) => {
@@ -554,7 +547,11 @@ test.describe('Explore page', () => {
     await expect(sidePanel).not.toBeVisible();
 
     // Verify URL does not contain the column part
-    await expect(page).toHaveURL(new RegExp(`/searchIndex/${searchIndex.entityResponseData?.['fullyQualifiedName']}$`));
+    await expect(page).toHaveURL(
+      new RegExp(
+        `/searchIndex/${searchIndex.entityResponseData?.['fullyQualifiedName']}$`
+      )
+    );
   });
 
   test('Copy field link should have valid URL format for APIEndpoint', async ({
@@ -592,6 +589,10 @@ test.describe('Explore page', () => {
     await expect(sidePanel).not.toBeVisible();
 
     // Verify URL does not contain the column part
-    await expect(page).toHaveURL(new RegExp(`/apiEndpoint/${apiEndpoint.entityResponseData?.['fullyQualifiedName']}$`));
+    await expect(page).toHaveURL(
+      new RegExp(
+        `/apiEndpoint/${apiEndpoint.entityResponseData?.['fullyQualifiedName']}$`
+      )
+    );
   });
 });
