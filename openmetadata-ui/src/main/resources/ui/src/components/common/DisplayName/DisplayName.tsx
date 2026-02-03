@@ -74,9 +74,7 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
     // Show both name and displayName when displayName exists
     return (
       <>
-        <Typography.Text className="break-word text-grey-600">
-          {name}
-        </Typography.Text>
+        {renderNameWithOptionalLink(name)}
         <Typography.Text
           className="d-block break-word"
           data-testid="column-display-name">

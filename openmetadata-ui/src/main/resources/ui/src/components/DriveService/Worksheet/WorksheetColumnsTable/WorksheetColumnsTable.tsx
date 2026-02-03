@@ -180,10 +180,7 @@ function WorksheetColumnsTable() {
                 })}
                 <Typography.Text
                   className={classNames(
-                    'm-b-0 d-block break-word text-link-color',
-                    {
-                      'text-grey-600': !isEmpty(displayName),
-                    }
+                    'm-b-0 d-block break-word text-link-color'
                   )}
                   data-testid="column-name">
                   {name}
