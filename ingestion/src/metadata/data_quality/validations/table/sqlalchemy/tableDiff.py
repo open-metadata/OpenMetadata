@@ -83,7 +83,7 @@ class SchemaDiffResult(BaseModel):
 
     serviceType: str
     fullyQualifiedTableName: str
-    schema: Dict[str, Dict[str, str]]
+    table_schema: Dict[str, Dict[str, str]]
 
 
 class ColumnDiffResult(BaseModel):
@@ -260,8 +260,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             # Also exclude key columns since they are handled separately and should not be in extra_columns
             common_columns = list(
                 (
-                    set(column_diff.schemaTable1.schema.keys())
-                    & set(column_diff.schemaTable2.schema.keys())
+                    set(column_diff.schemaTable1.table_schema.keys())
+                    & set(column_diff.schemaTable2.table_schema.keys())
                 )
                 - set(column_diff.changed)
                 - set(self.runtime_params.table1.key_columns or [])
@@ -653,7 +653,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                     serviceType=self.runtime_params.table1.database_service_type.name,
                     fullyQualifiedTableName=self.runtime_params.table1.fullyQualifiedName
                     or self.runtime_params.table1.path,
-                    schema={
+                    table_schema={
                         c.name.root: {
                             "type": c.dataTypeDisplay,
                             "constraints": c.constraint.value if c.constraint else "",
@@ -665,7 +665,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                     serviceType=self.runtime_params.table2.database_service_type.name,
                     fullyQualifiedTableName=self.runtime_params.table2.fullyQualifiedName
                     or self.runtime_params.table2.path,
-                    schema={
+                    table_schema={
                         c.name.root: {
                             "type": c.dataTypeDisplay,
                             "constraints": c.constraint.value if c.constraint else "",
