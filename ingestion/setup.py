@@ -490,6 +490,7 @@ test = {
     VERSIONS["opensearch"],
     VERSIONS["kafka-connect"],
     VERSIONS["factory-boy"],
+    *plugins["db2"],
 }
 
 docs = {
