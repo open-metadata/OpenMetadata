@@ -431,17 +431,24 @@ test.describe('Persona customization', () => {
         const addButton = adminPage
           .getByRole('dialog')
           .getByRole('button', { name: 'Add' });
-        await adminPage.waitForTimeout(1000);
+
+        // Wait for dialog animation to complete and button to be stable
+        await adminPage.locator('.ant-modal').waitFor({ state: 'visible' });
         await expect(addButton).toBeEnabled();
         await addButton.click();
-        const addWidgetButton=adminPage.getByTestId('add-widget-button');
 
+        await expect(adminPage.getByTestId('tab-Custom Tab')).toBeVisible();
+        await expect(adminPage.getByText('Customize Custom Tab Widgets')).toBeVisible();
+
+        // Wait for dialog to close before interacting with grid layout
         await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
         await adminPage.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
+
+        // Get locator after dialog closes to avoid layout shift issues
+        const addWidgetButton = adminPage.getByTestId('ExtraWidget.EmptyWidgetPlaceholder').getByTestId('add-widget-button');
+        await addWidgetButton.waitFor({ state: 'visible' });
         await expect(addWidgetButton).toBeEnabled();
         await addWidgetButton.click();
-        // small timeout to render popup
-        await adminPage.waitForTimeout(500)
         await adminPage
           .getByTestId('widget-info-tabs')
           .waitFor({ state: 'visible' });
@@ -577,13 +584,17 @@ test.describe('Persona customization', () => {
         await adminPage.waitForTimeout(500);
         await expect(addButton).toBeEnabled();
         await addButton.click();
-        const addWidgetButton=adminPage.getByTestId('add-widget-button');
+        await expect(adminPage.getByTestId('tab-Custom Tab')).toBeVisible();
+        await expect(adminPage.getByText('Customize Custom Tab Widgets')).toBeVisible();
+        // Wait for dialog to close before interacting with grid layout
         await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
         await adminPage.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
-        await expect(addWidgetButton).toBeEnabled();
 
-        await addWidgetButton.click({force:true});
-        await adminPage.waitForTimeout(500)
+        // Get locator after dialog closes to avoid layout shift issues
+        const addWidgetButton = adminPage.getByTestId('ExtraWidget.EmptyWidgetPlaceholder').getByTestId('add-widget-button');
+        await addWidgetButton.waitFor({ state: 'visible' });
+        await expect(addWidgetButton).toBeEnabled();
+        await addWidgetButton.click();
         await adminPage
           .getByTestId('widget-info-tabs')
           .waitFor({ state: 'visible' });
