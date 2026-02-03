@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.teams;
 
+import static org.openmetadata.service.util.InputSanitizer.sanitize;
+
 import java.util.UUID;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.User;
@@ -16,7 +18,7 @@ public class UserMapper implements EntityMapper<User, CreateUser> {
         .withName(create.getName().toLowerCase())
         .withFullyQualifiedName(EntityInterfaceUtil.quoteName(create.getName().toLowerCase()))
         .withEmail(create.getEmail().toLowerCase())
-        .withDescription(create.getDescription())
+        .withDescription(sanitize(create.getDescription()))
         .withDisplayName(create.getDisplayName())
         .withIsBot(create.getIsBot())
         .withIsAdmin(create.getIsAdmin())

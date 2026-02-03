@@ -8,7 +8,6 @@ public class TestDefinitionMapper implements EntityMapper<TestDefinition, Create
   @Override
   public TestDefinition createToEntity(CreateTestDefinition create, String user) {
     return copy(new TestDefinition(), create, user)
-        .withDescription(create.getDescription())
         .withEntityType(create.getEntityType())
         .withTestPlatforms(create.getTestPlatforms())
         .withSupportedDataTypes(create.getSupportedDataTypes())

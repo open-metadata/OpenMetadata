@@ -75,6 +75,7 @@ import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
+import static org.openmetadata.service.util.InputSanitizer.sanitize;
 import static org.openmetadata.service.util.LineageUtil.addDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
@@ -701,7 +702,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());
     entity.setDisplayName(request.getDisplayName());
-    entity.setDescription(request.getDescription());
+    entity.setDescription(sanitize(request.getDescription()));
     entity.setOwners(owners);
     entity.setDomains(domains);
     entity.setTags(request.getTags());
@@ -1841,6 +1842,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String impersonatedBy) {
     // Start timing JSON patch application
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
+
+    // Sanitize description to prevent XSS attacks
+    updated.setDescription(sanitize(updated.getDescription()));
+
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
 
@@ -6113,7 +6118,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     @Override
     public EntityInterface performTask(String user, ResolveTask resolveTask) {
       EntityInterface aboutEntity = threadContext.getAboutEntity();
-      aboutEntity.setDescription(resolveTask.getNewValue());
+      aboutEntity.setDescription(sanitize(resolveTask.getNewValue()));
       return aboutEntity;
     }
   }

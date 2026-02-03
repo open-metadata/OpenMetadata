@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.feeds;
 
+import static org.openmetadata.service.util.InputSanitizer.sanitize;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -18,7 +20,7 @@ public class FeedMapper {
     return new Thread()
         .withId(randomUUID)
         .withThreadTs(System.currentTimeMillis())
-        .withMessage(create.getMessage())
+        .withMessage(sanitize(create.getMessage()))
         .withCreatedBy(create.getFrom())
         .withAbout(create.getAbout())
         .withAddressedTo(create.getAddressedTo())
@@ -40,8 +42,8 @@ public class FeedMapper {
           .withAssignees(formatAssignees(create.getAssignees()))
           .withType(create.getType())
           .withStatus(TaskStatus.Open)
-          .withOldValue(create.getOldValue())
-          .withSuggestion(create.getSuggestion());
+          .withOldValue(sanitize(create.getOldValue()))
+          .withSuggestion(sanitize(create.getSuggestion()));
     }
     return null;
   }
