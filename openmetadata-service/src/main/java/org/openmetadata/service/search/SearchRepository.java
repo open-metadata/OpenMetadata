@@ -1425,6 +1425,13 @@ public class SearchRepository {
         fieldAddParams.put(fieldChange.getName(), newFollowers);
         scriptTxt.append("ctx._source.followers.addAll(params.followers);");
       }
+      if (fieldChange.getName().equalsIgnoreCase("extension")) {
+        String entityType = entity.getEntityReference().getType();
+        List<Map<String, Object>> customPropertiesTyped =
+            SearchIndexUtils.buildTypedCustomProperties(entity.getExtension(), entityType);
+        fieldAddParams.put("customPropertiesTyped", customPropertiesTyped);
+        scriptTxt.append("ctx._source.customPropertiesTyped = params.customPropertiesTyped;");
+      }
     }
 
     for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
@@ -1469,6 +1476,13 @@ public class SearchRepository {
         scriptTxt.append("ctx._source.testSuites = params.testSuites;");
         Map<String, Object> doc = JsonUtils.getMap(entity);
         fieldAddParams.put(TEST_SUITES, doc.get(TEST_SUITES));
+      }
+      if (fieldChange.getName().equalsIgnoreCase("extension")) {
+        String entityType = entity.getEntityReference().getType();
+        List<Map<String, Object>> customPropertiesTyped =
+            SearchIndexUtils.buildTypedCustomProperties(entity.getExtension(), entityType);
+        fieldAddParams.put("customPropertiesTyped", customPropertiesTyped);
+        scriptTxt.append("ctx._source.customPropertiesTyped = params.customPropertiesTyped;");
       }
     }
     return scriptTxt.toString();
