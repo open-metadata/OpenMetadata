@@ -96,7 +96,7 @@ jobs:
         with:
           python-version: "3.10"
           # Pass different args depending on the shardIndex:
-          # - shard 1: run with ingestion setup
+          # - shard 2: run with ingestion setup
           # - other shards: skip ingestion setup
           args: ${{ matrix.shardIndex == 2 && '-d postgresql' || '-d postgresql -i false' }}
           ingestion_dependency: "all"
