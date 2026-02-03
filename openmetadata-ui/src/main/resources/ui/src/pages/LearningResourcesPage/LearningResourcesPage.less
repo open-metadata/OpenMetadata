@@ -12,10 +12,9 @@
  */
 
 @import (reference) '../../styles/variables.less';
+@import '../../components/common/atoms/filters/FilterSelection.less';
 
 .learning-resources-page {
-  padding: @padding-lg;
-
   .breadcrumb-container {
     margin-bottom: @margin-md;
 
@@ -337,9 +336,10 @@
       padding: 12px 24px;
       background: @grey-50 !important;
       border-bottom: none;
-      font-weight: @font-medium;
-      color: @grey-600;
-      font-size: 12px;
+      color: @grey-500;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
 
       &:first-child {
         padding-left: 24px;
@@ -365,17 +365,18 @@
     }
 
     .ant-table-tbody > tr > td {
-      padding: 16px 24px;
+      height: 52px;
+      padding: @padding-md @padding-lg;
       border-bottom: 1px solid @light-border-color;
       background-color: @white;
       vertical-align: middle;
 
       &:first-child {
-        padding-left: 24px;
+        padding-left: @padding-lg;
       }
 
       &:last-child {
-        padding-right: 24px;
+        padding-right: @padding-lg;
       }
     }
 
@@ -446,26 +447,25 @@
       color: #414651;
     }
 
-    .more-tag {
+    .context-tag.more-tag {
       background-color: @grey-50;
       border: 1px solid @grey-200;
       color: #414651;
     }
   }
 
-  .action-buttons {
-    .action-btn {
-      color: @grey-500;
+  .category-tags .category-tag.more-tag,
+  .context-tags .context-tag.more-tag {
+    cursor: pointer;
+  }
 
-      &:hover {
-        color: @grey-700;
-        background-color: @grey-100;
-      }
-
-      &.delete-btn:hover {
-        color: @error-color;
-        background-color: @red-9;
-      }
-    }
+  .category-tags .category-tag.more-tag {
+    color: @primary-7;
+    border-radius: 6px;
+    background: @primary-50;
+    border: none;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 18px;
   }
 }

@@ -20,6 +20,7 @@ jest.mock('react-i18next', () => ({
     t: (key: string) => {
       const translations: Record<string, string> = {
         'label.min-read': 'min read',
+        'label.min-watch': 'min watch',
         'label.view-more': 'View More',
         'label.view-less': 'View Less',
       };
@@ -113,8 +114,14 @@ describe('LearningResourceCard', () => {
     expect(screen.getByText('Discovery')).toBeInTheDocument();
   });
 
-  it('should render formatted duration', () => {
+  it('should render formatted duration with min watch for Video', () => {
     render(<LearningResourceCard resource={mockVideoResource} />);
+
+    expect(screen.getByText('5 min watch')).toBeInTheDocument();
+  });
+
+  it('should render formatted duration with min read for Article', () => {
+    render(<LearningResourceCard resource={mockArticleResource} />);
 
     expect(screen.getByText('5 min read')).toBeInTheDocument();
   });
@@ -126,7 +133,7 @@ describe('LearningResourceCard', () => {
     };
     render(<LearningResourceCard resource={resourceWithoutDuration} />);
 
-    expect(screen.queryByText(/min read/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/min (read|watch)/)).not.toBeInTheDocument();
   });
 
   it('should render play icon for Video resource type', () => {

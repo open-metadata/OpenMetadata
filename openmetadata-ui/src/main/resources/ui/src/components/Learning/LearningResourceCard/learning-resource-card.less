@@ -15,17 +15,16 @@
 
 .learning-resource-card {
   padding: @padding-md;
-  border-radius: @border-rad-sm;
+  border-radius: 12px;
   background-color: @white;
   transition: all 0.2s ease;
-  border: 1px solid @border-color-1;
+  border: 1px solid @grey-9;
 
   &.learning-resource-card-clickable {
     cursor: pointer;
 
     &:hover {
       box-shadow: @box-shadow-card-subtle;
-      border-color: @grey-300;
     }
   }
 
@@ -41,7 +40,7 @@
     gap: @size-xs;
 
     .resource-type-icon {
-      font-size: 16px;
+      font-size: 24px;
       flex-shrink: 0;
       margin-top: 2px;
 

@@ -16,9 +16,9 @@ import classNames from 'classnames';
 import { DateTime } from 'luxon';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArticalIcon } from '../../../assets/svg/artical.svg';
-import { ReactComponent as StoryLaneIcon } from '../../../assets/svg/story-lane.svg';
-import { ReactComponent as VideoIcon } from '../../../assets/svg/video.svg';
+import { ReactComponent as ArticleIcon } from '../../../assets/svg/ic_article.svg';
+import { ReactComponent as StoryLaneIcon } from '../../../assets/svg/ic_storylane.svg';
+import { ReactComponent as VideoIcon } from '../../../assets/svg/ic_video.svg';
 import { DEFAULT_THEME } from '../../../constants/Appearance.constants';
 import {
   MAX_VISIBLE_TAGS,
@@ -41,13 +41,37 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
   const resourceTypeIcon = useMemo(() => {
     switch (resource.resourceType) {
       case ResourceType.Video:
-        return <VideoIcon className="resource-type-icon video-icon" />;
+        return (
+          <VideoIcon
+            className="resource-type-icon video-icon"
+            height={24}
+            width={24}
+          />
+        );
       case ResourceType.Storylane:
-        return <StoryLaneIcon className="resource-type-icon storylane-icon" />;
+        return (
+          <StoryLaneIcon
+            className="resource-type-icon storylane-icon"
+            height={24}
+            width={24}
+          />
+        );
       case ResourceType.Article:
-        return <ArticalIcon className="resource-type-icon article-icon" />;
+        return (
+          <ArticleIcon
+            className="resource-type-icon article-icon"
+            height={24}
+            width={24}
+          />
+        );
       default:
-        return <ArticalIcon className="resource-type-icon article-icon" />;
+        return (
+          <ArticleIcon
+            className="resource-type-icon article-icon"
+            height={24}
+            width={24}
+          />
+        );
     }
   }, [resource.resourceType]);
 
@@ -56,9 +80,13 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
       return null;
     }
     const minutes = Math.floor(resource.estimatedDuration / 60);
+    const durationLabel =
+      resource.resourceType === 'Article'
+        ? t('label.min-read')
+        : t('label.min-watch');
 
-    return `${minutes} ${t('label.min-read')}`;
-  }, [resource.estimatedDuration, t]);
+    return `${minutes} ${durationLabel}`;
+  }, [resource.estimatedDuration, resource.resourceType, t]);
 
   const formattedDate = useMemo(() => {
     if (!resource.updatedAt) {

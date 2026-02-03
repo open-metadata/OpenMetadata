@@ -16,15 +16,18 @@ import {
   ExpandAltOutlined,
   ShrinkOutlined,
 } from '@ant-design/icons';
-import { Button, Modal, Tag, Typography } from 'antd';
+import { Button, Modal, Tag, Tooltip, Typography } from 'antd';
 import { DateTime } from 'luxon';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_THEME } from '../../../constants/Appearance.constants';
-import {
-  MAX_VISIBLE_TAGS,
-  ResourceType,
-} from '../../../constants/Learning.constants';
+import { ResourceType } from '../../../constants/Learning.constants';
 import { LEARNING_CATEGORIES } from '../Learning.interface';
 import { ArticleViewer } from './ArticleViewer.component';
 import './resource-player-modal.less';
@@ -40,6 +43,7 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
+  const fullscreenRef = useRef<HTMLDivElement>(null);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [isDescriptionTruncated, setIsDescriptionTruncated] = useState(false);
@@ -49,9 +53,13 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
       return null;
     }
     const minutes = Math.floor(resource.estimatedDuration / 60);
+    const durationLabel =
+      resource.resourceType === 'Article'
+        ? t('label.min-read')
+        : t('label.min-watch');
 
-    return `${minutes} ${t('label.min-watch')}`;
-  }, [resource.estimatedDuration, t]);
+    return `${minutes} ${durationLabel}`;
+  }, [resource.estimatedDuration, resource.resourceType, t]);
 
   const formattedDate = useMemo(() => {
     if (!resource.updatedAt) {
@@ -63,13 +71,10 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
 
   const categoryTags = useMemo(() => {
     if (!resource.categories || resource.categories.length === 0) {
-      return { visible: [], remaining: 0 };
+      return [];
     }
 
-    const visible = resource.categories.slice(0, MAX_VISIBLE_TAGS);
-    const remaining = resource.categories.length - MAX_VISIBLE_TAGS;
-
-    return { visible, remaining };
+    return resource.categories;
   }, [resource.categories]);
 
   const getCategoryColors = useCallback((category: string) => {
@@ -87,9 +92,38 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
     setIsDescriptionExpanded(!isDescriptionExpanded);
   }, [isDescriptionExpanded]);
 
-  const handleFullScreenToggle = useCallback(() => {
-    setIsFullScreen((prev) => !prev);
+  const handleFullScreenToggle = useCallback(async () => {
+    if (!fullscreenRef.current) {
+      return;
+    }
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        setIsFullScreen(false);
+      } else {
+        await fullscreenRef.current.requestFullscreen();
+        setIsFullScreen(true);
+      }
+    } catch {
+      setIsFullScreen((prev) => !prev);
+    }
   }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullScreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () =>
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    if (!open && document.fullscreenElement) {
+      document.exitFullscreen();
+    }
+  }, [open]);
 
   const renderPlayer = useMemo(() => {
     switch (resource.resourceType) {
@@ -114,93 +148,108 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
       open={open}
       width={isFullScreen ? '100vw' : '1143px'}
       onCancel={onClose}>
-      <div className="resource-player-header">
-        <div className="resource-player-info">
-          <Text strong className="resource-title">
-            {resource.displayName || resource.name}
-          </Text>
+      <div
+        className={`resource-player-fullscreen-wrapper ${
+          isFullScreen ? 'fullscreen' : ''
+        }`}
+        ref={fullscreenRef}>
+        <div className="resource-player-header">
+          <div className="resource-player-info">
+            <Text strong className="resource-title">
+              {resource.displayName || resource.name}
+            </Text>
 
-          {resource.description && (
-            <div className="resource-description-container">
-              <Paragraph
-                className="resource-description"
-                ellipsis={
-                  isDescriptionExpanded
-                    ? false
-                    : { rows: 2, onEllipsis: setIsDescriptionTruncated }
-                }>
-                {resource.description}
-              </Paragraph>
-              {(isDescriptionTruncated || isDescriptionExpanded) && (
-                <Link className="view-more-link" onClick={handleViewMoreClick}>
-                  {isDescriptionExpanded
-                    ? t('label.view-less')
-                    : t('label.view-more')}
-                </Link>
-              )}
-            </div>
-          )}
+            {resource.description && (
+              <div className="resource-description-container">
+                <Paragraph
+                  className="resource-description"
+                  ellipsis={
+                    isDescriptionExpanded
+                      ? false
+                      : { rows: 2, onEllipsis: setIsDescriptionTruncated }
+                  }>
+                  {resource.description}
+                </Paragraph>
+                {(isDescriptionTruncated || isDescriptionExpanded) && (
+                  <Link
+                    className="view-more-link"
+                    onClick={handleViewMoreClick}>
+                    {isDescriptionExpanded
+                      ? t('label.view-less')
+                      : t('label.view-more')}
+                  </Link>
+                )}
+              </div>
+            )}
 
-          <div className="resource-meta-row">
-            <div className="resource-tags">
-              {categoryTags.visible.map((category) => {
-                const colors = getCategoryColors(category);
+            <div className="resource-meta-row">
+              <div className="resource-tags">
+                {categoryTags.map((category) => {
+                  const colors = getCategoryColors(category);
 
-                return (
-                  <Tag
-                    className="category-tag"
-                    key={category}
-                    style={{
-                      backgroundColor: colors.bgColor,
-                      borderColor: colors.borderColor,
-                      color: colors.color,
-                    }}>
-                    {LEARNING_CATEGORIES[
-                      category as keyof typeof LEARNING_CATEGORIES
-                    ]?.label ?? category}
-                  </Tag>
-                );
-              })}
-              {categoryTags.remaining > 0 && (
-                <Tag className="category-tag more-tag">
-                  +{categoryTags.remaining}
-                </Tag>
-              )}
-            </div>
+                  return (
+                    <Tag
+                      className="category-tag"
+                      key={category}
+                      style={{
+                        backgroundColor: colors.bgColor,
+                        borderColor: colors.borderColor,
+                        color: colors.color,
+                      }}>
+                      {LEARNING_CATEGORIES[
+                        category as keyof typeof LEARNING_CATEGORIES
+                      ]?.label ?? category}
+                    </Tag>
+                  );
+                })}
+              </div>
 
-            <div className="resource-meta">
-              {formattedDate && (
-                <Text className="meta-text">{formattedDate}</Text>
-              )}
-              {formattedDate && formattedDuration && (
-                <span className="meta-separator">|</span>
-              )}
-              {formattedDuration && (
-                <Text className="meta-text">{formattedDuration}</Text>
+              {(formattedDate || formattedDuration) && (
+                <div className="resource-meta">
+                  {formattedDate && (
+                    <Text className="meta-text">{formattedDate}</Text>
+                  )}
+                  {formattedDate && formattedDuration && (
+                    <span className="meta-separator">|</span>
+                  )}
+                  {formattedDuration && (
+                    <Text className="meta-text">{formattedDuration}</Text>
+                  )}
+                </div>
               )}
             </div>
           </div>
+
+          <div className="header-actions flex gap-4">
+            <Tooltip
+              title={
+                isFullScreen
+                  ? t('label.exit-full-screen')
+                  : t('label.fullscreen')
+              }>
+              <Button
+                className="expand-button remove-button-default-styling"
+                data-testid={
+                  isFullScreen ? 'minimize-button' : 'maximize-button'
+                }
+                onClick={handleFullScreenToggle}>
+                {isFullScreen ? (
+                  <ShrinkOutlined width={20} />
+                ) : (
+                  <ExpandAltOutlined width={20} />
+                )}
+              </Button>
+            </Tooltip>
+            <Button
+              className="close-button remove-button-default-styling"
+              onClick={onClose}>
+              <CloseOutlined />
+            </Button>
+          </div>
         </div>
 
-        <div className="header-actions flex gap-4">
-          <Button
-            className="expand-button remove-button-default-styling"
-            onClick={handleFullScreenToggle}>
-            {isFullScreen ? (
-              <ShrinkOutlined width={20} />
-            ) : (
-              <ExpandAltOutlined width={20} />
-            )}
-          </Button>
-          <Button
-            className="close-button remove-button-default-styling"
-            onClick={onClose}>
-            <CloseOutlined />
-          </Button>
-        </div>
+        <div className="resource-player-content">{renderPlayer}</div>
       </div>
-
-      <div className="resource-player-content">{renderPlayer}</div>
     </Modal>
   );
 };
