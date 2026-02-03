@@ -642,8 +642,9 @@ test.describe('ODCS Import/Export', () => {
       expect(exportedYaml).toContain('freshness');
 
       // Verify roles were merged from full contract
+      // ODCS_VALID_FULL_YAML contains roles: data_admin and analyst
       expect(exportedYaml).toContain('roles');
-      expect(exportedYaml).toContain('data-consumer');
+      expect(exportedYaml).toContain('analyst');
 
       // Verify original contract name is preserved (merge behavior)
       expect(exportedYaml).toContain('Orders Basic Contract');
