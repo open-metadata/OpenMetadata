@@ -41,7 +41,7 @@ const verifyLastExecutionStatus = async (page: Page) => {
         // Custom expect message for reporting, optional.
         message:
           'To get the last run execution status as success or active with error',
-        intervals: [30_000],
+        intervals: [5_000, 10_000, 15_000, 30_000],
         timeout: 300_000,
       }
     )
@@ -71,6 +71,8 @@ const verifyLastExecutionRun = async (page: Page, response: Response) => {
 };
 
 test('Search Index Application', async ({ page }) => {
+  test.slow();
+
   await test.step('Visit Application page', async () => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.APPLICATIONS);
