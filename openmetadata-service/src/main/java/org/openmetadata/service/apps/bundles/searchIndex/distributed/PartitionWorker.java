@@ -285,6 +285,10 @@ public class PartitionWorker {
    * @param statsTracker The stats tracker to flush after waiting
    */
   private void waitForSinkOperations(StageStatsTracker statsTracker) {
+    // Flush the bulk processor to send any pending documents immediately
+    // Without this, documents wait for the periodic flush interval (5 seconds)
+    searchIndexSink.flushAndAwait(30);
+    
     // Check if there are pending vector tasks - if so, we need a longer timeout
     int pendingVectorTasks = searchIndexSink.getPendingVectorTaskCount();
     boolean hasVectorTasks = pendingVectorTasks > 0;
@@ -310,6 +314,10 @@ public class PartitionWorker {
     long statsTimeout = hasVectorTasks ? 60000 : 30000;
     boolean statsComplete = statsTracker.awaitSinkCompletion(statsTimeout);
     if (!statsComplete) {
+    // Wait for all pending sink operations to complete (with 30 second timeout)
+    // This ensures the async bulk callbacks have run and updated the tracker
+    boolean completed = statsTracker.awaitSinkCompletion(30000);
+    if (!completed) {
       LOG.warn(
           "Timed out waiting for sink stats completion, {} operations still pending for entity {}",
           statsTracker.getPendingSinkOps(),
