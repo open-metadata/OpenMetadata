@@ -12,23 +12,11 @@
  */
 
 import fs from 'fs';
+import { transform as svgrTransform } from '@svgr/core';
+import jsxPlugin from '@svgr/plugin-jsx';
 import { Plugin, transformWithEsbuild } from 'vite';
 
 export default function viteSvgrOptimized(): Plugin {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let svgrTransform: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let jsxPlugin: any;
-
-  const initializeSvgr = async () => {
-    if (!svgrTransform) {
-      const svgrCore = await import('@svgr/core');
-      const jsxModule = await import('@svgr/plugin-jsx');
-      svgrTransform = svgrCore.transform;
-      jsxPlugin = jsxModule.default;
-    }
-  };
-
   return {
     name: 'vite-plugin-svgr-optimized',
     enforce: 'pre',
@@ -46,8 +34,6 @@ export default function viteSvgrOptimized(): Plugin {
       const cleanId = id.replace(/[?#].*$/s, '');
 
       try {
-        await initializeSvgr();
-
         const svgCode = await fs.promises.readFile(cleanId, 'utf8');
 
         const componentCode = await svgrTransform(

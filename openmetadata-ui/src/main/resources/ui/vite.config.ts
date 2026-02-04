@@ -92,6 +92,9 @@ export default defineConfig(({ mode }) => {
           __dirname,
           'node_modules/@deuex-solutions/react-tour/dist/reacttour.min.js'
         ),
+        'lodash/camelCase': 'lodash-es/camelCase',
+        'lodash/kebabCase': 'lodash-es/kebabCase',
+        'lodash/snakeCase': 'lodash-es/snakeCase',
       },
       extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.less', '.svg'],
       dedupe: [
@@ -111,10 +114,11 @@ export default defineConfig(({ mode }) => {
           modifyVars: {},
           math: 'always',
           paths: [
+            path.resolve(__dirname, 'node_modules'),
             path.resolve(__dirname, 'src'),
             path.resolve(__dirname, 'src/styles'),
           ],
-          rewriteUrls: 'local',
+          rewriteUrls: 'all',
         },
       },
     },
@@ -180,11 +184,6 @@ export default defineConfig(({ mode }) => {
         '@azure/msal-react',
         'codemirror',
         '@deuex-solutions/react-tour',
-      ],
-      exclude: [
-        '@mui/icons-material',
-        '@ant-design/icons',
-        '@untitledui/icons',
       ],
       esbuildOptions: {
         target: 'esnext',
