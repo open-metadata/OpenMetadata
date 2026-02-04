@@ -209,6 +209,7 @@ export interface ColumnGridParams {
   cursor?: string;
   entityTypes?: string[];
   serviceName?: string;
+  serviceTypes?: string[];
   databaseName?: string;
   schemaName?: string;
   columnNamePattern?: string;
@@ -234,6 +235,9 @@ export const getColumnGrid = async (
   }
   if (params.serviceName) {
     queryParams.append('serviceName', params.serviceName);
+  }
+  if (params.serviceTypes && params.serviceTypes.length > 0) {
+    queryParams.append('serviceTypes', params.serviceTypes.join(','));
   }
   if (params.databaseName) {
     queryParams.append('databaseName', params.databaseName);
