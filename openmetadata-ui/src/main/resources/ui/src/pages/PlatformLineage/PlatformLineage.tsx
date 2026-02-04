@@ -17,7 +17,14 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { debounce, startCase } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg';
@@ -29,7 +36,6 @@ import { useEntityExportModalProvider } from '../../components/Entity/EntityExpo
 import { LineageConfig } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import EntitySuggestionOption from '../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component';
 import LineageConfigModal from '../../components/Entity/EntityLineage/LineageConfigModal';
-import Lineage from '../../components/Lineage/Lineage.component';
 import { StyledIconButton } from '../../components/LineageTable/LineageTable.styled';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -73,6 +79,10 @@ import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './platform-lineage.less';
+
+const Lineage = lazy(
+  () => import('../../components/Lineage/Lineage.component')
+);
 
 const PlatformLineage = () => {
   const { t } = useTranslation();
@@ -299,15 +309,17 @@ const PlatformLineage = () => {
 
     return (
       <LineageProvider>
-        <Lineage
-          isPlatformLineage
-          entity={selectedEntity}
-          entityType={entityType}
-          hasEditAccess={
-            permissions?.EditAll || permissions?.EditLineage || false
-          }
-          platformHeader={header}
-        />
+        <Suspense fallback={<Loader />}>
+          <Lineage
+            isPlatformLineage
+            entity={selectedEntity}
+            entityType={entityType}
+            hasEditAccess={
+              permissions?.EditAll || permissions?.EditLineage || false
+            }
+            platformHeader={header}
+          />
+        </Suspense>
       </LineageProvider>
     );
   }, [selectedEntity, loading, permissions, entityType, header]);

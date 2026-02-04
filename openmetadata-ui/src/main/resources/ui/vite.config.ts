@@ -16,8 +16,8 @@ import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import viteCompression from 'vite-plugin-compression';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
-import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import viteSvgrOptimized from './vite-plugin-svgr-optimized';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -56,7 +56,7 @@ export default defineConfig(({ mode }) => {
         },
       },
       react(),
-      svgr(),
+      viteSvgrOptimized(),
       tsconfigPaths(),
       nodePolyfills({
         include: ['process', 'buffer'],
@@ -111,11 +111,10 @@ export default defineConfig(({ mode }) => {
           modifyVars: {},
           math: 'always',
           paths: [
-            path.resolve(__dirname, 'node_modules'),
             path.resolve(__dirname, 'src'),
             path.resolve(__dirname, 'src/styles'),
           ],
-          rewriteUrls: 'all',
+          rewriteUrls: 'local',
         },
       },
     },
@@ -143,8 +142,11 @@ export default defineConfig(({ mode }) => {
       assetsDir: 'assets',
       copyPublicDir: true,
       sourcemap: false,
+      target: 'esnext',
+      cssCodeSplit: true,
       minify: mode === 'production' ? 'esbuild' : false,
       rollupOptions: {
+        maxParallelFileOps: 10,
         output: {
           manualChunks: {
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
@@ -178,6 +180,11 @@ export default defineConfig(({ mode }) => {
         '@azure/msal-react',
         'codemirror',
         '@deuex-solutions/react-tour',
+      ],
+      exclude: [
+        '@mui/icons-material',
+        '@ant-design/icons',
+        '@untitledui/icons',
       ],
       esbuildOptions: {
         target: 'esnext',

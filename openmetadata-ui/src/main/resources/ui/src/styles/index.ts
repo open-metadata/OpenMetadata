@@ -26,6 +26,7 @@ import '@fontsource/inter/800.css'; // Font 800
 import '@fontsource/inter/900.css'; // Font 900
 
 import '@react-awesome-query-builder/antd/css/styles.css';
+import 'antd/dist/antd.variable.css';
 import 'reactflow/dist/base.css';
 import 'reactflow/dist/style.css';
 import './antd-master.less';
