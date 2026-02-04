@@ -553,39 +553,6 @@ function getAssetTypeFromEntityType(entityType: string): string {
   return entityTypeToAssetType[entityType] || 'Databases';
 }
 
-/**
- * Navigate to explore page and select asset type from left panel
- * The right panel will appear automatically when an asset type is selected
- * @param page - Playwright page instance
- * @param entityType - Type of entity (e.g., 'Pipeline', 'Topic', 'Table')
- */
-export async function navigateToExploreAndSelectEntity(
-  page: Page,
-  entityType: string
-) {
-  await redirectToExplorePage(page);
-
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
-
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-    await page.waitForLoadState('networkidle');
-  }
-
-  // Wait for the explore tree to be visible
-  await page.waitForSelector('[data-testid="explore-tree-title-Databases"]', {
-    state: 'visible',
-    timeout: 10000,
-  });
-
-  
-}
 export const editDisplayNameFromPanel = async (
   page: Page,
   newDisplayName: string
