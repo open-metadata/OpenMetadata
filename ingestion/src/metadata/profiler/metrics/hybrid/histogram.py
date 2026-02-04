@@ -78,12 +78,19 @@ class Histogram(HybridMetric):
         if any(var is None for var in [res_row_count, res_min, res_max]):
             return None
 
+        def _to_number(value):
+            """Convert Decimal to float, but preserve integers as int"""
+            float_val = float(value)
+            if float_val.is_integer():
+                return int(float_val)
+            return float_val
+
         return (
             float(res_iqr) if res_iqr is not None else res_iqr,
             float(res_row_count),
-            float(res_min),
-            float(res_max),
-        )  # Decimal to float
+            _to_number(res_min),
+            _to_number(res_max),
+        )
 
     @staticmethod
     def _format_bin_labels(
@@ -107,7 +114,11 @@ class Histogram(HybridMetric):
         return f"{formatted_lower_bin} to {format_large_string_numbers(upper_bin)}"
 
     def _get_bins(
-        self, res_iqr: float, res_row_count: float, res_min: float, res_max: float
+        self,
+        res_iqr: float,
+        res_row_count: float,
+        res_min: Union[float, int],
+        res_max: Union[float, int],
     ):
         """Get the number of bins and the width of each bin.
         We'll first use the Freedman-Diaconis rule to compute the number of bins.
@@ -117,8 +128,8 @@ class Histogram(HybridMetric):
         Args:
             res_iqr (float): IQR (first quartile - third quartile)
             res_row_count (float): number of rows
-            res_min (float): minimum value
-            res_max (float): maximum value
+            res_min (Union[float, int]): minimum value
+            res_max (Union[float, int]): maximum value
         """
         # preinint num_bins over 100.  On the normal path freedman-diaconis will readjust according to the algorithm
         # when we must fallback to sturges rule due to res_iqr being None, then num_bins will be readjusted.
@@ -181,13 +192,28 @@ class Histogram(HybridMetric):
         else:
             col = column(self.col.name, self.col.type)  # type: ignore
 
+        def _safe_bound_for_comparison(value: Union[float, int]) -> Union[float, int]:
+            """
+            Convert float boundaries to int for SQL comparisons when appropriate.
+            This prevents NumberFormatException in databases like Pinot that expect
+            integer comparisons for LONG/INTEGER column types.
+
+            For integer-valued columns, we truncate float boundaries to integers
+            since histogram bins are discrete ranges for integer data.
+            """
+            if isinstance(value, float):
+                return int(value)
+            return value
+
         case_stmts = []
         for bin_num in range(num_bins):
+            safe_starting_bound = _safe_bound_for_comparison(starting_bin_bound)
+            safe_ending_bound = _safe_bound_for_comparison(ending_bin_bound)
+
             if bin_num < num_bins - 1:
-                condition = and_(col >= starting_bin_bound, col < ending_bin_bound)
+                condition = and_(col >= safe_starting_bound, col < safe_ending_bound)
             else:
-                # for the last bin we won't add the upper bound
-                condition = and_(col >= starting_bin_bound)
+                condition = and_(col >= safe_starting_bound)
                 case_stmts.append(
                     func.count(case([(condition, col)])).label(
                         self._format_bin_labels(starting_bin_bound)
