@@ -395,6 +395,8 @@ export const SERVICE_DEFAULT_ERROR_MAP = {
 // Increasing it temporarily while we investigate test connection delays
 // @pmbrull
 export const FETCHING_EXPIRY_TIME = 3 * 60 * 1000;
+// 5 minutes - for Query Runner to accommodate long-running queries (e.g., Trino cold start)
+export const QUERY_RUNNER_FETCHING_EXPIRY_TIME = 5 * 60 * 1000;
 export const FETCH_INTERVAL = 2000;
 export const WORKFLOW_COMPLETE_STATUS = [
   WorkflowStatus.Failed,
