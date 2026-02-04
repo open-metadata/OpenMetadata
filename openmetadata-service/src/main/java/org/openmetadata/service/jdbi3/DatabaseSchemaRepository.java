@@ -758,15 +758,30 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       String tableFqn = FullyQualifiedName.add(schema.getFullyQualifiedName(), csvRecord.get(0));
       Table table;
-      try {
-        table = Entity.getEntityByName(TABLE, tableFqn, "*", Include.NON_DELETED);
-      } catch (Exception ex) {
-        LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
-        table =
-            new Table()
-                .withService(schema.getService())
-                .withDatabase(schema.getDatabase())
-                .withDatabaseSchema(schema.getEntityReference());
+      if (importResult.getDryRun()) {
+        // Dry run mode - check if exists, create simulation if not
+        try {
+          table = Entity.getEntityByName(TABLE, tableFqn, "*", Include.NON_DELETED);
+        } catch (EntityNotFoundException ex) {
+          LOG.warn("Dry run: Table not found: {}, simulating creation.", tableFqn);
+          table =
+              new Table()
+                  .withService(schema.getService())
+                  .withDatabase(schema.getDatabase())
+                  .withDatabaseSchema(schema.getEntityReference());
+        }
+      } else {
+        // Dry Run = false, True Run - use dependency resolution (checks flush list)
+        try {
+          table = getEntityWithDependencyResolution(TABLE, tableFqn, "*", Include.NON_DELETED);
+        } catch (EntityNotFoundException ex) {
+          LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
+          table =
+              new Table()
+                  .withService(schema.getService())
+                  .withDatabase(schema.getDatabase())
+                  .withDatabaseSchema(schema.getEntityReference());
+        }
       }
 
       // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification,

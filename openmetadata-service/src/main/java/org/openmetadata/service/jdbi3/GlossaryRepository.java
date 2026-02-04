@@ -73,6 +73,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
@@ -283,8 +284,22 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
               : FullyQualifiedName.add(csvRecord.get(0), csvRecord.get(1));
 
       // TODO add header
+      // Handle parent GlossaryTerm with dependency resolution
+      EntityReference parentRef = null;
+      String parentFqn = csvRecord.get(0);
+      if (!nullOrEmpty(parentFqn)) {
+        try {
+          GlossaryTerm parentTerm =
+              getEntityWithDependencyResolution(GLOSSARY_TERM, parentFqn, "*", Include.NON_DELETED);
+          parentRef = parentTerm.getEntityReference();
+        } catch (EntityNotFoundException ex) {
+          // Fall back to regular lookup
+          parentRef = getEntityReference(printer, csvRecord, 0, GLOSSARY_TERM);
+        }
+      }
+
       glossaryTerm
-          .withParent(getEntityReference(printer, csvRecord, 0, GLOSSARY_TERM))
+          .withParent(parentRef)
           .withName(csvRecord.get(1))
           .withFullyQualifiedName(glossaryTermFqn)
           .withDisplayName(csvRecord.get(2))

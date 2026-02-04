@@ -701,14 +701,30 @@ public class DatabaseRepository extends EntityRepository<Database> {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), csvRecord.get(0));
       DatabaseSchema schema;
-      try {
-        schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
-      } catch (Exception ex) {
-        LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
-        schema =
-            new DatabaseSchema()
-                .withDatabase(database.getEntityReference())
-                .withService(database.getService());
+      if (importResult.getDryRun()) {
+        // Dry run mode - check if exists, create simulation if not
+        try {
+          schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
+        } catch (EntityNotFoundException ex) {
+          LOG.warn("Dry run: Database Schema not found: {}, simulating creation.", schemaFqn);
+          schema =
+              new DatabaseSchema()
+                  .withDatabase(database.getEntityReference())
+                  .withService(database.getService());
+        }
+      } else {
+        // Dry Run = false, True Run - use dependency resolution (checks flush list)
+        try {
+          schema =
+              getEntityWithDependencyResolution(
+                  DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
+        } catch (EntityNotFoundException ex) {
+          LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
+          schema =
+              new DatabaseSchema()
+                  .withDatabase(database.getEntityReference())
+                  .withService(database.getService());
+        }
       }
 
       // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, certification,

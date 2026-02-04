@@ -386,7 +386,16 @@ public class DirectoryRepository extends EntityRepository<Directory> {
                 .withFullyQualifiedName(directoryFqn);
 
         if (!nullOrEmpty(parentFqn)) {
-          EntityReference parentRef = getEntityReference(printer, csvRecord, 3, DIRECTORY);
+          // Use dependency resolution for parent directory lookup
+          EntityReference parentRef = null;
+          try {
+            Directory parentDirectory =
+                getEntityWithDependencyResolution(DIRECTORY, parentFqn, "*", Include.NON_DELETED);
+            parentRef = parentDirectory.getEntityReference();
+          } catch (EntityNotFoundException parentEx) {
+            // Fall back to regular lookup
+            parentRef = getEntityReference(printer, csvRecord, 3, DIRECTORY);
+          }
           newDirectory.withParent(parentRef);
         }
       }

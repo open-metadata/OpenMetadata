@@ -326,11 +326,27 @@ public class DatabaseServiceRepository
               : FullyQualifiedName.add(service.getFullyQualifiedName(), csvRecord.get(0));
 
       Database database;
-      try {
-        database = Entity.getEntityByName(DATABASE, databaseFqn, "*", Include.NON_DELETED);
-      } catch (EntityNotFoundException ex) {
-        LOG.warn("Database not found: {}, it will be created with Import.", databaseFqn);
-        database = new Database().withService(service.getEntityReference());
+      if (importResult.getDryRun()) {
+        // Dry run mode: Try lookup first, simulate if not found
+        try {
+          database = Entity.getEntityByName(DATABASE, databaseFqn, "*", Include.NON_DELETED);
+        } catch (EntityNotFoundException ex) {
+          // Simulate a database for validation without persisting it
+          database =
+              new Database()
+                  .withName(databaseFqn)
+                  .withService(service.getEntityReference())
+                  .withId(UUID.randomUUID());
+        }
+      } else {
+        // Dry Run = false, True Run: Use dependency resolution helper
+        try {
+          database =
+              getEntityWithDependencyResolution(DATABASE, databaseFqn, "*", Include.NON_DELETED);
+        } catch (EntityNotFoundException ex) {
+          LOG.warn("Database not found: {}, it will be created with Import.", databaseFqn);
+          database = new Database().withService(service.getEntityReference());
+        }
       }
 
       // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, domain
@@ -369,19 +385,25 @@ public class DatabaseServiceRepository
       }
       String dbFQN = FullyQualifiedName.getParentFQN(entityFQN);
 
+      // Fetch Database Entity with dependency resolution
       Database database;
-      try {
-        database = Entity.getEntityByName(DATABASE, dbFQN, "*", Include.NON_DELETED);
-      } catch (EntityNotFoundException ex) {
-        LOG.warn("Database not found: {}. Handling based on dryRun mode.", dbFQN);
-        if (importResult.getDryRun()) {
-          // Dry run mode: Simulate a schema for validation without persisting it
+      if (importResult.getDryRun()) {
+        // Dry run mode: Try lookup first, simulate if not found
+        try {
+          database = Entity.getEntityByName(DATABASE, dbFQN, "*", Include.NON_DELETED);
+        } catch (EntityNotFoundException ex) {
+          // Simulate a database for validation without persisting it
           database =
               new Database()
                   .withName(dbFQN)
                   .withService(service.getEntityReference())
                   .withId(UUID.randomUUID());
-        } else {
+        }
+      } else {
+        // Dry Run = false, True Run: Use dependency resolution helper
+        try {
+          database = getEntityWithDependencyResolution(DATABASE, dbFQN, "*", Include.NON_DELETED);
+        } catch (EntityNotFoundException ex) {
           throw new IllegalArgumentException("Database not found: " + dbFQN);
         }
       }

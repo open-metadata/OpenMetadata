@@ -1420,6 +1420,30 @@ public abstract class EntityCsv<T extends EntityInterface> {
     pendingEntityFQNs.clear();
   }
 
+  protected boolean hasPendingEntity(String entityType, String fqn) {
+    return pendingEntityOperations.stream()
+        .anyMatch(
+            op ->
+                op.entityType.equals(entityType) && op.entity.getFullyQualifiedName().equals(fqn));
+  }
+
+  @SuppressWarnings("unchecked")
+  protected <E extends EntityInterface> E getEntityWithDependencyResolution(
+      String entityType, String fqn, String fields, Include include) {
+    try {
+      return (E) Entity.getEntityByName(entityType, fqn, fields, include);
+    } catch (EntityNotFoundException ex) {
+      if (!importResult.getDryRun() && hasPendingEntity(entityType, fqn)) {
+        LOG.info("Found pending {} {}, flushing all pending entities", entityType, fqn);
+        flushPendingEntityOperations(); // Only flush when specific entity is pending
+        // Retry after flush
+        return (E) Entity.getEntityByName(entityType, fqn, fields, include);
+      }
+      // Re-throw the original exception so callers can handle appropriately
+      throw ex;
+    }
+  }
+
   @Transaction
   protected void createUserEntity(CSVPrinter resultsPrinter, CSVRecord csvRecord, T entity)
       throws IOException {
@@ -1502,10 +1526,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     try {
       database =
           Entity.getEntityByNameWithExcludedFields(
-              DATABASE,
-              dbFQN,
-              "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
-              Include.NON_DELETED);
+              DATABASE, dbFQN, "owners,tags,domains,extension", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       LOG.warn("Database not found: {}. Handling based on dryRun mode.", dbFQN);
       if (importResult.getDryRun()) {
@@ -1523,10 +1544,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     try {
       schema =
           Entity.getEntityByNameWithExcludedFields(
-              DATABASE_SCHEMA,
-              schemaFqn,
-              "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
-              Include.NON_DELETED);
+              DATABASE_SCHEMA, schemaFqn, "owners,tags,domains,extension", Include.NON_DELETED);
     } catch (Exception ex) {
       LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
       schema =
@@ -1577,23 +1595,36 @@ public abstract class EntityCsv<T extends EntityInterface> {
     // Get the schema
     String schemaFQN = FullyQualifiedName.getParentFQN(entityFQN);
 
-    // Fetch Schema Entity
+    // Fetch Schema Entity with dependency resolution
     DatabaseSchema schema;
-    try {
-      schema =
-          Entity.getEntityByName(
-              DATABASE_SCHEMA, schemaFQN, "name,displayName,service,database", Include.NON_DELETED);
-    } catch (EntityNotFoundException ex) {
-      LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
-      if (importResult.getDryRun()) {
-        // Dry run mode: Simulate a schema for validation without persisting it
+    if (importResult.getDryRun()) {
+      // Dry run mode: Try lookup first, simulate if not found
+      try {
+        schema =
+            Entity.getEntityByName(
+                DATABASE_SCHEMA,
+                schemaFQN,
+                "name,displayName,service,database",
+                Include.NON_DELETED);
+      } catch (EntityNotFoundException ex) {
+        // Simulate a schema for validation without persisting it
         schema =
             new DatabaseSchema()
                 .withName(schemaFQN)
                 .withDatabase(null)
                 .withService(null)
                 .withId(UUID.randomUUID());
-      } else {
+      }
+    } else {
+      // Dry Run = false, True Run: Use dependency resolution helper
+      try {
+        schema =
+            getEntityWithDependencyResolution(
+                DATABASE_SCHEMA,
+                schemaFQN,
+                "name,displayName,service,database",
+                Include.NON_DELETED);
+      } catch (EntityNotFoundException ex) {
         throw new IllegalArgumentException("Schema not found: " + schemaFQN);
       }
     }
@@ -1602,26 +1633,43 @@ public abstract class EntityCsv<T extends EntityInterface> {
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
     Table table;
 
-    try {
-      table =
-          Entity.getEntityByNameWithExcludedFields(
-              TABLE,
-              tableFqn,
-              "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
-              Include.NON_DELETED);
-    } catch (EntityNotFoundException ex) {
-      // Table not found, create a new one
-
-      LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
-      table =
-          new Table()
-              .withId(UUID.randomUUID())
-              .withName(csvRecord.get(0))
-              .withFullyQualifiedName(tableFqn)
-              .withService(schema.getService())
-              .withDatabase(schema.getDatabase())
-              .withColumns(new ArrayList<>())
-              .withDatabaseSchema(schema.getEntityReference());
+    if (importResult.getDryRun()) {
+      // Dry run mode: Try lookup first, simulate if not found
+      try {
+        table =
+            Entity.getEntityByNameWithExcludedFields(
+                TABLE, tableFqn, "owners,tags,domains,extension", Include.NON_DELETED);
+      } catch (EntityNotFoundException ex) {
+        // Simulate a table for validation without persisting it
+        table =
+            new Table()
+                .withName(csvRecord.get(0))
+                .withFullyQualifiedName(tableFqn)
+                .withService(schema.getService())
+                .withDatabase(schema.getDatabase())
+                .withDatabaseSchema(schema.getEntityReference())
+                .withColumns(new ArrayList<>())
+                .withId(UUID.randomUUID());
+      }
+    } else {
+      // Dry Run = false, True Run: Use dependency resolution helper
+      try {
+        table =
+            getEntityWithDependencyResolution(
+                TABLE, tableFqn, "owners,tags,domains,extension", Include.NON_DELETED);
+      } catch (EntityNotFoundException ex) {
+        // Table not found, create a new one
+        LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
+        table =
+            new Table()
+                .withId(UUID.randomUUID())
+                .withName(csvRecord.get(0))
+                .withFullyQualifiedName(tableFqn)
+                .withService(schema.getService())
+                .withDatabase(schema.getDatabase())
+                .withColumns(new ArrayList<>())
+                .withDatabaseSchema(schema.getEntityReference());
+      }
     }
 
     // Extract and process tag labels
@@ -1669,42 +1717,78 @@ public abstract class EntityCsv<T extends EntityInterface> {
           "Stored procedure import requires fullyQualifiedName to determine the schema it belongs to");
     }
 
+    // Fetch Schema Entity with dependency resolution
     DatabaseSchema schema;
-
-    try {
-      schema =
-          Entity.getEntityByName(
-              DATABASE_SCHEMA, schemaFQN, "name,displayName,service,database", Include.NON_DELETED);
-    } catch (EntityNotFoundException ex) {
-      LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
-      if (importResult.getDryRun()) {
+    if (importResult.getDryRun()) {
+      // Dry run mode: Try lookup first, simulate if not found
+      try {
+        schema =
+            Entity.getEntityByName(
+                DATABASE_SCHEMA,
+                schemaFQN,
+                "name,displayName,service,database",
+                Include.NON_DELETED);
+      } catch (EntityNotFoundException ex) {
+        // Simulate a schema for validation without persisting it
         schema =
             new DatabaseSchema()
                 .withName(schemaFQN)
                 .withDatabase(null)
                 .withService(null)
                 .withId(UUID.randomUUID());
-      } else {
+      }
+    } else {
+      // Dry Run = false, True Run: Use dependency resolution helper
+      try {
+        schema =
+            getEntityWithDependencyResolution(
+                DATABASE_SCHEMA,
+                schemaFQN,
+                "name,displayName,service,database",
+                Include.NON_DELETED);
+      } catch (EntityNotFoundException ex) {
         throw new IllegalArgumentException("Schema not found: " + schemaFQN);
       }
     }
 
     StoredProcedure sp;
-    try {
-      sp =
-          Entity.getEntityByName(
-              STORED_PROCEDURE,
-              entityFQN,
-              "name,displayName,fullyQualifiedName",
-              Include.NON_DELETED);
-    } catch (Exception ex) {
-      LOG.warn("Stored procedure not found: {}, it will be created with Import.", entityFQN);
-      sp =
-          new StoredProcedure()
-              .withName(spName)
-              .withService(schema.getService())
-              .withDatabase(schema.getDatabase())
-              .withDatabaseSchema(schema.getEntityReference());
+    if (importResult.getDryRun()) {
+      // Dry run mode: Try lookup first, simulate if not found
+      try {
+        sp =
+            Entity.getEntityByName(
+                STORED_PROCEDURE,
+                entityFQN,
+                "name,displayName,fullyQualifiedName",
+                Include.NON_DELETED);
+      } catch (Exception ex) {
+        // Simulate a stored procedure for validation without persisting it
+        sp =
+            new StoredProcedure()
+                .withName(spName)
+                .withService(schema.getService())
+                .withDatabase(schema.getDatabase())
+                .withDatabaseSchema(schema.getEntityReference())
+                .withId(UUID.randomUUID());
+      }
+    } else {
+      // Dry Run = false, True Run: Use dependency resolution helper
+      try {
+        sp =
+            getEntityWithDependencyResolution(
+                STORED_PROCEDURE,
+                entityFQN,
+                "name,displayName,fullyQualifiedName",
+                Include.NON_DELETED);
+      } catch (Exception ex) {
+        LOG.warn("Stored procedure not found: {}, it will be created with Import.", entityFQN);
+        sp =
+            new StoredProcedure()
+                .withName(spName)
+                .withService(schema.getService())
+                .withDatabase(schema.getDatabase())
+                .withDatabaseSchema(schema.getEntityReference());
+      }
     }
 
     List<TagLabel> tagLabels =
@@ -1777,58 +1861,83 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     if (tableContext == null) {
       // First column for this table - fetch and cache it
-      Table table = null;
+      // Fetch Schema Entity with dependency resolution (following createTableEntity pattern)
       DatabaseSchema schema;
+      if (importResult.getDryRun()) {
+        // Dry run mode: Try lookup first, simulate if not found
+        try {
+          schema =
+              Entity.getEntityByName(
+                  DATABASE_SCHEMA,
+                  schemaFQN,
+                  "name,displayName,service,database",
+                  Include.NON_DELETED);
+        } catch (EntityNotFoundException ex) {
+          // Simulate a schema for validation without persisting it
+          schema =
+              new DatabaseSchema()
+                  .withName(schemaFQN)
+                  .withDatabase(null)
+                  .withService(null)
+                  .withId(UUID.randomUUID());
+        }
+      } else {
+        // Dry Run = false, True Run: Use dependency resolution helper
+        try {
+          schema =
+              getEntityWithDependencyResolution(
+                  DATABASE_SCHEMA,
+                  schemaFQN,
+                  "name,displayName,service,database",
+                  Include.NON_DELETED);
+        } catch (EntityNotFoundException ex) {
+          throw new IllegalArgumentException("Schema not found: " + schemaFQN);
+        }
+      }
 
-      // Try to fetch table from DB first
-      try {
-        table =
-            Entity.getEntityByName(
-                TABLE,
-                tableFQN,
-                "name,displayName,fullyQualifiedName,columns",
-                Include.NON_DELETED);
-      } catch (EntityNotFoundException ex) {
-        // Table not in DB - check if it exists in dryRunCreatedEntities cache
-        // (for dry-run mode or cross-batch scenarios)
-        EntityInterface cachedEntity = dryRunCreatedEntities.get(tableFQN);
-        if (cachedEntity instanceof Table) {
-          table = (Table) cachedEntity;
-        } else {
-          // Table not in cache either - handle based on dryRun mode
-          try {
-            schema =
-                Entity.getEntityByName(
-                    DATABASE_SCHEMA,
-                    schemaFQN,
-                    "name,displayName,service,database",
-                    Include.NON_DELETED);
-          } catch (EntityNotFoundException exception) {
-            LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
-
-            if (importResult.getDryRun()) {
-              schema =
-                  new DatabaseSchema()
-                      .withName(schemaFQN)
-                      .withDatabase(null)
-                      .withService(null)
-                      .withId(UUID.randomUUID());
-            } else {
-              throw new IllegalArgumentException(
-                  "Schema not found for the column table: " + schemaFQN);
-            }
-          }
-          if (importResult.getDryRun()) {
-            table =
-                new Table()
-                    .withId(UUID.randomUUID())
-                    .withName(tableFQN)
-                    .withFullyQualifiedName(tableFQN)
-                    .withDatabaseSchema(schema.getEntityReference())
-                    .withColumns(new ArrayList<>());
-          } else {
-            throw new IllegalArgumentException("Table not found: " + entityFQN);
-          }
+      // Try to fetch table with dependency resolution
+      Table table;
+      if (importResult.getDryRun()) {
+        // Dry run mode: Try lookup first, simulate if not found
+        try {
+          table =
+              Entity.getEntityByName(
+                  TABLE,
+                  tableFQN,
+                  "name,displayName,fullyQualifiedName,columns",
+                  Include.NON_DELETED);
+        } catch (EntityNotFoundException ex) {
+          // Simulate a table for validation without persisting it
+          table =
+              new Table()
+                  .withId(UUID.randomUUID())
+                  .withName(FullyQualifiedName.split(tableFQN)[3])
+                  .withFullyQualifiedName(tableFQN)
+                  .withService(schema.getService())
+                  .withDatabase(schema.getDatabase())
+                  .withColumns(new ArrayList<>())
+                  .withDatabaseSchema(schema.getEntityReference());
+        }
+      } else {
+        // Dry Run = false, True Run: Use dependency resolution helper
+        try {
+          table =
+              getEntityWithDependencyResolution(
+                  TABLE,
+                  tableFQN,
+                  "name,displayName,fullyQualifiedName,columns",
+                  Include.NON_DELETED);
+        } catch (EntityNotFoundException ex) {
+          // Table not found, create a new one (following createTableEntity pattern)
+          table =
+              new Table()
+                  .withId(UUID.randomUUID())
+                  .withName(FullyQualifiedName.split(tableFQN)[3])
+                  .withFullyQualifiedName(tableFQN)
+                  .withService(schema.getService())
+                  .withDatabase(schema.getDatabase())
+                  .withColumns(new ArrayList<>())
+                  .withDatabaseSchema(schema.getEntityReference());
         }
       }
 
