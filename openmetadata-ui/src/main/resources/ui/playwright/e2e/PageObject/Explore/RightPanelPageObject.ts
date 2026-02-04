@@ -392,6 +392,35 @@ export class RightPanelPageObject {
  }
 
  /**
+  * Wait until the right panel has fully loaded
+  * This method ensures:
+  * 1. Panel is visible
+  * 2. All loaders within the panel have disappeared
+  * 3. Panel is ready for interaction
+  * @param timeout - Optional timeout in milliseconds (default: 30000)
+  */
+ async waitForPanelLoaded(timeout: number = 30000) {
+   // Step 1: Wait for panel to be visible
+   await this.getSummaryPanel().waitFor({ state: 'visible', timeout });
+
+   // Step 2: Wait for all loaders within the panel to disappear
+   // Use the summary panel as the scope for loaders
+   const panelLoaders = this.getSummaryPanel().locator('[data-testid="loader"]');
+   
+   // Wait for loader count to become 0 within the panel
+   await expect(panelLoaders).toHaveCount(0, { timeout });
+
+   // Step 3: Wait for any remaining loaders on the page (fallback)
+   await this.page.waitForSelector('[data-testid="loader"]', {
+     state: 'detached',
+     timeout,
+   });
+
+   // Step 4: Ensure panel is still visible and stable
+   await this.getSummaryPanel().waitFor({ state: 'visible' });
+ }
+
+ /**
   * Navigate to a specific tab in the right panel
   * @param tabName - Name of the tab (case insensitive)
   */
