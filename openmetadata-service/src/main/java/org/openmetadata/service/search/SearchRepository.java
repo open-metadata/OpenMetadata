@@ -652,6 +652,10 @@ public class SearchRepository {
    * Bulk update multiple entities in the search index. This is much more efficient than calling
    * updateEntity() for each entity individually.
    *
+   * <p>This method groups entities by type before indexing to ensure each entity goes to the
+   * correct index. This is critical during multi-level imports where entities of different types
+   * may be batched together.
+   *
    * @param entities List of entities to update in the search index
    */
   public void updateEntitiesBulk(List<EntityInterface> entities) {
@@ -659,35 +663,47 @@ public class SearchRepository {
       return;
     }
 
-    String entityType = entities.get(0).getEntityReference().getType();
+    // Group entities by their actual type to ensure each goes to the correct index
+    Map<String, List<EntityInterface>> entitiesByType = new HashMap<>();
+    for (EntityInterface entity : entities) {
+      String actualType = entity.getEntityReference().getType();
+      entitiesByType.computeIfAbsent(actualType, k -> new ArrayList<>()).add(entity);
+    }
 
     int batchSize = 100;
     int maxConcurrentRequests = 5;
     long maxPayloadSizeBytes = 10 * 1024 * 1024; // 10MB
 
-    BulkSink bulkSink = null;
-    try {
-      bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
-      Map<String, Object> contextData = new HashMap<>();
-      contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
-      bulkSink.write(entities, contextData);
-      bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
-    } catch (Exception e) {
-      LOG.error("Error during bulk entity update in search index", e);
-      // Fall back to individual updates
-      for (EntityInterface entity : entities) {
-        try {
-          updateEntityIndex(entity);
-        } catch (Exception ex) {
-          LOG.error("Error updating entity {} in search index", entity.getFullyQualifiedName(), ex);
+    // Process each entity type separately to ensure correct index routing
+    for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
+      String entityType = entry.getKey();
+      List<EntityInterface> typeEntities = entry.getValue();
+
+      BulkSink bulkSink = null;
+      try {
+        bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+        Map<String, Object> contextData = new HashMap<>();
+        contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
+        bulkSink.write(typeEntities, contextData);
+        bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
+      } catch (Exception e) {
+        LOG.error("Error during bulk entity update in search index for type {}", entityType, e);
+        // Fall back to individual updates for this type
+        for (EntityInterface entity : typeEntities) {
+          try {
+            updateEntityIndex(entity);
+          } catch (Exception ex) {
+            LOG.error(
+                "Error updating entity {} in search index", entity.getFullyQualifiedName(), ex);
+          }
         }
-      }
-    } finally {
-      if (bulkSink != null) {
-        try {
-          bulkSink.close();
-        } catch (Exception e) {
-          LOG.warn("Error closing bulk sink", e);
+      } finally {
+        if (bulkSink != null) {
+          try {
+            bulkSink.close();
+          } catch (Exception e) {
+            LOG.warn("Error closing bulk sink", e);
+          }
         }
       }
     }
