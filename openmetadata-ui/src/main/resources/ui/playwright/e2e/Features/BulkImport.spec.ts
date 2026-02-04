@@ -158,9 +158,7 @@ test.describe('Bulk Import Export', () => {
       'should import and edit with two additional database',
       async () => {
         await dbService.visitEntityPage(page);
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+
 
         await page.getByTestId('manage-button').click();
         await page.waitForSelector(
@@ -420,10 +418,6 @@ test.describe('Bulk Import Export', () => {
       'should import and edit with two additional database schema',
       async () => {
         await dbEntity.visitEntityPage(page);
-
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
 
         await page.getByTestId('manage-button').click();
         await page.waitForSelector(
