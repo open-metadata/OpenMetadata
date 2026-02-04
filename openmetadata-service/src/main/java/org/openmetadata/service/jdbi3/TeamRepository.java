@@ -19,7 +19,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addOwners;
-import static org.openmetadata.csv.CsvUtil.fieldToStrings;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DIVISION;
@@ -1157,23 +1156,7 @@ public class TeamRepository extends EntityRepository<Team> {
       if (!processRecord) {
         return;
       }
-      // Handle parent Team references with dependency resolution
-      List<EntityReference> parentRefs = new ArrayList<>();
-      String parentsValue = csvRecord.get(4);
-      if (!nullOrEmpty(parentsValue)) {
-        List<String> parentNames = fieldToStrings(parentsValue);
-        for (String parentName : parentNames) {
-          try {
-            Team parentTeam =
-                getEntityWithDependencyResolution(TEAM, parentName, "*", Include.NON_DELETED);
-            parentRefs.add(parentTeam.getEntityReference());
-          } catch (EntityNotFoundException ex) {
-            // Fall back to regular lookup
-            EntityReference ref = getEntityReferenceByName(TEAM, parentName);
-            parentRefs.add(ref);
-          }
-        }
-      }
+      List<EntityReference> parentRefs = getEntityReferences(printer, csvRecord, 4, Entity.TEAM);
 
       // Validate team being created is under the hierarchy of the team for which CSV is being
       // imported to
