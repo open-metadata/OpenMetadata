@@ -245,37 +245,76 @@ export class OverviewPageObject {
   }
 
   async addOwnerWithoutValidation(owner: string, type: 'Teams' | 'Users' = 'Users'): Promise<OverviewPageObject> {
-  await this.editOwnersIcon.click();
-  if (type === 'Users') {
-    const userListResponse = this.page.waitForResponse(
-      '/api/v1/search/query?q=&index=user_search_index&*'
+    await this.editOwnersIcon.click();
+    
+    // Wait for the select-owner-tabs container to be visible
+    await this.page.getByTestId('select-owner-tabs').waitFor({ state: 'visible' });
+    
+    // Wait for initial loader to disappear
+    await this.page.waitForSelector(
+      '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+      { state: 'detached' }
     );
-    await this.page.getByRole('tab', { name: type }).click();
-    await userListResponse;
+
+    if (type === 'Users') {
+      // Wait for Users tab to be visible before clicking
+      const usersTab = this.page.getByTestId('select-owner-tabs').getByRole('tab', { name: 'Users' });
+      await usersTab.waitFor({ state: 'visible' });
+      
+      const userListResponse = this.page.waitForResponse(
+        '/api/v1/search/query?q=&index=user_search_index&*'
+      );
+      await usersTab.click();
+      await userListResponse;
+      
+      // Wait for loader to disappear after tab click
+      await this.page.waitForSelector(
+        '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+        { state: 'detached' }
+      );
+    }
+
+    // Wait for the search bar to be visible (check if it's actually visible)
+    const isSearchBarVisible = await this.userSearchBar.isVisible().catch(() => false);
+    
+    if (!isSearchBarVisible) {
+      // If search bar is not visible, click the tab again
+      const tab = this.page.getByTestId('select-owner-tabs').getByRole('tab', { name: type });
+      await tab.waitFor({ state: 'visible' });
+      await tab.click();
+      
+      // Wait for loader to disappear
+      await this.page.waitForSelector(
+        '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+        { state: 'detached' }
+      );
+    }
+
+    // Now wait for search bar to be visible
+    await this.userSearchBar.waitFor({ state: 'visible' });
+
+    const searchUser = this.page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
+    );
+    await this.userSearchBar.fill(owner);
+
+    await searchUser;
+    
+    // Wait for loader to disappear after search
+    await this.page.waitForSelector(
+      '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+      { state: 'detached' }
+    );
+
+    if (type === 'Teams') {
+      await this.page.getByRole('listitem', { name: owner, exact: true }).click();
+    } else {
+      await this.page.getByRole('listitem', { name: owner, exact: true }).click();
+      await this.updateOwnersButton.click();
+    }
+    await this.loader.waitFor({ state: 'detached' });
+    return this;
   }
-
-  await this.userSearchBar.waitFor({ state: 'visible' });
-
-  if (!this.userSearchBar) {
-    await this.page.getByRole('tab', { name: type }).click();
-  }
-
-  const searchUser = this.page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
-  );
-  await this.userSearchBar.fill(owner);
-
-  await searchUser;
-
-  if (type === 'Teams') {
-    await this.page.getByRole('listitem', { name: owner, exact: true }).click();
-  } else {
-    await this.page.getByRole('listitem', { name: owner, exact: true }).click();
-    await this.updateOwnersButton.click();
-  }
-  await this.loader.waitFor({ state: 'detached' });
-  return this;
-}
 
   async editOwners(ownerName: string): Promise<OverviewPageObject> {
     await this.editOwnersIcon.scrollIntoViewIfNeeded();
