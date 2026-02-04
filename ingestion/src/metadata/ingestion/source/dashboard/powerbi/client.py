@@ -33,6 +33,8 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     DataflowExportResponse,
     Dataset,
     DatasetResponse,
+    Datasource,
+    DatasourcesResponse,
     Group,
     GroupsResponse,
     PowerBIDashboard,
@@ -297,6 +299,28 @@ class PowerBiApiClient:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching report pages: {exc}")
         return []
+
+    def fetch_report_datasources(
+        self, group_id: str, report_id: str
+    ) -> Optional[List[Datasource]]:
+        """Fetch datasources for a report in a group
+        API: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-datasources-in-group
+        """
+        try:
+            logger.debug(
+                f"Calling the API({str(self.client._base_url)}/myorg/groups/{group_id}/reports/{report_id}/datasources)"  # pylint: disable=protected-access
+                " to get report datasources"
+            )
+            response_data = self.client.get(
+                f"/myorg/groups/{group_id}/reports/{report_id}/datasources"
+            )
+            if response_data:
+                response = DatasourcesResponse(**response_data)
+                return response.value
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching report datasources: {exc}")
+        return None
 
     def regex_to_odata_condition(self, regex: str) -> str:
         """
