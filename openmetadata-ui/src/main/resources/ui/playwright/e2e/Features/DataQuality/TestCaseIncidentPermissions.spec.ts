@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -82,29 +82,7 @@ const TABLE_EDIT_INCIDENTS_POLICY = [
   },
 ];
 
-// 4. View Only Policy (TEST_CASE.VIEW_BASIC only - restricted, should fail incident view)
-const VIEW_ONLY_POLICY = [
-  {
-    name: `view-only-tc-${uuid()}`,
-    resources: ['testCase'],
-    operations: ['ViewBasic'],
-    effect: 'allow',
-  },
-  {
-    name: `view-only-table-${uuid()}`,
-    resources: ['table'],
-    operations: ['ViewBasic'],
-    effect: 'allow',
-  },
-  {
-    name: `view-only-all-${uuid()}`,
-    resources: ['all'],
-    operations: ['ViewBasic'],
-    effect: 'allow',
-  },
-];
-
-// 5. Data Consumer Simulation (limited permissions, no edit)
+// 4. Data Consumer Simulation (limited permissions, no edit)
 const CONSUMER_LIKE_POLICY = [
   {
     name: `consumer-like-tc-${uuid()}`,
@@ -139,10 +117,6 @@ const tableEditIncidentsPolicy = new PolicyClass();
 const tableEditIncidentsRole = new RolesClass();
 const tableEditIncidentsUser = new UserClass();
 
-const viewOnlyPolicy = new PolicyClass();
-const viewOnlyRole = new RolesClass();
-const viewOnlyUser = new UserClass();
-
 const consumerLikePolicy = new PolicyClass();
 const consumerLikeRole = new RolesClass();
 const consumerLikeUser = new UserClass();
@@ -155,7 +129,6 @@ const test = base.extend<{
   viewIncidentsPage: Page;
   editIncidentsPage: Page;
   tableEditIncidentsPage: Page;
-  viewOnlyPage: Page;
   consumerLikePage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
@@ -178,12 +151,6 @@ const test = base.extend<{
   tableEditIncidentsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await tableEditIncidentsUser.login(page);
-    await use(page);
-    await page.close();
-  },
-  viewOnlyPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await viewOnlyUser.login(page);
     await use(page);
     await page.close();
   },
@@ -239,7 +206,6 @@ test.describe(
   { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
   () => {
     let testCaseFqn: string;
-    let testCaseName: string;
     let incidentId: string;
     let incidentStateId: string;
 
@@ -281,7 +247,6 @@ test.describe(
       // Create a test case
       await table.createTestCase(apiContext);
       testCaseFqn = table.testCasesResponseData[0].fullyQualifiedName;
-      testCaseName = table.testCasesResponseData[0].name;
 
       // Add a FAILED test case result to trigger incident creation
       const failedTimestamp = getCurrentMillis();
@@ -314,6 +279,9 @@ test.describe(
         }
       }
 
+      expect(incidentId).toBeDefined();
+      expect(incidentStateId).toBeDefined();
+
       // Setup all users
       await setupUserWithPolicy(
         apiContext,
@@ -335,13 +303,6 @@ test.describe(
         tableEditIncidentsPolicy,
         tableEditIncidentsRole,
         TABLE_EDIT_INCIDENTS_POLICY
-      );
-      await setupUserWithPolicy(
-        apiContext,
-        viewOnlyUser,
-        viewOnlyPolicy,
-        viewOnlyRole,
-        VIEW_ONLY_POLICY
       );
       await setupUserWithPolicy(
         apiContext,
@@ -377,12 +338,6 @@ test.describe(
       );
       await cleanupUserWithPolicy(
         apiContext,
-        viewOnlyUser,
-        viewOnlyRole,
-        viewOnlyPolicy
-      );
-      await cleanupUserWithPolicy(
-        apiContext,
         consumerLikeUser,
         consumerLikeRole,
         consumerLikePolicy
@@ -409,6 +364,27 @@ test.describe(
           '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
         );
         expect(res.status()).toBe(200);
+      });
+
+      test('User with TEST_CASE.VIEW_ALL can view incident CONTENT in UI', async ({
+        viewIncidentsPage,
+      }) => {
+        await visitTestCaseIncidentPage(viewIncidentsPage);
+        const issueTabContainer = viewIncidentsPage.getByTestId(
+          'issue-tab-container'
+        );
+        await expect(issueTabContainer).toBeVisible();
+
+        const statusBadge = viewIncidentsPage
+          .getByTestId('status-badge')
+          .first();
+        if (await statusBadge.isVisible()) {
+          await expect(statusBadge).toBeVisible();
+        }
+
+        await expect(
+          viewIncidentsPage.getByTestId('edit-resolution-icon')
+        ).toBeHidden();
       });
 
       test('User with TABLE.VIEW_TESTS can view incidents and GET incident status list (alternative)', async ({
@@ -438,7 +414,7 @@ test.describe(
         const res = await apiContext.get(
           `/api/v1/dataQuality/testCases/testCaseIncidentStatus/stateId/${incidentStateId}`
         );
-        expect(res.status()).not.toBe(403);
+        expect(res.status()).toBe(200);
       });
 
       test('User with TEST_CASE.VIEW_ALL can GET incident by id', async ({
@@ -450,7 +426,7 @@ test.describe(
         const res = await apiContext.get(
           `/api/v1/dataQuality/testCases/testCaseIncidentStatus/${incidentId}`
         );
-        expect(res.status()).not.toBe(403);
+        expect(res.status()).toBe(200);
       });
 
       test('User with TABLE.VIEW_ALL can GET incident search/list', async ({
@@ -461,7 +437,7 @@ test.describe(
         const res = await apiContext.get(
           '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
         );
-        expect(res.status()).not.toBe(403);
+        expect(res.status()).toBe(200);
       });
     });
 
@@ -495,7 +471,7 @@ test.describe(
             },
           }
         );
-        expect(res.status()).not.toBe(403);
+        expect([200, 201]).toContain(res.status());
       });
 
       test('User with TABLE.EDIT_TESTS can see edit icon and POST incident status (alternative)', async ({
@@ -528,7 +504,7 @@ test.describe(
             },
           }
         );
-        expect(res.status()).not.toBe(403);
+        expect([200, 201]).toContain(res.status());
       });
 
       test('User with TEST_CASE.EDIT_TESTS can PATCH incident status', async ({

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -428,6 +428,31 @@ test.describe(
         expect(res.status()).toBe(200);
       });
 
+      test('User with TEST_CASE.VIEW_ALL can view test RESULT CONTENT in UI', async ({
+        viewResultsPage,
+      }) => {
+        await visitTestCaseDetailsPage(viewResultsPage);
+        const resultContainer = viewResultsPage.getByTestId(
+          'test-case-result-tab-container'
+        );
+        await expect(resultContainer).toBeVisible();
+
+        const resultChart = viewResultsPage.getByTestId('chart-container');
+        if (await resultChart.first().isVisible()) {
+          await expect(resultChart.first()).toBeVisible();
+        }
+
+        const { apiContext } = await getApiContext(viewResultsPage);
+        const res = await apiContext.get(
+          `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
+            testCaseFqn
+          )}`
+        );
+        const data = await res.json();
+        expect(data.data).toBeDefined();
+        expect(data.data.length).toBeGreaterThan(0);
+      });
+
       test('User with TABLE.VIEW_TESTS can view test case and GET results by FQN (alternative)', async ({
         tableEditResultsPage,
       }) => {
@@ -469,6 +494,19 @@ test.describe(
         );
         expect(res.status()).toBe(200);
       });
+
+      test('User with only TABLE.EDIT_TESTS (no TEST_CASE.VIEW_ALL) can still view results via TABLE.VIEW_TESTS', async ({
+        tableEditResultsPage,
+      }) => {
+        const { apiContext } = await getApiContext(tableEditResultsPage);
+
+        const res = await apiContext.get(
+          `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
+            testCaseFqn
+          )}`
+        );
+        expect(res.status()).toBe(200);
+      });
     });
 
     test.describe('Positive - Edit Results', () => {
@@ -507,7 +545,7 @@ test.describe(
             },
           }
         );
-        expect(res.status()).not.toBe(403);
+        expect([200, 201]).toContain(res.status());
       });
 
       test('User with TABLE.EDIT_TESTS can see edit actions and POST test case results (alternative)', async ({
@@ -545,7 +583,7 @@ test.describe(
             },
           }
         );
-        expect(res.status()).not.toBe(403);
+        expect([200, 201]).toContain(res.status());
       });
 
       test('User with TEST_CASE.EDIT_ALL can PATCH test case result', async ({
@@ -571,7 +609,7 @@ test.describe(
             headers: { 'Content-Type': 'application/json-patch+json' },
           }
         );
-        expect(res.status()).not.toBe(403);
+        expect(res.status()).toBe(200);
       });
 
       test('User with TABLE.EDIT_TESTS can PATCH test case result (alternative)', async ({
@@ -597,7 +635,7 @@ test.describe(
             headers: { 'Content-Type': 'application/json-patch+json' },
           }
         );
-        expect(res.status()).not.toBe(403);
+        expect(res.status()).toBe(200);
       });
     });
 
@@ -629,23 +667,7 @@ test.describe(
             testCaseFqn
           )}/${deleteTimestamp}`
         );
-        expect(res.status()).not.toBe(403);
-      });
-    });
-
-    test.describe('Negative - View Results', () => {
-      test('User with only TABLE.EDIT_TESTS (no TEST_CASE.VIEW_ALL) can still view results via TABLE.VIEW_TESTS', async ({
-        tableEditResultsPage,
-      }) => {
-        // TABLE_EDIT_RESULTS_POLICY includes ViewTests, so this should succeed
-        const { apiContext } = await getApiContext(tableEditResultsPage);
-
-        const res = await apiContext.get(
-          `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
-            testCaseFqn
-          )}`
-        );
-        expect(res.status()).toBe(200);
+        expect([200, 204]).toContain(res.status());
       });
     });
 
