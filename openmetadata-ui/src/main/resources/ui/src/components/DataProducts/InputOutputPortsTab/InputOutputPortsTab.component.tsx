@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
   Card,
@@ -29,6 +30,7 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +39,7 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getDataProductPortsView } from '../../../rest/dataProductAPI';
+import { getQueryFilterForDataProductPorts } from '../../../utils/DataProductUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -55,7 +58,14 @@ export const InputOutputPortsTab = forwardRef<
   InputOutputPortsTabProps
 >(
   (
-    { dataProduct, dataProductFqn, permissions, onPortsUpdate, onPortClick },
+    {
+      dataProduct,
+      dataProductFqn,
+      permissions,
+      assetCount,
+      onPortsUpdate,
+      onPortClick,
+    },
     ref
   ) => {
     const { t } = useTranslation();
@@ -82,6 +92,12 @@ export const InputOutputPortsTab = forwardRef<
     // Port counts - fetched from portsView API
     const [inputPortsCount, setInputPortsCount] = useState(0);
     const [outputPortsCount, setOutputPortsCount] = useState(0);
+
+    // Compute query filter for port selection drawer
+    // Only show assets that belong to the DataProduct
+    const portQueryFilter = useMemo(() => {
+      return getQueryFilterForDataProductPorts(dataProductFqn);
+    }, [dataProductFqn]);
 
     // Fetch lineage data and counts (only when lineage section is expanded, or on initial load for counts)
     const fetchLineageData = useCallback(async () => {
@@ -117,7 +133,7 @@ export const InputOutputPortsTab = forwardRef<
       }
     }, [dataProductFqn, lineageLoaded]);
 
-    // Fetch just counts on initial load
+    // Fetch counts on initial load
     const fetchPortCounts = useCallback(async () => {
       if (!dataProductFqn) {
         return;
@@ -220,9 +236,15 @@ export const InputOutputPortsTab = forwardRef<
       <Box
         className="input-output-ports-tab"
         data-testid="input-output-ports-tab"
-        sx={{ p: 2, height: '100%', overflowY: 'auto' }}>
-        <Grid container spacing={5}>
-          {/* Lineage View Section */}
+        sx={{
+          height: '100%',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          gap: 5,
+        }}>
+        <Grid container spacing={2} sx={{ width: '100%', flexShrink: 0 }}>
           <Grid size={12}>
             <Card
               sx={{
@@ -269,7 +291,7 @@ export const InputOutputPortsTab = forwardRef<
                 </IconButton>
               </Box>
               <Collapse in={!isLineageCollapsed}>
-                <CardContent sx={{ p: 0 }}>
+                <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
                   {isLoadingLineage ? (
                     <Box
                       sx={{
@@ -283,6 +305,7 @@ export const InputOutputPortsTab = forwardRef<
                   ) : (
                     <ReactFlowProvider>
                       <PortsLineageView
+                        assetCount={assetCount}
                         dataProduct={dataProduct}
                         height={250}
                         inputPortsData={lineageInputPortsData}
@@ -297,14 +320,20 @@ export const InputOutputPortsTab = forwardRef<
               </Collapse>
             </Card>
           </Grid>
+        </Grid>
 
-          {/* Input Ports Section */}
+        <Grid
+          container
+          spacing={2}
+          sx={{ width: '100%', flex: 1, minHeight: 0 }}>
           <Grid size={{ xs: 12, md: 6 }}>
             <Card
               sx={{
                 border: `1px solid ${theme.palette.allShades.blueGray[100]}`,
                 borderRadius: '8px',
                 boxShadow: 'none',
+                display: 'flex',
+                flexDirection: 'column',
               }}
               variant="outlined">
               <Box
@@ -332,17 +361,19 @@ export const InputOutputPortsTab = forwardRef<
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {permissions.EditAll && !isInputPortsCollapsed && (
-                    <Button
-                      className="h-8 flex items-center"
-                      data-testid="add-input-port-button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddInputPort();
-                      }}>
-                      {t('label.add')}
-                    </Button>
-                  )}
+                  {permissions.EditAll &&
+                    !isInputPortsCollapsed &&
+                    inputPortsCount > 0 && (
+                      <Button
+                        className="h-8 flex items-center"
+                        data-testid="add-input-port-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddInputPort();
+                        }}>
+                        {t('label.add')}
+                      </Button>
+                    )}
                   <IconButton
                     data-testid="toggle-input-ports-collapse"
                     size="small"
@@ -361,12 +392,12 @@ export const InputOutputPortsTab = forwardRef<
               <Collapse in={!isInputPortsCollapsed}>
                 <CardContent
                   sx={{
-                    height: 'calc(100vh - 450px)',
-                    minHeight: 300,
                     display: 'flex',
                     flexDirection: 'column',
-                    overflow: 'hidden',
                     '&:last-child': { pb: 2 },
+                    height: isInputPortsCollapsed
+                      ? 'auto'
+                      : 'calc(100vh - 400px)',
                   }}>
                   {inputPortsCount === 0 ? (
                     <ErrorPlaceHolder
@@ -382,6 +413,20 @@ export const InputOutputPortsTab = forwardRef<
                       <Typography className="text-center">
                         {t('message.no-input-ports-added')}
                       </Typography>
+                      {permissions.EditAll && (
+                        <Button
+                          className="m-t-md"
+                          data-testid="add-input-port-button"
+                          icon={<PlusOutlined />}
+                          type="primary"
+                          onClick={handleAddInputPort}>
+                          {t('label.add-entity', {
+                            entity: t('label.entity-port-plural', {
+                              entity: t('label.input'),
+                            }),
+                          })}
+                        </Button>
+                      )}
                     </ErrorPlaceHolder>
                   ) : (
                     <PortsListView
@@ -397,13 +442,14 @@ export const InputOutputPortsTab = forwardRef<
             </Card>
           </Grid>
 
-          {/* Output Ports Section */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Card
               sx={{
                 border: `1px solid ${theme.palette.allShades.blueGray[100]}`,
                 borderRadius: '8px',
                 boxShadow: 'none',
+                display: 'flex',
+                flexDirection: 'column',
               }}
               variant="outlined">
               <Box
@@ -431,17 +477,19 @@ export const InputOutputPortsTab = forwardRef<
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {permissions.EditAll && !isOutputPortsCollapsed && (
-                    <Button
-                      className="h-8 flex items-center"
-                      data-testid="add-output-port-button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddOutputPort();
-                      }}>
-                      {t('label.add')}
-                    </Button>
-                  )}
+                  {permissions.EditAll &&
+                    !isOutputPortsCollapsed &&
+                    outputPortsCount > 0 && (
+                      <Button
+                        className="h-8 flex items-center"
+                        data-testid="add-output-port-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddOutputPort();
+                        }}>
+                        {t('label.add')}
+                      </Button>
+                    )}
                   <IconButton
                     data-testid="toggle-output-ports-collapse"
                     size="small"
@@ -460,12 +508,12 @@ export const InputOutputPortsTab = forwardRef<
               <Collapse in={!isOutputPortsCollapsed}>
                 <CardContent
                   sx={{
-                    height: 'calc(100vh - 450px)',
-                    minHeight: 300,
                     display: 'flex',
                     flexDirection: 'column',
-                    overflow: 'hidden',
                     '&:last-child': { pb: 2 },
+                    height: isOutputPortsCollapsed
+                      ? 'auto'
+                      : 'calc(100vh - 400px)',
                   }}>
                   {outputPortsCount === 0 ? (
                     <ErrorPlaceHolder
@@ -479,8 +527,24 @@ export const InputOutputPortsTab = forwardRef<
                       size={SIZE.SMALL}
                       type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
                       <Typography className="text-center">
-                        {t('message.no-output-ports-added')}
+                        {assetCount === 0
+                          ? t('message.no-assets-for-output-ports')
+                          : t('message.no-output-ports-added')}
                       </Typography>
+                      {permissions.EditAll && assetCount > 0 && (
+                        <Button
+                          className="m-t-md"
+                          data-testid="add-output-port-button"
+                          icon={<PlusOutlined />}
+                          type="primary"
+                          onClick={handleAddOutputPort}>
+                          {t('label.add-entity', {
+                            entity: t('label.entity-port-plural', {
+                              entity: t('label.output'),
+                            }),
+                          })}
+                        </Button>
+                      )}
                     </ErrorPlaceHolder>
                   ) : (
                     <PortsListView
@@ -500,6 +564,9 @@ export const InputOutputPortsTab = forwardRef<
         <AssetSelectionDrawer
           entityFqn={dataProductFqn}
           open={isAddingInputPort}
+          title={t('label.add-entity', {
+            entity: t('label.entity-port-plural', { entity: t('label.input') }),
+          })}
           type={AssetsOfEntity.DATA_PRODUCT_INPUT_PORT}
           onCancel={() => setIsAddingInputPort(false)}
           onSave={handleInputPortSave}
@@ -507,7 +574,14 @@ export const InputOutputPortsTab = forwardRef<
 
         <AssetSelectionDrawer
           entityFqn={dataProductFqn}
+          infoBannerText={t('message.output-ports-from-data-product-assets')}
           open={isAddingOutputPort}
+          queryFilter={portQueryFilter}
+          title={t('label.add-entity', {
+            entity: t('label.entity-port-plural', {
+              entity: t('label.output'),
+            }),
+          })}
           type={AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT}
           onCancel={() => setIsAddingOutputPort(false)}
           onSave={handleOutputPortSave}
