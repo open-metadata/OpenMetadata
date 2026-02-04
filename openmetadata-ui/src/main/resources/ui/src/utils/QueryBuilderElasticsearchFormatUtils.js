@@ -225,8 +225,9 @@ function buildParameters(
  * Examples:
  *   - "userref.displayName.keyword" -> "userref" (entityReference)
  *   - "timeInterval.start" -> "timeInterval" (timeInterval)
- *   - "link.url.keyword" -> "link" (hyperlink-cp)
- *   - "mytable.rows.col1.keyword" -> "mytable" (table-cp)
+ *   - "link.url.keyword" -> "link.url" (hyperlink-cp)
+ *   - "link.displayText.keyword" -> "link.displayText" (hyperlink-cp)
+ *   - "mytable.rows.col1.keyword" -> "mytable.rows.col1" (table-cp)
  *   - "mystring.keyword" -> "mystring" (string)
  *   - "myenum.keyword" -> "myenum" (enum)
  *
@@ -235,10 +236,22 @@ function buildParameters(
  * @private
  */
 function getBasePropertyName(propertyName) {
-  // Handle table-cp pattern: propertyName.rows.columnName.keyword
-  const tableMatch = propertyName.match(/^([^.]+)\.rows\./);
+  // Handle table-cp pattern: propertyName.rows.columnName.keyword -> propertyName.rows.columnName
+  // Backend stores separate entries for each column with names like "propertyName.rows.columnName"
+  const tableMatch = propertyName.match(/^([^.]+\.rows\.[^.]+)/);
   if (tableMatch) {
     return tableMatch[1];
+  }
+
+  // Handle hyperlink fields - keep .url or .displayText suffix, only strip .keyword
+  // Backend stores these as separate entries with names like "propertyName.url" and "propertyName.displayText"
+  if (propertyName.includes('.url')) {
+    return propertyName.replace('.keyword', '').replace(/\.url$/, '.url');
+  }
+  if (propertyName.includes('.displayText')) {
+    return propertyName
+      .replace('.keyword', '')
+      .replace(/\.displayText$/, '.displayText');
   }
 
   // Known nested field suffixes for complex custom property types
@@ -249,10 +262,6 @@ function getBasePropertyName(propertyName) {
     '.name',
     '.fullyQualifiedName.keyword',
     '.fullyQualifiedName',
-    '.url.keyword',
-    '.url',
-    '.displayText.keyword',
-    '.displayText',
     '.start',
     '.end',
     '.keyword',
@@ -296,16 +305,15 @@ function getFieldTypeInfo(propertyName) {
   }
 
   // Hyperlink fields: propertyName.url.keyword or propertyName.displayText.keyword
-  if (propertyName.includes('.url')) {
+  // Both URL and displayText are now stored in stringValue for wildcard support
+  if (propertyName.includes('.url') || propertyName.includes('.displayText')) {
     return { fieldType: 'hyperlink', nestedField: 'stringValue' };
-  }
-  if (propertyName.includes('.displayText')) {
-    return { fieldType: 'hyperlink', nestedField: 'textValue' };
   }
 
   // Table-cp fields: propertyName.rows.columnName.keyword
+  // Table data is now stored in both stringValue (for wildcard) and textValue (for full-text)
   if (propertyName.includes('.rows.')) {
-    return { fieldType: 'table', nestedField: 'textValue' };
+    return { fieldType: 'table', nestedField: 'stringValue' };
   }
 
   // Default: string or numeric type (determined by operator)
@@ -408,7 +416,94 @@ function buildExtensionQuery(propertyName, entityType, value, operator, not) {
   let mainQuery;
 
   // Use customPropertiesTyped for structured queries
-  if (fieldType === 'timeInterval' && nestedField) {
+  // Handle text search operators first (like, not_like, regexp) - these need special query types
+  if (operator === 'like' || operator === 'not_like') {
+    // Contains/Not contains: use wildcard query on stringValue (keyword field)
+    // All searchable values are now stored in stringValue for wildcard support
+    const searchValue = Array.isArray(value) ? value[0] : value;
+    mainQuery = {
+      nested: {
+        path: 'customPropertiesTyped',
+        ignore_unmapped: true,
+        query: {
+          bool: {
+            must: [
+              { term: { 'customPropertiesTyped.name': basePropertyName } },
+              {
+                wildcard: {
+                  'customPropertiesTyped.stringValue': {
+                    value: '*' + searchValue + '*',
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    };
+  } else if (operator === 'regexp') {
+    // Regular expression: use regexp query on stringValue
+    const searchValue = Array.isArray(value) ? value[0] : value;
+    mainQuery = {
+      nested: {
+        path: 'customPropertiesTyped',
+        ignore_unmapped: true,
+        query: {
+          bool: {
+            must: [
+              { term: { 'customPropertiesTyped.name': basePropertyName } },
+              {
+                regexp: {
+                  'customPropertiesTyped.stringValue': {
+                    value: searchValue,
+                    case_insensitive: true,
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    };
+  } else if (operator === 'is_null' || operator === 'is_not_null') {
+    // Existence check: query if property name exists in customPropertiesTyped
+    // Handle this early to ensure it works for all field types
+    const existsQuery = {
+      nested: {
+        path: 'customPropertiesTyped',
+        ignore_unmapped: true,
+        query: {
+          term: { 'customPropertiesTyped.name': basePropertyName },
+        },
+      },
+    };
+    // Negate for is_null (field should NOT exist), but not when reversed from is_not_null
+    const shouldNegateExists =
+      (operator === 'is_null' && !not) || (operator === 'is_not_null' && not);
+    if (shouldNegateExists) {
+      mainQuery = {
+        bool: {
+          must_not: existsQuery,
+        },
+      };
+    } else {
+      mainQuery = existsQuery;
+    }
+
+    // Return early with entityType filter
+    return {
+      bool: {
+        must: [
+          mainQuery,
+          {
+            term: {
+              entityType: entityType,
+            },
+          },
+        ],
+      },
+    };
+  } else if (fieldType === 'timeInterval' && nestedField) {
     // TimeInterval: query start or end field
     mainQuery = buildNestedTypedQuery(
       basePropertyName,
@@ -417,31 +512,125 @@ function buildExtensionQuery(propertyName, entityType, value, operator, not) {
       operator
     );
   } else if (fieldType === 'entityReference') {
-    // EntityReference: query refName field
+    // EntityReference: use refName for exact match queries
     mainQuery = buildNestedTypedQuery(
       basePropertyName,
       'refName',
       value,
       operator
     );
-  } else if (isRangeOperator(operator)) {
-    // Numeric range query: use longValue or doubleValue
+  } else if (fieldType === 'hyperlink' && nestedField) {
+    // Hyperlink: both URL and displayText are stored in stringValue for exact/wildcard matching
     mainQuery = buildNestedTypedQuery(
+      basePropertyName,
+      'stringValue',
+      value,
+      operator
+    );
+  } else if (fieldType === 'table' && nestedField) {
+    // Table: row data is stored in both stringValue (for wildcard) and textValue (for full-text)
+    // Use stringValue for exact match queries
+    mainQuery = buildNestedTypedQuery(
+      basePropertyName,
+      'stringValue',
+      value,
+      operator
+    );
+  } else if (isRangeOperator(operator)) {
+    // Range query: query longValue, doubleValue, and stringValue with OR
+    // since we don't know which field the value is stored in
+    // (dates are stored as strings, numbers as long/double)
+    const longValueQuery = buildNestedTypedQuery(
       basePropertyName,
       'longValue',
       value,
       operator
     );
-  } else if (operator === 'equal' || operator === 'not_equal') {
-    // Exact match: use stringValue for strings, nested query
-    mainQuery = buildNestedTypedQuery(
+    const doubleValueQuery = buildNestedTypedQuery(
+      basePropertyName,
+      'doubleValue',
+      value,
+      operator
+    );
+    const stringValueQuery = buildNestedTypedQuery(
       basePropertyName,
       'stringValue',
       value,
-      'equal'
+      operator
     );
+    mainQuery = {
+      bool: {
+        should: [longValueQuery, doubleValueQuery, stringValueQuery],
+        minimum_should_match: 1,
+      },
+    };
+  } else if (
+    operator === 'equal' ||
+    operator === 'not_equal' ||
+    operator === 'select_equals' ||
+    operator === 'select_not_equals' ||
+    operator === 'multiselect_equals' ||
+    operator === 'multiselect_not_equals'
+  ) {
+    // Exact match: detect numeric values and use appropriate field
+    // Note: parseFloat parses partial strings, so we need to check the entire value
+    const stringValue = String(value);
+    const trimmedValue = stringValue.trim();
+    const numericValue =
+      typeof value === 'number' ? value : parseFloat(trimmedValue);
+    // Check if the entire value is a valid number (parseFloat alone won't catch '05:04:04' -> 5)
+    const isNumeric =
+      !isNaN(numericValue) &&
+      isFinite(numericValue) &&
+      String(numericValue) === trimmedValue;
+
+    if (isNumeric) {
+      // For numeric values, use longValue (for integers) or doubleValue (for decimals)
+      const isDecimal = stringValue.includes('.');
+      const nestedField = isDecimal ? 'doubleValue' : 'longValue';
+      mainQuery = buildNestedTypedQuery(
+        basePropertyName,
+        nestedField,
+        numericValue,
+        'equal'
+      );
+    } else {
+      // For string values, use stringValue
+      mainQuery = buildNestedTypedQuery(
+        basePropertyName,
+        'stringValue',
+        value,
+        'equal'
+      );
+    }
+  } else if (
+    operator === 'multiselect_contains' ||
+    operator === 'multiselect_not_contains'
+  ) {
+    // Multiselect contains: use wildcard on stringValue (enum values are stored there)
+    const searchValue = Array.isArray(value) ? value[0] : value;
+    mainQuery = {
+      nested: {
+        path: 'customPropertiesTyped',
+        ignore_unmapped: true,
+        query: {
+          bool: {
+            must: [
+              { term: { 'customPropertiesTyped.name': basePropertyName } },
+              {
+                wildcard: {
+                  'customPropertiesTyped.stringValue': {
+                    value: '*' + searchValue + '*',
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    };
   } else {
-    // Text search (like, wildcard, regexp): use customPropertiesTyped.textValue
+    // Default text search: use match query on textValue
     const searchValue = Array.isArray(value) ? value[0] : value;
     mainQuery = {
       nested: {
@@ -467,7 +656,15 @@ function buildExtensionQuery(propertyName, entityType, value, operator, not) {
   }
 
   // Wrap in must_not if negated
-  if (not || operator === 'not_equal' || operator === 'not_between') {
+  if (
+    not ||
+    operator === 'not_equal' ||
+    operator === 'not_between' ||
+    operator === 'not_like' ||
+    operator === 'select_not_equals' ||
+    operator === 'multiselect_not_equals' ||
+    operator === 'multiselect_not_contains'
+  ) {
     mainQuery = {
       bool: {
         must_not: mainQuery.nested ? mainQuery : [mainQuery],
@@ -536,17 +733,15 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
     ({ elasticSearchQueryType } = opConfig);
   }
 
-  // For extension fields, use the new customPropertiesFlat field approach
-  if (
-    isNestedExtensionField &&
-    entityType &&
-    Array.isArray(value) &&
-    value.length > 0
-  ) {
+  // For extension fields, use the new customPropertiesTyped field approach
+  // Handle both value-based operators and unary operators (is_null, is_not_null)
+  const isUnaryOperator = op === 'is_null' || op === 'is_not_null';
+  const hasValue = Array.isArray(value) && value.length > 0;
+  if (isNestedExtensionField && entityType && (hasValue || isUnaryOperator)) {
     return buildExtensionQuery(
       extensionPropertyName,
       entityType,
-      value[0],
+      hasValue ? value[0] : null,
       op,
       not
     );

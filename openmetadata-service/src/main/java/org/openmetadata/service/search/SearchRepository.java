@@ -1431,7 +1431,9 @@ public class SearchRepository {
         List<Map<String, Object>> customPropertiesTyped =
             SearchIndexUtils.buildTypedCustomProperties(entity.getExtension(), entityType);
         fieldAddParams.put("customPropertiesTyped", customPropertiesTyped);
+        fieldAddParams.put("extension", entity.getExtension());
         scriptTxt.append("ctx._source.customPropertiesTyped = params.customPropertiesTyped;");
+        scriptTxt.append("ctx._source.extension = params.extension;");
       }
       if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
         fieldAddParams.put(FIELD_DESCRIPTION, entity.getDescription());
@@ -1494,7 +1496,9 @@ public class SearchRepository {
         List<Map<String, Object>> customPropertiesTyped =
             SearchIndexUtils.buildTypedCustomProperties(entity.getExtension(), entityType);
         fieldAddParams.put("customPropertiesTyped", customPropertiesTyped);
+        fieldAddParams.put("extension", entity.getExtension());
         scriptTxt.append("ctx._source.customPropertiesTyped = params.customPropertiesTyped;");
+        scriptTxt.append("ctx._source.extension = params.extension;");
       }
     }
     return scriptTxt.toString();

@@ -597,8 +597,9 @@ public final class SearchIndexUtils {
           buildEntityReferenceListEntries(propertyName, propertyType, value));
       case "enum" -> entries.addAll(buildEnumEntries(propertyName, propertyType, value));
       case "markdown", "sqlQuery" -> entries.add(buildTextEntry(propertyName, propertyType, value));
-      case "table-cp" -> entries.add(buildTableEntry(propertyName, propertyType, value));
-      case "hyperlink-cp" -> entries.add(buildHyperlinkEntry(propertyName, propertyType, value));
+      case "table-cp" -> entries.addAll(buildTableEntries(propertyName, propertyType, value));
+      case "hyperlink-cp" -> entries.addAll(
+          buildHyperlinkEntries(propertyName, propertyType, value));
       default -> entries.add(buildStringEntry(propertyName, propertyType, value));
     }
 
@@ -739,29 +740,52 @@ public final class SearchIndexUtils {
     return entry;
   }
 
-  private static Map<String, Object> buildTableEntry(
+  private static List<Map<String, Object>> buildTableEntries(
       String name, String propertyType, Object value) {
-    Map<String, Object> entry = createBaseEntry(name, propertyType);
+    List<Map<String, Object>> entries = new ArrayList<>();
     if (value instanceof Map<?, ?> map && map.containsKey("rows")) {
-      entry.put("textValue", flattenValue(map.get("rows")));
-    } else {
-      entry.put("textValue", flattenValue(value));
+      Object rowsObj = map.get("rows");
+      if (rowsObj instanceof List<?> rows) {
+        for (Object rowObj : rows) {
+          if (rowObj instanceof Map<?, ?> row) {
+            for (Map.Entry<?, ?> cell : row.entrySet()) {
+              String columnName = cell.getKey().toString();
+              String cellValue = cell.getValue() != null ? cell.getValue().toString() : "";
+              Map<String, Object> entry =
+                  createBaseEntry(name + ".rows." + columnName, propertyType);
+              entry.put("stringValue", cellValue);
+              entry.put("textValue", cellValue);
+              entries.add(entry);
+            }
+          }
+        }
+      }
     }
-    return entry;
+    return entries;
   }
 
-  private static Map<String, Object> buildHyperlinkEntry(
+  private static List<Map<String, Object>> buildHyperlinkEntries(
       String name, String propertyType, Object value) {
-    Map<String, Object> entry = createBaseEntry(name, propertyType);
+    List<Map<String, Object>> entries = new ArrayList<>();
     if (value instanceof Map<?, ?> map) {
+      // Create separate entries for URL and displayText with distinct names
+      // This allows wildcard search on each field independently
       if (map.get("url") != null) {
-        entry.put("stringValue", map.get("url").toString());
+        Map<String, Object> urlEntry = createBaseEntry(name + ".url", propertyType);
+        String urlValue = map.get("url").toString();
+        urlEntry.put("stringValue", urlValue);
+        urlEntry.put("textValue", urlValue);
+        entries.add(urlEntry);
       }
       if (map.get("displayText") != null) {
-        entry.put("textValue", map.get("displayText").toString());
+        Map<String, Object> displayTextEntry = createBaseEntry(name + ".displayText", propertyType);
+        String displayTextValue = map.get("displayText").toString();
+        displayTextEntry.put("stringValue", displayTextValue);
+        displayTextEntry.put("textValue", displayTextValue);
+        entries.add(displayTextEntry);
       }
     }
-    return entry;
+    return entries;
   }
 
   private static Map<String, Object> buildStringEntry(
