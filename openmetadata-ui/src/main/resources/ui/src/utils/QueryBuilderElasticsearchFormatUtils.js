@@ -246,12 +246,10 @@ function getBasePropertyName(propertyName) {
   // Handle hyperlink fields - keep .url or .displayText suffix, only strip .keyword
   // Backend stores these as separate entries with names like "propertyName.url" and "propertyName.displayText"
   if (propertyName.includes('.url')) {
-    return propertyName.replace('.keyword', '').replace(/\.url$/, '.url');
+    return propertyName.replace('.keyword', '');
   }
   if (propertyName.includes('.displayText')) {
-    return propertyName
-      .replace('.keyword', '')
-      .replace(/\.displayText$/, '.displayText');
+    return propertyName.replace('.keyword', '');
   }
 
   // Known nested field suffixes for complex custom property types
