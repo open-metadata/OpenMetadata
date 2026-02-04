@@ -1690,7 +1690,13 @@ public class TableRepository extends EntityRepository<Table> {
           "compressionStrategy",
           original.getCompressionStrategy(),
           updated.getCompressionStrategy());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
       recordChange("locationPath", original.getLocationPath(), updated.getLocationPath());
       recordChange(
           "processedLineage", original.getProcessedLineage(), updated.getProcessedLineage());

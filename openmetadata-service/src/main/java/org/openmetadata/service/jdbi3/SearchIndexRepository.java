@@ -521,7 +521,13 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
           "searchIndexSettings",
           original.getSearchIndexSettings(),
           updated.getSearchIndexSettings());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
       recordChange("indexType", original.getIndexType(), updated.getIndexType());
     }
 
