@@ -889,7 +889,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
       recordChange(
           "pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
     }
 
     private void updateTasks(Pipeline original, Pipeline updated) {

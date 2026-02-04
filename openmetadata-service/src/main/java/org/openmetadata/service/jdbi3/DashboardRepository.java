@@ -570,7 +570,13 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
           listOrEmpty(updated.getDataModels()),
           listOrEmpty(original.getDataModels()));
       updateDashboardUrl(original, updated);
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
     }
 
     private void update(

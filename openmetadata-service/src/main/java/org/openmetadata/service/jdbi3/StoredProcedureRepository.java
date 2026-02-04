@@ -246,7 +246,13 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
       recordChange(
           "processedLineage", original.getProcessedLineage(), updated.getProcessedLineage());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
     }
 
     private void updateProcessedLineage(StoredProcedure origSP, StoredProcedure updatedSP) {
