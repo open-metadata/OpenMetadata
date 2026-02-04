@@ -1875,4 +1875,26 @@ public class SearchRepository {
     inheritedReferences.forEach(ref -> ref.setInherited(true));
     return inheritedReferences;
   }
+
+  /**
+   * Initialize advanced search features that depend on application settings.
+   * This method is called during Phase 2 of application startup after
+   * settings cache has been initialized and database settings are available.
+   *
+   * Currently initializes lineage builders that require LINEAGE_SETTINGS.
+   */
+  public void initializeLineageComponents() {
+    LOG.info("Initializing lineage components for SearchRepository");
+
+    if (searchClient != null) {
+      try {
+        searchClient.initializeLineageBuilders();
+        LOG.info("Lineage components initialized successfully");
+      } catch (Exception e) {
+        LOG.error("Failed to initialize lineage components", e);
+      }
+    } else {
+      LOG.warn("Cannot initialize lineage components - SearchClient is null");
+    }
+  }
 }

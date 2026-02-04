@@ -47,13 +47,25 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 @ExtendWith(TestNamespaceExtension.class)
 @Execution(ExecutionMode.SAME_THREAD)
 public class TagRecognizerFeedbackIT {
-  private static final long TIMEOUT_MINUTES = 2;
-  private static final long POLL_INTERVAL_SECONDS = 5;
+  private static final long TIMEOUT_MINUTES = 3;
+  private static final long POLL_INTERVAL_SECONDS = 3;
 
   @BeforeAll
-  protected static void resumeWorkflow() {
-    org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance()
-        .resumeWorkflow("RecognizerFeedbackReviewWorkflow");
+  protected static void setupWorkflow() {
+    org.openmetadata.service.governance.workflows.WorkflowHandler workflowHandler =
+        org.openmetadata.service.governance.workflows.WorkflowHandler.getInstance();
+    workflowHandler.resumeWorkflow("RecognizerFeedbackReviewWorkflow");
+
+    Awaitility.await("Wait for workflow to be ready")
+        .pollDelay(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () -> {
+              org.openmetadata.schema.governance.workflows.WorkflowDefinition wfDef =
+                  new org.openmetadata.schema.governance.workflows.WorkflowDefinition()
+                      .withName("RecognizerFeedbackReviewWorkflow");
+              assertTrue(workflowHandler.isDeployed(wfDef), "Workflow should be deployed");
+            });
   }
 
   protected SharedEntities shared() {
@@ -191,7 +203,7 @@ public class TagRecognizerFeedbackIT {
   }
 
   private Thread waitForRecognizerFeedbackTask(String tagFQN) {
-    return waitForRecognizerFeedbackTask(tagFQN, 5);
+    return waitForRecognizerFeedbackTask(tagFQN, TIMEOUT_MINUTES);
   }
 
   public Thread waitForRecognizerFeedbackTask(String tagFQN, long timeoutMinutes) {
@@ -200,29 +212,41 @@ public class TagRecognizerFeedbackIT {
         "/v1/feed?limit=100&type=Task&taskStatus=Open&entityLink="
             + URLEncoder.encode(entityLink, StandardCharsets.UTF_8);
 
-    Awaitility.await(String.format("Wait for Task to be Created for Tag: '%s'", tagFQN))
-        .ignoreExceptions()
-        .pollInterval(Duration.ofSeconds(POLL_INTERVAL_SECONDS))
-        .atMost(Duration.ofMinutes(TIMEOUT_MINUTES))
-        .until(
-            () -> {
-              FeedResourceIT.ThreadList response =
-                  SdkClients.adminClient()
-                      .getHttpClient()
-                      .execute(HttpMethod.GET, url, null, FeedResourceIT.ThreadList.class);
-              return response.getData() != null && !response.getData().isEmpty();
-            });
+    try {
+      Awaitility.await(String.format("Wait for Task to be Created for Tag: '%s'", tagFQN))
+          .pollInterval(Duration.ofSeconds(POLL_INTERVAL_SECONDS))
+          .atMost(Duration.ofMinutes(timeoutMinutes))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                FeedResourceIT.ThreadList response =
+                    SdkClients.adminClient()
+                        .getHttpClient()
+                        .execute(HttpMethod.GET, url, null, FeedResourceIT.ThreadList.class);
+                return response.getData() != null && !response.getData().isEmpty();
+              });
 
-    FeedResourceIT.ThreadList response =
-        SdkClients.adminClient()
-            .getHttpClient()
-            .execute(HttpMethod.GET, url, null, FeedResourceIT.ThreadList.class);
+      FeedResourceIT.ThreadList response =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .execute(HttpMethod.GET, url, null, FeedResourceIT.ThreadList.class);
 
-    for (Thread thread : response.getData()) {
-      return thread;
+      if (response.getData() != null && !response.getData().isEmpty()) {
+        return response.getData().get(0);
+      }
+    } catch (org.awaitility.core.ConditionTimeoutException e) {
+      throw new RuntimeException(
+          String.format(
+              "Timeout waiting for recognizer feedback task for tag '%s' after %d minutes",
+              tagFQN, timeoutMinutes),
+          e);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          String.format("Failed to get recognizer feedback task for tag '%s'", tagFQN), e);
     }
 
-    throw new RuntimeException("Failed to get recognizer feedback task");
+    throw new RuntimeException(
+        String.format("No recognizer feedback task found for tag '%s'", tagFQN));
   }
 
   private void resolveRecognizerFeedbackTask(Thread thread) {

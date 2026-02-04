@@ -11,10 +11,23 @@
  *  limitations under the License.
  */
 
-import { OktaAuth, OktaAuthOptions } from '@okta/okta-auth-js';
+import {
+  EVENT_RENEWED,
+  isIDToken,
+  OktaAuth,
+  OktaAuthOptions,
+  Token,
+} from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
-import { FunctionComponent, ReactNode, useCallback, useMemo } from 'react';
+import {
+  FunctionComponent,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+} from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { OktaCustomStorage } from '../../../utils/OktaCustomStorage';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from './AuthProvider';
 
@@ -28,92 +41,96 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
   const { authConfig } = useApplicationStore();
   const { handleSuccessfulLogin } = useAuthProvider();
 
-  const { clientId, issuer, redirectUri, scopes, pkce } =
-    authConfig as unknown as OktaAuthOptions;
+  const config = authConfig as unknown as OktaAuthOptions;
+  const { clientId, issuer, redirectUri, scopes, pkce } = config;
 
-  const oktaAuth = useMemo(
-    () =>
-      new OktaAuth({
-        clientId,
-        issuer,
-        redirectUri,
-        scopes,
-        pkce,
-        tokenManager: {
-          autoRenew: true,
-          storage: 'memory',
-          syncStorage: true,
-          expireEarlySeconds: 60,
-          secure: true,
-        },
-        cookies: {
-          secure: true,
-          sameSite: 'lax',
-        },
-        services: {
-          autoRenew: true,
-          renewOnTabActivation: true,
-          tabInactivityDuration: 3600,
-        },
-      }),
-    [clientId, issuer, redirectUri, scopes, pkce]
-  );
+  const customStorage = useMemo(() => new OktaCustomStorage(), []);
 
-  const triggerLogin = async () => {
-    await oktaAuth.signInWithRedirect();
-  };
+  const oktaAuth = useMemo(() => {
+    const oktaConfig: OktaAuthOptions = {
+      clientId,
+      issuer,
+      redirectUri,
+      scopes,
+      pkce,
+      tokenManager: {
+        autoRenew: true,
+        storage: customStorage,
+        syncStorage: true,
+        secure: true,
+      },
+      cookies: {
+        secure: true,
+        sameSite: 'lax',
+      },
+      services: {
+        autoRenew: true,
+        renewOnTabActivation: true,
+      },
+    };
 
-  const customAuthHandler = async () => {
-    const previousAuthState = oktaAuth.authStateManager.getPreviousAuthState();
-    if (!previousAuthState?.isAuthenticated) {
-      // Clear storage before triggering login
-      oktaAuth.tokenManager.clear();
-      await oktaAuth.signOut();
-      // App initialization stage
-      await triggerLogin();
-    } else {
-      // Ask the user to trigger the login process during token autoRenew process
+    return new OktaAuth(oktaConfig);
+  }, [customStorage, clientId, issuer, redirectUri, scopes, pkce]);
+
+  useEffect(() => {
+    const initializeTokenManager = async () => {
+      if (!oktaAuth.tokenManager.isStarted()) {
+        await customStorage.waitForInit();
+        await oktaAuth.tokenManager.start();
+      }
+    };
+
+    initializeTokenManager().catch((error) => {
+      // eslint-disable-next-line no-console
+      console.error('Failed to initialize Okta token manager:', error);
+    });
+
+    const handleTokenRenewed = async (key: string, newToken: Token) => {
+      if (key === 'idToken' && isIDToken(newToken)) {
+        const idToken = newToken.idToken;
+        if (idToken) {
+          await setOidcToken(idToken);
+        }
+      }
+    };
+
+    oktaAuth.tokenManager.on(EVENT_RENEWED, handleTokenRenewed);
+
+    return () => {
+      oktaAuth.tokenManager.off(EVENT_RENEWED, handleTokenRenewed);
+    };
+  }, [oktaAuth, customStorage]);
+
+  const restoreOriginalUri = useCallback(async () => {
+    const idToken = oktaAuth.getIdToken() ?? '';
+    const scopes =
+      oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
+
+    await setOidcToken(idToken);
+
+    try {
+      const info = await oktaAuth.getUser<{ imageUrl?: string }>();
+      const user = {
+        id_token: idToken,
+        scope: scopes,
+        profile: {
+          email: info.email ?? '',
+          name: info.name ?? '',
+          picture: info.imageUrl ?? '',
+          locale: info.locale ?? '',
+          sub: info.sub,
+        },
+      };
+      handleSuccessfulLogin(user);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to restore original URI:', error);
+      await oktaAuth.signInWithRedirect();
     }
-  };
-
-  const restoreOriginalUri = useCallback(
-    async (_oktaAuth: OktaAuth) => {
-      const idToken = _oktaAuth.getIdToken() ?? '';
-      const scopes =
-        _oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
-      await setOidcToken(idToken);
-      _oktaAuth
-        .getUser()
-        .then((info) => {
-          const user = {
-            id_token: idToken,
-            scope: scopes,
-            profile: {
-              email: info.email ?? '',
-              name: info.name ?? '',
-
-              picture: (info as any).imageUrl ?? '',
-              locale: info.locale ?? '',
-              sub: info.sub,
-            },
-          };
-          handleSuccessfulLogin(user);
-        })
-        .catch(async (err) => {
-          // eslint-disable-next-line no-console
-          console.error(err);
-          // Redirect to login on error.
-          await customAuthHandler();
-        });
-    },
-    [handleSuccessfulLogin]
-  );
+  }, [oktaAuth, handleSuccessfulLogin]);
 
   return (
-    <Security
-      oktaAuth={oktaAuth}
-      restoreOriginalUri={restoreOriginalUri}
-      onAuthRequired={customAuthHandler}>
+    <Security oktaAuth={oktaAuth} restoreOriginalUri={restoreOriginalUri}>
       {children}
     </Security>
   );
