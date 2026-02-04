@@ -492,7 +492,13 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
             listOrEmpty(updated.getResponseSchema().getSchemaFields()),
             EntityUtil.schemaFieldMatch);
       }
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
     }
 
     private void updateSchemaFields(
