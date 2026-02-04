@@ -54,6 +54,7 @@ import {
   getBulkEntityBreadcrumbList,
   getImportedEntityType,
   getImportValidateAPIEntityType,
+  validateCsvString,
 } from '../../../utils/EntityImport/EntityImportUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
@@ -309,20 +310,34 @@ const BulkEntityImportPage = () => {
   );
 
   const handleLoadData = useCallback(
-    (e: ProgressEvent<FileReader>) => {
+    async (e: ProgressEvent<FileReader>) => {
       try {
+        isBulkActionProcessingRef.current = {
+          isProcessing: true,
+          entityType,
+        };
         const result = e.target?.result as string;
 
-        readString(result, {
-          worker: true,
-          skipEmptyLines: true,
-          complete: onCSVReadComplete,
-        });
+        const initialLoadJobData: CSVImportJobType = {
+          type: 'initialLoad',
+          initialResult: result,
+        };
+
+        setActiveAsyncImportJob(initialLoadJobData);
+        activeAsyncImportJobRef.current = initialLoadJobData;
+
+        await validateCsvString(
+          result,
+          entityType,
+          fqn,
+          isBulkEdit,
+          effectiveSourceEntityType
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [onCSVReadComplete, readString]
+    [entityType, fqn, isBulkEdit, effectiveSourceEntityType]
   );
 
   const handleBack = () => {
@@ -547,7 +562,9 @@ const BulkEntityImportPage = () => {
             return;
           }
 
-          handleImportWebsocketResponseWithActiveStep(importResults);
+          handleImportWebsocketResponseWithActiveStep(
+            importResults as CSVImportResult
+          );
         }
 
         if (websocketResponse.status === 'FAILED') {

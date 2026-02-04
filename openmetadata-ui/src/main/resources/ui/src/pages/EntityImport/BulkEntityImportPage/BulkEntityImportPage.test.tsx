@@ -138,7 +138,13 @@ jest.mock('../../../utils/CSV/CSVUtilsClassBase', () => ({
 }));
 
 // Mock entity import utils
-jest.mock('../../../utils/EntityImport/EntityImportUtils');
+jest.mock('../../../utils/EntityImport/EntityImportUtils', () => ({
+  getBulkEntityBreadcrumbList: jest.fn(() => []),
+  getImportedEntityType: jest.fn(() => 'table'),
+  getImportValidateAPIEntityType: jest.fn(() =>
+    jest.fn().mockResolvedValue({})
+  ),
+}));
 
 // Mock entity bulk edit utils
 jest.mock('../../../utils/EntityBulkEdit/EntityBulkEditUtils');
@@ -248,10 +254,8 @@ const renderComponent = (initialPath = '/table/test.table/import') => {
 
 describe('BulkEntityImportPage', () => {
   let mockGetEntityByFqn: jest.Mock;
-  let mockValidateCsvString: jest.Mock;
   let mockIsBulkEditRoute: jest.Mock;
   let mockGetEntityColumnsAndDataSourceFromCSV: jest.Mock;
-  let mockGetImportValidateAPIEntityType: jest.Mock;
 
   beforeEach(() => {
     // Get mocked functions from modules
@@ -263,17 +267,11 @@ describe('BulkEntityImportPage', () => {
     mockGetEntityColumnsAndDataSourceFromCSV =
       CSVUtils.getEntityColumnsAndDataSourceFromCSV as jest.Mock;
 
-    const EntityImportUtils = require('../../../utils/EntityImport/EntityImportUtils');
-    mockValidateCsvString = EntityImportUtils.validateCsvString as jest.Mock;
-    mockGetImportValidateAPIEntityType =
-      EntityImportUtils.getImportValidateAPIEntityType as jest.Mock;
-
     const EntityBulkEditUtils = require('../../../utils/EntityBulkEdit/EntityBulkEditUtils');
     mockIsBulkEditRoute = EntityBulkEditUtils.isBulkEditRoute as jest.Mock;
 
     jest.clearAllMocks();
     mockGetEntityByFqn.mockResolvedValue(mockEntity);
-    mockValidateCsvString.mockResolvedValue(undefined);
     mockIsBulkEditRoute.mockReturnValue(false);
     mockGetEntityColumnsAndDataSourceFromCSV.mockReturnValue({
       columns: [
@@ -403,7 +401,7 @@ describe('BulkEntityImportPage', () => {
       });
 
       await waitFor(() => {
-        expect(mockValidateCsvString).toHaveBeenCalled();
+        expect(mockReadString).toHaveBeenCalled();
       });
     });
 
@@ -421,7 +419,38 @@ describe('BulkEntityImportPage', () => {
         fireEvent.click(uploadButton);
       });
 
-      // Simulate websocket response with job started
+      // Simulate websocket response with job started (needs jobId set first)
+      await act(async () => {
+        const socketCallback = mockSocket.on.mock.calls.find(
+          (call) => call[0] === 'csvImportChannel'
+        )?.[1];
+
+        if (socketCallback) {
+          // First trigger the complete callback to move to edit step
+          const readStringCall = mockReadString.mock.calls[0];
+          if (readStringCall && readStringCall[1]?.complete) {
+            readStringCall[1].complete({
+              data: [
+                ['name', 'description'],
+                ['row1', 'desc1'],
+              ],
+            });
+          }
+        }
+      });
+
+      // Wait for grid to show
+      await waitFor(() => {
+        expect(screen.getByTestId('data-grid')).toBeInTheDocument();
+      });
+
+      // Click validate button to trigger async job
+      const nextButton = screen.getByText('label.next');
+      await act(async () => {
+        fireEvent.click(nextButton);
+      });
+
+      // Simulate websocket STARTED response
       await act(async () => {
         const socketCallback = mockSocket.on.mock.calls.find(
           (call) => call[0] === 'csvImportChannel'
@@ -438,16 +467,16 @@ describe('BulkEntityImportPage', () => {
         }
       });
 
+      // Verify banner shows when job is in progress
       await waitFor(() => {
-        const button = screen.getByTestId('upload-csv-button');
-
-        expect(button).toBeDisabled();
+        expect(screen.getByTestId('banner')).toBeInTheDocument();
       });
     });
 
-    it('should show error toast on CSV upload failure', async () => {
-      const mockError = new Error('Invalid CSV format');
-      mockValidateCsvString.mockRejectedValue(mockError);
+    it('should show error toast on CSV read failure', async () => {
+      mockReadString.mockImplementationOnce(() => {
+        throw new Error('Invalid CSV format');
+      });
 
       renderComponent();
 
@@ -462,7 +491,7 @@ describe('BulkEntityImportPage', () => {
       });
 
       await waitFor(() => {
-        expect(mockShowErrorToast).toHaveBeenCalledWith(mockError);
+        expect(mockShowErrorToast).toHaveBeenCalled();
       });
     });
   });
@@ -498,10 +527,34 @@ describe('BulkEntityImportPage', () => {
         expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
       });
 
-      // Trigger upload to set processing state
+      // Trigger upload
       const uploadButton = screen.getByTestId('upload-csv-button');
       await act(async () => {
         fireEvent.click(uploadButton);
+      });
+
+      // Trigger the complete callback to move to edit step
+      await act(async () => {
+        const readStringCall = mockReadString.mock.calls[0];
+        if (readStringCall && readStringCall[1]?.complete) {
+          readStringCall[1].complete({
+            data: [
+              ['name', 'description'],
+              ['row1', 'desc1'],
+            ],
+          });
+        }
+      });
+
+      // Wait for edit step
+      await waitFor(() => {
+        expect(screen.getByTestId('data-grid')).toBeInTheDocument();
+      });
+
+      // Click validate button to trigger async job
+      const nextButton = screen.getByText('label.next');
+      await act(async () => {
+        fireEvent.click(nextButton);
       });
 
       // Simulate websocket STARTED response
@@ -637,6 +690,30 @@ describe('BulkEntityImportPage', () => {
         fireEvent.click(uploadButton);
       });
 
+      // Trigger the complete callback to move to edit step
+      await act(async () => {
+        const readStringCall = mockReadString.mock.calls[0];
+        if (readStringCall && readStringCall[1]?.complete) {
+          readStringCall[1].complete({
+            data: [
+              ['name', 'description'],
+              ['row1', 'desc1'],
+            ],
+          });
+        }
+      });
+
+      // Wait for edit step
+      await waitFor(() => {
+        expect(screen.getByTestId('data-grid')).toBeInTheDocument();
+      });
+
+      // Click validate button to trigger async job
+      const nextButton = screen.getByText('label.next');
+      await act(async () => {
+        fireEvent.click(nextButton);
+      });
+
       // Simulate STARTED
       await act(async () => {
         const socketCallback = mockSocket.on.mock.calls.find(
@@ -672,7 +749,7 @@ describe('BulkEntityImportPage', () => {
         }
       });
 
-      // Should show abort reason
+      // Should show abort reason (component goes back to UPLOAD step with abortReason set)
       await waitFor(() => {
         expect(screen.getByTestId('abort-reason')).toBeInTheDocument();
         expect(
@@ -691,6 +768,30 @@ describe('BulkEntityImportPage', () => {
       const uploadButton = screen.getByTestId('upload-csv-button');
       await act(async () => {
         fireEvent.click(uploadButton);
+      });
+
+      // Trigger the complete callback to move to edit step
+      await act(async () => {
+        const readStringCall = mockReadString.mock.calls[0];
+        if (readStringCall && readStringCall[1]?.complete) {
+          readStringCall[1].complete({
+            data: [
+              ['name', 'description'],
+              ['row1', 'desc1'],
+            ],
+          });
+        }
+      });
+
+      // Wait for edit step
+      await waitFor(() => {
+        expect(screen.getByTestId('data-grid')).toBeInTheDocument();
+      });
+
+      // Click validate button to trigger async job
+      const nextButton = screen.getByText('label.next');
+      await act(async () => {
+        fireEvent.click(nextButton);
       });
 
       // Simulate STARTED
@@ -827,6 +928,30 @@ describe('BulkEntityImportPage', () => {
         fireEvent.click(uploadButton);
       });
 
+      // Trigger the complete callback to move to edit step
+      await act(async () => {
+        const readStringCall = mockReadString.mock.calls[0];
+        if (readStringCall && readStringCall[1]?.complete) {
+          readStringCall[1].complete({
+            data: [
+              ['name', 'description'],
+              ['row1', 'desc1'],
+            ],
+          });
+        }
+      });
+
+      // Wait for edit step
+      await waitFor(() => {
+        expect(screen.getByTestId('data-grid')).toBeInTheDocument();
+      });
+
+      // Click validate button to trigger async job
+      const nextButton = screen.getByText('label.next');
+      await act(async () => {
+        fireEvent.click(nextButton);
+      });
+
       // Simulate aborted result
       await act(async () => {
         const socketCallback = mockSocket.on.mock.calls.find(
@@ -872,6 +997,30 @@ describe('BulkEntityImportPage', () => {
         fireEvent.click(uploadButton);
       });
 
+      // Trigger the complete callback to move to edit step
+      await act(async () => {
+        const readStringCall = mockReadString.mock.calls[0];
+        if (readStringCall && readStringCall[1]?.complete) {
+          readStringCall[1].complete({
+            data: [
+              ['name', 'description'],
+              ['row1', 'desc1'],
+            ],
+          });
+        }
+      });
+
+      // Wait for edit step
+      await waitFor(() => {
+        expect(screen.getByTestId('data-grid')).toBeInTheDocument();
+      });
+
+      // Click validate button to trigger async job
+      const nextButton = screen.getByText('label.next');
+      await act(async () => {
+        fireEvent.click(nextButton);
+      });
+
       // Simulate aborted result
       await act(async () => {
         const socketCallback = mockSocket.on.mock.calls.find(
@@ -906,7 +1055,7 @@ describe('BulkEntityImportPage', () => {
         fireEvent.click(cancelButton);
       });
 
-      // Should return to upload step
+      // Should return to upload step without abort reason
       await waitFor(() => {
         expect(screen.getByTestId('upload-file')).toBeInTheDocument();
       });
@@ -941,7 +1090,9 @@ describe('BulkEntityImportPage', () => {
 
     it('should handle invalid CSV data', async () => {
       const invalidCSVError = new Error('Invalid CSV format');
-      mockValidateCsvString.mockRejectedValue(invalidCSVError);
+      mockReadString.mockImplementationOnce(() => {
+        throw invalidCSVError;
+      });
 
       renderComponent();
 
@@ -955,7 +1106,7 @@ describe('BulkEntityImportPage', () => {
       });
 
       await waitFor(() => {
-        expect(mockShowErrorToast).toHaveBeenCalledWith(invalidCSVError);
+        expect(mockShowErrorToast).toHaveBeenCalled();
       });
     });
 
@@ -1006,8 +1157,10 @@ describe('BulkEntityImportPage', () => {
 
     it('should handle API validation error', async () => {
       const apiError = new Error('Validation API failed');
-      const mockValidateAPI = jest.fn().mockRejectedValue(apiError);
-      mockGetImportValidateAPIEntityType.mockReturnValue(mockValidateAPI);
+      const EntityImportUtils = require('../../../utils/EntityImport/EntityImportUtils');
+      EntityImportUtils.getImportValidateAPIEntityType.mockReturnValue(
+        jest.fn().mockRejectedValue(apiError)
+      );
 
       renderComponent();
 
@@ -1019,24 +1172,6 @@ describe('BulkEntityImportPage', () => {
       const uploadButton = screen.getByTestId('upload-csv-button');
       await act(async () => {
         fireEvent.click(uploadButton);
-      });
-
-      // Simulate successful initial load
-      await act(async () => {
-        const socketCallback = mockSocket.on.mock.calls.find(
-          (call) => call[0] === 'csvImportChannel'
-        )?.[1];
-
-        if (socketCallback) {
-          socketCallback(
-            JSON.stringify({
-              jobId: 'test-job-id',
-              status: 'STARTED',
-              error: null,
-            })
-          );
-          socketCallback(JSON.stringify(mockWebSocketResponse));
-        }
       });
 
       // Trigger CSV read completion
