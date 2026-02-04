@@ -15,7 +15,10 @@ package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.JwtFilter.BOT_CLAIM;
+import static org.openmetadata.service.security.JwtFilter.DISPLAY_NAME_CLAIM_KEY;
 import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
+import static org.openmetadata.service.security.JwtFilter.FIRST_NAME_CLAIM_KEY;
+import static org.openmetadata.service.security.JwtFilter.LAST_NAME_CLAIM_KEY;
 import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 
 import com.auth0.jwt.interfaces.Claim;
@@ -188,6 +191,39 @@ public final class SecurityUtil {
     return new ArrayList<>();
   }
 
+  public static String findDisplayNameFromClaims(
+      Map<String, String> jwtPrincipalClaimsMapping, Map<String, ?> claims) {
+    if (nullOrEmpty(jwtPrincipalClaimsMapping) || claims == null || isBotW(claims)) {
+      return null;
+    }
+
+    String displayNameClaim = jwtPrincipalClaimsMapping.get(DISPLAY_NAME_CLAIM_KEY);
+    if (!nullOrEmpty(displayNameClaim)) {
+      String displayName = getClaimOrObject(claims.get(displayNameClaim));
+      if (!nullOrEmpty(displayName)) {
+        return displayName;
+      }
+    }
+
+    String firstNameClaim = jwtPrincipalClaimsMapping.get(FIRST_NAME_CLAIM_KEY);
+    String lastNameClaim = jwtPrincipalClaimsMapping.get(LAST_NAME_CLAIM_KEY);
+
+    String firstName =
+        !nullOrEmpty(firstNameClaim) ? getClaimOrObject(claims.get(firstNameClaim)) : null;
+    String lastName =
+        !nullOrEmpty(lastNameClaim) ? getClaimOrObject(claims.get(lastNameClaim)) : null;
+
+    if (!nullOrEmpty(firstName) && !nullOrEmpty(lastName)) {
+      return firstName + " " + lastName;
+    } else if (!nullOrEmpty(firstName)) {
+      return firstName;
+    } else if (!nullOrEmpty(lastName)) {
+      return lastName;
+    }
+
+    return null;
+  }
+
   @SuppressWarnings("unchecked")
   public static List<String> getClaimAsList(Object obj) {
     List<String> result = new ArrayList<>();
@@ -238,6 +274,14 @@ public final class SecurityUtil {
                         + jwtPrincipalClaimsOrder));
   }
 
+  private static final Set<String> ALLOWED_CLAIM_MAPPING_KEYS =
+      Set.of(
+          USERNAME_CLAIM_KEY,
+          EMAIL_CLAIM_KEY,
+          FIRST_NAME_CLAIM_KEY,
+          LAST_NAME_CLAIM_KEY,
+          DISPLAY_NAME_CLAIM_KEY);
+
   public static void validatePrincipalClaimsMapping(Map<String, String> mapping) {
     if (!nullOrEmpty(mapping)) {
       String username = mapping.get(USERNAME_CLAIM_KEY);
@@ -249,17 +293,17 @@ public final class SecurityUtil {
             "Invalid JWT Principal Claims Mapping. Both username and email should be present");
       }
 
-      // Validate that only username and email keys are present (no other keys allowed)
+      // Validate that only allowed keys are present
       for (String key : mapping.keySet()) {
-        if (!USERNAME_CLAIM_KEY.equals(key) && !EMAIL_CLAIM_KEY.equals(key)) {
+        if (!ALLOWED_CLAIM_MAPPING_KEYS.contains(key)) {
           throw new IllegalArgumentException(
               String.format(
-                  "Invalid JWT Principal Claims Mapping. Only username and email keys are allowed, but found: %s",
-                  key));
+                  "Invalid JWT Principal Claims Mapping. Allowed keys are: %s, but found: %s",
+                  ALLOWED_CLAIM_MAPPING_KEYS, key));
         }
       }
     }
-    // If emtpy, jwtPrincipalClaims will be used so no need to validate
+    // If empty, jwtPrincipalClaims will be used so no need to validate
   }
 
   public static void validateDomainEnforcement(

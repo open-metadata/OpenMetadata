@@ -1,6 +1,10 @@
 package org.openmetadata.service.security.auth;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.JwtFilter.DISPLAY_NAME_CLAIM_KEY;
+import static org.openmetadata.service.security.JwtFilter.FIRST_NAME_CLAIM_KEY;
+import static org.openmetadata.service.security.JwtFilter.LAST_NAME_CLAIM_KEY;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
@@ -16,8 +20,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
 import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
@@ -160,8 +166,11 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         }
       }
 
+      // Extract display name from SAML attributes using jwtPrincipalClaimsMapping
+      String displayName = extractDisplayNameFromSaml(auth);
+
       // Get or create user
-      User user = getOrCreateUser(username, email, teamsFromClaim);
+      User user = getOrCreateUser(username, email, displayName, teamsFromClaim);
 
       // Generate JWT tokens
       JWTAuthMechanism jwtAuthMechanism =
@@ -310,7 +319,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     }
   }
 
-  private User getOrCreateUser(String username, String email, List<String> teamsFromClaim) {
+  private User getOrCreateUser(
+      String username, String email, String displayName, List<String> teamsFromClaim) {
     try {
       // Fetch user with teams relationship loaded to preserve existing team memberships
       User existingUser =
@@ -334,6 +344,13 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         needsUpdate = true;
       }
 
+      // Update display name from SAML attributes if provided and different from current
+      if (!nullOrEmpty(displayName) && !displayName.equals(existingUser.getDisplayName())) {
+        LOG.info("Updating display name for user {} to: {}", username, displayName);
+        existingUser.setDisplayName(displayName);
+        needsUpdate = true;
+      }
+
       // Assign teams from claims if provided (this only adds, doesn't remove existing teams)
       boolean teamsAssigned = UserUtil.assignTeamsFromClaim(existingUser, teamsFromClaim);
       needsUpdate = needsUpdate || teamsAssigned;
@@ -354,6 +371,11 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
                 .withIsAdmin(isAdmin)
                 .withIsEmailVerified(true);
 
+        // Set display name from SAML attributes if provided
+        if (!nullOrEmpty(displayName)) {
+          newUser.setDisplayName(displayName);
+        }
+
         // Assign teams from claims if provided
         UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
 
@@ -361,6 +383,61 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       }
       throw new AuthenticationException("User not found and self-signup is disabled");
     }
+  }
+
+  private String extractDisplayNameFromSaml(Auth auth) {
+    Map<String, String> claimsMapping =
+        listOrEmpty(authConfig.getJwtPrincipalClaimsMapping()).stream()
+            .map(s -> s.split(":"))
+            .filter(parts -> parts.length == 2)
+            .collect(Collectors.toMap(s -> s[0], s -> s[1]));
+
+    if (nullOrEmpty(claimsMapping)) {
+      return null;
+    }
+
+    // Try displayName first
+    String displayNameAttr = claimsMapping.get(DISPLAY_NAME_CLAIM_KEY);
+    if (!nullOrEmpty(displayNameAttr)) {
+      Collection<String> values = auth.getAttribute(displayNameAttr);
+      if (values != null && !values.isEmpty()) {
+        String displayName = values.iterator().next();
+        if (!nullOrEmpty(displayName)) {
+          return displayName;
+        }
+      }
+    }
+
+    // Fall back to firstName + lastName
+    String firstNameAttr = claimsMapping.get(FIRST_NAME_CLAIM_KEY);
+    String lastNameAttr = claimsMapping.get(LAST_NAME_CLAIM_KEY);
+
+    String firstName = null;
+    String lastName = null;
+
+    if (!nullOrEmpty(firstNameAttr)) {
+      Collection<String> values = auth.getAttribute(firstNameAttr);
+      if (values != null && !values.isEmpty()) {
+        firstName = values.iterator().next();
+      }
+    }
+
+    if (!nullOrEmpty(lastNameAttr)) {
+      Collection<String> values = auth.getAttribute(lastNameAttr);
+      if (values != null && !values.isEmpty()) {
+        lastName = values.iterator().next();
+      }
+    }
+
+    if (!nullOrEmpty(firstName) && !nullOrEmpty(lastName)) {
+      return firstName + " " + lastName;
+    } else if (!nullOrEmpty(firstName)) {
+      return firstName;
+    } else if (!nullOrEmpty(lastName)) {
+      return lastName;
+    }
+
+    return null;
   }
 
   private Set<String> getAdminPrincipals() {

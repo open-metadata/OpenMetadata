@@ -81,11 +81,11 @@
     },
     "jwtPrincipalClaimsMapping": {
       "title": "Jwt Principal Claims Mapping",
-      "description": "Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or 'email'. Both username and email mappings are required.",
+      "description": "Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username', 'email', 'firstName', 'lastName', or 'displayName'. Both username and email mappings are required. Optional: firstName, lastName, displayName can be mapped to populate user profile information.",
       "type": "array",
       "items": {
         "type": "string",
-        "pattern": "^(username|email):[a-zA-Z0-9_-]+$"
+        "pattern": "^(username|email|firstName|lastName|displayName):[a-zA-Z0-9_.-]+$"
       }
     },
     "jwtTeamClaimMapping": {

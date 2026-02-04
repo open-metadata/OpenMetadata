@@ -71,6 +71,9 @@ import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 public class JwtFilter implements ContainerRequestFilter {
   public static final String EMAIL_CLAIM_KEY = "email";
   public static final String USERNAME_CLAIM_KEY = "username";
+  public static final String FIRST_NAME_CLAIM_KEY = "firstName";
+  public static final String LAST_NAME_CLAIM_KEY = "lastName";
+  public static final String DISPLAY_NAME_CLAIM_KEY = "displayName";
   public static final String AUTHORIZATION_HEADER = "Authorization";
   public static final String TOKEN_PREFIX = "Bearer";
   public static final String BOT_CLAIM = "isBot";

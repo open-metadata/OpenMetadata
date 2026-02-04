@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
 import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
+import static org.openmetadata.service.security.SecurityUtil.findDisplayNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
@@ -750,9 +751,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
     String userName = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
     String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
+    String displayName = findDisplayNameFromClaims(claimsMapping, claims);
 
     String redirectUri = (String) httpSession.getAttribute(SESSION_REDIRECT_URI);
-    User user = getOrCreateOidcUser(userName, email, claims);
+    User user = getOrCreateOidcUser(userName, email, displayName, claims);
     Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
     // Store user info in session for logout audit
     httpSession.setAttribute(SESSION_USER_ID, user.getId().toString());
@@ -769,7 +771,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     response.sendRedirect(url);
   }
 
-  private User getOrCreateOidcUser(String userName, String email, Map<String, Object> claims) {
+  private User getOrCreateOidcUser(
+      String userName, String email, String displayName, Map<String, Object> claims) {
     // Extract teams from claims if configured (supports array claims like groups)
     List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
 
@@ -795,6 +798,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         needsUpdate = true;
       }
 
+      // Update display name from claims if provided and different from current
+      if (!nullOrEmpty(displayName) && !displayName.equals(user.getDisplayName())) {
+        LOG.info("Updating display name for user {} to: {}", userName, displayName);
+        user.setDisplayName(displayName);
+        needsUpdate = true;
+      }
+
       // Assign teams from claims if provided (this only adds, doesn't remove existing teams)
       boolean teamsAssigned = UserUtil.assignTeamsFromClaim(user, teamsFromClaim);
       needsUpdate = needsUpdate || teamsAssigned;
@@ -816,6 +826,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       String domain = email.split("@")[1];
       User newUser =
           UserUtil.user(userName, domain, userName).withIsAdmin(isAdmin).withIsEmailVerified(true);
+
+      // Set display name from claims if provided
+      if (!nullOrEmpty(displayName)) {
+        newUser.setDisplayName(displayName);
+      }
 
       // Assign teams from claims if provided
       UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
@@ -972,17 +987,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   public static void validatePrincipalClaimsMapping(Map<String, String> mapping) {
-    if (!nullOrEmpty(mapping)) {
-      String username = mapping.get(USERNAME_CLAIM_KEY);
-      String email = mapping.get(EMAIL_CLAIM_KEY);
-
-      // Validate that both username and email are present
-      if (nullOrEmpty(username) || nullOrEmpty(email)) {
-        throw new IllegalArgumentException(
-            "Invalid JWT Principal Claims Mapping. Both username and email should be present");
-      }
-    }
-    // If emtpy, jwtPrincipalClaims will be used so no need to validate
+    SecurityUtil.validatePrincipalClaimsMapping(mapping);
   }
 
   private HTTPResponse executeTokenHttpRequest(TokenRequest request) throws IOException {
