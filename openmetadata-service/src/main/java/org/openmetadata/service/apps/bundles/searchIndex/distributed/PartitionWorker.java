@@ -278,6 +278,10 @@ public class PartitionWorker {
    * @param statsTracker The stats tracker to flush after waiting
    */
   private void waitForSinkOperations(StageStatsTracker statsTracker) {
+    // Flush the bulk processor to send any pending documents immediately
+    // Without this, documents wait for the periodic flush interval (5 seconds)
+    searchIndexSink.flushAndAwait(30);
+
     // Wait for all pending sink operations to complete (with 30 second timeout)
     // This ensures the async bulk callbacks have run and updated the tracker
     boolean completed = statsTracker.awaitSinkCompletion(30000);
