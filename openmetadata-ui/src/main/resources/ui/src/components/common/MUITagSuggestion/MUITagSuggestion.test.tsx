@@ -10,9 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MOCK_TAG_OPTIONS } from './MUITagSuggestion.mock';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import MUITagSuggestion from './MUITagSuggestion';
+import { MOCK_TAG_OPTIONS } from './MUITagSuggestion.mock';
 
 const mockGetTags = jest.fn();
 
@@ -267,7 +273,9 @@ describe('MUITagSuggestion', () => {
     });
 
     expect(mockOnChange).toHaveBeenCalled();
+
     const callArg = mockOnChange.mock.calls[0][0];
+
     expect(callArg).toHaveLength(1);
     expect(callArg[0].tagFQN).toBe('PersonalData.Personal');
   });
