@@ -2719,6 +2719,7 @@ export const getPluralizeEntityName = (entityType?: string) => {
     [EntityType.PIPELINE]: t('label.pipeline-plural'),
     [EntityType.CONTAINER]: t('label.container-plural'),
     [EntityType.DASHBOARD]: t('label.dashboard-plural'),
+    [EntityType.CHART]: t('label.chart-plural'),
     [EntityType.STORED_PROCEDURE]: t('label.stored-procedure-plural'),
     [EntityType.MLMODEL]: t('label.ml-model-plural'),
     [EntityType.DASHBOARD_DATA_MODEL]: t('label.data-model-plural'),
