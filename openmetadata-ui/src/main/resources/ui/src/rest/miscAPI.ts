@@ -53,7 +53,10 @@ export const searchData = <SI extends SearchIndex>(
   );
 
   return APIClient.get<SearchResponse<SI>>(`/search/query?q=${q}`, {
-    params,
+    params: {
+      ...params,
+      exclude_source_fields: ['columns', 'queries', 'columnNames'],
+    },
   });
 };
 
