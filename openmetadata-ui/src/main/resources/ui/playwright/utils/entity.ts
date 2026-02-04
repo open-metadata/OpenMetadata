@@ -583,7 +583,8 @@ export const updateDescription = async (
   page: Page,
   description: string,
   isModal = false,
-  validationContainerTestId = 'asset-description-container'
+  validationContainerTestId = 'asset-description-container',
+  endpoint?: EntityTypeEndpoint
 ) => {
   const editButton = page.locator('[data-testid="edit-description"]');
   if (await editButton.isVisible()) {
@@ -606,8 +607,17 @@ export const updateDescription = async (
   const saveButton = page.getByTestId('save');
   await expect(saveButton).toBeVisible();
   await expect(saveButton).toBeEnabled();
-  await saveButton.click();
 
+  // Always wait for the PATCH request, not just when endpoint is provided
+  const patchRequest = endpoint
+    ? page.waitForResponse(`/api/v1/${endpoint}/*`)
+    : page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' && response.status() === 200
+      );
+
+  await saveButton.click();
+  await patchRequest;
   if (isModal) {
     await page.waitForSelector('[role="dialog"].description-markdown-editor', {
       state: 'hidden',
@@ -932,7 +942,7 @@ export const assignGlossaryTerm = async (
   page: Page,
   glossaryTerm: GlossaryTermOption,
   action: 'Add' | 'Edit' = 'Add',
-  entityEndpoint?: string
+  entityEndpoint: string
 ) => {
   await page
     .getByTestId('KnowledgePanel.GlossaryTerms')
@@ -942,10 +952,8 @@ export const assignGlossaryTerm = async (
   const searchGlossaryTerm = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
   );
-  // Wait for the form to be visible before proceeding
   await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
 
-  // Fill the input first
   await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
   await searchGlossaryTerm;
 
@@ -960,19 +968,14 @@ export const assignGlossaryTerm = async (
     page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
   ).toBeEnabled();
 
-  const patchRequest = entityEndpoint
-    ? page.waitForResponse(`/api/v1/${entityEndpoint}/*`)
-    : undefined;
+  const patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
 
   await page
     .getByTestId('custom-drop-down-menu')
     .getByTestId('saveAssociatedTag')
     .click();
 
-  if (patchRequest) {
-    await patchRequest;
-  }
-
+  await patchRequest;
   await expect(
     page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
   ).not.toBeVisible();
@@ -1145,6 +1148,8 @@ export const removeGlossaryTerm = async (
       .getByTestId('glossary-container')
       .getByTestId('edit-button')
       .click();
+      //small timeout to avoid popup collide with click
+      await page.waitForTimeout(500)
 
     await page
       .getByTestId('glossary-container')

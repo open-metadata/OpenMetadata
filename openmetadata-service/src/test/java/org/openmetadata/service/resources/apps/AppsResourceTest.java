@@ -106,7 +106,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   public static final RetryRegistry APP_TRIGGER_RETRY =
       RetryRegistry.of(
           RetryConfig.custom()
-              .maxAttempts(60) // about 30 seconds
+              .maxAttempts(240) // about 120 seconds (increased for distributed indexing overhead)
               .waitDuration(Duration.ofMillis(500))
               .retryExceptions(RetryableAssertionError.class)
               .build());
