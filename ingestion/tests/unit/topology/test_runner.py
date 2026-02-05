@@ -113,7 +113,7 @@ class TopologyRunnerTest(TestCase):
         """Check it works with generic models"""
 
         mock_table = MockTable(name="name", columns=["a", "b", "c"])
-        real_fingerprint = "5a8e89ce98a5060590b55cf8c00a5d50"
+        real_fingerprint = "03a6bd999d83f6e8fe25659bb6f8ac90"
 
         self.assertEqual(real_fingerprint, generate_source_hash(mock_table))
 
@@ -144,29 +144,29 @@ class TopologyRunnerTest(TestCase):
             ],
             [
                 MockSchema(
-                    name="schema1", sourceHash="81598ade7c7fa8f5383a7578e2cb6242"
+                    name="schema1", sourceHash="ddb43c9d34ccbe2363a37db746211fcb"
                 ),
                 MockTable(
                     name="table1",
-                    sourceHash="a5987f1e4ce03538f69af0b02f9e024c",
+                    sourceHash="384ee4341cf5c1ac5658f9310ea8868c",
                     columns=["c1", "c2"],
                 ),
                 MockTable(
                     name="table2",
-                    sourceHash="b7779efcbd2c01636a104121d5abced4",
+                    sourceHash="3b3c6ad507d2bbf24a68451d2bef38dd",
                     columns=["c1", "c2"],
                 ),
                 MockSchema(
-                    name="schema2", sourceHash="5aa190009346267c1fdc3da529e35c69"
+                    name="schema2", sourceHash="18e4768ea591108c38e6b24a861cb3d2"
                 ),
                 MockTable(
                     name="table1",
-                    sourceHash="a5987f1e4ce03538f69af0b02f9e024c",
+                    sourceHash="384ee4341cf5c1ac5658f9310ea8868c",
                     columns=["c1", "c2"],
                 ),
                 MockTable(
                     name="table2",
-                    sourceHash="b7779efcbd2c01636a104121d5abced4",
+                    sourceHash="3b3c6ad507d2bbf24a68451d2bef38dd",
                     columns=["c1", "c2"],
                 ),
                 "hello",
@@ -196,29 +196,29 @@ class TopologyRunnerTest(TestCase):
             ],
             [
                 MockSchema(
-                    name="schema1", sourceHash="81598ade7c7fa8f5383a7578e2cb6242"
+                    name="schema1", sourceHash="ddb43c9d34ccbe2363a37db746211fcb"
                 ),
                 MockTable(
                     name="table1",
-                    sourceHash="a5987f1e4ce03538f69af0b02f9e024c",
+                    sourceHash="384ee4341cf5c1ac5658f9310ea8868c",
                     columns=["c1", "c2"],
                 ),
                 MockTable(
                     name="table2",
-                    sourceHash="b7779efcbd2c01636a104121d5abced4",
+                    sourceHash="3b3c6ad507d2bbf24a68451d2bef38dd",
                     columns=["c1", "c2"],
                 ),
                 MockSchema(
-                    name="schema2", sourceHash="5aa190009346267c1fdc3da529e35c69"
+                    name="schema2", sourceHash="18e4768ea591108c38e6b24a861cb3d2"
                 ),
                 MockTable(
                     name="table1",
-                    sourceHash="a5987f1e4ce03538f69af0b02f9e024c",
+                    sourceHash="384ee4341cf5c1ac5658f9310ea8868c",
                     columns=["c1", "c2"],
                 ),
                 MockTable(
                     name="table2",
-                    sourceHash="b7779efcbd2c01636a104121d5abced4",
+                    sourceHash="3b3c6ad507d2bbf24a68451d2bef38dd",
                     columns=["c1", "c2"],
                 ),
                 "hello",
