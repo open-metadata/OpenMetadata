@@ -80,7 +80,8 @@ public class BulkOperationConfiguration {
 
   public int calculateConnectionLimit(int poolSize) {
     if (maxConnections > 0) {
-      return Math.min(maxConnections, poolSize - 1);
+      // Ensure at least 1 permit to prevent bulk operations from hanging indefinitely
+      return Math.max(1, Math.min(maxConnections, poolSize - 1));
     }
     int calculated = (poolSize * poolPercent) / 100;
     return Math.max(minConnections, Math.min(calculated, maxConnectionsLimit));

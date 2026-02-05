@@ -149,6 +149,18 @@ class BulkExecutorTest {
   }
 
   @Test
+  void testConnectionLimitWithOverride_TinyPoolNeverReturnsZero() {
+    BulkOperationConfiguration config = new BulkOperationConfiguration();
+    config.setMaxConnections(10); // Override set
+
+    // Edge case: poolSize=1 would return 0 without the Math.max(1, ...) fix
+    // This ensures bulk operations never hang indefinitely waiting for 0 permits
+    assertEquals(1, config.calculateConnectionLimit(1)); // 1-1=0, but floored to 1
+    assertEquals(1, config.calculateConnectionLimit(2)); // 2-1=1, ok
+    assertEquals(3, config.calculateConnectionLimit(4)); // 4-1=3, ok
+  }
+
+  @Test
   void testConnectionSemaphore() throws InterruptedException {
     BulkOperationConfiguration config = new BulkOperationConfiguration();
     config.setMaxConnections(3); // Hard limit of 3 connections

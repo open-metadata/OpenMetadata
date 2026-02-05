@@ -136,7 +136,24 @@ public class BulkExecutor {
     connectionSemaphore.acquire();
   }
 
-  /** Release a connection permit. Must be called in finally block after acquireConnection(). */
+  /**
+   * Release a connection permit.
+   *
+   * <p>IMPORTANT: Must only be called after a successful {@link #acquireConnection()}. Always use
+   * in a finally block to ensure release even on exceptions. Calling without a prior acquire will
+   * corrupt the semaphore state and allow more concurrent connections than intended.
+   *
+   * <p>Example usage:
+   *
+   * <pre>{@code
+   * bulkExecutor.acquireConnection();
+   * try {
+   *   // perform database operation
+   * } finally {
+   *   bulkExecutor.releaseConnection();
+   * }
+   * }</pre>
+   */
   public void releaseConnection() {
     connectionSemaphore.release();
   }
