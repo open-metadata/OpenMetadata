@@ -15,14 +15,14 @@ import { Autocomplete, Box, TextField } from '@mui/material';
 import { debounce, isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
-    FC,
-    HtmlHTMLAttributes,
-    ReactNode,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FC,
+  HtmlHTMLAttributes,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { asyncFilterOptions } from '../../../constants/MUI.constants';
@@ -169,87 +169,85 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
 
   // Tag autocomplete
   return (
-    <Box data-testid="tag-suggestion">
-      <Autocomplete
-        disableCloseOnSelect
-        freeSolo
-        multiple
-        ListboxProps={
-          {
-            key: `listbox-${memoizedOptions.length}`,
-          } as HtmlHTMLAttributes<HTMLUListElement>
-        }
-        autoFocus={autoFocus}
-        filterOptions={(x) => x}
-        getOptionLabel={(option) =>
-          typeof option === 'string' ? option : option.label
-        }
-        inputValue={inputValue}
-        isOptionEqualToValue={(option, value) =>
-          typeof option === 'string' || typeof value === 'string'
-            ? option === value
-            : option.value === value.value
-        }
-        loading={loading}
-        open={open && (memoizedOptions.length > 0 || loading)}
-        options={memoizedOptions}
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            fullWidth
-            label={label}
-            placeholder={
-              placeholder ??
-              t('label.select-field', {
-                field: t('label.tag-plural'),
-              })
-            }
-            required={required}
-            slotProps={{
-              inputLabel: {
-                shrink: true,
-              },
-            }}
-            variant="outlined"
-          />
-        )}
-        renderOption={(props, option) => {
-          const { key, ...otherProps } = props;
-
-          if (typeof option === 'string') {
-            return (
-              <Box component="li" key={key} {...otherProps}>
-                {option}
-              </Box>
-            );
+    <Autocomplete
+      disableCloseOnSelect
+      freeSolo
+      multiple
+      ListboxProps={
+        {
+          key: `listbox-${memoizedOptions.length}`,
+        } as HtmlHTMLAttributes<HTMLUListElement>
+      }
+      autoFocus={autoFocus}
+      data-testid="tag-suggestion"
+      filterOptions={asyncFilterOptions}
+      getOptionLabel={(option) =>
+        typeof option === 'string' ? option : option.label
+      }
+      inputValue={inputValue}
+      isOptionEqualToValue={(option, value) =>
+        typeof option === 'string' || typeof value === 'string'
+          ? option === value
+          : option.value === value.value
+      }
+      loading={loading}
+      open={open && (memoizedOptions.length > 0 || loading)}
+      options={memoizedOptions}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          fullWidth
+          data-testid="tag-suggestion-input"
+          label={label}
+          placeholder={
+            placeholder ??
+            t('label.select-field', {
+              field: t('label.tag-plural'),
+            })
           }
-
+          required={required}
+          slotProps={{
+            inputLabel: {
+              shrink: true,
+            },
+          }}
+          variant="outlined"
+        />
+      )}
+      renderOption={(props, option) => {
+        if (typeof option === 'string') {
           return (
-            <Box
-              component="li"
-              data-testid={`tag-option-${option.value}`}
-              key={key}
-              {...otherProps}>
-              <Box display="flex" flexDirection="column">
-                <Box
-                  fontWeight="medium"
-                  sx={{ color: option.data?.style?.color || undefined }}>
-                  {option.label}
-                </Box>
-                {(option.data?.displayName || option.data?.name) && (
-                  <Box color="text.secondary" fontSize="0.875rem">
-                    {option.data?.displayName || option.data?.name}
-                  </Box>
-                )}
-              </Box>
+            <Box component="li" {...props}>
+              {option}
             </Box>
           );
-        }}
-        renderTags={(value: (string | TagOption)[], getTagProps) =>
-          value
-            .filter((v): v is TagOption => typeof v !== 'string')
-            .map((option: TagOption, index: number) => {
-              const { onDelete, ...chipProps } = getTagProps({ index });
+        }
+
+        return (
+          <Box
+            component="li"
+            {...props}
+            data-testid={`tag-option-${option.value}`}>
+            <Box display="flex" flexDirection="column">
+              <Box
+                fontWeight="medium"
+                sx={{ color: option.data?.style?.color || undefined }}>
+                {option.label}
+              </Box>
+              {(option.data?.displayName || option.data?.name) && (
+                <Box color="text.secondary" fontSize="0.875rem">
+                  {option.data?.displayName || option.data?.name}
+                </Box>
+              )}
+            </Box>
+          </Box>
+        );
+      }}
+      renderTags={(value: (string | TagOption)[], getTagProps) =>
+        value
+          .filter((v): v is TagOption => typeof v !== 'string')
+          .map((option: TagOption, index: number) => {
+            const { onDelete, ...chipProps } = getTagProps({ index });
 
             return (
               <TagChip
@@ -263,7 +261,6 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
             );
           })
       }
-      filterOptions={asyncFilterOptions}
       size="small"
       value={selectedOptions}
       onChange={handleChange}
