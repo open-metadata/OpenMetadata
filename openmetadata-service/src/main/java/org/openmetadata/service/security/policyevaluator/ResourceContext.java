@@ -3,7 +3,6 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 
-import com.google.common.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -65,7 +64,6 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
   }
 
-  @VisibleForTesting
   public ResourceContext(@NonNull String resource, T entity, EntityRepository<T> repository) {
     this.resource = resource;
     this.id = null;

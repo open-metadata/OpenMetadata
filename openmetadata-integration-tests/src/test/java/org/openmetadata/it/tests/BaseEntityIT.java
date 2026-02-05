@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,6 +35,8 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -2019,7 +2022,19 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     return snakeCase + "_search_index";
   }
 
-  protected void setDescription(K createRequest, String description) {}
+  protected void setDescription(K createRequest, String description) {
+    try {
+      createRequest
+          .getClass()
+          .getMethod("setDescription", String.class)
+          .invoke(createRequest, description);
+    } catch (Exception e) {
+      fail(
+          "Cannot set description on "
+              + createRequest.getClass().getSimpleName()
+              + ". Override setDescription() in your test class.");
+    }
+  }
 
   // ===================================================================
   // PUT OWNER UPDATE TESTS
@@ -3290,13 +3305,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   // ===================================================================
   // BULK API TESTS
-  // Equivalent to: test_bulkCreateOrUpdate, test_bulkCreateOrUpdate_partialFailure,
-  //                test_bulkCreateOrUpdate_async in EntityResourceTest
+  // Comprehensive coverage: CRUD, permissions, idempotency, versioning,
+  // partial failure, async, empty, large batch, mixed create+update
   // ===================================================================
 
   /**
-   * Test: Bulk create or update entities
-   * Equivalent to: test_bulkCreateOrUpdate in EntityResourceTest
+   * Test: Bulk create entities
    *
    * <p>Creates multiple entities using bulk API and validates all are created successfully.
    */
@@ -3304,163 +3318,762 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void test_bulkCreateOrUpdate(TestNamespace ns) {
     if (!supportsBulkAPI) return;
 
-    // Create multiple entities for bulk operation
     List<K> createRequests = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      K createRequest = createRequest(ns.prefix("bulk_entity_" + i), ns);
-      createRequests.add(createRequest);
+      createRequests.add(createRequest(ns.prefix("bulk_entity_" + i), ns));
     }
 
-    // Execute bulk create via entity-specific bulk API
-    org.openmetadata.schema.type.api.BulkOperationResult result = executeBulkCreate(createRequests);
+    BulkOperationResult result = executeBulkCreate(createRequests);
 
-    // Validate result
-    assertNotNull(result, "Bulk operation result should not be null");
-    assertEquals(5, result.getNumberOfRowsProcessed(), "Should process 5 entities");
-    assertEquals(5, result.getNumberOfRowsPassed(), "All 5 entities should pass");
-    assertEquals(0, result.getNumberOfRowsFailed(), "No entities should fail");
-    assertEquals(
-        org.openmetadata.schema.type.ApiStatus.SUCCESS,
-        result.getStatus(),
-        "Status should be SUCCESS");
+    assertNotNull(result);
+    assertEquals(5, result.getNumberOfRowsProcessed());
+    assertEquals(5, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
 
-    // Verify entities were created
-    assertNotNull(result.getSuccessRequest(), "Success request list should not be null");
-    assertEquals(5, result.getSuccessRequest().size(), "Should have 5 successful entities");
+    assertNotNull(result.getSuccessRequest());
+    assertEquals(5, result.getSuccessRequest().size());
 
-    for (org.openmetadata.schema.type.api.BulkResponse bulkResponse : result.getSuccessRequest()) {
+    for (BulkResponse bulkResponse : result.getSuccessRequest()) {
       String fqn = (String) bulkResponse.getRequest();
-      assertNotNull(fqn, "FQN should not be null in success response");
-
-      T retrievedEntity = getEntityByName(fqn);
-      assertNotNull(retrievedEntity, "Entity should be retrievable by FQN: " + fqn);
+      assertNotNull(fqn);
+      T retrieved = getEntityByName(fqn);
+      assertNotNull(retrieved, "Entity should be retrievable by FQN: " + fqn);
     }
   }
 
   /**
-   * Test: Bulk create with partial failure
-   * Equivalent to: test_bulkCreateOrUpdate_partialFailure in EntityResourceTest
+   * Test: Bulk update existing entities
    *
-   * <p>Creates a mix of valid and invalid entities and verifies partial success handling.
+   * <p>Creates entities via bulk, then re-sends same requests with updated descriptions.
+   * Verifies description changes and version increments.
+   */
+  @Test
+  void test_bulkUpdate_existingEntities(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = createBulkRequests(ns, "bulk_upd_", 3);
+
+    BulkOperationResult createResult = executeBulkCreate(createRequests);
+    assertEquals(3, createResult.getNumberOfRowsPassed());
+
+    // Capture initial versions
+    List<String> fqns = new ArrayList<>();
+    List<Double> initialVersions = new ArrayList<>();
+    for (BulkResponse resp : createResult.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByName(fqn);
+      initialVersions.add(entity.getVersion());
+    }
+
+    // Reuse same request objects with updated descriptions
+    for (K req : createRequests) {
+      setDescription(req, "Updated via bulk");
+    }
+
+    BulkOperationResult updateResult = executeBulkCreate(createRequests);
+    assertEquals(3, updateResult.getNumberOfRowsPassed());
+    assertEquals(0, updateResult.getNumberOfRowsFailed());
+
+    for (int i = 0; i < fqns.size(); i++) {
+      T entity = getEntityByName(fqns.get(i));
+      assertEquals("Updated via bulk", entity.getDescription());
+      assertTrue(
+          entity.getVersion() > initialVersions.get(i), "Version should increment after update");
+    }
+  }
+
+  /**
+   * Test: Bulk idempotency - calling bulk create twice should succeed (second call updates)
+   */
+  @Test
+  void test_bulkCreateOrUpdate_idempotent(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = createBulkRequests(ns, "bulk_idem_", 3);
+
+    BulkOperationResult first = executeBulkCreate(createRequests);
+    assertEquals(3, first.getNumberOfRowsPassed());
+
+    // Same request again should succeed (updates existing)
+    BulkOperationResult second = executeBulkCreate(createRequests);
+    assertEquals(3, second.getNumberOfRowsPassed());
+    assertEquals(0, second.getNumberOfRowsFailed());
+  }
+
+  /**
+   * Test: Bulk create with partial failure
+   *
+   * <p>Mix of valid and invalid entities verifies partial success handling.
    */
   @Test
   void test_bulkCreateOrUpdate_partialFailure(TestNamespace ns) {
     if (!supportsBulkAPI) return;
 
-    // Create valid entities
     List<K> createRequests = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
-      K createRequest = createRequest(ns.prefix("bulk_partial_" + i), ns);
-      createRequests.add(createRequest);
+      createRequests.add(createRequest(ns.prefix("bulk_partial_" + i), ns));
     }
 
-    // Add an invalid request (empty name should fail)
     K invalidRequest = createInvalidRequestForBulk(ns);
     if (invalidRequest != null) {
       createRequests.add(invalidRequest);
     }
 
-    // Execute bulk create
-    org.openmetadata.schema.type.api.BulkOperationResult result = executeBulkCreate(createRequests);
+    BulkOperationResult result = executeBulkCreate(createRequests);
 
-    // Validate partial success
-    assertNotNull(result, "Bulk operation result should not be null");
-    assertTrue(result.getNumberOfRowsProcessed() >= 3, "Should process at least 3 rows");
-    assertTrue(result.getNumberOfRowsPassed() >= 3, "At least 3 rows should pass");
+    assertNotNull(result);
+    assertTrue(result.getNumberOfRowsProcessed() >= 3);
+    assertTrue(result.getNumberOfRowsPassed() >= 3);
 
     if (invalidRequest != null) {
-      assertTrue(result.getNumberOfRowsFailed() >= 1, "At least 1 row should fail");
-      assertEquals(
-          org.openmetadata.schema.type.ApiStatus.PARTIAL_SUCCESS,
-          result.getStatus(),
-          "Status should be PARTIAL_SUCCESS");
+      assertTrue(result.getNumberOfRowsFailed() >= 1);
+      assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
     }
   }
 
   /**
    * Test: Async bulk create
-   * Equivalent to: test_bulkCreateOrUpdate_async in EntityResourceTest
-   *
-   * <p>Tests async bulk creation where the API returns immediately and processing happens in
-   * background.
    */
   @Test
   void test_bulkCreateOrUpdate_async(TestNamespace ns) {
     if (!supportsBulkAPI) return;
 
-    // Create multiple entities for async bulk operation
     List<K> createRequests = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      K createRequest = createRequest(ns.prefix("bulk_async_" + i), ns);
-      createRequests.add(createRequest);
+      createRequests.add(createRequest(ns.prefix("bulk_async_" + i), ns));
     }
 
-    // Execute async bulk create
-    org.openmetadata.schema.type.api.BulkOperationResult result =
-        executeBulkCreateAsync(createRequests);
+    BulkOperationResult result = executeBulkCreateAsync(createRequests);
 
-    // For async operations, we get immediate response
-    assertNotNull(result, "Async bulk operation result should not be null");
-    assertEquals(5, result.getNumberOfRowsProcessed(), "Should have 5 rows processed");
-    assertEquals(
-        org.openmetadata.schema.type.ApiStatus.SUCCESS,
-        result.getStatus(),
-        "Status should be SUCCESS");
+    assertNotNull(result);
+    assertEquals(5, result.getNumberOfRowsProcessed());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+  }
 
-    // Wait for async processing to complete and verify entities exist
-    // Note: In production, this would use proper async completion tracking
-    for (int i = 0; i < 5; i++) {
-      String entityName = ns.prefix("bulk_async_" + i);
-      try {
-        T entity = getEntityByName(entityName);
-        if (entity != null) {
-          assertNotNull(entity, "Async created entity should exist: " + entityName);
-        }
-      } catch (Exception e) {
-        // Entity may not be created yet if async processing is slow
-      }
+  /**
+   * Test: Bulk create with empty list returns empty result
+   */
+  @Test
+  void test_bulkCreateOrUpdate_emptyList(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    BulkOperationResult result = executeBulkCreate(new ArrayList<>());
+
+    assertNotNull(result);
+    assertEquals(0, result.getNumberOfRowsProcessed());
+    assertEquals(0, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+  }
+
+  /**
+   * Test: Bulk create large batch (50 entities)
+   */
+  @Test
+  void test_bulkCreateOrUpdate_largeBatch(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 50; i++) {
+      createRequests.add(createRequest(ns.prefix("bulk_large_" + i), ns));
+    }
+
+    BulkOperationResult result = executeBulkCreate(createRequests);
+
+    assertEquals(50, result.getNumberOfRowsProcessed());
+    assertEquals(50, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+  }
+
+  /**
+   * Test: Mixed create + update in one bulk call
+   *
+   * <p>Creates some entities first, then sends a bulk request with a mix of new and existing.
+   */
+  @Test
+  void test_bulkCreateOrUpdate_mixedCreateAndUpdate(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    // Create 4 requests sharing the same parent
+    List<K> allRequests = createBulkRequests(ns, "bulk_mix_", 4);
+
+    // Pre-create first 2
+    List<K> preCreate = new ArrayList<>(allRequests.subList(0, 2));
+    BulkOperationResult preResult = executeBulkCreate(preCreate);
+    assertEquals(2, preResult.getNumberOfRowsPassed());
+
+    // Update descriptions on the existing 2
+    for (K req : preCreate) {
+      setDescription(req, "Bulk updated");
+    }
+
+    // Mixed request: 2 existing (updates) + 2 new (creates)
+    BulkOperationResult result = executeBulkCreate(allRequests);
+
+    assertEquals(4, result.getNumberOfRowsProcessed());
+    assertEquals(4, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+
+    for (BulkResponse resp : result.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      T entity = getEntityByName(fqn);
+      assertNotNull(entity);
     }
   }
 
   /**
-   * Execute bulk create operation.
-   * Subclasses that support bulk API should override this method.
-   *
-   * @param createRequests List of create requests
-   * @return BulkOperationResult
+   * Test: Verify all entities exist in DB after bulk create
    */
-  protected org.openmetadata.schema.type.api.BulkOperationResult executeBulkCreate(
-      List<K> createRequests) {
-    // Default implementation - entities that support bulk API should override
+  @Test
+  void test_bulkCreateOrUpdate_verifyEntitiesExist(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      createRequests.add(createRequest(ns.prefix("bulk_verify_" + i), ns));
+    }
+
+    BulkOperationResult result = executeBulkCreate(createRequests);
+
+    assertEquals(10, result.getNumberOfRowsPassed());
+    assertNotNull(result.getSuccessRequest());
+    assertEquals(10, result.getSuccessRequest().size());
+
+    for (BulkResponse successResponse : result.getSuccessRequest()) {
+      assertNotNull(successResponse.getRequest());
+      assertEquals(200, successResponse.getStatus());
+      T entity = getEntityByName((String) successResponse.getRequest());
+      assertNotNull(entity, "Entity should exist: " + successResponse.getRequest());
+      assertNotNull(entity.getId());
+    }
+  }
+
+  /**
+   * Test: Verify entities are indexed in search after bulk create.
+   *
+   * <p>Uses Awaitility to poll the search API until all bulk-created entities appear in the index.
+   */
+  @Test
+  void test_bulkCreateOrUpdate_searchIndexed(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsSearchIndex) return;
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      createRequests.add(createRequest(ns.prefix("bulk_search_" + i), ns));
+    }
+
+    BulkOperationResult result = executeBulkCreate(createRequests);
+    assertEquals(5, result.getNumberOfRowsPassed());
+
+    List<String> expectedFqns = new ArrayList<>();
+    for (BulkResponse resp : result.getSuccessRequest()) {
+      expectedFqns.add((String) resp.getRequest());
+    }
+
+    String searchIndex = getSearchIndexName();
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              for (String fqn : expectedFqns) {
+                String queryFilter =
+                    String.format(
+                        "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"fullyQualifiedName\":\"%s\"}}]}}}",
+                        fqn);
+                String searchResponse =
+                    client
+                        .search()
+                        .query("*")
+                        .index(searchIndex)
+                        .queryFilter(queryFilter)
+                        .size(1)
+                        .execute();
+
+                assertNotNull(searchResponse, "Search response should not be null");
+                JsonNode root = MAPPER.readTree(searchResponse);
+                assertTrue(root.has("hits"), "Search response should have hits");
+
+                JsonNode hits = root.get("hits").get("hits");
+                assertTrue(hits.size() > 0, "Entity should be found in search index: " + fqn);
+                assertEquals(fqn, hits.get(0).get("_source").get("fullyQualifiedName").asText());
+              }
+            });
+  }
+
+  /**
+   * Test: Verify search index is updated after bulk update.
+   *
+   * <p>Creates entities, updates descriptions via bulk, then verifies search returns updated data.
+   */
+  @Test
+  void test_bulkUpdate_searchIndexUpdated(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsSearchIndex) return;
+
+    List<K> createRequests = createBulkRequests(ns, "bulk_search_upd_", 3);
+
+    BulkOperationResult createResult = executeBulkCreate(createRequests);
+    assertEquals(3, createResult.getNumberOfRowsPassed());
+
+    List<String> fqns = new ArrayList<>();
+    for (BulkResponse resp : createResult.getSuccessRequest()) {
+      fqns.add((String) resp.getRequest());
+    }
+
+    String updatedDesc = "SearchUpdated_" + System.currentTimeMillis();
+    for (K req : createRequests) {
+      setDescription(req, updatedDesc);
+    }
+
+    BulkOperationResult updateResult = executeBulkCreate(createRequests);
+    assertEquals(3, updateResult.getNumberOfRowsPassed());
+
+    String searchIndex = getSearchIndexName();
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              for (String fqn : fqns) {
+                String queryFilter =
+                    String.format(
+                        "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"fullyQualifiedName\":\"%s\"}}]}}}",
+                        fqn);
+                String searchResponse =
+                    client
+                        .search()
+                        .query("*")
+                        .index(searchIndex)
+                        .queryFilter(queryFilter)
+                        .size(1)
+                        .execute();
+
+                JsonNode root = MAPPER.readTree(searchResponse);
+                JsonNode hits = root.get("hits").get("hits");
+                assertTrue(hits.size() > 0, "Entity should be found in search index: " + fqn);
+                assertEquals(
+                    updatedDesc,
+                    hits.get(0).get("_source").path("description").asText(),
+                    "Search should return updated description for: " + fqn);
+              }
+            });
+  }
+
+  // ===================================================================
+  // BULK API PERMISSION TESTS
+  // Tests authorization enforcement for admin, bot, and restricted users
+  // ===================================================================
+
+  /**
+   * Test: Admin can bulk create entities
+   */
+  @Test
+  void test_bulkCreate_adminSuccess(TestNamespace ns) throws Exception {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      createRequests.add(createRequest(ns.prefix("bulk_admin_" + i), ns));
+    }
+
+    HttpResponse<String> response =
+        callBulkEndpoint(createRequests, SdkClients.getAdminToken(), false);
+
+    assertEquals(200, response.statusCode());
+
+    BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
+    assertEquals(3, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+  }
+
+  /**
+   * Test: Bot/ingestion user can bulk create entities
+   */
+  @Test
+  void test_bulkCreate_botSuccess(TestNamespace ns) throws Exception {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      createRequests.add(createRequest(ns.prefix("bulk_bot_" + i), ns));
+    }
+
+    String botToken = getBotToken();
+    HttpResponse<String> response = callBulkEndpoint(createRequests, botToken, false);
+
+    assertEquals(200, response.statusCode());
+
+    BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
+    assertEquals(3, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+  }
+
+  /**
+   * Test: Unauthenticated request returns 401
+   */
+  @Test
+  void test_bulkCreate_noAuth_returns401(TestNamespace ns) throws Exception {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = new ArrayList<>();
+    createRequests.add(createRequest(ns.prefix("bulk_noauth"), ns));
+
+    String url = SdkClients.getServerUrl() + getResourcePath() + "bulk";
+    java.net.http.HttpRequest request =
+        java.net.http.HttpRequest.newBuilder()
+            .uri(java.net.URI.create(url))
+            .header("Content-Type", "application/json")
+            .PUT(
+                java.net.http.HttpRequest.BodyPublishers.ofString(
+                    JsonUtils.pojoToJson(createRequests)))
+            .build();
+
+    HttpResponse<String> response =
+        java.net.http.HttpClient.newHttpClient()
+            .send(request, HttpResponse.BodyHandlers.ofString());
+
+    assertEquals(401, response.statusCode());
+  }
+
+  /**
+   * Test: DataConsumer cannot bulk create entities
+   */
+  @Test
+  void test_bulkCreate_dataConsumer_denied(TestNamespace ns) throws Exception {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = new ArrayList<>();
+    createRequests.add(createRequest(ns.prefix("bulk_consumer_create"), ns));
+
+    String consumerToken = getDataConsumerToken();
+    HttpResponse<String> response = callBulkEndpoint(createRequests, consumerToken, false);
+
+    assertEquals(200, response.statusCode());
+
+    BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
+    assertEquals(0, result.getNumberOfRowsPassed());
+    assertEquals(1, result.getNumberOfRowsFailed());
+    assertNotNull(result.getFailedRequest());
+    assertTrue(
+        result.getFailedRequest().get(0).getStatus() == 403
+            || result.getFailedRequest().get(0).getStatus() == 400);
+  }
+
+  /**
+   * Test: DataConsumer cannot bulk update existing entities
+   */
+  @Test
+  void test_bulkUpdate_dataConsumer_denied(TestNamespace ns) throws Exception {
+    if (!supportsBulkAPI) return;
+
+    // Create entity as admin (reuse same request object for update)
+    List<K> createRequests = new ArrayList<>();
+    createRequests.add(createRequest(ns.prefix("bulk_consumer_upd"), ns));
+
+    HttpResponse<String> createResponse =
+        callBulkEndpoint(createRequests, SdkClients.getAdminToken(), false);
+    assertEquals(200, createResponse.statusCode());
+    BulkOperationResult createResult =
+        JsonUtils.readValue(createResponse.body(), BulkOperationResult.class);
+    assertEquals(1, createResult.getNumberOfRowsPassed());
+
+    // Attempt update as DataConsumer using same request with changed description
+    setDescription(createRequests.get(0), "Consumer tried to update");
+
+    String consumerToken = getDataConsumerToken();
+    HttpResponse<String> response = callBulkEndpoint(createRequests, consumerToken, false);
+
+    assertEquals(200, response.statusCode());
+
+    BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
+    assertEquals(0, result.getNumberOfRowsPassed());
+    assertEquals(1, result.getNumberOfRowsFailed());
+  }
+
+  /**
+   * Test: Bot/ingestion user can bulk update existing entities
+   */
+  @Test
+  void test_bulkUpdate_botSuccess(TestNamespace ns) throws Exception {
+    if (!supportsBulkAPI) return;
+
+    // Create entity as admin
+    List<K> createRequests = new ArrayList<>();
+    createRequests.add(createRequest(ns.prefix("bulk_bot_upd"), ns));
+
+    HttpResponse<String> createResponse =
+        callBulkEndpoint(createRequests, SdkClients.getAdminToken(), false);
+    assertEquals(200, createResponse.statusCode());
+
+    // Update as bot using same request with changed description
+    setDescription(createRequests.get(0), "Updated by bot");
+
+    String botToken = getBotToken();
+    HttpResponse<String> response = callBulkEndpoint(createRequests, botToken, false);
+
+    assertEquals(200, response.statusCode());
+
+    BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+  }
+
+  /**
+   * Test: Async bulk returns 202 Accepted
+   */
+  @Test
+  void test_bulkAsync_returns202(TestNamespace ns) throws Exception {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = new ArrayList<>();
+    createRequests.add(createRequest(ns.prefix("bulk_async_perm"), ns));
+
+    HttpResponse<String> response =
+        callBulkEndpoint(createRequests, SdkClients.getAdminToken(), true);
+
+    assertEquals(202, response.statusCode());
+
+    BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
+    assertNotNull(result.getNumberOfRowsProcessed());
+  }
+
+  /**
+   * Test: Bulk permission denied returns per-entity failure status
+   */
+  @Test
+  void test_bulkCreate_permissionDenied_returnsFailureStatus(TestNamespace ns) throws Exception {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = new ArrayList<>();
+    createRequests.add(createRequest(ns.prefix("bulk_perm_status"), ns));
+
+    String consumerToken = getDataConsumerToken();
+    HttpResponse<String> response = callBulkEndpoint(createRequests, consumerToken, false);
+
+    assertEquals(200, response.statusCode());
+
+    BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
+    assertEquals(1, result.getNumberOfRowsFailed());
+
+    BulkResponse failedRequest = result.getFailedRequest().get(0);
+    assertTrue(
+        failedRequest.getStatus() == 403 || failedRequest.getStatus() == 400,
+        "Permission denied should return 4xx status, got: " + failedRequest.getStatus());
+    assertNotNull(failedRequest.getMessage(), "Failed request should have an error message");
+  }
+
+  /**
+   * Test: Admin can bulk update with mixed permissions (multiple entities, all succeed)
+   */
+  @Test
+  void test_bulkCreate_admin_multipleBatch(TestNamespace ns) throws Exception {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 20; i++) {
+      createRequests.add(createRequest(ns.prefix("bulk_admin_batch_" + i), ns));
+    }
+
+    HttpResponse<String> response =
+        callBulkEndpoint(createRequests, SdkClients.getAdminToken(), false);
+
+    assertEquals(200, response.statusCode());
+
+    BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
+    assertEquals(20, result.getNumberOfRowsProcessed());
+    assertEquals(20, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+  }
+
+  // ===================================================================
+  // BULK API EDGE CASE TESTS
+  // ===================================================================
+
+  /**
+   * Test: Duplicate FQNs in a single batch request.
+   *
+   * <p>Sends the same entity name twice in one request. The API should handle gracefully —
+   * either dedup or process both (second becomes an update).
+   */
+  @Test
+  void test_bulkCreateOrUpdate_duplicateFqnsInBatch(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = createBulkRequests(ns, "bulk_dup_", 1);
+    K original = createRequests.get(0);
+
+    // Add the same request again (duplicate FQN)
+    createRequests.add(original);
+
+    BulkOperationResult result = executeBulkCreate(createRequests);
+
+    assertEquals(2, result.getNumberOfRowsProcessed());
+    // Both should succeed: first creates, second updates
+    assertEquals(2, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+  }
+
+  /**
+   * Test: Concurrent bulk requests do not corrupt data.
+   *
+   * <p>Sends two bulk requests in parallel and verifies all entities are created.
+   */
+  @Test
+  void test_bulkCreateOrUpdate_concurrent(TestNamespace ns) throws Exception {
+    if (!supportsBulkAPI) return;
+
+    List<K> batch1 = createBulkRequests(ns, "bulk_conc_a_", 5);
+    List<K> batch2 = createBulkRequests(ns, "bulk_conc_b_", 5);
+
+    String adminToken = SdkClients.getAdminToken();
+
+    java.util.concurrent.ExecutorService executor =
+        java.util.concurrent.Executors.newFixedThreadPool(2);
+    java.util.concurrent.Future<HttpResponse<String>> future1 =
+        executor.submit(() -> callBulkEndpoint(batch1, adminToken, false));
+    java.util.concurrent.Future<HttpResponse<String>> future2 =
+        executor.submit(() -> callBulkEndpoint(batch2, adminToken, false));
+
+    HttpResponse<String> resp1 = future1.get();
+    HttpResponse<String> resp2 = future2.get();
+    executor.shutdown();
+
+    assertEquals(200, resp1.statusCode());
+    assertEquals(200, resp2.statusCode());
+
+    BulkOperationResult result1 = JsonUtils.readValue(resp1.body(), BulkOperationResult.class);
+    BulkOperationResult result2 = JsonUtils.readValue(resp2.body(), BulkOperationResult.class);
+
+    assertEquals(5, result1.getNumberOfRowsPassed());
+    assertEquals(5, result2.getNumberOfRowsPassed());
+  }
+
+  /**
+   * Test: Data consumer receives 200 with FAILURE when all entities fail auth.
+   *
+   * <p>Verifies that when ALL entities fail authorization, the response reports complete failure
+   * rather than silently dropping the entities.
+   */
+  @Test
+  void test_bulkCreate_allAuthFailed_reportsFailure(TestNamespace ns) throws Exception {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = new ArrayList<>();
+    createRequests.add(createRequest(ns.prefix("bulk_auth_fail_0"), ns));
+    createRequests.add(createRequest(ns.prefix("bulk_auth_fail_1"), ns));
+
+    String consumerToken = getDataConsumerToken();
+    HttpResponse<String> response = callBulkEndpoint(createRequests, consumerToken, false);
+
+    assertEquals(200, response.statusCode());
+
+    BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
+    assertEquals(ApiStatus.FAILURE, result.getStatus());
+    assertEquals(2, result.getNumberOfRowsProcessed());
+    assertEquals(2, result.getNumberOfRowsFailed());
+    assertEquals(0, result.getNumberOfRowsPassed());
+    assertNotNull(result.getFailedRequest());
+    assertEquals(2, result.getFailedRequest().size());
+  }
+
+  /**
+   * Test: Bulk request with empty names are rejected.
+   */
+  @Test
+  void test_bulkCreateOrUpdate_invalidEntitiesRejected(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    K invalidRequest = createInvalidRequestForBulk(ns);
+    if (invalidRequest == null) return;
+
+    List<K> createRequests = new ArrayList<>();
+    createRequests.add(invalidRequest);
+    createRequests.add(createRequest(ns.prefix("bulk_valid_alongside"), ns));
+
+    BulkOperationResult result = executeBulkCreate(createRequests);
+
+    assertEquals(2, result.getNumberOfRowsProcessed());
+    assertTrue(result.getNumberOfRowsFailed() > 0, "Invalid entity should fail");
+    assertTrue(result.getNumberOfRowsPassed() > 0, "Valid entity should succeed");
+    assertEquals(
+        ApiStatus.PARTIAL_SUCCESS,
+        result.getStatus(),
+        "Mix of valid+invalid should be PARTIAL_SUCCESS");
+  }
+
+  // ===================================================================
+  // BULK API HOOK METHODS
+  // Subclasses that support bulk API should override these methods.
+  // ===================================================================
+
+  protected BulkOperationResult executeBulkCreate(List<K> createRequests) {
     throw new UnsupportedOperationException(
         "Bulk API not implemented for " + getEntityType() + ". Override executeBulkCreate()");
   }
 
-  /**
-   * Execute async bulk create operation.
-   * Subclasses that support async bulk API should override this method.
-   *
-   * @param createRequests List of create requests
-   * @return BulkOperationResult
-   */
-  protected org.openmetadata.schema.type.api.BulkOperationResult executeBulkCreateAsync(
-      List<K> createRequests) {
-    // Default implementation - entities that support async bulk should override
+  protected BulkOperationResult executeBulkCreateAsync(List<K> createRequests) {
     throw new UnsupportedOperationException(
         "Async Bulk API not implemented for "
             + getEntityType()
             + ". Override executeBulkCreateAsync()");
   }
 
-  /**
-   * Create an invalid request for bulk failure testing.
-   * Subclasses should override to provide entity-specific invalid request.
-   *
-   * @param ns Test namespace
-   * @return Invalid create request, or null if not applicable
-   */
   protected K createInvalidRequestForBulk(TestNamespace ns) {
-    return null; // Default - no invalid request
+    return null;
+  }
+
+  /**
+   * Create multiple bulk requests sharing the same parent container.
+   * Default implementation calls createRequest individually.
+   * Subclasses should override for entities where createRequest creates a new parent
+   * each time (e.g., Tables need all requests under the same schema).
+   */
+  protected List<K> createBulkRequests(TestNamespace ns, String prefix, int count) {
+    List<K> requests = new ArrayList<>();
+    for (int i = 0; i < count; i++) {
+      requests.add(createRequest(ns.prefix(prefix + i), ns));
+    }
+    return requests;
+  }
+
+  private String getBotToken() {
+    return org.openmetadata.it.auth.JwtAuthProvider.tokenFor(
+        "ingestion-bot@open-metadata.org",
+        "ingestion-bot@open-metadata.org",
+        new String[] {"bot"},
+        3600);
+  }
+
+  private String getDataConsumerToken() {
+    return org.openmetadata.it.auth.JwtAuthProvider.tokenFor(
+        "data-consumer@open-metadata.org",
+        "data-consumer@open-metadata.org",
+        new String[] {"DataConsumer"},
+        3600);
+  }
+
+  private HttpResponse<String> callBulkEndpoint(List<K> requests, String authToken, boolean async)
+      throws Exception {
+    String url = SdkClients.getServerUrl() + getResourcePath() + "bulk";
+    if (async) {
+      url += "?async=true";
+    }
+
+    java.net.http.HttpRequest httpRequest =
+        java.net.http.HttpRequest.newBuilder()
+            .uri(java.net.URI.create(url))
+            .header("Authorization", "Bearer " + authToken)
+            .header("Content-Type", "application/json")
+            .PUT(java.net.http.HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(requests)))
+            .build();
+
+    return java.net.http.HttpClient.newHttpClient()
+        .send(httpRequest, HttpResponse.BodyHandlers.ofString());
   }
 
   // ===================================================================

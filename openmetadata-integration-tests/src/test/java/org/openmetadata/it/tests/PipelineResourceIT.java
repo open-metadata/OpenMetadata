@@ -20,6 +20,7 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Task;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -38,6 +39,7 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
   }
 
   // ===================================================================
@@ -1143,5 +1145,26 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     assertNotNull(retrievedTask.getEndTime());
     assertEquals(startTime, retrievedTask.getStartTime());
     assertEquals(endTime, retrievedTask.getEndTime());
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreatePipeline> createRequests) {
+    return SdkClients.adminClient().pipelines().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreatePipeline> createRequests) {
+    return SdkClients.adminClient().pipelines().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreatePipeline createInvalidRequestForBulk(TestNamespace ns) {
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("invalid_pipeline"));
+    return request;
   }
 }

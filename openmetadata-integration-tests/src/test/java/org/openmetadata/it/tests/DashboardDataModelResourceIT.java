@@ -30,6 +30,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -50,6 +51,7 @@ public class DashboardDataModelResourceIT
   {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
   }
 
   @Override
@@ -793,5 +795,27 @@ public class DashboardDataModelResourceIT
     assertEquals(3, deletedByName.getColumns().size());
 
     hardDeleteEntity(dataModel.getId().toString());
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateDashboardDataModel> createRequests) {
+    return SdkClients.adminClient().dashboardDataModels().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(
+      List<CreateDashboardDataModel> createRequests) {
+    return SdkClients.adminClient().dashboardDataModels().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateDashboardDataModel createInvalidRequestForBulk(TestNamespace ns) {
+    CreateDashboardDataModel request = new CreateDashboardDataModel();
+    request.setName(ns.prefix("invalid_data_model"));
+    return request;
   }
 }

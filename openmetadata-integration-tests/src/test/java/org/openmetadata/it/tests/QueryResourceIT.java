@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -50,6 +51,7 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     supportsDataProducts = false;
     supportsSoftDelete = false;
     supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
   }
 
   // ===================================================================
@@ -1009,5 +1011,26 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     assertNotNull(adminView.getTags());
     assertTrue(
         adminView.getTags().stream().anyMatch(tag -> tag.getTagFQN().equals("PII.Sensitive")));
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateQuery> createRequests) {
+    return SdkClients.adminClient().queries().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateQuery> createRequests) {
+    return SdkClients.adminClient().queries().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateQuery createInvalidRequestForBulk(TestNamespace ns) {
+    CreateQuery request = new CreateQuery();
+    request.setName(ns.prefix("invalid_query"));
+    return request;
   }
 }

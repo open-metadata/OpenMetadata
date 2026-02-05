@@ -131,9 +131,12 @@ public class BulkExecutor {
     }
   }
 
-  /** Acquire a connection permit. Blocks until available (guaranteed completion). */
+  /** Acquire a connection permit. Times out if permit is not available within configured timeout. */
   public void acquireConnection() throws InterruptedException {
-    connectionSemaphore.acquire();
+    if (!connectionSemaphore.tryAcquire(timeoutSeconds, TimeUnit.SECONDS)) {
+      throw new RejectedExecutionException(
+          "Could not acquire bulk connection permit within " + timeoutSeconds + "s");
+    }
   }
 
   /**

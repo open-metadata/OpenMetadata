@@ -437,6 +437,30 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("nameColumnHash") String nameColumnHash,
       @BindFQN("fqnHash") String fqnHash);
 
+  @SqlQuery("SELECT <nameColumnHash> FROM <table> WHERE <nameColumnHash> IN (<fqnHashes>)")
+  List<String> findExistingFqnHashes(
+      @Define("table") String table,
+      @Define("nameColumnHash") String nameColumnHash,
+      @BindList("fqnHashes") List<String> fqnHashes);
+
+  @Transaction
+  @ConnectionAwareSqlBatch(
+      value =
+          "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json) "
+              + "ON DUPLICATE KEY UPDATE json = VALUES(json)",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlBatch(
+      value =
+          "INSERT INTO <table> (<nameHashColumn>, json) VALUES (:nameHashColumnValue, :json :: jsonb) "
+              + "ON CONFLICT (<nameHashColumn>) DO UPDATE SET json = EXCLUDED.json",
+      connectionType = POSTGRES)
+  @BatchChunkSize(100)
+  void upsertMany(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindFQN("nameHashColumnValue") List<String> nameHashColumnValue,
+      @Bind("json") List<String> json);
+
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
   int delete(@Define("table") String table, @BindUUID("id") UUID id);
 
@@ -669,6 +693,35 @@ public interface EntityDAO<T extends EntityInterface> {
       throw EntityNotFoundException.byMessage(
           CatalogExceptionMessage.entityNotFound(entityType, fqn));
     }
+  }
+
+  default List<String> findExistingFqnHashes(List<String> fqns) {
+    if (CollectionUtils.isEmpty(fqns)) {
+      return List.of();
+    }
+    List<String> hashes = fqns.stream().map(FullyQualifiedName::buildHash).toList();
+    int maxChunkSize = 30000;
+
+    if (hashes.size() <= maxChunkSize) {
+      return findExistingFqnHashes(getTableName(), getNameHashColumn(), hashes);
+    }
+
+    List<String> allExisting = new ArrayList<>();
+    for (int i = 0; i < hashes.size(); i += maxChunkSize) {
+      int end = Math.min(i + maxChunkSize, hashes.size());
+      List<String> chunk = hashes.subList(i, end);
+      allExisting.addAll(findExistingFqnHashes(getTableName(), getNameHashColumn(), chunk));
+    }
+    return allExisting;
+  }
+
+  default void upsertMany(List<EntityInterface> entities) {
+    if (CollectionUtils.isEmpty(entities)) {
+      return;
+    }
+    List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+    List<String> jsons = entities.stream().map(JsonUtils::pojoToJson).toList();
+    upsertMany(getTableName(), getNameHashColumn(), fqns, jsons);
   }
 
   default void delete(UUID id) {

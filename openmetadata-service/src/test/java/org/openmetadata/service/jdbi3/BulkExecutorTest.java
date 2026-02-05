@@ -510,4 +510,68 @@ class BulkExecutorTest {
     assertTrue(stats.contains("pool=50"));
     assertTrue(stats.contains("connLimit=5"));
   }
+
+  @Test
+  void testAcquireConnectionTimesOutAndThrows() throws InterruptedException {
+    BulkOperationConfiguration config = new BulkOperationConfiguration();
+    config.setMaxConnections(1);
+    config.setMaxThreads(2);
+    config.setTimeoutSeconds(1);
+
+    BulkExecutor.initialize(config, 50);
+    BulkExecutor executor = BulkExecutor.getInstance();
+
+    // Exhaust the single permit
+    executor.acquireConnection();
+
+    long start = System.nanoTime();
+    assertThrows(
+        RejectedExecutionException.class,
+        () -> executor.acquireConnection(),
+        "Should throw RejectedExecutionException after timeout");
+    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+    assertTrue(
+        elapsedMs >= 900 && elapsedMs < 3000,
+        "Timeout should be approximately 1s, was " + elapsedMs + "ms");
+
+    // Release the held permit
+    executor.releaseConnection();
+  }
+
+  @Test
+  void testAcquireConnectionSucceedsWithinTimeout() throws InterruptedException {
+    BulkOperationConfiguration config = new BulkOperationConfiguration();
+    config.setMaxConnections(1);
+    config.setMaxThreads(2);
+    config.setTimeoutSeconds(5);
+
+    BulkExecutor.initialize(config, 50);
+    BulkExecutor executor = BulkExecutor.getInstance();
+
+    // Acquire the single permit
+    executor.acquireConnection();
+
+    // Schedule a release after 200ms
+    new Thread(
+            () -> {
+              try {
+                Thread.sleep(200);
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+              executor.releaseConnection();
+            })
+        .start();
+
+    // This should succeed within the 5s timeout
+    long start = System.nanoTime();
+    assertDoesNotThrow(
+        () -> executor.acquireConnection(), "Should acquire within timeout after permit released");
+    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+    assertTrue(elapsedMs < 2000, "Should acquire quickly after release, took " + elapsedMs + "ms");
+
+    executor.releaseConnection();
+  }
 }
