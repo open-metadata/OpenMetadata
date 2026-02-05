@@ -1356,6 +1356,7 @@
     "pending-entity": "Pending {{entity}}",
     "pending-task": "Ausstehende Aufgabe",
     "pending-task-plural": "Ausstehende Aufgaben",
+    "per-page": "pro Seite",
     "percentage": "Prozentsatz",
     "period": "Zeitraum",
     "permanently-delete": "Dauerhaft löschen",

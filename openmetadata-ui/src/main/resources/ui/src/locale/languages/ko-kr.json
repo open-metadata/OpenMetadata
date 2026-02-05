@@ -1356,6 +1356,7 @@
     "pending-entity": "대기 중인 {{entity}}",
     "pending-task": "대기 중인 작업",
     "pending-task-plural": "대기 중인 작업들",
+    "per-page": "페이지당",
     "percentage": "백분율",
     "period": "기간",
     "permanently-delete": "영구 삭제",

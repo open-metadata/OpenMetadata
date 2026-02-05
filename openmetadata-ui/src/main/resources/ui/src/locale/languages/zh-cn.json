@@ -1356,6 +1356,7 @@
     "pending-entity": "Pending {{entity}}",
     "pending-task": "待处理的任务",
     "pending-task-plural": "待处理的任务",
+    "per-page": "每页",
     "percentage": "百分比",
     "period": "周期",
     "permanently-delete": "永久删除",

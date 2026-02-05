@@ -45,16 +45,21 @@ import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/Tree
 import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer';
 import { useFilterSelection } from '../../../components/common/atoms/filters/useFilterSelection';
 import { useSearch } from '../../../components/common/atoms/navigation/useSearch';
-import { usePaginationControls } from '../../../components/common/atoms/pagination/usePaginationControls';
 import {
   CellRenderer,
   ColumnConfig,
 } from '../../../components/common/atoms/shared/types';
 import { useDataTable } from '../../../components/common/atoms/table/useDataTable';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
-import { SOCKET_EVENTS } from '../../../constants/constants';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+  SOCKET_EVENTS,
+} from '../../../constants/constants';
 import { DRAWER_HEADER_STYLING } from '../../../constants/DomainsListPage.constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -861,7 +866,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
       return (
         <Box className="column-name-cell">
-          <span className={indent}>
+          <span className={`column-name-inner ${indent}`}>
             {hasStructChildren && (
               <Button
                 className="expand-button"
@@ -1334,6 +1339,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           ? getGroupIndeterminateState(entity.id)
           : false;
 
+      const isChildRow = Boolean(entity.parentId || entity.isStructChild);
+      const isParentExpanded =
+        columnGridListing.expandedRows.has(entity.id) ||
+        columnGridListing.expandedStructRows.has(entity.id);
+      const showParentChildColors = isChildRow || isParentExpanded;
+
       const wrappedOnSelect = (id: string, checked: boolean) => {
         if (entity.parentId) {
           handleChildSelect(id, checked, entity.parentId);
@@ -1354,12 +1365,15 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           renderGlossaryTermsCell={renderGlossaryTermsCellAdapter}
           renderPathCell={renderPathCellAdapter}
           renderTagsCell={renderTagsCellAdapter}
+          showParentChildColors={showParentChildColors}
           onGroupSelect={handleGroupSelect}
           onSelect={wrappedOnSelect}
         />
       );
     },
     [
+      columnGridListing.expandedRows,
+      columnGridListing.expandedStructRows,
       pendingRefetchRowIds,
       recentlyUpdatedRowIds,
       renderColumnNameCellFinal,
@@ -1403,15 +1417,27 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     customTableRow: CustomTableRow,
   });
 
-  // Set up pagination with prev/next only mode
-  const { paginationControls } = usePaginationControls({
-    currentPage: columnGridListing.currentPage,
-    totalPages: columnGridListing.totalPages,
-    totalEntities: columnGridListing.totalEntities,
-    pageSize: columnGridListing.pageSize,
-    onPageChange: columnGridListing.handlePageChange,
-    onPageSizeChange: columnGridListing.handlePageSizeChange,
-  });
+  const paginationData = useMemo(
+    () => ({
+      paging: { total: columnGridListing.totalEntities },
+      pagingHandler: ({ currentPage }: { currentPage: number }) =>
+        columnGridListing.handlePageChange(currentPage),
+      pageSize: columnGridListing.pageSize,
+      currentPage: columnGridListing.currentPage,
+      isNumberBased: true,
+      isLoading: columnGridListing.loading,
+      pageSizeOptions: [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
+      onShowSizeChange: columnGridListing.handlePageSizeChange,
+    }),
+    [
+      columnGridListing.totalEntities,
+      columnGridListing.handlePageChange,
+      columnGridListing.pageSize,
+      columnGridListing.currentPage,
+      columnGridListing.loading,
+      columnGridListing.handlePageSizeChange,
+    ]
+  );
 
   const editedCount = useMemo(() => {
     return columnGridListing.allRows.filter(hasEditedValues).length;
@@ -1788,14 +1814,29 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     return (
       <>
         <Box className="table-scroll-container">{dataTable}</Box>
-        {paginationControls}
+        {columnGridListing.totalEntities > 0 && (
+          <Box
+            data-testid="pagination"
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              borderTop: `1px solid ${theme.palette.allShades?.gray?.[200]}`,
+              pt: 3.5,
+              px: 6,
+              pb: 5,
+            }}>
+            <NextPrevious {...paginationData} />
+          </Box>
+        )}
       </>
     );
   }, [
     columnGridListing.loading,
+    columnGridListing.totalEntities,
     filteredEntities,
     dataTable,
-    paginationControls,
+    paginationData,
+    theme,
     t,
   ]);
 

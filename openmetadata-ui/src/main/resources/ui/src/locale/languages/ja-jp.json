@@ -1356,6 +1356,7 @@
     "pending-entity": "保留中の{{entity}}",
     "pending-task": "保留中のタスク",
     "pending-task-plural": "保留中のタスク",
+    "per-page": "ページあたり",
     "percentage": "割合",
     "period": "期間",
     "permanently-delete": "完全に削除",

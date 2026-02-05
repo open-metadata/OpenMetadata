@@ -1356,6 +1356,7 @@
     "pending-entity": "Ожидающий объект «{{entity}}»",
     "pending-task": "Ожидающая задача",
     "pending-task-plural": "Незавершенные задачи",
+    "per-page": "на страницу",
     "percentage": "Процент",
     "period": "Период",
     "permanently-delete": "Удалить навсегда",
