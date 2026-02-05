@@ -11,6 +11,31 @@
  *  limitations under the License.
  */
 /**
+ * Comprehensive validation result for data contract import operations.
+ */
+export interface ContractValidation {
+    /**
+     * List of entity-specific constraint violations (e.g., unsupported entity type, invalid
+     * configuration).
+     */
+    constraintErrors?: string[];
+    /**
+     * List of entity-level validation errors (e.g., name too long, invalid pattern).
+     */
+    entityErrors?: string[];
+    /**
+     * Schema field validation results.
+     */
+    schemaValidation?: SchemaValidation;
+    /**
+     * Whether the contract passes all validation checks.
+     */
+    valid?: boolean;
+}
+
+/**
+ * Schema field validation results.
+ *
  * Schema validation details for data contract.
  */
 export interface SchemaValidation {

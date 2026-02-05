@@ -22,8 +22,8 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
-import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
@@ -534,16 +534,18 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     // Test basic list without filters
     ListParams params = new ListParams();
-    params.setLimit(10);
+    params.setLimit(100);
     ListResponse<DataContract> response = listEntities(params);
 
     assertNotNull(response);
     assertNotNull(response.getData());
     assertTrue(response.getData().size() >= 3);
 
-    // Test filtering by status - Approved
+    // Test filtering by status - Approved (include entity field to verify entity reference)
+    // Use higher limit to account for concurrent test execution creating multiple contracts
     ListParams approvedParams = new ListParams();
-    approvedParams.setLimit(10);
+    approvedParams.setLimit(1000);
+    approvedParams.setFields("entity");
     approvedParams.addQueryParam("status", "Approved");
     ListResponse<DataContract> approvedResponse = listEntities(approvedParams);
 
@@ -556,14 +558,16 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                 contract ->
                     contract.getId().equals(approvedContract.getId())
                         && contract.getEntityStatus() == EntityStatus.APPROVED
+                        && contract.getEntity() != null
                         && contract.getEntity().getId().equals(table1.getId()));
     assertTrue(
         foundApprovedContract,
         "Expected to find the approved contract with matching entity and status");
 
-    // Test filtering by status - Draft
+    // Test filtering by status - Draft (include entity field to verify entity reference)
     ListParams draftParams = new ListParams();
-    draftParams.setLimit(10);
+    draftParams.setLimit(1000);
+    draftParams.setFields("entity");
     draftParams.addQueryParam("status", "Draft");
     ListResponse<DataContract> draftResponse = listEntities(draftParams);
 
@@ -576,13 +580,15 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                 contract ->
                     contract.getId().equals(draftContract.getId())
                         && contract.getEntityStatus() == EntityStatus.DRAFT
+                        && contract.getEntity() != null
                         && contract.getEntity().getId().equals(table2.getId()));
     assertTrue(
         foundDraftContract, "Expected to find the draft contract with matching entity and status");
 
-    // Test filtering by status - Rejected
+    // Test filtering by status - Rejected (include entity field to verify entity reference)
     ListParams rejectedParams = new ListParams();
-    rejectedParams.setLimit(10);
+    rejectedParams.setLimit(1000);
+    rejectedParams.setFields("entity");
     rejectedParams.addQueryParam("status", "Rejected");
     ListResponse<DataContract> rejectedResponse = listEntities(rejectedParams);
 
@@ -594,6 +600,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                 contract ->
                     contract.getId().equals(rejectedContract.getId())
                         && contract.getEntityStatus() == EntityStatus.REJECTED
+                        && contract.getEntity() != null
                         && contract.getEntity().getId().equals(table3.getId()));
     assertTrue(
         foundRejectedContract,
@@ -3650,7 +3657,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     Column emailCol = retrieved.getSchema().get(1);
     assertEquals("email", emailCol.getName());
-    assertEquals(ColumnDataType.VARCHAR, emailCol.getDataType());
+    // ODCS logicalType STRING maps to ColumnDataType.STRING
+    assertEquals(ColumnDataType.STRING, emailCol.getDataType());
     assertEquals("User email address", emailCol.getDescription());
   }
 
@@ -4536,16 +4544,20 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             + "  - name: name\n"
             + "    logicalType: string\n";
 
-    SchemaValidation validation =
+    ContractValidation validation =
         SdkClients.adminClient()
             .dataContracts()
             .validateODCSYaml(yamlContent, table.getId(), "table");
 
     assertNotNull(validation);
-    assertEquals(2, validation.getTotal());
-    assertEquals(2, validation.getPassed());
-    assertEquals(0, validation.getFailed());
-    assertTrue(validation.getFailedFields() == null || validation.getFailedFields().isEmpty());
+    assertTrue(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    assertEquals(2, validation.getSchemaValidation().getTotal());
+    assertEquals(2, validation.getSchemaValidation().getPassed());
+    assertEquals(0, validation.getSchemaValidation().getFailed());
+    assertTrue(
+        validation.getSchemaValidation().getFailedFields() == null
+            || validation.getSchemaValidation().getFailedFields().isEmpty());
   }
 
   @Test
@@ -4579,19 +4591,21 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             + "  - name: order_total\n"
             + "    logicalType: number\n";
 
-    SchemaValidation validation =
+    ContractValidation validation =
         SdkClients.adminClient()
             .dataContracts()
             .validateODCSYaml(yamlContent, table.getId(), "table");
 
     assertNotNull(validation);
-    assertEquals(2, validation.getTotal());
-    assertEquals(0, validation.getPassed());
-    assertEquals(2, validation.getFailed());
-    assertNotNull(validation.getFailedFields());
-    assertEquals(2, validation.getFailedFields().size());
-    assertTrue(validation.getFailedFields().contains("customer_id"));
-    assertTrue(validation.getFailedFields().contains("order_total"));
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    assertEquals(2, validation.getSchemaValidation().getTotal());
+    assertEquals(0, validation.getSchemaValidation().getPassed());
+    assertEquals(2, validation.getSchemaValidation().getFailed());
+    assertNotNull(validation.getSchemaValidation().getFailedFields());
+    assertEquals(2, validation.getSchemaValidation().getFailedFields().size());
+    assertTrue(validation.getSchemaValidation().getFailedFields().contains("customer_id"));
+    assertTrue(validation.getSchemaValidation().getFailedFields().contains("order_total"));
   }
 
   @Test
@@ -4631,18 +4645,20 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             + "  - name: nonexistent_field\n"
             + "    logicalType: string\n";
 
-    SchemaValidation validation =
+    ContractValidation validation =
         SdkClients.adminClient()
             .dataContracts()
             .validateODCSYaml(yamlContent, table.getId(), "table");
 
     assertNotNull(validation);
-    assertEquals(3, validation.getTotal());
-    assertEquals(2, validation.getPassed());
-    assertEquals(1, validation.getFailed());
-    assertNotNull(validation.getFailedFields());
-    assertEquals(1, validation.getFailedFields().size());
-    assertTrue(validation.getFailedFields().contains("nonexistent_field"));
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    assertEquals(3, validation.getSchemaValidation().getTotal());
+    assertEquals(2, validation.getSchemaValidation().getPassed());
+    assertEquals(1, validation.getSchemaValidation().getFailed());
+    assertNotNull(validation.getSchemaValidation().getFailedFields());
+    assertEquals(1, validation.getSchemaValidation().getFailedFields().size());
+    assertTrue(validation.getSchemaValidation().getFailedFields().contains("nonexistent_field"));
   }
 
   @Test
@@ -4662,15 +4678,17 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             + "version: '1.0.0'\n"
             + "status: active\n";
 
-    SchemaValidation validation =
+    ContractValidation validation =
         SdkClients.adminClient()
             .dataContracts()
             .validateODCSYaml(yamlContent, table.getId(), "table");
 
     assertNotNull(validation);
-    assertEquals(0, validation.getTotal());
-    assertEquals(0, validation.getPassed());
-    assertEquals(0, validation.getFailed());
+    assertTrue(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    assertEquals(0, validation.getSchemaValidation().getTotal());
+    assertEquals(0, validation.getSchemaValidation().getPassed());
+    assertEquals(0, validation.getSchemaValidation().getFailed());
   }
 
   @Test
@@ -4727,14 +4745,16 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             + "    logicalType: integer\n";
 
     // Call validation endpoint
-    SchemaValidation validation =
+    ContractValidation validation =
         SdkClients.adminClient()
             .dataContracts()
             .validateODCSYaml(yamlContent, table.getId(), "table");
 
     assertNotNull(validation);
-    assertEquals(1, validation.getTotal());
-    assertEquals(1, validation.getPassed());
+    assertTrue(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    assertEquals(1, validation.getSchemaValidation().getTotal());
+    assertEquals(1, validation.getSchemaValidation().getPassed());
 
     // Verify that no contract was created
     assertThrows(
@@ -5489,5 +5509,797 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertNotNull(merged.getOwners());
     assertEquals(1, merged.getOwners().size());
     assertEquals("admin", merged.getOwners().get(0).getName());
+  }
+
+  // ===================================================================
+  // ODCS EDGE CASE TESTS
+  // ===================================================================
+
+  @Test
+  void testImportODCSWithLargeSchema(TestNamespace ns) {
+    // Create table with 150 columns to test large schema handling
+    java.util.List<Column> columns = new java.util.ArrayList<>();
+    for (int i = 0; i < 150; i++) {
+      columns.add(
+          new Column()
+              .withName("column_" + i)
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDataLength(255));
+    }
+    Table table = createTestTable(ns, columns);
+
+    // Create ODCS contract with 150 schema elements
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName(ns.prefix("large_schema"));
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSDescription desc = new ODCSDescription();
+    desc.setPurpose("Contract with large schema (150+ columns)");
+    odcs.setDescription(desc);
+
+    // Create schema with 150 properties
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName(table.getName());
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+
+    java.util.List<ODCSSchemaElement> properties = new java.util.ArrayList<>();
+    for (int i = 0; i < 150; i++) {
+      ODCSSchemaElement col = new ODCSSchemaElement();
+      col.setName("column_" + i);
+      col.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
+      col.setDescription("Column " + i + " description");
+      properties.add(col);
+    }
+    tableObject.setProperties(properties);
+    odcs.setSchema(List.of(tableObject));
+
+    DataContract imported =
+        SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertNotNull(imported.getId());
+    assertEquals(odcs.getName(), imported.getName());
+    assertNotNull(imported.getSchema());
+    assertEquals(150, imported.getSchema().size());
+
+    // Verify first and last columns
+    assertEquals("column_0", imported.getSchema().get(0).getName());
+    assertEquals("column_149", imported.getSchema().get(149).getName());
+  }
+
+  @Test
+  void testImportODCSWithLargeYamlContent(TestNamespace ns) {
+    // Create table with 100 columns to test large YAML parsing
+    java.util.List<Column> columns = new java.util.ArrayList<>();
+    for (int i = 0; i < 100; i++) {
+      columns.add(
+          new Column()
+              .withName("col_" + i)
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDataLength(255));
+    }
+    Table table = createTestTable(ns, columns);
+
+    // Build YAML with many schema columns and descriptions
+    StringBuilder yamlBuilder = new StringBuilder();
+    yamlBuilder.append("apiVersion: v3.1.0\n");
+    yamlBuilder.append("kind: DataContract\n");
+    yamlBuilder.append("id: ").append(UUID.randomUUID()).append("\n");
+    yamlBuilder.append("name: ").append(ns.prefix("large_yaml")).append("\n");
+    yamlBuilder.append("version: '1.0.0'\n");
+    yamlBuilder.append("status: active\n");
+    yamlBuilder.append("description:\n");
+    yamlBuilder.append("  purpose: Contract with 100 columns for large YAML test\n");
+    yamlBuilder.append("schema:\n");
+
+    // Add 100 columns with descriptions
+    for (int i = 0; i < 100; i++) {
+      yamlBuilder.append("  - name: col_").append(i).append("\n");
+      yamlBuilder.append("    logicalType: string\n");
+      yamlBuilder.append("    description: Description for column ").append(i).append("\n");
+    }
+
+    String yamlContent = yamlBuilder.toString();
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertNotNull(imported.getId());
+    assertNotNull(imported.getSchema());
+    assertEquals(100, imported.getSchema().size());
+
+    // Verify first and last columns are correctly imported
+    assertEquals("col_0", imported.getSchema().get(0).getName());
+    assertEquals("col_99", imported.getSchema().get(99).getName());
+
+    // Verify round-trip by exporting back
+    ODCSDataContract exported =
+        SdkClients.adminClient().dataContracts().exportToODCS(imported.getId());
+
+    assertNotNull(exported);
+    assertNotNull(exported.getSchema());
+    assertEquals(1, exported.getSchema().size());
+    ODCSSchemaElement tableObject = exported.getSchema().get(0);
+    assertNotNull(tableObject.getProperties());
+    assertEquals(100, tableObject.getProperties().size());
+  }
+
+  @Test
+  void testImportODCSWithVeryLongContractName(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    // Create a contract name longer than 500 characters
+    StringBuilder longNameBuilder = new StringBuilder(ns.prefix("long_name_"));
+    while (longNameBuilder.length() < 520) {
+      longNameBuilder.append("a");
+    }
+    String longName = longNameBuilder.toString();
+
+    assertTrue(longName.length() > 500, "Contract name should be longer than 500 characters");
+
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName(longName);
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSDescription desc = new ODCSDescription();
+    desc.setPurpose("Contract with very long name exceeding 500 characters");
+    odcs.setDescription(desc);
+
+    // This should either succeed or throw an appropriate validation error
+    // Depending on the backend validation rules
+    try {
+      DataContract imported =
+          SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
+
+      assertNotNull(imported);
+      // If import succeeds, verify the name is preserved or truncated appropriately
+      assertNotNull(imported.getName());
+    } catch (OpenMetadataException e) {
+      // If validation fails, ensure it's a proper validation error
+      assertTrue(
+          e.getMessage().toLowerCase().contains("name")
+              || e.getMessage().toLowerCase().contains("length")
+              || e.getMessage().toLowerCase().contains("character")
+              || e.getMessage().toLowerCase().contains("valid"),
+          "Exception should indicate name length validation issue: " + e.getMessage());
+    }
+  }
+
+  @Test
+  void testImportODCSWithTypeMismatchStringVsInt(TestNamespace ns) {
+    // Create table with INT column
+    Table table =
+        createTestTable(
+            ns,
+            List.of(
+                new Column().withName("id").withDataType(ColumnDataType.INT),
+                new Column().withName("count").withDataType(ColumnDataType.INT),
+                new Column().withName("amount").withDataType(ColumnDataType.BIGINT)));
+
+    // ODCS defines STRING type for columns that are INT in the entity
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName(ns.prefix("type_mismatch"));
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName(table.getName());
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+
+    java.util.List<ODCSSchemaElement> properties = new java.util.ArrayList<>();
+
+    // Define id as STRING when it's INT in the table
+    ODCSSchemaElement idCol = new ODCSSchemaElement();
+    idCol.setName("id");
+    idCol.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
+    idCol.setDescription("ID column defined as string in ODCS but INT in table");
+    properties.add(idCol);
+
+    // Define count as STRING when it's INT in the table
+    ODCSSchemaElement countCol = new ODCSSchemaElement();
+    countCol.setName("count");
+    countCol.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
+    properties.add(countCol);
+
+    // Define amount as STRING when it's BIGINT in the table
+    ODCSSchemaElement amountCol = new ODCSSchemaElement();
+    amountCol.setName("amount");
+    amountCol.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
+    properties.add(amountCol);
+
+    tableObject.setProperties(properties);
+    odcs.setSchema(List.of(tableObject));
+
+    // Import should succeed - ODCS schema defines contract expectations,
+    // not necessarily matching the physical schema exactly
+    DataContract imported =
+        SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertNotNull(imported.getSchema());
+    assertEquals(3, imported.getSchema().size());
+
+    // The contract schema should reflect what was defined in ODCS
+    assertEquals("id", imported.getSchema().get(0).getName());
+    assertEquals("count", imported.getSchema().get(1).getName());
+    assertEquals("amount", imported.getSchema().get(2).getName());
+  }
+
+  @Test
+  void testValidateODCSWithTypeMismatch(TestNamespace ns) {
+    // Create table with INT columns
+    Table table =
+        createTestTable(
+            ns,
+            List.of(
+                new Column().withName("user_id").withDataType(ColumnDataType.INT),
+                new Column().withName("score").withDataType(ColumnDataType.DOUBLE)));
+
+    // ODCS schema references columns with different types
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + ns.prefix("type_mismatch_validate")
+            + "\n"
+            + "name: "
+            + ns.prefix("type_mismatch_validate")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "schema:\n"
+            + "  - name: user_id\n"
+            + "    logicalType: string\n"
+            + "  - name: score\n"
+            + "    logicalType: string\n";
+
+    // Validation should pass for column existence (type validation is separate concern)
+    ContractValidation validation =
+        SdkClients.adminClient()
+            .dataContracts()
+            .validateODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(validation);
+    assertTrue(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    // Columns exist, so validation passes for field existence
+    assertEquals(2, validation.getSchemaValidation().getTotal());
+    assertEquals(2, validation.getSchemaValidation().getPassed());
+    assertEquals(0, validation.getSchemaValidation().getFailed());
+  }
+
+  @Test
+  void testImportODCSWithDuplicateColumnNames(TestNamespace ns) {
+    Table table =
+        createTestTable(
+            ns,
+            List.of(
+                new Column().withName("id").withDataType(ColumnDataType.INT),
+                new Column()
+                    .withName("name")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+
+    // ODCS schema with duplicate column names
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName(ns.prefix("duplicate_columns"));
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName(table.getName());
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+
+    java.util.List<ODCSSchemaElement> properties = new java.util.ArrayList<>();
+
+    // First 'id' column
+    ODCSSchemaElement idCol1 = new ODCSSchemaElement();
+    idCol1.setName("id");
+    idCol1.setLogicalType(ODCSSchemaElement.LogicalType.INTEGER);
+    idCol1.setDescription("First ID column");
+    properties.add(idCol1);
+
+    // Duplicate 'id' column with different type
+    ODCSSchemaElement idCol2 = new ODCSSchemaElement();
+    idCol2.setName("id");
+    idCol2.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
+    idCol2.setDescription("Duplicate ID column");
+    properties.add(idCol2);
+
+    // Normal column
+    ODCSSchemaElement nameCol = new ODCSSchemaElement();
+    nameCol.setName("name");
+    nameCol.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
+    properties.add(nameCol);
+
+    tableObject.setProperties(properties);
+    odcs.setSchema(List.of(tableObject));
+
+    // Import should either fail with validation error or handle duplicates appropriately
+    try {
+      DataContract imported =
+          SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
+
+      // If import succeeds, verify how duplicates were handled
+      assertNotNull(imported);
+      assertNotNull(imported.getSchema());
+      // Should either deduplicate or preserve all entries
+      assertTrue(
+          imported.getSchema().size() >= 2, "Schema should have at least the unique columns");
+    } catch (OpenMetadataException e) {
+      // If validation fails for duplicates, that's also acceptable behavior
+      assertTrue(
+          e.getMessage().toLowerCase().contains("duplicate")
+              || e.getMessage().toLowerCase().contains("unique")
+              || e.getMessage().toLowerCase().contains("already exists"),
+          "Exception should indicate duplicate column issue: " + e.getMessage());
+    }
+  }
+
+  @Test
+  void testValidateODCSWithDuplicateColumnNames(TestNamespace ns) {
+    Table table =
+        createTestTable(
+            ns,
+            List.of(
+                new Column().withName("id").withDataType(ColumnDataType.INT),
+                new Column()
+                    .withName("email")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+
+    // YAML with duplicate column names
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + ns.prefix("dup_col_validate")
+            + "\n"
+            + "name: "
+            + ns.prefix("dup_col_validate")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "schema:\n"
+            + "  - name: id\n"
+            + "    logicalType: integer\n"
+            + "  - name: id\n"
+            + "    logicalType: string\n"
+            + "  - name: email\n"
+            + "    logicalType: string\n";
+
+    // Validation should handle duplicate column names
+    try {
+      ContractValidation validation =
+          SdkClients.adminClient()
+              .dataContracts()
+              .validateODCSYaml(yamlContent, table.getId(), "table");
+
+      assertNotNull(validation);
+      assertNotNull(validation.getSchemaValidation());
+      // The validation counts may vary based on how duplicates are handled
+      assertTrue(
+          validation.getSchemaValidation().getTotal() >= 2,
+          "Should validate at least the unique columns");
+    } catch (OpenMetadataException e) {
+      // If validation rejects duplicates, that's acceptable
+      assertTrue(
+          e.getMessage().toLowerCase().contains("duplicate")
+              || e.getMessage().toLowerCase().contains("parse")
+              || e.getMessage().toLowerCase().contains("invalid"),
+          "Exception should indicate validation issue: " + e.getMessage());
+    }
+  }
+
+  @Test
+  void testImportODCSYamlWithDuplicateColumnsInYaml(TestNamespace ns) {
+    Table table =
+        createTestTable(
+            ns,
+            List.of(
+                new Column().withName("user_id").withDataType(ColumnDataType.INT),
+                new Column()
+                    .withName("status")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(50)));
+
+    // YAML with repeated column definitions
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("yaml_dup_cols")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "schema:\n"
+            + "  - name: user_id\n"
+            + "    logicalType: integer\n"
+            + "    description: Primary user identifier\n"
+            + "  - name: status\n"
+            + "    logicalType: string\n"
+            + "    description: Status field\n"
+            + "  - name: user_id\n"
+            + "    logicalType: string\n"
+            + "    description: Duplicate user_id with different type\n"
+            + "  - name: status\n"
+            + "    logicalType: integer\n"
+            + "    description: Duplicate status with different type\n";
+
+    try {
+      DataContract imported =
+          SdkClients.adminClient()
+              .dataContracts()
+              .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+      assertNotNull(imported);
+      // Verify how the system handles YAML with duplicate entries
+      assertNotNull(imported.getSchema());
+    } catch (OpenMetadataException e) {
+      // Duplicate rejection is acceptable
+      assertTrue(e.getMessage() != null, "Exception message should not be null");
+    }
+  }
+
+  @Test
+  void testImportModifyExportRoundTrip(TestNamespace ns) {
+    List<Column> tableColumns =
+        List.of(
+            new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+            new Column().withName("name").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
+            new Column().withName("email").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
+            new Column().withName("created_at").withDataType(ColumnDataType.TIMESTAMP));
+    Table table = createTestTable(ns, tableColumns);
+
+    String contractName = ns.prefix("import_modify_export");
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + contractName
+            + "\n"
+            + "version: \"1.0.0\"\n"
+            + "status: draft\n"
+            + "description:\n"
+            + "  purpose: Original purpose from ODCS import\n"
+            + "schema:\n"
+            + "  - name: "
+            + table.getName()
+            + "\n"
+            + "    logicalType: object\n"
+            + "    properties:\n"
+            + "      - name: id\n"
+            + "        logicalType: long\n"
+            + "        description: Primary identifier\n"
+            + "      - name: name\n"
+            + "        logicalType: string\n"
+            + "        description: User name\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertEquals(contractName, imported.getName());
+    assertEquals(EntityStatus.DRAFT, imported.getEntityStatus());
+    assertEquals(2, imported.getSchema().size());
+
+    imported.setDescription("Updated description via UI");
+
+    imported.setEntityStatus(EntityStatus.APPROVED);
+
+    List<Column> updatedSchema =
+        List.of(
+            new Column()
+                .withName("id")
+                .withDataType(ColumnDataType.BIGINT)
+                .withDescription("Primary identifier - updated"),
+            new Column()
+                .withName("name")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255)
+                .withDescription("User name"),
+            new Column()
+                .withName("email")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255)
+                .withDescription("User email address - added via UI"));
+    imported.setSchema(updatedSchema);
+
+    ContractSLA sla = new ContractSLA();
+    org.openmetadata.schema.api.data.RefreshFrequency rf =
+        new org.openmetadata.schema.api.data.RefreshFrequency();
+    rf.setInterval(24);
+    rf.setUnit(org.openmetadata.schema.api.data.RefreshFrequency.Unit.HOUR);
+    sla.setRefreshFrequency(rf);
+
+    org.openmetadata.schema.api.data.MaxLatency ml =
+        new org.openmetadata.schema.api.data.MaxLatency();
+    ml.setValue(2);
+    ml.setUnit(org.openmetadata.schema.api.data.MaxLatency.Unit.HOUR);
+    sla.setMaxLatency(ml);
+    imported.setSla(sla);
+
+    DataContract updated = patchEntity(imported.getId().toString(), imported);
+
+    assertNotNull(updated);
+    assertEquals("Updated description via UI", updated.getDescription());
+    assertEquals(EntityStatus.APPROVED, updated.getEntityStatus());
+    assertEquals(3, updated.getSchema().size());
+    assertNotNull(updated.getSla());
+
+    String exportedYaml =
+        SdkClients.adminClient().dataContracts().exportToODCSYaml(updated.getId());
+
+    assertNotNull(exportedYaml);
+    assertTrue(exportedYaml.contains("v3.1.0"));
+    assertTrue(exportedYaml.contains(contractName));
+
+    assertTrue(
+        exportedYaml.contains("active"), "Export should reflect APPROVED status as 'active'");
+
+    assertTrue(exportedYaml.contains("email"), "Export should contain newly added 'email' column");
+
+    assertTrue(
+        exportedYaml.contains("freshness") || exportedYaml.contains("slaProperties"),
+        "Export should contain SLA properties added via UI");
+
+    ODCSDataContract exportedOdcs =
+        SdkClients.adminClient().dataContracts().exportToODCS(updated.getId());
+
+    assertNotNull(exportedOdcs);
+    assertEquals(ODCSDataContract.OdcsStatus.ACTIVE, exportedOdcs.getStatus());
+
+    assertNotNull(exportedOdcs.getSchema());
+    assertEquals(1, exportedOdcs.getSchema().size());
+    ODCSSchemaElement tableObject = exportedOdcs.getSchema().get(0);
+    assertEquals(ODCSSchemaElement.LogicalType.OBJECT, tableObject.getLogicalType());
+    assertNotNull(tableObject.getProperties());
+    assertEquals(3, tableObject.getProperties().size());
+
+    boolean hasEmail =
+        tableObject.getProperties().stream().anyMatch(p -> "email".equals(p.getName()));
+    assertTrue(hasEmail, "Exported schema should contain 'email' column added via UI");
+
+    assertNotNull(exportedOdcs.getSlaProperties());
+    assertFalse(exportedOdcs.getSlaProperties().isEmpty(), "Export should contain SLA properties");
+
+    boolean hasFreshness =
+        exportedOdcs.getSlaProperties().stream().anyMatch(p -> "freshness".equals(p.getProperty()));
+    assertTrue(hasFreshness, "Export should contain freshness SLA added via UI");
+
+    boolean hasLatency =
+        exportedOdcs.getSlaProperties().stream().anyMatch(p -> "latency".equals(p.getProperty()));
+    assertTrue(hasLatency, "Export should contain latency SLA added via UI");
+  }
+
+  // ==================== OM Format Validation Endpoint Tests ====================
+
+  @Test
+  void testValidateContractRequestValid(TestNamespace ns) {
+    Table table =
+        createTestTable(
+            ns,
+            List.of(
+                new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+                new Column()
+                    .withName("name")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("validate_valid"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Test validation")
+            .withSchema(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+                    new Column()
+                        .withName("name")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)));
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertTrue(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    assertEquals(2, validation.getSchemaValidation().getTotal());
+    assertEquals(2, validation.getSchemaValidation().getPassed());
+    assertEquals(0, validation.getSchemaValidation().getFailed());
+    // entityErrors/constraintErrors may be null or empty list depending on serialization
+    assertTrue(
+        validation.getEntityErrors() == null || validation.getEntityErrors().isEmpty(),
+        "Expected entityErrors to be null or empty");
+    assertTrue(
+        validation.getConstraintErrors() == null || validation.getConstraintErrors().isEmpty(),
+        "Expected constraintErrors to be null or empty");
+  }
+
+  @Test
+  void testValidateContractRequestNameTooLong(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    String longName = "x".repeat(300);
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(longName)
+            .withEntity(table.getEntityReference())
+            .withDescription("Test name too long");
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertFalse(validation.getValid());
+    // Validation error may be in entityErrors or constraintErrors depending on which validation
+    // catches it
+    boolean hasNameError =
+        (validation.getEntityErrors() != null
+                && validation.getEntityErrors().stream()
+                    .anyMatch(e -> e.contains("256") || e.contains("name")))
+            || (validation.getConstraintErrors() != null
+                && validation.getConstraintErrors().stream()
+                    .anyMatch(e -> e.contains("256") || e.contains("name")));
+    assertTrue(hasNameError, "Expected validation error about name length");
+  }
+
+  @Test
+  void testValidateContractRequestUnsupportedEntityType(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    EntityReference fakeEntity =
+        new EntityReference().withId(table.getId()).withType("unsupportedType");
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("unsupported_type"))
+            .withEntity(fakeEntity)
+            .withDescription("Test unsupported entity type");
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getConstraintErrors());
+    assertTrue(
+        validation.getConstraintErrors().stream()
+            .anyMatch(e -> e.contains("not supported for data contracts")));
+  }
+
+  @Test
+  void testValidateContractRequestSchemaFieldMismatch(TestNamespace ns) {
+    Table table =
+        createTestTable(
+            ns,
+            List.of(
+                new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+                new Column()
+                    .withName("name")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("schema_mismatch"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Test schema field mismatch")
+            .withSchema(
+                List.of(
+                    new Column().withName("nonexistent_column").withDataType(ColumnDataType.BIGINT),
+                    new Column()
+                        .withName("another_missing")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)));
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    assertEquals(2, validation.getSchemaValidation().getTotal());
+    assertEquals(0, validation.getSchemaValidation().getPassed());
+    assertEquals(2, validation.getSchemaValidation().getFailed());
+    assertTrue(validation.getSchemaValidation().getFailedFields().contains("nonexistent_column"));
+    assertTrue(validation.getSchemaValidation().getFailedFields().contains("another_missing"));
+  }
+
+  @Test
+  void testValidateContractDoesNotCreateContract(TestNamespace ns) {
+    Table table =
+        createTestTable(ns, List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("validate_no_create"))
+            .withEntity(table.getEntityReference())
+            .withDescription("Validation should not create contract")
+            .withSchema(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertTrue(validation.getValid());
+
+    // Verify that no contract was actually created
+    assertThrows(
+        OpenMetadataException.class,
+        () -> SdkClients.adminClient().dataContracts().getByEntityId(table.getId(), "table"),
+        "Validation should not create a contract");
+  }
+
+  @Test
+  void testODCSValidationReturnsContractValidation(TestNamespace ns) {
+    Table table =
+        createTestTable(
+            ns,
+            List.of(
+                new Column().withName("id").withDataType(ColumnDataType.INT),
+                new Column()
+                    .withName("name")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + ns.prefix("odcs_contract_validation")
+            + "\n"
+            + "name: "
+            + ns.prefix("odcs_contract_validation")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "schema:\n"
+            + "  - name: id\n"
+            + "    logicalType: integer\n"
+            + "  - name: name\n"
+            + "    logicalType: string\n";
+
+    ContractValidation validation =
+        SdkClients.adminClient()
+            .dataContracts()
+            .validateODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(validation);
+    assertTrue(validation.getValid());
+    assertNotNull(validation.getSchemaValidation());
+    // entityErrors/constraintErrors may be null or empty list depending on serialization
+    assertTrue(
+        validation.getEntityErrors() == null || validation.getEntityErrors().isEmpty(),
+        "Expected entityErrors to be null or empty");
+    assertTrue(
+        validation.getConstraintErrors() == null || validation.getConstraintErrors().isEmpty(),
+        "Expected constraintErrors to be null or empty");
   }
 }

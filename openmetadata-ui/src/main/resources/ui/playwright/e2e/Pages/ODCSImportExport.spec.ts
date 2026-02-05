@@ -27,8 +27,10 @@ import {
   ODCS_VALID_BASIC_YAML,
   ODCS_VALID_DRAFT_STATUS_YAML,
   ODCS_VALID_FULL_YAML,
+  ODCS_VALID_MULTI_OBJECT_SIMPLE_YAML,
   ODCS_VALID_MULTI_OBJECT_YAML,
   ODCS_VALID_QUALITY_RULES_BETWEEN_YAML,
+  ODCS_VALID_WITH_MARKDOWN_DESCRIPTION_YAML,
   ODCS_WITH_QUALITY_RULES_YAML,
   ODCS_VALID_WITH_TEAM_YAML,
   ODCS_VALID_WITH_TIMESTAMPS_YAML,
@@ -36,6 +38,7 @@ import {
 } from '../../constant/dataContracts';
 import { TableClass } from '../../support/entity/TableClass';
 import {
+  descriptionBox,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -639,8 +642,9 @@ test.describe('ODCS Import/Export', () => {
       expect(exportedYaml).toContain('freshness');
 
       // Verify roles were merged from full contract
+      // ODCS_VALID_FULL_YAML contains roles: data_admin and analyst
       expect(exportedYaml).toContain('roles');
-      expect(exportedYaml).toContain('data-consumer');
+      expect(exportedYaml).toContain('analyst');
 
       // Verify original contract name is preserved (merge behavior)
       expect(exportedYaml).toContain('Orders Basic Contract');
@@ -1128,7 +1132,7 @@ test.describe('ODCS Import/Export', () => {
 
       // Verify roles are in the export
       expect(exportedYaml).toContain('roles');
-      expect(exportedYaml).toContain('data-consumer');
+      expect(exportedYaml).toContain('data_admin');
 
       // Cleanup
       fsModule.unlinkSync(tempPath);
@@ -1609,7 +1613,7 @@ version: "1.0.0"`;
     }
   });
 
-  test('Multi-object ODCS contract - selecting object enables import', async ({
+  test('Multi-object ODCS contract - selecting object enables import and completes import', async ({
     page,
   }) => {
     const table = new TableClass();
@@ -1623,11 +1627,12 @@ version: "1.0.0"`;
 
       await page.getByTestId('import-contract-modal').waitFor();
 
+      // Use the simple multi-object YAML (no properties) to avoid schema validation failures
       const fileInput = page.getByTestId('file-upload-input');
       await fileInput.setInputFiles({
-        name: 'valid-multi-object.yaml',
+        name: 'valid-multi-object-simple.yaml',
         mimeType: 'application/yaml',
-        buffer: Buffer.from(ODCS_VALID_MULTI_OBJECT_YAML),
+        buffer: Buffer.from(ODCS_VALID_MULTI_OBJECT_SIMPLE_YAML),
       });
 
       // Wait for object selector to appear
@@ -1639,20 +1644,37 @@ version: "1.0.0"`;
       await page.getByTestId('schema-object-select').click();
       await page.getByTestId('schema-object-option-customers').click();
 
-      // Wait for validation to complete after selecting object
-      await page.waitForTimeout(2000);
-
-      // Import button should now be enabled (or disabled if schema validation fails)
-      // For this test, we just verify the selector works
+      // Verify selector shows the selected object
       await expect(page.getByTestId('schema-object-select')).toContainText(
         'customers'
       );
 
-      // Close modal
-      await page
-        .getByTestId('cancel-button')
-        .filter({ hasText: /cancel/i })
-        .click();
+      // Wait for server validation to complete after selecting object
+      await expect(page.getByTestId('validation-success-panel')).toBeVisible({
+        timeout: 15000,
+      });
+
+      // Import button should be enabled after successful validation
+      const importButton = page.getByTestId('import-button');
+      await expect(importButton).toBeEnabled({ timeout: 10000 });
+
+      // Click import to complete the flow
+      await importButton.click();
+
+      // Verify contract was created successfully
+      await expect(page.getByTestId('contract-title')).toBeVisible({
+        timeout: 15000,
+      });
+
+      // Verify the contract has the name from the multi-object YAML
+      await expect(page.getByTestId('contract-title')).toContainText(
+        'Multi-Object Simple Contract'
+      );
+
+      // Verify SLA card is visible (the simple YAML has SLA properties)
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible({
+        timeout: 10000,
+      });
     } finally {
       await table.delete(apiContext);
     }
@@ -1744,6 +1766,357 @@ version: "1.0.0"`;
         .getByTestId('cancel-button')
         .filter({ hasText: /cancel/i })
         .click();
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Import ODCS, modify via UI, export and verify changes', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      // Step 1: Import a basic ODCS contract (no SLA)
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await importODCSYaml(page, ODCS_VALID_BASIC_YAML, 'basic-for-modify.yaml');
+
+      await expect(page.getByTestId('contract-title')).toBeVisible();
+      await expect(page.getByTestId('contract-title')).toContainText(
+        'Orders Basic Contract'
+      );
+
+      // Verify NO SLA card initially (basic contract has no SLA)
+      await expect(page.getByTestId('contract-sla-card')).not.toBeVisible();
+
+      // Step 2: Edit the contract via UI - add SLA
+      await page.getByTestId('manage-contract-actions').click();
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
+      await page.getByTestId('contract-edit-button').click();
+
+      // Wait for edit mode
+      await expect(page.getByTestId('save-contract-btn')).toBeVisible();
+
+      // Navigate to SLA tab and add SLA details
+      await page.getByRole('tab', { name: 'SLA' }).click();
+
+      // Add refresh frequency
+      await page.getByTestId('refresh-frequency-interval-input').fill('24');
+      await page.getByTestId('refresh-frequency-unit-select').click();
+      await page.locator('.refresh-frequency-unit-select [title=Hour]').click();
+
+      // Add max latency
+      await page.getByTestId('max-latency-value-input').fill('2');
+      await page.getByTestId('max-latency-unit-select').click();
+      await page.locator('.max-latency-unit-select [title=Hour]').click();
+
+      // Save the contract
+      const saveContractResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*'
+      );
+      await page.getByTestId('save-contract-btn').click();
+      await saveContractResponse;
+
+      await page.waitForLoadState('networkidle');
+
+      // Verify SLA card is now visible after adding SLA
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Step 3: Export as ODCS YAML
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByTestId('manage-contract-actions').click();
+      await page.getByTestId('export-odcs-contract-button').click();
+
+      const download = await downloadPromise;
+      const tempPath = `/tmp/import-modify-export-${Date.now()}.yaml`;
+      await download.saveAs(tempPath);
+
+      // Step 4: Verify the UI changes are reflected in the export
+      const fsModule = await import('fs');
+      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
+
+      // Verify basic ODCS structure
+      expect(exportedYaml).toContain('apiVersion');
+      expect(exportedYaml).toContain('v3.1.0');
+      expect(exportedYaml).toContain('Orders Basic Contract');
+
+      // Verify SLA properties added via UI are in the export
+      expect(exportedYaml).toContain('slaProperties');
+      expect(exportedYaml).toContain('freshness');
+      expect(exportedYaml).toContain('24');
+      expect(exportedYaml).toContain('latency');
+      expect(exportedYaml).toContain('2');
+
+      // Cleanup
+      fsModule.unlinkSync(tempPath);
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Import ODCS with SLA, modify SLA via UI, export and verify SLA changes', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      // Step 1: Import an ODCS contract with existing SLA (freshness: 12 hours)
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await importODCSYaml(page, ODCS_VALID_FULL_YAML, 'full-for-sla-edit.yaml');
+
+      await expect(page.getByTestId('contract-title')).toBeVisible();
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Step 2: Edit the contract via UI - modify SLA values
+      await page.getByTestId('manage-contract-actions').click();
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
+      await page.getByTestId('contract-edit-button').click();
+
+      // Wait for edit mode
+      await expect(page.getByTestId('save-contract-btn')).toBeVisible();
+
+      // Navigate to SLA tab
+      await page.getByRole('tab', { name: 'SLA' }).click();
+
+      // Update refresh frequency from 12 to 48 hours
+      await page.getByTestId('refresh-frequency-interval-input').clear();
+      await page.getByTestId('refresh-frequency-interval-input').fill('48');
+
+      // Update max latency from 2 to 4 hours
+      await page.getByTestId('max-latency-value-input').clear();
+      await page.getByTestId('max-latency-value-input').fill('4');
+
+      // Save the contract
+      const saveContractResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*'
+      );
+      await page.getByTestId('save-contract-btn').click();
+      await saveContractResponse;
+
+      await page.waitForLoadState('networkidle');
+
+      // Step 3: Export as ODCS YAML
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByTestId('manage-contract-actions').click();
+      await page.getByTestId('export-odcs-contract-button').click();
+
+      const download = await downloadPromise;
+      const tempPath = `/tmp/sla-modified-${Date.now()}.yaml`;
+      await download.saveAs(tempPath);
+
+      // Step 4: Verify SLA modifications are reflected in the export
+      const fsModule = await import('fs');
+      const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
+
+      // Verify updated SLA values
+      expect(exportedYaml).toContain('slaProperties');
+      expect(exportedYaml).toContain('freshness');
+      expect(exportedYaml).toContain('"48"');
+      expect(exportedYaml).toContain('latency');
+      expect(exportedYaml).toContain('"4"');
+
+      // Cleanup
+      fsModule.unlinkSync(tempPath);
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  test('Import ODCS with markdown description and verify proper rendering', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      // Import an ODCS contract with markdown content in description
+      await navigateToContractTab(page, table);
+      await openODCSImportDropdown(page);
+      await importODCSYaml(
+        page,
+        ODCS_VALID_WITH_MARKDOWN_DESCRIPTION_YAML,
+        'markdown-description.yaml'
+      );
+
+      // Verify contract was created
+      await expect(page.getByTestId('contract-title')).toBeVisible();
+      await expect(page.getByTestId('contract-title')).toContainText(
+        'Markdown Description Contract'
+      );
+
+      // Verify description section is visible and contains markdown content
+      const descriptionSection = page.locator('.contract-card-items').first();
+      await expect(descriptionSection).toBeVisible();
+
+      // Get the markdown parser element where description is rendered
+      const markdownParser = page.getByTestId('markdown-parser').first();
+      await expect(markdownParser).toBeVisible();
+
+      // Click "more" button to expand the full description if it exists
+      const moreButton = page.getByRole('button', { name: 'more' });
+      if (await moreButton.isVisible()) {
+        await moreButton.click();
+      }
+
+      // Verify markdown content is rendered (text content check)
+      // Headers
+      await expect(markdownParser).toContainText('Data Contract Overview');
+      await expect(markdownParser).toContainText('Key Features');
+      await expect(markdownParser).toContainText('Data Sources');
+
+      // Bold text content
+      await expect(markdownParser).toContainText('quality standards');
+      await expect(markdownParser).toContainText('Real-time updates');
+
+      // Italic text content
+      await expect(markdownParser).toContainText('customer analytics');
+      await expect(markdownParser).toContainText('Historical data');
+
+      // Code text content
+      await expect(markdownParser).toContainText('SQL');
+      await expect(markdownParser).toContainText('Python');
+
+      // List items content
+      await expect(markdownParser).toContainText('Customer transactions');
+      await expect(markdownParser).toContainText('User behavior logs');
+      await expect(markdownParser).toContainText('Product catalog');
+
+      // Blockquote content
+      await expect(markdownParser).toContainText(
+        'Note: This data is subject to GDPR'
+      );
+
+      // Link text
+      await expect(markdownParser).toContainText('documentation');
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
+  // OpenMetadata (OM) Format Export/Import Round Trip Tests
+
+  test('OM format export and import round trip - create, export, delete, reimport', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+    const contractName = `OM Round Trip Contract ${Date.now()}`;
+
+    try {
+      // Step 1: Create a contract via API with all properties including termsOfUse
+      const createContractPayload = {
+        name: contractName,
+        description: 'Contract for testing OM format export/import round trip',
+        entity: {
+          id: table.entityResponseData.id,
+          type: 'table',
+        },
+        termsOfUse: 'These are the terms of use for the data contract. Data must be used responsibly.',
+        sla: {
+          refreshFrequency: {
+            interval: 24,
+            unit: 'day',
+          },
+          maxLatency: {
+            value: 2,
+            unit: 'hour',
+          },
+        },
+      };
+
+      const createResponse = await apiContext.post('/api/v1/dataContracts', {
+        data: createContractPayload,
+      });
+      expect(createResponse.ok()).toBeTruthy();
+      const createdContract = await createResponse.json();
+
+      // Navigate to the contract tab and verify it was created
+      await navigateToContractTab(page, table);
+      await expect(page.getByTestId('contract-title')).toBeVisible();
+      await expect(page.getByTestId('contract-title')).toContainText(
+        contractName
+      );
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Step 2: Export as OpenMetadata (OM) format
+      const omDownloadPromise = page.waitForEvent('download');
+      await page.getByTestId('manage-contract-actions').click();
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
+      await page.getByTestId('export-contract-button').click();
+
+      const omDownload = await omDownloadPromise;
+      const omTempPath = `/tmp/om-roundtrip-export-${Date.now()}.yaml`;
+      await omDownload.saveAs(omTempPath);
+
+      // Read the exported OM YAML content
+      const fsModule = await import('fs');
+      const omYamlContent = fsModule.readFileSync(omTempPath, 'utf-8');
+
+      // Verify exported YAML contains expected fields
+      expect(omYamlContent).toContain('name:');
+      expect(omYamlContent).toContain('termsOfUse:');
+      expect(omYamlContent).toContain('sla:');
+      // Verify system fields are NOT in the export
+      expect(omYamlContent).not.toContain('createdAt:');
+      expect(omYamlContent).not.toContain('createdBy:');
+
+      // Step 3: Delete the contract via API
+      await apiContext.delete(
+        `/api/v1/dataContracts/${createdContract.id}?hardDelete=true&recursive=true`
+      );
+
+      // Step 4: Import the exported OM YAML via API
+      const importResponse = await apiContext.put('/api/v1/dataContracts', {
+        data: omYamlContent,
+        headers: {
+          'Content-Type': 'application/yaml',
+        },
+      });
+
+      // Verify the import succeeded
+      expect(importResponse.ok()).toBeTruthy();
+      const importedContract = await importResponse.json();
+      expect(importedContract.name).toBe(contractName);
+      expect(importedContract.termsOfUse).toBeDefined();
+      expect(importedContract.termsOfUse.content).toContain(
+        'terms of use for the data contract'
+      );
+      expect(importedContract.sla).toBeDefined();
+
+      // Step 5: Navigate back to the contract tab and verify the reimported contract
+      await navigateToContractTab(page, table);
+
+      // Verify the reimported contract is displayed with correct data
+      await expect(page.getByTestId('contract-title')).toBeVisible();
+      await expect(page.getByTestId('contract-title')).toContainText(
+        contractName
+      );
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Cleanup temp file
+      fsModule.unlinkSync(omTempPath);
     } finally {
       await table.delete(apiContext);
     }
