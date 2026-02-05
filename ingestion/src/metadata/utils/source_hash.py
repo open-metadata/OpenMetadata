@@ -90,7 +90,7 @@ def _remove_volatile_fields(obj: Union[Dict, List, Any]) -> Union[Dict, List, An
     Recursively remove volatile fields from entity references and normalize data.
     This ensures that fields like href, deleted, inherited don't affect the hash.
     """
-    if isinstance(obj, dict):
+    if isinstance(obj, dict):  # pylint: disable=no-else-return
         result = {}
         for key, value in obj.items():
             if key in VOLATILE_ENTITY_REFERENCE_FIELDS:
