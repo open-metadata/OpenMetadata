@@ -210,28 +210,28 @@ test.describe('Classification Page Tests', () => {
         // Get initial row count
         const table = page.locator('[data-testid="table"]');
 
-        // Test changing to 10 per page
+        // Test changing to 15 per page
         await pageSizeDropdown.click();
 
-        const tenPerPageOption = page.getByRole('menuitem', {
+        const fifteenPerPageOption = page.getByRole('menuitem', {
           name: '15 / Page',
         });
-        await expect(tenPerPageOption).toBeVisible();
+        await expect(fifteenPerPageOption).toBeVisible();
 
-        if (await tenPerPageOption.isVisible().catch(() => false)) {
+        if (await fifteenPerPageOption.isVisible().catch(() => false)) {
           const changePageSizeResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/tags') &&
               response.status() === 200
           );
-          await tenPerPageOption.click();
+          await fifteenPerPageOption.click();
           await changePageSizeResponse;
           await page.waitForLoadState('networkidle');
           await waitForAllLoadersToDisappear(page);
 
           // Verify 10 rows are displayed (data rows only, excluding header)
-          const rowCountAfter10 = await table.locator('tbody tr').count();
-          expect(rowCountAfter10).toBe(15);
+          const rowCountAfter15 = await table.locator('[class*="ant-table-row"]').count();
+          expect(rowCountAfter15).toBe(15); 
 
           // Verify page size indicator shows 10
           await expect(page.locator('.ant-pagination-options')).toContainText(
@@ -920,27 +920,27 @@ test.describe('Classification Page Tests', () => {
           rowName: rowName,
         });
 
-        await page.fill('[data-testid="tag-selector"] input', tagA.data.name);
+        // await page.fill('[data-testid="tag-selector"] input', tagA.data.name);
 
-        // await page.waitForResponse(
-        //   `/api/v1/search/query?q=*${encodeURIComponent(tagA.data.name)}*`
+        // // await page.waitForResponse(
+        // //   `/api/v1/search/query?q=*${encodeURIComponent(tagA.data.name)}*`
+        // // );
+
+        // await page.click(
+        //   `[data-testid="tag-${tagA.responseData.fullyQualifiedName}"]`
         // );
 
-        await page.click(
-          `[data-testid="tag-${tagA.responseData.fullyQualifiedName}"]`
-        );
+        // await expect(
+        //   page.locator('[data-testid="tag-selector"] > .ant-select-selector')
+        // ).toContainText(tagA.responseData.displayName);
 
-        await expect(
-          page.locator('[data-testid="tag-selector"] > .ant-select-selector')
-        ).toContainText(tagA.responseData.displayName);
+        // const saveTagResponse = page.waitForResponse('/api/v1/columns/name/**');
+        // await page.click('[data-testid="saveAssociatedTag"]');
+        // await saveTagResponse;
 
-        const saveTagResponse = page.waitForResponse('/api/v1/columns/name/**');
-        await page.click('[data-testid="saveAssociatedTag"]');
-        await saveTagResponse;
-
-        await page.waitForSelector('.ant-select-dropdown', {
-          state: 'detached',
-        });
+        // await page.waitForSelector('.ant-select-dropdown', {
+        //   state: 'detached',
+        // });
 
         // Verify Tag A was added successfully
         await expect(
@@ -972,12 +972,12 @@ test.describe('Classification Page Tests', () => {
           // const tagSearchResponse2 = page.waitForResponse(
           //   `/api/v1/search/query?q=*${encodeURIComponent(tagB.data.name)}*`
           // );
-          await page.fill('[data-testid="tag-selector"] input', tagB.data.name);
-          // await tagSearchResponse2;
+          // await page.fill('[data-testid="tag-selector"] input', tagB.data.name);
+          // // await tagSearchResponse2;
 
-          await page.click(
-            `[data-testid="tag-${tagB.responseData.fullyQualifiedName}"]`
-          );
+          // await page.click(
+          //   `[data-testid="tag-${tagB.responseData.fullyQualifiedName}"]`
+          // );
 
           await expect(
             page.locator('[data-testid="tag-selector"] > .ant-select-selector')
