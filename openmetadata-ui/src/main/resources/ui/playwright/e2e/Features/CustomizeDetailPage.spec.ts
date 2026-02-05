@@ -580,15 +580,12 @@ test.describe('Persona customization', () => {
         const addButton = adminPage
           .getByRole('dialog')
           .getByRole('button', { name: 'Add' });
-        // button was not stable 
-        await adminPage.waitForTimeout(500);
+
         await expect(addButton).toBeEnabled();
         await addButton.click();
+
         await expect(adminPage.getByTestId('tab-Custom Tab')).toBeVisible();
         await expect(adminPage.getByText('Customize Custom Tab Widgets')).toBeVisible();
-        // Wait for dialog to close before interacting with grid layout
-        await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
-        await adminPage.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
 
         // Get locator after dialog closes to avoid layout shift issues
         const addWidgetButton = adminPage.getByTestId('ExtraWidget.EmptyWidgetPlaceholder').getByTestId('add-widget-button');
