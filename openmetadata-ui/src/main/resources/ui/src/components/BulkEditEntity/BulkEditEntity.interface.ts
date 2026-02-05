@@ -40,4 +40,5 @@ export interface BulkEditEntityProps {
   ) => Record<string, string>;
   pushToUndoStack: (dataSource: Record<string, string>[]) => void;
   handleOnRowsChange: (updatedRows: Record<string, string>[]) => void;
+  handleAddRow: () => void;
 }

@@ -49,6 +49,7 @@ import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DatabaseProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -492,6 +493,14 @@ public class DatabaseRepository extends EntityRepository<Database> {
       this.recursive = recursive;
     }
 
+    @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
     /**
      * Export database schemas and all their child entities (tables, views, stored procedures)
      */
@@ -633,22 +642,34 @@ public class DatabaseRepository extends EntityRepository<Database> {
     protected void createEntityWithoutRecursion(CSVPrinter printer, List<CSVRecord> csvRecords)
         throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), csvRecord.get(0));
+      String name = csvRecord.get(0);
+      String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), name);
       DatabaseSchema schema;
+      boolean schemaExists;
       try {
         schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
+        schemaExists = true;
       } catch (Exception ex) {
         LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
         schema =
             new DatabaseSchema()
                 .withDatabase(database.getEntityReference())
                 .withService(database.getService());
+        schemaExists = false;
       }
 
-      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, certification,
-      // retentionPeriod,
-      // sourceUrl, domain
-      // Field 1,2,3,6,7 - database schema name, displayName, description
+      // Store create status with null check
+      int recordIndex = getRecordIndex(csvRecord);
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !schemaExists;
+      }
+
+      // Track field changes for Phase 2 using ChangeDescription structure
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
@@ -657,23 +678,52 @@ public class DatabaseRepository extends EntityRepository<Database> {
                   Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
-
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+      String retentionPeriod = csvRecord.get(8);
+      String sourceUrl = csvRecord.get(9);
+      List<EntityReference> newDomains = getDomains(printer, csvRecord, 10);
+      Map<String, Object> extension = getExtension(printer, csvRecord, 11);
+
+      EntityRepository<?> repository = Entity.getEntityRepository(DATABASE_SCHEMA);
+      CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              schemaExists ? schema : null,
+              displayName,
+              description,
+              owners,
+              tagLabels,
+              certification,
+              newDomains,
+              extension);
+
+      tracker
+          .trackField(
+              "retentionPeriod", schemaExists ? schema.getRetentionPeriod() : null, retentionPeriod)
+          .trackField("sourceUrl", schemaExists ? schema.getSourceUrl() : null, sourceUrl);
+
+      ChangeDescription changeDescription = tracker.build();
+
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
 
       schema
-          .withName(csvRecord.get(0))
+          .withName(name)
           .withFullyQualifiedName(schemaFqn)
-          .withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
-          .withOwners(getOwners(printer, csvRecord, 3))
+          .withDisplayName(displayName)
+          .withDescription(description)
+          .withOwners(owners)
           .withTags(tagLabels)
           .withCertification(certification)
-          .withRetentionPeriod(csvRecord.get(8))
-          .withSourceUrl(csvRecord.get(9))
-          .withDomains(getDomains(printer, csvRecord, 10))
-          .withExtension(getExtension(printer, csvRecord, 11));
+          .withRetentionPeriod(retentionPeriod)
+          .withSourceUrl(sourceUrl)
+          .withDomains(newDomains)
+          .withExtension(extension);
       if (processRecord) {
-        createEntity(printer, csvRecord, schema, DATABASE_SCHEMA);
+        createEntityWithChangeDescription(printer, csvRecord, schema, DATABASE_SCHEMA);
       }
     }
 

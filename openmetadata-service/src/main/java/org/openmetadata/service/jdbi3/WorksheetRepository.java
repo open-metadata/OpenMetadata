@@ -44,6 +44,7 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.entity.services.DriveService;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -333,10 +334,10 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
               new CsvHeader().withName("columnCount"),
               new CsvHeader().withName("isHidden"),
               new CsvHeader().withName("columns"),
-              new CsvHeader().withName("owners"),
+              new CsvHeader().withName("owner"),
               new CsvHeader().withName("tags"),
               new CsvHeader().withName("glossaryTerms"),
-              new CsvHeader().withName("domain"),
+              new CsvHeader().withName("domains"),
               new CsvHeader().withName("dataProducts"));
 
       DOCUMENTATION = new CsvDocumentation().withHeaders(HEADERS).withSummary("Worksheet");
@@ -350,6 +351,14 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
     }
 
     @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
+    @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
 
@@ -359,8 +368,10 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
       String worksheetFqn = FullyQualifiedName.add(spreadsheetFqn, worksheetName);
 
       Worksheet newWorksheet;
+      boolean worksheetExists;
       try {
         newWorksheet = Entity.getEntityByName(WORKSHEET, worksheetFqn, "*", Include.NON_DELETED);
+        worksheetExists = true;
       } catch (EntityNotFoundException ex) {
         LOG.warn("Worksheet not found: {}, it will be created with Import.", worksheetFqn);
 
@@ -382,32 +393,103 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
                 .withSpreadsheet(spreadsheetRef)
                 .withName(worksheetName)
                 .withFullyQualifiedName(worksheetFqn);
+        worksheetExists = false;
+      }
+
+      // Store create status with null check
+      int recordIndex = getRecordIndex(csvRecord);
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !worksheetExists;
+      }
+
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      String worksheetId = csvRecord.get(4);
+      Integer index = nullOrEmpty(csvRecord.get(5)) ? null : Integer.parseInt(csvRecord.get(5));
+      Integer rowCount = nullOrEmpty(csvRecord.get(6)) ? null : Integer.parseInt(csvRecord.get(6));
+      Integer columnCount =
+          nullOrEmpty(csvRecord.get(7)) ? null : Integer.parseInt(csvRecord.get(7));
+      Boolean isHidden = getBoolean(printer, csvRecord, 8);
+      List<Column> columns = parseColumns(csvRecord.get(9));
+      List<EntityReference> owners = getOwners(printer, csvRecord, 10);
+      List<TagLabel> tags =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(11, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(12, TagLabel.TagSource.GLOSSARY)));
+      List<EntityReference> domains = getDomains(printer, csvRecord, 13);
+      List<EntityReference> dataProducts = getDataProducts(printer, csvRecord, 14);
+
+      EntityRepository<?> repository = Entity.getEntityRepository(WORKSHEET);
+      EntityCsv.CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              worksheetExists ? newWorksheet : null,
+              displayName,
+              description,
+              owners,
+              tags,
+              null,
+              domains,
+              null);
+
+      tracker
+          .trackField(
+              "worksheetId", worksheetExists ? newWorksheet.getWorksheetId() : null, worksheetId)
+          .trackField(
+              "index",
+              worksheetExists && newWorksheet.getIndex() != null
+                  ? newWorksheet.getIndex().toString()
+                  : null,
+              index != null ? index.toString() : null)
+          .trackField(
+              "rowCount",
+              worksheetExists && newWorksheet.getRowCount() != null
+                  ? newWorksheet.getRowCount().toString()
+                  : null,
+              rowCount != null ? rowCount.toString() : null)
+          .trackField(
+              "columnCount",
+              worksheetExists && newWorksheet.getColumnCount() != null
+                  ? newWorksheet.getColumnCount().toString()
+                  : null,
+              columnCount != null ? columnCount.toString() : null)
+          .trackField("isHidden", worksheetExists ? newWorksheet.getIsHidden() : null, isHidden)
+          .trackField("columns", worksheetExists ? newWorksheet.getColumns() : null, columns)
+          .trackField(
+              "dataProducts",
+              worksheetExists ? newWorksheet.getDataProducts() : null,
+              dataProducts);
+
+      ChangeDescription changeDescription = tracker.build();
+
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
       }
 
       // Update worksheet fields from CSV
       newWorksheet
-          .withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
-          .withWorksheetId(csvRecord.get(4))
-          .withIndex(nullOrEmpty(csvRecord.get(5)) ? null : Integer.parseInt(csvRecord.get(5)))
-          .withRowCount(nullOrEmpty(csvRecord.get(6)) ? null : Integer.parseInt(csvRecord.get(6)))
-          .withColumnCount(
-              nullOrEmpty(csvRecord.get(7)) ? null : Integer.parseInt(csvRecord.get(7)))
-          .withIsHidden(getBoolean(printer, csvRecord, 8))
-          .withColumns(parseColumns(csvRecord.get(9)))
-          .withOwners(getOwners(printer, csvRecord, 10))
-          .withTags(
-              getTagLabels(
-                  printer,
-                  csvRecord,
-                  List.of(
-                      Pair.of(11, TagLabel.TagSource.CLASSIFICATION),
-                      Pair.of(12, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 13))
-          .withDataProducts(getDataProducts(printer, csvRecord, 14));
+          .withDisplayName(displayName)
+          .withDescription(description)
+          .withWorksheetId(worksheetId)
+          .withIndex(index)
+          .withRowCount(rowCount)
+          .withColumnCount(columnCount)
+          .withIsHidden(isHidden)
+          .withColumns(columns)
+          .withOwners(owners)
+          .withTags(tags)
+          .withDomains(domains)
+          .withDataProducts(dataProducts);
 
       if (processRecord) {
-        createEntity(printer, csvRecord, newWorksheet, WORKSHEET);
+        createEntityWithChangeDescription(printer, csvRecord, newWorksheet, WORKSHEET);
       }
     }
 

@@ -39,6 +39,7 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.schema.entity.services.DriveService;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FileType;
@@ -312,10 +313,10 @@ public class FileRepository extends EntityRepository<File> {
               new CsvHeader().withName("size"),
               new CsvHeader().withName("checksum"),
               new CsvHeader().withName("isShared"),
-              new CsvHeader().withName("owners"),
+              new CsvHeader().withName("owner"),
               new CsvHeader().withName("tags"),
               new CsvHeader().withName("glossaryTerms"),
-              new CsvHeader().withName("domain"),
+              new CsvHeader().withName("domains"),
               new CsvHeader().withName("dataProducts"),
               new CsvHeader().withName("experts"),
               new CsvHeader().withName("reviewers"));
@@ -331,6 +332,14 @@ public class FileRepository extends EntityRepository<File> {
     }
 
     @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
+    @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
 
@@ -340,8 +349,10 @@ public class FileRepository extends EntityRepository<File> {
       String fileFqn = FullyQualifiedName.add(directoryFqn, fileName);
 
       File newFile;
+      boolean fileExists;
       try {
         newFile = Entity.getEntityByName(FILE, fileFqn, "*", Include.NON_DELETED);
+        fileExists = true;
       } catch (EntityNotFoundException ex) {
         LOG.warn("File not found: {}, it will be created with Import.", fileFqn);
 
@@ -362,29 +373,91 @@ public class FileRepository extends EntityRepository<File> {
                 .withDirectory(directoryRef)
                 .withName(fileName)
                 .withFullyQualifiedName(fileFqn);
+        fileExists = false;
       }
+
+      // Store create status with null check
+      int recordIndex = getRecordIndex(csvRecord);
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !fileExists;
+      }
+
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      FileType fileType = FileType.valueOf(csvRecord.get(4));
+      String mimeType = csvRecord.get(5);
+      String fileExtension = csvRecord.get(6);
+      String path = csvRecord.get(7);
+      Integer size = nullOrEmpty(csvRecord.get(8)) ? null : Integer.parseInt(csvRecord.get(8));
+      String checksum = csvRecord.get(9);
+      Boolean isShared = getBoolean(printer, csvRecord, 10);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 11);
+      List<TagLabel> tags =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(12, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(13, TagLabel.TagSource.GLOSSARY)));
+      List<EntityReference> domains = getDomains(printer, csvRecord, 14);
+      List<EntityReference> dataProducts = getDataProducts(printer, csvRecord, 15);
+
+      EntityRepository<?> repository = Entity.getEntityRepository(FILE);
+      EntityCsv.CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              fileExists ? newFile : null,
+              displayName,
+              description,
+              owners,
+              tags,
+              null,
+              domains,
+              null);
+
+      tracker
+          .trackField(
+              "fileType",
+              fileExists && newFile.getFileType() != null ? newFile.getFileType().toString() : null,
+              fileType != null ? fileType.toString() : null)
+          .trackField("mimeType", fileExists ? newFile.getMimeType() : null, mimeType)
+          .trackField(
+              "fileExtension", fileExists ? newFile.getFileExtension() : null, fileExtension)
+          .trackField("path", fileExists ? newFile.getPath() : null, path)
+          .trackField(
+              "size",
+              fileExists && newFile.getSize() != null ? newFile.getSize().toString() : null,
+              size != null ? size.toString() : null)
+          .trackField("checksum", fileExists ? newFile.getChecksum() : null, checksum)
+          .trackField("isShared", fileExists ? newFile.getIsShared() : null, isShared)
+          .trackField("dataProducts", fileExists ? newFile.getDataProducts() : null, dataProducts);
+
+      ChangeDescription changeDescription = tracker.build();
+
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
+
       newFile
-          .withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
-          .withFileType(FileType.valueOf(csvRecord.get(4)))
-          .withMimeType(csvRecord.get(5))
-          .withFileExtension(csvRecord.get(6))
-          .withPath(csvRecord.get(7))
-          .withSize(nullOrEmpty(csvRecord.get(8)) ? null : Integer.parseInt(csvRecord.get(8)))
-          .withChecksum(csvRecord.get(9))
-          .withIsShared(getBoolean(printer, csvRecord, 10))
-          .withOwners(getOwners(printer, csvRecord, 11))
-          .withTags(
-              getTagLabels(
-                  printer,
-                  csvRecord,
-                  List.of(
-                      Pair.of(12, TagLabel.TagSource.CLASSIFICATION),
-                      Pair.of(13, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 14))
-          .withDataProducts(getDataProducts(printer, csvRecord, 15));
+          .withDisplayName(displayName)
+          .withDescription(description)
+          .withFileType(fileType)
+          .withMimeType(mimeType)
+          .withFileExtension(fileExtension)
+          .withPath(path)
+          .withSize(size)
+          .withChecksum(checksum)
+          .withIsShared(isShared)
+          .withOwners(owners)
+          .withTags(tags)
+          .withDomains(domains)
+          .withDataProducts(dataProducts);
       if (processRecord) {
-        createEntity(printer, csvRecord, newFile, FILE);
+        createEntityWithChangeDescription(printer, csvRecord, newFile, FILE);
       }
     }
 

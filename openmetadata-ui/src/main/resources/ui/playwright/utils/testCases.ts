@@ -236,7 +236,7 @@ export const validateImportGrid = async (page: Page) => {
   await expect(page.getByRole('grid')).toBeVisible({
     timeout: 15000,
   });
-  await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Previous' })).toBeVisible();
   await expect(page.getByTestId('add-row-btn')).toBeVisible();
 };
@@ -254,7 +254,7 @@ export const waitForImportAsyncResponse = async (page: Page) => {
       response.url().includes('recursive=true') &&
       response.request().method() === 'PUT'
   );
-  await page.getByRole('button', { name: 'Next' }).click();
+  await page.getByRole('button', { name: 'Preview' }).click();
   await asyncImportResponse;
 };
 
@@ -526,7 +526,7 @@ export const performE2EExportImportFlow = async (
 
     await expect(page.locator('.rdg-header-row')).toBeVisible();
     await expect(page.getByTestId('add-row-btn')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Previous' })).toBeVisible();
   });
 
@@ -537,7 +537,7 @@ export const performE2EExportImportFlow = async (
 
   // Step 4: Validate and update
   await test.step('Validate import status and update', async () => {
-    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('button', { name: 'Preview' }).click();
 
     await validateImportStatus(page, {
       passed: '3',

@@ -39,6 +39,7 @@ import org.openmetadata.schema.api.data.CreateSpreadsheet;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.services.DriveService;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -259,10 +260,10 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
               new CsvHeader().withName("path"),
               new CsvHeader().withName("size"),
               new CsvHeader().withName("fileVersion"),
-              new CsvHeader().withName("owners"),
+              new CsvHeader().withName("owner"),
               new CsvHeader().withName("tags"),
               new CsvHeader().withName("glossaryTerms"),
-              new CsvHeader().withName("domain"),
+              new CsvHeader().withName("domains"),
               new CsvHeader().withName("dataProducts"),
               new CsvHeader().withName("experts"),
               new CsvHeader().withName("reviewers"),
@@ -282,75 +283,155 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
     }
 
     @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
+    @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      if (csvRecord == null) {
+        return;
+      }
 
       if (recursive && csvRecord.size() > 18) {
-        // This is a recursive import with entityType field
         String entityType = csvRecord.get(18);
         if (WORKSHEET.equals(entityType)) {
-          // Skip worksheet rows - they'll be handled by WorksheetRepository
           return;
         }
       }
 
-      // Get spreadsheet name and directory FQN
       String spreadsheetName = csvRecord.get(0);
-      String directoryFqn = csvRecord.get(3); // directory field
+      String directoryFqn = csvRecord.get(3);
       String spreadsheetFqn = FullyQualifiedName.add(directoryFqn, spreadsheetName);
 
       Spreadsheet newSpreadsheet;
+      boolean spreadsheetExists;
       try {
         newSpreadsheet =
             Entity.getEntityByName(SPREADSHEET, spreadsheetFqn, "*", Include.NON_DELETED);
+        spreadsheetExists = true;
       } catch (EntityNotFoundException ex) {
-        LOG.warn("Spreadsheet not found: {}, it will be created with Import.", spreadsheetFqn);
-
-        // Get directory reference
         EntityReference directoryRef = getEntityReference(printer, csvRecord, 3, DIRECTORY);
         if (directoryRef == null) {
           importFailure(
               printer, "Directory not found for spreadsheet: " + spreadsheetName, csvRecord);
           return;
         }
-
-        // Get service from directory
         Directory directory =
             Entity.getEntity(DIRECTORY, directoryRef.getId(), "service", Include.NON_DELETED);
-
         newSpreadsheet =
             new Spreadsheet()
                 .withService(directory.getService())
                 .withDirectory(directoryRef)
                 .withName(spreadsheetName)
                 .withFullyQualifiedName(spreadsheetFqn);
+        spreadsheetExists = false;
       }
 
-      // Update spreadsheet fields from CSV
+      // Store create status with null check
+      int recordIndex = getRecordIndex(csvRecord);
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !spreadsheetExists;
+      }
+
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      CreateSpreadsheet.SpreadsheetMimeType mimeType =
+          CreateSpreadsheet.SpreadsheetMimeType.valueOf(csvRecord.get(4));
+      String path = csvRecord.get(5);
+      Integer size = nullOrEmpty(csvRecord.get(6)) ? null : Integer.parseInt(csvRecord.get(6));
+      String fileVersion = csvRecord.get(7);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 8);
+      List<TagLabel> tags =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(9, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(10, TagLabel.TagSource.GLOSSARY)));
+      List<EntityReference> domains = getDomains(printer, csvRecord, 11);
+      List<EntityReference> dataProducts = getDataProducts(printer, csvRecord, 12);
+      Long createdTime = nullOrEmpty(csvRecord.get(15)) ? null : Long.parseLong(csvRecord.get(15));
+      Long modifiedTime = nullOrEmpty(csvRecord.get(16)) ? null : Long.parseLong(csvRecord.get(16));
+
+      EntityRepository<?> repository = Entity.getEntityRepository(SPREADSHEET);
+      EntityCsv.CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              spreadsheetExists ? newSpreadsheet : null,
+              displayName,
+              description,
+              owners,
+              tags,
+              null,
+              domains,
+              null);
+
+      tracker
+          .trackField(
+              "mimeType",
+              spreadsheetExists && newSpreadsheet.getMimeType() != null
+                  ? newSpreadsheet.getMimeType().toString()
+                  : null,
+              mimeType != null ? mimeType.toString() : null)
+          .trackField("path", spreadsheetExists ? newSpreadsheet.getPath() : null, path)
+          .trackField(
+              "size",
+              spreadsheetExists && newSpreadsheet.getSize() != null
+                  ? newSpreadsheet.getSize().toString()
+                  : null,
+              size != null ? size.toString() : null)
+          .trackField(
+              "fileVersion",
+              spreadsheetExists ? newSpreadsheet.getFileVersion() : null,
+              fileVersion)
+          .trackField(
+              "dataProducts",
+              spreadsheetExists ? newSpreadsheet.getDataProducts() : null,
+              dataProducts)
+          .trackField(
+              "createdTime",
+              spreadsheetExists && newSpreadsheet.getCreatedTime() != null
+                  ? newSpreadsheet.getCreatedTime().toString()
+                  : null,
+              createdTime != null ? createdTime.toString() : null)
+          .trackField(
+              "modifiedTime",
+              spreadsheetExists && newSpreadsheet.getModifiedTime() != null
+                  ? newSpreadsheet.getModifiedTime().toString()
+                  : null,
+              modifiedTime != null ? modifiedTime.toString() : null);
+
+      ChangeDescription changeDescription = tracker.build();
+
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
+
       newSpreadsheet
-          .withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
-          .withMimeType(CreateSpreadsheet.SpreadsheetMimeType.valueOf(csvRecord.get(4)))
-          .withPath(csvRecord.get(5))
-          .withSize(nullOrEmpty(csvRecord.get(6)) ? null : Integer.parseInt(csvRecord.get(6)))
-          .withFileVersion(csvRecord.get(7))
-          .withOwners(getOwners(printer, csvRecord, 8))
-          .withTags(
-              getTagLabels(
-                  printer,
-                  csvRecord,
-                  List.of(
-                      Pair.of(9, TagLabel.TagSource.CLASSIFICATION),
-                      Pair.of(10, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 11))
-          .withDataProducts(getDataProducts(printer, csvRecord, 12))
-          .withCreatedTime(
-              nullOrEmpty(csvRecord.get(15)) ? null : Long.parseLong(csvRecord.get(15)))
-          .withModifiedTime(
-              nullOrEmpty(csvRecord.get(16)) ? null : Long.parseLong(csvRecord.get(16)));
+          .withDisplayName(displayName)
+          .withDescription(description)
+          .withMimeType(mimeType)
+          .withPath(path)
+          .withSize(size)
+          .withFileVersion(fileVersion)
+          .withOwners(owners)
+          .withTags(tags)
+          .withDomains(domains)
+          .withDataProducts(dataProducts)
+          .withCreatedTime(createdTime)
+          .withModifiedTime(modifiedTime);
 
       if (processRecord) {
-        createEntity(printer, csvRecord, newSpreadsheet, SPREADSHEET);
+        createEntityWithChangeDescription(printer, csvRecord, newSpreadsheet, SPREADSHEET);
       }
     }
 

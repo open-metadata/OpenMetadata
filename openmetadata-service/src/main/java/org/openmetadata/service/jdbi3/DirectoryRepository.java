@@ -37,6 +37,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.services.DriveService;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -315,7 +316,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
               new CsvHeader().withName("directoryType"),
               new CsvHeader().withName("path"),
               new CsvHeader().withName("isShared"),
-              new CsvHeader().withName("owners"),
+              new CsvHeader().withName("owner"),
               new CsvHeader().withName("tags"),
               new CsvHeader().withName("glossaryTerms"),
               new CsvHeader().withName("domains"),
@@ -336,57 +337,109 @@ public class DirectoryRepository extends EntityRepository<Directory> {
     }
 
     @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
+    @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-
-      // For subdirectories, the FQN includes parent path
-      String directoryName = csvRecord.get(0);
-      String parentFqn = csvRecord.get(3); // parent field
-      String directoryFqn;
-
-      if (nullOrEmpty(parentFqn)) {
-        directoryFqn =
-            FullyQualifiedName.add(directory.getService().getFullyQualifiedName(), directoryName);
-      } else {
-        directoryFqn = FullyQualifiedName.add(parentFqn, directoryName);
+      if (csvRecord == null) {
+        return;
       }
 
+      String name = csvRecord.get(0);
+      String parentFqn = csvRecord.get(3);
+      String directoryFqn =
+          nullOrEmpty(parentFqn)
+              ? FullyQualifiedName.add(directory.getService().getFullyQualifiedName(), name)
+              : FullyQualifiedName.add(parentFqn, name);
+
       Directory newDirectory;
+      boolean directoryExists;
       try {
         newDirectory = Entity.getEntityByName(DIRECTORY, directoryFqn, "*", Include.NON_DELETED);
+        directoryExists = true;
       } catch (EntityNotFoundException ex) {
-        LOG.warn("Directory not found: {}, it will be created with Import.", directoryFqn);
         newDirectory =
             new Directory()
                 .withService(directory.getService())
-                .withName(directoryName)
+                .withName(name)
                 .withFullyQualifiedName(directoryFqn);
-
-        if (!nullOrEmpty(parentFqn)) {
-          EntityReference parentRef = getEntityReference(printer, csvRecord, 3, DIRECTORY);
-          newDirectory.withParent(parentRef);
-        }
+        directoryExists = false;
       }
 
-      // Update directory fields from CSV
+      // Store create status with null check
+      int recordIndex = getRecordIndex(csvRecord);
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !directoryExists;
+      }
+
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      EntityReference parentRef =
+          !nullOrEmpty(parentFqn) ? getEntityReference(printer, csvRecord, 3, DIRECTORY) : null;
+      String path = csvRecord.get(5);
+      Boolean isShared = getBoolean(printer, csvRecord, 6);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 7);
+      List<TagLabel> tags =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(8, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(9, TagLabel.TagSource.GLOSSARY)));
+      List<EntityReference> domains = getDomains(printer, csvRecord, 10);
+      List<EntityReference> dataProducts = getDataProducts(printer, csvRecord, 11);
+
+      EntityRepository<?> repository = Entity.getEntityRepository(DIRECTORY);
+      EntityCsv.CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              directoryExists ? newDirectory : null,
+              displayName,
+              description,
+              owners,
+              tags,
+              null,
+              domains,
+              null);
+
+      tracker
+          .trackField("parent", directoryExists ? newDirectory.getParent() : null, parentRef)
+          .trackField("path", directoryExists ? newDirectory.getPath() : null, path)
+          .trackField("isShared", directoryExists ? newDirectory.getIsShared() : null, isShared)
+          .trackField(
+              "dataProducts",
+              directoryExists ? newDirectory.getDataProducts() : null,
+              dataProducts);
+
+      ChangeDescription changeDescription = tracker.build();
+
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
+
       newDirectory
-          .withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
-          .withPath(csvRecord.get(5))
-          .withIsShared(getBoolean(printer, csvRecord, 6))
-          .withOwners(getOwners(printer, csvRecord, 7))
-          .withTags(
-              getTagLabels(
-                  printer,
-                  csvRecord,
-                  List.of(
-                      Pair.of(8, TagLabel.TagSource.CLASSIFICATION),
-                      Pair.of(9, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 10))
-          .withDataProducts(getDataProducts(printer, csvRecord, 11));
+          .withParent(parentRef)
+          .withDisplayName(displayName)
+          .withDescription(description)
+          .withPath(path)
+          .withIsShared(isShared)
+          .withOwners(owners)
+          .withTags(tags)
+          .withDomains(domains)
+          .withDataProducts(dataProducts);
 
       if (processRecord) {
-        createEntity(printer, csvRecord, newDirectory, DIRECTORY);
+        createEntityWithChangeDescription(printer, csvRecord, newDirectory, DIRECTORY);
       }
     }
 

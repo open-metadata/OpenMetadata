@@ -55,6 +55,7 @@ import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
@@ -70,6 +71,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
@@ -236,35 +238,121 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     }
 
     @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
+    @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       GlossaryTermRepository repository =
           (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      if (csvRecord == null) return;
-      GlossaryTerm glossaryTerm = new GlossaryTerm().withGlossary(glossary.getEntityReference());
+      if (csvRecord == null) {
+        return;
+      }
+
       String glossaryTermFqn =
           nullOrEmpty(csvRecord.get(0))
               ? FullyQualifiedName.build(glossary.getFullyQualifiedName(), csvRecord.get(1))
               : FullyQualifiedName.add(csvRecord.get(0), csvRecord.get(1));
 
-      // TODO add header
+      GlossaryTerm glossaryTerm;
+      boolean glossaryTermExists;
+      try {
+        glossaryTerm =
+            Entity.getEntityByName(
+                GLOSSARY_TERM,
+                glossaryTermFqn,
+                "id,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owners,entityStatus,style,parent",
+                Include.NON_DELETED);
+        glossaryTermExists = true;
+      } catch (EntityNotFoundException ex) {
+        glossaryTerm =
+            new GlossaryTerm()
+                .withName(csvRecord.get(1))
+                .withGlossary(glossary.getEntityReference());
+        glossaryTermExists = false;
+      }
+
+      // Store create status with null check
+      int recordIndex = getRecordIndex(csvRecord);
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !glossaryTermExists;
+      }
+
+      EntityReference parent = getEntityReference(printer, csvRecord, 0, GLOSSARY_TERM);
+      String displayName = csvRecord.get(2);
+      String description = csvRecord.get(3);
+      List<String> synonyms = CsvUtil.fieldToStrings(csvRecord.get(4));
+      List<EntityReference> relatedTerms =
+          getEntityReferencesForGlossaryTerms(printer, csvRecord, 5);
+      List<TermReference> references = getTermReferences(printer, csvRecord);
+      List<TagLabel> tags =
+          getTagLabels(printer, csvRecord, List.of(Pair.of(7, TagLabel.TagSource.CLASSIFICATION)));
+      List<EntityReference> reviewers = getReviewers(printer, csvRecord, 8);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 9);
+      EntityStatus status = getTermStatus(printer, csvRecord);
+      Style style = getStyle(csvRecord);
+      Map<String, Object> extension = getExtension(printer, csvRecord, 13);
+
+      EntityCsv.CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              glossaryTermExists ? glossaryTerm : null,
+              displayName,
+              description,
+              owners,
+              tags,
+              null,
+              null,
+              extension);
+
+      tracker
+          .trackField("parent", glossaryTermExists ? glossaryTerm.getParent() : null, parent)
+          .trackField("synonyms", glossaryTermExists ? glossaryTerm.getSynonyms() : null, synonyms)
+          .trackField(
+              "relatedTerms",
+              glossaryTermExists ? glossaryTerm.getRelatedTerms() : null,
+              relatedTerms)
+          .trackField(
+              "references", glossaryTermExists ? glossaryTerm.getReferences() : null, references)
+          .trackField(
+              "reviewers", glossaryTermExists ? glossaryTerm.getReviewers() : null, reviewers)
+          .trackField(
+              "status",
+              glossaryTermExists && glossaryTerm.getEntityStatus() != null
+                  ? glossaryTerm.getEntityStatus().value()
+                  : null,
+              status != null ? status.value() : null)
+          .trackField("style", glossaryTermExists ? glossaryTerm.getStyle() : null, style);
+
+      ChangeDescription changeDescription = tracker.build();
+
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
+
       glossaryTerm
-          .withParent(getEntityReference(printer, csvRecord, 0, GLOSSARY_TERM))
-          .withName(csvRecord.get(1))
+          .withParent(parent)
           .withFullyQualifiedName(glossaryTermFqn)
-          .withDisplayName(csvRecord.get(2))
-          .withDescription(csvRecord.get(3))
-          .withSynonyms(CsvUtil.fieldToStrings(csvRecord.get(4)))
-          .withRelatedTerms(getEntityReferencesForGlossaryTerms(printer, csvRecord, 5))
-          .withReferences(getTermReferences(printer, csvRecord))
-          .withTags(
-              getTagLabels(
-                  printer, csvRecord, List.of(Pair.of(7, TagLabel.TagSource.CLASSIFICATION))))
-          .withReviewers(getReviewers(printer, csvRecord, 8))
-          .withOwners(getOwners(printer, csvRecord, 9))
-          .withEntityStatus(getTermStatus(printer, csvRecord))
-          .withStyle(getStyle(csvRecord))
-          .withExtension(getExtension(printer, csvRecord, 13));
+          .withDisplayName(displayName)
+          .withDescription(description)
+          .withSynonyms(synonyms)
+          .withRelatedTerms(relatedTerms)
+          .withReferences(references)
+          .withTags(tags)
+          .withReviewers(reviewers)
+          .withOwners(owners)
+          .withEntityStatus(status)
+          .withStyle(style)
+          .withExtension(extension);
 
       // Validate during dry run to catch logical errors early
       if (processRecord && importResult.getDryRun()) {
@@ -278,7 +366,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       }
 
       if (processRecord) {
-        createEntity(printer, csvRecord, glossaryTerm, GLOSSARY_TERM);
+        createEntityWithChangeDescription(printer, csvRecord, glossaryTerm, GLOSSARY_TERM);
       }
     }
 

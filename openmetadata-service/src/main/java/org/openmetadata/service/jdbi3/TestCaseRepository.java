@@ -100,12 +100,14 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.ValidatorUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -1521,112 +1523,187 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
 
     @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
+    @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
-      // Process each test case record using getNextRecord to increment recordIndex
-      while (recordIndex < csvRecords.size()) {
-        CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-        if (csvRecord == null) {
-          return; // Error has already been logged by getNextRecord
+      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      if (csvRecord == null) {
+        return;
+      }
+
+      try {
+        // Parse CSV record
+        String name = csvRecord.get(0);
+        String displayName = nullOrEmpty(csvRecord.get(1)) ? null : csvRecord.get(1);
+        String description = nullOrEmpty(csvRecord.get(2)) ? null : csvRecord.get(2);
+        String testDefinitionFqn = csvRecord.get(3);
+        String entityFQN = csvRecord.get(4);
+        String testSuiteFqn = nullOrEmpty(csvRecord.get(5)) ? null : csvRecord.get(5);
+        String parameterValuesStr = nullOrEmpty(csvRecord.get(6)) ? null : csvRecord.get(6);
+        String computePassedFailedRowCountStr =
+            nullOrEmpty(csvRecord.get(7)) ? null : csvRecord.get(7);
+        String useDynamicAssertionStr = nullOrEmpty(csvRecord.get(8)) ? null : csvRecord.get(8);
+        String inspectionQuery = nullOrEmpty(csvRecord.get(9)) ? null : csvRecord.get(9);
+
+        // Convert entityFQN to EntityLink
+        String entityLink = convertFQNToEntityLink(entityFQN);
+
+        // Compute test case FQN
+        EntityLink parsedLink = EntityLink.parse(entityLink);
+        String testCaseFqn =
+            FullyQualifiedName.add(
+                parsedLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(name));
+
+        // Check if test case exists
+        TestCase existingTestCase;
+        boolean testCaseExists;
+        try {
+          existingTestCase =
+              Entity.getEntityByName(
+                  TEST_CASE,
+                  testCaseFqn,
+                  "id,displayName,description,testDefinition,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags",
+                  Include.NON_DELETED);
+          testCaseExists = true;
+        } catch (EntityNotFoundException ex) {
+          existingTestCase = new TestCase().withName(name).withEntityLink(entityLink);
+          testCaseExists = false;
         }
 
-        try {
-          // Parse CSV record
-          String name = csvRecord.get(0);
-          String displayName = nullOrEmpty(csvRecord.get(1)) ? null : csvRecord.get(1);
-          String description = nullOrEmpty(csvRecord.get(2)) ? null : csvRecord.get(2);
-          String testDefinitionFqn = csvRecord.get(3);
-          String entityFQN = csvRecord.get(4);
-          String testSuiteFqn = nullOrEmpty(csvRecord.get(5)) ? null : csvRecord.get(5);
-          String parameterValuesStr = nullOrEmpty(csvRecord.get(6)) ? null : csvRecord.get(6);
-          String computePassedFailedRowCountStr =
-              nullOrEmpty(csvRecord.get(7)) ? null : csvRecord.get(7);
-          String useDynamicAssertionStr = nullOrEmpty(csvRecord.get(8)) ? null : csvRecord.get(8);
-          String inspectionQuery = nullOrEmpty(csvRecord.get(9)) ? null : csvRecord.get(9);
+        // Store create status with null check
+        int recordIndex = getRecordIndex(csvRecord);
+        if (recordCreateStatusArray != null
+            && recordIndex >= 0
+            && recordIndex < recordCreateStatusArray.length) {
+          recordCreateStatusArray[recordIndex] = !testCaseExists;
+        }
 
-          // Convert entityFQN to EntityLink
-          String entityLink = convertFQNToEntityLink(entityFQN);
+        List<FieldChange> fieldsAdded = new ArrayList<>();
+        List<FieldChange> fieldsUpdated = new ArrayList<>();
 
-          // Get test definition
-          TestDefinition testDefinition =
-              Entity.getEntityByName(TEST_DEFINITION, testDefinitionFqn, "", Include.NON_DELETED);
+        // Get test definition
+        TestDefinition testDefinition =
+            Entity.getEntityByName(TEST_DEFINITION, testDefinitionFqn, "", Include.NON_DELETED);
+        EntityReference testDefRef = testDefinition.getEntityReference();
 
-          // Parse parameter values
-          List<TestCaseParameterValue> parameterValues = parseParameterValues(parameterValuesStr);
+        // Parse parameter values and other fields
+        List<TestCaseParameterValue> parameterValues = parseParameterValues(parameterValuesStr);
+        Boolean computePassedFailedRowCount =
+            computePassedFailedRowCountStr != null
+                ? Boolean.parseBoolean(computePassedFailedRowCountStr)
+                : null;
+        Boolean useDynamicAssertion =
+            useDynamicAssertionStr != null ? Boolean.parseBoolean(useDynamicAssertionStr) : null;
+        List<TagLabel> tagLabels =
+            getTagLabels(
+                printer,
+                csvRecord,
+                List.of(
+                    Pair.of(10, TagLabel.TagSource.CLASSIFICATION),
+                    Pair.of(11, TagLabel.TagSource.GLOSSARY)));
 
-          // Create test case
-          TestCase testCase = new TestCase();
-          testCase.withName(name);
-          testCase.withDisplayName(displayName);
-          testCase.withDescription(description);
-          testCase.withTestDefinition(testDefinition.getEntityReference());
-          testCase.withEntityLink(entityLink);
-          testCase.withParameterValues(parameterValues);
+        // Create TestCase object for tracking (new or existing with updates)
+        TestCaseRepository repository = (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+        EntityCsv.CsvChangeTracker tracker =
+            trackCommonFieldChanges(
+                repository,
+                testCaseExists ? existingTestCase : null,
+                displayName,
+                description,
+                null, // Owners not in CSV
+                tagLabels,
+                null,
+                null, // Domains not in CSV
+                null);
 
-          if (computePassedFailedRowCountStr != null) {
-            testCase.withComputePassedFailedRowCount(
-                Boolean.parseBoolean(computePassedFailedRowCountStr));
+        tracker
+            .trackField(
+                "testDefinition",
+                testCaseExists ? existingTestCase.getTestDefinition() : null,
+                testDefRef)
+            .trackField(
+                "parameterValues",
+                testCaseExists ? existingTestCase.getParameterValues() : null,
+                parameterValues)
+            .trackField(
+                "computePassedFailedRowCount",
+                testCaseExists ? existingTestCase.getComputePassedFailedRowCount() : null,
+                computePassedFailedRowCount)
+            .trackField(
+                "useDynamicAssertion",
+                testCaseExists ? existingTestCase.getUseDynamicAssertion() : null,
+                useDynamicAssertion)
+            .trackField(
+                "inspectionQuery",
+                testCaseExists ? existingTestCase.getInspectionQuery() : null,
+                inspectionQuery);
+
+        ChangeDescription changeDescription = tracker.build();
+
+        if (recordFieldChangesArray != null
+            && recordIndex >= 0
+            && recordIndex < recordFieldChangesArray.length) {
+          recordFieldChangesArray[recordIndex] = changeDescription;
+        }
+
+        // Build complete test case
+        TestCase testCase =
+            existingTestCase
+                .withDisplayName(displayName)
+                .withDescription(description)
+                .withTestDefinition(testDefRef)
+                .withEntityLink(entityLink)
+                .withParameterValues(parameterValues)
+                .withComputePassedFailedRowCount(computePassedFailedRowCount)
+                .withUseDynamicAssertion(useDynamicAssertion)
+                .withInspectionQuery(inspectionQuery)
+                .withTags(tagLabels);
+
+        if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
+          try {
+            TestSuite testSuite =
+                Entity.getEntityByName(TEST_SUITE, testSuiteFqn, "", Include.NON_DELETED);
+            testCase.withTestSuite(testSuite.getEntityReference());
+          } catch (EntityNotFoundException e) {
+            importFailure(
+                printer, String.format("Test suite '%s' not found", testSuiteFqn), csvRecord);
+            importResult.withStatus(ApiStatus.ABORTED);
+            return;
           }
-          if (useDynamicAssertionStr != null) {
-            testCase.withUseDynamicAssertion(Boolean.parseBoolean(useDynamicAssertionStr));
-          }
-          if (inspectionQuery != null) {
-            testCase.withInspectionQuery(inspectionQuery);
-          }
+        } else {
+          EntityReference testSuite = repository.getOrCreateTestSuite(testCase);
+          testCase.withTestSuite(testSuite);
+        }
 
-          // Parse and set tags and glossary terms
-          List<TagLabel> tagLabels =
-              getTagLabels(
-                  printer,
-                  csvRecord,
-                  List.of(
-                      Pair.of(10, TagLabel.TagSource.CLASSIFICATION),
-                      Pair.of(11, TagLabel.TagSource.GLOSSARY)));
-          testCase.withTags(tagLabels);
+        // Set required fields
+        testCase.setFullyQualifiedName(testCaseFqn);
+        testCase.setEntityFQN(parsedLink.getFullyQualifiedFieldValue());
+        if (testCase.getId() == null) {
+          testCase.setId(UUID.randomUUID());
+        }
+        if (testCase.getUpdatedAt() == null) {
+          testCase.setUpdatedAt(System.currentTimeMillis());
+        }
+        if (testCase.getUpdatedBy() == null) {
+          testCase.setUpdatedBy(importedBy);
+        }
 
-          // Get repository instance first
-          TestCaseRepository repository =
-              (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
-
-          // Get test suite if provided, otherwise get or create default test suite
-          if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
-            try {
-              TestSuite testSuite =
-                  Entity.getEntityByName(TEST_SUITE, testSuiteFqn, "", Include.NON_DELETED);
-              testCase.withTestSuite(testSuite.getEntityReference());
-            } catch (EntityNotFoundException e) {
-              importFailure(
-                  printer, String.format("Test suite '%s' not found", testSuiteFqn), csvRecord);
-              importResult.withStatus(ApiStatus.ABORTED);
-              continue;
+        if (!importResult.getDryRun()) {
+          // Use enhanced method that handles create/update AND change tracking
+          if (processRecord) {
+            createEntityWithChangeDescription(printer, csvRecord, testCase);
+            // Collect IDs for Bundle Suite attachment after successful creation
+            if (targetBundleSuite != null && testCase.getId() != null) {
+              importedTestCaseIds.add(testCase.getId());
             }
           } else {
-            // No test suite provided - get or create the default basic test suite
-            EntityReference testSuite = repository.getOrCreateTestSuite(testCase);
-            testCase.withTestSuite(testSuite);
-          }
-
-          // Compute and set FQN manually (same logic as setFullyQualifiedName)
-          EntityLink parsedLink = EntityLink.parse(entityLink);
-          String testCaseFqn =
-              FullyQualifiedName.add(
-                  parsedLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(name));
-          testCase.setFullyQualifiedName(testCaseFqn);
-          testCase.setEntityFQN(parsedLink.getFullyQualifiedFieldValue());
-
-          // Set required fields for new entities - createOrUpdateForImport doesn't call
-          // prepareInternal which would normally set these
-          if (testCase.getId() == null) {
-            testCase.setId(UUID.randomUUID());
-          }
-          if (testCase.getUpdatedAt() == null) {
-            testCase.setUpdatedAt(System.currentTimeMillis());
-          }
-          if (testCase.getUpdatedBy() == null) {
-            testCase.setUpdatedBy(importedBy);
-          }
-
-          if (!importResult.getDryRun()) {
-            // Use createOrUpdateForImport which handles both create and update
+            // Fallback for when processRecord is false
             RestUtil.PutResponse<TestCase> response =
                 repository.createOrUpdateForImport(null, testCase, importedBy);
             if (targetBundleSuite != null) {
@@ -1637,16 +1714,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             } else {
               importSuccess(printer, csvRecord, ENTITY_UPDATED);
             }
-          } else {
-            // Dry run - just validate
-            repository.prepareInternal(testCase, true);
-            importSuccess(printer, csvRecord, ENTITY_CREATED);
           }
-
-        } catch (Exception ex) {
-          importFailure(printer, ex.getMessage(), csvRecord);
-          importResult.withStatus(ApiStatus.FAILURE);
+        } else {
+          // Dry run - just validate
+          repository.prepareInternal(testCase, true);
+          importSuccess(printer, csvRecord, ENTITY_CREATED);
         }
+
+      } catch (Exception ex) {
+        importFailure(printer, ex.getMessage(), csvRecord);
+        importResult.withStatus(ApiStatus.FAILURE);
       }
 
       if (targetBundleSuite != null
@@ -1797,6 +1874,66 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       return jsonObjects.stream()
           .map(json -> JsonUtils.readValue(json, TestCaseParameterValue.class))
           .collect(Collectors.toList());
+    }
+
+    @Override
+    protected void createEntityWithChangeDescription(
+        CSVPrinter printer, CSVRecord csvRecord, TestCase testCase) throws IOException {
+      int recordIndex = getRecordIndex(csvRecord);
+      ChangeDescription changeDescription = getRecordFieldChanges(recordIndex);
+
+      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
+        try {
+          // Ensure entity has proper ID and metadata
+          if (testCase.getId() == null) {
+            testCase.setId(UUID.randomUUID());
+          }
+          testCase.setUpdatedBy(importedBy);
+          testCase.setUpdatedAt(System.currentTimeMillis());
+
+          // Validate entity after setting ID
+          String violations = ValidatorUtil.validate(testCase);
+          if (violations != null) {
+            importFailure(printer, violations, csvRecord);
+            return;
+          }
+
+          TestCaseRepository repository =
+              (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+          boolean update = repository.isUpdateForImport(testCase);
+          repository.prepareInternal(testCase, update);
+          RestUtil.PutResponse<TestCase> response =
+              repository.createOrUpdateForImport(null, testCase, importedBy);
+
+          // Update the testCase reference with the created/updated entity to ensure ID is set
+          TestCase createdEntity = response.getEntity();
+          testCase.setId(createdEntity.getId());
+          testCase.setVersion(createdEntity.getVersion());
+
+          String status =
+              response.getStatus() == Response.Status.CREATED ? ENTITY_CREATED : ENTITY_UPDATED;
+
+          AsyncService.getInstance()
+              .getExecutorService()
+              .submit(() -> createChangeEventAndUpdateInES(response, importedBy));
+
+          importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          importResult.setStatus(ApiStatus.FAILURE);
+        }
+      } else {
+        // For dry run, determine if it would be created or updated
+        TestCaseRepository repository = (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+        repository.setFullyQualifiedName(testCase);
+        TestCase existing = repository.findByNameOrNull(testCase.getFullyQualifiedName(), ALL);
+        String status = existing == null ? ENTITY_CREATED : ENTITY_UPDATED;
+
+        // Track the dryRun created entities
+        dryRunCreatedEntities.put(testCase.getFullyQualifiedName(), testCase);
+
+        importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+      }
     }
   }
 }

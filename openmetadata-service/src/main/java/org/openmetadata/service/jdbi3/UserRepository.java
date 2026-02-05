@@ -53,12 +53,12 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
-import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -963,23 +963,88 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
+    @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      // Field 1, 2, 3, 4, 5, 6 - name, displayName, description, email, timezone, isAdmin
-      User user =
-          UserUtil.getUser(
-                  importedBy,
-                  new CreateUser()
-                      .withName(csvRecord.get(0))
-                      .withDisplayName(csvRecord.get(1))
-                      .withDescription(csvRecord.get(2))
-                      .withEmail(csvRecord.get(3))
-                      .withTimezone(csvRecord.get(4))
-                      .withIsAdmin(getBoolean(printer, csvRecord, 5)))
-              .withTeams(getTeams(printer, csvRecord, csvRecord.get(0)))
-              .withRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
+      if (csvRecord == null) {
+        return;
+      }
+
+      String userName = csvRecord.get(0);
+      User user;
+      boolean userExists;
+      try {
+        user =
+            Entity.getEntityByName(
+                USER,
+                userName,
+                "id,displayName,description,timezone,isAdmin,teams,roles",
+                Include.NON_DELETED);
+        userExists = true;
+      } catch (EntityNotFoundException ex) {
+        user = new User().withName(userName).withEmail(csvRecord.get(3)); // Basic user for creation
+        userExists = false;
+      }
+
+      // Store create status with null check
+      int recordIndex = getRecordIndex(csvRecord);
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !userExists;
+      }
+
+      // Fields: name, displayName, description, email, timezone, isAdmin, team, roles
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      String timezone = csvRecord.get(4);
+      Boolean isAdmin = getBoolean(printer, csvRecord, 5);
+      List<EntityReference> teams = getTeams(printer, csvRecord, userName);
+      List<EntityReference> roles = getEntityReferences(printer, csvRecord, 7, ROLE);
+
+      EntityRepository<?> repository = Entity.getEntityRepository(USER);
+      CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              userExists ? user : null,
+              displayName,
+              description,
+              null,
+              null,
+              null,
+              null,
+              null);
+
+      tracker
+          .trackField("timezone", userExists ? user.getTimezone() : null, timezone)
+          .trackField("isAdmin", userExists ? user.getIsAdmin() : null, isAdmin)
+          .trackField("teams", userExists ? user.getTeams() : null, teams)
+          .trackField("roles", userExists ? user.getRoles() : null, roles);
+
+      ChangeDescription changeDescription = tracker.build();
+
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
+
+      user.withDisplayName(displayName)
+          .withDescription(description)
+          .withTimezone(timezone)
+          .withIsAdmin(isAdmin)
+          .withTeams(teams)
+          .withRoles(roles);
+
       if (processRecord) {
-        createUserEntity(printer, csvRecord, user);
+        createUserEntityWithChangeDescription(printer, csvRecord, user);
       }
     }
 

@@ -813,7 +813,7 @@ export function useGridEditController({
           }
         }, 1);
 
-        return [...data, { id: data.length + '' }];
+        return [...data, { id: data.length + '', isNewRow: 'true' }];
       }
     );
   }, [gridContainer, setDataSource]);

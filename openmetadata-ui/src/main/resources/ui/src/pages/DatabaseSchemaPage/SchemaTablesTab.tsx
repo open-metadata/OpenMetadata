@@ -378,7 +378,8 @@ function SchemaTablesTab({
 
             {getBulkEditButton(
               permissions.table.EditAll && !databaseSchemaDetails.deleted,
-              handleEditTable
+              handleEditTable,
+              'edit-table-bulk-button'
             )}
           </>
         )

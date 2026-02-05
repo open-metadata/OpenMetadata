@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -38,7 +39,9 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DriveConnection;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -108,6 +111,14 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
       this.recursive = recursive;
     }
 
+    @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
     /**
      * Export all directories with their child entities (subdirectories, files, spreadsheets, worksheets)
      */
@@ -152,37 +163,78 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      if (csvRecord == null) {
+        return;
+      }
+
       String directoryFqn =
           FullyQualifiedName.add(service.getFullyQualifiedName(), csvRecord.get(0));
       Directory directory;
+      boolean directoryExists;
       try {
         directory = Entity.getEntityByName(DIRECTORY, directoryFqn, "*", Include.NON_DELETED);
+        directoryExists = true;
       } catch (EntityNotFoundException ex) {
-        LOG.warn("Directory not found: {}, it will be created with Import.", directoryFqn);
         directory =
             new Directory()
                 .withService(service.getEntityReference())
                 .withName(csvRecord.get(0))
                 .withFullyQualifiedName(directoryFqn);
+        directoryExists = false;
       }
 
-      // Update directory fields from CSV
+      // Store create status with null check
+      int recordIndex = getRecordIndex(csvRecord);
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !directoryExists;
+      }
+
+      String description = csvRecord.get(1);
+      String displayName = csvRecord.get(2);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
+      List<TagLabel> tags =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(5, TagLabel.TagSource.GLOSSARY)));
+      List<EntityReference> domains = getDomains(printer, csvRecord, 6);
+      Map<String, Object> extension = getExtension(printer, csvRecord, 7);
+
+      EntityRepository<?> repository = Entity.getEntityRepository(DIRECTORY);
+      EntityCsv.CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              directoryExists ? directory : null,
+              displayName,
+              description,
+              owners,
+              tags,
+              null,
+              domains,
+              extension);
+
+      ChangeDescription changeDescription = tracker.build();
+
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
+
       directory
-          .withDescription(csvRecord.get(1))
-          .withDisplayName(csvRecord.get(2))
-          .withOwners(getOwners(printer, csvRecord, 3))
-          .withTags(
-              getTagLabels(
-                  printer,
-                  csvRecord,
-                  List.of(
-                      Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
-                      Pair.of(5, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 6))
-          .withExtension(getExtension(printer, csvRecord, 7));
+          .withDescription(description)
+          .withDisplayName(displayName)
+          .withOwners(owners)
+          .withTags(tags)
+          .withDomains(domains)
+          .withExtension(extension);
 
       if (processRecord) {
-        createEntity(printer, csvRecord, directory, DIRECTORY);
+        createEntityWithChangeDescription(printer, csvRecord, directory, DIRECTORY);
       }
     }
 

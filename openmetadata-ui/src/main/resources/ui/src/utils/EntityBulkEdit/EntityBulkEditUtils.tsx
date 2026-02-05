@@ -12,6 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Button } from 'antd';
+import { Column } from 'react-data-grid';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ProfilerTabPath } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
@@ -67,11 +68,14 @@ export const getBulkEditCSVExportEntityApi = (entityType: EntityType) => {
 
 export const getBulkEditButton = (
   hasPermission: boolean,
-  onClickHandler: () => void
+  onClickHandler: () => void,
+  editTableBulkButton?: string
 ) => {
   return hasPermission ? (
     <Button
-      className="text-primary p-0 remove-button-background-hover"
+      className={`remove-button-background-hover ${
+        !editTableBulkButton ? 'p-0 text-primary ' : 'p-1'
+      }`}
       data-testid="bulk-edit-table"
       icon={<Icon component={IconEdit} />}
       type="text"
@@ -104,4 +108,56 @@ export const getBulkEntityNavigationPath = (
   }
 
   return entityUtilClassBase.getEntityLink(entityType, fqn);
+};
+
+/**
+ * Parses the changeDescription JSON from a row and extracts the updated field names.
+ * Returns both the raw field name and prefixed version (e.g., 'description' and 'column.description')
+ * to handle different column key formats in CSV import/export.
+ * For 'tags' field, it analyzes the actual values to determine which specific columns
+ * (tags, glossaryTerms, tiers) were updated.
+ */
+export const getUpdatedFields = (row: Record<string, string>): Set<string> => {
+  if (!row.changeDescription) {
+    return new Set();
+  }
+
+  try {
+    const parsed = JSON.parse(row.changeDescription);
+    const fields: string[] = [];
+    (parsed.fieldsUpdated || []).forEach((f: { name: string }) => {
+      fields.push(f.name);
+      fields.push(`column.${f.name}`);
+    });
+
+    return new Set(fields);
+  } catch {
+    return new Set();
+  }
+};
+
+/**
+ * Transforms columns to include cellClass for highlighting updated cells.
+ * Used in the validation/preview step of bulk edit to visually indicate:
+ * - Newly added rows (all cells highlighted)
+ * - Updated fields in existing rows (only changed cells highlighted)
+ * Excludes the 'changeDescription' column from the output.
+ */
+export const getColumnsWithUpdatedFlag = (
+  columns: Column<Record<string, string>>[] | undefined,
+  newRowIds: Set<string>
+): Column<Record<string, string>>[] | undefined => {
+  return columns
+    ?.filter((col) => col.key !== 'changeDescription')
+    .map((col) => ({
+      ...col,
+      cellClass: (row: Record<string, string>) => {
+        if (newRowIds.has(row.id)) {
+          return 'cell-updated';
+        }
+        const updatedFields = getUpdatedFields(row);
+
+        return updatedFields.has(col.key) ? 'cell-updated' : '';
+      },
+    }));
 };

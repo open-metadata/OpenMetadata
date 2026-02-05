@@ -168,7 +168,7 @@ test.describe('Glossary Bulk Import Export', () => {
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible();
         await expect(
           page.getByRole('button', { name: 'Previous' })
         ).toBeVisible();
@@ -197,7 +197,7 @@ test.describe('Glossary Bulk Import Export', () => {
           propertyListName
         );
 
-        await page.getByRole('button', { name: 'Next' }).click();
+        await page.getByRole('button', { name: 'Preview' }).click();
         const loader = page.locator(
           '.inovua-react-toolkit-load-mask__background-layer'
         );
@@ -216,7 +216,11 @@ test.describe('Glossary Bulk Import Export', () => {
 
         const rowStatus = ['Entity updated', 'Entity created'];
 
-        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+        const cells = page.getByRole('gridcell', {
+          name: /Entity (created|updated)/
+        });
+
+        await expect(cells).toHaveText(rowStatus);
 
         await page.getByRole('button', { name: 'Update' }).click();
         await page
@@ -357,7 +361,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
 
         await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-        await page.getByRole('button', { name: 'Next' }).click();
+        await page.getByRole('button', { name: 'Preview' }).click();
 
         const loader = page.locator(
           '.inovua-react-toolkit-load-mask__background-layer'
@@ -425,7 +429,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
 
           await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-          await page.getByRole('button', { name: 'Next' }).click();
+          await page.getByRole('button', { name: 'Preview' }).click();
 
           const loader = page.locator(
             '.inovua-react-toolkit-load-mask__background-layer'
@@ -439,9 +443,9 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
             failed: '1',
           });
 
-          const rows = await page.$$('.rdg-row');
-          const firstRow = rows[0];
-          const detailsCell = await firstRow.$('.rdg-cell-details');
+          
+          const firstRow = page.locator('.rdg-row').first();
+          const detailsCell = firstRow.locator('.rdg-cell').nth(1);
           const errorText = await detailsCell?.textContent();
 
           expect(errorText).toContain(
@@ -497,7 +501,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
 
           await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-          await page.getByRole('button', { name: 'Next' }).click();
+          await page.getByRole('button', { name: 'Preview' }).click();
 
           const loader = page.locator(
             '.inovua-react-toolkit-load-mask__background-layer'
@@ -558,7 +562,7 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
 
         await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-        await page.getByRole('button', { name: 'Next' }).click();
+        await page.getByRole('button', { name: 'Preview' }).click();
 
         const loader = page.locator(
           '.inovua-react-toolkit-load-mask__background-layer'
@@ -625,7 +629,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
 
           await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-          await page.getByRole('button', { name: 'Next' }).click();
+          await page.getByRole('button', { name: 'Preview' }).click();
 
           const loader = page.locator(
             '.inovua-react-toolkit-load-mask__background-layer'

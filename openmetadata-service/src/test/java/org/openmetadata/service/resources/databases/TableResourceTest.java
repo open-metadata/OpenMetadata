@@ -3292,7 +3292,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     csv = createCsv(TableCsv.HEADERS, listOf(csvRecord), null);
     result = importCsv(tableName, csv, false);
     assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
-    expectedRows = new String[] {resultsHeader, getSuccessRecord(csvRecord, "Entity updated")};
+    expectedRows = new String[] {resultsHeader, getSuccessRecord(csvRecord, "Entity created")};
     assertRows(result, expectedRows);
   }
 

@@ -1025,25 +1025,81 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
+    @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      // Field 1, 2, 3, 4, 7 - name, displayName, description, teamType, isJoinable
-      Team team =
-          new Team()
-              .withName(csvRecord.get(0))
-              .withDisplayName(csvRecord.get(1))
-              .withDescription(csvRecord.get(2))
-              .withTeamType(TeamType.fromValue(csvRecord.get(3)))
-              .withOwners(getOwners(printer, csvRecord, 5))
-              .withIsJoinable(getBoolean(printer, csvRecord, 6))
-              .withDefaultRoles(getEntityReferences(printer, csvRecord, 7, ROLE))
-              .withPolicies(getEntityReferences(printer, csvRecord, 8, POLICY));
+      if (csvRecord == null) {
+        return;
+      }
 
-      // Field 5 - parent teams
+      String teamName = csvRecord.get(0);
+      Team team;
+      boolean teamExists;
+      try {
+        team =
+            Entity.getEntityByName(
+                TEAM,
+                teamName,
+                "id,displayName,description,teamType,owners,isJoinable,defaultRoles,policies,parents",
+                Include.NON_DELETED);
+        teamExists = true;
+      } catch (EntityNotFoundException ex) {
+        team = new Team().withName(teamName);
+        teamExists = false;
+      }
+      int recordIndex = getRecordIndex(csvRecord);
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !teamExists;
+      }
+
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      TeamType teamType = TeamType.fromValue(csvRecord.get(3));
+      List<EntityReference> owners = getOwners(printer, csvRecord, 5);
+      Boolean isJoinable = getBoolean(printer, csvRecord, 6);
+      List<EntityReference> defaultRoles = getEntityReferences(printer, csvRecord, 7, ROLE);
+      List<EntityReference> policies = getEntityReferences(printer, csvRecord, 8, POLICY);
+
+      TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
+      EntityCsv.CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              teamExists ? team : null,
+              displayName,
+              description,
+              owners,
+              null,
+              null,
+              null,
+              null);
+
+      tracker
+          .trackField("teamType", teamExists ? team.getTeamType().value() : null, teamType.value())
+          .trackField("isJoinable", teamExists ? team.getIsJoinable() : null, isJoinable)
+          .trackField("defaultRoles", teamExists ? team.getDefaultRoles() : null, defaultRoles)
+          .trackField("policies", teamExists ? team.getPolicies() : null, policies);
+
+      team.withDisplayName(displayName)
+          .withDescription(description)
+          .withTeamType(teamType)
+          .withOwners(owners)
+          .withIsJoinable(isJoinable)
+          .withDefaultRoles(defaultRoles)
+          .withPolicies(policies);
+
+      List<EntityReference> originalParents = team.getParents();
       getParents(printer, csvRecord, team);
 
       // Validate during dry run to catch logical errors early
-      TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
       if (processRecord && importResult.getDryRun()) {
         try {
           repository.validateForDryRun(team, dryRunCreatedEntities);
@@ -1054,7 +1110,17 @@ public class TeamRepository extends EntityRepository<Team> {
       }
 
       if (processRecord) {
-        createEntity(printer, csvRecord, team);
+        tracker.trackField("parents", teamExists ? originalParents : null, team.getParents());
+      }
+
+      ChangeDescription changeDescription = tracker.build();
+
+      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
+
+      if (processRecord) {
+        createEntityWithChangeDescription(printer, csvRecord, team);
       }
     }
 
@@ -1087,7 +1153,7 @@ public class TeamRepository extends EntityRepository<Team> {
           continue; // Parent is same as the team to which CSV is being imported, then it is in the
           // same hierarchy
         }
-        if (dryRunCreatedEntities.get(parentRef.getName()) != null) {
+        if (dryRunCreatedEntities.get(parentRef.getFullyQualifiedName()) != null) {
           continue; // Parent is being created by CSV import
         }
         // Else the parent should already exist

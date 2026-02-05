@@ -30,6 +30,8 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.services.SecurityService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.SecurityConnection;
 import org.openmetadata.schema.type.TagLabel;
@@ -152,7 +154,7 @@ public class SecurityServiceRepository
               new CsvHeader().withName("displayName"),
               new CsvHeader().withName("description"),
               new CsvHeader().withName("serviceType").withRequired(true),
-              new CsvHeader().withName("owners"),
+              new CsvHeader().withName("owner"),
               new CsvHeader().withName("tags"),
               new CsvHeader().withName("domain"),
               new CsvHeader().withName("dataProducts"));
@@ -175,32 +177,78 @@ public class SecurityServiceRepository
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
 
       String serviceName = csvRecord.get(0);
+
+      SecurityService existingSecurityService = null;
+      boolean serviceExists = false;
+      try {
+        existingSecurityService =
+            Entity.getEntityByName(Entity.SECURITY_SERVICE, serviceName, "*", Include.NON_DELETED);
+        serviceExists = true;
+      } catch (EntityNotFoundException ex) {
+        // SecurityService not found, it will be created with Import
+      }
+
+      SecurityService newSecurityService =
+          existingSecurityService != null
+              ? existingSecurityService
+              : new SecurityService().withName(serviceName).withFullyQualifiedName(serviceName);
+
+      // Store create status in inherited arrays
+      int recordIndex = getRecordIndex(csvRecord);
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !serviceExists;
+      }
+
+      // Track field changes using meaningful change detection
       String serviceDisplayName = csvRecord.get(1);
       String serviceDescription = csvRecord.get(2);
       String serviceTypeStr = csvRecord.get(3);
+      List<TagLabel> tagLabels =
+          getTagLabels(printer, csvRecord, List.of(Pair.of(5, TagLabel.TagSource.CLASSIFICATION)));
+      List<EntityReference> owners = getOwners(printer, csvRecord, 4);
+      List<EntityReference> domains = getDomains(printer, csvRecord, 6);
 
-      SecurityService newSecurityService;
-      try {
-        newSecurityService =
-            Entity.getEntityByName(Entity.SECURITY_SERVICE, serviceName, "*", Include.NON_DELETED);
-      } catch (EntityNotFoundException ex) {
-        // SecurityService not found, it will be created with Import
-        newSecurityService =
-            new SecurityService().withName(serviceName).withFullyQualifiedName(serviceName);
+      EntityRepository<?> repository = Entity.getEntityRepository(Entity.SECURITY_SERVICE);
+      CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              existingSecurityService,
+              serviceDisplayName,
+              serviceDescription,
+              owners,
+              tagLabels,
+              null,
+              domains,
+              null);
+      tracker.trackField(
+          "serviceType",
+          (existingSecurityService != null ? existingSecurityService.getServiceType() : null)
+                  == null
+              ? null
+              : existingSecurityService.getServiceType().toString(),
+          serviceTypeStr);
+
+      ChangeDescription changeDescription = tracker.build();
+
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
       }
 
       // Update security service fields from CSV
       newSecurityService
           .withDisplayName(nullOrEmpty(serviceDisplayName) ? null : serviceDisplayName)
           .withDescription(nullOrEmpty(serviceDescription) ? null : serviceDescription)
-          .withOwners(getOwners(printer, csvRecord, 4))
-          .withTags(
-              getTagLabels(
-                  printer, csvRecord, List.of(Pair.of(5, TagLabel.TagSource.CLASSIFICATION))))
-          .withDomains(getDomains(printer, csvRecord, 6));
+          .withOwners(owners)
+          .withTags(tagLabels)
+          .withDomains(domains);
 
       if (processRecord) {
-        createEntity(printer, csvRecord, newSecurityService, Entity.SECURITY_SERVICE);
+        createEntityWithChangeDescription(
+            printer, csvRecord, newSecurityService, Entity.SECURITY_SERVICE);
       }
     }
 

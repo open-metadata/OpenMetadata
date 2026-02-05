@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -46,6 +47,9 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -116,6 +120,14 @@ public class DatabaseServiceRepository
       this.DOCUMENTATION = getCsvDocumentation(DATABASE_SERVICE, recursive);
       this.HEADERS = DOCUMENTATION.getHeaders();
       this.recursive = recursive;
+    }
+
+    @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
     }
 
     /**
@@ -218,18 +230,45 @@ public class DatabaseServiceRepository
     protected void createEntityWithoutRecursion(CSVPrinter printer, List<CSVRecord> csvRecords)
         throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      String databaseFqn =
-          FullyQualifiedName.add(service.getFullyQualifiedName(), csvRecord.get(0));
+      if (csvRecord == null) {
+        return;
+      }
+
+      Database database = processRecordFromCsv(printer, csvRecord);
+
+      if (database != null && processRecord) {
+        createEntityWithChangeDescription(printer, csvRecord, database, DATABASE);
+      }
+    }
+
+    private Database processRecordFromCsv(CSVPrinter printer, CSVRecord csvRecord)
+        throws IOException {
+      String name = csvRecord.get(0);
+      String databaseFqn = FullyQualifiedName.add(service.getFullyQualifiedName(), name);
       Database database;
+      boolean databaseExists;
       try {
         database = Entity.getEntityByName(DATABASE, databaseFqn, "*", Include.NON_DELETED);
+        databaseExists = true;
       } catch (EntityNotFoundException ex) {
         LOG.warn("Database not found: {}, it will be created with Import.", databaseFqn);
         database = new Database().withService(service.getEntityReference());
+        databaseExists = false;
+      }
+
+      // Store create status in inherited arrays
+      int recordIndex = getRecordIndex(csvRecord);
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !databaseExists;
       }
 
       // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification,
       // domain, extension
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
@@ -240,21 +279,45 @@ public class DatabaseServiceRepository
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
 
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+      List<EntityReference> domains = getDomains(printer, csvRecord, 8);
+      Map<String, Object> extension = getExtension(printer, csvRecord, 9);
+
+      // Use centralized change tracking - respects repository support flags
+      EntityRepository<?> repository = Entity.getEntityRepository(DATABASE);
+      CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              databaseExists ? database : null,
+              displayName,
+              description,
+              owners,
+              tagLabels,
+              certification,
+              domains,
+              extension);
+
+      // No entity-specific fields to track for Database
+
+      // Build and store change description
+      ChangeDescription changeDescription = tracker.build();
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
 
       database
-          .withName(csvRecord.get(0))
+          .withName(name)
           .withFullyQualifiedName(databaseFqn)
-          .withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
-          .withOwners(getOwners(printer, csvRecord, 3))
+          .withDisplayName(displayName)
+          .withDescription(description)
+          .withOwners(owners)
           .withTags(tagLabels)
           .withCertification(certification)
-          .withDomains(getDomains(printer, csvRecord, 8))
-          .withExtension(getExtension(printer, csvRecord, 9));
+          .withDomains(domains)
+          .withExtension(extension);
 
-      if (processRecord) {
-        createEntity(printer, csvRecord, database, DATABASE);
-      }
+      return database;
     }
 
     protected void createEntityWithRecursion(CSVPrinter printer, List<CSVRecord> csvRecords)
@@ -282,20 +345,40 @@ public class DatabaseServiceRepository
 
     private void createDatabaseEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
         throws IOException {
+      String name = csvRecord.get(0);
       String databaseFqn =
           entityFQN != null
               ? entityFQN
-              : FullyQualifiedName.add(service.getFullyQualifiedName(), csvRecord.get(0));
+              : FullyQualifiedName.add(service.getFullyQualifiedName(), name);
 
-      Database database;
+      Database existingDatabase = null;
+      boolean databaseExists = false;
       try {
-        database = Entity.getEntityByName(DATABASE, databaseFqn, "*", Include.NON_DELETED);
+        existingDatabase = Entity.getEntityByName(DATABASE, databaseFqn, "*", Include.NON_DELETED);
+        databaseExists = true;
       } catch (EntityNotFoundException ex) {
         LOG.warn("Database not found: {}, it will be created with Import.", databaseFqn);
-        database = new Database().withService(service.getEntityReference());
       }
 
-      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, domain
+      Database database =
+          existingDatabase != null
+              ? existingDatabase
+              : new Database().withService(service.getEntityReference());
+
+      // Store create status in inherited arrays
+      int recordIndex = getRecordIndex(csvRecord);
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !databaseExists;
+      }
+
+      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification,
+      // retentionPeriod, sourceUrl, domain, extension
+
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
@@ -305,19 +388,46 @@ public class DatabaseServiceRepository
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+      String sourceUrl = csvRecord.get(9);
+      List<EntityReference> domains = getDomains(printer, csvRecord, 10);
+      Map<String, Object> extension = getExtension(printer, csvRecord, 11);
+
+      EntityRepository<?> repository = Entity.getEntityRepository(DATABASE);
+      CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              databaseExists ? existingDatabase : null,
+              displayName,
+              description,
+              owners,
+              tagLabels,
+              certification,
+              domains,
+              extension);
+
+      tracker.trackField(
+          "sourceUrl", databaseExists ? existingDatabase.getSourceUrl() : null, sourceUrl);
+
+      ChangeDescription changeDescription = tracker.build();
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
+
       database
-          .withName(csvRecord.get(0))
-          .withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
-          .withOwners(getOwners(printer, csvRecord, 3))
+          .withName(name)
+          .withDisplayName(displayName)
+          .withDescription(description)
+          .withOwners(owners)
           .withTags(tagLabels)
           .withCertification(certification)
-          .withSourceUrl(csvRecord.get(9))
-          .withDomains(getDomains(printer, csvRecord, 10))
-          .withExtension(getExtension(printer, csvRecord, 11));
+          .withSourceUrl(sourceUrl)
+          .withDomains(domains)
+          .withExtension(extension);
 
       if (processRecord) {
-        createEntity(printer, csvRecord, database, DATABASE);
+        createEntityWithChangeDescription(printer, csvRecord, database, DATABASE);
       }
     }
 
@@ -349,21 +459,42 @@ public class DatabaseServiceRepository
       }
 
       DatabaseSchema schema;
-      DatabaseSchemaRepository databaseSchemaRepository =
-          (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
-      String schemaFqn = FullyQualifiedName.add(dbFQN, csvRecord.get(0));
+      DatabaseSchema existingSchema = null;
+      boolean schemaExists = false;
+      String name = csvRecord.get(0);
+      String schemaFqn = FullyQualifiedName.add(dbFQN, name);
       try {
-        schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
-      } catch (Exception ex) {
+        existingSchema =
+            Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
+        schemaExists = true;
+      } catch (EntityNotFoundException ex) {
         LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
-        schema =
-            new DatabaseSchema()
-                .withDatabase(database.getEntityReference())
-                .withService(database.getService());
       }
 
-      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
-      // sourceUrl, domain
+      schema =
+          existingSchema != null
+              ? existingSchema
+              : new DatabaseSchema()
+                  .withDatabase(database.getEntityReference())
+                  .withService(database.getService());
+
+      // Store create status
+      int recordIndex = getRecordIndex(csvRecord);
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !schemaExists;
+      }
+
+      // Track field changes
+      List<FieldChange> fieldsAdded = new ArrayList<>();
+      List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, certification,
+      // retentionPeriod, sourceUrl, domain
+      String displayName = csvRecord.get(1);
+      String description = csvRecord.get(2);
+      List<EntityReference> owners = getOwners(printer, csvRecord, 3);
       List<TagLabel> tagLabels =
           getTagLabels(
               printer,
@@ -373,23 +504,55 @@ public class DatabaseServiceRepository
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+      String retentionPeriod = csvRecord.get(8);
+      String sourceUrl = csvRecord.get(9);
+      List<EntityReference> domains = getDomains(printer, csvRecord, 10);
+      Map<String, Object> extension = getExtension(printer, csvRecord, 11);
+
+      EntityRepository<?> repository = Entity.getEntityRepository(DATABASE_SCHEMA);
+      CsvChangeTracker tracker =
+          trackCommonFieldChanges(
+              repository,
+              schemaExists ? existingSchema : null,
+              displayName,
+              description,
+              owners,
+              tagLabels,
+              certification,
+              domains,
+              extension);
+
+      tracker
+          .trackField(
+              "retentionPeriod",
+              schemaExists ? existingSchema.getRetentionPeriod() : null,
+              retentionPeriod)
+          .trackField("sourceUrl", schemaExists ? existingSchema.getSourceUrl() : null, sourceUrl);
+
+      ChangeDescription changeDescription = tracker.build();
+
+      if (recordFieldChangesArray != null
+          && recordIndex >= 0
+          && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
+
       schema
-          .withId(UUID.randomUUID())
-          .withName(csvRecord.get(0))
-          .withDisplayName(csvRecord.get(1))
+          .withName(name)
+          .withDisplayName(displayName)
           .withFullyQualifiedName(schemaFqn)
-          .withDescription(csvRecord.get(2))
-          .withOwners(getOwners(printer, csvRecord, 3))
+          .withDescription(description)
+          .withOwners(owners)
           .withTags(tagLabels)
           .withCertification(certification)
-          .withRetentionPeriod(csvRecord.get(8))
-          .withSourceUrl(csvRecord.get(9))
-          .withDomains(getDomains(printer, csvRecord, 10))
-          .withExtension(getExtension(printer, csvRecord, 11))
+          .withRetentionPeriod(retentionPeriod)
+          .withSourceUrl(sourceUrl)
+          .withDomains(domains)
+          .withExtension(extension)
           .withUpdatedAt(System.currentTimeMillis())
           .withUpdatedBy(importedBy);
       if (processRecord) {
-        createEntity(printer, csvRecord, schema, DATABASE_SCHEMA);
+        createEntityWithChangeDescription(printer, csvRecord, schema, DATABASE_SCHEMA);
       }
     }
 

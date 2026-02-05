@@ -23,6 +23,7 @@ import static org.openmetadata.csv.CsvUtil.fieldToEntities;
 import static org.openmetadata.csv.CsvUtil.fieldToExtensionStrings;
 import static org.openmetadata.csv.CsvUtil.fieldToInternalArray;
 import static org.openmetadata.csv.CsvUtil.recordToString;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
@@ -58,6 +59,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVFormat.Builder;
@@ -71,16 +73,20 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.StoredProcedureCode;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.schema.type.TagLabel;
@@ -96,7 +102,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
-import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.util.AsyncService;
@@ -134,11 +139,112 @@ public abstract class EntityCsv<T extends EntityInterface> {
   protected final String importedBy;
   protected int recordIndex = 0;
 
+  // Arrays for tracking create status and field changes per record
+  protected boolean[] recordCreateStatusArray;
+  protected ChangeDescription[] recordFieldChangesArray;
+
   protected EntityCsv(String entityType, List<CsvHeader> csvHeaders, String importedBy) {
     this.entityType = entityType;
     this.csvHeaders = csvHeaders;
     this.expectedHeaders = CsvUtil.getHeaders(csvHeaders);
     this.importedBy = importedBy;
+  }
+
+  /** Initialize arrays for tracking create status and field changes */
+  protected void initializeArrays(int csvRecordCount) {
+    recordCreateStatusArray = new boolean[csvRecordCount];
+    recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+  }
+
+  protected static class CsvChangeTracker {
+    private final List<FieldChange> fieldsAdded = new ArrayList<>();
+    private final List<FieldChange> fieldsUpdated = new ArrayList<>();
+    private final boolean isNewEntity;
+
+    public CsvChangeTracker(boolean isNewEntity) {
+      this.isNewEntity = isNewEntity;
+    }
+
+    public CsvChangeTracker trackField(String fieldName, Object oldValue, Object newValue) {
+      if (isNewEntity) {
+        // New entity: add if new value is not empty
+        if (!nullOrEmpty(newValue)) {
+          fieldsAdded.add(new FieldChange().withName(fieldName).withNewValue(newValue));
+        }
+      } else {
+        // Existing entity: update only if changed
+        if (CommonUtil.isChanged(oldValue, newValue)) {
+          fieldsUpdated.add(
+              new FieldChange().withName(fieldName).withOldValue(oldValue).withNewValue(newValue));
+        }
+      }
+      return this;
+    }
+
+    /** Build the final ChangeDescription from tracked changes. */
+    public ChangeDescription build() {
+      ChangeDescription changeDescription = new ChangeDescription();
+      if (!fieldsAdded.isEmpty()) {
+        changeDescription.setFieldsAdded(fieldsAdded);
+      }
+      if (!fieldsUpdated.isEmpty()) {
+        changeDescription.setFieldsUpdated(fieldsUpdated);
+      }
+      changeDescription.withPreviousVersion(null);
+      return changeDescription;
+    }
+  }
+
+  protected CsvChangeTracker trackCommonFieldChanges(
+      EntityRepository<?> repository,
+      EntityInterface existingEntity,
+      String displayName,
+      String description,
+      List<EntityReference> owners,
+      List<TagLabel> tags,
+      AssetCertification certification,
+      List<EntityReference> domains,
+      Map<String, Object> extension) {
+
+    boolean isNew = (existingEntity == null);
+    CsvChangeTracker tracker = new CsvChangeTracker(isNew);
+
+    // Always track displayName/description - all entities have these
+    tracker.trackField("displayName", isNew ? null : existingEntity.getDisplayName(), displayName);
+    tracker.trackField("description", isNew ? null : existingEntity.getDescription(), description);
+
+    // Conditionally track based on repository support flags
+    if (repository.isSupportsOwners()) {
+      tracker.trackField("owner", isNew ? null : existingEntity.getOwners(), owners);
+    }
+    if (repository.isSupportsDomains()) {
+      tracker.trackField("domains", isNew ? null : existingEntity.getDomains(), domains);
+    }
+    if (repository.isSupportsCertification()) {
+      tracker.trackField(
+          "certification", isNew ? null : existingEntity.getCertification(), certification);
+    }
+    if (repository.isSupportsTags()) {
+      // Tags are split into categories for UI display
+      List<TagLabel> oldTags = isNew ? null : existingEntity.getTags();
+      tracker.trackField(
+          "tags",
+          filterTagsBySource(oldTags, TagSource.CLASSIFICATION, false),
+          filterTagsBySource(tags, TagSource.CLASSIFICATION, false));
+      tracker.trackField(
+          "glossaryTerms",
+          filterTagsBySource(oldTags, TagSource.GLOSSARY, false),
+          filterTagsBySource(tags, TagSource.GLOSSARY, false));
+      tracker.trackField(
+          "tiers",
+          filterTagsBySource(oldTags, TagSource.CLASSIFICATION, true),
+          filterTagsBySource(tags, TagSource.CLASSIFICATION, true));
+    }
+    if (extension != null) {
+      tracker.trackField("extension", isNew ? null : existingEntity.getExtension(), extension);
+    }
+
+    return tracker;
   }
 
   /** Import entities from a CSV file */
@@ -154,6 +260,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<CSVRecord> records = parse(csv);
     if (records == null) {
       return importResult; // Error during parsing
+    }
+
+    // Initialize arrays for tracking create status and field changes
+    if (records != null && !records.isEmpty()) {
+      initializeArrays(records.size());
     }
 
     // First record is CSV header - Validate headers
@@ -298,7 +409,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return getEntityReference(printer, csvRecord, fieldNumber, Entity.USER, owner);
   }
 
-  protected final Boolean getBoolean(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+  protected Boolean getBoolean(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
       throws IOException {
     String field = csvRecord.get(fieldNumber);
     if (nullOrEmpty(field)) {
@@ -315,7 +426,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return false;
   }
 
-  protected final EntityReference getEntityReference(
+  protected EntityReference getEntityReference(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType)
       throws IOException {
     if (!processRecord) {
@@ -335,7 +446,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return entity;
   }
 
-  protected final EntityReference getEntityReference(
+  protected EntityReference getEntityReference(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType, String fqn)
       throws IOException {
     if (nullOrEmpty(fqn)) {
@@ -350,7 +461,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return entity.getEntityReference();
   }
 
-  protected final List<EntityReference> getEntityReferences(
+  protected List<EntityReference> getEntityReferences(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType)
       throws IOException {
     if (!processRecord) {
@@ -375,7 +486,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return refs.isEmpty() ? null : refs;
   }
 
-  protected final List<EntityReference> getEntityReferencesForGlossaryTerms(
+  protected List<EntityReference> getEntityReferencesForGlossaryTerms(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
     if (!processRecord) {
       return null;
@@ -395,9 +506,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
 
       // Validate that the glossary term has APPROVED status
-      org.openmetadata.schema.entity.data.GlossaryTerm term =
-          (org.openmetadata.schema.entity.data.GlossaryTerm) entity;
-      if (term.getEntityStatus() != org.openmetadata.schema.type.EntityStatus.APPROVED) {
+      GlossaryTerm term = (GlossaryTerm) entity;
+      if (term.getEntityStatus() != EntityStatus.APPROVED) {
         LOG.error(
             "[VALIDATION] VALIDATION FAILED! Term '{}' status is {} not APPROVED",
             fqn,
@@ -419,7 +529,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return refs.isEmpty() ? null : refs;
   }
 
-  protected final List<TagLabel> getTagLabels(
+  protected List<TagLabel> getTagLabels(
       CSVPrinter printer,
       CSVRecord csvRecord,
       List<Pair<Integer, TagSource>> fieldNumbersWithSource)
@@ -442,6 +552,31 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
     return tagLabels;
+  }
+
+  /**
+   * Filter tags by source and tier status for separate FieldChange tracking
+   */
+  protected List<TagLabel> filterTagsBySource(
+      List<TagLabel> allTags, TagSource source, boolean tiersOnly) {
+    if (nullOrEmpty(allTags)) {
+      return null;
+    }
+
+    List<TagLabel> filtered =
+        allTags.stream()
+            .filter(tag -> tag.getSource() == source)
+            .filter(tag -> tiersOnly ? isTierTag(tag) : !isTierTag(tag))
+            .collect(Collectors.toList());
+
+    return filtered.isEmpty() ? null : filtered;
+  }
+
+  /**
+   * Check if a tag is a tier tag (starts with "Tier.")
+   */
+  private boolean isTierTag(TagLabel tag) {
+    return tag.getTagFQN() != null && tag.getTagFQN().startsWith("Tier.");
   }
 
   protected AssetCertification getCertificationLabels(String certificationTag) {
@@ -756,6 +891,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   public static String[] getResultHeaders(List<CsvHeader> csvHeaders) {
     List<String> importResultsCsvHeader = listOf(IMPORT_STATUS_HEADER, IMPORT_STATUS_DETAILS);
     importResultsCsvHeader.addAll(CsvUtil.getHeaders(csvHeaders));
+    importResultsCsvHeader.add("changeDescription");
     return importResultsCsvHeader.toArray(new String[0]);
   }
 
@@ -909,101 +1045,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return getNextRecord(resultsPrinter, csvHeaders, csvRecords);
   }
 
-  @Transaction
-  protected void createEntity(CSVPrinter resultsPrinter, CSVRecord csvRecord, T entity)
-      throws IOException {
-    entity.setId(UUID.randomUUID());
-    entity.setUpdatedBy(importedBy);
-    entity.setUpdatedAt(System.currentTimeMillis());
-    EntityRepository<T> repository = (EntityRepository<T>) Entity.getEntityRepository(entityType);
-    Response.Status responseStatus;
-    String violations = ValidatorUtil.validate(entity);
-    if (violations != null) {
-      // JSON schema based validation failed for the entity
-      importFailure(resultsPrinter, violations, csvRecord);
-      return;
-    }
-    if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
-      try {
-        // In case of updating entity , prepareInternal as update=True
-        boolean update = repository.isUpdateForImport(entity);
-        repository.prepareInternal(entity, update);
-        PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
-        responseStatus = response.getStatus();
-        AsyncService.getInstance()
-            .getExecutorService()
-            .submit(() -> createChangeEventAndUpdateInES(response, importedBy));
-      } catch (Exception ex) {
-        importFailure(resultsPrinter, ex.getMessage(), csvRecord);
-        importResult.setStatus(ApiStatus.FAILURE);
-        return;
-      }
-    } else { // Dry run don't create the entity
-      repository.setFullyQualifiedName(entity);
-      boolean exists = repository.isUpdateForImport(entity);
-      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
-      // Track the dryRun created entities, as they may be referred by other entities being created
-      // during import
-      dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
-    }
-
-    if (Response.Status.CREATED.equals(responseStatus)) {
-      importSuccess(resultsPrinter, csvRecord, ENTITY_CREATED);
-    } else {
-      importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
-    }
-  }
-
-  @Transaction
-  protected void createEntity(
-      CSVPrinter resultsPrinter, CSVRecord csvRecord, EntityInterface entity, String type)
-      throws IOException {
-
-    entity.setId(UUID.randomUUID());
-    entity.setUpdatedBy(importedBy);
-    entity.setUpdatedAt(System.currentTimeMillis());
-
-    EntityRepository<EntityInterface> repository =
-        (EntityRepository<EntityInterface>) Entity.getEntityRepository(type);
-
-    String violations = ValidatorUtil.validate(entity);
-    if (violations != null) {
-      importFailure(resultsPrinter, violations, csvRecord);
-      return;
-    }
-
-    Response.Status responseStatus;
-    if (Boolean.FALSE.equals(importResult.getDryRun())) {
-      try {
-        // In case of updating entity , prepareInternal as update=True
-        boolean update = repository.isUpdateForImport(entity);
-        repository.prepareInternal(entity, update);
-        PutResponse<EntityInterface> response =
-            repository.createOrUpdateForImport(null, entity, importedBy);
-        responseStatus = response.getStatus();
-        AsyncService.getInstance()
-            .getExecutorService()
-            .submit(() -> createChangeEventAndUpdateInESForGenericEntity(response, importedBy));
-      } catch (Exception ex) {
-        importFailure(resultsPrinter, ex.getMessage(), csvRecord);
-        importResult.setStatus(ApiStatus.FAILURE);
-        return;
-      }
-    } else {
-      repository.setFullyQualifiedName(entity);
-      boolean exists = repository.isUpdateForImport(entity);
-      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
-      dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
-    }
-
-    if (Response.Status.CREATED.equals(responseStatus)) {
-      importSuccess(resultsPrinter, csvRecord, ENTITY_CREATED);
-    } else {
-      importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
-    }
-  }
-
-  private void createChangeEventAndUpdateInES(PutResponse<T> response, String importedBy) {
+  protected void createChangeEventAndUpdateInES(PutResponse<T> response, String importedBy) {
     if (!response.getChangeType().equals(EventType.ENTITY_NO_CHANGE)) {
       ChangeEvent changeEvent =
           FormatterUtil.createChangeEventForEntity(
@@ -1170,23 +1212,34 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
 
-    DatabaseSchema schema;
-    DatabaseSchemaRepository databaseSchemaRepository =
-        (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
+    DatabaseSchema existingSchema = null;
+    boolean schemaExists = false;
     String schemaFqn = FullyQualifiedName.add(dbFQN, csvRecord.get(0));
     try {
-      schema =
+      existingSchema =
           Entity.getEntityByNameWithExcludedFields(
               DATABASE_SCHEMA,
               schemaFqn,
               "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
               Include.NON_DELETED);
+      schemaExists = true;
     } catch (Exception ex) {
       LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
-      schema =
-          new DatabaseSchema()
-              .withDatabase(database.getEntityReference())
-              .withService(database.getService());
+    }
+
+    DatabaseSchema schema =
+        existingSchema != null
+            ? existingSchema
+            : new DatabaseSchema()
+                .withDatabase(database.getEntityReference())
+                .withService(database.getService());
+
+    // Store create status in inherited arrays
+    int recordIndex = getRecordIndex(csvRecord);
+    if (recordCreateStatusArray != null
+        && recordIndex >= 0
+        && recordIndex < recordCreateStatusArray.length) {
+      recordCreateStatusArray[recordIndex] = !schemaExists;
     }
 
     // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
@@ -1200,24 +1253,61 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 Pair.of(5, TagSource.GLOSSARY),
                 Pair.of(6, TagSource.CLASSIFICATION)));
     AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+    List<FieldChange> fieldsAdded = new ArrayList<>();
+    List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+    String displayName = csvRecord.get(1);
+    String description = csvRecord.get(2);
+    List<EntityReference> owners = getOwners(printer, csvRecord, 3);
+    String retentionPeriod = csvRecord.get(8);
+    String sourceUrl = csvRecord.get(9);
+    List<EntityReference> domains = getDomains(printer, csvRecord, 10);
+    Map<String, Object> extension = getExtension(printer, csvRecord, 11);
+
+    EntityRepository<?> repository = Entity.getEntityRepository(DATABASE_SCHEMA);
+    CsvChangeTracker tracker =
+        trackCommonFieldChanges(
+            repository,
+            schemaExists ? existingSchema : null,
+            displayName,
+            description,
+            owners,
+            tagLabels,
+            certification,
+            domains,
+            extension);
+
+    tracker
+        .trackField(
+            "retentionPeriod",
+            schemaExists ? existingSchema.getRetentionPeriod() : null,
+            retentionPeriod)
+        .trackField("sourceUrl", schemaExists ? existingSchema.getSourceUrl() : null, sourceUrl);
+
+    ChangeDescription changeDescription = tracker.build();
+    if (recordFieldChangesArray != null
+        && recordIndex >= 0
+        && recordIndex < recordFieldChangesArray.length) {
+      recordFieldChangesArray[recordIndex] = changeDescription;
+    }
 
     schema
         .withId(UUID.randomUUID())
         .withName(csvRecord.get(0))
-        .withDisplayName(csvRecord.get(1))
+        .withDisplayName(displayName)
         .withFullyQualifiedName(schemaFqn)
-        .withDescription(csvRecord.get(2))
-        .withOwners(getOwners(printer, csvRecord, 3))
+        .withDescription(description)
+        .withOwners(owners)
         .withTags(tagLabels)
         .withCertification(certification)
-        .withRetentionPeriod(csvRecord.get(8))
-        .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
-        .withExtension(getExtension(printer, csvRecord, 11))
+        .withRetentionPeriod(retentionPeriod)
+        .withSourceUrl(sourceUrl)
+        .withDomains(domains)
+        .withExtension(extension)
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
     if (processRecord) {
-      createEntity(printer, csvRecord, schema, DATABASE_SCHEMA);
+      createEntityWithChangeDescription(printer, csvRecord, schema, DATABASE_SCHEMA);
     }
   }
 
@@ -1252,32 +1342,46 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
 
-    String tableFqn = FullyQualifiedName.add(schemaFQN, csvRecord.get(0));
+    String name = csvRecord.get(0);
+    String tableFqn = FullyQualifiedName.add(schemaFQN, name);
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
-    Table table;
+    Table existingTable = null;
+    boolean tableExists = false;
 
     try {
-      table =
+      existingTable =
           Entity.getEntityByNameWithExcludedFields(
               TABLE,
               tableFqn,
               "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
               Include.NON_DELETED);
+      tableExists = true;
     } catch (EntityNotFoundException ex) {
-      // Table not found, create a new one
-
       LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
-      table =
-          new Table()
-              .withId(UUID.randomUUID())
-              .withName(csvRecord.get(0))
-              .withFullyQualifiedName(tableFqn)
-              .withService(schema.getService())
-              .withDatabase(schema.getDatabase())
-              .withColumns(new ArrayList<>())
-              .withDatabaseSchema(schema.getEntityReference());
     }
 
+    Table table =
+        existingTable != null
+            ? existingTable
+            : new Table()
+                .withId(UUID.randomUUID())
+                .withName(name)
+                .withFullyQualifiedName(tableFqn)
+                .withService(schema.getService())
+                .withDatabase(schema.getDatabase())
+                .withColumns(new ArrayList<>())
+                .withDatabaseSchema(schema.getEntityReference());
+
+    int recordIndex = getRecordIndex(csvRecord);
+    if (recordCreateStatusArray != null
+        && recordIndex >= 0
+        && recordIndex < recordCreateStatusArray.length) {
+      recordCreateStatusArray[recordIndex] = !tableExists;
+    }
+
+    String displayName = csvRecord.get(1);
+    String description = csvRecord.get(2);
+    List<EntityReference> owners = getOwners(printer, csvRecord, 3);
     // Extract and process tag labels
     List<TagLabel> tagLabels =
         getTagLabels(
@@ -1288,22 +1392,56 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 Pair.of(5, TagSource.GLOSSARY),
                 Pair.of(6, TagSource.CLASSIFICATION)));
     AssetCertification certification = getCertificationLabels(csvRecord.get(7));
+    String retentionPeriod = csvRecord.get(8);
+    String sourceUrl = csvRecord.get(9);
+    List<EntityReference> domains = getDomains(printer, csvRecord, 10);
+    Map<String, Object> extension = getExtension(printer, csvRecord, 11);
+    EntityRepository<?> repository = Entity.getEntityRepository(TABLE);
+    CsvChangeTracker tracker =
+        trackCommonFieldChanges(
+            repository,
+            tableExists ? existingTable : null,
+            displayName,
+            description,
+            owners,
+            tagLabels,
+            certification,
+            domains,
+            extension);
+
+    tracker
+        .trackField(
+            "retentionPeriod",
+            tableExists ? existingTable != null ? existingTable.getRetentionPeriod() : null : null,
+            retentionPeriod)
+        .trackField(
+            "sourceUrl",
+            tableExists ? existingTable != null ? existingTable.getSourceUrl() : null : null,
+            sourceUrl);
+
+    ChangeDescription changeDescription = tracker.build();
+
+    if (recordFieldChangesArray != null
+        && recordIndex >= 0
+        && recordIndex < recordFieldChangesArray.length) {
+      recordFieldChangesArray[recordIndex] = changeDescription;
+    }
 
     // Populate table attributes
     table
-        .withDisplayName(csvRecord.get(1))
-        .withDescription(csvRecord.get(2))
-        .withOwners(getOwners(printer, csvRecord, 3))
+        .withDisplayName(displayName)
+        .withDescription(description)
+        .withOwners(owners)
         .withTags(tagLabels)
         .withCertification(certification)
-        .withRetentionPeriod(csvRecord.get(8))
-        .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
-        .withExtension(getExtension(printer, csvRecord, 11))
+        .withRetentionPeriod(retentionPeriod)
+        .withSourceUrl(sourceUrl)
+        .withDomains(domains)
+        .withExtension(extension)
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
     if (processRecord) {
-      createEntity(printer, csvRecord, table, TABLE);
+      createEntityWithChangeDescription(printer, csvRecord, table, TABLE);
     }
   }
 
@@ -1343,22 +1481,33 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
 
-    StoredProcedure sp;
+    StoredProcedure existingSP = null;
+    boolean spExists = false;
     try {
-      sp =
+      existingSP =
           Entity.getEntityByName(
               STORED_PROCEDURE,
               entityFQN,
-              "name,displayName,fullyQualifiedName",
+              "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,sourceUrl,domains,extension,storedProcedureCode",
               Include.NON_DELETED);
+      spExists = true;
     } catch (Exception ex) {
       LOG.warn("Stored procedure not found: {}, it will be created with Import.", entityFQN);
-      sp =
-          new StoredProcedure()
-              .withName(spName)
-              .withService(schema.getService())
-              .withDatabase(schema.getDatabase())
-              .withDatabaseSchema(schema.getEntityReference());
+    }
+
+    StoredProcedure sp =
+        existingSP != null
+            ? existingSP
+            : new StoredProcedure()
+                .withName(spName)
+                .withService(schema.getService())
+                .withDatabase(schema.getDatabase())
+                .withDatabaseSchema(schema.getEntityReference());
+    int recordIndex = getRecordIndex(csvRecord);
+    if (recordCreateStatusArray != null
+        && recordIndex >= 0
+        && recordIndex < recordCreateStatusArray.length) {
+      recordCreateStatusArray[recordIndex] = !spExists;
     }
 
     List<TagLabel> tagLabels =
@@ -1384,19 +1533,56 @@ public abstract class EntityCsv<T extends EntityInterface> {
     StoredProcedureCode storedProcedureCode =
         new StoredProcedureCode().withCode(csvRecord.get(18)).withLanguage(language);
 
-    sp.withDisplayName(csvRecord.get(1))
-        .withDescription(csvRecord.get(2))
-        .withOwners(getOwners(printer, csvRecord, 3))
+    List<FieldChange> fieldsAdded = new ArrayList<>();
+    List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+    String displayName = csvRecord.get(1);
+    String description = csvRecord.get(2);
+    List<EntityReference> owners = getOwners(printer, csvRecord, 3);
+    String sourceUrl = csvRecord.get(9);
+    List<EntityReference> domains = getDomains(printer, csvRecord, 10);
+    Map<String, Object> extension = getExtension(printer, csvRecord, 11);
+    EntityRepository<?> repository = Entity.getEntityRepository(STORED_PROCEDURE);
+    CsvChangeTracker tracker =
+        trackCommonFieldChanges(
+            repository,
+            spExists ? existingSP : null,
+            displayName,
+            description,
+            owners,
+            tagLabels,
+            certification,
+            domains,
+            extension);
+
+    tracker
+        .trackField("sourceUrl", spExists ? existingSP.getSourceUrl() : null, sourceUrl)
+        .trackField(
+            "storedProcedureCode",
+            spExists ? existingSP.getStoredProcedureCode() : null,
+            storedProcedureCode);
+
+    ChangeDescription changeDescription = tracker.build();
+
+    if (recordFieldChangesArray != null
+        && recordIndex >= 0
+        && recordIndex < recordFieldChangesArray.length) {
+      recordFieldChangesArray[recordIndex] = changeDescription;
+    }
+
+    sp.withDisplayName(displayName)
+        .withDescription(description)
+        .withOwners(owners)
         .withTags(tagLabels)
         .withCertification(certification)
-        .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
+        .withSourceUrl(sourceUrl)
+        .withDomains(domains)
         .withStoredProcedureCode(storedProcedureCode)
-        .withExtension(getExtension(printer, csvRecord, 11));
+        .withExtension(extension);
 
     if (processRecord) {
       // Only create the stored procedure if the schema actually exists
-      createEntity(printer, csvRecord, sp, STORED_PROCEDURE);
+      createEntityWithChangeDescription(printer, csvRecord, sp, STORED_PROCEDURE);
     }
   }
 
@@ -1415,7 +1601,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
     try {
       table =
           Entity.getEntityByName(
-              TABLE, tableFQN, "name,displayName,fullyQualifiedName,columns", Include.NON_DELETED);
+              TABLE,
+              tableFQN,
+              "name,displayName,fullyQualifiedName,columns,tags",
+              Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       try {
         schema =
@@ -1478,6 +1667,13 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     if (column == null) columnExists = false;
 
+    int recordIndex = getRecordIndex(csvRecord);
+    if (recordCreateStatusArray != null
+        && recordIndex >= 0
+        && recordIndex < recordCreateStatusArray.length) {
+      recordCreateStatusArray[recordIndex] = !columnExists;
+    }
+
     if (!columnExists) {
       column =
           new Column()
@@ -1485,44 +1681,102 @@ public abstract class EntityCsv<T extends EntityInterface> {
               .withFullyQualifiedName(table.getFullyQualifiedName() + Entity.SEPARATOR + columnFqn);
     }
 
-    column.withDisplayName(csvRecord.get(1));
-    column.withDescription(csvRecord.get(2));
-    column.withDataTypeDisplay(csvRecord.get(14));
+    // Extract values from CSV
+    String displayName = csvRecord.get(1);
+    String description = csvRecord.get(2);
+    String dataTypeDisplay = csvRecord.get(14);
     String dataTypeStr = csvRecord.get(15);
     if (nullOrEmpty(dataTypeStr)) {
       throw new IllegalArgumentException(
           "Column dataType is mandatory for column: " + csvRecord.get(0));
     }
 
+    ColumnDataType dataType;
     try {
-      column.withDataType(ColumnDataType.fromValue(dataTypeStr));
+      dataType = ColumnDataType.fromValue(dataTypeStr);
     } catch (IllegalArgumentException e) {
       throw new IllegalArgumentException(
           "Invalid dataType '" + dataTypeStr + "' for column: " + csvRecord.get(0));
     }
 
-    if (column.getDataType() == ColumnDataType.ARRAY) {
+    ColumnDataType arrayDataType = null;
+    if (dataType == ColumnDataType.ARRAY) {
       if (nullOrEmpty(csvRecord.get(16))) {
         throw new IllegalArgumentException(
             "Array data type is mandatory for ARRAY columns: " + csvRecord.get(0));
       }
-      column.withArrayDataType(ColumnDataType.fromValue(csvRecord.get(16)));
+      arrayDataType = ColumnDataType.fromValue(csvRecord.get(16));
     }
 
-    if (column.getDataType() == ColumnDataType.STRUCT && column.getChildren() == null) {
-      column.withChildren(new ArrayList<>());
-    }
-
-    column.withDataLength(
-        parseDataLength(csvRecord.get(17), column.getDataType(), column.getName()));
-
+    Integer dataLength = parseDataLength(csvRecord.get(17), dataType, csvRecord.get(0));
     List<TagLabel> tagLabels =
         getTagLabels(
             printer,
             csvRecord,
             List.of(Pair.of(4, TagSource.CLASSIFICATION), Pair.of(5, TagSource.GLOSSARY)));
+
+    CsvChangeTracker tracker = new CsvChangeTracker(!columnExists);
+
+    tracker
+        .trackField("displayName", columnExists ? column.getDisplayName() : null, displayName)
+        .trackField("description", columnExists ? column.getDescription() : null, description)
+        .trackField(
+            "dataTypeDisplay", columnExists ? column.getDataTypeDisplay() : null, dataTypeDisplay)
+        .trackField(
+            "dataType",
+            columnExists
+                ? (column.getDataType() != null ? column.getDataType().toString() : null)
+                : null,
+            dataType.toString());
+
+    String oldArrayType =
+        (columnExists && column.getArrayDataType() != null)
+            ? column.getArrayDataType().toString()
+            : null;
+    String newArrayType = arrayDataType != null ? arrayDataType.toString() : null;
+    tracker.trackField("arrayDataType", oldArrayType, newArrayType);
+
+    String oldDataLength =
+        (columnExists && column.getDataLength() != null) ? column.getDataLength().toString() : null;
+    String newDataLength = dataLength != null ? dataLength.toString() : null;
+    tracker.trackField("dataLength", oldDataLength, newDataLength);
+    if (columnExists) {
+      tracker.trackField(
+          "tags",
+          filterTagsBySource(column.getTags(), TagSource.CLASSIFICATION, false),
+          filterTagsBySource(tagLabels, TagSource.CLASSIFICATION, false));
+      tracker.trackField(
+          "glossaryTerms",
+          filterTagsBySource(column.getTags(), TagSource.GLOSSARY, false),
+          filterTagsBySource(tagLabels, TagSource.GLOSSARY, false));
+    } else {
+      tracker.trackField(
+          "tags", null, filterTagsBySource(tagLabels, TagSource.CLASSIFICATION, false));
+      tracker.trackField(
+          "glossaryTerms", null, filterTagsBySource(tagLabels, TagSource.GLOSSARY, false));
+    }
+
+    ChangeDescription changeDescription = tracker.build();
+
+    if (recordFieldChangesArray != null
+        && recordIndex >= 0
+        && recordIndex < recordFieldChangesArray.length) {
+      recordFieldChangesArray[recordIndex] = changeDescription;
+    }
+
+    column.withDisplayName(displayName);
+    column.withDescription(description);
+    column.withDataTypeDisplay(dataTypeDisplay);
+    column.withDataType(dataType);
+    if (arrayDataType != null) {
+      column.withArrayDataType(arrayDataType);
+    }
+    if (dataType == ColumnDataType.STRUCT && column.getChildren() == null) {
+      column.withChildren(new ArrayList<>());
+    }
+    column.withDataLength(dataLength);
     column.withTags(nullOrEmpty(tagLabels) ? null : tagLabels);
-    column.withOrdinalPosition((int) csvRecord.getRecordNumber() - 1);
+    column.withOrdinalPosition(getRecordIndex(csvRecord));
 
     if (!columnExists) {
       String[] parts = FullyQualifiedName.split(columnFqn);
@@ -1561,29 +1815,47 @@ public abstract class EntityCsv<T extends EntityInterface> {
       throws IOException {
 
     TableRepository tableRepo = (TableRepository) Entity.getEntityRepository(TABLE);
+    int recordIndex = getRecordIndex(csvRecord);
+    ChangeDescription changeDescription = getRecordFieldChanges(recordIndex);
 
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
-      // Actual patch logic
       try {
         JsonPatch jsonPatch = JsonUtils.getJsonPatch(original, updated);
         tableRepo.patch(null, updated.getId(), importedBy, jsonPatch);
-        importSuccess(printer, csvRecord, ENTITY_UPDATED);
+        boolean isCreated = false;
+        if (recordCreateStatusArray != null
+            && recordIndex >= 0
+            && recordIndex < recordCreateStatusArray.length) {
+          isCreated = recordCreateStatusArray[recordIndex];
+        }
+        String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
+        importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
       } catch (Exception ex) {
         importFailure(printer, ex.getMessage(), csvRecord);
         importResult.setStatus(ApiStatus.FAILURE);
       }
     } else {
-      // Dry run mode: simulate patch and add to dryRunCreatedEntities
       tableRepo.setFullyQualifiedName(updated);
       Table existing =
           tableRepo.findByNameOrNull(updated.getFullyQualifiedName(), Include.NON_DELETED);
 
-      // Track dry run entity if it doesn't already exist
       if (existing == null) {
         dryRunCreatedEntities.put(updated.getFullyQualifiedName(), (T) updated);
       }
-      importSuccess(printer, csvRecord, ENTITY_UPDATED);
+      boolean isCreated = false;
+      if (recordCreateStatusArray != null
+          && recordIndex >= 0
+          && recordIndex < recordCreateStatusArray.length) {
+        isCreated = recordCreateStatusArray[recordIndex];
+      }
+      String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
+      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
     }
+  }
+
+  public int getRecordIndex(CSVRecord csvRecord) {
+    int index = (int) csvRecord.getRecordNumber() - 1;
+    return Math.max(0, index);
   }
 
   private Integer parseDataLength(
@@ -1716,6 +1988,26 @@ public abstract class EntityCsv<T extends EntityInterface> {
       throws IOException {
     List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
     recordList.addAll(inputRecord.toList());
+    recordList.add(""); // Empty changeDescription column for consistency
+    printer.printRecord(recordList);
+    importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
+    importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
+  }
+
+  protected void importSuccessWithChangeDescription(
+      CSVPrinter printer,
+      CSVRecord inputRecord,
+      String successDetails,
+      ChangeDescription changeDescription)
+      throws IOException {
+    List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
+    recordList.addAll(inputRecord.toList());
+    // Add structured change description as JSON at the end
+    if (changeDescription != null) {
+      recordList.add(JsonUtils.pojoToJson(changeDescription));
+    } else {
+      recordList.add("");
+    }
     printer.printRecord(recordList);
     importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
     importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
@@ -1725,6 +2017,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       throws IOException {
     List<String> recordList = listOf(IMPORT_FAILED, failedReason);
     recordList.addAll(inputRecord.toList());
+    recordList.add(""); // Empty changeDescription column for consistency
     printer.printRecord(recordList);
     importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
     importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
@@ -1768,6 +2061,184 @@ public abstract class EntityCsv<T extends EntityInterface> {
     setFinalStatus();
     importResult.withImportResultsCsv(writer.toString());
     return importResult;
+  }
+
+  @Transaction
+  protected void createEntityWithChangeDescription(
+      CSVPrinter printer, CSVRecord csvRecord, T entity) throws IOException {
+    int recordIndex = getRecordIndex(csvRecord);
+    ChangeDescription changeDescription = getRecordFieldChanges(recordIndex);
+
+    if (!Boolean.TRUE.equals(importResult.getDryRun())) {
+      try {
+        entity.setId(UUID.randomUUID());
+        entity.setUpdatedBy(importedBy);
+        entity.setUpdatedAt(System.currentTimeMillis());
+
+        // Validate entity after setting ID (same as original createEntity method)
+        String violations = ValidatorUtil.validate(entity);
+        if (violations != null) {
+          importFailure(printer, violations, csvRecord);
+          return;
+        }
+
+        EntityRepository<T> repository =
+            (EntityRepository<T>) Entity.getEntityRepository(entityType);
+        boolean update = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, update);
+        PutResponse<T> response = repository.createOrUpdateForImport(null, entity, importedBy);
+        String status =
+            response.getStatus() == Response.Status.CREATED ? ENTITY_CREATED : ENTITY_UPDATED;
+
+        AsyncService.getInstance()
+            .getExecutorService()
+            .submit(() -> createChangeEventAndUpdateInES(response, importedBy));
+
+        importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+      } catch (Exception ex) {
+        importFailure(printer, ex.getMessage(), csvRecord);
+        importResult.setStatus(ApiStatus.FAILURE);
+      }
+    } else {
+      // For dry run, we need to determine if it would be created or updated
+      EntityRepository<T> repository = (EntityRepository<T>) Entity.getEntityRepository(entityType);
+      repository.setFullyQualifiedName(entity);
+      T existing = repository.findByNameOrNull(entity.getFullyQualifiedName(), ALL);
+      String status = existing == null ? ENTITY_CREATED : ENTITY_UPDATED;
+
+      // Track the dryRun created entities, as they may be referred by other entities being created
+      // during import
+      dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
+
+      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+    }
+  }
+
+  @Transaction
+  protected void createEntityWithChangeDescription(
+      CSVPrinter printer, CSVRecord csvRecord, EntityInterface entity, String type)
+      throws IOException {
+    int recordIndex = getRecordIndex(csvRecord);
+    ChangeDescription changeDescription = getRecordFieldChanges(recordIndex);
+
+    if (!Boolean.TRUE.equals(importResult.getDryRun())) {
+      try {
+        entity.setId(UUID.randomUUID());
+        entity.setUpdatedBy(importedBy);
+        entity.setUpdatedAt(System.currentTimeMillis());
+
+        // Validate entity after setting ID (same as original createEntity method)
+        String violations = ValidatorUtil.validate(entity);
+        if (violations != null) {
+          importFailure(printer, violations, csvRecord);
+          return;
+        }
+
+        EntityRepository<EntityInterface> repository =
+            (EntityRepository<EntityInterface>) Entity.getEntityRepository(type);
+        boolean update = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, update);
+        PutResponse<EntityInterface> response =
+            repository.createOrUpdateForImport(null, entity, importedBy);
+
+        // Use the actual response status to determine if entity was created or updated
+        String status =
+            response.getStatus() == Response.Status.CREATED ? ENTITY_CREATED : ENTITY_UPDATED;
+
+        AsyncService.getInstance()
+            .getExecutorService()
+            .submit(() -> createChangeEventAndUpdateInESForGenericEntity(response, importedBy));
+
+        importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+      } catch (Exception ex) {
+        importFailure(printer, ex.getMessage(), csvRecord);
+        importResult.setStatus(ApiStatus.FAILURE);
+        return;
+      }
+    } else {
+      // For dry run, we need to determine if it would be created or updated
+      EntityRepository<EntityInterface> repository =
+          (EntityRepository<EntityInterface>) Entity.getEntityRepository(type);
+      repository.setFullyQualifiedName(entity);
+      EntityInterface existing =
+          repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL);
+      String status = existing == null ? ENTITY_CREATED : ENTITY_UPDATED;
+
+      // Track the dryRun created entities, as they may be referred by other entities being created
+      // during import
+      dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
+
+      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+    }
+  }
+
+  @Transaction
+  protected void createUserEntityWithChangeDescription(
+      CSVPrinter printer, CSVRecord csvRecord, T entity) throws IOException {
+    int recordIndex = getRecordIndex(csvRecord);
+    ChangeDescription changeDescription = getRecordFieldChanges(recordIndex);
+
+    entity.setId(UUID.randomUUID());
+    entity.setUpdatedBy(importedBy);
+    entity.setUpdatedAt(System.currentTimeMillis());
+
+    EntityRepository<T> repository = (EntityRepository<T>) Entity.getEntityRepository(entityType);
+    Response.Status responseStatus;
+
+    List<String> violationList = new ArrayList<>();
+    String violations = ValidatorUtil.validate(entity);
+    if (violations != null && !violations.isEmpty()) {
+      violationList.addAll(
+          Arrays.asList(violations.substring(1, violations.length() - 1).split(", ")));
+    }
+
+    String userNameEmailViolation = "";
+    if (violations == null || violations.isEmpty()) {
+      userNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
+    } else if (!violations.contains("name must match \"^((?!::).)*$\"")
+        && !violations.contains("email must be a well-formed email address")) {
+      userNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
+    }
+
+    if (!userNameEmailViolation.isEmpty()) {
+      violationList.add(userNameEmailViolation);
+    }
+
+    if (!violationList.isEmpty()) {
+      importFailure(printer, violationList.toString(), csvRecord);
+      return;
+    }
+
+    if (Boolean.FALSE.equals(importResult.getDryRun())) {
+      try {
+        boolean update = repository.isUpdateForImport(entity);
+        repository.prepareInternal(entity, update);
+        PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
+        responseStatus = response.getStatus();
+
+        // Use the actual response status to determine if entity was created or updated
+        String status = responseStatus == Response.Status.CREATED ? ENTITY_CREATED : ENTITY_UPDATED;
+        importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+      } catch (Exception ex) {
+        importFailure(printer, ex.getMessage(), csvRecord);
+        importResult.setStatus(ApiStatus.FAILURE);
+      }
+    } else {
+      repository.setFullyQualifiedName(entity);
+      boolean exists = repository.isUpdateForImport(entity);
+      String status = exists ? ENTITY_UPDATED : ENTITY_CREATED;
+      dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
+      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+    }
+  }
+
+  protected ChangeDescription getRecordFieldChanges(int recordIndex) {
+    return recordFieldChangesArray != null
+            && recordIndex >= 0
+            && recordIndex < recordFieldChangesArray.length
+            && recordFieldChangesArray[recordIndex] != null
+        ? recordFieldChangesArray[recordIndex]
+        : new ChangeDescription().withPreviousVersion(null);
   }
 
   public record ImportResult(String result, CSVRecord record, String details) {}
