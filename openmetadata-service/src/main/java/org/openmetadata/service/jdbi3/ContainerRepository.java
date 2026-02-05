@@ -524,7 +524,13 @@ public class ContainerRepository extends EntityRepository<Container> {
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("fullPath", original.getFullPath(), updated.getFullPath());
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
     }
 
     private void updateDataModel(Container original, Container updated) {
