@@ -441,9 +441,13 @@ class JSONLogicSearchClassBase {
       [EntityReferenceFields.SYNONYMS]: {
         label: t('label.synonym-plural'),
         type: 'multiselect',
+        preferWidgets: ['multiselect'],
         defaultOperator: 'like',
         mainWidgetProps: this.mainWidgetProps,
-        operators: this.defaultSelectOperators,
+        operators: ['like', 'not_like', 'is_null', 'is_not_null'],
+        fieldSettings: {
+          allowCustomValues: true,
+        },
       },
       [EntityReferenceFields.RELATED_TERMS]: {
         label: t('label.related-term-plural'),
