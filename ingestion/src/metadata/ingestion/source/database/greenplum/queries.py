@@ -66,7 +66,9 @@ GREENPLUM_TABLE_COMMENTS = """
             pgd.description as table_comment
     FROM pg_catalog.pg_class c
         LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-        LEFT JOIN pg_catalog.pg_description pgd ON pgd.objsubid = 0 AND pgd.objoid = c.oid
+        LEFT JOIN pg_catalog.pg_description pgd ON pgd.objsubid = 0
+            AND pgd.objoid = c.oid
+            AND pgd.classoid = 'pg_class'::regclass
     WHERE c.relkind in ('r', 'v', 'm', 'f', 'p')
       AND pgd.description IS NOT NULL
       AND n.nspname <> 'pg_catalog'
@@ -130,7 +132,9 @@ GREENPLUM_SQL_COLUMNS = """
             {identity}
         FROM pg_catalog.pg_attribute a
         LEFT JOIN pg_catalog.pg_description pgd ON (
-            pgd.objoid = a.attrelid AND pgd.objsubid = a.attnum)
+            pgd.objoid = a.attrelid
+            AND pgd.objsubid = a.attnum
+            AND pgd.classoid = 'pg_class'::regclass)
         WHERE a.attrelid = :table_oid
         AND a.attnum > 0 AND NOT a.attisdropped
         ORDER BY a.attnum

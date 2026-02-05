@@ -86,10 +86,12 @@ WHERE it.table_schema='{schema_name}' AND it.table_catalog='{database_name}';
 """
 
 POSTGRES_SCHEMA_COMMENTS = """
-    SELECT n.nspname AS schema_name, 
+    SELECT n.nspname AS schema_name,
             d.description AS comment
     FROM pg_catalog.pg_namespace n
-    LEFT JOIN pg_catalog.pg_description d ON d.objoid = n.oid AND d.objsubid = 0;
+    LEFT JOIN pg_catalog.pg_description d ON d.objoid = n.oid
+        AND d.objsubid = 0
+        AND d.classoid = 'pg_namespace'::regclass;
 """
 
 POSTGRES_TABLE_COMMENTS = """
@@ -98,7 +100,9 @@ POSTGRES_TABLE_COMMENTS = """
             pgd.description as table_comment
     FROM pg_catalog.pg_class c
         LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-        LEFT JOIN pg_catalog.pg_description pgd ON pgd.objsubid = 0 AND pgd.objoid = c.oid
+        LEFT JOIN pg_catalog.pg_description pgd ON pgd.objsubid = 0
+            AND pgd.objoid = c.oid
+            AND pgd.classoid = 'pg_class'::regclass
     WHERE c.relkind in ('r', 'v', 'm', 'f', 'p')
       AND pgd.description IS NOT NULL
       AND n.nspname <> 'pg_catalog'
@@ -186,7 +190,9 @@ POSTGRES_SQL_COLUMNS = """
             {identity}
         FROM pg_catalog.pg_attribute a
         LEFT JOIN pg_catalog.pg_description pgd ON (
-            pgd.objoid = a.attrelid AND pgd.objsubid = a.attnum)
+            pgd.objoid = a.attrelid
+            AND pgd.objsubid = a.attnum
+            AND pgd.classoid = 'pg_class'::regclass)
         WHERE a.attrelid = :table_oid
         AND a.attnum > 0 AND NOT a.attisdropped
         ORDER BY a.attnum
