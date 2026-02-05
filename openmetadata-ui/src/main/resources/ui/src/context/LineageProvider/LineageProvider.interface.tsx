@@ -51,7 +51,7 @@ export interface LineageContextType {
   nodes: Node[];
   edges: Edge[];
   tracedNodes: string[];
-  columnsHavingLineage: string[];
+  columnsHavingLineage: Set<string>;
   tracedColumns: string[];
   lineageConfig: LineageConfig;
   zoomValue: number;
@@ -122,4 +122,5 @@ export interface LineageContextType {
   useUpdateNodeInternals: () => UpdateNodeInternals;
   columnsInCurrentPages: Record<string, string[]>;
   setColumnsInCurrentPages: Dispatch<SetStateAction<Record<string, string[]>>>;
+  allColumnsInCurrentPagesSet: Set<string>;
 }

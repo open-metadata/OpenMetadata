@@ -96,7 +96,7 @@ export const CustomEdge = ({
     dataQualityLineage,
     dqHighlightedEdges,
     selectedColumn,
-    columnsInCurrentPages,
+    allColumnsInCurrentPagesSet,
   } = useLineageProvider();
 
   const theme = useTheme();
@@ -159,15 +159,11 @@ export const CustomEdge = ({
       targetHandle,
     });
 
-    const allColumnsInCurrentPages = new Set(
-      Object.values(columnsInCurrentPages).flat()
-    );
-
     return (
-      allColumnsInCurrentPages.has(decodedHandles.sourceHandle ?? '') &&
-      allColumnsInCurrentPages.has(decodedHandles.targetHandle ?? '')
+      allColumnsInCurrentPagesSet.has(decodedHandles.sourceHandle ?? '') &&
+      allColumnsInCurrentPagesSet.has(decodedHandles.targetHandle ?? '')
     );
-  }, [columnsInCurrentPages, sourceHandle, targetHandle]);
+  }, [allColumnsInCurrentPagesSet, sourceHandle, targetHandle]);
 
   // Calculate edge style with memoization
   const updatedStyle = useMemo(() => {

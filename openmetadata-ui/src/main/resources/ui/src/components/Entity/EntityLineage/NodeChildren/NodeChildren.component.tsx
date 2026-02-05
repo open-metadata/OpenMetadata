@@ -19,6 +19,7 @@ import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Handle, Position } from 'reactflow';
 import {
   BORDER_COLOR,
   LINEAGE_CHILD_ITEMS_PER_PAGE,
@@ -36,7 +37,10 @@ import {
   TestSummary,
 } from '../../../../generated/tests/testCase';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
-import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
+import {
+  encodeLineageHandles,
+  getEntityChildrenAndLabel,
+} from '../../../../utils/EntityLineageUtils';
 import EntityLink from '../../../../utils/EntityLink';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { ColumnContent } from '../CustomNode.utils';
@@ -47,23 +51,30 @@ import {
 } from './NodeChildren.interface';
 
 interface CustomPaginatedListProps {
+  columns: EntityChildren;
   entityChildren: EntityChildren;
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
-  items: React.ReactNode[];
   nodeId?: string;
   page: number;
+  renderColumn: (column: Column) => React.ReactNode;
+  renderSentinel: (column: Column) => React.ReactNode;
   setPage: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const CustomPaginatedList = ({
+  columns,
   entityChildren,
   isOnlyShowColumnsWithLineageFilterActive,
-  items,
   nodeId,
   page,
+  renderColumn,
+  renderSentinel,
   setPage,
 }: CustomPaginatedListProps) => {
-  const currentNodeAllColumns = Object.values(entityChildren ?? {});
+  const currentNodeAllColumns = useMemo(
+    () => Object.values(entityChildren ?? {}),
+    [entityChildren]
+  );
   const { t } = useTranslation();
   const { setColumnsInCurrentPages, useUpdateNodeInternals } =
     useLineageProvider();
@@ -106,29 +117,40 @@ const CustomPaginatedList = ({
     outsideCurrentPageItems,
     currentNodeCurrentPageItems,
   } = useMemo(() => {
-    const totalPages = Math.ceil(items.length / LINEAGE_CHILD_ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(columns.length / LINEAGE_CHILD_ITEMS_PER_PAGE);
     const startIdx = (page - 1) * LINEAGE_CHILD_ITEMS_PER_PAGE;
     const endIdx = startIdx + LINEAGE_CHILD_ITEMS_PER_PAGE;
 
     const insideCurrentPageItems: React.ReactNode[] = [];
     const outsideCurrentPageItems: React.ReactNode[] = [];
 
-    items.forEach((item, i) => {
-      const wrappedItem = (
-        <div
-          className={
-            i >= startIdx && i < endIdx
-              ? 'inside-current-page-item'
-              : 'outside-current-page-item'
-          }>
-          {item}
-        </div>
-      );
+    columns.forEach((col, i) => {
+      const column = col as Column;
 
       if (i >= startIdx && i < endIdx) {
-        insideCurrentPageItems.push(wrappedItem);
+        const rendered = renderColumn(column);
+
+        if (rendered) {
+          insideCurrentPageItems.push(
+            <div
+              className="inside-current-page-item"
+              key={column.fullyQualifiedName}>
+              {rendered}
+            </div>
+          );
+        }
       } else {
-        outsideCurrentPageItems.push(wrappedItem);
+        const sentinel = renderSentinel(column);
+
+        if (sentinel) {
+          outsideCurrentPageItems.push(
+            <div
+              className="outside-current-page-item"
+              key={column.fullyQualifiedName}>
+              {sentinel}
+            </div>
+          );
+        }
       }
     });
 
@@ -144,26 +166,15 @@ const CustomPaginatedList = ({
       currentNodeCurrentPageItems,
     };
   }, [
-    items,
+    columns,
     page,
+    renderColumn,
+    renderSentinel,
     currentNodeAllColumns,
     getAllNestedChildrenInFlatArray,
     isOnlyShowColumnsWithLineageFilterActive,
   ]);
 
-  /**
-   * This updates `columnsInCurrentPages` object for current node
-   *
-   * When page or filter is changed, this effect is called
-   * When filter is activated
-   *  - entry for nodeid is updated with `currentNodeAllPagesItems`
-   *  - `currentNodeAllPagesItems` is updated using `filteredColumns`
-   *  - `filteredColumns` is updated to only include columns having lineage
-   * When filter is deactivated
-   *  - entry is updated with `currentNodeCurrentPageItems`.
-   *  - `currentNodeCurrentPageItems` is updated using `filteredColumns`
-   *  - `filteredColumns` is updated to include all columns of current node
-   */
   useEffect(() => {
     setColumnsInCurrentPages((prev) => {
       const updated = { ...prev };
@@ -204,7 +215,7 @@ const CustomPaginatedList = ({
   );
 
   if (isOnlyShowColumnsWithLineageFilterActive) {
-    return items;
+    return columns.map((col) => renderColumn(col as Column));
   }
 
   return (
@@ -329,7 +340,7 @@ const NodeChildren = ({
 
   const hasLineageInNestedChildren = useCallback(
     (column: EntityChildrenItem): boolean => {
-      if (columnsHavingLineage.includes(column.fullyQualifiedName ?? '')) {
+      if (columnsHavingLineage.has(column.fullyQualifiedName ?? '')) {
         return true;
       }
 
@@ -398,7 +409,7 @@ const NodeChildren = ({
         return true;
       }
 
-      return columnsHavingLineage.includes(record.fullyQualifiedName ?? '');
+      return columnsHavingLineage.has(record.fullyQualifiedName ?? '');
     },
     [
       isEditMode,
@@ -429,7 +440,7 @@ const NodeChildren = ({
 
   useEffect(() => {
     if (node.id) {
-      updateNodeInternals?.(node.id);
+      //   updateNodeInternals?.(node.id);
     }
   }, [
     selectedColumn,
@@ -590,12 +601,43 @@ const NodeChildren = ({
     ]
   );
 
-  // Pre-render column data outside of the return statement
-  const renderedColumns = useMemo(() => {
-    return filteredColumns
-      .map((column) => renderColumnsData(column as Column))
-      .filter(Boolean);
-  }, [filteredColumns, renderColumnsData]);
+  /**
+   * Renders a lightweight sentinel for off-page columns that are currently
+   * being traced. The sentinel provides only the ReactFlow Handle (so edges
+   * can connect to it) and the tracing CSS class (so the CSS :has() selector
+   * can reveal it). Columns that are not traced return null — they stay out
+   * of the DOM entirely.
+   */
+  const renderSentinel = useCallback(
+    (column: Column) => {
+      const { fullyQualifiedName } = column;
+      const isColumnTraced = tracedColumns.includes(fullyQualifiedName ?? '');
+
+      if (!isColumnTraced) {
+        return null;
+      }
+
+      return (
+        <div
+          className="custom-node-column-container custom-node-header-column-tracing"
+          key={fullyQualifiedName}>
+          <Handle
+            id={encodeLineageHandles(fullyQualifiedName ?? '')}
+            isConnectable={isConnectable}
+            position={Position.Left}
+            type="target"
+          />
+          <Handle
+            id={encodeLineageHandles(fullyQualifiedName ?? '')}
+            isConnectable={isConnectable}
+            position={Position.Right}
+            type="source"
+          />
+        </div>
+      );
+    },
+    [tracedColumns, isConnectable]
+  );
 
   if (
     supportsColumns &&
@@ -623,17 +665,19 @@ const NodeChildren = ({
               onClick={(e) => e.stopPropagation()}
             />
 
-            {!isEmpty(renderedColumns) && (
+            {!isEmpty(filteredColumns) && (
               <section className="m-t-md" id="table-columns">
                 <div className="rounded-4 overflow-hidden">
                   <CustomPaginatedList
+                    columns={filteredColumns}
                     entityChildren={entityChildren}
                     isOnlyShowColumnsWithLineageFilterActive={
                       isOnlyShowColumnsWithLineageFilterActive
                     }
-                    items={renderedColumns}
                     nodeId={node.id}
                     page={page}
+                    renderColumn={renderColumnsData}
+                    renderSentinel={renderSentinel}
                     setPage={setPage}
                   />
                 </div>
