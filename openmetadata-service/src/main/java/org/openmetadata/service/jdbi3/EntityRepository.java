@@ -7840,30 +7840,49 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 RequestLatencyContext.setContext(parentLatencyContext);
               }
               try {
-                long entityStartTime = System.nanoTime();
-                long queueWaitTime = entityStartTime - submitTime;
+                // Acquire connection permit - blocks until available (guaranteed completion)
+                bulkExecutor.acquireConnection();
                 try {
-                  PutResponse<T> putResponse = bulkCreateOrUpdateEntity(uriInfo, entity, userName);
-                  long entityDuration = System.nanoTime() - entityStartTime;
-                  entityLatenciesNanos.add(entityDuration);
+                  long entityStartTime = System.nanoTime();
+                  long queueWaitTime = entityStartTime - submitTime;
+                  try {
+                    PutResponse<T> putResponse =
+                        bulkCreateOrUpdateEntity(uriInfo, entity, userName);
+                    long entityDuration = System.nanoTime() - entityStartTime;
+                    entityLatenciesNanos.add(entityDuration);
 
-                  successRequests.add(
-                      new BulkResponse()
-                          .withRequest(entity.getFullyQualifiedName())
-                          .withStatus(Status.OK.getStatusCode()));
-                  createChangeEventForBulkOperation(
-                      putResponse.getEntity(), putResponse.getChangeType(), userName);
+                    successRequests.add(
+                        new BulkResponse()
+                            .withRequest(entity.getFullyQualifiedName())
+                            .withStatus(Status.OK.getStatusCode()));
+                    createChangeEventForBulkOperation(
+                        putResponse.getEntity(), putResponse.getChangeType(), userName);
 
-                  // Record per-entity metrics
-                  recordEntityMetrics(entityType, entityDuration, queueWaitTime, true);
-                  future.complete(null);
-                } catch (Exception e) {
-                  long entityDuration = System.nanoTime() - entityStartTime;
-                  entityLatenciesNanos.add(entityDuration);
-                  recordEntityMetrics(entityType, entityDuration, queueWaitTime, false);
-                  handleBulkOperationError(entity, e, failedRequests);
-                  future.complete(null); // Complete even on error so we don't hang
+                    // Record per-entity metrics
+                    recordEntityMetrics(entityType, entityDuration, queueWaitTime, true);
+                    future.complete(null);
+                  } catch (Exception e) {
+                    long entityDuration = System.nanoTime() - entityStartTime;
+                    entityLatenciesNanos.add(entityDuration);
+                    recordEntityMetrics(entityType, entityDuration, queueWaitTime, false);
+                    handleBulkOperationError(entity, e, failedRequests);
+                    future.complete(null); // Complete even on error so we don't hang
+                  }
+                } finally {
+                  // Always release connection permit
+                  bulkExecutor.releaseConnection();
                 }
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                LOG.warn(
+                    "Bulk operation interrupted while waiting for connection: {}",
+                    entity.getFullyQualifiedName());
+                failedRequests.add(
+                    new BulkResponse()
+                        .withRequest(entity.getFullyQualifiedName())
+                        .withStatus(Status.SERVICE_UNAVAILABLE.getStatusCode())
+                        .withMessage("Operation interrupted"));
+                future.complete(null);
               } finally {
                 // Clear context from worker thread to prevent memory leaks in pooled threads
                 if (parentLatencyContext != null) {
