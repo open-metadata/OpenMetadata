@@ -1247,13 +1247,13 @@ test.describe(
 
           await page.click('[data-testid="page-size-selection-dropdown"]');
 
-          const dropdownMenu = page.waitForSelector('.ant-dropdown-menu', {
+          // Wait for dropdown menu to be visible
+          await page.waitForSelector('.ant-dropdown-menu', {
             state: 'visible',
             timeout: 5000,
           });
 
           // Verify dropdown options are visible
-          await expect(dropdownMenu).toBeDefined();
           await expect(page.locator('.ant-dropdown-menu-item')).toHaveCount(3);
         });
       } finally {

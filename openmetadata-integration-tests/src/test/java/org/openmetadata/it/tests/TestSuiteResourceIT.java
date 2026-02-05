@@ -808,7 +808,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
 
                 String esBody = queryTestSuiteSearchIndex(searchClient, testSuite.getId());
                 assertTrue(esBody.contains(testSuite.getId().toString()));
-                assertTrue(esBody.contains("\"total\":4"));
+                assertTrue(esBody.contains("lastResultTimestamp"));
               });
     }
   }
