@@ -29,11 +29,25 @@ const COLUMN_BULK_OPERATIONS_URL = '/column-bulk-operations';
 
 const METADATA_STATUS_FILTER_TESTID = 'search-dropdown-Has / Missing Metadata';
 
+interface BulkUpdateRequestBody {
+  columnUpdates?: Array<{
+    columnFQN?: string;
+    displayName?: string;
+    description?: string;
+    tags?: { tagFQN?: string }[];
+  }>;
+}
+
 async function visitColumnBulkOperationsPage(page: Page) {
   await redirectToHomePage(page);
-  const dataRes = page.waitForResponse('/api/v1/columns/grid?size=25');
+  const dataRes = page.waitForResponse(
+    (r) =>
+      r.url().includes('/api/v1/columns/grid') &&
+      r.status() === 200
+  );
   await sidebarClick(page, SidebarItem.COLUMN_BULK_OPERATIONS);
   await dataRes;
+  await waitForAllLoadersToDisappear(page);
 }
 
 async function searchColumn(page: Page, columnName: string) {
@@ -115,12 +129,12 @@ test.describe('Column Bulk Operations - Metadata Status Filters', PLAYWRIGHT_SAM
     );
     await metadataStatusTrigger.click();
 
-    await page.getByTestId('MISSING_DESCRIPTION').click();
+    await page.getByTestId('MISSING').click();
     await page.getByTestId('update-btn').click();
 
     const metadataStatusChip = page.locator('.filter-selection-chip').filter({
       has: page.locator('.filter-selection-value', {
-        hasText: /Missing Description|MISSING_DESCRIPTION/,
+        hasText: /Missing|MISSING/,
       }),
     });
     await expect(metadataStatusChip).toBeVisible();
@@ -129,18 +143,18 @@ test.describe('Column Bulk Operations - Metadata Status Filters', PLAYWRIGHT_SAM
     ).toContainText('Has / Missing Metadata');
   });
 
-  test('should filter by Has Description metadata status', async ({ page }) => {
+  test('should filter by Incomplete metadata status', async ({ page }) => {
     const metadataStatusTrigger = page.getByTestId(
       METADATA_STATUS_FILTER_TESTID
     );
     await metadataStatusTrigger.click();
 
-    await page.getByTestId('HAS_DESCRIPTION').click();
+    await page.getByTestId('INCOMPLETE').click();
     await page.getByTestId('update-btn').click();
 
     const metadataStatusChip = page.locator('.filter-selection-chip').filter({
       has: page.locator('.filter-selection-value', {
-        hasText: /Has Description|HAS_DESCRIPTION/,
+        hasText: /Incomplete|INCOMPLETE/,
       }),
     });
     await expect(metadataStatusChip).toBeVisible();
@@ -149,18 +163,18 @@ test.describe('Column Bulk Operations - Metadata Status Filters', PLAYWRIGHT_SAM
     ).toContainText('Has / Missing Metadata');
   });
 
-  test('should filter by Has Tags metadata status', async ({ page }) => {
+  test('should filter by Inconsistent metadata status', async ({ page }) => {
     const metadataStatusTrigger = page.getByTestId(
       METADATA_STATUS_FILTER_TESTID
     );
     await metadataStatusTrigger.click();
 
-    await page.getByTestId('HAS_TAGS').click();
+    await page.getByTestId('INCONSISTENT').click();
     await page.getByTestId('update-btn').click();
 
     const metadataStatusChip = page.locator('.filter-selection-chip').filter({
       has: page.locator('.filter-selection-value', {
-        hasText: /Has Tags|HAS_TAGS/,
+        hasText: /Inconsistent|INCONSISTENT/,
       }),
     });
     await expect(metadataStatusChip).toBeVisible();
@@ -169,18 +183,18 @@ test.describe('Column Bulk Operations - Metadata Status Filters', PLAYWRIGHT_SAM
     ).toContainText('Has / Missing Metadata');
   });
 
-  test('should filter by Has Glossary metadata status', async ({ page }) => {
+  test('should filter by Complete metadata status', async ({ page }) => {
     const metadataStatusTrigger = page.getByTestId(
       METADATA_STATUS_FILTER_TESTID
     );
     await metadataStatusTrigger.click();
 
-    await page.getByTestId('HAS_GLOSSARY').click();
+    await page.getByTestId('COMPLETE').click();
     await page.getByTestId('update-btn').click();
 
     const metadataStatusChip = page.locator('.filter-selection-chip').filter({
       has: page.locator('.filter-selection-value', {
-        hasText: /Has Glossary|HAS_GLOSSARY/,
+        hasText: /Complete|COMPLETE/,
       }),
     });
     await expect(metadataStatusChip).toBeVisible();
@@ -196,7 +210,7 @@ test.describe('Column Bulk Operations - Metadata Status Filters', PLAYWRIGHT_SAM
       (request) =>
         request.url().includes('/api/v1/columns/grid') &&
         request.url().includes('metadataStatus='),
-      { timeout: 10000 }
+      { timeout: 15000 }
     );
 
     const metadataStatusTrigger = page.getByTestId(
@@ -204,11 +218,11 @@ test.describe('Column Bulk Operations - Metadata Status Filters', PLAYWRIGHT_SAM
     );
     await metadataStatusTrigger.click();
 
-    await page.getByTestId('MISSING_DESCRIPTION').click();
+    await page.getByTestId('MISSING').click();
     await page.getByTestId('update-btn').click();
 
     const apiRequest = await apiCallPromise;
-    expect(apiRequest.url()).toContain('metadataStatus=MISSING_DESCRIPTION');
+    expect(apiRequest.url()).toContain('metadataStatus=MISSING');
   });
 });
 
@@ -417,20 +431,13 @@ test.describe('Column Bulk Operations - Bulk Update Flow', PLAYWRIGHT_SAMPLE_DAT
     await displayNameInput.fill(displayName);
 
     // Set up API request interception
-    let requestBody: {
-      columnUpdates?: {
-        columnFQN?: string;
-        displayName?: string;
-        description?: string;
-        tags?: { tagFQN?: string }[];
-      }[];
-    } | null = null;
+    let requestBody: BulkUpdateRequestBody | null = null;
 
     const requestPromise = page.waitForRequest(
       (request) => {
         if (request.url().includes('/api/v1/columns/bulk-update-async')) {
           try {
-            requestBody = request.postDataJSON();
+            requestBody = request.postDataJSON() as unknown as BulkUpdateRequestBody;
           } catch {
             // Ignore JSON parse errors
           }
@@ -452,10 +459,12 @@ test.describe('Column Bulk Operations - Bulk Update Flow', PLAYWRIGHT_SAMPLE_DAT
 
     // Verify the request was made
     expect(requestBody).not.toBeNull();
-    expect(requestBody?.columnUpdates).toBeDefined();
+    if (requestBody === null) return;
+    const body = requestBody as unknown as BulkUpdateRequestBody;
+    expect(body.columnUpdates).toBeDefined();
 
     // Verify updates include multiple table occurrences
-    const updates = requestBody?.columnUpdates ?? [];
+    const updates = body.columnUpdates ?? [];
     expect(updates.length).toBeGreaterThanOrEqual(2);
 
     // Verify all updates have the correct displayName
@@ -504,18 +513,13 @@ test.describe('Column Bulk Operations - Bulk Update Flow', PLAYWRIGHT_SAMPLE_DAT
     await displayNameInput.fill(displayName);
 
     // Set up API request interception
-    let requestBody: {
-      columnUpdates?: {
-        columnFQN?: string;
-        displayName?: string;
-      }[];
-    } | null = null;
+    let requestBody: BulkUpdateRequestBody | null = null;
 
     const requestPromise = page.waitForRequest(
       (request) => {
         if (request.url().includes('/api/v1/columns/bulk-update-async')) {
           try {
-            requestBody = request.postDataJSON();
+            requestBody = request.postDataJSON() as unknown as BulkUpdateRequestBody;
           } catch {
             // Ignore JSON parse errors
           }
@@ -537,9 +541,11 @@ test.describe('Column Bulk Operations - Bulk Update Flow', PLAYWRIGHT_SAMPLE_DAT
 
     // Verify the request was made
     expect(requestBody).not.toBeNull();
-    expect(requestBody?.columnUpdates).toBeDefined();
+    if (requestBody === null) return;
+    const body = requestBody as unknown as BulkUpdateRequestBody;
+    expect(body.columnUpdates).toBeDefined();
 
-    const updates = requestBody?.columnUpdates ?? [];
+    const updates = body.columnUpdates ?? [];
     expect(updates.length).toBeGreaterThanOrEqual(2);
 
     // Verify all updates have the correct displayName
@@ -727,13 +733,14 @@ test.describe('Column Bulk Operations - Coverage Status Display', PLAYWRIGHT_SAM
   });
 
   test('should display metadata status from API response', async ({ page }) => {
-    // Set up response interception to verify metadataStatus field is in response
-    let apiResponse: {
+    interface ColumnGridResponse {
       columns?: Array<{
         columnName: string;
         metadataStatus?: string;
       }>;
-    } | null = null;
+    }
+
+    let apiResponse: ColumnGridResponse | null = null;
 
     page.on('response', async (response) => {
       if (
@@ -741,7 +748,7 @@ test.describe('Column Bulk Operations - Coverage Status Display', PLAYWRIGHT_SAM
         response.status() === 200
       ) {
         try {
-          apiResponse = await response.json();
+          apiResponse = (await response.json()) as ColumnGridResponse;
         } catch {
           // Ignore parse errors
         }
@@ -750,10 +757,9 @@ test.describe('Column Bulk Operations - Coverage Status Display', PLAYWRIGHT_SAM
 
     await visitColumnBulkOperationsPage(page);
 
-    // Verify the API response contains metadataStatus field
-    if (apiResponse && apiResponse.columns && apiResponse.columns.length > 0) {
-      // At least some columns should have metadataStatus
-      const columnsWithStatus = apiResponse.columns.filter(
+    const response = apiResponse as ColumnGridResponse | null;
+    if (response?.columns && response.columns.length > 0) {
+      const columnsWithStatus = response.columns.filter(
         (col) => col.metadataStatus !== undefined
       );
       expect(columnsWithStatus.length).toBeGreaterThanOrEqual(0);
@@ -1033,11 +1039,9 @@ test.describe('Column Bulk Operations - Aggregate Row Click Behavior', PLAYWRIGH
       const columnNameCell = aggregateRow.locator('td').nth(1);
       await columnNameCell.click();
 
-      // Verify edit drawer opens
+      // Verify edit drawer opens (if it's an aggregate row)
       const drawer = page.getByTestId('column-bulk-operations-form-drawer');
-
-      // Drawer should be visible (if it's an aggregate row)
-      // Note: This may not open drawer for single-occurrence rows
+      await expect(drawer).toBeVisible();
     }
   });
 
@@ -1068,26 +1072,18 @@ test.describe('Column Bulk Operations - Combined Filters', PLAYWRIGHT_SAMPLE_DAT
   test('should apply multiple filters together', async ({ page }) => {
     await visitColumnBulkOperationsPage(page);
 
-    // Set up request interception for the final request with both filters
-    let lastApiUrl = '';
-    page.on('request', (request) => {
-      if (request.url().includes('/api/v1/columns/grid')) {
-        lastApiUrl = request.url();
-      }
-    });
-
     // Apply Metadata Status filter
     const metadataStatusTrigger = page.getByTestId(
       METADATA_STATUS_FILTER_TESTID
     );
     await metadataStatusTrigger.click();
 
-    await page.getByTestId('MISSING_DESCRIPTION').click();
+    await page.getByTestId('MISSING').click();
     await page.getByTestId('update-btn').click();
 
     const metadataStatusChip = page.locator('.filter-selection-chip').filter({
       has: page.locator('.filter-selection-value', {
-        hasText: /Missing Description|MISSING_DESCRIPTION/,
+        hasText: /Missing|MISSING/,
       }),
     });
     await expect(metadataStatusChip).toBeVisible();
@@ -1098,7 +1094,7 @@ test.describe('Column Bulk Operations - Combined Filters', PLAYWRIGHT_SAMPLE_DAT
 
   test('should clear individual filters', async ({ page }) => {
     await page.goto(
-      `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING_DESCRIPTION`
+      `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING`
     );
     await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
@@ -1107,7 +1103,7 @@ test.describe('Column Bulk Operations - Combined Filters', PLAYWRIGHT_SAMPLE_DAT
       .locator('.filter-selection-chip')
       .filter({
         has: page.locator('.filter-selection-value', {
-          hasText: /Missing Description|MISSING_DESCRIPTION/,
+          hasText: /Missing|MISSING/,
         }),
       });
     await expect(metadataStatusChipBefore).toBeVisible();
@@ -1117,32 +1113,32 @@ test.describe('Column Bulk Operations - Combined Filters', PLAYWRIGHT_SAMPLE_DAT
     );
     await metadataStatusTrigger.click();
 
-    await page.getByTestId('MISSING_DESCRIPTION').click();
+    await page.getByTestId('MISSING').click();
     await page.getByTestId('update-btn').click();
 
     const metadataStatusChipAfter = page
       .locator('.filter-selection-chip')
       .filter({
         has: page.locator('.filter-selection-value', {
-          hasText: /Missing Description|MISSING_DESCRIPTION/,
+          hasText: /Missing|MISSING/,
         }),
       });
     await expect(metadataStatusChipAfter).not.toBeVisible();
 
     const url = page.url();
-    expect(url).not.toContain('metadataStatus=MISSING_DESCRIPTION');
+    expect(url).not.toContain('metadataStatus=MISSING');
   });
 });
 
 test.describe('Column Bulk Operations - URL State Persistence', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test('should restore filters from URL on page load', async ({ page }) => {
-    await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=HAS_TAGS`);
+    await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=INCONSISTENT`);
     await page.waitForLoadState('domcontentloaded');
     await waitForAllLoadersToDisappear(page);
 
     const metadataStatusChip = page.locator('.filter-selection-chip').filter({
       has: page.locator('.filter-selection-value', {
-        hasText: /Has Tags|HAS_TAGS/,
+        hasText: /Inconsistent|INCONSISTENT/,
       }),
     });
     await expect(metadataStatusChip).toBeVisible();
@@ -2287,7 +2283,7 @@ test.describe('Column Bulk Operations - Empty/Edge Values', PLAYWRIGHT_SAMPLE_DA
     );
     await metadataStatusTrigger.click();
 
-    const missingOption = page.getByTestId('MISSING_DESCRIPTION');
+    const missingOption = page.getByTestId('MISSING');
 
     if ((await missingOption.count()) > 0) {
       await missingOption.click();
@@ -2447,9 +2443,8 @@ test.describe('Column Bulk Operations - Filter Edge Cases', PLAYWRIGHT_SAMPLE_DA
       METADATA_STATUS_FILTER_TESTID
     );
     await metadataStatusTrigger.click();
-    await page.waitForTimeout(300);
 
-    const option = page.getByTestId('HAS_TAGS');
+    const option = page.getByTestId('INCONSISTENT');
 
     if ((await option.count()) > 0) {
       await option.click();

@@ -33,6 +33,8 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Directory;
@@ -66,6 +68,13 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     DriveService driveService =
         getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS); // Validate drive service name
     DirectoryRepository repository = (DirectoryRepository) Entity.getEntityRepository(DIRECTORY);
@@ -75,12 +84,25 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
             driveService.getFullyQualifiedName());
 
     directories.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
-    return new DriveServiceCsv(driveService, user, recursive).exportAllCsv(directories, recursive);
+    return new DriveServiceCsv(driveService, user, recursive)
+        .exportAllCsv(directories, recursive, callback);
   }
 
   @Override
   public CsvImportResult importFromCsv(
       String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    return importFromCsv(name, csv, dryRun, user, recursive, (CsvImportProgressCallback) null);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
     // Validate drive service
     DriveService driveService =
         getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS); // Validate drive service name
@@ -91,7 +113,7 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
     } else {
       records = driveServiceCsv.parse(csv);
     }
-    return driveServiceCsv.importCsv(records, dryRun);
+    return driveServiceCsv.importCsv(records, dryRun, callback);
   }
 
   public static class DriveServiceCsv extends EntityCsv<Directory> {
@@ -111,11 +133,17 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
     /**
      * Export all directories with their child entities (subdirectories, files, spreadsheets, worksheets)
      */
-    public String exportAllCsv(List<Directory> directories, boolean recursive) throws IOException {
+    public String exportAllCsv(
+        List<Directory> directories, boolean recursive, CsvExportProgressCallback callback)
+        throws IOException {
       if (!recursive) {
-        return this.exportCsv(directories);
+        return this.exportCsv(directories, callback);
       }
       CsvFile csvFile = new CsvFile().withHeaders(HEADERS);
+      int total = directories.size();
+      int exported = 0;
+      int batchNumber = 0;
+
       for (Directory directory : directories) {
         addEntityToCSV(csvFile, directory, DIRECTORY);
         DirectoryRepository directoryRepository =
@@ -138,6 +166,17 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
             }
           } catch (Exception e) {
             LOG.error("Error parsing directory CSV: {}", e.getMessage());
+          }
+        }
+
+        exported++;
+        if (exported % DEFAULT_BATCH_SIZE == 0 || exported == total) {
+          batchNumber++;
+          if (callback != null) {
+            String message =
+                String.format(
+                    "Exported %d of %d directories (batch %d)", exported, total, batchNumber);
+            callback.onProgress(exported, total, message);
           }
         }
       }
