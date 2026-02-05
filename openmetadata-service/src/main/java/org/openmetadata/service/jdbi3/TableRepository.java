@@ -38,6 +38,7 @@ import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparat
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
 import com.google.common.collect.Streams;
+import com.google.gson.Gson;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -63,6 +64,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
@@ -611,20 +614,23 @@ public class TableRepository extends EntityRepository<Table> {
       PipelineObservability observability =
           JsonUtils.readValue(extensionRecord.extensionJson(), PipelineObservability.class);
 
-      // Enrich with serviceType if not already present
-      if (observability.getServiceType() == null && observability.getPipeline() != null) {
+      if (observability.getPipeline() != null) {
         try {
           Pipeline pipeline =
               Entity.getEntity(
                   Entity.PIPELINE, observability.getPipeline().getId(), "", Include.NON_DELETED);
-          if (pipeline != null && pipeline.getServiceType() != null) {
+
+          if (observability.getServiceType() == null
+              && pipeline != null
+              && pipeline.getServiceType() != null) {
             observability.setServiceType(pipeline.getServiceType());
           }
         } catch (Exception e) {
-          LOG.warn(
-              "Failed to fetch serviceType for pipeline {}: {}",
+          LOG.debug(
+              "Skipping pipeline observability for deleted or inaccessible pipeline {}: {}",
               observability.getPipeline().getFullyQualifiedName(),
               e.getMessage());
+          continue;
         }
       }
 
@@ -1125,6 +1131,40 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
+  public void storeEntities(List<Table> tables) {
+    List<Table> tablesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Table table : tables) {
+      // Save entity-specific relationships
+      EntityReference service = table.getService();
+      List<Column> columnWithTags = table.getColumns();
+
+      // Nullify for storage (same as storeEntity)
+      table.withService(null);
+      table.setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
+      table.getColumns().forEach(column -> column.setTags(null));
+
+      // Clone for storage
+      String jsonCopy = gson.toJson(table);
+      tablesToStore.add(gson.fromJson(jsonCopy, Table.class));
+
+      // Restore in original
+      table.withColumns(columnWithTags).withService(service);
+    }
+
+    storeMany(tablesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Table> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Table::getId).toList();
+    deleteToMany(ids, Entity.TABLE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
+    deleteFromMany(ids, Entity.TABLE, Relationship.RELATED_TO, Entity.TABLE);
+  }
+
+  @Override
   public void storeRelationships(Table table) {
     // Add relationship from database to table
     addRelationship(
@@ -1236,9 +1276,16 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     // Validate table
     Table table = getByName(null, name, new Fields(allowedFields, "owners,domains,tags,columns"));
-    return new TableCsv(table, user).exportCsv(listOf(table));
+    return new TableCsv(table, user).exportCsv(listOf(table), callback);
   }
 
   /**
@@ -1321,15 +1368,20 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public CsvImportResult importFromCsv(
-      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
-    // Validate table
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
     Table table =
         getByName(
             null,
             name,
             new Fields(
                 allowedFields, "owners,domains,tags,columns,database,service,databaseSchema"));
-    return new TableCsv(table, user).importCsv(csv, dryRun);
+    return new TableCsv(table, user).importCsv(csv, dryRun, callback);
   }
 
   static class ColumnDescriptionWorkflow extends DescriptionTaskWorkflow {
@@ -1711,7 +1763,13 @@ public class TableRepository extends EntityRepository<Table> {
           "compressionStrategy",
           original.getCompressionStrategy(),
           updated.getCompressionStrategy());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
       recordChange("locationPath", original.getLocationPath(), updated.getLocationPath());
       recordChange(
           "processedLineage", original.getProcessedLineage(), updated.getProcessedLineage());
@@ -2279,6 +2337,31 @@ public class TableRepository extends EntityRepository<Table> {
         try {
           PipelineObservability observability =
               JsonUtils.readValue(record.extensionJson(), PipelineObservability.class);
+
+          if (observability.getPipeline() != null) {
+            try {
+              Pipeline pipeline =
+                  Entity.getEntity(
+                      Entity.PIPELINE,
+                      observability.getPipeline().getId(),
+                      "",
+                      Include.NON_DELETED);
+
+              if (observability.getServiceType() == null
+                  && pipeline != null
+                  && pipeline.getServiceType() != null) {
+                observability.setServiceType(pipeline.getServiceType());
+              }
+            } catch (Exception e) {
+              LOG.debug(
+                  "Skipping pipeline observability for deleted or inaccessible pipeline {} on table {}: {}",
+                  observability.getPipeline().getFullyQualifiedName(),
+                  tableId,
+                  e.getMessage());
+              continue;
+            }
+          }
+
           tableObservabilityList.add(observability);
         } catch (Exception e) {
           LOG.warn(

@@ -149,6 +149,8 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
@@ -547,7 +549,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void storeEntities(List<T> entities) {
-    // Nothing to do here. This method is overridden in the child class if required
+    // Default: store entities directly. Override if fields need nullification before storage.
+    storeMany(entities);
   }
 
   /**
@@ -557,6 +560,84 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * @see TableRepository#storeRelationships(Table) for an example implementation
    */
   protected abstract void storeRelationships(T entity);
+
+  /**
+   * Helper method to batch delete relationships where entities are the "to" side.
+   * Wraps the DAO method for convenience.
+   */
+  protected void deleteToMany(
+      List<UUID> toIds, String toEntity, Relationship relationship, String fromEntity) {
+    if (toIds.isEmpty()) return;
+    List<String> idStrings = toIds.stream().map(UUID::toString).toList();
+    if (fromEntity != null) {
+      daoCollection
+          .relationshipDAO()
+          .deleteToMany(idStrings, toEntity, relationship.ordinal(), fromEntity);
+    } else {
+      daoCollection.relationshipDAO().deleteToMany(idStrings, toEntity, relationship.ordinal());
+    }
+  }
+
+  /**
+   * Helper method to batch delete relationships where entities are the "from" side.
+   * Wraps the DAO method for convenience.
+   */
+  protected void deleteFromMany(
+      List<UUID> fromIds, String fromEntity, Relationship relationship, String toEntity) {
+    if (fromIds.isEmpty()) return;
+    List<String> idStrings = fromIds.stream().map(UUID::toString).toList();
+    if (toEntity != null) {
+      daoCollection
+          .relationshipDAO()
+          .deleteFromMany(idStrings, fromEntity, relationship.ordinal(), toEntity);
+    } else {
+      daoCollection.relationshipDAO().deleteFromMany(idStrings, fromEntity, relationship.ordinal());
+    }
+  }
+
+  /**
+   * Batch version of clearCommonRelationships. Clears tags, owners, domains, reviewers, and
+   * dataProducts for multiple entities in a single query per relationship type.
+   */
+  protected void clearCommonRelationshipsForMany(List<T> entities) {
+    if (entities.isEmpty()) return;
+
+    List<UUID> ids = entities.stream().map(EntityInterface::getId).toList();
+
+    if (supportsTags) {
+      List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+      daoCollection.tagUsageDAO().deleteTagsByTargets(fqns);
+    }
+    if (supportsOwners) {
+      deleteToMany(ids, entityType, Relationship.OWNS, null);
+    }
+    if (supportsDomains) {
+      deleteToMany(ids, entityType, Relationship.HAS, DOMAIN);
+    }
+    if (supportsReviewers) {
+      deleteToMany(ids, entityType, Relationship.REVIEWS, null);
+    }
+    if (supportsDataProducts) {
+      deleteToMany(ids, entityType, Relationship.HAS, DATA_PRODUCT);
+    }
+  }
+
+  /**
+   * Batch version of clearEntitySpecificRelationships. Override in subclasses to clear
+   * entity-specific relationships for multiple entities in batch.
+   */
+  protected void clearEntitySpecificRelationshipsForMany(List<T> entities) {
+    // Default: no-op. Subclasses override if they have entity-specific relationships to clear.
+  }
+
+  /**
+   * Batch version of clearRelationshipsForUpdate. Clears all relationships for multiple entities
+   * before update. Used during import to ensure old relationships are removed before new ones are stored.
+   */
+  protected void clearRelationshipsForUpdateMany(List<T> entities) {
+    clearCommonRelationshipsForMany(entities);
+    clearEntitySpecificRelationshipsForMany(entities);
+  }
 
   /**
    * This method is called to set inherited fields that an entity inherits from its parent.
@@ -1354,8 +1435,146 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeRelationships(entity);
   }
 
-  public final void storeRelationshipsInternal(List<T> entity) {
-    entity.forEach(this::storeRelationshipsInternal);
+  public final void storeRelationshipsInternal(List<T> entities) {
+    if (entities.isEmpty()) {
+      return;
+    }
+
+    // Batched operations - reduces DB calls from N*5 to ~5 per relationship type
+    storeOwners(entities);
+    storeDomains(entities);
+    storeReviewers(entities);
+    storeDataProducts(entities);
+    applyTagsToEntities(entities);
+
+    // Entity-specific relationships - must be per-entity (abstract method)
+    entities.forEach(this::storeRelationships);
+  }
+
+  @Transaction
+  protected void storeOwners(List<T> entities) {
+    if (!supportsOwners) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getOwners())) {
+        for (EntityReference owner : entity.getOwners()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(owner.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(owner.getType())
+                  .toEntity(entityType)
+                  .relation(Relationship.OWNS.ordinal())
+                  .build());
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void storeDomains(List<T> entities) {
+    if (!supportsDomains) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getDomains())) {
+        validateDomainsByRef(entity.getDomains());
+        for (EntityReference domain : entity.getDomains()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(domain.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(DOMAIN)
+                  .toEntity(entityType)
+                  .relation(Relationship.HAS.ordinal())
+                  .build());
+          addDomainLineage(domain.getId(), entityType, domain);
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void storeReviewers(List<T> entities) {
+    if (!supportsReviewers) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getReviewers())) {
+        for (EntityReference reviewer : entity.getReviewers()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(reviewer.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(reviewer.getType())
+                  .toEntity(entityType)
+                  .relation(Relationship.REVIEWS.ordinal())
+                  .build());
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void storeDataProducts(List<T> entities) {
+    if (!supportsDataProducts) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getDataProducts())) {
+        for (EntityReference dataProduct : entity.getDataProducts()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(dataProduct.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(DATA_PRODUCT)
+                  .toEntity(entityType)
+                  .relation(Relationship.HAS.ordinal())
+                  .build());
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void applyTagsToEntities(List<T> entities) {
+    if (!supportsTags) {
+      return;
+    }
+    for (T entity : entities) {
+      List<TagLabel> nonDerivedTags =
+          listOrEmpty(entity.getTags()).stream()
+              .filter(t -> !t.getLabelType().equals(TagLabel.LabelType.DERIVED))
+              .toList();
+      if (!nonDerivedTags.isEmpty()) {
+        daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, entity.getFullyQualifiedName());
+        for (TagLabel tagLabel : nonDerivedTags) {
+          org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
+              tagLabel, entity.getFullyQualifiedName());
+        }
+      }
+    }
   }
 
   public final T setFieldsInternal(T entity, Fields fields) {
@@ -1521,6 +1740,133 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return updateForImport(uriInfo, original, updated, updatedBy, impersonatedBy);
   }
 
+  /**
+   * Batch create or update entities for CSV import. Separates entities into creates and updates,
+   * then performs batch DB operations for performance.
+   *
+   * @param entities List of entities to create or update
+   * @param updatedBy User performing the import
+   * @return List of PutResponse with status (CREATED or OK) for each entity
+   */
+  @Transaction
+  public List<PutResponse<T>> createOrUpdateBatchForImport(List<T> entities, String updatedBy) {
+    List<T> toCreate = new ArrayList<>();
+    List<T> toUpdate = new ArrayList<>();
+    List<T> originals = new ArrayList<>();
+    List<PutResponse<T>> responses = new ArrayList<>();
+
+    // Separate entities into creates vs updates
+    for (T entity : entities) {
+      T original = findByNameOrNull(entity.getFullyQualifiedName(), ALL);
+      if (original == null) {
+        toCreate.add(entity);
+      } else {
+        toUpdate.add(entity);
+        originals.add(original);
+      }
+    }
+
+    // Batch create new entities
+    if (!toCreate.isEmpty()) {
+      List<T> created = createManyEntitiesForImport(toCreate);
+      for (T entity : created) {
+        responses.add(new PutResponse<>(Status.CREATED, entity, ENTITY_CREATED));
+      }
+    }
+
+    // Batch update existing entities
+    if (!toUpdate.isEmpty()) {
+      List<T> updated = updateManyEntitiesForImport(originals, toUpdate, updatedBy);
+      for (T entity : updated) {
+        responses.add(new PutResponse<>(Status.OK, entity, ENTITY_UPDATED));
+      }
+    }
+
+    return responses;
+  }
+
+  @Transaction
+  public List<T> createManyEntitiesForImport(List<T> entities) {
+    return createManyEntitiesForImport(entities, null);
+  }
+
+  @Transaction
+  public List<T> createManyEntitiesForImport(List<T> entities, String impersonatedBy) {
+    if (entities == null || entities.isEmpty()) {
+      return entities;
+    }
+
+    // 1. Batch lock manager check
+    if (lockManager != null) {
+      lockManager.checkModificationsAllowed(entities);
+    }
+
+    // 2. Set impersonatedBy for each entity
+    for (T entity : entities) {
+      entity.setImpersonatedBy(impersonatedBy);
+    }
+
+    // 3. Store entities and relationships
+    storeEntities(entities);
+    storeExtensions(entities);
+    storeRelationshipsInternal(entities);
+    setInheritedFields(entities, new Fields(allowedFields));
+    postCreate(entities);
+
+    // 4. Batch cache writes
+    writeThroughCacheMany(entities, false);
+
+    return entities;
+  }
+
+  @Transaction
+  public List<T> updateManyEntitiesForImport(List<T> originals, List<T> updates, String updatedBy) {
+    return updateManyEntitiesForImport(originals, updates, updatedBy, null);
+  }
+
+  @Transaction
+  public List<T> updateManyEntitiesForImport(
+      List<T> originals, List<T> updates, String updatedBy, String impersonatedBy) {
+    if (updates == null || updates.isEmpty()) {
+      return updates;
+    }
+
+    // 1. Batch lock manager check
+    if (lockManager != null) {
+      lockManager.checkModificationsAllowed(updates);
+    }
+
+    List<T> updatedEntities = new ArrayList<>();
+    for (int i = 0; i < originals.size(); i++) {
+      T original = originals.get(i);
+      T updated = updates.get(i);
+      // Copy ID and version from original
+      updated.setId(original.getId());
+      updated.setVersion(nextVersion(original.getVersion()));
+      updated.setUpdatedBy(updatedBy);
+      updated.setUpdatedAt(System.currentTimeMillis());
+      // 2. Set impersonatedBy
+      updated.setImpersonatedBy(impersonatedBy);
+      updatedEntities.add(updated);
+    }
+
+    // Batch update in DB
+    updateMany(updatedEntities);
+
+    // Clear and update extensions
+    removeExtensions(originals);
+    storeExtensions(updatedEntities);
+
+    // Update relationships - batch clear existing and store new
+    clearRelationshipsForUpdateMany(updatedEntities);
+    storeRelationshipsInternal(updatedEntities);
+
+    // 3. Batch cache writes
+    writeThroughCacheMany(updatedEntities, true);
+
+    return updatedEntities;
+  }
+
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
     EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
@@ -1563,6 +1909,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Only write to Redis if configured
     writeToRedisCache(entity, update);
+  }
+
+  /**
+   * Write multiple entities to Redis cache after batch DB operations
+   * More efficient than calling writeThroughCache for each entity
+   */
+  protected void writeThroughCacheMany(List<T> entities, boolean update) {
+    var cachedEntityDao = CacheBundle.getCachedEntityDao();
+    if (cachedEntityDao == null || entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    // Skip user entities
+    if ("user".equals(entityType)) {
+      return;
+    }
+
+    for (T entity : entities) {
+      try {
+        if (!isValidEntityForCache(entity)) {
+          continue;
+        }
+
+        String entityJson = dao.findById(dao.getTableName(), entity.getId(), "");
+        if (entityJson != null && !entityJson.isEmpty()) {
+          cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
+          if (entity.getFullyQualifiedName() != null) {
+            cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
+          }
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to write to Redis cache: {} {}", entityType, entity.getId(), e);
+      }
+    }
+    LOG.debug("Batch populated Redis cache for {} {} entities", entities.size(), entityType);
   }
 
   /**
@@ -2554,6 +2935,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
     dao.insertMany(nullifiedEntities);
   }
 
+  protected void updateMany(List<T> entities) {
+    List<EntityInterface> nullifiedEntities = new ArrayList<>();
+    Gson gson = new Gson();
+    for (T entity : entities) {
+      List<EntityReference> owners = entity.getOwners();
+      List<EntityReference> children = entity.getChildren();
+      List<TagLabel> tags = entity.getTags();
+      List<EntityReference> domains = entity.getDomains();
+      List<EntityReference> dataProducts = entity.getDataProducts();
+      List<EntityReference> followers = entity.getFollowers();
+      List<EntityReference> experts = entity.getExperts();
+      nullifyEntityFields(entity);
+
+      String jsonCopy = gson.toJson(entity);
+      nullifiedEntities.add(gson.fromJson(jsonCopy, entityClass));
+
+      // Restore the relationships
+      entity.setOwners(owners);
+      entity.setChildren(children);
+      entity.setTags(tags);
+      entity.setDomains(domains);
+      entity.setDataProducts(dataProducts);
+      entity.setFollowers(followers);
+      entity.setExperts(experts);
+    }
+
+    dao.updateMany(nullifiedEntities);
+  }
+
   @Transaction
   protected void storeTimeSeries(
       String fqn, String extension, String jsonSchema, String entityJson) {
@@ -2870,6 +3280,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
     while (customFields.hasNext()) {
       Entry<String, JsonNode> entry = customFields.next();
       removeCustomProperty(entity, entry.getKey());
+    }
+  }
+
+  public final void removeExtensions(List<T> entities) {
+    if (entities.isEmpty()) {
+      return;
+    }
+
+    List<String> entityIds =
+        entities.stream()
+            .filter(entity -> entity.getExtension() != null)
+            .map(entity -> entity.getId().toString())
+            .toList();
+
+    if (!entityIds.isEmpty()) {
+      daoCollection.entityExtensionDAO().deleteAllBatch(entityIds);
     }
   }
 
@@ -4150,6 +4576,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Override this method to support downloading CSV functionality
    */
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
 
@@ -4158,6 +4590,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   public CsvImportResult importFromCsv(
       String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    return importFromCsv(name, csv, dryRun, user, recursive, (CsvImportProgressCallback) null);
+  }
+
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
 
@@ -4168,6 +4611,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String user,
       boolean recursive,
       String targetEntityType)
+      throws IOException {
+    return importFromCsv(name, csv, dryRun, user, recursive, targetEntityType, null);
+  }
+
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      String targetEntityType,
+      CsvImportProgressCallback callback)
       throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
@@ -7023,14 +7478,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
         || message.contains("entitynotfoundexception");
   }
 
+  public T findMatchForImport(T entity) {
+    return findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL);
+  }
+
   public boolean isUpdateForImport(T entity) {
-    return findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null;
+    T original = findMatchForImport(entity);
+    if (original != null) {
+      entity.setId(original.getId());
+      return true;
+    }
+    return false;
   }
 
   @Transaction
   public void createChangeEventForBulkOperation(
       T original, CsvImportResult result, String updatedBy) {
     // Get a complete view of the entity for history
+    original = find(original.getId(), NON_DELETED, false);
     setFieldsInternal(original, getPutFields());
     setInheritedFields(original, getPutFields());
 

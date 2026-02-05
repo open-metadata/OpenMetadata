@@ -285,10 +285,11 @@ public class Auth0Validator {
       AuthenticationConfiguration authConfig, String auth0Domain) {
     try {
       List<String> publicKeyUrls = authConfig.getPublicKeyUrls();
+      // Skip validation if publicKeyUrls is empty - it's auto-populated for confidential clients
       if (publicKeyUrls == null || publicKeyUrls.isEmpty()) {
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
-            "Public key URLs are required for Auth0 clients");
+        LOG.debug(
+            "publicKeyUrls is empty, skipping validation (auto-populated for confidential clients)");
+        return null;
       }
 
       String expectedJwksUrl = auth0Domain + "/.well-known/jwks.json";

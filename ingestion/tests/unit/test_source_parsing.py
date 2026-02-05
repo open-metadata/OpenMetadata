@@ -704,7 +704,7 @@ def test_salesforce():
                 "username": "username",
                 "password": "password",
                 "securityToken": "securityToken",
-                "sobjectName": "sobjectName",
+                "sobjectNames": ["sobjectName"],
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},

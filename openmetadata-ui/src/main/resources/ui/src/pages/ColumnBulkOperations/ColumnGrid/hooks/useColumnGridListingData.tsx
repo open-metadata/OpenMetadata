@@ -90,6 +90,7 @@ export const useColumnGridListingData = (
 
   // Local pagination state (cursor-based, not in URL)
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
 
   // URL state management (search and filters only, pagination is local)
   const urlState = useMemo(() => {
@@ -99,6 +100,7 @@ export const useColumnGridListingData = (
     const filterKeys = [
       EntityFields.ENTITY_TYPE,
       EntityFields.SERVICE,
+      EntityFields.SERVICE_TYPE,
       EntityFields.DOMAINS,
       'metadataStatus',
       COLUMN_TAG_FIELD,
@@ -113,9 +115,9 @@ export const useColumnGridListingData = (
       searchQuery,
       filters,
       currentPage,
-      pageSize: PAGE_SIZE,
+      pageSize,
     };
-  }, [searchParams, currentPage]);
+  }, [searchParams, currentPage, pageSize]);
 
   const parsedFilters: ExploreQuickFilterField[] = useMemo(() => {
     return COLUMN_GRID_FILTERS.map((filter) => ({
@@ -146,6 +148,7 @@ export const useColumnGridListingData = (
       ...serverFilters,
       entityTypes: urlState.filters[EntityFields.ENTITY_TYPE],
       serviceName: urlState.filters[EntityFields.SERVICE]?.[0],
+      serviceTypes: urlState.filters[EntityFields.SERVICE_TYPE],
       domainId: urlState.filters[EntityFields.DOMAINS]?.[0],
       metadataStatus: urlState.filters['metadataStatus'],
       tags: urlState.filters[COLUMN_TAG_FIELD],
@@ -279,10 +282,8 @@ export const useColumnGridListingData = (
           : transformedRows;
 
       setAllRows(rowsWithEdits);
-      setEntities(applyClientSideFilters(rowsWithEdits));
     } else {
       setAllRows([]);
-      setEntities([]);
     }
   }, [
     gridItems,
@@ -291,8 +292,11 @@ export const useColumnGridListingData = (
     expandedRows,
     expandedStructRows,
     props.transformGridItemsToRows,
-    applyClientSideFilters,
   ]);
+
+  useEffect(() => {
+    setEntities(applyClientSideFilters(allRows));
+  }, [allRows, applyClientSideFilters]);
 
   // Track edited values in ref when allRows changes
   // This ensures edits persist across row regenerations
@@ -403,11 +407,16 @@ export const useColumnGridListingData = (
     setCurrentPage(page);
   }, []);
 
-  const handlePageSizeChange = useCallback((_size: number) => {
+  const handlePageSizeChange = useCallback((size: number) => {
+    setPageSize(size);
     setCurrentPage(1);
+    cursorsByPageRef.current = new Map();
+    itemsByPageRef.current = new Map();
+    totalUniqueColumnsRef.current = 0;
+    totalOccurrencesRef.current = 0;
   }, []);
 
-  const refetch = useCallback(() => {
+  const refetch = useCallback((): Promise<void> => {
     // Clear ALL caches to ensure fresh data is fetched from the server
     // This is especially important after bulk updates when the search index
     // has been refreshed with new data
@@ -416,7 +425,7 @@ export const useColumnGridListingData = (
     totalUniqueColumnsRef.current = 0;
     totalOccurrencesRef.current = 0;
 
-    loadData(
+    return loadData(
       urlState.currentPage,
       urlState.searchQuery,
       columnGridFilters,

@@ -130,6 +130,40 @@ public class HierarchicalLockManager {
   }
 
   /**
+   * Batch check if entities creation/update is allowed (no parent deletion in progress)
+   * More efficient than calling checkModificationAllowed for each entity
+   */
+  public void checkModificationsAllowed(List<? extends EntityInterface> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    // Collect all FQNs
+    Set<String> allFqns =
+        entities.stream()
+            .map(EntityInterface::getFullyQualifiedName)
+            .filter(fqn -> fqn != null)
+            .collect(java.util.stream.Collectors.toSet());
+
+    // Fast path: check cache for potentially locked FQNs
+    Set<String> potentiallyLocked =
+        allFqns.stream().filter(this::isFqnLocked).collect(java.util.stream.Collectors.toSet());
+
+    // If no FQNs are potentially locked, we're done
+    if (potentiallyLocked.isEmpty()) {
+      return;
+    }
+
+    // Slow path: for potentially locked FQNs, check database
+    for (EntityInterface entity : entities) {
+      String fqn = entity.getFullyQualifiedName();
+      if (fqn != null && potentiallyLocked.contains(fqn)) {
+        checkParentLocks(entity);
+      }
+    }
+  }
+
+  /**
    * Check if entity creation/update is allowed by FQN
    */
   public void checkModificationAllowedByFqn(String fqn) {

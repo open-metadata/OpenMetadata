@@ -15,6 +15,7 @@ import {
   ColumnChild,
   ColumnGridItem,
   ColumnMetadataGroup,
+  ColumnOccurrenceRef,
   MetadataStatus,
 } from '../../../generated/api/data/columnGridResponse';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -26,6 +27,7 @@ export interface ColumnGridProps {
 export interface ColumnGridFilters {
   entityTypes?: string[];
   serviceName?: string;
+  serviceTypes?: string[];
   databaseName?: string;
   schemaName?: string;
   columnNamePattern?: string;
@@ -57,6 +59,7 @@ export interface ColumnGridRowData {
   // Path information for display
   path?: string;
   additionalPathsCount?: number;
+  occurrence?: ColumnOccurrenceRef;
   // Coverage information
   coverageCount?: number;
   totalCount?: number;
@@ -69,6 +72,8 @@ export interface ColumnGridRowData {
   isStructChild?: boolean;
   structParentId?: string;
   nestingLevel?: number;
+  // Specific occurrence for occurrence rows (links to correct table)
+  occurrenceRef?: { columnFQN: string; entityType: string; entityFQN?: string };
 }
 
 export interface ColumnGridState {

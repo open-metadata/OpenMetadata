@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Alert,
   Button,
   Checkbox,
   Col,
@@ -57,6 +58,7 @@ import { Aggregations } from '../../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.interface';
 import {
   getDataProductByName,
+  getDataProductOutputPorts,
   removeAssetsFromDataProduct,
   removePortsFromDataProduct,
 } from '../../../../rest/dataProductAPI';
@@ -181,6 +183,12 @@ const AssetsTabs = forwardRef(
     >([]);
     const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
     const [searchValue, setSearchValue] = useState('');
+    const [outputPortsFqns, setOutputPortsFqns] = useState<Set<string>>(
+      new Set()
+    );
+    const [confirmationBodyText, setConfirmationBodyText] =
+      useState<ReactNode>('');
+    const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
     const entityTypeString = getEntityTypeString(type);
 
@@ -329,11 +337,6 @@ const AssetsTabs = forwardRef(
       }
     };
 
-    const onExploreCardDelete = useCallback((source: SourceType) => {
-      setAssetToDelete(source);
-      setShowDeleteModal(true);
-    }, []);
-
     const handleAssetButtonVisibleChange = (newVisible: boolean) =>
       setVisible(newVisible);
 
@@ -368,6 +371,105 @@ const AssetsTabs = forwardRef(
 
       setActiveEntity(data);
     }, [type, entityFqn]);
+
+    const fetchOutputPorts = useCallback(async () => {
+      // Clear stale state first to prevent false positives when switching data products
+      setOutputPortsFqns(new Set());
+
+      if (type !== AssetsOfEntity.DATA_PRODUCT || !entityFqn) {
+        return;
+      }
+      try {
+        const response = await getDataProductOutputPorts(entityFqn, {
+          limit: 1000,
+        });
+        const fqnSet = new Set<string>();
+        response.data.forEach((port) => {
+          if (port.fullyQualifiedName) {
+            fqnSet.add(port.fullyQualifiedName as string);
+          }
+        });
+        setOutputPortsFqns(fqnSet);
+      } catch {
+        // Silently fail - warning will just not show (state already cleared)
+      }
+    }, [type, entityFqn]);
+
+    const getAssetsInOutputPorts = useCallback(
+      (assets: SourceType[]): SourceType[] => {
+        if (
+          type !== AssetsOfEntity.DATA_PRODUCT ||
+          outputPortsFqns.size === 0
+        ) {
+          return [];
+        }
+
+        return assets.filter(
+          (asset) =>
+            asset.fullyQualifiedName &&
+            outputPortsFqns.has(asset.fullyQualifiedName)
+        );
+      },
+      [type, outputPortsFqns]
+    );
+
+    const getRemovalWarningContent = useCallback(
+      (assetsToRemove: SourceType[]): ReactNode => {
+        const assetsInOutputPorts = getAssetsInOutputPorts(assetsToRemove);
+
+        const baseMessage =
+          assetsToRemove.length === 1
+            ? t('message.are-you-sure-action-property', {
+                propertyName: getEntityName(assetsToRemove[0]),
+                action: t('label.remove-lowercase'),
+              })
+            : t('message.are-you-sure-action-property', {
+                propertyName: `${assetsToRemove.length} ${t(
+                  'label.asset-plural-lowercase'
+                )}`,
+                action: t('label.remove-lowercase'),
+              });
+
+        if (assetsInOutputPorts.length === 0) {
+          return baseMessage;
+        }
+
+        return (
+          <>
+            <Typography.Text>{baseMessage}</Typography.Text>
+            <Alert
+              showIcon
+              className="m-t-sm"
+              description={
+                assetsInOutputPorts.length > 1 || assetsToRemove.length > 1 ? (
+                  <ul className="m-b-0 p-l-md">
+                    {assetsInOutputPorts.map((asset) => (
+                      <li key={asset.id}>{getEntityName(asset)}</li>
+                    ))}
+                  </ul>
+                ) : undefined
+              }
+              message={
+                assetsInOutputPorts.length === 1 && assetsToRemove.length === 1
+                  ? t('message.remove-asset-will-also-remove-from-output-ports')
+                  : t('message.remove-asset-output-port-warning')
+              }
+              type="warning"
+            />
+          </>
+        );
+      },
+      [getAssetsInOutputPorts, t]
+    );
+
+    const onExploreCardDelete = useCallback(
+      (source: SourceType) => {
+        setAssetToDelete(source);
+        setConfirmationBodyText(getRemovalWarningContent([source]));
+        setShowDeleteModal(true);
+      },
+      [getRemovalWarningContent]
+    );
 
     const items: ItemType[] = [
       {
@@ -478,9 +580,12 @@ const AssetsTabs = forwardRef(
           setAssetRemoving(false);
           hideNotification();
           setSelectedItems(new Map()); // Reset selected items
+          if (type === AssetsOfEntity.DATA_PRODUCT) {
+            fetchOutputPorts();
+          }
         }
       },
-      [type, activeEntity, entityFqn]
+      [type, activeEntity, entityFqn, fetchOutputPorts]
     );
 
     const deleteSelectedItems = useCallback(() => {
@@ -488,6 +593,30 @@ const AssetsTabs = forwardRef(
         onAssetRemove(Array.from(selectedItems.values()));
       }
     }, [selectedItems]);
+
+    const handleBulkDeleteClick = useCallback(() => {
+      const assetsToDelete = Array.from(
+        selectedItems.values()
+      ) as unknown as SourceType[];
+      const assetsInOutputPorts = getAssetsInOutputPorts(assetsToDelete);
+
+      if (assetsInOutputPorts.length > 0) {
+        setConfirmationBodyText(getRemovalWarningContent(assetsToDelete));
+        setShowBulkDeleteModal(true);
+      } else {
+        deleteSelectedItems();
+      }
+    }, [
+      selectedItems,
+      getAssetsInOutputPorts,
+      getRemovalWarningContent,
+      deleteSelectedItems,
+    ]);
+
+    const confirmBulkDelete = useCallback(() => {
+      setShowBulkDeleteModal(false);
+      deleteSelectedItems();
+    }, [deleteSelectedItems]);
 
     useEffect(() => {
       return () => {
@@ -501,6 +630,10 @@ const AssetsTabs = forwardRef(
         fetchCurrentEntity();
       }
     }, [entityFqn]);
+
+    useEffect(() => {
+      fetchOutputPorts();
+    }, [fetchOutputPorts]);
 
     const assetErrorPlaceHolder = useMemo(() => {
       if (isObject(noDataPlaceholder) || searchValue) {
@@ -901,10 +1034,7 @@ const AssetsTabs = forwardRef(
           </Row>
 
           <ConfirmationModal
-            bodyText={t('message.are-you-sure-action-property', {
-              propertyName: getEntityName(assetToDelete),
-              action: t('label.remove-lowercase'),
-            })}
+            bodyText={confirmationBodyText}
             cancelText={t('label.cancel')}
             confirmText={t('label.delete')}
             header={t('label.remove-entity', {
@@ -916,6 +1046,21 @@ const AssetsTabs = forwardRef(
             onConfirm={() =>
               onAssetRemove(assetToDelete ? [assetToDelete] : [])
             }
+          />
+
+          <ConfirmationModal
+            bodyText={confirmationBodyText}
+            cancelText={t('label.cancel')}
+            confirmText={t('label.delete')}
+            header={t('label.remove-entity', {
+              entity: `${selectedItems.size} ${t(
+                'label.asset-plural-lowercase'
+              )}?`,
+            })}
+            isLoading={assetRemoving}
+            visible={showBulkDeleteModal}
+            onCancel={() => setShowBulkDeleteModal(false)}
+            onConfirm={confirmBulkDelete}
           />
         </div>
         {!isLoading && permissions?.EditAll && totalAssetCount > 0 && (
@@ -932,7 +1077,7 @@ const AssetsTabs = forwardRef(
                 data-testid="delete-all-button"
                 loading={assetRemoving}
                 type="primary"
-                onClick={deleteSelectedItems}>
+                onClick={handleBulkDeleteClick}>
                 {t('label.delete')}
               </Button>
             </div>

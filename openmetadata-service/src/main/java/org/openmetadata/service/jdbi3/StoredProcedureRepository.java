@@ -5,6 +5,8 @@ import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_SERVICE;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 
+import com.google.gson.Gson;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +66,36 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
     storedProcedure.withService(null);
     store(storedProcedure, update);
     storedProcedure.withService(service);
+  }
+
+  @Override
+  public void storeEntities(List<StoredProcedure> storedProcedures) {
+    List<StoredProcedure> storedProceduresToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (StoredProcedure storedProcedure : storedProcedures) {
+      // Save entity-specific relationships
+      EntityReference service = storedProcedure.getService();
+
+      // Nullify for storage (same as storeEntity)
+      storedProcedure.withService(null);
+
+      // Clone for storage
+      String jsonCopy = gson.toJson(storedProcedure);
+      storedProceduresToStore.add(gson.fromJson(jsonCopy, StoredProcedure.class));
+
+      // Restore in original
+      storedProcedure.withService(service);
+    }
+
+    storeMany(storedProceduresToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<StoredProcedure> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(StoredProcedure::getId).toList();
+    deleteToMany(ids, Entity.STORED_PROCEDURE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
   }
 
   @Override
@@ -214,7 +246,13 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
       recordChange(
           "processedLineage", original.getProcessedLineage(), updated.getProcessedLineage());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
     }
 
     private void updateProcessedLineage(StoredProcedure origSP, StoredProcedure updatedSP) {

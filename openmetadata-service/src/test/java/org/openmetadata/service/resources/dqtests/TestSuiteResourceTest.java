@@ -520,13 +520,11 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
             .allMatch(
                 ts -> ts.getFullyQualifiedName().equals(logicalTestSuite.getFullyQualifiedName())));
 
-    // 6. List test suites with a nested sort
+    // 6. List test suites sorted by lastResultTimestamp
     queryParams.clear();
     queryParams.put("fields", "tests");
-    queryParams.put("sortField", "testCaseResultSummary.timestamp");
+    queryParams.put("sortField", "lastResultTimestamp");
     queryParams.put("sortOrder", "asc");
-    queryParams.put("sortNestedPath", "testCaseResultSummary");
-    queryParams.put("sortNestedMode", "max");
     ResultList<TestSuite> sortedTestSuites =
         listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
     assertNotNull(sortedTestSuites.getData());
@@ -1397,7 +1395,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // 4. Fetch the test suite linked to the table using the search endpoint (before reindex)
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("fullyQualifiedName", testSuite.getFullyQualifiedName());
-    queryParams.put("fields", "tests,testCaseResultSummary");
+    queryParams.put("fields", "tests,summary");
     ResultList<TestSuite> testSuitesBeforeReindex =
         listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
     assertNotNull(testSuitesBeforeReindex);
@@ -1464,10 +1462,22 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       verifyTestCases(testSuiteBeforeReindex.getTests(), testSuiteAfterReindex.getTests());
     }
 
-    // Compare test case result summaries
+    // testCaseResultSummary is computed during reindex from DB (not stored per-result).
+    // Before reindex, the ES document has no summary because updateTestSuiteSummary()
+    // no longer runs on each result POST. After reindex, the summary is populated from DB.
+    assertFalse(
+        testSuiteAfterReindex.getTestCaseResultSummary().isEmpty(),
+        "After reindex, testCaseResultSummary should be populated from DB");
     assertEquals(
-        testSuiteBeforeReindex.getTestCaseResultSummary(),
-        testSuiteAfterReindex.getTestCaseResultSummary());
+        1,
+        testSuiteAfterReindex.getTestCaseResultSummary().size(),
+        "Should have exactly one test case result summary entry");
+    assertEquals(
+        testCase.getFullyQualifiedName(),
+        testSuiteAfterReindex.getTestCaseResultSummary().get(0).getTestCaseName());
+    assertEquals(
+        TestCaseStatus.Success,
+        testSuiteAfterReindex.getTestCaseResultSummary().get(0).getStatus());
   }
 
   private void postTriggerSearchIndexingApp(Map<String, String> authHeaders) throws IOException {

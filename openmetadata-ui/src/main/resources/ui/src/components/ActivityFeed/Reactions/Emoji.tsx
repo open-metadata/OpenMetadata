@@ -21,6 +21,7 @@ import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useImage from '../../../hooks/useImage';
+import { getEntityName } from '../../../utils/EntityUtils';
 
 interface EmojiProps {
   reaction: ReactionType;
@@ -55,8 +56,8 @@ const Emoji: FC<EmojiProps> = ({
     (reactionItem) => reactionItem.user.id === currentUser?.id
   );
 
-  const reactedUserList = reactionList.map(
-    (reactionItem) => reactionItem.user.name
+  const reactedUserList = reactionList.map((reactionItem) =>
+    getEntityName(reactionItem.user)
   );
 
   const handleEmojiOnClick = (e: React.MouseEvent) => {
