@@ -387,31 +387,34 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
     UUID policyUuid = newPolicy.getId();
     UUID roleUuid = newRole.getId();
 
-    Policy directFetch = apiClient.policies().get(policyUuid.toString(), "roles");
-    List<EntityReference> directRoles = directFetch.getRoles();
-    assertNotNull(directRoles);
-    assertTrue(
-        directRoles.stream().anyMatch(ref -> ref.getId().equals(roleUuid)),
-        "Direct fetch must include the role");
+    try {
+      Policy directFetch = apiClient.policies().get(policyUuid.toString(), "roles");
+      List<EntityReference> directRoles = directFetch.getRoles();
+      assertNotNull(directRoles);
+      assertTrue(
+          directRoles.stream().anyMatch(ref -> ref.getId().equals(roleUuid)),
+          "Direct fetch must include the role");
 
-    ListParams queryParams = new ListParams();
-    queryParams.setFields("roles");
-    queryParams.setLimit(200);
+      ListParams queryParams = new ListParams();
+      queryParams.setFields("roles");
+      queryParams.setLimit(200);
 
-    ListResponse<Policy> allPolicies = apiClient.policies().list(queryParams);
-    Policy bulkFetchedPolicy =
-        allPolicies.getData().stream()
-            .filter(pol -> pol.getId().equals(policyUuid))
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("Policy missing from bulk response"));
+      ListResponse<Policy> allPolicies = apiClient.policies().list(queryParams);
+      Policy bulkFetchedPolicy =
+          allPolicies.getData().stream()
+              .filter(pol -> pol.getId().equals(policyUuid))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Policy missing from bulk response"));
 
-    List<EntityReference> bulkRoles = bulkFetchedPolicy.getRoles();
-    assertNotNull(bulkRoles, "Roles field must be present in bulk response");
-    assertTrue(
-        bulkRoles.stream().anyMatch(ref -> ref.getId().equals(roleUuid)),
-        "Bulk response must contain the associated role - this validates the bug fix");
-
-    apiClient.roles().delete(roleUuid.toString());
+      List<EntityReference> bulkRoles = bulkFetchedPolicy.getRoles();
+      assertNotNull(bulkRoles, "Roles field must be present in bulk response");
+      assertTrue(
+          bulkRoles.stream().anyMatch(ref -> ref.getId().equals(roleUuid)),
+          "Bulk response must contain the associated role - this validates the bug fix");
+    } finally {
+      apiClient.roles().delete(roleUuid.toString());
+      apiClient.policies().delete(policyUuid.toString(), java.util.Map.of("hardDelete", "true"));
+    }
   }
 
   @Test
