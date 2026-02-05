@@ -93,19 +93,19 @@ public class PolicyRepository extends EntityRepository<Policy> {
     List<String> policyIds =
         policies.stream().map(Policy::getId).map(UUID::toString).distinct().toList();
 
-    // Bulk fetch teams
+    // Bulk fetch teams - relationship is Team HAS Policy (Team=from, Policy=to)
     List<CollectionDAO.EntityRelationshipObject> teamRecords =
         daoCollection
             .relationshipDAO()
-            .findFromBatch(policyIds, Relationship.HAS.ordinal(), POLICY, Entity.TEAM);
+            .findFromBatch(policyIds, Relationship.HAS.ordinal(), Entity.TEAM, POLICY);
 
     // Create a map of policy ID to team references
     Map<UUID, List<EntityReference>> policyToTeams = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
-      UUID policyId = UUID.fromString(record.getFromId());
+      UUID policyId = UUID.fromString(record.getToId());
       EntityReference teamRef =
           Entity.getEntityReferenceById(
-              Entity.TEAM, UUID.fromString(record.getToId()), Include.ALL);
+              Entity.TEAM, UUID.fromString(record.getFromId()), Include.ALL);
       policyToTeams.computeIfAbsent(policyId, k -> new ArrayList<>()).add(teamRef);
     }
 
@@ -120,19 +120,19 @@ public class PolicyRepository extends EntityRepository<Policy> {
     List<String> policyIds =
         policies.stream().map(Policy::getId).map(UUID::toString).distinct().toList();
 
-    // Bulk fetch roles
+    // Bulk fetch roles - relationship is Role HAS Policy (Role=from, Policy=to)
     List<CollectionDAO.EntityRelationshipObject> roleRecords =
         daoCollection
             .relationshipDAO()
-            .findFromBatch(policyIds, Relationship.HAS.ordinal(), POLICY, Entity.ROLE);
+            .findFromBatch(policyIds, Relationship.HAS.ordinal(), Entity.ROLE, POLICY);
 
     // Create a map of policy ID to role references
     Map<UUID, List<EntityReference>> policyToRoles = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : roleRecords) {
-      UUID policyId = UUID.fromString(record.getFromId());
+      UUID policyId = UUID.fromString(record.getToId());
       EntityReference roleRef =
           Entity.getEntityReferenceById(
-              Entity.ROLE, UUID.fromString(record.getToId()), Include.ALL);
+              Entity.ROLE, UUID.fromString(record.getFromId()), Include.ALL);
       policyToRoles.computeIfAbsent(policyId, k -> new ArrayList<>()).add(roleRef);
     }
 
