@@ -215,7 +215,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 200,
         render: (result: TestCaseResult, record: TestCase) => {
           return result?.result &&
-            record.testCaseStatus !== TestCaseStatus.Success ? (
+            result.testCaseStatus !== TestCaseStatus.Success ? (
             <Tooltip
               arrow
               placement="top"
