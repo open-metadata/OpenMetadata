@@ -122,7 +122,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
   const deleteEntity = new EntityClass();
   const entityName = entity.getType();
 
-  test.describe(key, PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
+  test.describe(key, () => {
     const rowSelector =
       entity.type === 'MlModel' ? 'data-testid' : 'data-row-key';
 

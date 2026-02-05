@@ -125,7 +125,7 @@ jobs:
               --project=Basic \
           
           elif [ "${{ matrix.shardIndex }}" -eq "2" ]; then
-            echo "🔹 Running ingestion tests tests on shard 2"
+            echo "🔹 Running ingestion tests on shard 2"
             
             # run ingestion framework tests
             npx playwright test \
