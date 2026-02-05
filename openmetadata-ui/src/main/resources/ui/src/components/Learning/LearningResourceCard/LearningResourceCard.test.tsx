@@ -100,12 +100,14 @@ describe('LearningResourceCard', () => {
   it('should render description with ellipsis configuration', () => {
     render(<LearningResourceCard resource={mockVideoResource} />);
 
-    const descriptionElement = screen.getByLabelText(
-      /A test video learning resource/i
+    const descriptionElement = screen.getByTestId(
+      'learning-resource-description'
     );
 
     expect(descriptionElement).toBeInTheDocument();
-    expect(descriptionElement).toHaveClass('learning-resource-description');
+    expect(descriptionElement).toHaveTextContent(
+      'A test video learning resource'
+    );
   });
 
   it('should render category tag', () => {
@@ -208,7 +210,7 @@ describe('LearningResourceCard', () => {
       `learning-resource-card-${mockVideoResource.name}`
     );
 
-    expect(card).toHaveClass('learning-resource-card-clickable');
+    expect(card).toHaveAttribute('data-clickable', 'true');
   });
 
   it('should show only first 3 categories and +N for remaining', () => {
@@ -231,7 +233,7 @@ describe('LearningResourceCard', () => {
     render(<LearningResourceCard resource={resourceWithoutDescription} />);
 
     expect(
-      screen.queryByLabelText(/learning resource/i)
+      screen.queryByTestId('learning-resource-description')
     ).not.toBeInTheDocument();
   });
 });

@@ -198,6 +198,25 @@
   }
 
   .ant-table-wrapper {
+    .ant-table-body {
+      scrollbar-width: thin;
+      scrollbar-color: @grey-300 transparent;
+    }
+
+    .ant-table-body::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+
+    .ant-table-body::-webkit-scrollbar-thumb {
+      background-color: @grey-300;
+      border-radius: 2px;
+    }
+
+    .ant-table-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
     .ant-table {
       border-radius: 0;
 
@@ -333,21 +352,13 @@
   .ant-table {
     .ant-table-thead > tr > th {
       height: 44px;
-      padding: 12px 24px;
+      padding: 14px;
       background: @grey-50 !important;
       border-bottom: none;
       color: @grey-500;
       font-size: 14px;
       font-weight: 400;
       line-height: 20px;
-
-      &:first-child {
-        padding-left: 24px;
-      }
-
-      &:last-child {
-        padding-right: 24px;
-      }
     }
 
     .ant-table-thead > tr {
@@ -366,18 +377,10 @@
 
     .ant-table-tbody > tr > td {
       height: 52px;
-      padding: @padding-md @padding-lg;
+      padding: 14px;
       border-bottom: 1px solid @light-border-color;
       background-color: @white;
       vertical-align: middle;
-
-      &:first-child {
-        padding-left: @padding-lg;
-      }
-
-      &:last-child {
-        padding-right: @padding-lg;
-      }
     }
 
     .ant-table-tbody > tr:hover > td {
@@ -386,6 +389,24 @@
 
     .ant-table-tbody > tr:last-child > td {
       border-bottom: none;
+    }
+  }
+
+  .learning-resource-action-btn.ant-btn {
+    border-radius: 4px;
+    border: 1px solid var(--Gray-50, #ebeef2);
+    background: var(--White-White, #fff);
+    padding: 4px;
+    height: auto;
+    min-height: unset;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      border-color: var(--Gray-50, #ebeef2);
+      background: var(--White-White, #fff);
     }
   }
 

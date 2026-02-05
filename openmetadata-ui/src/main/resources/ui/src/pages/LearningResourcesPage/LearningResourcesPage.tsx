@@ -12,7 +12,13 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Box, Paper, TableContainer, useTheme } from '@mui/material';
+import {
+  Box,
+  Paper,
+  TableContainer,
+  Typography,
+  useTheme,
+} from '@mui/material';
 import { Trash01 } from '@untitledui/icons';
 import { Button, Space, Table, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
@@ -231,10 +237,18 @@ export const LearningResourcesPage: React.FC = () => {
       {
         dataIndex: 'updatedAt',
         key: 'updatedAt',
-        render: (updatedAt: number) =>
-          updatedAt
-            ? DateTime.fromMillis(updatedAt).toFormat('LLL d, yyyy')
-            : '-',
+        render: (updatedAt: number) => (
+          <Typography
+            component="span"
+            sx={{
+              color: theme.palette.allShades?.gray?.[600],
+              fontSize: 14,
+            }}>
+            {updatedAt
+              ? DateTime.fromMillis(updatedAt).toFormat('LLL d, yyyy')
+              : '-'}
+          </Typography>
+        ),
         title: t('label.updated-at'),
         width: 120,
       },
@@ -245,9 +259,8 @@ export const LearningResourcesPage: React.FC = () => {
           <Space align="center" size={8}>
             <Tooltip placement="topRight" title={t('label.edit')}>
               <Button
-                className="p-0 flex-center"
+                className="learning-resource-action-btn"
                 data-testid={`edit-${record.name}`}
-                size="small"
                 type="text"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -258,9 +271,8 @@ export const LearningResourcesPage: React.FC = () => {
             </Tooltip>
             <Tooltip placement="topRight" title={t('label.delete')}>
               <Button
-                className="p-0 flex-center"
+                className="learning-resource-action-btn"
                 data-testid={`delete-${record.name}`}
-                size="small"
                 type="text"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -271,12 +283,13 @@ export const LearningResourcesPage: React.FC = () => {
             </Tooltip>
           </Space>
         ),
-        title: t('label.more-actions'),
+        title: t('label.action-plural'),
         width: 80,
       },
     ],
     [
       t,
+      theme,
       getResourceTypeIcon,
       getCategoryColors,
       handlePreview,
@@ -327,7 +340,8 @@ export const LearningResourcesPage: React.FC = () => {
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
       display: 'flex',
       flexDirection: 'column' as const,
-      maxHeight: 'calc(100vh - 220px)',
+      height: 'calc(100vh - 220px)',
+      minHeight: 400,
     }),
     []
   );
@@ -351,7 +365,9 @@ export const LearningResourcesPage: React.FC = () => {
       flexShrink: 0,
       backgroundColor: 'background.paper',
       borderTop: `1px solid ${theme.palette.allShades?.gray?.[200]}`,
-      boxShadow: '0px -4px 6px -2px rgba(10, 13, 18, 0.03)',
+      boxShadow:
+        '0px -13px 16px -4px rgba(10, 13, 18, 0.04), 0px -4px 6px -2px rgba(10, 13, 18, 0.04)',
+      zIndex: 1,
     }),
     [theme]
   );

@@ -79,9 +79,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
         difficulty: resource.difficulty,
         sourceUrl: resource.source.url,
         sourceProvider: resource.source.provider,
-        estimatedDuration: resource.estimatedDuration
-          ? Math.floor(resource.estimatedDuration / 60)
-          : undefined,
+        estimatedDuration: resource.estimatedDuration,
         contexts: resource.contexts?.map((ctx) => ctx.pageId) || [],
         status: resource.status || LearningResourceStatus.Active,
       });
@@ -108,9 +106,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
         contexts,
         description: values.description,
         difficulty: values.difficulty,
-        estimatedDuration: values.estimatedDuration
-          ? values.estimatedDuration * 60
-          : undefined,
+        estimatedDuration: values.estimatedDuration,
         name: values.name,
         resourceType: values.resourceType,
         source: {

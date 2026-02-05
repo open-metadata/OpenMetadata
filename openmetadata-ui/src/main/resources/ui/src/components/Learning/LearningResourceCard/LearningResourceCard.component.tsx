@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { Popover, Tag, Typography } from 'antd';
-import classNames from 'classnames';
+import { Box, Link, Popover, Typography, useTheme } from '@mui/material';
 import { DateTime } from 'luxon';
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArticleIcon } from '../../../assets/svg/ic_article.svg';
 import { ReactComponent as StoryLaneIcon } from '../../../assets/svg/ic_storylane.svg';
@@ -25,88 +24,57 @@ import {
   ResourceType,
 } from '../../../constants/Learning.constants';
 import { LEARNING_CATEGORIES } from '../Learning.interface';
-import './learning-resource-card.less';
 import { LearningResourceCardProps } from './LearningResourceCard.interface';
-
-const { Text, Paragraph, Link } = Typography;
 
 export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
   resource,
   onClick,
 }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
+
+  const iconColors = {
+    video: theme.palette.allShades?.blue?.[600],
+    storylane: theme.palette.allShades?.purple?.[600],
+    article: theme.palette.allShades?.success?.[500],
+  };
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
-  const [isDescriptionTruncated, setIsDescriptionTruncated] = useState(false);
+  const [isDescriptionTruncated, _setIsDescriptionTruncated] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
-  const resourceTypeIcon = useMemo(() => {
-    switch (resource.resourceType) {
-      case ResourceType.Video:
-        return (
-          <VideoIcon
-            className="resource-type-icon video-icon"
-            height={24}
-            width={24}
-          />
-        );
-      case ResourceType.Storylane:
-        return (
-          <StoryLaneIcon
-            className="resource-type-icon storylane-icon"
-            height={24}
-            width={24}
-          />
-        );
-      case ResourceType.Article:
-        return (
-          <ArticleIcon
-            className="resource-type-icon article-icon"
-            height={24}
-            width={24}
-          />
-        );
-      default:
-        return (
-          <ArticleIcon
-            className="resource-type-icon article-icon"
-            height={24}
-            width={24}
-          />
-        );
-    }
-  }, [resource.resourceType]);
+  const type = resource.resourceType.toLowerCase();
+  const iconColor =
+    iconColors[type as keyof typeof iconColors] ?? iconColors.article;
+  const iconProps = { height: 24, width: 24, style: { color: iconColor } };
+  const resourceTypeIcon =
+    resource.resourceType === ResourceType.Video ? (
+      <VideoIcon {...iconProps} />
+    ) : resource.resourceType === ResourceType.Storylane ? (
+      <StoryLaneIcon {...iconProps} />
+    ) : (
+      <ArticleIcon {...iconProps} />
+    );
 
-  const formattedDuration = useMemo(() => {
-    if (!resource.estimatedDuration) {
-      return null;
-    }
-    const minutes = Math.floor(resource.estimatedDuration / 60);
-    const durationLabel =
-      resource.resourceType === 'Article'
-        ? t('label.min-read')
-        : t('label.min-watch');
+  const formattedDuration = resource.estimatedDuration
+    ? `${Math.floor(resource.estimatedDuration / 60)} ${
+        resource.resourceType === 'Article'
+          ? t('label.min-read')
+          : t('label.min-watch')
+      }`
+    : null;
 
-    return `${minutes} ${durationLabel}`;
-  }, [resource.estimatedDuration, resource.resourceType, t]);
+  const formattedDate = resource.updatedAt
+    ? DateTime.fromMillis(resource.updatedAt).toFormat('LLL dd, yyyy')
+    : null;
 
-  const formattedDate = useMemo(() => {
-    if (!resource.updatedAt) {
-      return null;
-    }
-
-    return DateTime.fromMillis(resource.updatedAt).toFormat('LLL dd, yyyy');
-  }, [resource.updatedAt]);
-
-  const categoryTags = useMemo(() => {
-    if (!resource.categories || resource.categories.length === 0) {
-      return { visible: [], hidden: [], remaining: 0 };
-    }
-
-    const visible = resource.categories.slice(0, MAX_VISIBLE_TAGS);
-    const hidden = resource.categories.slice(MAX_VISIBLE_TAGS);
-    const remaining = resource.categories.length - MAX_VISIBLE_TAGS;
-
-    return { visible, hidden, remaining };
-  }, [resource.categories]);
+  const categoryTags =
+    !resource.categories || resource.categories.length === 0
+      ? { visible: [] as string[], hidden: [] as string[], remaining: 0 }
+      : {
+          visible: resource.categories.slice(0, MAX_VISIBLE_TAGS),
+          hidden: resource.categories.slice(MAX_VISIBLE_TAGS),
+          remaining: resource.categories.length - MAX_VISIBLE_TAGS,
+        };
 
   const getCategoryColor = (category: string) => {
     const categoryInfo =
@@ -120,105 +88,241 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
     setIsDescriptionExpanded(!isDescriptionExpanded);
   };
 
+  const handleMoreTagClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setAnchorEl(e.currentTarget as HTMLElement);
+  };
+
+  const handlePopoverClose = () => {
+    setAnchorEl(null);
+  };
+
   return (
-    <div
-      className={classNames('learning-resource-card', {
-        'learning-resource-card-clickable': !!onClick,
-      })}
+    <Box
+      bgcolor={theme.palette.allShades?.white}
+      border="1px solid"
+      borderColor={theme.palette.allShades?.blueGray?.[50]}
+      borderRadius="12px"
+      boxShadow="0 1px 2px 0 rgba(10, 13, 18, 0.05)"
+      data-clickable={onClick ? 'true' : undefined}
       data-testid={`learning-resource-card-${resource.name}`}
+      p={2}
+      sx={{
+        transition: 'all 0.2s ease',
+        ...(onClick && {
+          cursor: 'pointer',
+          '&:hover': {
+            boxShadow:
+              '0 4px 6px -2px rgba(10, 13, 18, 0.05), 0 2px 4px -2px rgba(10, 13, 18, 0.05)',
+          },
+        }),
+      }}
       onClick={() => onClick?.(resource)}>
-      <div className="learning-resource-content">
-        <div className="learning-resource-header">
-          {resourceTypeIcon}
-          <Text strong className="learning-resource-title">
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ flexShrink: 0, mt: '2px' }}>{resourceTypeIcon}</Box>
+          <Typography
+            component="span"
+            fontWeight={600}
+            sx={{
+              fontSize: 14,
+              lineHeight: 1.43,
+              color: theme.palette.allShades?.gray?.[900],
+            }}>
             {resource.displayName || resource.name}
-          </Text>
-        </div>
+          </Typography>
+        </Box>
 
         {resource.description && (
-          <div className="learning-resource-description-container">
-            <Paragraph
-              className="learning-resource-description"
-              ellipsis={
-                isDescriptionExpanded
-                  ? false
-                  : { rows: 2, onEllipsis: setIsDescriptionTruncated }
-              }>
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 0.5,
+              alignItems: 'baseline',
+            }}>
+            <Typography
+              aria-label={resource.description}
+              component="span"
+              data-testid="learning-resource-description"
+              sx={{
+                fontSize: 12,
+                lineHeight: 1.5,
+                color: theme.palette.allShades?.gray?.[600],
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: isDescriptionExpanded ? 'inline' : '-webkit-box',
+                WebkitLineClamp: isDescriptionExpanded ? undefined : 2,
+                WebkitBoxOrient: isDescriptionExpanded ? undefined : 'vertical',
+              }}>
               {resource.description}
-            </Paragraph>
-            {(isDescriptionTruncated || isDescriptionExpanded) && (
-              <Link className="view-more-link" onClick={handleViewMoreClick}>
+            </Typography>
+            {(isDescriptionTruncated ||
+              isDescriptionExpanded ||
+              resource.description.length > 100) && (
+              <Link
+                component="button"
+                sx={{
+                  fontSize: 12,
+                  color: theme.palette.allShades?.brand?.[600],
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  '&:hover': { textDecoration: 'underline' },
+                }}
+                type="button"
+                onClick={handleViewMoreClick}>
                 {isDescriptionExpanded
                   ? t('label.view-less')
                   : t('label.view-more')}
               </Link>
             )}
-          </div>
+          </Box>
         )}
 
-        <div className="learning-resource-footer">
-          <div className="learning-resource-tags">
-            {categoryTags.visible.map((category) => (
-              <Tag
-                className="category-tag"
-                key={category}
-                style={{
-                  backgroundColor: `${getCategoryColor(category)}15`,
-                  borderColor: getCategoryColor(category),
-                  color: getCategoryColor(category),
-                }}>
-                {LEARNING_CATEGORIES[
-                  category as keyof typeof LEARNING_CATEGORIES
-                ]?.label ?? category}
-              </Tag>
-            ))}
-            {categoryTags.remaining > 0 && (
-              <Popover
-                content={
-                  <div className="hidden-tags-popover">
-                    {categoryTags.hidden.map((category) => (
-                      <Tag
-                        className="category-tag"
-                        key={category}
-                        style={{
-                          backgroundColor: `${getCategoryColor(category)}15`,
-                          borderColor: getCategoryColor(category),
-                          color: getCategoryColor(category),
-                        }}>
-                        {LEARNING_CATEGORIES[
-                          category as keyof typeof LEARNING_CATEGORIES
-                        ]?.label ?? category}
-                      </Tag>
-                    ))}
-                  </div>
-                }
-                trigger="click">
-                <Tag
-                  className="category-tag more-tag"
-                  onClick={(e) => e.stopPropagation()}>
-                  +{categoryTags.remaining}
-                </Tag>
-              </Popover>
-            )}
-          </div>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 1,
+            mt: 0.5,
+          }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {categoryTags.visible.map((category) => {
+              const color = getCategoryColor(category);
 
-          <div className="learning-resource-meta">
+              return (
+                <Box
+                  component="span"
+                  key={category}
+                  sx={{
+                    fontSize: 11,
+                    lineHeight: 1.45,
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 1,
+                    fontWeight: 500,
+                    backgroundColor: `${color}15`,
+                    border: '1px solid',
+                    borderColor: color,
+                    color,
+                  }}>
+                  {LEARNING_CATEGORIES[
+                    category as keyof typeof LEARNING_CATEGORIES
+                  ]?.label ?? category}
+                </Box>
+              );
+            })}
+            {categoryTags.remaining > 0 && (
+              <>
+                <Box
+                  component="span"
+                  sx={{
+                    fontSize: 11,
+                    lineHeight: 1.45,
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 1,
+                    fontWeight: 500,
+                    backgroundColor: theme.palette.allShades?.gray?.[100],
+                    border: '1px solid',
+                    borderColor: theme.palette.allShades?.gray?.[300],
+                    color: theme.palette.allShades?.gray?.[600],
+                    cursor: 'pointer',
+                    '&:hover': {
+                      borderColor: theme.palette.allShades?.gray?.[400],
+                      backgroundColor: theme.palette.allShades?.gray?.[200],
+                    },
+                  }}
+                  onClick={handleMoreTagClick}>
+                  +{categoryTags.remaining}
+                </Box>
+                <Popover
+                  anchorEl={anchorEl}
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                  open={Boolean(anchorEl)}
+                  transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                  onClose={handlePopoverClose}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: 0.5,
+                      maxWidth: 250,
+                      p: 1.5,
+                    }}>
+                    {categoryTags.hidden.map((category) => {
+                      const color = getCategoryColor(category);
+
+                      return (
+                        <Box
+                          component="span"
+                          key={category}
+                          sx={{
+                            fontSize: 11,
+                            lineHeight: 1.45,
+                            px: 0.75,
+                            py: 0.25,
+                            borderRadius: 1,
+                            fontWeight: 500,
+                            backgroundColor: `${color}15`,
+                            border: '1px solid',
+                            borderColor: color,
+                            color,
+                          }}>
+                          {LEARNING_CATEGORIES[
+                            category as keyof typeof LEARNING_CATEGORIES
+                          ]?.label ?? category}
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                </Popover>
+              </>
+            )}
+          </Box>
+
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              flexShrink: 0,
+            }}>
             {formattedDate && (
-              <Text className="meta-text" type="secondary">
+              <Typography
+                component="span"
+                sx={{
+                  fontSize: 12,
+                  color: theme.palette.allShades?.gray?.[600],
+                }}>
                 {formattedDate}
-              </Text>
+              </Typography>
             )}
             {formattedDate && formattedDuration && (
-              <span className="meta-separator">|</span>
+              <Typography
+                component="span"
+                sx={{
+                  fontSize: 12,
+                  color: theme.palette.allShades?.blueGray?.[100],
+                }}>
+                |
+              </Typography>
             )}
             {formattedDuration && (
-              <Text className="meta-text" type="secondary">
+              <Typography
+                component="span"
+                sx={{
+                  fontSize: 12,
+                  color: theme.palette.allShades?.gray?.[600],
+                }}>
                 {formattedDuration}
-              </Text>
+              </Typography>
             )}
-          </div>
-        </div>
-      </div>
-    </div>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 };
