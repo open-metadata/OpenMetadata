@@ -82,7 +82,7 @@ def _get_constraint_sort_key(constraint: Dict[str, Any]) -> tuple:
 
 def _get_entity_reference_sort_key(ref: Dict[str, Any]) -> str:
     """Get a sort key for an entity reference dict."""
-    return ref.get("fullyQualifiedName") or ref.get("name") or ref.get("id", "")
+    return str(ref.get("fullyQualifiedName") or ref.get("name") or ref.get("id") or "")
 
 
 def _remove_volatile_fields(obj: Union[Dict, List, Any]) -> Union[Dict, List, Any]:
