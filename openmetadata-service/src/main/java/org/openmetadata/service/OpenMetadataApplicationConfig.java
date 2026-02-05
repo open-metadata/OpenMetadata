@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.core.Configuration;
+import io.dropwizard.core.server.DefaultServerFactory;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -175,7 +176,7 @@ public class OpenMetadataApplicationConfig extends Configuration {
     }
     return bulkOperationConfiguration;
   }
-  
+
   public String getApiRootPath() {
     if (!(getServerFactory() instanceof DefaultServerFactory serverFactory)) {
       return "";
