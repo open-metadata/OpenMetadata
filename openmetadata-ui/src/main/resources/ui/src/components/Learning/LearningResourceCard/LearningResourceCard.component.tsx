@@ -26,6 +26,8 @@ import {
 import { LEARNING_CATEGORIES } from '../Learning.interface';
 import { LearningResourceCardProps } from './LearningResourceCard.interface';
 
+const DESCRIPTION_VIEW_MORE_THRESHOLD = 150;
+
 export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
   resource,
   onClick,
@@ -39,8 +41,12 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
     article: theme.palette.allShades?.success?.[500],
   };
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
-  const [isDescriptionTruncated, _setIsDescriptionTruncated] = useState(false);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+
+  const showViewMore =
+    resource.description &&
+    (isDescriptionExpanded ||
+      resource.description.length > DESCRIPTION_VIEW_MORE_THRESHOLD);
 
   const type = resource.resourceType.toLowerCase();
   const iconColor =
@@ -157,9 +163,7 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
               }}>
               {resource.description}
             </Typography>
-            {(isDescriptionTruncated ||
-              isDescriptionExpanded ||
-              resource.description.length > 100) && (
+            {showViewMore && (
               <Link
                 component="button"
                 sx={{
