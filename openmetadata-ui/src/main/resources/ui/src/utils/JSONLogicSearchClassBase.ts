@@ -438,6 +438,35 @@ class JSONLogicSearchClassBase {
           },
         },
       },
+      [EntityReferenceFields.SYNONYMS]: {
+        label: t('label.synonym-plural'),
+        type: 'text',
+        defaultOperator: 'like',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: TEXT_FIELD_DESCRIPTION_OPERATORS,
+      },
+      [EntityReferenceFields.RELATED_TERMS]: {
+        label: t('label.related-term-plural'),
+        type: '!group',
+        mode: 'some',
+        defaultField: EntityFields.FULLY_QUALIFIED_NAME,
+        subfields: {
+          [EntityFields.FULLY_QUALIFIED_NAME]: {
+            label: 'Related Terms',
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: this.searchAutocomplete({
+                searchIndex: SearchIndex.GLOSSARY_TERM,
+                fieldName: 'fullyQualifiedName',
+                fieldLabel: 'name',
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        },
+      },
       [EntityReferenceFields.UPDATED_BY]: {
         label: t('label.updated-by'),
         type: 'select',

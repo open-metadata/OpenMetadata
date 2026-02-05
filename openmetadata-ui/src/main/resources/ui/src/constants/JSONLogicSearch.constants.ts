@@ -15,7 +15,7 @@ import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 export const GLOSSARY_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
   EntityReferenceFields.REVIEWERS,
   EntityReferenceFields.SYNONYMS,
-  EntityReferenceFields.RELATED_TEAMS,
+  EntityReferenceFields.RELATED_TERMS,
 ];
 
 export const TABLE_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
