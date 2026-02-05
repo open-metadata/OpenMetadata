@@ -429,7 +429,8 @@ const SchemaTable = () => {
 
   const updateColumnDetails = async (
     columnFqn: string,
-    column: Partial<Column>
+    column: Partial<Column>,
+    field: keyof Column
   ) => {
     const response = await updateTableColumn(columnFqn, column);
     const cleanResponse = isEmpty(response.children)
@@ -437,7 +438,7 @@ const SchemaTable = () => {
       : response;
 
     setTableColumns((prev) =>
-      updateColumnInNestedStructure(prev, columnFqn, cleanResponse)
+      updateColumnInNestedStructure(prev, columnFqn, cleanResponse, field)
     );
 
     return response;
@@ -446,9 +447,13 @@ const SchemaTable = () => {
   const handleEditColumnChange = async (columnDescription: string) => {
     if (!isUndefined(editColumn) && editColumn.fullyQualifiedName) {
       try {
-        await updateColumnDetails(editColumn.fullyQualifiedName, {
-          description: columnDescription,
-        });
+        await updateColumnDetails(
+          editColumn.fullyQualifiedName,
+          {
+            description: columnDescription,
+          },
+          'description'
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -465,9 +470,13 @@ const SchemaTable = () => {
   ) => {
     if (selectedTags && editColumnTag.fullyQualifiedName) {
       try {
-        await updateColumnDetails(editColumnTag.fullyQualifiedName, {
-          tags: selectedTags,
-        });
+        await updateColumnDetails(
+          editColumnTag.fullyQualifiedName,
+          {
+            tags: selectedTags,
+          },
+          'tags'
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -554,14 +563,18 @@ const SchemaTable = () => {
       editColumnDisplayName.fullyQualifiedName
     ) {
       try {
-        await updateColumnDetails(editColumnDisplayName.fullyQualifiedName, {
-          displayName: displayName,
-          ...(isEmpty(constraint)
-            ? {
-                removeConstraint: true,
-              }
-            : { constraint }),
-        });
+        await updateColumnDetails(
+          editColumnDisplayName.fullyQualifiedName,
+          {
+            displayName: displayName,
+            ...(isEmpty(constraint)
+              ? {
+                  removeConstraint: true,
+                }
+              : { constraint }),
+          },
+          'displayName'
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {

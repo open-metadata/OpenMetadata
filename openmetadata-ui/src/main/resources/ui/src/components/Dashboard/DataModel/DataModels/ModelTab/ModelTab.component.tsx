@@ -203,7 +203,8 @@ const ModelTab = () => {
 
   const updateColumnDetails = async (
     columnFqn: string,
-    column: Partial<Column>
+    column: Partial<Column>,
+    field: keyof Column
   ) => {
     const response = await updateDataModelColumn(columnFqn, column);
     const cleanResponse = isEmpty(response.children)
@@ -211,7 +212,7 @@ const ModelTab = () => {
       : response;
 
     setPaginatedColumns((prev) =>
-      updateColumnInNestedStructure(prev, columnFqn, cleanResponse)
+      updateColumnInNestedStructure(prev, columnFqn, cleanResponse, field)
     );
 
     return response;
@@ -220,9 +221,13 @@ const ModelTab = () => {
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
       if (editColumnTag.fullyQualifiedName) {
-        await updateColumnDetails(editColumnTag.fullyQualifiedName, {
-          tags: selectedTags,
-        });
+        await updateColumnDetails(
+          editColumnTag.fullyQualifiedName,
+          {
+            tags: selectedTags,
+          },
+          'tags'
+        );
       }
     },
     [updateColumnDetails]
@@ -231,9 +236,13 @@ const ModelTab = () => {
   const handleColumnDescriptionChange = useCallback(
     async (updatedDescription: string) => {
       if (editColumnDescription?.fullyQualifiedName) {
-        await updateColumnDetails(editColumnDescription.fullyQualifiedName, {
-          description: updatedDescription,
-        });
+        await updateColumnDetails(
+          editColumnDescription.fullyQualifiedName,
+          {
+            description: updatedDescription,
+          },
+          'description'
+        );
 
         setEditColumnDescription(undefined);
       }
@@ -251,9 +260,13 @@ const ModelTab = () => {
       return; // Early return if id is not provided
     }
 
-    await updateColumnDetails(fullyQualifiedName, {
-      displayName,
-    });
+    await updateColumnDetails(
+      fullyQualifiedName,
+      {
+        displayName,
+      },
+      'displayName'
+    );
   };
 
   const handleColumnClick = useCallback(
