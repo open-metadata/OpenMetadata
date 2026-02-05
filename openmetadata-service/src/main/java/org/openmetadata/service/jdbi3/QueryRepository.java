@@ -194,6 +194,30 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
+  public EntityInterface getParentEntity(Query entity, String fields) {
+    // Inherit domains from the first table in queryUsedIn
+    // Note: If a query is used in multiple tables from different domains,
+    // only the first table's domain is inherited. This is consistent with
+    // the general domain inheritance pattern where entities inherit from
+    // their primary parent.
+    List<EntityReference> queryUsage = getQueryUsage(entity);
+    if (!nullOrEmpty(queryUsage)) {
+      // Return the first table/entity that this query is used in
+      EntityReference firstUsage = queryUsage.get(0);
+      try {
+        return Entity.getEntity(firstUsage, fields, Include.ALL);
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to fetch parent entity {} for query {}: {}",
+            firstUsage.getFullyQualifiedName(),
+            entity.getFullyQualifiedName(),
+            e.getMessage());
+      }
+    }
+    return null;
+  }
+
+  @Override
   @SneakyThrows
   public void prepare(Query entity, boolean update) {
     if (nullOrEmpty(entity.getName())) {
