@@ -181,8 +181,11 @@ public class OpenSearchIndexManager implements IndexManagementClient {
   private void createIndexInternal(String indexName, String indexMappingContent)
       throws IOException {
     if (indexMappingContent != null && !indexMappingContent.isEmpty()) {
+      // Transform mapping content for OpenSearch compatibility (e.g., flattened -> flat_object)
+      String transformedContent = OsUtils.enrichIndexMappingForOpenSearch(indexMappingContent);
+
       // Parse the mapping content
-      JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
+      JsonNode rootNode = JsonUtils.readTree(transformedContent);
       JsonNode mappingsNode = rootNode.get("mappings");
       JsonNode settingsNode = rootNode.get("settings");
 

@@ -23,6 +23,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notRevi
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 
+import com.google.gson.Gson;
 import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -137,6 +138,33 @@ public class MetricRepository extends EntityRepository<Metric> {
     metric.setRelatedMetrics(null);
     store(metric, update);
     metric.setRelatedMetrics(relatedMetrics);
+  }
+
+  @Override
+  public void storeEntities(List<Metric> entities) {
+    List<Metric> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Metric metric : entities) {
+      List<EntityReference> relatedMetrics = metric.getRelatedMetrics();
+
+      metric.setRelatedMetrics(null);
+
+      String jsonCopy = gson.toJson(metric);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Metric.class));
+
+      metric.setRelatedMetrics(relatedMetrics);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Metric> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Metric::getId).toList();
+    deleteFromMany(ids, Entity.METRIC, Relationship.RELATED_TO, Entity.METRIC);
+    deleteToMany(ids, Entity.METRIC, Relationship.RELATED_TO, Entity.METRIC);
   }
 
   @Override

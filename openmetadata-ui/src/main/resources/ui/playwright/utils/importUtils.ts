@@ -36,6 +36,18 @@ import {
 } from './customProperty';
 import { settingClick, SettingOptionsType } from './sidebar';
 
+const IMPORT_GRID_LOAD_MASK_SELECTOR =
+  '.om-rdg .inovua-react-toolkit-load-mask__background-layer';
+
+export const waitForImportGridLoadMaskToDisappear = async (
+  page: Page,
+  timeout = 30000
+) => {
+  await expect(page.locator(IMPORT_GRID_LOAD_MASK_SELECTOR)).toHaveCount(0, {
+    timeout,
+  });
+};
+
 export const createGlossaryTermRowDetails = () => {
   return {
     name: `playwright,glossaryTerm ${uuid()}`,

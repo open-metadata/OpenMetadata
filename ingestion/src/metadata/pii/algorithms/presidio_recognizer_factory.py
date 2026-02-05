@@ -22,7 +22,7 @@ from presidio_analyzer import predefined_recognizers
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.type.contextRecognizer import ContextRecognizer
 from metadata.generated.schema.type.customRecognizer import CustomRecognizer
-from metadata.generated.schema.type.denyListRecognizer import DenyListRecognizer
+from metadata.generated.schema.type.exactTermsRecognizer import ExactTermsRecognizer
 from metadata.generated.schema.type.patternRecognizer import PatternRecognizer
 from metadata.generated.schema.type.predefinedRecognizer import PredefinedRecognizer
 from metadata.generated.schema.type.recognizer import Recognizer
@@ -60,8 +60,8 @@ class PresidioRecognizerFactory:
             recognizer = PresidioRecognizerFactory._create_pattern_recognizer(
                 config, recognizer_config
             )
-        elif isinstance(config, DenyListRecognizer):
-            recognizer = PresidioRecognizerFactory._create_deny_list_recognizer(
+        elif isinstance(config, ExactTermsRecognizer):
+            recognizer = PresidioRecognizerFactory._create_exact_terms_recognizer(
                 config, recognizer_config
             )
         elif isinstance(config, ContextRecognizer):
@@ -130,18 +130,18 @@ class PresidioRecognizerFactory:
         )
 
     @staticmethod
-    def _create_deny_list_recognizer(
-        config: DenyListRecognizer, recognizer_config: Recognizer
+    def _create_exact_terms_recognizer(
+        config: ExactTermsRecognizer, recognizer_config: Recognizer
     ) -> PresidioPatternRecognizer:
-        """Create a deny list recognizer using patterns."""
+        """Create an exact terms recognizer using patterns."""
         patterns: List[PresidioPattern] = []
-        for value in config.denyList:
+        for value in config.exactTerms:
             # Escape special regex characters in the value
             escaped_value = re.escape(value)
 
             patterns.append(
                 PresidioPattern(
-                    name=f"deny_{value}",
+                    name=f"exact_term_{value}",
                     regex=escaped_value,
                     score=0.9,  # High confidence for exact matches
                 )
@@ -201,7 +201,7 @@ class PresidioRecognizerFactory:
         """
         logger.warning(
             f"Custom recognizer {recognizer_config.name} requires implementation. "
-            + "Consider using pattern, deny_list, or context recognizers instead."
+            + "Consider using pattern, exact_terms, or context recognizers instead."
         )
         return None
 

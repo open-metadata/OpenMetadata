@@ -26,6 +26,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -116,6 +117,41 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
       searchIndex.setFields(fieldsWithTags);
     }
     searchIndex.withService(service);
+  }
+
+  @Override
+  public void storeEntities(List<SearchIndex> searchIndexes) {
+    List<SearchIndex> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (SearchIndex searchIndex : searchIndexes) {
+      EntityReference service = searchIndex.getService();
+      List<SearchIndexField> fieldsWithTags = null;
+      if (searchIndex.getFields() != null) {
+        fieldsWithTags = searchIndex.getFields();
+        searchIndex.setFields(cloneWithoutTags(fieldsWithTags));
+        searchIndex.getFields().forEach(field -> field.setTags(null));
+      }
+
+      searchIndex.withService(null);
+
+      String jsonCopy = gson.toJson(searchIndex);
+      entitiesToStore.add(gson.fromJson(jsonCopy, SearchIndex.class));
+
+      if (fieldsWithTags != null) {
+        searchIndex.setFields(fieldsWithTags);
+      }
+      searchIndex.withService(service);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<SearchIndex> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(SearchIndex::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
   }
 
   @Override
@@ -520,7 +556,13 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
           "searchIndexSettings",
           original.getSearchIndexSettings(),
           updated.getSearchIndexSettings());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
       recordChange("indexType", original.getIndexType(), updated.getIndexType());
     }
 

@@ -144,10 +144,11 @@ test.describe('Topic entity specific tests ', () => {
 
         // Visit the copied link to verify it opens the side panel
         await page.goto(clipboardText);
+        await page.waitForLoadState('networkidle');
 
-        // Verify side panel is open
+        // Verify side panel is open - wait for it to appear with a longer timeout
         const sidePanel = page.locator('.column-detail-panel');
-        await expect(sidePanel).toBeVisible();
+        await expect(sidePanel).toBeVisible({ timeout: 10000 });
 
         // Close side panel
         await page.getByTestId('close-button').click();

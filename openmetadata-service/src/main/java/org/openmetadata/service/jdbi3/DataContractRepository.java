@@ -24,6 +24,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notRevi
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 
+import com.google.gson.Gson;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.LatestResult;
 import org.openmetadata.schema.entity.data.TermsOfUse;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.FailedRule;
 import org.openmetadata.schema.entity.datacontract.QualityValidation;
@@ -71,6 +73,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -102,6 +105,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.ValidatorUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -170,12 +174,30 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     // Validate schema fields and throw exception if there are failures
     SchemaValidation schemaValidation = validateSchemaFieldsAgainstEntity(dataContract, entityRef);
-    if (schemaValidation.getFailed() != null && schemaValidation.getFailed() > 0) {
-      String failedFieldsStr = String.join(", ", schemaValidation.getFailedFields());
-      throw BadRequestException.of(
+    List<String> errors = new ArrayList<>();
+
+    if (!nullOrEmpty(schemaValidation.getDuplicateFields())) {
+      errors.add(
           String.format(
-              "Schema validation failed. The following fields specified in the data contract do not exist in the %s: %s",
-              entityRef.getType(), failedFieldsStr));
+              "Duplicate column names in contract schema: %s",
+              String.join(", ", schemaValidation.getDuplicateFields())));
+    }
+
+    if (!nullOrEmpty(schemaValidation.getFailedFields())) {
+      errors.add(
+          String.format(
+              "The following fields specified in the data contract do not exist in the %s: %s",
+              entityRef.getType(), String.join(", ", schemaValidation.getFailedFields())));
+    }
+
+    // Note: Type mismatches are tracked for informational purposes but do not block contract
+    // creation.
+    // ODCS contracts define data expectations, not necessarily matching physical schema exactly.
+    // Type mismatches can be viewed via schema validation results but are non-blocking.
+
+    if (!errors.isEmpty()) {
+      throw BadRequestException.of(
+          String.format("Schema validation failed. %s", String.join(". ", errors)));
     }
 
     if (!nullOrEmpty(dataContract.getOwners())) {
@@ -263,6 +285,98 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return validateSchemaFieldsAgainstEntity(dataContract, entityRef);
   }
 
+  /**
+   * Comprehensive validation that collects all errors without throwing exceptions.
+   * Performs validation logic without side effects (no test suite creation).
+   *
+   * @param dataContract The data contract to validate (from CreateDataContract conversion)
+   * @return ContractValidation with comprehensive error reporting
+   */
+  public ContractValidation validateContractWithoutThrowing(DataContract dataContract) {
+    ContractValidation validation = new ContractValidation();
+    validation.setValid(true);
+    List<String> entityErrors = new ArrayList<>();
+    List<String> constraintErrors = new ArrayList<>();
+
+    // First, run Jakarta Bean Validation to catch schema-level errors
+    // (e.g., name too long, invalid pattern, required fields)
+    String beanViolations = ValidatorUtil.validate(dataContract);
+    if (beanViolations != null) {
+      validation.setValid(false);
+      // Parse the violations string "[field1 message1, field2 message2]" into individual errors
+      String violations = beanViolations.substring(1, beanViolations.length() - 1);
+      for (String violation : violations.split(", ")) {
+        entityErrors.add(violation.trim());
+      }
+    }
+
+    // Run domain-specific validation WITHOUT side effects (no test suite creation)
+    // This validates entity constraints and schema fields only
+    try {
+      prepareForValidation(dataContract);
+    } catch (Exception e) {
+      validation.setValid(false);
+      constraintErrors.add(e.getMessage());
+    }
+
+    // Get schema validation results (prepareForValidation already validated but we want the
+    // details)
+    SchemaValidation schemaValidation =
+        validateSchemaFieldsAgainstEntity(dataContract, dataContract.getEntity());
+    validation.setSchemaValidation(schemaValidation);
+
+    validation.setEntityErrors(entityErrors.isEmpty() ? null : entityErrors);
+    validation.setConstraintErrors(constraintErrors.isEmpty() ? null : constraintErrors);
+
+    return validation;
+  }
+
+  /**
+   * Validation-only version of prepare() that validates without creating any entities.
+   * This is used for ODCS import preview and contract validation endpoints.
+   * Unlike prepare(), this method has NO side effects (no test suite or pipeline creation).
+   */
+  private void prepareForValidation(DataContract dataContract) {
+    EntityReference entityRef = dataContract.getEntity();
+
+    validateEntitySpecificConstraints(dataContract, entityRef);
+
+    // Validate schema fields and throw exception if there are failures
+    SchemaValidation schemaValidation = validateSchemaFieldsAgainstEntity(dataContract, entityRef);
+    List<String> errors = new ArrayList<>();
+
+    if (!nullOrEmpty(schemaValidation.getDuplicateFields())) {
+      errors.add(
+          String.format(
+              "Duplicate column names in contract schema: %s",
+              String.join(", ", schemaValidation.getDuplicateFields())));
+    }
+
+    if (!nullOrEmpty(schemaValidation.getFailedFields())) {
+      errors.add(
+          String.format(
+              "The following fields specified in the data contract do not exist in the %s: %s",
+              entityRef.getType(), String.join(", ", schemaValidation.getFailedFields())));
+    }
+
+    if (!errors.isEmpty()) {
+      throw BadRequestException.of(
+          String.format("Schema validation failed. %s", String.join(". ", errors)));
+    }
+
+    // Validate owners and reviewers references exist (without populating)
+    if (!nullOrEmpty(dataContract.getOwners())) {
+      for (EntityReference owner : dataContract.getOwners()) {
+        Entity.getEntityReferenceById(owner.getType(), owner.getId(), Include.NON_DELETED);
+      }
+    }
+    if (!nullOrEmpty(dataContract.getReviewers())) {
+      for (EntityReference reviewer : dataContract.getReviewers()) {
+        Entity.getEntityReferenceById(reviewer.getType(), reviewer.getId(), Include.NON_DELETED);
+      }
+    }
+  }
+
   private SchemaValidation validateSchemaFieldsAgainstEntity(
       DataContract dataContract, EntityReference entityRef) {
     SchemaValidation validation = new SchemaValidation();
@@ -271,12 +385,19 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       return validation.withPassed(0).withFailed(0).withTotal(0);
     }
 
+    // Check for duplicate column names in the contract schema
+    List<String> duplicateFields = findDuplicateColumnNames(dataContract);
+    validation.setDuplicateFields(duplicateFields.isEmpty() ? null : duplicateFields);
+
     String entityType = entityRef.getType();
     List<String> failedFields = new ArrayList<>();
+    List<String> typeMismatchFields = new ArrayList<>();
 
     switch (entityType) {
       case Entity.TABLE:
-        failedFields = validateFieldsAgainstTable(dataContract, entityRef);
+        SchemaValidationResult tableResult = validateFieldsAgainstTable(dataContract, entityRef);
+        failedFields = tableResult.failedFields;
+        typeMismatchFields = tableResult.typeMismatchFields;
         break;
       case Entity.TOPIC:
         failedFields = validateFieldsAgainstTopic(dataContract, entityRef);
@@ -285,35 +406,79 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         failedFields = validateFieldsAgainstApiEndpoint(dataContract, entityRef);
         break;
       case Entity.DASHBOARD_DATA_MODEL:
-        failedFields = validateFieldsAgainstDashboardDataModel(dataContract, entityRef);
+        SchemaValidationResult dataModelResult =
+            validateFieldsAgainstDashboardDataModel(dataContract, entityRef);
+        failedFields = dataModelResult.failedFields;
+        typeMismatchFields = dataModelResult.typeMismatchFields;
         break;
       default:
         break;
     }
 
+    validation.setTypeMismatchFields(typeMismatchFields.isEmpty() ? null : typeMismatchFields);
+
     int totalFields = dataContract.getSchema().size();
-    int failedCount = failedFields.size();
-    int passedCount = totalFields - failedCount;
+    // Note: Type mismatches are tracked for informational purposes but don't count as failures.
+    // Only missing fields and duplicates are counted as failures.
+    int failedCount = failedFields.size() + duplicateFields.size();
+    int passedCount = Math.max(0, totalFields - failedCount);
 
     return validation
         .withPassed(passedCount)
         .withFailed(failedCount)
         .withTotal(totalFields)
-        .withFailedFields(failedFields);
+        .withFailedFields(failedFields.isEmpty() ? null : failedFields);
   }
 
-  private List<String> validateFieldsAgainstTable(
+  private List<String> findDuplicateColumnNames(DataContract dataContract) {
+    List<String> duplicates = new ArrayList<>();
+    Set<String> seen = new HashSet<>();
+
+    for (Column column : dataContract.getSchema()) {
+      String name = column.getName();
+      if (!seen.add(name)) {
+        if (!duplicates.contains(name)) {
+          duplicates.add(name);
+        }
+      }
+    }
+    return duplicates;
+  }
+
+  private static class SchemaValidationResult {
+    List<String> failedFields = new ArrayList<>();
+    List<String> typeMismatchFields = new ArrayList<>();
+  }
+
+  private SchemaValidationResult validateFieldsAgainstTable(
       DataContract dataContract, EntityReference tableRef) {
+    SchemaValidationResult result = new SchemaValidationResult();
     org.openmetadata.schema.entity.data.Table table =
         Entity.getEntity(Entity.TABLE, tableRef.getId(), "columns", Include.NON_DELETED);
 
     if (table.getColumns() == null || table.getColumns().isEmpty()) {
-      return getAllContractFieldNames(dataContract);
+      result.failedFields = getAllContractFieldNames(dataContract);
+      return result;
     }
 
-    Set<String> tableColumnNames = extractColumnNames(table.getColumns());
+    Map<String, Column> tableColumnMap = buildColumnMap(table.getColumns());
 
-    return validateContractFieldsAgainstNames(dataContract, tableColumnNames);
+    for (Column contractColumn : dataContract.getSchema()) {
+      String columnName = contractColumn.getName();
+      Column entityColumn = tableColumnMap.get(columnName);
+
+      if (entityColumn == null) {
+        result.failedFields.add(columnName);
+      } else if (contractColumn.getDataType() != null
+          && !areTypesCompatible(contractColumn.getDataType(), entityColumn.getDataType())) {
+        result.typeMismatchFields.add(
+            String.format(
+                "%s: expected %s, got %s",
+                columnName, entityColumn.getDataType(), contractColumn.getDataType()));
+      }
+    }
+
+    return result;
   }
 
   private List<String> validateFieldsAgainstTopic(
@@ -362,8 +527,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return validateContractFieldsAgainstNames(dataContract, apiFieldNames);
   }
 
-  private List<String> validateFieldsAgainstDashboardDataModel(
+  private SchemaValidationResult validateFieldsAgainstDashboardDataModel(
       DataContract dataContract, EntityReference dashboardDataModelRef) {
+    SchemaValidationResult result = new SchemaValidationResult();
     org.openmetadata.schema.entity.data.DashboardDataModel dashboardDataModel =
         Entity.getEntity(
             Entity.DASHBOARD_DATA_MODEL,
@@ -372,12 +538,28 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             Include.NON_DELETED);
 
     if (dashboardDataModel.getColumns() == null || dashboardDataModel.getColumns().isEmpty()) {
-      return getAllContractFieldNames(dataContract);
+      result.failedFields = getAllContractFieldNames(dataContract);
+      return result;
     }
 
-    Set<String> dataModelColumnNames = extractColumnNames(dashboardDataModel.getColumns());
+    Map<String, Column> columnMap = buildColumnMap(dashboardDataModel.getColumns());
 
-    return validateContractFieldsAgainstNames(dataContract, dataModelColumnNames);
+    for (Column contractColumn : dataContract.getSchema()) {
+      String columnName = contractColumn.getName();
+      Column entityColumn = columnMap.get(columnName);
+
+      if (entityColumn == null) {
+        result.failedFields.add(columnName);
+      } else if (contractColumn.getDataType() != null
+          && !areTypesCompatible(contractColumn.getDataType(), entityColumn.getDataType())) {
+        result.typeMismatchFields.add(
+            String.format(
+                "%s: expected %s, got %s",
+                columnName, entityColumn.getDataType(), contractColumn.getDataType()));
+      }
+    }
+
+    return result;
   }
 
   private List<String> getAllContractFieldNames(DataContract dataContract) {
@@ -427,8 +609,124 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return columnNames;
   }
 
+  private Map<String, Column> buildColumnMap(List<Column> columns) {
+    if (columns == null || columns.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    Map<String, Column> columnMap = new HashMap<>();
+    for (Column column : columns) {
+      columnMap.put(column.getName(), column);
+      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
+        columnMap.putAll(buildColumnMap(column.getChildren()));
+      }
+    }
+    return columnMap;
+  }
+
+  /**
+   * Checks if two column data types are compatible. Types are considered compatible
+   * if they belong to the same type family. This allows ODCS contracts (which use
+   * logical types like STRING, INTEGER) to validate against tables with specific
+   * types (VARCHAR, BIGINT, etc.).
+   *
+   * Type families:
+   * - String types: STRING, VARCHAR, CHAR, TEXT, MEDIUMTEXT, NTEXT, CLOB
+   * - Integer types: INT, BIGINT, SMALLINT, TINYINT, BYTEINT, LONG
+   * - Decimal types: DECIMAL, NUMERIC, NUMBER, DOUBLE, FLOAT, MONEY
+   * - Boolean types: BOOLEAN
+   * - Date/Time types: DATE, DATETIME, TIMESTAMP, TIMESTAMPZ, TIME
+   * - Binary types: BINARY, VARBINARY, BLOB, BYTEA, BYTES, LONGBLOB, MEDIUMBLOB
+   * - Complex types: ARRAY, MAP, STRUCT, JSON
+   */
+  private boolean areTypesCompatible(ColumnDataType type1, ColumnDataType type2) {
+    if (type1 == null || type2 == null) {
+      return true;
+    }
+    if (type1.equals(type2)) {
+      return true;
+    }
+
+    Set<ColumnDataType> stringTypes =
+        Set.of(
+            ColumnDataType.STRING,
+            ColumnDataType.VARCHAR,
+            ColumnDataType.CHAR,
+            ColumnDataType.TEXT,
+            ColumnDataType.MEDIUMTEXT,
+            ColumnDataType.NTEXT,
+            ColumnDataType.CLOB);
+
+    Set<ColumnDataType> integerTypes =
+        Set.of(
+            ColumnDataType.INT,
+            ColumnDataType.BIGINT,
+            ColumnDataType.SMALLINT,
+            ColumnDataType.TINYINT,
+            ColumnDataType.BYTEINT,
+            ColumnDataType.LONG);
+
+    Set<ColumnDataType> decimalTypes =
+        Set.of(
+            ColumnDataType.DECIMAL,
+            ColumnDataType.NUMERIC,
+            ColumnDataType.NUMBER,
+            ColumnDataType.DOUBLE,
+            ColumnDataType.FLOAT,
+            ColumnDataType.MONEY);
+
+    Set<ColumnDataType> booleanTypes = Set.of(ColumnDataType.BOOLEAN);
+
+    Set<ColumnDataType> dateTimeTypes =
+        Set.of(
+            ColumnDataType.DATE,
+            ColumnDataType.DATETIME,
+            ColumnDataType.TIMESTAMP,
+            ColumnDataType.TIMESTAMPZ,
+            ColumnDataType.TIME);
+
+    Set<ColumnDataType> binaryTypes =
+        Set.of(
+            ColumnDataType.BINARY,
+            ColumnDataType.VARBINARY,
+            ColumnDataType.BLOB,
+            ColumnDataType.BYTEA,
+            ColumnDataType.BYTES,
+            ColumnDataType.LONGBLOB,
+            ColumnDataType.MEDIUMBLOB);
+
+    Set<ColumnDataType> complexTypes =
+        Set.of(
+            ColumnDataType.ARRAY, ColumnDataType.MAP, ColumnDataType.STRUCT, ColumnDataType.JSON);
+
+    if (stringTypes.contains(type1) && stringTypes.contains(type2)) {
+      return true;
+    }
+    if (integerTypes.contains(type1) && integerTypes.contains(type2)) {
+      return true;
+    }
+    if (decimalTypes.contains(type1) && decimalTypes.contains(type2)) {
+      return true;
+    }
+    if (booleanTypes.contains(type1) && booleanTypes.contains(type2)) {
+      return true;
+    }
+    if (dateTimeTypes.contains(type1) && dateTimeTypes.contains(type2)) {
+      return true;
+    }
+    if (binaryTypes.contains(type1) && binaryTypes.contains(type2)) {
+      return true;
+    }
+    if (complexTypes.contains(type1) && complexTypes.contains(type2)) {
+      return true;
+    }
+
+    return false;
+  }
+
   /**
    * Validates entity-specific constraints for data contracts based on entity type.
+   * Throws BadRequestException if any constraints are violated.
    *
    * Supported entities: table, storedProcedure, database, databaseSchema, dashboard,
    * dashboardDataModel, pipeline, topic, searchIndex, apiCollection, apiEndpoint, api,
@@ -1362,6 +1660,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   @Override
   public void storeEntity(DataContract dataContract, boolean update) {
     store(dataContract, update);
+  }
+
+  @Override
+  public void storeEntities(List<DataContract> entities) {
+    List<DataContract> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (DataContract entity : entities) {
+      String jsonCopy = gson.toJson(entity);
+      entitiesToStore.add(gson.fromJson(jsonCopy, DataContract.class));
+    }
+    storeMany(entitiesToStore);
   }
 
   @Override
