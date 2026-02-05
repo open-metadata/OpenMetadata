@@ -23,8 +23,7 @@ import { Maximize01, Minimize01, XClose } from '@untitledui/icons';
 import { DateTime } from 'luxon';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DEFAULT_THEME } from '../../../constants/Appearance.constants';
-import { ResourceType } from '../../../constants/Learning.constants';
+import { PAGE_IDS, ResourceType } from '../../../constants/Learning.constants';
 import type { LearningResource } from '../../../rest/learningResourceAPI';
 import { getLearningResourceById } from '../../../rest/learningResourceAPI';
 import { LEARNING_CATEGORIES } from '../Learning.interface';
@@ -74,14 +73,22 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
       ? []
       : displayResource.categories;
 
+  const contextItems =
+    !displayResource.contexts || displayResource.contexts.length === 0
+      ? []
+      : displayResource.contexts;
+
+  const getContextLabel = (pageId: string) =>
+    PAGE_IDS.find((c) => c.value === pageId)?.label ?? pageId;
+
   const getCategoryColors = (category: string) => {
-    const categoryInfo =
+    const info =
       LEARNING_CATEGORIES[category as keyof typeof LEARNING_CATEGORIES];
 
     return {
-      bgColor: categoryInfo?.bgColor ?? DEFAULT_THEME.hoverColor,
-      borderColor: categoryInfo?.borderColor ?? DEFAULT_THEME.infoColor,
-      color: categoryInfo?.color ?? DEFAULT_THEME.primaryColor,
+      bgColor: info?.bgColor ?? '#f8f9fc',
+      borderColor: info?.borderColor ?? '#d5d9eb',
+      color: info?.color ?? '#363f72',
     };
   };
 
@@ -195,7 +202,7 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                   color: theme.palette.allShades?.gray?.[600],
                   fontSize: 13,
                   lineHeight: 1.54,
-                  marginBottom: 0.5,
+                  pt: '12px',
                 }}>
                 {displayResource.description}
               </Typography>
@@ -208,8 +215,9 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                 flexWrap: 'wrap',
                 gap: 1,
                 justifyContent: 'space-between',
+                pt: '12px',
               }}>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                 {categoryTags.map((category) => {
                   const colors = getCategoryColors(category);
 
@@ -221,13 +229,12 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                         backgroundColor: colors.bgColor,
                         border: '1px solid',
                         borderColor: colors.borderColor,
-                        borderRadius: 1,
+                        borderRadius: '6px',
                         color: colors.color,
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: 500,
-                        lineHeight: 1.45,
-                        px: 0.75,
-                        py: 0.25,
+                        lineHeight: 1.5,
+                        padding: '2px 6px',
                       }}>
                       {LEARNING_CATEGORIES[
                         category as keyof typeof LEARNING_CATEGORIES
@@ -279,6 +286,37 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                 </Box>
               )}
             </Box>
+
+            {contextItems.length > 0 && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '6px',
+                  pt: '12px',
+                }}>
+                {contextItems.map((ctx, idx) => (
+                  <Box
+                    component="span"
+                    key={`${ctx.pageId}-${idx}`}
+                    sx={{
+                      backgroundColor:
+                        theme.palette.allShades?.blueGray?.[50] ?? '#F8F9FC',
+                      border: '1px solid',
+                      borderColor:
+                        theme.palette.allShades?.blueGray?.[100] ?? '#EBEEF2',
+                      borderRadius: '6px',
+                      color: theme.palette.allShades?.gray?.[700] ?? '#363f72',
+                      fontSize: 12,
+                      fontWeight: 500,
+                      lineHeight: 1.5,
+                      padding: '2px 6px',
+                    }}>
+                    {getContextLabel(ctx.pageId)}
+                  </Box>
+                ))}
+              </Box>
+            )}
           </Box>
 
           <Box
