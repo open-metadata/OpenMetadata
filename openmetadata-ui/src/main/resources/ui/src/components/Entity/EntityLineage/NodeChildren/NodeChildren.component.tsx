@@ -36,6 +36,7 @@ import {
   EntityReference,
   TestSummary,
 } from '../../../../generated/tests/testCase';
+import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import {
   encodeLineageHandles,
@@ -268,18 +269,22 @@ const NodeChildren = ({
   const { t } = useTranslation();
   const { Panel } = Collapse;
   const {
-    tracedColumns,
-    activeLayer,
     onColumnClick,
     onColumnMouseEnter,
     onColumnMouseLeave,
-    columnsHavingLineage,
-    isEditMode,
-    expandAllColumns,
     selectedColumn,
     useUpdateNodeInternals,
     isCreatingEdge,
   } = useLineageProvider();
+
+  const {
+    isEditMode,
+    columnsHavingLineage,
+    tracedColumns,
+    activeLayer,
+    expandAllColumns,
+  } = useLineageStore();
+
   const updateNodeInternals = useUpdateNodeInternals();
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
@@ -692,4 +697,4 @@ const NodeChildren = ({
   }
 };
 
-export default NodeChildren;
+export default React.memo(NodeChildren);

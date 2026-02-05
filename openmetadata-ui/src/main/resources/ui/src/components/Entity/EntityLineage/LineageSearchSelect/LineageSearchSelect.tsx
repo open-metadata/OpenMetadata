@@ -14,7 +14,7 @@ import { RightOutlined } from '@ant-design/icons';
 import { Select, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { debounce } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import {
@@ -26,6 +26,7 @@ import {
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { Column } from '../../../../generated/entity/data/table';
+import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
@@ -33,15 +34,9 @@ import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 
 const LineageSearchSelect = () => {
   const { t } = useTranslation();
-  const {
-    nodes,
-    zoomValue,
-    reactFlowInstance,
-    onNodeClick,
-    onColumnClick,
-    isPlatformLineage,
-    platformView,
-  } = useLineageProvider();
+  const { nodes, reactFlowInstance, onNodeClick, onColumnClick } =
+    useLineageProvider();
+  const { zoomValue, isPlatformLineage, platformView } = useLineageStore();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [allOptions, setAllOptions] = useState<DefaultOptionType[]>([]);
   const [renderedOptions, setRenderedOptions] = useState<DefaultOptionType[]>(
@@ -246,4 +241,4 @@ const LineageSearchSelect = () => {
   );
 };
 
-export default LineageSearchSelect;
+export default React.memo(LineageSearchSelect);

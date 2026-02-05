@@ -26,6 +26,7 @@ import { useLineageProvider } from '../../../context/LineageProvider/LineageProv
 import { EntityType } from '../../../enums/entity.enum';
 import { StatusType } from '../../../generated/entity/data/pipeline';
 import { LineageLayer } from '../../../generated/settings/settings';
+import { useLineageStore } from '../../../hooks/useLineageStore';
 import {
   getColumnSourceTargetHandles,
   getEdgePathData,
@@ -87,10 +88,6 @@ export const CustomEdge = ({
   const { fromEntity, toEntity, pipeline, pipelineEntityType } = edge;
 
   const {
-    tracedNodes,
-    tracedColumns,
-    isEditMode,
-    activeLayer,
     onAddPipelineClick,
     onColumnEdgeRemove,
     dataQualityLineage,
@@ -98,6 +95,9 @@ export const CustomEdge = ({
     selectedColumn,
     allColumnsInCurrentPagesSet,
   } = useLineageProvider();
+
+  const { tracedNodes, tracedColumns, isEditMode, activeLayer } =
+    useLineageStore();
 
   const theme = useTheme();
 
