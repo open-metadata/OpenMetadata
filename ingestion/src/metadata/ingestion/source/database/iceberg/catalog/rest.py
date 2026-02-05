@@ -50,11 +50,17 @@ class IcebergRestCatalog(IcebergCatalogBase):
         parameters = {
             "warehouse": catalog.warehouseLocation,
             "uri": str(catalog.connection.uri),
-            "credential": credential,
-            "token": catalog.connection.token.get_secret_value()
-            if catalog.connection.token
-            else None,
         }
+
+        # Only include credential if it's provided (OAuth2 client credentials)
+        if credential:
+            parameters["credential"] = credential
+        
+        # Only include token if it's provided (Bearer token auth)
+        # Don't include token key at all if not provided, to avoid PyIceberg
+        # prioritizing token=None over credential
+        if catalog.connection.token:
+            parameters["token"] = catalog.connection.token.get_secret_value()
 
         if catalog.connection.fileSystem:
             parameters = {
