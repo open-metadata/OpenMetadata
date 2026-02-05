@@ -113,6 +113,23 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("id") String id,
       @Bind("json") String json);
 
+  @Transaction
+  @ConnectionAwareSqlBatch(
+      value =
+          "UPDATE <table> SET json = :json, <nameHashColumn> = :nameHashColumnValue WHERE id = :id",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlBatch(
+      value =
+          "UPDATE <table> SET json = (:json :: jsonb), <nameHashColumn> = :nameHashColumnValue WHERE id = :id",
+      connectionType = POSTGRES)
+  @BatchChunkSize(100)
+  void updateMany(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindFQN("nameHashColumnValue") List<String> nameHashColumnValue,
+      @BindUUID("id") List<UUID> ids,
+      @Bind("json") List<String> json);
+
   /**
    * Update entity with optimistic locking using version check.
    * Returns the number of rows updated (0 if version mismatch, 1 if successful)
@@ -443,6 +460,18 @@ public interface EntityDAO<T extends EntityInterface> {
         getTableName(),
         getNameHashColumn(),
         fqns,
+        entities.stream().map(JsonUtils::pojoToJson).toList());
+  }
+
+  /** Batch update entities. Don't override */
+  default void updateMany(List<EntityInterface> entities) {
+    List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+    List<UUID> ids = entities.stream().map(EntityInterface::getId).toList();
+    updateMany(
+        getTableName(),
+        getNameHashColumn(),
+        fqns,
+        ids,
         entities.stream().map(JsonUtils::pojoToJson).toList());
   }
 

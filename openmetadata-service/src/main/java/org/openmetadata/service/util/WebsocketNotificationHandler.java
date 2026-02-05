@@ -261,6 +261,18 @@ public class WebsocketNotificationHandler {
     }
   }
 
+  public static void sendCsvImportProgressNotification(
+      String jobId, SecurityContext securityContext, int progress, int total, String message) {
+    CSVImportMessage importMessage =
+        new CSVImportMessage(jobId, "IN_PROGRESS", null, null, progress, total, message);
+    String jsonMessage = JsonUtils.pojoToJson(importMessage);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.CSV_IMPORT_CHANNEL, jsonMessage);
+    }
+  }
+
   public static void sendCsvImportCompleteNotification(
       String jobId, SecurityContext securityContext, CsvImportResult result) {
     CSVImportMessage message = new CSVImportMessage(jobId, "COMPLETED", result, null);

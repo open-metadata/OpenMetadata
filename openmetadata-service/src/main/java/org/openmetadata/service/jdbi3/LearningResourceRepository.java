@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -137,6 +138,17 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
   @Override
   public void storeEntity(LearningResource entity, boolean update) {
     store(entity, update);
+  }
+
+  @Override
+  public void storeEntities(List<LearningResource> entities) {
+    List<LearningResource> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (LearningResource entity : entities) {
+      String jsonCopy = gson.toJson(entity);
+      entitiesToStore.add(gson.fromJson(jsonCopy, LearningResource.class));
+    }
+    storeMany(entitiesToStore);
   }
 
   @Override
