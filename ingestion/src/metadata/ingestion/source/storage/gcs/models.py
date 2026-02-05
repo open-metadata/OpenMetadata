@@ -49,6 +49,9 @@ class GCSContainerDetails(BaseModel):
         extra = Extra.forbid
 
     name: str = Field(..., description="Bucket name")
+    display_name: Optional[str] = Field(
+        None, description="Display name for the container"
+    )
     prefix: str = Field(..., description="Prefix for the container")
     description: Optional[basic.Markdown] = Field(
         None, description="Description of the container instance."

@@ -253,6 +253,7 @@ class S3Source(StorageServiceSource):
     ) -> Iterable[Either[CreateContainerRequest]]:
         container_request = CreateContainerRequest(
             name=EntityName(container_details.name),
+            displayName=container_details.display_name,
             prefix=container_details.prefix,
             numberOfObjects=container_details.number_of_objects,
             size=container_details.size,
@@ -320,6 +321,7 @@ class S3Source(StorageServiceSource):
                 )
                 return S3ContainerDetails(
                     name=metadata_entry.dataPath.strip(KEY_SEPARATOR),
+                    display_name=metadata_entry.displayName,
                     prefix=prefix,
                     creation_date=(
                         bucket_response.creation_date.isoformat()

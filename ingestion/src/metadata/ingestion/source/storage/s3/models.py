@@ -68,6 +68,9 @@ class S3ContainerDetails(BaseModel):
         None, description="Fully qualified name of the container"
     )
     name: str = Field(..., description="Bucket name")
+    display_name: Optional[str] = Field(
+        None, description="Display name for the container"
+    )
     prefix: str = Field(..., description="Prefix for the container")
     number_of_objects: Optional[float] = Field(
         None,
