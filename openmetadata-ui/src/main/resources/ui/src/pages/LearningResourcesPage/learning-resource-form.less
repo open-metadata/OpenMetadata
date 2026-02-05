@@ -106,36 +106,36 @@
   .ant-select-selector,
   .ant-picker {
     border-radius: 8px;
-    border: 1px solid var(--Gray-300, #d5d7da);
-    background: var(--White, #fff);
-    box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+    border: 1px solid @grey-300;
+    background: @white;
+    box-shadow: @button-box-shadow-default;
 
     &:hover,
     &:focus,
     &.ant-input-affix-wrapper-focused {
-      border-color: var(--Gray-300, #d5d7da);
-      box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+      border-color: @grey-300;
+      box-shadow: @button-box-shadow-default;
     }
   }
 
   .ant-select-single .ant-select-selector,
   .ant-select-multiple .ant-select-selector {
     border-radius: 8px;
-    border: 1px solid var(--Gray-300, #d5d7da);
-    background: var(--White, #fff);
-    box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+    border: 1px solid @grey-300;
+    background: @white;
+    box-shadow: @button-box-shadow-default;
 
     &:hover,
     &:focus {
-      border-color: var(--Gray-300, #d5d7da);
-      box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+      border-color: @grey-300;
+      box-shadow: @button-box-shadow-default;
     }
   }
 
   .ant-select-focused:not(.ant-select-disabled).ant-select:not(.ant-select-customize-input)
     .ant-select-selector {
-    border-color: var(--Gray-300, #d5d7da);
-    box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+    border-color: @grey-300;
+    box-shadow: @button-box-shadow-default;
   }
 
   .ant-input:not(.ant-input-textarea),
@@ -186,7 +186,7 @@
     height: 77px;
     padding: @padding-sm;
     border-radius: 8px;
-    box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+    box-shadow: @button-box-shadow-default;
   }
 
   .ant-input-textarea-show-count::after {

@@ -58,7 +58,7 @@
     margin-bottom: @margin-md;
     border-radius: 12px;
     background: @white;
-    box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+    box-shadow: @button-box-shadow-default;
 
     .page-header-title {
       display: flex;
@@ -87,7 +87,7 @@
   .content-card {
     background-color: @white;
     border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: @box-shadow-base;
     overflow: hidden;
   }
 
@@ -241,8 +241,7 @@
       padding: 12px 24px;
       margin: 0 !important;
       background: @white;
-      box-shadow: 0px -13px 16px -4px rgba(10, 13, 18, 0.04),
-        0px -4px 6px -2px rgba(10, 13, 18, 0.03);
+      box-shadow: @box-shadow-drawer-footer;
 
       .ant-pagination-prev,
       .ant-pagination-next {
@@ -252,10 +251,10 @@
         min-width: 36px !important;
         height: 36px !important;
         margin: 0 !important;
-        border: 1px solid #d5d7da !important;
+        border: 1px solid @grey-300 !important;
         border-radius: 8px !important;
         background: @white !important;
-        box-shadow: 0px 1px 2px 0px rgba(10, 13, 18, 0.05) !important;
+        box-shadow: @button-box-shadow-default !important;
 
         button,
         .ant-pagination-item-link {
@@ -394,8 +393,8 @@
 
   .learning-resource-action-btn.ant-btn {
     border-radius: 4px;
-    border: 1px solid var(--Gray-50, #ebeef2);
-    background: var(--White-White, #fff);
+    border: 1px solid @border-light;
+    background: @white;
     padding: 4px;
     height: auto;
     min-height: unset;
@@ -405,8 +404,8 @@
     justify-content: center;
 
     &:hover {
-      border-color: var(--Gray-50, #ebeef2);
-      background: var(--White-White, #fff);
+      border-color: @border-light;
+      background: @white;
     }
   }
 
@@ -465,13 +464,13 @@
       font-weight: @font-medium;
       background-color: @grey-50;
       border: 1px solid @grey-200;
-      color: #414651;
+      color: @grey-700;
     }
 
     .context-tag.more-tag {
       background-color: @grey-50;
       border: 1px solid @grey-200;
-      color: #414651;
+      color: @grey-700;
     }
   }
 
