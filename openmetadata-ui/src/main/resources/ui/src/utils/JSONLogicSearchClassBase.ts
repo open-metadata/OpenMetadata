@@ -447,6 +447,7 @@ class JSONLogicSearchClassBase {
         operators: ['like', 'not_like', 'is_null', 'is_not_null'],
         fieldSettings: {
           allowCustomValues: true,
+          showSearch: false,
         },
       },
       [EntityReferenceFields.RELATED_TERMS]: {
@@ -530,26 +531,26 @@ class JSONLogicSearchClassBase {
     fieldLabel,
     queryFilter,
   }) => {
-    return (search) => {
-      return searchQuery({
-        query: Array.isArray(search) ? search.join(',') : search ?? '',
-        pageNumber: 1,
-        pageSize: PAGE_SIZE_BASE,
-        queryFilter,
-        searchIndex: searchIndex ?? SearchIndex.DATA_ASSET,
-      }).then((response) => {
-        const data = response.hits.hits;
+      return (search) => {
+        return searchQuery({
+          query: Array.isArray(search) ? search.join(',') : search ?? '',
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_BASE,
+          queryFilter,
+          searchIndex: searchIndex ?? SearchIndex.DATA_ASSET,
+        }).then((response) => {
+          const data = response.hits.hits;
 
-        return {
-          values: data.map((item) => ({
-            value: get(item._source, fieldName, ''),
-            title: get(item._source, fieldLabel, ''),
-          })),
-          hasMore: false,
-        };
-      });
+          return {
+            values: data.map((item) => ({
+              value: get(item._source, fieldName, ''),
+              title: get(item._source, fieldLabel, ''),
+            })),
+            hasMore: false,
+          };
+        });
+      };
     };
-  };
 
   mainWidgetProps = {
     fullWidth: true,
@@ -585,8 +586,8 @@ class JSONLogicSearchClassBase {
       values: !search
         ? resolvedTierOptions
         : resolvedTierOptions.filter((tier: ListItem) =>
-            tier.title?.toLowerCase()?.includes(toLower(search))
-          ),
+          tier.title?.toLowerCase()?.includes(toLower(search))
+        ),
       hasMore: false,
     } as AsyncFetchListValuesResult;
   };
