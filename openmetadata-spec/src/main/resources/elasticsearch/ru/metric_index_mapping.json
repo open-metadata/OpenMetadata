@@ -563,19 +563,31 @@
         "null_value": 0
       },
       "votes": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "upVotes": {
+            "type": "integer"
+          },
+          "downVotes": {
+            "type": "integer"
+          }
+        }
       },
       "descriptionStatus": {
         "type": "keyword"
       },
       "descriptionSources": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "tagSources": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "tierSources": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "certification": {
         "type": "object",

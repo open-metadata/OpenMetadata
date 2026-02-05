@@ -15,16 +15,17 @@ import { Autocomplete, Box, TextField } from '@mui/material';
 import { debounce, isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
-  FC,
-  HtmlHTMLAttributes,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    FC,
+    HtmlHTMLAttributes,
+    ReactNode,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { asyncFilterOptions } from '../../../constants/MUI.constants';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -250,26 +251,26 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
             .map((option: TagOption, index: number) => {
               const { onDelete, ...chipProps } = getTagProps({ index });
 
-              return (
-                <TagChip
-                  {...chipProps}
-                  key={option.value}
-                  label={option.label}
-                  size="small"
-                  tagColor={option.data?.style?.color}
-                  onDelete={onDelete ? () => onDelete({} as never) : undefined}
-                />
-              );
-            })
-        }
-        size="small"
-        value={selectedOptions}
-        onChange={handleChange}
-        onClose={() => setOpen(false)}
-        onInputChange={handleInputChange}
-        onOpen={() => setOpen(true)}
-      />
-    </Box>
+            return (
+              <TagChip
+                {...chipProps}
+                key={option.value}
+                label={option.label}
+                size="small"
+                tagColor={option.data?.style?.color}
+                onDelete={onDelete ? () => onDelete({} as never) : undefined}
+              />
+            );
+          })
+      }
+      filterOptions={asyncFilterOptions}
+      size="small"
+      value={selectedOptions}
+      onChange={handleChange}
+      onClose={() => setOpen(false)}
+      onInputChange={handleInputChange}
+      onOpen={() => setOpen(true)}
+    />
   );
 };
 

@@ -2118,8 +2118,8 @@ entity:
     });
 
     it('should handle invalid OpenMetadata format', async () => {
-      const invalidOMYaml = `description: No entity field
-version: 1`;
+      const invalidOMYaml = `description: No name field
+version: 1.0`;
 
       render(
         <ContractImportModal
