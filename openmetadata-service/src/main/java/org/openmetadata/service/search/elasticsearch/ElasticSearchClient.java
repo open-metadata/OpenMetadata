@@ -1,6 +1,6 @@
 package org.openmetadata.service.search.elasticsearch;
 
-import static org.openmetadata.service.search.SearchUtils.buildHttpHosts;
+import static org.openmetadata.service.search.SearchUtils.buildHttpHostsForHc5;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 
@@ -13,10 +13,9 @@ import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.elasticsearch.nodes.NodesStatsResponse;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
-import es.co.elastic.clients.transport.rest_client.RestClientTransport;
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.RestClient;
-import es.org.elasticsearch.client.RestClientBuilder;
+import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5ClientBuilder;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -32,15 +31,13 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.http.Header;
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.message.BasicHeader;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.http.message.BasicHeader;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
@@ -80,7 +77,7 @@ public class ElasticSearchClient implements SearchClient {
 
   // New Java API client support for migration
   @Getter protected final ElasticsearchClient newClient;
-  private final RestClient lowLevelClient;
+  private final Rest5Client lowLevelClient;
 
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final QueryBuilderFactory queryBuilderFactory;
@@ -154,11 +151,15 @@ public class ElasticSearchClient implements SearchClient {
         new ElasticSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias, nlqService);
   }
 
-  private ElasticsearchClient createElasticSearchNewClient(RestClient lowLevelClient) {
+  private ElasticsearchClient createElasticSearchNewClient(Rest5Client lowLevelClient) {
     try {
+      if (lowLevelClient == null) {
+        LOG.error("Cannot create Elasticsearch client with null Rest5Client");
+        return null;
+      }
       // Create transport and new client
-      RestClientTransport transport =
-          new RestClientTransport(lowLevelClient, new JacksonJsonpMapper());
+      Rest5ClientTransport transport =
+          new Rest5ClientTransport(lowLevelClient, new JacksonJsonpMapper());
       ElasticsearchClient newClient = new ElasticsearchClient(transport);
 
       LOG.info("Successfully initialized new Elasticsearch Java API client");
@@ -671,29 +672,23 @@ public class ElasticSearchClient implements SearchClient {
     return dataInsightAggregatorManager.getQueryCostRecords(serviceName);
   }
 
-  public RestClient getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
+  public Rest5Client getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
-        HttpHost[] httpHosts = buildHttpHosts(esConfig, "Elasticsearch");
-        RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
+        HttpHost[] httpHosts = buildHttpHostsForHc5(esConfig, "Elasticsearch");
+        Rest5ClientBuilder restClientBuilder = Rest5Client.builder(httpHosts);
 
         restClientBuilder.setHttpClientConfigCallback(
             httpAsyncClientBuilder -> {
+              var connectionManagerBuilder =
+                  org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder
+                      .create();
+
               if (esConfig.getMaxConnTotal() != null && esConfig.getMaxConnTotal() > 0) {
-                httpAsyncClientBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
+                connectionManagerBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
               }
               if (esConfig.getMaxConnPerRoute() != null && esConfig.getMaxConnPerRoute() > 0) {
-                httpAsyncClientBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
-              }
-
-              if (StringUtils.isNotEmpty(esConfig.getUsername())
-                  && StringUtils.isNotEmpty(esConfig.getPassword())) {
-                CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-                credentialsProvider.setCredentials(
-                    AuthScope.ANY,
-                    new UsernamePasswordCredentials(
-                        esConfig.getUsername(), esConfig.getPassword()));
-                httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+                connectionManagerBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
               }
 
               SSLContext sslContext = null;
@@ -703,27 +698,38 @@ public class ElasticSearchClient implements SearchClient {
                 throw new RuntimeException(e);
               }
               if (sslContext != null) {
-                httpAsyncClientBuilder.setSSLContext(sslContext);
+                connectionManagerBuilder.setTlsStrategy(
+                    org.apache.hc.client5.http.ssl.ClientTlsStrategyBuilder.create()
+                        .setSslContext(sslContext)
+                        .build());
               }
 
-              if (esConfig.getKeepAliveTimeoutSecs() != null
-                  && esConfig.getKeepAliveTimeoutSecs() > 0) {
-                httpAsyncClientBuilder.setKeepAliveStrategy(
-                    (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
-              }
+              httpAsyncClientBuilder.setConnectionManager(connectionManagerBuilder.build());
 
-              return httpAsyncClientBuilder;
+              if (StringUtils.isNotEmpty(esConfig.getUsername())
+                  && StringUtils.isNotEmpty(esConfig.getPassword())) {
+                BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+                credentialsProvider.setCredentials(
+                    new AuthScope(null, -1),
+                    new UsernamePasswordCredentials(
+                        esConfig.getUsername(), esConfig.getPassword().toCharArray()));
+                httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+              }
             });
 
         restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder ->
                 requestConfigBuilder
-                    .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
-                    .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
+                    .setConnectTimeout(
+                        org.apache.hc.core5.util.Timeout.ofSeconds(
+                            esConfig.getConnectionTimeoutSecs()))
+                    .setResponseTimeout(
+                        org.apache.hc.core5.util.Timeout.ofSeconds(
+                            esConfig.getSocketTimeoutSecs())));
 
         restClientBuilder.setCompressionEnabled(true);
 
-        RestClient tempClient = restClientBuilder.build();
+        Rest5Client tempClient = restClientBuilder.build();
         boolean isElasticsearch7 = isElasticsearch7Version(tempClient);
         tempClient.close();
 
@@ -945,11 +951,16 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
-  private boolean isElasticsearch7Version(RestClient restClient) {
+  private boolean isElasticsearch7Version(Rest5Client restClient) {
     try {
-      Request request = new Request("GET", "/");
-      es.org.elasticsearch.client.Response response = restClient.performRequest(request);
-      String responseBody = EntityUtils.toString(response.getEntity());
+      es.co.elastic.clients.transport.rest5_client.low_level.Request request =
+          new es.co.elastic.clients.transport.rest5_client.low_level.Request("GET", "/");
+      es.co.elastic.clients.transport.rest5_client.low_level.Response response =
+          restClient.performRequest(request);
+      String responseBody =
+          new String(
+              response.getEntity().getContent().readAllBytes(),
+              java.nio.charset.StandardCharsets.UTF_8);
       JsonNode jsonNode = JsonUtils.readTree(responseBody);
       JsonNode versionNode = jsonNode.get("version");
       if (versionNode != null && versionNode.get("number") != null) {
