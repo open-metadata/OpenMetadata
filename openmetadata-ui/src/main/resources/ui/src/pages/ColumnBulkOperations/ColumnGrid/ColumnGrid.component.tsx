@@ -23,7 +23,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { Tag01 as TagIcon } from '@untitledui/icons';
+import { ArrowRight, Tag01 as TagIcon } from '@untitledui/icons';
 import { Button, Tag, Typography as AntTypography } from 'antd';
 import { isEmpty, isUndefined, some } from 'lodash';
 import React, {
@@ -634,9 +634,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       if (entity.hasCoverage && entity.metadataStatus) {
         const statusLabels: Record<MetadataStatus, string> = {
           [MetadataStatus.Missing]: t('label.missing'),
-          [MetadataStatus.Incomplete]: t('label.partial-coverage'),
+          [MetadataStatus.Incomplete]: t('label.incomplete'),
           [MetadataStatus.Inconsistent]: t('label.inconsistent'),
-          [MetadataStatus.Complete]: t('label.full-coverage'),
+          [MetadataStatus.Complete]: t('label.complete'),
         };
 
         const statusClasses: Record<MetadataStatus, string> = {
@@ -1489,8 +1489,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       });
 
     const drawerKey = `${columnGridListing.selectedEntities.join('-')}`;
-    const assetLink =
-      selectedCount === 1 && firstRow ? getColumnLink(firstRow) : null;
 
     return (
       <Box
@@ -1514,16 +1512,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   )}`
             }
           />
-          {assetLink && (
-            <Link
-              className="column-link"
-              data-testid="view-asset-link"
-              to={assetLink}>
-              {t('label.view-entity', {
-                entity: t('label.asset'),
-              })}
-            </Link>
-          )}
         </Box>
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -1682,14 +1670,82 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     selectedCount,
     t,
     getTagDisplayLabel,
-    getColumnLink,
     updateRowField,
   ]);
 
+  const drawerHeaderAssetLink = useMemo(() => {
+    if (selectedCount === 0) {
+      return null;
+    }
+    const selectedRows = columnGridListing.allRows.filter((r) =>
+      columnGridListing.isSelected(r.id)
+    );
+    const firstRow = selectedRows[0];
+
+    return firstRow ? getColumnLink(firstRow) : null;
+  }, [
+    selectedCount,
+    columnGridListing.allRows,
+    columnGridListing.isSelected,
+    getColumnLink,
+  ]);
+
+  const viewAssetHeaderAction = useMemo(() => {
+    if (!drawerHeaderAssetLink) {
+      return null;
+    }
+
+    return (
+      <MUIButton
+        component={Link}
+        data-testid="view-asset-button"
+        endIcon={<ArrowRight size={12} />}
+        size="small"
+        sx={{
+          borderRadius: '4px',
+          padding: '2px 6px',
+          backgroundColor: theme.palette.allShades?.brand?.[50],
+          color: theme.palette.allShades?.brand?.[600],
+          fontSize: 12,
+          fontWeight: 500,
+          lineHeight: '20px',
+          '&:hover': {
+            backgroundColor: theme.palette.allShades?.brand?.[50],
+            color: theme.palette.allShades?.brand?.[600],
+          },
+          '.MuiButton-endIcon > svg': {
+            width: '14px',
+            height: '14px',
+          },
+        }}
+        to={drawerHeaderAssetLink}>
+        {t('label.view-entity', { entity: t('label.asset') })}
+      </MUIButton>
+    );
+  }, [drawerHeaderAssetLink, t, theme]);
+
+  const drawerTitle = useMemo(
+    () => (
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          flexWrap: 'wrap',
+        }}>
+        <Typography data-testid="form-heading" variant="h6">
+          {`${t('label.edit-entity', { entity: t('label.column') })} ${
+            selectedCount > 0 ? String(selectedCount).padStart(2, '0') : ''
+          }`}
+        </Typography>
+        {viewAssetHeaderAction}
+      </Box>
+    ),
+    [t, selectedCount, viewAssetHeaderAction]
+  );
+
   const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
-    title: `${t('label.edit-entity', { entity: t('label.column') })} ${
-      selectedCount > 0 ? String(selectedCount).padStart(2, '0') : ''
-    }`,
+    title: drawerTitle,
     anchor: 'right',
     width: '40%',
     closeOnEscape: true,
