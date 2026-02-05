@@ -15,7 +15,7 @@ import ast
 import json
 from typing import List, Optional
 
-from pydantic import BaseModel, BeforeValidator, Field, field_validator
+from pydantic import BaseModel, BeforeValidator, Field, field_validator, model_validator
 from typing_extensions import Annotated
 
 MetabaseStrId = Annotated[str, BeforeValidator(lambda x: str(x))]
@@ -68,8 +68,29 @@ class Native(BaseModel):
 
 
 class DatasetQuery(BaseModel):
+    model_config = {"extra": "ignore"}
+
     type: Optional[str] = None
     native: Optional[Native] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_native_from_stages(cls, data):
+        """
+        Breaking change in metabase 0.57.0
+        https://www.metabase.com/docs/latest/developers-guide/api-changelog#metabase-0570
+        """
+        if not isinstance(data, dict):
+            return data
+        if data.get("native") is not None:
+            return data
+        stages = data.get("stages")
+        if stages:
+            for stage in stages:
+                if isinstance(stage, dict) and stage.get("native"):
+                    data["native"] = {"query": stage["native"]}
+                    break
+        return data
 
 
 class MetabaseChart(BaseModel):

@@ -17,6 +17,7 @@ from typing import Any, Iterable, List, Optional, Tuple
 
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
+from sqlalchemy.engine import Connection
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -80,6 +81,7 @@ from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS,
     UNITY_CATALOG_GET_ALL_TABLE_TAGS,
     UNITY_CATALOG_GET_CATALOGS_TAGS,
+    UNITY_CATALOG_GET_TABLE_DDL,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
@@ -91,6 +93,7 @@ logger = ingestion_logger()
 
 UNITY_CATALOG_TAG = "UNITY CATALOG TAG"
 UNITY_CATALOG_TAG_CLASSIFICATION = "UNITY CATALOG TAG CLASSIFICATION"
+
 
 # pylint: disable=protected-access
 class UnitycatalogSource(
@@ -120,6 +123,21 @@ class UnitycatalogSource(
         self.table_constraints = []
         self.context.storage_location = None
         self.test_connection()
+
+        self._sql_connection_map = {}
+        self.engine = get_sqlalchemy_connection(self.service_connection)
+
+    @property
+    def sql_connection(self) -> Connection:
+        """
+        Return the SQLAlchemy connection
+        """
+        thread_id = self.context.get_current_thread_id()
+
+        if not self._sql_connection_map.get(thread_id):
+            self._sql_connection_map[thread_id] = self.engine.connect()
+
+        return self._sql_connection_map[thread_id]
 
     def get_configured_database(self) -> Optional[str]:
         return self.service_connection.catalog
@@ -324,6 +342,38 @@ class UnitycatalogSource(
                     )
                 )
 
+    def get_schema_definition(
+        self, table_name: str, table_type: TableType, table: Any
+    ) -> Optional[str]:
+        """
+        Get the DDL statement or View Definition for a table
+        """
+        try:
+            if table_type in (TableType.View, TableType.MaterializedView):
+                if hasattr(table, "view_definition") and table.view_definition:
+                    view_type = (
+                        table_type == TableType.View and "VIEW" or "MATERIALIZED VIEW"
+                    )
+
+                    return f"CREATE {view_type} `{table.catalog_name}`.`{table.schema_name}`.`{table_name}` AS {table.view_definition}"
+            elif self.source_config.includeDDL and table_type != TableType.Iceberg:
+                cursor = self.sql_connection.execute(
+                    UNITY_CATALOG_GET_TABLE_DDL.format(
+                        database=self.context.get().database,
+                        schema=self.context.get().database_schema,
+                        table=table_name,
+                    )
+                )
+                result = cursor.fetchone()
+                if result:
+                    return result[0]
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Unable to get schema definition for table [{table_name}]: {exc}"
+            )
+        return None
+
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
@@ -350,12 +400,17 @@ class UnitycatalogSource(
                 primary_constraints, foreign_constraints, columns
             )
 
+            schema_definition = self.get_schema_definition(
+                table_name=table_name, table_type=table_type, table=table
+            )
+
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
                 tableType=table_type,
                 description=table.comment,
                 columns=columns,
                 tableConstraints=table_constraints,
+                schemaDefinition=schema_definition,
                 databaseSchema=FullyQualifiedEntityName(
                     fqn.build(
                         metadata=self.metadata,
@@ -562,23 +617,20 @@ class UnitycatalogSource(
             ),
         )
         try:
-            with get_sqlalchemy_connection(
-                self.service_connection
-            ).connect() as connection:
-                for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
-                    for tag in connection.execute(query):
-                        if tag.tag_value:
-                            yield from get_ometa_tag_and_classification(
-                                tag_fqn=FullyQualifiedEntityName(
-                                    fqn._build(*tag_fqn_builder(tag))
-                                ),
-                                tags=[tag.tag_value],
-                                classification_name=tag.tag_name,
-                                tag_description=UNITY_CATALOG_TAG,
-                                classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
-                                metadata=self.metadata,
-                                system_tags=True,
-                            )
+            for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
+                for tag in self.sql_connection.execute(query):
+                    if tag.tag_value:
+                        yield from get_ometa_tag_and_classification(
+                            tag_fqn=FullyQualifiedEntityName(
+                                fqn._build(*tag_fqn_builder(tag))
+                            ),
+                            tags=[tag.tag_value],
+                            classification_name=tag.tag_name,
+                            tag_description=UNITY_CATALOG_TAG,
+                            classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
+                            metadata=self.metadata,
+                            system_tags=True,
+                        )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -616,23 +668,20 @@ class UnitycatalogSource(
             ),
         )
         try:
-            with get_sqlalchemy_connection(
-                self.service_connection
-            ).connect() as connection:
-                for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
-                    for tag in connection.execute(query):
-                        if tag.tag_value:
-                            yield from get_ometa_tag_and_classification(
-                                tag_fqn=FullyQualifiedEntityName(
-                                    fqn._build(*tag_fqn_builder(tag))
-                                ),
-                                tags=[tag.tag_value],
-                                classification_name=tag.tag_name,
-                                tag_description=UNITY_CATALOG_TAG,
-                                classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
-                                metadata=self.metadata,
-                                system_tags=True,
-                            )
+            for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
+                for tag in self.sql_connection.execute(query):
+                    if tag.tag_value:
+                        yield from get_ometa_tag_and_classification(
+                            tag_fqn=FullyQualifiedEntityName(
+                                fqn._build(*tag_fqn_builder(tag))
+                            ),
+                            tags=[tag.tag_value],
+                            classification_name=tag.tag_name,
+                            tag_description=UNITY_CATALOG_TAG,
+                            classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
+                            metadata=self.metadata,
+                            system_tags=True,
+                        )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error getting tags for schema {schema_name}: {exc}")
@@ -649,7 +698,10 @@ class UnitycatalogSource(
         """Not Implemented"""
 
     def close(self):
-        """Nothing to close"""
+        for sql_connection in self._sql_connection_map.values():
+            sql_connection.close()
+        if self.engine:
+            self.engine.dispose()
 
     # pylint: disable=arguments-renamed
     def get_owner_ref(self, owner: Optional[str]) -> Optional[EntityReferenceList]:

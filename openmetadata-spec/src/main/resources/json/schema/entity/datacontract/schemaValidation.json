@@ -19,7 +19,21 @@
       "type": "integer"
     },
     "failedFields": {
-      "description": "List of fields that failed validation.",
+      "description": "List of fields that do not exist in the entity.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "duplicateFields": {
+      "description": "List of field names that appear more than once in the contract schema.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "typeMismatchFields": {
+      "description": "List of fields with data type mismatches between contract and entity (format: 'fieldName: expected TYPE1, got TYPE2').",
       "type": "array",
       "items": {
         "type": "string"

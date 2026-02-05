@@ -636,4 +636,14 @@ public interface SearchClient
 
   SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;
+
+  /**
+   * Initialize lineage builders that require application settings to be available.
+   * This method is called during Phase 2 initialization after settings cache
+   * has been initialized and LINEAGE_SETTINGS are available in the database.
+   */
+  default void initializeLineageBuilders() {
+    // Default implementation does nothing - concrete implementations can override
+    // This allows backward compatibility for clients that don't need lineage features
+  }
 }

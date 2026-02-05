@@ -29,6 +29,9 @@ interface UseColumnGridFiltersConfig {
 const COLUMN_SEARCH_INDEXES = [
   SearchIndex.TABLE,
   SearchIndex.DASHBOARD_DATA_MODEL,
+  SearchIndex.TOPIC,
+  SearchIndex.CONTAINER,
+  SearchIndex.SEARCH_INDEX,
 ] as SearchIndex[];
 
 export const useColumnGridFilters = (config: UseColumnGridFiltersConfig) => {

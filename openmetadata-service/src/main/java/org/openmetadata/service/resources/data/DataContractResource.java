@@ -54,8 +54,8 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
-import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -1281,14 +1281,13 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   }
 
   @POST
-  @Path("/odcs/validate/yaml")
-  @Consumes({"application/yaml", "text/yaml"})
+  @Path("/validate")
   @Operation(
-      operationId = "validateODCSYaml",
-      summary = "Validate ODCS YAML without importing",
+      operationId = "validateDataContractRequest",
+      summary = "Validate data contract request without creating",
       description =
-          "Validate an ODCS YAML contract against the target entity without creating the contract. "
-              + "Returns validation results including any schema field mismatches.",
+          "Validate a CreateDataContract request against the target entity without creating the contract. "
+              + "Returns comprehensive validation results including constraint errors and schema field mismatches.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1296,7 +1295,70 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = SchemaValidation.class))),
+                    schema = @Schema(implementation = ContractValidation.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid request")
+      })
+  public Response validateDataContractRequest(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      CreateDataContract createRequest) {
+    DataContract dataContract = DataContractMapper.createEntity(createRequest, "validation");
+    ContractValidation validation = repository.validateContractWithoutThrowing(dataContract);
+    return Response.ok(validation).build();
+  }
+
+  @POST
+  @Path("/validate/yaml")
+  @Consumes({"application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "validateDataContractRequestYaml",
+      summary = "Validate data contract request from YAML without creating",
+      description =
+          "Validate a CreateDataContract YAML request against the target entity without creating the contract. "
+              + "Returns comprehensive validation results including entity errors, constraint errors, "
+              + "and schema field mismatches.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Validation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContractValidation.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid YAML content")
+      })
+  public Response validateDataContractRequestYaml(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
+    try {
+      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      CreateDataContract createRequest =
+          yamlMapper.readValue(yamlContent, CreateDataContract.class);
+      DataContract dataContract = DataContractMapper.createEntity(createRequest, "validation");
+      ContractValidation validation = repository.validateContractWithoutThrowing(dataContract);
+      return Response.ok(validation).build();
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid YAML content: " + e.getMessage(), e);
+    }
+  }
+
+  @POST
+  @Path("/odcs/validate/yaml")
+  @Consumes({"application/yaml", "text/yaml"})
+  @Operation(
+      operationId = "validateODCSYaml",
+      summary = "Validate ODCS YAML without importing",
+      description =
+          "Validate an ODCS YAML contract against the target entity without creating the contract. "
+              + "Returns comprehensive validation results including entity errors, constraint errors, "
+              + "and schema field mismatches.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Validation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContractValidation.class))),
         @ApiResponse(responseCode = "400", description = "Invalid YAML content")
       })
   public Response validateODCSYaml(
@@ -1326,7 +1388,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
       DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef, objectName);
 
-      SchemaValidation validation = repository.validateContractSchema(dataContract, entityRef);
+      ContractValidation validation = repository.validateContractWithoutThrowing(dataContract);
       return Response.ok(validation).build();
     } catch (JsonProcessingException e) {
       throw new IllegalArgumentException("Invalid ODCS YAML content: " + e.getMessage(), e);
