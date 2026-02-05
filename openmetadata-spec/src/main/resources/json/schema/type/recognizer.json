@@ -37,14 +37,14 @@
     "recognizerType": {
       "description": "Type of recognizer to use for detection",
       "type": "string",
-      "enum": ["pattern", "deny_list", "context", "predefined", "custom"],
+      "enum": ["pattern", "exact_terms", "context", "predefined", "custom"],
       "default": "pattern"
     },
     "recognizerConfig": {
       "description": "Complete recognizer configuration",
       "oneOf": [
         {"$ref": "patternRecognizer.json"},
-        {"$ref": "denyListRecognizer.json"},
+        {"$ref": "exactTermsRecognizer.json"},
         {"$ref": "contextRecognizer.json"},
         {"$ref": "customRecognizer.json"},
         {"$ref": "predefinedRecognizer.json"}
@@ -53,8 +53,8 @@
     "patternRecognizerType": {
       "$ref": "patternRecognizer.json"
     },
-    "denyListRecognizerType": {
-      "$ref": "denyListRecognizer.json"
+    "exactTermsRecognizerType": {
+      "$ref": "exactTermsRecognizer.json"
     },
     "contextRecognizerType": {
       "$ref": "contextRecognizer.json"
