@@ -802,7 +802,7 @@ export const testPaginationNavigation = async (
     // Explicitly using selector, as in some cases table cell contains markdown
     // and markdown can further have tables
     const initialRowCount = await page
-      .locator('.ant-table-tbody > tr.ant-table-row:visible')
+      .locator('tbody > tr[data-row-key]:visible')
       .count();
     expect(initialRowCount).toBeLessThanOrEqual(15);
     const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
@@ -825,7 +825,7 @@ export const testPaginationNavigation = async (
     await expect(pageSizeDropdown).toHaveText('25 / Page');
 
     const newRowCount = await page
-      .locator('.ant-table-tbody > tr.ant-table-row:visible')
+      .locator('tbody > tr[data-row-key]:visible')
       .count();
     expect(newRowCount).toBeLessThanOrEqual(25);
     expect(newRowCount).not.toBe(initialRowCount);
