@@ -20,6 +20,7 @@ import static org.openmetadata.service.Entity.TABLE_COLUMN;
 import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
 import static org.openmetadata.service.formatter.util.FormatterUtil.createChangeEventForEntity;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.util.InputSanitizer.sanitize;
 
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
@@ -283,7 +284,7 @@ public class ColumnRepository {
         .ifPresent(name -> column.setDisplayName(name.trim().isEmpty() ? null : name));
 
     Optional.ofNullable(updateColumn.getDescription())
-        .ifPresent(desc -> column.setDescription(desc.trim().isEmpty() ? null : desc));
+        .ifPresent(desc -> column.setDescription(desc.trim().isEmpty() ? null : sanitize(desc)));
 
     Optional.ofNullable(updateColumn.getTags())
         .ifPresent(tags -> column.setTags(addDerivedTags(tags)));

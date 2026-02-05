@@ -40,6 +40,7 @@ import static org.openmetadata.service.util.EntityUtil.compareEntityReference;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
+import static org.openmetadata.service.util.InputSanitizer.sanitize;
 
 import io.jsonwebtoken.lang.Collections;
 import jakarta.json.JsonPatch;
@@ -580,8 +581,8 @@ public class FeedRepository {
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
     }
 
-    // Update the attributes
-    threadContext.getThread().getTask().withNewValue(resolveTask.getNewValue());
+    // Update the attributes (sanitize to prevent XSS)
+    threadContext.getThread().getTask().withNewValue(sanitize(resolveTask.getNewValue()));
     closeTask(threadContext.getThread(), user, new CloseTask());
   }
 
@@ -1013,6 +1014,9 @@ public class FeedRepository {
     // Apply JSON patch to the original post to get the updated post
     Post updated = JsonUtils.applyPatch(post, patch, Post.class);
 
+    // Sanitize the message to prevent XSS attacks
+    updated.setMessage(sanitize(updated.getMessage()));
+
     restorePatchAttributes(post, updated);
 
     // Update the attributes
@@ -1048,6 +1052,15 @@ public class FeedRepository {
 
     // Apply JSON patch to the original thread to get the updated thread
     Thread updated = JsonUtils.applyPatch(original, patch, Thread.class);
+
+    // Sanitize content to prevent XSS attacks
+    updated.setMessage(sanitize(updated.getMessage()));
+    if (updated.getTask() != null) {
+      updated.getTask().setOldValue(sanitize(updated.getTask().getOldValue()));
+      updated.getTask().setSuggestion(sanitize(updated.getTask().getSuggestion()));
+      updated.getTask().setNewValue(sanitize(updated.getTask().getNewValue()));
+    }
+
     // update the "updatedBy" and "updatedAt" fields
     updated.withUpdatedAt(System.currentTimeMillis()).withUpdatedBy(user);
 
