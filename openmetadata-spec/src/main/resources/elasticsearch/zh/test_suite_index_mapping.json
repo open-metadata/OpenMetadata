@@ -102,27 +102,8 @@
           }
         }
       },
-      "testCaseResultSummary": {
-        "type": "nested",
-        "properties": {
-          "status": {
-            "type": "keyword"
-          },
-          "testCaseName": {
-            "type": "text",
-            "analyzer": "ik_max_word",
-            "search_analyzer": "ik_smart",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "timestamp": {
-            "type": "long"
-          }
-        }
+      "lastResultTimestamp": {
+        "type": "long"
       },
       "owners": {
         "properties": {

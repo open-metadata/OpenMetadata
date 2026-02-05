@@ -429,3 +429,38 @@ class MetabaseUnitTest(TestCase):
             name="test_chart_none_value", id="105", dataset_query=None
         )
         self.assertIsNone(chart_with_none_value.dataset_query)
+
+        # Test 7: New Metabase format with stages array
+        chart_with_stages = MetabaseChart(
+            name="test_chart_stages",
+            id="106",
+            dataset_query={
+                "lib/type": "mbql/query",
+                "database": 2,
+                "stages": [
+                    {
+                        "lib/type": "mbql.stage/native",
+                        "native": "SELECT * FROM new_format_table",
+                    }
+                ],
+            },
+        )
+        self.assertIsNotNone(chart_with_stages.dataset_query)
+        self.assertIsNotNone(chart_with_stages.dataset_query.native)
+        self.assertEqual(
+            chart_with_stages.dataset_query.native.query,
+            "SELECT * FROM new_format_table",
+        )
+
+        # Test 8: New format with stages but no native query
+        chart_with_empty_stages = MetabaseChart(
+            name="test_chart_empty_stages",
+            id="107",
+            dataset_query={
+                "lib/type": "mbql/query",
+                "database": 2,
+                "stages": [{"lib/type": "mbql.stage/mbql"}],
+            },
+        )
+        self.assertIsNotNone(chart_with_empty_stages.dataset_query)
+        self.assertIsNone(chart_with_empty_stages.dataset_query.native)
