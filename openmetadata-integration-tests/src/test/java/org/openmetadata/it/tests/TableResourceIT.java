@@ -55,6 +55,7 @@ import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -77,6 +78,7 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.OM;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
@@ -104,13 +106,16 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   {
     // Table CSV export exports columns from a specific table, not tables from a schema
-    // The test framework expects export from a container (schema), but tables use a different API
-    supportsImportExport = false;
+    // Enable import/export for table column CSV testing
+    supportsImportExport = true;
+    supportsBatchImport = true;
+    supportsRecursiveImport = false; // Tables don't support recursive import
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
   }
 
   private DatabaseSchema lastCreatedSchema;
+  private Table lastCreatedTable;
 
   // ===================================================================
   // OVERRIDE: Tables allow duplicates in different schemas
@@ -260,11 +265,14 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   @Override
   protected String getImportExportContainerName(TestNamespace ns) {
-    if (lastCreatedSchema == null) {
-      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-      lastCreatedSchema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    // For table CSV import/export, we need a table FQN, not a schema FQN
+    // Create a table for CSV operations if it doesn't exist
+    if (lastCreatedTable == null) {
+      CreateTable tableRequest = createMinimalRequest(ns);
+      tableRequest.setName(ns.prefix("csv_table"));
+      lastCreatedTable = createEntity(tableRequest);
     }
-    return lastCreatedSchema.getFullyQualifiedName();
+    return lastCreatedTable.getFullyQualifiedName();
   }
 
   // ===================================================================
@@ -4520,6 +4528,246 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             "Historical version should contain UNIQUE constraint type");
       }
     }
+  }
+
+  // ===================================================================
+  // CSV IMPORT/EXPORT SUPPORT
+  // ===================================================================
+
+  protected String generateValidCsvData(TestNamespace ns, List<Table> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return null;
+    }
+
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "column.name*,column.displayName,column.description,column.dataTypeDisplay,column.dataType*,column.arrayDataType,column.dataLength,column.tags,column.glossaryTerms\n");
+
+    for (Table table : entities) {
+      if (table.getColumns() != null) {
+        for (Column column : table.getColumns()) {
+          csv.append(escapeCSVValue(column.getName())).append(",");
+          csv.append(escapeCSVValue(column.getDisplayName())).append(",");
+          csv.append(escapeCSVValue(column.getDescription())).append(",");
+          csv.append(escapeCSVValue(column.getDataTypeDisplay())).append(",");
+          csv.append(escapeCSVValue(column.getDataType().toString())).append(",");
+          csv.append(
+                  escapeCSVValue(
+                      column.getArrayDataType() != null
+                          ? column.getArrayDataType().toString()
+                          : ""))
+              .append(",");
+          csv.append(
+                  escapeCSVValue(
+                      column.getDataLength() != null ? column.getDataLength().toString() : ""))
+              .append(",");
+          csv.append(escapeCSVValue(formatTagsForCsv(column.getTags()))).append(",");
+          csv.append(escapeCSVValue("")); // glossaryTerms - not available on Column
+          csv.append("\n");
+        }
+      }
+    }
+
+    return csv.toString();
+  }
+
+  protected String generateInvalidCsvData(TestNamespace ns) {
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "column.name*,column.displayName,column.description,column.dataTypeDisplay,column.dataType*,column.arrayDataType,column.dataLength,column.tags,column.glossaryTerms\n");
+    // Missing required column.name and column.dataType (empty name and empty datatype)
+    csv.append(",Test Column,Description,,,,,,,\n");
+    // Invalid data type
+    csv.append("invalid_column,,,,INVALID_TYPE,,,,,\n");
+    return csv.toString();
+  }
+
+  protected List<String> getRequiredCsvHeaders() {
+    return List.of(
+        "column.name*",
+        "column.displayName",
+        "column.description",
+        "column.dataTypeDisplay",
+        "column.dataType*",
+        "column.arrayDataType",
+        "column.dataLength",
+        "column.tags",
+        "column.glossaryTerms");
+  }
+
+  protected List<String> getAllCsvHeaders() {
+    return List.of(
+        "column.name",
+        "column.displayName",
+        "column.description",
+        "column.dataTypeDisplay",
+        "column.dataType",
+        "column.arrayDataType",
+        "column.dataLength",
+        "column.tags",
+        "column.glossaryTerms");
+  }
+
+  protected boolean validateCsvRow(String[] row, List<String> headers) {
+    if (row.length != headers.size()) {
+      return false;
+    }
+
+    int nameIndex = headers.indexOf("column.name");
+    int dataTypeIndex = headers.indexOf("column.dataType");
+
+    if (nameIndex >= 0 && (row[nameIndex] == null || row[nameIndex].trim().isEmpty())) {
+      return false;
+    }
+
+    if (dataTypeIndex >= 0 && (row[dataTypeIndex] == null || row[dataTypeIndex].trim().isEmpty())) {
+      return false;
+    }
+
+    // Validate data type if present
+    if (dataTypeIndex >= 0 && !row[dataTypeIndex].trim().isEmpty()) {
+      try {
+        ColumnDataType.fromValue(row[dataTypeIndex].trim());
+      } catch (IllegalArgumentException e) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private String formatTagsForCsv(List<TagLabel> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return "";
+    }
+    return tags.stream().map(TagLabel::getTagFQN).reduce((a, b) -> a + ";" + b).orElse("");
+  }
+
+  private String formatGlossaryTermsForCsv(List<EntityReference> glossaryTerms) {
+    if (glossaryTerms == null || glossaryTerms.isEmpty()) {
+      return "";
+    }
+    return glossaryTerms.stream()
+        .map(EntityReference::getFullyQualifiedName)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String escapeCSVValue(String value) {
+    if (value == null) {
+      return "";
+    }
+    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+      return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+    return value;
+  }
+
+  // ===================================================================
+  // DATA PERSISTENCE VALIDATION - Critical for CSV import testing
+  // ===================================================================
+
+  @Override
+  protected void validateCsvDataPersistence(
+      List<Table> originalEntities, String csvData, CsvImportResult result) {
+    super.validateCsvDataPersistence(originalEntities, csvData, result);
+
+    if (result.getStatus() != ApiStatus.SUCCESS) {
+      return;
+    }
+
+    if (lastCreatedTable != null) {
+      Table originalTable = lastCreatedTable;
+      Table updatedTable =
+          SdkClients.adminClient()
+              .tables()
+              .get(originalTable.getId().toString(), "columns,tags,owners");
+      assertNotNull(updatedTable, "Table should exist after CSV import");
+
+      validateTableFieldsAfterImport(originalTable, updatedTable);
+
+      if (originalTable.getColumns() != null && updatedTable.getColumns() != null) {
+        validateColumnsAfterImport(originalTable.getColumns(), updatedTable.getColumns());
+      }
+    }
+  }
+
+  private void validateTableFieldsAfterImport(Table original, Table imported) {
+    if (original.getDescription() != null) {
+      assertEquals(
+          original.getDescription(),
+          imported.getDescription(),
+          "Table description should be preserved");
+    }
+
+    if (original.getDisplayName() != null) {
+      assertEquals(
+          original.getDisplayName(),
+          imported.getDisplayName(),
+          "Table displayName should be preserved");
+    }
+
+    if (original.getOwners() != null && !original.getOwners().isEmpty()) {
+      assertNotNull(imported.getOwners(), "Table owners should be preserved");
+      assertEquals(
+          original.getOwners().size(),
+          imported.getOwners().size(),
+          "Table owner count should match");
+    }
+  }
+
+  private void validateColumnsAfterImport(
+      List<Column> originalColumns, List<Column> importedColumns) {
+    assertEquals(
+        originalColumns.size(), importedColumns.size(), "Column count should be preserved");
+
+    for (Column originalColumn : originalColumns) {
+      Column importedColumn = findColumnByName(importedColumns, originalColumn.getName());
+      assertNotNull(
+          importedColumn, "Column " + originalColumn.getName() + " should exist after import");
+
+      assertEquals(originalColumn.getName(), importedColumn.getName(), "Column name should match");
+      assertEquals(
+          originalColumn.getDataType(),
+          importedColumn.getDataType(),
+          "Column data type should match");
+
+      if (originalColumn.getDescription() != null) {
+        assertEquals(
+            originalColumn.getDescription(),
+            importedColumn.getDescription(),
+            "Column description should be preserved");
+      }
+
+      if (originalColumn.getDisplayName() != null) {
+        assertEquals(
+            originalColumn.getDisplayName(),
+            importedColumn.getDisplayName(),
+            "Column displayName should be preserved");
+      }
+
+      if (originalColumn.getDataLength() != null) {
+        assertEquals(
+            originalColumn.getDataLength(),
+            importedColumn.getDataLength(),
+            "Column data length should be preserved");
+      }
+
+      if (originalColumn.getTags() != null && !originalColumn.getTags().isEmpty()) {
+        assertNotNull(importedColumn.getTags(), "Column tags should be preserved");
+        assertEquals(
+            originalColumn.getTags().size(),
+            importedColumn.getTags().size(),
+            "Column tag count should match");
+      }
+    }
+  }
+
+  private Column findColumnByName(List<Column> columns, String columnName) {
+    return columns.stream()
+        .filter(col -> col.getName().equals(columnName))
+        .findFirst()
+        .orElse(null);
   }
 
   // ===================================================================

@@ -21,7 +21,9 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -40,6 +42,8 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
 
   {
     supportsImportExport = true;
+    supportsBatchImport = true;
+    supportsRecursiveImport = true; // DatabaseSchema supports recursive import with nested entities
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
   }
@@ -1599,5 +1603,236 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
                             == org.openmetadata.schema.type.TagLabel.TagSource.GLOSSARY),
         "Table should have the approved glossary term as a tag. Found tags: "
             + updatedTable.getTags());
+  }
+
+  // ===================================================================
+  // CSV IMPORT/EXPORT SUPPORT
+  // ===================================================================
+
+  protected String generateValidCsvData(TestNamespace ns, List<DatabaseSchema> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return null;
+    }
+
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension\n");
+
+    for (DatabaseSchema schema : entities) {
+      csv.append(escapeCSVValue(schema.getName())).append(",");
+      csv.append(escapeCSVValue(schema.getDisplayName())).append(",");
+      csv.append(escapeCSVValue(schema.getDescription())).append(",");
+      csv.append(escapeCSVValue(formatOwnersForCsv(schema.getOwners()))).append(",");
+      csv.append(escapeCSVValue(formatTagsForCsv(schema.getTags()))).append(",");
+      csv.append(escapeCSVValue("")).append(","); // glossaryTerms - not available on DatabaseSchema
+      csv.append(escapeCSVValue(formatTiersForCsv(schema.getTags()))).append(",");
+      csv.append(escapeCSVValue(formatCertificationForCsv(schema.getCertification()))).append(",");
+      csv.append(escapeCSVValue(schema.getRetentionPeriod())).append(",");
+      csv.append(escapeCSVValue(schema.getSourceUrl() != null ? schema.getSourceUrl() : ""))
+          .append(",");
+      csv.append(escapeCSVValue(formatDomainsForCsv(schema.getDomains()))).append(",");
+      csv.append(escapeCSVValue(formatExtensionForCsv(schema.getExtension())));
+      csv.append("\n");
+    }
+
+    return csv.toString();
+  }
+
+  protected String generateInvalidCsvData(TestNamespace ns) {
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension\n");
+    // Missing required name field
+    csv.append(",Test Schema,Description,,,,,,,,,\n");
+    // Invalid owner format
+    csv.append("invalid_schema,,,,invalid_owner_format,,,,,,,\n");
+    return csv.toString();
+  }
+
+  protected List<String> getRequiredCsvHeaders() {
+    return List.of("name*");
+  }
+
+  protected List<String> getAllCsvHeaders() {
+    return List.of(
+        "name*",
+        "displayName",
+        "description",
+        "owner",
+        "tags",
+        "glossaryTerms",
+        "tiers",
+        "certification",
+        "retentionPeriod",
+        "sourceUrl",
+        "domains",
+        "extension");
+  }
+
+  private String formatOwnersForCsv(List<org.openmetadata.schema.type.EntityReference> owners) {
+    if (owners == null || owners.isEmpty()) {
+      return "";
+    }
+    return owners.stream()
+        .map(
+            owner -> {
+              String prefix = "user";
+              if ("team".equals(owner.getType())) {
+                prefix = "team";
+              }
+              return prefix + ";" + owner.getName();
+            })
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatTagsForCsv(List<org.openmetadata.schema.type.TagLabel> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return "";
+    }
+    return tags.stream()
+        .filter(
+            tag ->
+                !tag.getTagFQN().startsWith("Tier.")
+                    && !tag.getTagFQN().startsWith("Certification."))
+        .map(org.openmetadata.schema.type.TagLabel::getTagFQN)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatTiersForCsv(List<org.openmetadata.schema.type.TagLabel> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return "";
+    }
+    return tags.stream()
+        .map(org.openmetadata.schema.type.TagLabel::getTagFQN)
+        .filter(tagFQN -> tagFQN.startsWith("Tier."))
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatCertificationForCsv(
+      org.openmetadata.schema.type.AssetCertification certification) {
+    if (certification == null || certification.getTagLabel() == null) {
+      return "";
+    }
+    return certification.getTagLabel().getTagFQN();
+  }
+
+  private String formatGlossaryTermsForCsv(
+      List<org.openmetadata.schema.type.EntityReference> glossaryTerms) {
+    if (glossaryTerms == null || glossaryTerms.isEmpty()) {
+      return "";
+    }
+    return glossaryTerms.stream()
+        .map(org.openmetadata.schema.type.EntityReference::getFullyQualifiedName)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatDomainsForCsv(List<org.openmetadata.schema.type.EntityReference> domains) {
+    if (domains == null || domains.isEmpty()) {
+      return "";
+    }
+    return domains.stream()
+        .map(org.openmetadata.schema.type.EntityReference::getName)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatExtensionForCsv(Object extension) {
+    if (extension == null) {
+      return "";
+    }
+    return extension.toString();
+  }
+
+  private String escapeCSVValue(String value) {
+    if (value == null) {
+      return "";
+    }
+    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+      return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+    return value;
+  }
+
+  // ===================================================================
+  // DATA PERSISTENCE VALIDATION - Critical for CSV import testing
+  // ===================================================================
+
+  @Override
+  protected void validateCsvDataPersistence(
+      List<DatabaseSchema> originalEntities, String csvData, CsvImportResult result) {
+    super.validateCsvDataPersistence(originalEntities, csvData, result);
+
+    if (result.getStatus() != ApiStatus.SUCCESS) {
+      return;
+    }
+
+    if (originalEntities != null) {
+      for (DatabaseSchema originalEntity : originalEntities) {
+        DatabaseSchema updatedEntity =
+            getEntityByNameWithFields(originalEntity.getName(), "owners,tags,domains");
+        assertNotNull(
+            updatedEntity, "Schema " + originalEntity.getName() + " should exist after CSV import");
+
+        validateSchemaFieldsAfterImport(originalEntity, updatedEntity);
+      }
+    }
+  }
+
+  private void validateSchemaFieldsAfterImport(DatabaseSchema original, DatabaseSchema imported) {
+    assertEquals(original.getName(), imported.getName(), "Schema name should match");
+
+    if (original.getDisplayName() != null) {
+      assertEquals(
+          original.getDisplayName(),
+          imported.getDisplayName(),
+          "Schema displayName should be preserved");
+    }
+
+    if (original.getDescription() != null) {
+      assertEquals(
+          original.getDescription(),
+          imported.getDescription(),
+          "Schema description should be preserved");
+    }
+
+    if (original.getRetentionPeriod() != null) {
+      assertEquals(
+          original.getRetentionPeriod(),
+          imported.getRetentionPeriod(),
+          "Schema retention period should be preserved");
+    }
+
+    if (original.getSourceUrl() != null) {
+      assertEquals(
+          original.getSourceUrl(),
+          imported.getSourceUrl(),
+          "Schema source URL should be preserved");
+    }
+
+    if (original.getOwners() != null && !original.getOwners().isEmpty()) {
+      assertNotNull(imported.getOwners(), "Schema owners should be preserved");
+      assertEquals(
+          original.getOwners().size(),
+          imported.getOwners().size(),
+          "Schema owner count should match");
+    }
+
+    if (original.getTags() != null && !original.getTags().isEmpty()) {
+      assertNotNull(imported.getTags(), "Schema tags should be preserved");
+      assertEquals(
+          original.getTags().size(), imported.getTags().size(), "Schema tag count should match");
+    }
+
+    if (original.getDomains() != null && !original.getDomains().isEmpty()) {
+      assertNotNull(imported.getDomains(), "Schema domains should be preserved");
+      assertEquals(
+          original.getDomains().size(),
+          imported.getDomains().size(),
+          "Schema domain count should match");
+    }
   }
 }
