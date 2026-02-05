@@ -164,14 +164,11 @@ test.describe('Glossary Bulk Import Export', () => {
         );
 
         await page.waitForSelector('[data-testid="upload-file-widget"]', {
-          state: 'hidden',
-          timeout: 10000,
+          state: 'hidden'
         });
 
         // Adding some assertion to make sure that CSV loaded correctly
-        await expect(page.locator('.rdg-header-row')).toBeVisible({
-          timeout: 10000,
-        });
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
         await expect(
@@ -356,13 +353,10 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
         });
 
         await page.waitForSelector('[data-testid="upload-file-widget"]', {
-          state: 'hidden',
-          timeout: 10000,
+          state: 'hidden'
         });
 
-        await expect(page.locator('.rdg-header-row')).toBeVisible({
-          timeout: 10000,
-        });
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -426,13 +420,10 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           });
 
           await page.waitForSelector('[data-testid="upload-file-widget"]', {
-            state: 'hidden',
-            timeout: 10000,
+            state: 'hidden'
           });
 
-          await expect(page.locator('.rdg-header-row')).toBeVisible({
-            timeout: 10000,
-          });
+          await expect(page.locator('.rdg-header-row')).toBeVisible();
 
           await page.getByRole('button', { name: 'Next' }).click();
 
@@ -501,13 +492,10 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           });
 
           await page.waitForSelector('[data-testid="upload-file-widget"]', {
-            state: 'hidden',
-            timeout: 10000,
+            state: 'hidden'
           });
 
-          await expect(page.locator('.rdg-header-row')).toBeVisible({
-            timeout: 10000,
-          });
+          await expect(page.locator('.rdg-header-row')).toBeVisible();
 
           await page.getByRole('button', { name: 'Next' }).click();
 
@@ -565,13 +553,10 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
         });
 
         await page.waitForSelector('[data-testid="upload-file-widget"]', {
-          state: 'hidden',
-          timeout: 10000,
+          state: 'hidden'
         });
 
-        await expect(page.locator('.rdg-header-row')).toBeVisible({
-          timeout: 10000,
-        });
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -635,13 +620,10 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
           });
 
           await page.waitForSelector('[data-testid="upload-file-widget"]', {
-            state: 'hidden',
-            timeout: 10000,
+            state: 'hidden'
           });
 
-          await expect(page.locator('.rdg-header-row')).toBeVisible({
-            timeout: 10000,
-          });
+          await expect(page.locator('.rdg-header-row')).toBeVisible();
 
           await page.getByRole('button', { name: 'Next' }).click();
 
