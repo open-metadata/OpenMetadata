@@ -36,6 +36,18 @@ import {
 } from './customProperty';
 import { settingClick, SettingOptionsType } from './sidebar';
 
+const IMPORT_GRID_LOAD_MASK_SELECTOR =
+  '.om-rdg .inovua-react-toolkit-load-mask__background-layer';
+
+export const waitForImportGridLoadMaskToDisappear = async (
+  page: Page,
+  timeout = 30000
+) => {
+  await expect(page.locator(IMPORT_GRID_LOAD_MASK_SELECTOR)).toHaveCount(0, {
+    timeout,
+  });
+};
+
 export const createGlossaryTermRowDetails = () => {
   return {
     name: `playwright,glossaryTerm ${uuid()}`,
@@ -64,6 +76,8 @@ export const fillTextInputDetails = async (page: Page, text: string) => {
   const textboxLocator = page
     .locator('.ant-layout-content')
     .getByRole('textbox');
+
+  await expect(textboxLocator).toBeVisible();
 
   await textboxLocator.fill(text);
   await textboxLocator.press('Enter', { delay: 100 });

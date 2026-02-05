@@ -11,6 +11,7 @@
   <packaging>jar</packaging>
   <properties>
     <maven.surefire.version>3.1.2</maven.surefire.version>
+    <maven.failsafe.version>3.1.2</maven.failsafe.version>
     <junit.jupiter.version>5.10.2</junit.jupiter.version>
     <junit.platform.version>1.10.2</junit.platform.version>
   </properties>
@@ -147,67 +148,6 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>${maven.surefire.version}</version>
-        <executions>
-          <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially, alone -->
-          <execution>
-            <id>sequential-test</id>
-            <phase>test</phase>
-            <goals>
-              <goal>test</goal>
-            </goals>
-            <configuration>
-              <forkCount>1</forkCount>
-              <reuseForks>true</reuseForks>
-              <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
-              <includes>
-                <include>**/TagRecognizerFeedbackIT.java</include>
-              </includes>
-              <systemPropertyVariables>
-                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
-                <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
-              </systemPropertyVariables>
-              <trimStackTrace>false</trimStackTrace>
-              <reportFormat>plain</reportFormat>
-              <useFile>true</useFile>
-            </configuration>
-          </execution>
-          <!-- Phase 2: Run all other tests in parallel -->
-          <execution>
-            <id>parallel-tests</id>
-            <phase>test</phase>
-            <goals>
-              <goal>test</goal>
-            </goals>
-            <configuration>
-              <forkCount>1</forkCount>
-              <reuseForks>true</reuseForks>
-              <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
-              <includes>
-                <include>**/*IT.java</include>
-                <include>**/*Test.java</include>
-              </includes>
-              <excludes>
-                <exclude>**/TagRecognizerFeedbackIT.java</exclude>
-              </excludes>
-              <systemPropertyVariables>
-                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
-                <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
-              </systemPropertyVariables>
-              <trimStackTrace>false</trimStackTrace>
-              <reportFormat>plain</reportFormat>
-              <useFile>true</useFile>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
   <profiles>
     <!-- MySQL + Elasticsearch (default) -->
     <profile>
@@ -219,15 +159,14 @@
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-surefire-plugin</artifactId>
-            <version>${maven.surefire.version}</version>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially, alone -->
+              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially in integration-test phase -->
               <execution>
                 <id>sequential-test</id>
-                <phase>test</phase>
                 <goals>
-                  <goal>test</goal>
+                  <goal>integration-test</goal>
                 </goals>
                 <configuration>
                   <forkCount>1</forkCount>
@@ -245,12 +184,11 @@
                   <useFile>true</useFile>
                 </configuration>
               </execution>
-              <!-- Phase 2: Run all other tests in parallel -->
+              <!-- Phase 2: Run all other tests in parallel in integration-test phase -->
               <execution>
                 <id>parallel-tests</id>
-                <phase>test</phase>
                 <goals>
-                  <goal>test</goal>
+                  <goal>integration-test</goal>
                 </goals>
                 <configuration>
                   <forkCount>1</forkCount>
@@ -271,6 +209,13 @@
                   <reportFormat>plain</reportFormat>
                   <useFile>true</useFile>
                 </configuration>
+              </execution>
+              <!-- Verify phase: Fails the build if any tests failed -->
+              <execution>
+                <id>verify</id>
+                <goals>
+                  <goal>verify</goal>
+                </goals>
               </execution>
             </executions>
           </plugin>
@@ -284,15 +229,14 @@
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-surefire-plugin</artifactId>
-            <version>${maven.surefire.version}</version>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially, alone -->
+              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially in integration-test phase -->
               <execution>
                 <id>sequential-test</id>
-                <phase>test</phase>
                 <goals>
-                  <goal>test</goal>
+                  <goal>integration-test</goal>
                 </goals>
                 <configuration>
                   <forkCount>1</forkCount>
@@ -310,12 +254,11 @@
                   <useFile>true</useFile>
                 </configuration>
               </execution>
-              <!-- Phase 2: Run all other tests in parallel -->
+              <!-- Phase 2: Run all other tests in parallel in integration-test phase -->
               <execution>
                 <id>parallel-tests</id>
-                <phase>test</phase>
                 <goals>
-                  <goal>test</goal>
+                  <goal>integration-test</goal>
                 </goals>
                 <configuration>
                   <forkCount>1</forkCount>
@@ -336,6 +279,13 @@
                   <reportFormat>plain</reportFormat>
                   <useFile>true</useFile>
                 </configuration>
+              </execution>
+              <!-- Verify phase: Fails the build if any tests failed -->
+              <execution>
+                <id>verify</id>
+                <goals>
+                  <goal>verify</goal>
+                </goals>
               </execution>
             </executions>
           </plugin>
@@ -349,15 +299,14 @@
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-surefire-plugin</artifactId>
-            <version>${maven.surefire.version}</version>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially, alone -->
+              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially in integration-test phase -->
               <execution>
                 <id>sequential-test</id>
-                <phase>test</phase>
                 <goals>
-                  <goal>test</goal>
+                  <goal>integration-test</goal>
                 </goals>
                 <configuration>
                   <forkCount>1</forkCount>
@@ -375,12 +324,11 @@
                   <useFile>true</useFile>
                 </configuration>
               </execution>
-              <!-- Phase 2: Run all other tests in parallel -->
+              <!-- Phase 2: Run all other tests in parallel in integration-test phase -->
               <execution>
                 <id>parallel-tests</id>
-                <phase>test</phase>
                 <goals>
-                  <goal>test</goal>
+                  <goal>integration-test</goal>
                 </goals>
                 <configuration>
                   <forkCount>1</forkCount>
@@ -401,6 +349,13 @@
                   <reportFormat>plain</reportFormat>
                   <useFile>true</useFile>
                 </configuration>
+              </execution>
+              <!-- Verify phase: Fails the build if any tests failed -->
+              <execution>
+                <id>verify</id>
+                <goals>
+                  <goal>verify</goal>
+                </goals>
               </execution>
             </executions>
           </plugin>
@@ -414,15 +369,14 @@
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-surefire-plugin</artifactId>
-            <version>${maven.surefire.version}</version>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially, alone -->
+              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially in integration-test phase -->
               <execution>
                 <id>sequential-test</id>
-                <phase>test</phase>
                 <goals>
-                  <goal>test</goal>
+                  <goal>integration-test</goal>
                 </goals>
                 <configuration>
                   <forkCount>1</forkCount>
@@ -440,12 +394,11 @@
                   <useFile>true</useFile>
                 </configuration>
               </execution>
-              <!-- Phase 2: Run all other tests in parallel -->
+              <!-- Phase 2: Run all other tests in parallel in integration-test phase -->
               <execution>
                 <id>parallel-tests</id>
-                <phase>test</phase>
                 <goals>
-                  <goal>test</goal>
+                  <goal>integration-test</goal>
                 </goals>
                 <configuration>
                   <forkCount>1</forkCount>
@@ -466,6 +419,13 @@
                   <reportFormat>plain</reportFormat>
                   <useFile>true</useFile>
                 </configuration>
+              </execution>
+              <!-- Verify phase: Fails the build if any tests failed -->
+              <execution>
+                <id>verify</id>
+                <goals>
+                  <goal>verify</goal>
+                </goals>
               </execution>
             </executions>
           </plugin>
@@ -479,15 +439,14 @@
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-surefire-plugin</artifactId>
-            <version>${maven.surefire.version}</version>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially, alone -->
+              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially in integration-test phase -->
               <execution>
                 <id>sequential-test</id>
-                <phase>test</phase>
                 <goals>
-                  <goal>test</goal>
+                  <goal>integration-test</goal>
                 </goals>
                 <configuration>
                   <forkCount>1</forkCount>
@@ -505,12 +464,11 @@
                   <useFile>true</useFile>
                 </configuration>
               </execution>
-              <!-- Phase 2: Run all other tests in parallel -->
+              <!-- Phase 2: Run all other tests in parallel in integration-test phase -->
               <execution>
                 <id>parallel-tests</id>
-                <phase>test</phase>
                 <goals>
-                  <goal>test</goal>
+                  <goal>integration-test</goal>
                 </goals>
                 <configuration>
                   <forkCount>1</forkCount>
@@ -531,6 +489,13 @@
                   <reportFormat>plain</reportFormat>
                   <useFile>true</useFile>
                 </configuration>
+              </execution>
+              <!-- Verify phase: Fails the build if any tests failed -->
+              <execution>
+                <id>verify</id>
+                <goals>
+                  <goal>verify</goal>
+                </goals>
               </execution>
             </executions>
           </plugin>

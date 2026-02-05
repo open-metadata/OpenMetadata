@@ -277,7 +277,13 @@ export class EntityClass {
       // eslint-disable-next-line max-len
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis. Duis a tellus aliquet nunc commodo bibendum. Donec euismod maximus porttitor. Aenean quis lacus ultrices, tincidunt erat ac, dapibus felis.';
 
-    await updateDescription(page, description);
+    await updateDescription(
+      page,
+      description,
+      false,
+      'asset-description-container',
+      this.endpoint
+    );
   }
 
   async descriptionUpdateChildren(
@@ -416,7 +422,7 @@ export class EntityClass {
     glossaryTerm2: GlossaryTerm['responseData'],
     entity?: EntityClass
   ) {
-    await assignGlossaryTerm(page, glossaryTerm1);
+    await assignGlossaryTerm(page, glossaryTerm1, 'Add', this.endpoint);
     if (entity) {
       await checkExploreSearchFilter(
         page,
@@ -426,7 +432,7 @@ export class EntityClass {
         entity
       );
     }
-    await assignGlossaryTerm(page, glossaryTerm2, 'Edit');
+    await assignGlossaryTerm(page, glossaryTerm2, 'Edit', this.endpoint);
     await removeGlossaryTerm(page, [glossaryTerm1, glossaryTerm2]);
 
     await page

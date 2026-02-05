@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -1425,6 +1426,19 @@ public class SearchRepository {
         fieldAddParams.put(fieldChange.getName(), newFollowers);
         scriptTxt.append("ctx._source.followers.addAll(params.followers);");
       }
+      if (fieldChange.getName().equalsIgnoreCase("extension")) {
+        String entityType = entity.getEntityReference().getType();
+        List<Map<String, Object>> customPropertiesTyped =
+            SearchIndexUtils.buildTypedCustomProperties(entity.getExtension(), entityType);
+        fieldAddParams.put("customPropertiesTyped", customPropertiesTyped);
+        fieldAddParams.put("extension", entity.getExtension());
+        scriptTxt.append("ctx._source.customPropertiesTyped = params.customPropertiesTyped;");
+        scriptTxt.append("ctx._source.extension = params.extension;");
+      }
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
+        fieldAddParams.put(FIELD_DESCRIPTION, entity.getDescription());
+        scriptTxt.append("ctx._source.description = params.description;");
+      }
     }
 
     for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
@@ -1437,9 +1451,16 @@ public class SearchRepository {
         scriptTxt.append(
             "ctx._source.followers.removeAll(Collections.singleton(params.followers));");
       }
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
+        scriptTxt.append("ctx._source.description = null;");
+      }
     }
 
     for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
+        fieldAddParams.put(FIELD_DESCRIPTION, entity.getDescription());
+        scriptTxt.append("ctx._source.description = params.description;");
+      }
       if (fieldChange.getName().equalsIgnoreCase(FIELD_USAGE_SUMMARY)) {
         UsageDetails usageSummary = (UsageDetails) fieldChange.getNewValue();
         fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
@@ -1469,6 +1490,15 @@ public class SearchRepository {
         scriptTxt.append("ctx._source.testSuites = params.testSuites;");
         Map<String, Object> doc = JsonUtils.getMap(entity);
         fieldAddParams.put(TEST_SUITES, doc.get(TEST_SUITES));
+      }
+      if (fieldChange.getName().equalsIgnoreCase("extension")) {
+        String entityType = entity.getEntityReference().getType();
+        List<Map<String, Object>> customPropertiesTyped =
+            SearchIndexUtils.buildTypedCustomProperties(entity.getExtension(), entityType);
+        fieldAddParams.put("customPropertiesTyped", customPropertiesTyped);
+        fieldAddParams.put("extension", entity.getExtension());
+        scriptTxt.append("ctx._source.customPropertiesTyped = params.customPropertiesTyped;");
+        scriptTxt.append("ctx._source.extension = params.extension;");
       }
     }
     return scriptTxt.toString();
@@ -1844,5 +1874,27 @@ public class SearchRepository {
         JsonUtils.deepCopyList(references, EntityReference.class);
     inheritedReferences.forEach(ref -> ref.setInherited(true));
     return inheritedReferences;
+  }
+
+  /**
+   * Initialize advanced search features that depend on application settings.
+   * This method is called during Phase 2 of application startup after
+   * settings cache has been initialized and database settings are available.
+   *
+   * Currently initializes lineage builders that require LINEAGE_SETTINGS.
+   */
+  public void initializeLineageComponents() {
+    LOG.info("Initializing lineage components for SearchRepository");
+
+    if (searchClient != null) {
+      try {
+        searchClient.initializeLineageBuilders();
+        LOG.info("Lineage components initialized successfully");
+      } catch (Exception e) {
+        LOG.error("Failed to initialize lineage components", e);
+      }
+    } else {
+      LOG.warn("Cannot initialize lineage components - SearchClient is null");
+    }
   }
 }

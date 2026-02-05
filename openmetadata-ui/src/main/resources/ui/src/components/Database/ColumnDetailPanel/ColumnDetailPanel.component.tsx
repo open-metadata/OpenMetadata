@@ -17,13 +17,20 @@ import {
   ChevronUp,
   XClose,
 } from '@untitledui/icons';
-import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
+import { Button, Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
-import { ENTITY_PATH, PAGE_SIZE_LARGE } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  ENTITY_PATH,
+  ICON_DIMENSION,
+  PAGE_SIZE_LARGE,
+} from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
@@ -60,6 +67,8 @@ import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomProp
 import DataQualityTab from '../../Explore/EntitySummaryPanel/DataQualityTab/DataQualityTab';
 import { LineageTabContent } from '../../Explore/EntitySummaryPanel/LineageTab';
 import { LineageData } from '../../Lineage/Lineage.interface';
+import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
+import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import {
   ColumnDetailPanelProps,
   ColumnFieldUpdate,
@@ -92,6 +101,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const { permissions } = useGenericContext();
   const [isDescriptionLoading, setIsDescriptionLoading] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
+  const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
 
   const hasEditPermission = useMemo(
     () => ({
@@ -103,6 +113,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       viewAllPermission: permissions.ViewAll,
       customProperties:
         (permissions.EditCustomFields || permissions.EditAll) && !deleted,
+      displayName:
+        (permissions.EditDisplayName || permissions.EditAll) && !deleted,
     }),
     [permissions, deleted]
   );
@@ -433,6 +445,36 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     [performColumnFieldUpdate, t]
   );
 
+  const handleDisplayNameUpdate = useCallback(
+    async (data: EntityName) => {
+      try {
+        const response = await performColumnFieldUpdate(
+          { displayName: data.displayName },
+          'label.display-name'
+        );
+        if (response) {
+          setActiveColumn(
+            (prev) =>
+              ({
+                ...prev,
+                displayName: response.displayName,
+              } as T)
+          );
+        }
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.display-name'),
+          })
+        );
+      } finally {
+        setIsDisplayNameEditing(false);
+      }
+    },
+    [performColumnFieldUpdate, t]
+  );
+
   const previousFqnRef = useRef<string | undefined>();
 
   useEffect(() => {
@@ -675,16 +717,56 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           title={getEntityName(activeColumn)}
           trigger="hover">
           <div className="d-flex items-center justify-between w-full">
-            <div className="d-flex items-center">
-              <span className="entity-icon">
+            <div className="d-flex items-center w-full">
+              <span className="entity-icon margin-right-xs">
                 <ColumnIcon />
               </span>
-              <Typography.Text
-                className="entity-title-link"
-                data-testid="entity-link"
-                ellipsis={{ tooltip: true }}>
-                {stringToHTML(getEntityName(activeColumn))}
-              </Typography.Text>
+              <div className="d-flex flex-column w-full overflow-hidden">
+                <div className="d-flex items-center gap-2 w-full">
+                  <Typography.Text
+                    className="entity-title-link"
+                    data-testid="entity-link"
+                    ellipsis={{ tooltip: true }}>
+                    {stringToHTML(
+                      (activeColumn as any).displayName || activeColumn.name
+                    )}
+                  </Typography.Text>
+                  {hasEditPermission.displayName &&
+                    (entityType === EntityType.TABLE ||
+                      entityType === EntityType.DASHBOARD_DATA_MODEL) && (
+                      <Tooltip placement="top" title={t('label.edit')}>
+                        <Button
+                          ghost
+                          className="hover-cell-icon flex-center"
+                          data-testid="edit-displayName-button"
+                          icon={
+                            <IconEdit
+                              color={DE_ACTIVE_COLOR}
+                              {...ICON_DIMENSION}
+                            />
+                          }
+                          style={{
+                            width: '24px',
+                            height: '24px',
+                          }}
+                          type="text"
+                          onClick={() => setIsDisplayNameEditing(true)}
+                        />
+                      </Tooltip>
+                    )}
+                </div>
+                {(activeColumn as any).displayName &&
+                  (activeColumn as any).displayName !== activeColumn.name &&
+                  (entityType === EntityType.TABLE ||
+                    entityType === EntityType.DASHBOARD_DATA_MODEL) && (
+                    <Typography.Text
+                      className="text-grey-muted text-xs"
+                      data-testid="entity-name"
+                      ellipsis={{ tooltip: true }}>
+                      {stringToHTML(activeColumn.name || '')}
+                    </Typography.Text>
+                  )}
+              </div>
             </div>
             <div>
               <IconButton data-testid="close-button" onClick={onClose}>
@@ -835,6 +917,22 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           </div>
         </div>
       </div>
+      {isDisplayNameEditing && activeColumn && (
+        <EntityNameModal
+          entity={{
+            name: isString(activeColumn.name) ? activeColumn.name : '',
+            displayName: isString((activeColumn as any).displayName)
+              ? (activeColumn as any).displayName
+              : undefined,
+          }}
+          title={t('label.edit-entity', {
+            entity: t('label.display-name'),
+          })}
+          visible={isDisplayNameEditing}
+          onCancel={() => setIsDisplayNameEditing(false)}
+          onSave={handleDisplayNameUpdate}
+        />
+      )}
     </Drawer>
   );
 };
