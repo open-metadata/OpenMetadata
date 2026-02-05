@@ -100,7 +100,7 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
     String mappingContent =
         readResource(
             String.format(entityIndexMapping.getIndexMappingFile(), language.toLowerCase()));
-    String transformedContent = OsUtils.enrichIndexMappingWithStemmer(mappingContent);
+    String transformedContent = OsUtils.enrichIndexMappingForOpenSearch(mappingContent);
     EntityIndexMap entityIndexMap =
         JsonUtils.readOrConvertValue(transformedContent, EntityIndexMap.class);
 
