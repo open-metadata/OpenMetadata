@@ -455,13 +455,11 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
             .allMatch(
                 ts -> ts.getFullyQualifiedName().equals(logicalTestSuite.getFullyQualifiedName())));
 
-    // 6. List test suites with a nested sort
+    // 6. List test suites sorted by lastResultTimestamp
     queryParams.clear();
     queryParams.put("fields", "tests");
-    queryParams.put("sortField", "testCaseResultSummary.timestamp");
+    queryParams.put("sortField", "lastResultTimestamp");
     queryParams.put("sortOrder", "asc");
-    queryParams.put("sortNestedPath", "testCaseResultSummary");
-    queryParams.put("sortNestedMode", "max");
     ResultList<TestSuite> sortedTestSuites =
         listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
     assertNotNull(sortedTestSuites.getData());
@@ -1091,7 +1089,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // 4. Fetch the test suite linked to the table using the search endpoint (before reindex)
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("fullyQualifiedName", testSuite.getFullyQualifiedName());
-    queryParams.put("fields", "tests,testCaseResultSummary");
+    queryParams.put("fields", "tests,summary");
     ResultList<TestSuite> testSuitesBeforeReindex =
         listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
     assertNotNull(testSuitesBeforeReindex);

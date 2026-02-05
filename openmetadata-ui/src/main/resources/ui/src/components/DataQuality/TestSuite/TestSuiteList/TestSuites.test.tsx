@@ -190,9 +190,7 @@ describe('TestSuites component', () => {
       offset: 0,
       owner: undefined,
       q: undefined,
-      sortField: 'testCaseResultSummary.timestamp',
-      sortNestedMode: ['max'],
-      sortNestedPath: 'testCaseResultSummary',
+      sortField: 'lastResultTimestamp',
       sortType: 'desc',
       testSuiteType: 'basic',
     });
@@ -212,9 +210,7 @@ describe('TestSuites component', () => {
       offset: 0,
       owner: 'admin',
       q: '*sales*',
-      sortField: 'testCaseResultSummary.timestamp',
-      sortNestedMode: ['max'],
-      sortNestedPath: 'testCaseResultSummary',
+      sortField: 'lastResultTimestamp',
       sortType: 'desc',
       testSuiteType: 'basic',
     });
@@ -260,9 +256,7 @@ describe('TestSuites component', () => {
       offset: 0,
       owner: undefined,
       q: undefined,
-      sortField: 'testCaseResultSummary.timestamp',
-      sortNestedMode: ['max'],
-      sortNestedPath: 'testCaseResultSummary',
+      sortField: 'lastResultTimestamp',
       sortType: 'desc',
       testSuiteType: 'basic',
     });
