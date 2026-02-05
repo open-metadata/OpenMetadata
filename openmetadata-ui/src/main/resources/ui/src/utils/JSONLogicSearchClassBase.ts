@@ -443,7 +443,7 @@ class JSONLogicSearchClassBase {
         type: 'multiselect',
         defaultOperator: 'like',
         mainWidgetProps: this.mainWidgetProps,
-        operators: TEXT_FIELD_DESCRIPTION_OPERATORS,
+        operators: this.defaultSelectOperators,
       },
       [EntityReferenceFields.RELATED_TERMS]: {
         label: t('label.related-term-plural'),
