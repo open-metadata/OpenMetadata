@@ -4733,16 +4733,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     try {
       CsvImportResult result = performImportCsv(ns, invalidCsv, true);
 
-      // Log import result for debugging
-      log.info("=== INVALID CSV IMPORT RESULT ===");
-      log.info("CSV Data: " + invalidCsv);
-      log.info("Status: " + result.getStatus());
-      log.info("Rows Processed: " + result.getNumberOfRowsProcessed());
-      log.info("Rows Failed: " + result.getNumberOfRowsFailed());
-      log.info("Import Result Summary: " + result.getImportResultsCsv());
-      log.info("Failure Details: " + result.getAbortReason());
-      log.info("=====================================");
-
       // Should have validation failures
       assertTrue(
           result.getStatus() == ApiStatus.PARTIAL_SUCCESS
@@ -4873,16 +4863,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
     try {
       CsvImportResult result = performImportCsv(ns, emptyCsv, true);
-
-      // Log import result for debugging
-      log.info("=== EMPTY CSV IMPORT RESULT ===");
-      log.info("CSV Data: " + emptyCsv);
-      log.info("Status: " + result.getStatus());
-      log.info("Rows Processed: " + result.getNumberOfRowsProcessed());
-      log.info("Rows Failed: " + result.getNumberOfRowsFailed());
-      log.info("Import Result Summary: " + result.getImportResultsCsv());
-      log.info("Failure Details: " + result.getAbortReason());
-      log.info("=====================================");
 
       // Should handle empty data gracefully
       assertNotNull(result.getStatus(), "Status should not be null");

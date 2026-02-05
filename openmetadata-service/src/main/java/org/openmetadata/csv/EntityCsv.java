@@ -1278,14 +1278,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (pendingChangeEvents.isEmpty()) {
       return;
     }
+    List<String> eventsToInsert = new ArrayList<>(pendingChangeEvents);
+    pendingChangeEvents.clear(); // Clear immediately to avoid race condition
     AsyncService.getInstance()
         .getExecutorService()
         .submit(
             () -> {
               try {
-                Entity.getCollectionDAO().changeEventDAO().insertBatch(pendingChangeEvents);
-                LOG.info("Batch inserted {} change events", pendingChangeEvents.size());
-                pendingChangeEvents.clear();
+                Entity.getCollectionDAO().changeEventDAO().insertBatch(eventsToInsert);
+                LOG.info("Batch inserted {} change events", eventsToInsert.size());
               } catch (Exception e) {
                 LOG.error("Error batch inserting change events", e);
               }

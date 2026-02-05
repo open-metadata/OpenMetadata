@@ -4597,11 +4597,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   protected List<String> getAllCsvHeaders() {
     return List.of(
-        "column.name",
+        "column.name*",
         "column.displayName",
         "column.description",
         "column.dataTypeDisplay",
-        "column.dataType",
+        "column.dataType*",
         "column.arrayDataType",
         "column.dataLength",
         "column.tags",
@@ -4613,8 +4613,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       return false;
     }
 
-    int nameIndex = headers.indexOf("column.name");
-    int dataTypeIndex = headers.indexOf("column.dataType");
+    int nameIndex = headers.indexOf("column.name*");
+    int dataTypeIndex = headers.indexOf("column.dataType*");
 
     if (nameIndex >= 0 && (row[nameIndex] == null || row[nameIndex].trim().isEmpty())) {
       return false;
@@ -4641,16 +4641,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       return "";
     }
     return tags.stream().map(TagLabel::getTagFQN).reduce((a, b) -> a + ";" + b).orElse("");
-  }
-
-  private String formatGlossaryTermsForCsv(List<EntityReference> glossaryTerms) {
-    if (glossaryTerms == null || glossaryTerms.isEmpty()) {
-      return "";
-    }
-    return glossaryTerms.stream()
-        .map(EntityReference::getFullyQualifiedName)
-        .reduce((a, b) -> a + ";" + b)
-        .orElse("");
   }
 
   private String escapeCSVValue(String value) {
