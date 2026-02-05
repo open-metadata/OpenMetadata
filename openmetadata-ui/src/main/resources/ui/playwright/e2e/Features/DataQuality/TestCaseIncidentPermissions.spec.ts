@@ -526,7 +526,7 @@ test.describe(
             headers: { 'Content-Type': 'application/json-patch+json' },
           }
         );
-        expect(res.status()).not.toBe(403);
+        expect(res.status()).toBe(200);
       });
 
       test('User with TABLE.EDIT_ALL can PATCH incident status (alternative)', async ({
@@ -548,7 +548,7 @@ test.describe(
             headers: { 'Content-Type': 'application/json-patch+json' },
           }
         );
-        expect(res.status()).not.toBe(403);
+        expect(res.status()).toBe(200);
       });
     });
 

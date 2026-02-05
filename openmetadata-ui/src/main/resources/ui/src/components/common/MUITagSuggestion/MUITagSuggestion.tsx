@@ -168,100 +168,108 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
 
   // Tag autocomplete
   return (
-    <Autocomplete
-      disableCloseOnSelect
-      freeSolo
-      multiple
-      // Force listbox to remount when options change to fix async search not updating dropdown
-      ListboxProps={
-        {
-          key: `listbox-${memoizedOptions.length}`,
-        } as HtmlHTMLAttributes<HTMLUListElement>
-      }
-      autoFocus={autoFocus}
-      getOptionLabel={(option) =>
-        typeof option === 'string' ? option : option.label
-      }
-      inputValue={inputValue}
-      isOptionEqualToValue={(option, value) =>
-        typeof option === 'string' || typeof value === 'string'
-          ? option === value
-          : option.value === value.value
-      }
-      loading={loading}
-      open={open && (memoizedOptions.length > 0 || loading)}
-      options={memoizedOptions}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          fullWidth
-          label={label}
-          placeholder={
-            placeholder ??
-            t('label.select-field', {
-              field: t('label.tag-plural'),
-            })
+    <Box data-testid="tag-suggestion">
+      <Autocomplete
+        disableCloseOnSelect
+        freeSolo
+        multiple
+        ListboxProps={
+          {
+            key: `listbox-${memoizedOptions.length}`,
+          } as HtmlHTMLAttributes<HTMLUListElement>
+        }
+        autoFocus={autoFocus}
+        filterOptions={(x) => x}
+        getOptionLabel={(option) =>
+          typeof option === 'string' ? option : option.label
+        }
+        inputValue={inputValue}
+        isOptionEqualToValue={(option, value) =>
+          typeof option === 'string' || typeof value === 'string'
+            ? option === value
+            : option.value === value.value
+        }
+        loading={loading}
+        open={open && (memoizedOptions.length > 0 || loading)}
+        options={memoizedOptions}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            fullWidth
+            label={label}
+            placeholder={
+              placeholder ??
+              t('label.select-field', {
+                field: t('label.tag-plural'),
+              })
+            }
+            required={required}
+            slotProps={{
+              inputLabel: {
+                shrink: true,
+              },
+            }}
+            variant="outlined"
+          />
+        )}
+        renderOption={(props, option) => {
+          const { key, ...otherProps } = props;
+
+          if (typeof option === 'string') {
+            return (
+              <Box component="li" key={key} {...otherProps}>
+                {option}
+              </Box>
+            );
           }
-          required={required}
-          slotProps={{
-            inputLabel: {
-              shrink: true,
-            },
-          }}
-          variant="outlined"
-        />
-      )}
-      renderOption={(props, option) => {
-        if (typeof option === 'string') {
+
           return (
-            <Box component="li" {...props}>
-              {option}
+            <Box
+              component="li"
+              data-testid={`tag-option-${option.value}`}
+              key={key}
+              {...otherProps}>
+              <Box display="flex" flexDirection="column">
+                <Box
+                  fontWeight="medium"
+                  sx={{ color: option.data?.style?.color || undefined }}>
+                  {option.label}
+                </Box>
+                {(option.data?.displayName || option.data?.name) && (
+                  <Box color="text.secondary" fontSize="0.875rem">
+                    {option.data?.displayName || option.data?.name}
+                  </Box>
+                )}
+              </Box>
             </Box>
           );
+        }}
+        renderTags={(value: (string | TagOption)[], getTagProps) =>
+          value
+            .filter((v): v is TagOption => typeof v !== 'string')
+            .map((option: TagOption, index: number) => {
+              const { onDelete, ...chipProps } = getTagProps({ index });
+
+              return (
+                <TagChip
+                  {...chipProps}
+                  key={option.value}
+                  label={option.label}
+                  size="small"
+                  tagColor={option.data?.style?.color}
+                  onDelete={onDelete ? () => onDelete({} as never) : undefined}
+                />
+              );
+            })
         }
-
-        return (
-          <Box component="li" {...props}>
-            <Box display="flex" flexDirection="column">
-              <Box
-                fontWeight="medium"
-                sx={{ color: option.data?.style?.color || undefined }}>
-                {option.label}
-              </Box>
-              {(option.data?.displayName || option.data?.name) && (
-                <Box color="text.secondary" fontSize="0.875rem">
-                  {option.data?.displayName || option.data?.name}
-                </Box>
-              )}
-            </Box>
-          </Box>
-        );
-      }}
-      renderTags={(value: (string | TagOption)[], getTagProps) =>
-        value
-          .filter((v): v is TagOption => typeof v !== 'string')
-          .map((option: TagOption, index: number) => {
-            const { onDelete, ...chipProps } = getTagProps({ index });
-
-            return (
-              <TagChip
-                {...chipProps}
-                key={option.value}
-                label={option.label}
-                size="small"
-                tagColor={option.data?.style?.color}
-                onDelete={onDelete ? () => onDelete({} as never) : undefined}
-              />
-            );
-          })
-      }
-      size="small"
-      value={selectedOptions}
-      onChange={handleChange}
-      onClose={() => setOpen(false)}
-      onInputChange={handleInputChange}
-      onOpen={() => setOpen(true)}
-    />
+        size="small"
+        value={selectedOptions}
+        onChange={handleChange}
+        onClose={() => setOpen(false)}
+        onInputChange={handleInputChange}
+        onOpen={() => setOpen(true)}
+      />
+    </Box>
   );
 };
 

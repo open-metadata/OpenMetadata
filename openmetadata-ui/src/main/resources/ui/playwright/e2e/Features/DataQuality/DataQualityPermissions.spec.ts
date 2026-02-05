@@ -269,15 +269,13 @@ const getFailedRowsData = (table: TableClass) => {
   ];
 
   return {
-    data: {
-      columns: columns,
-      rows: sampleRows.map((row) => {
-        if (row.length < columnCount) {
-          return [...row, ...Array(columnCount - row.length).fill('-')];
-        }
-        return row.slice(0, columnCount);
-      }),
-    },
+    columns,
+    rows: sampleRows.map((row) => {
+      if (row.length < columnCount) {
+        return [...row, ...Array(columnCount - row.length).fill('-')];
+      }
+      return row.slice(0, columnCount);
+    }),
   };
 };
 
@@ -298,7 +296,7 @@ const setupTestCaseWithFailedRows = async (
   // Now add failed rows sample (only works on failed test cases)
   await apiContext.put(
     `/api/v1/dataQuality/testCases/${testCaseId}/failedRowsSample`,
-    getFailedRowsData(table)
+    { data: getFailedRowsData(table) }
   );
 };
 
@@ -750,7 +748,6 @@ test.describe(
       await page.getByRole('tab', { name: 'Data Quality' }).click();
       // Wait for Data Quality tab content to load
       await expect(page.getByTestId('table-profiler-container')).toBeVisible({
-        timeout: 10000,
       });
     };
 
@@ -960,7 +957,6 @@ test.describe(
           .first()
           .waitFor({
             state: 'detached',
-            timeout: 15000,
           })
           .catch(() => {});
 
@@ -1022,7 +1018,7 @@ test.describe(
 
         const res = await apiContext.put(
           `/api/v1/dataQuality/testCases/${testCaseId}/failedRowsSample`,
-          { data: { rows: [] } }
+          { data: getFailedRowsData(table) }
         );
         expect(res.status()).toBe(403);
       });
@@ -1035,7 +1031,10 @@ test.describe(
 
         const res = await apiContext.put(
           `/api/v1/dataQuality/testCases/${testCaseId}/inspectionQuery`,
-          { data: { query: 'SELECT 1' } }
+          {
+            data: 'SELECT 1',
+            headers: { 'Content-Type': 'application/json' },
+          }
         );
         expect(res.status()).toBe(403);
       });
@@ -1340,7 +1339,7 @@ test.describe(
 
         const res = await apiContext.put(
           `/api/v1/dataQuality/testCases/${testCaseId}/failedRowsSample`,
-          getFailedRowsData(table)
+          { data: getFailedRowsData(table) }
         );
         expect(res.status()).toBe(200);
       });
@@ -1355,12 +1354,9 @@ test.describe(
           `/api/v1/dataQuality/testCases/${testCaseId}/inspectionQuery`,
           {
             data: 'SELECT * FROM test_table LIMIT 10',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
           }
         );
-        // User with EDIT_TESTS permission CAN update inspection query
         expect(res.status()).toBe(200);
       });
     });
@@ -1461,7 +1457,6 @@ test.describe(
         // Wait for all loaders to disappear before checking visibility
         await viewBasicPage.locator('[data-testid="loader"]').first().waitFor({
           state: 'detached',
-          timeout: 15000,
         });
 
         await expect(
@@ -1509,7 +1504,6 @@ test.describe(
           .first()
           .waitFor({
             state: 'detached',
-            timeout: 15000,
           })
           .catch(() => {});
 
@@ -1524,13 +1518,12 @@ test.describe(
             .first()
             .waitFor({
               state: 'detached',
-              timeout: 15000,
             })
             .catch(() => {});
 
           await expect(
             failedRowsPage.getByText('Amber Albert').first()
-          ).toBeVisible({ timeout: 10000 });
+          ).toBeVisible();
           await expect(
             failedRowsPage.getByText('John Doe').first()
           ).toBeVisible();
@@ -1612,7 +1605,7 @@ test.describe(
 
         // Wait for the page container to load
         await expect(suitePage.getByTestId('test-suite-container')).toBeVisible(
-          { timeout: 10000 }
+          
         );
 
         await expect(suitePage.getByTestId('test-suite-table')).toBeVisible();
@@ -1632,7 +1625,7 @@ test.describe(
 
         // Wait for the page container to load
         await expect(suitePage.getByTestId('test-suite-container')).toBeVisible(
-          { timeout: 10000 }
+    
         );
 
         // Wait for test suite table to be visible and loaders to disappear
@@ -1641,7 +1634,7 @@ test.describe(
           .first()
           .waitFor({
             state: 'detached',
-            timeout: 15000,
+       
           })
           .catch(() => {});
 
@@ -1662,7 +1655,7 @@ test.describe(
               .first();
             // Only assert if element exists in DOM; otherwise skip
             if ((await suiteNameElement.count()) > 0) {
-              await expect(suiteNameElement).toBeVisible({ timeout: 10000 });
+              await expect(suiteNameElement).toBeVisible();
             }
           }
         }
