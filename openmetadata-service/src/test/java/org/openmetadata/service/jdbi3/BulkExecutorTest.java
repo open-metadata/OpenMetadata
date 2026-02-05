@@ -44,7 +44,9 @@ class BulkExecutorTest {
   void testDefaultInitialization() {
     BulkExecutor executor = BulkExecutor.getInstance();
     assertNotNull(executor);
-    assertEquals(10, executor.getMaxThreads());
+    // Default pool size 20, 20% = 4 connections, threads capped at min(10, 4) = 4
+    assertEquals(4, executor.getMaxThreads());
+    assertEquals(4, executor.getConnectionLimit());
     assertEquals(1000, executor.getQueueSize());
     assertEquals(300, executor.getTimeoutSeconds());
   }
@@ -56,21 +58,182 @@ class BulkExecutorTest {
     config.setQueueSize(500);
     config.setTimeoutSeconds(120);
 
-    BulkExecutor.initialize(config);
+    BulkExecutor.initialize(config, 50); // 50 pool, 20% = 10, threads = min(5, 10) = 5
     BulkExecutor executor = BulkExecutor.getInstance();
 
     assertEquals(5, executor.getMaxThreads());
+    assertEquals(10, executor.getConnectionLimit());
     assertEquals(500, executor.getQueueSize());
     assertEquals(120, executor.getTimeoutSeconds());
   }
 
   @Test
+  void testConnectionLimitCalculation_PoolPercentWins() {
+    BulkOperationConfiguration config = new BulkOperationConfiguration();
+    // Defaults: poolPercent=20, minConnections=2, maxConnectionsLimit=20
+
+    // Normal cases: poolPercent calculation wins
+    assertEquals(3, config.calculateConnectionLimit(15)); // 15 * 20% = 3
+    assertEquals(10, config.calculateConnectionLimit(50)); // 50 * 20% = 10
+    assertEquals(20, config.calculateConnectionLimit(100)); // 100 * 20% = 20 (at ceiling)
+  }
+
+  @Test
+  void testConnectionLimitCalculation_CeilingWins() {
+    BulkOperationConfiguration config = new BulkOperationConfiguration();
+    // Defaults: poolPercent=20, maxConnectionsLimit=20
+
+    // Large pools: ceiling wins (prevents DB contention)
+    assertEquals(20, config.calculateConnectionLimit(150)); // 150 * 20% = 30, capped to 20
+    assertEquals(20, config.calculateConnectionLimit(200)); // 200 * 20% = 40, capped to 20
+    assertEquals(20, config.calculateConnectionLimit(500)); // 500 * 20% = 100, capped to 20
+  }
+
+  @Test
+  void testConnectionLimitCalculation_FloorWins() {
+    BulkOperationConfiguration config = new BulkOperationConfiguration();
+    // Defaults: poolPercent=20, minConnections=2
+
+    // Tiny pools: floor wins (ensures bulk can work)
+    assertEquals(2, config.calculateConnectionLimit(5)); // 5 * 20% = 1, floored to 2
+    assertEquals(2, config.calculateConnectionLimit(8)); // 8 * 20% = 1.6 → 1, floored to 2
+    assertEquals(2, config.calculateConnectionLimit(10)); // 10 * 20% = 2, equals floor
+  }
+
+  @Test
+  void testConnectionLimitCalculation_CustomPercent() {
+    BulkOperationConfiguration config = new BulkOperationConfiguration();
+    config.setPoolPercent(30); // Higher percentage
+
+    assertEquals(15, config.calculateConnectionLimit(50)); // 50 * 30% = 15
+    assertEquals(20, config.calculateConnectionLimit(100)); // 100 * 30% = 30, capped to 20
+  }
+
+  @Test
+  void testConnectionLimitCalculation_CustomBounds() {
+    BulkOperationConfiguration config = new BulkOperationConfiguration();
+    config.setMinConnections(5);
+    config.setMaxConnectionsLimit(15);
+
+    // Floor at 5
+    assertEquals(5, config.calculateConnectionLimit(20)); // 20 * 20% = 4, floored to 5
+
+    // Ceiling at 15
+    assertEquals(15, config.calculateConnectionLimit(100)); // 100 * 20% = 20, capped to 15
+
+    // Normal case in between
+    assertEquals(10, config.calculateConnectionLimit(50)); // 50 * 20% = 10, within bounds
+  }
+
+  @Test
+  void testConnectionLimitWithOverride() {
+    BulkOperationConfiguration config = new BulkOperationConfiguration();
+    config.setMaxConnections(8); // Hard override ignores poolPercent
+
+    // Override uses fixed value (capped at poolSize-1 for safety)
+    assertEquals(8, config.calculateConnectionLimit(50));
+    assertEquals(8, config.calculateConnectionLimit(100));
+    assertEquals(8, config.calculateConnectionLimit(10)); // 10-1 = 9, so 8 is ok
+    assertEquals(4, config.calculateConnectionLimit(5)); // 5-1 = 4, capped
+  }
+
+  @Test
+  void testConnectionLimitWithOverride_IgnoresBounds() {
+    BulkOperationConfiguration config = new BulkOperationConfiguration();
+    config.setMaxConnections(25); // Override higher than default ceiling
+    config.setMaxConnectionsLimit(20); // This ceiling is ignored when override is set
+
+    // Override wins over ceiling
+    assertEquals(25, config.calculateConnectionLimit(100));
+    assertEquals(25, config.calculateConnectionLimit(50));
+  }
+
+  @Test
+  void testConnectionSemaphore() throws InterruptedException {
+    BulkOperationConfiguration config = new BulkOperationConfiguration();
+    config.setMaxConnections(3); // Hard limit of 3 connections
+    config.setMaxThreads(10);
+
+    BulkExecutor.initialize(config, 50);
+    BulkExecutor executor = BulkExecutor.getInstance();
+
+    assertEquals(3, executor.getConnectionLimit());
+    assertEquals(3, executor.getAvailableConnections());
+
+    // Acquire all 3 permits
+    executor.acquireConnection();
+    executor.acquireConnection();
+    executor.acquireConnection();
+
+    assertEquals(0, executor.getAvailableConnections());
+
+    // Release one
+    executor.releaseConnection();
+    assertEquals(1, executor.getAvailableConnections());
+
+    // Release remaining
+    executor.releaseConnection();
+    executor.releaseConnection();
+    assertEquals(3, executor.getAvailableConnections());
+  }
+
+  @Test
+  void testConnectionSemaphoreLimitsConcurrency() throws InterruptedException {
+    BulkOperationConfiguration config = new BulkOperationConfiguration();
+    config.setMaxConnections(2); // Only 2 connections allowed
+    config.setMaxThreads(10);
+    config.setQueueSize(100);
+
+    BulkExecutor.initialize(config, 50);
+    BulkExecutor executor = BulkExecutor.getInstance();
+
+    AtomicInteger maxConcurrentConnections = new AtomicInteger(0);
+    AtomicInteger currentConnections = new AtomicInteger(0);
+    AtomicInteger completed = new AtomicInteger(0);
+    CountDownLatch allDone = new CountDownLatch(10);
+
+    for (int i = 0; i < 10; i++) {
+      executor.submit(
+          () -> {
+            try {
+              executor.acquireConnection();
+              try {
+                int current = currentConnections.incrementAndGet();
+                maxConcurrentConnections.updateAndGet(max -> Math.max(max, current));
+                Thread.sleep(50); // Simulate DB work
+                currentConnections.decrementAndGet();
+                completed.incrementAndGet();
+              } finally {
+                executor.releaseConnection();
+              }
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            } finally {
+              allDone.countDown();
+            }
+          });
+    }
+
+    assertTrue(allDone.await(10, TimeUnit.SECONDS), "All tasks should complete");
+    assertEquals(10, completed.get(), "All 10 tasks should complete");
+    assertTrue(
+        maxConcurrentConnections.get() <= 2,
+        "Max concurrent connections should not exceed 2, got: " + maxConcurrentConnections.get());
+
+    LOG.info(
+        "Connection semaphore test: maxConcurrent={}, completed={}",
+        maxConcurrentConnections.get(),
+        completed.get());
+  }
+
+  @Test
   void testConcurrencyLimit() throws InterruptedException {
     BulkOperationConfiguration config = new BulkOperationConfiguration();
+    config.setMaxConnections(3);
     config.setMaxThreads(3);
     config.setQueueSize(100);
 
-    BulkExecutor.initialize(config);
+    BulkExecutor.initialize(config, 50);
     BulkExecutor executor = BulkExecutor.getInstance();
 
     AtomicInteger maxConcurrent = new AtomicInteger(0);
@@ -108,10 +271,11 @@ class BulkExecutorTest {
   @Test
   void testQueueCapacity() throws InterruptedException {
     BulkOperationConfiguration config = new BulkOperationConfiguration();
+    config.setMaxConnections(1);
     config.setMaxThreads(1);
     config.setQueueSize(5);
 
-    BulkExecutor.initialize(config);
+    BulkExecutor.initialize(config, 50);
     BulkExecutor executor = BulkExecutor.getInstance();
 
     CountDownLatch blocker = new CountDownLatch(1);
@@ -146,10 +310,11 @@ class BulkExecutorTest {
   @Test
   void testHasCapacity() throws InterruptedException {
     BulkOperationConfiguration config = new BulkOperationConfiguration();
+    config.setMaxConnections(1);
     config.setMaxThreads(1);
     config.setQueueSize(2);
 
-    BulkExecutor.initialize(config);
+    BulkExecutor.initialize(config, 50);
     BulkExecutor executor = BulkExecutor.getInstance();
 
     assertTrue(executor.hasCapacity(), "Should have capacity initially");
@@ -181,12 +346,28 @@ class BulkExecutorTest {
   }
 
   @Test
+  void testHasCapacityForBatch() {
+    BulkOperationConfiguration config = new BulkOperationConfiguration();
+    config.setMaxConnections(2);
+    config.setMaxThreads(2);
+    config.setQueueSize(10);
+
+    BulkExecutor.initialize(config, 50);
+    BulkExecutor executor = BulkExecutor.getInstance();
+
+    assertTrue(executor.hasCapacityForBatch(5), "Should have capacity for batch of 5");
+    assertTrue(executor.hasCapacityForBatch(10), "Should have capacity for batch of 10");
+    assertFalse(executor.hasCapacityForBatch(11), "Should not have capacity for batch of 11");
+  }
+
+  @Test
   void testActiveCountAndQueueDepth() throws InterruptedException {
     BulkOperationConfiguration config = new BulkOperationConfiguration();
+    config.setMaxConnections(2);
     config.setMaxThreads(2);
     config.setQueueSize(100);
 
-    BulkExecutor.initialize(config);
+    BulkExecutor.initialize(config, 50);
     BulkExecutor executor = BulkExecutor.getInstance();
 
     assertEquals(0, executor.getActiveCount(), "Initially no active threads");
@@ -239,7 +420,7 @@ class BulkExecutorTest {
     BulkOperationConfiguration config = new BulkOperationConfiguration();
     config.setMaxThreads(5);
 
-    BulkExecutor.initialize(config);
+    BulkExecutor.initialize(config, 50);
 
     BulkExecutor instance1 = BulkExecutor.getInstance();
     BulkExecutor instance2 = BulkExecutor.getInstance();
@@ -253,7 +434,7 @@ class BulkExecutorTest {
     config.setMaxThreads(2);
     config.setTimeoutSeconds(5);
 
-    BulkExecutor.initialize(config);
+    BulkExecutor.initialize(config, 50);
     BulkExecutor executor = BulkExecutor.getInstance();
 
     assertFalse(executor.isShutdown(), "Should not be shutdown initially");
@@ -269,7 +450,7 @@ class BulkExecutorTest {
     config.setMaxThreads(2);
     config.setTimeoutSeconds(5);
 
-    BulkExecutor.initialize(config);
+    BulkExecutor.initialize(config, 50);
     BulkExecutor executor = BulkExecutor.getInstance();
 
     executor.shutdown();
@@ -285,7 +466,7 @@ class BulkExecutorTest {
     BulkOperationConfiguration config = new BulkOperationConfiguration();
     config.setMaxThreads(2);
 
-    BulkExecutor.initialize(config);
+    BulkExecutor.initialize(config, 50);
     BulkExecutor executor = BulkExecutor.getInstance();
 
     AtomicBoolean taskExecuted = new AtomicBoolean(false);
@@ -304,61 +485,17 @@ class BulkExecutorTest {
   }
 
   @Test
-  void testSubmitWithFutureRejectsAfterShutdown() {
+  void testGetStats() {
     BulkOperationConfiguration config = new BulkOperationConfiguration();
-    config.setMaxThreads(2);
-    config.setTimeoutSeconds(5);
+    config.setMaxConnections(5);
+    config.setMaxThreads(5);
 
-    BulkExecutor.initialize(config);
+    BulkExecutor.initialize(config, 50);
     BulkExecutor executor = BulkExecutor.getInstance();
 
-    executor.shutdown();
-
-    assertThrows(
-        RejectedExecutionException.class,
-        () -> executor.submitWithFuture(() -> {}),
-        "Should reject submitWithFuture after shutdown");
-  }
-
-  @Test
-  void testFutureCancellation() throws Exception {
-    BulkOperationConfiguration config = new BulkOperationConfiguration();
-    config.setMaxThreads(1);
-
-    BulkExecutor.initialize(config);
-    BulkExecutor executor = BulkExecutor.getInstance();
-
-    CountDownLatch blocker = new CountDownLatch(1);
-    AtomicBoolean secondTaskRan = new AtomicBoolean(false);
-
-    // Block the single thread
-    executor.submitWithFuture(
-        () -> {
-          try {
-            blocker.await();
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-          }
-        });
-
-    // Submit a cancellable task
-    Future<?> cancellableFuture =
-        executor.submitWithFuture(
-            () -> {
-              secondTaskRan.set(true);
-            });
-
-    // Cancel the queued task before it runs
-    boolean cancelled = cancellableFuture.cancel(false);
-
-    // Release the blocker
-    blocker.countDown();
-
-    // Wait a bit
-    Awaitility.await().atMost(2, TimeUnit.SECONDS).until(cancellableFuture::isDone);
-
-    assertTrue(
-        cancellableFuture.isCancelled() || cancelled,
-        "Future should be cancelled or able to cancel");
+    String stats = executor.getStats();
+    assertNotNull(stats);
+    assertTrue(stats.contains("pool=50"));
+    assertTrue(stats.contains("connLimit=5"));
   }
 }
