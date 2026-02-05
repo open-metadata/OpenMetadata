@@ -443,11 +443,13 @@ class JSONLogicSearchClassBase {
         type: 'multiselect',
         preferWidgets: ['multiselect'],
         defaultOperator: 'like',
-        mainWidgetProps: this.mainWidgetProps,
+        mainWidgetProps: {
+          ...this.mainWidgetProps,
+          showSearch: false,
+        },
         operators: ['like', 'not_like', 'is_null', 'is_not_null'],
         fieldSettings: {
           allowCustomValues: true,
-          showSearch: false,
         },
       },
       [EntityReferenceFields.RELATED_TERMS]: {
