@@ -11,6 +11,7 @@ import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 
 public record ContainerIndex(Container container) implements ColumnIndex {
@@ -35,6 +36,10 @@ public record ContainerIndex(Container container) implements ColumnIndex {
       doc.put("columnNames", columnsWithChildrenName);
       // Add flat column names field for fuzzy search to avoid array-based clause multiplication
       doc.put("columnNamesFuzzy", String.join(" ", columnsWithChildrenName));
+
+      // Transform column extensions to typed custom properties
+      SearchIndexUtils.transformColumnExtensionsAtPath(
+          doc, "dataModel.columns", Entity.TABLE_COLUMN);
     }
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.CONTAINER, container));
     tagsWithChildren.add(parseTags.getTags());
