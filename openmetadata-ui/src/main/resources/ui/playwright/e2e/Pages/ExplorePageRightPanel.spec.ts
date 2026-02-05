@@ -18,14 +18,14 @@ import { SchemaPageObject } from '../PageObject/Explore/SchemaPageObject';
 import { LineagePageObject } from '../PageObject/Explore/LineagePageObject';
 import { DataQualityPageObject } from '../PageObject/Explore/DataQualityPageObject';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
-import { navigateToExploreAndSelectEntity, openEntitySummaryPanel } from '../../utils/entityPanel';
+import { openEntitySummaryPanel } from '../../utils/entityPanel';
 
 import { TableClass } from '../../support/entity/TableClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import {  uuid } from '../../utils/common';
+import { redirectToHomePage, uuid } from '../../utils/common';
 import { performAdminLogin } from '../../utils/admin';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
@@ -113,6 +113,7 @@ test.describe('Right Panel Test Suite', () => {
 
   // Setup page objects before each test
   test.beforeEach(async ({ adminPage }) => {
+    test.slow(true);
     rightPanel = new RightPanelPageObject(adminPage);
     overview = new OverviewPageObject(rightPanel, adminPage);
     schema = new SchemaPageObject(rightPanel, adminPage);
@@ -143,9 +144,10 @@ test.describe('Right Panel Test Suite', () => {
   test.describe('Explore page right panel tests', () => {  
     test.describe('Overview panel CRUD operations', () => { 
       Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
-      test(`Should update description for ${entityType}`, async ({ adminPage }) => {
-        await navigateToExploreAndSelectEntity(adminPage, entityType);
-        await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+        test(`Should update description for ${entityType}`, async ({ adminPage }) => {  
+        await redirectToHomePage(adminPage);
+          await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+        await rightPanel.waitForPanelLoaded();
         await rightPanel.waitForPanelVisible();
 
         await overview.navigateToOverviewTab();
@@ -157,9 +159,10 @@ test.describe('Right Panel Test Suite', () => {
         await overview.shouldShowDescriptionWithText(descriptionToUpdate);
       })
 
-      test(`Should update/edit tags for ${entityType}`, async ({ adminPage }) => {
-        await navigateToExploreAndSelectEntity(adminPage, entityType);
+        test(`Should update/edit tags for ${entityType}`, async ({ adminPage }) => {
+         await redirectToHomePage(adminPage);
         await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+        await rightPanel.waitForPanelLoaded();
         await rightPanel.waitForPanelVisible();
 
         await overview.editTags(tagToUpdate);
@@ -167,9 +170,10 @@ test.describe('Right Panel Test Suite', () => {
         await overview.shouldShowTag(tagToUpdate);
       })
 
-      test(`Should update/edit tier for ${entityType}`, async ({ adminPage }) => {
-        await navigateToExploreAndSelectEntity(adminPage, entityType);
+        test(`Should update/edit tier for ${entityType}`, async ({ adminPage }) => {
+         await redirectToHomePage(adminPage);
         await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+        await rightPanel.waitForPanelLoaded();
         await rightPanel.waitForPanelVisible();
 
         await overview.assignTier(testTier);
@@ -178,17 +182,19 @@ test.describe('Right Panel Test Suite', () => {
       })
 
       test(`Should update/edit glossary terms for ${entityType}`, async ({ adminPage }) => {
-        await navigateToExploreAndSelectEntity(adminPage, entityType);
+        await redirectToHomePage(adminPage);
         await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+        await rightPanel.waitForPanelLoaded();
         await rightPanel.waitForPanelVisible();
 
         await overview.editGlossaryTerms(glossaryTermToUpdate);
         await overview.shouldShowGlossaryTermsSection();
       })
 
-      test(`Should update owners for ${entityType}`, async ({ adminPage }) => {
-        await navigateToExploreAndSelectEntity(adminPage, entityType);
+        test(`Should update owners for ${entityType}`, async ({ adminPage }) => {
+         await redirectToHomePage(adminPage);
         await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+        await rightPanel.waitForPanelLoaded();
         await rightPanel.waitForPanelVisible();
 
         const ownerToUpdate = 'Aaron Johnson'
@@ -199,8 +205,9 @@ test.describe('Right Panel Test Suite', () => {
       })
 
       test(`Should update domain for ${entityType}`, async ({ adminPage }) => {
-        await navigateToExploreAndSelectEntity(adminPage, entityType);
+        await redirectToHomePage(adminPage);
         await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+        await rightPanel.waitForPanelLoaded();
         await rightPanel.waitForPanelVisible();
 
         await overview.editDomain(domainToUpdate);
@@ -217,8 +224,9 @@ test.describe('Right Panel Test Suite', () => {
         
       Object.entries(entityMap).forEach(([entityType, entityInstance]) => { 
         test(`Should display and verify schema fields for ${entityType}`, async ({ adminPage }) => {
-          await navigateToExploreAndSelectEntity(adminPage, entityType);
+          await redirectToHomePage(adminPage);
           await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+          await rightPanel.waitForPanelLoaded();
           await rightPanel.waitForPanelVisible();
 
           try {
@@ -237,13 +245,11 @@ test.describe('Right Panel Test Suite', () => {
       // ============ LINEAGE PAGE OBJECT TESTS ============
 
     test.describe('Lineage - Navigation and Expansion', () => {
-      
       Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
-
-        
         test(`Should navigate to lineage and test controls for ${entityType}`, async ({ adminPage }) => {
-          await navigateToExploreAndSelectEntity(adminPage, entityType);
+          await redirectToHomePage(adminPage);
           await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+          await rightPanel.waitForPanelLoaded();
           await rightPanel.waitForPanelVisible();
 
           try {
@@ -259,9 +265,9 @@ test.describe('Right Panel Test Suite', () => {
         });
 
         test(`Should handle lineage expansion buttons for ${entityType}`, async ({ adminPage }) => {
-        
-          await navigateToExploreAndSelectEntity(adminPage, entityType);
+        await redirectToHomePage(adminPage);
           await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+          await rightPanel.waitForPanelLoaded();
           await rightPanel.waitForPanelVisible();
 
           try { 
@@ -292,8 +298,9 @@ test.describe('Right Panel Test Suite', () => {
         
       Object.entries(entityMap).forEach(([entityType, entityInstance]) => { 
         test(`Should navigate to data quality and show stat cards for ${entityType}`, async ({ adminPage }) => {
-          await navigateToExploreAndSelectEntity(adminPage, entityType);
+          await redirectToHomePage(adminPage);
           await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+          await rightPanel.waitForPanelLoaded();
           await rightPanel.waitForPanelVisible();
 
           try {
@@ -311,8 +318,9 @@ test.describe('Right Panel Test Suite', () => {
 
         //Skipping since no stats are available for the entities
         test.skip(`Should handle stat card interactions for ${entityType}`, async ({ adminPage }) => {
-          await navigateToExploreAndSelectEntity(adminPage, entityType);
+          await redirectToHomePage(adminPage);
           await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+          await rightPanel.waitForPanelLoaded();
           await rightPanel.waitForPanelVisible();
 
           try {
@@ -339,8 +347,7 @@ test.describe('Right Panel Test Suite', () => {
       Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
         
         test(`Should navigate to custom properties and show interface for ${entityType}`, async ({ adminPage }) => {
-
-          await navigateToExploreAndSelectEntity(adminPage, entityType);
+          await redirectToHomePage(adminPage);
           await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
           await rightPanel.waitForPanelVisible();
           
@@ -358,9 +365,10 @@ test.describe('Right Panel Test Suite', () => {
 
         //Skipping since no custom properties are available for the entities
         test.skip(`Should handle search functionality for ${entityType}`, async ({ adminPage }) => {
-          await navigateToExploreAndSelectEntity(adminPage, entityType);
+          await redirectToHomePage(adminPage);
           await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
-          await rightPanel.waitForPanelVisible();
+          await rightPanel.waitForPanelLoaded();
+            await rightPanel.waitForPanelVisible();
 
           try {
             const customPropertiesTabExists = await rightPanel.verifyTabExists('Custom Property');

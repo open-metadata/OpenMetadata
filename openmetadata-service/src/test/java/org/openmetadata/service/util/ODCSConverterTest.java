@@ -688,8 +688,8 @@ class ODCSConverterTest {
     assertEquals(ColumnDataType.NUMBER, contract.getSchema().get(1).getDataType());
     assertEquals(ColumnDataType.BOOLEAN, contract.getSchema().get(2).getDataType());
     assertEquals(
-        ColumnDataType.VARCHAR,
-        contract.getSchema().get(3).getDataType()); // STRING logical type maps to VARCHAR
+        ColumnDataType.STRING,
+        contract.getSchema().get(3).getDataType()); // STRING logical type maps to STRING
     assertEquals(ColumnDataType.DATE, contract.getSchema().get(4).getDataType());
     assertEquals(ColumnDataType.ARRAY, contract.getSchema().get(5).getDataType());
     assertEquals(ColumnDataType.STRUCT, contract.getSchema().get(6).getDataType());
