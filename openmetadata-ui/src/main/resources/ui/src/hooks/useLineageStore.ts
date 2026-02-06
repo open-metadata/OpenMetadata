@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { uniq } from 'lodash';
+import { Edge, Node } from 'reactflow';
 import { create } from 'zustand';
 import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
 import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
 import { LineageLayer, PipelineViewMode } from '../generated/settings/settings';
@@ -29,9 +31,13 @@ interface LineageState {
   activeLayer: LineageLayer[];
   platformView: LineagePlatformView;
   isPlatformLineage: boolean;
+  activeNode?: Node;
+  selectedEdge?: Edge;
+  selectedNode?: SourceType;
 
   // Actions
   setIsEditMode: (isEditMode: boolean) => void;
+  toggleEditMode: () => void;
   setLineageConfig: (lineageConfig: LineageConfig) => void;
   setTracedColumns: (tracedColumns: string[]) => void;
   addTracedColumns: (newColumn: string) => void;
@@ -45,6 +51,9 @@ interface LineageState {
   updateActiveLayer: (layer: LineageLayer | LineageLayer[]) => void;
   setPlatformView: (platformView: LineagePlatformView) => void;
   setIsPlatformLineage: (isPlatformLineage: boolean) => void;
+  setActiveNode: (activeNode?: Node) => void;
+  setSelectedNode: (selectedNode?: SourceType) => void;
+  setSelectedEdge: (selectedEdge?: Edge) => void;
   reset: () => void;
 }
 
@@ -71,6 +80,27 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   setLineageConfig: (lineageConfig: LineageConfig) => set({ lineageConfig }),
 
   setIsEditMode: (isEditMode: boolean) => set({ isEditMode }),
+
+  toggleEditMode: () => {
+    const { activeLayer, isEditMode, updateActiveLayer } = get();
+
+    const hasColumnLayer = activeLayer.includes(
+      LineageLayer.ColumnLevelLineage
+    );
+
+    if (!isEditMode && !hasColumnLayer) {
+      updateActiveLayer(LineageLayer.ColumnLevelLineage);
+    } else if (isEditMode) {
+      set({ tracedColumns: [], tracedNodes: [] });
+    }
+
+    set({
+      isEditMode: !isEditMode,
+      activeNode: undefined,
+      selectedNode: undefined,
+      selectedEdge: undefined,
+    });
+  },
 
   setTracedColumns: (tracedColumns: string[]) => set({ tracedColumns }),
 
@@ -134,14 +164,25 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   setIsPlatformLineage: (isPlatformLineage: boolean) =>
     set({ isPlatformLineage }),
 
+  setActiveNode: (activeNode?: Node) => set({ activeNode }),
+
+  setSelectedNode: (selectedNode?: SourceType) => set({ selectedNode }),
+  setSelectedEdge: (selectedEdge?: Edge) => set({ selectedEdge }),
+
   reset: () =>
     set({
       isEditMode: false,
       lineageConfig: defaultLineageSettings,
       tracedColumns: [],
+      tracedNodes: [],
       zoomValue: ZOOM_VALUE,
       expandAllColumns: false,
       activeLayer: [],
       platformView: LineagePlatformView.None,
+      isPlatformLineage: false,
+      columnsHavingLineage: new Set(),
+      activeNode: undefined,
+      selectedNode: undefined,
+      selectedEdge: undefined,
     }),
 }));

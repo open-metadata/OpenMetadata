@@ -91,7 +91,7 @@ const CustomControls: FC<{
     lineageConfig,
     isEditMode,
     setLineageConfig,
-    setIsEditMode,
+    toggleEditMode,
     platformView,
   } = useLineageStore();
 
@@ -368,7 +368,7 @@ const CustomControls: FC<{
           color={isEditMode ? 'primary' : 'default'}
           data-testid="edit-lineage"
           size="large"
-          onClick={() => setIsEditMode(!isEditMode)}>
+          onClick={toggleEditMode}>
           <EditIcon />
         </StyledIconButton>
       </Tooltip>

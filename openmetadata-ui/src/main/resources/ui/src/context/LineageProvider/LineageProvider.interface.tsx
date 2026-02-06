@@ -52,7 +52,6 @@ export interface LineageContextType {
   init: boolean;
   status: LoadingState;
   entityLineage: EntityLineageResponse;
-  selectedNode: SourceType;
   selectedColumn: string;
   entityFqn: string;
   isCreatingEdge: boolean;

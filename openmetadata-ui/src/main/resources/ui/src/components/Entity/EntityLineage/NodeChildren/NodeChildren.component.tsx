@@ -445,7 +445,7 @@ const NodeChildren = ({
 
   useEffect(() => {
     if (node.id) {
-      //   updateNodeInternals?.(node.id);
+      updateNodeInternals?.(node.id);
     }
   }, [
     selectedColumn,

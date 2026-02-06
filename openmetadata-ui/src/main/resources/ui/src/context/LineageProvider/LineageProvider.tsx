@@ -160,11 +160,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const isLineageSettingsLoaded = !isUndefined(defaultLineageConfig);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const {
     isEditMode,
-    setIsEditMode,
     lineageConfig,
     setLineageConfig,
     tracedColumns,
@@ -183,18 +181,17 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setPlatformView,
     isPlatformLineage,
     setIsPlatformLineage,
+    activeNode,
+    setActiveNode,
+    selectedNode,
+    setSelectedNode,
     reset,
   } = useLineageStore();
-
-  const [selectedNode, setSelectedNode] = useState<SourceType>(
-    {} as SourceType
-  );
 
   // Added this ref to compare the previous active layer with the current active layer.
   // We need to redraw the lineage if the column level lineage is added or removed.
   const prevActiveLayerRef = useRef<LineageLayer[]>([]);
 
-  const [activeNode, setActiveNode] = useState<Node>();
   const [selectedColumn, setSelectedColumn] = useState<string>('');
   const [showAddEdgeModal, setShowAddEdgeModal] = useState<boolean>(false);
   const [selectedEdge, setSelectedEdge] = useState<Edge>();
@@ -880,7 +877,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setTracedColumns(connectedColumnEdges);
       setTracedNodes([]);
       setSelectedEdge(undefined);
-      setIsDrawerOpen(false);
     },
     [nodes, edges]
   );
@@ -1247,7 +1243,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         setSelectedEdge(undefined);
         setActiveNode(node);
         setSelectedNode(node.data.node as SourceType);
-        setIsDrawerOpen(true);
         handleLineageTracing(node);
       }
     },
@@ -1255,44 +1250,23 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const onPaneClick = useCallback(() => {
-    setIsDrawerOpen(false);
     setTracedNodes([]);
     setTracedColumns([]);
     setSelectedColumn('');
     setActiveNode(undefined);
-    setSelectedNode({} as SourceType);
+    setSelectedNode(undefined);
   }, []);
 
   const onEdgeClick = useCallback((edge: Edge) => {
     setSelectedEdge(edge);
     setActiveNode(undefined);
-    setSelectedNode({} as SourceType);
-    setIsDrawerOpen(true);
+    setSelectedNode(undefined);
     setTracedNodes([]);
     const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
     if (sourceHandle && targetHandle) {
       setTracedColumns([sourceHandle, targetHandle]);
     }
   }, []);
-
-  const onLineageEditClick = useCallback(() => {
-    const hasColumnLayer = activeLayer.includes(
-      LineageLayer.ColumnLevelLineage
-    );
-
-    if (!isEditMode && !hasColumnLayer) {
-      updateActiveLayer(LineageLayer.ColumnLevelLineage);
-    } else if (isEditMode) {
-      setTracedNodes([]);
-      setTracedColumns([]);
-    }
-
-    setIsEditMode(!isEditMode);
-    setActiveNode(undefined);
-    setSelectedNode({} as SourceType);
-    setSelectedEdge(undefined);
-    setIsDrawerOpen(false);
-  }, [isEditMode, activeLayer]);
 
   const onInitReactFlow = (reactFlowInstance: ReactFlowInstance) => {
     setReactFlowInstance(reactFlowInstance);
@@ -1301,13 +1275,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   };
 
-  const onLineageConfigUpdate = useCallback((config: LineageConfig) => {
-    setLineageConfig(config);
-  }, []);
-
   const onCloseDrawer = useCallback(() => {
-    setIsDrawerOpen(false);
     setSelectedEdge(undefined);
+    setSelectedNode(undefined);
   }, []);
 
   const onRemove = useCallback(async () => {
@@ -1929,7 +1899,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       edges,
       reactFlowInstance,
       entityLineage,
-      selectedNode,
       selectedColumn,
       status,
       init,
@@ -1958,8 +1927,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onColumnEdgeRemove,
       selectedQuickFilters,
       setSelectedQuickFilters,
-      onLineageConfigUpdate,
-      onLineageEditClick,
       onAddPipelineClick,
       onExportClick,
       dataQualityLineage,
@@ -1977,7 +1944,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     edges,
     entityLineage,
     reactFlowInstance,
-    selectedNode,
     selectedColumn,
     status,
     init,
@@ -2109,7 +2075,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             anchor="right"
             className="lineage-entity-panel"
             data-testid="lineage-entity-panel"
-            open={isDrawerOpen}
             sx={{
               zIndex: 999,
               '& .MuiDrawer-paper': {
@@ -2117,24 +2082,16 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               },
             }}
             transitionDuration={300}
-            onClose={onCloseDrawer}>
-            <EdgeInfoDrawer
-              hasEditAccess
-              edge={selectedEdge}
-              nodes={nodes}
-              visible={isDrawerOpen}
-              onClose={onCloseDrawer}
-              onEdgeDetailsUpdate={onEdgeDetailsUpdate}
-            />
-          </Drawer>
+            onClose={onCloseDrawer}
+          />
         )}
 
-        {!isEditMode && !isEmpty(selectedNode) && (
+        {!isEditMode && (selectedEdge || selectedNode) && (
           <Drawer
+            open
             anchor="right"
             className="lineage-entity-panel"
             data-testid="lineage-entity-panel"
-            open={isDrawerOpen && !selectedEdge}
             sx={{
               zIndex: 999,
               '& .MuiDrawer-paper': {
@@ -2143,17 +2100,29 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             }}
             transitionDuration={300}
             onClose={onCloseDrawer}>
-            <EntitySummaryPanel
-              isSideDrawer
-              downstreamDepth={lineageConfig.downstreamDepth}
-              entityDetails={{ details: selectedNode }}
-              handleClosePanel={onCloseDrawer}
-              nodesPerLayer={lineageConfig.nodesPerLayer}
-              panelPath="lineage"
-              pipelineViewMode={lineageConfig.pipelineViewMode}
-              upstreamDepth={lineageConfig.upstreamDepth}
-              onEntityUpdate={handleEntityUpdate}
-            />
+            {selectedNode && (
+              <EntitySummaryPanel
+                isSideDrawer
+                downstreamDepth={lineageConfig.downstreamDepth}
+                entityDetails={{ details: selectedNode }}
+                handleClosePanel={onCloseDrawer}
+                nodesPerLayer={lineageConfig.nodesPerLayer}
+                panelPath="lineage"
+                pipelineViewMode={lineageConfig.pipelineViewMode}
+                upstreamDepth={lineageConfig.upstreamDepth}
+                onEntityUpdate={handleEntityUpdate}
+              />
+            )}
+            {selectedEdge && (
+              <EdgeInfoDrawer
+                hasEditAccess
+                visible
+                edge={selectedEdge}
+                nodes={nodes}
+                onClose={onCloseDrawer}
+                onEdgeDetailsUpdate={onEdgeDetailsUpdate}
+              />
+            )}
           </Drawer>
         )}
 
