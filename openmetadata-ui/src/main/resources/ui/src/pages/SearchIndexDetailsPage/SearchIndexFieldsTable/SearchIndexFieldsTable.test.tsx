@@ -52,6 +52,7 @@ jest.mock(
   () => ({
     useGenericContext: jest.fn().mockReturnValue({
       type: 'searchIndex',
+      setDisplayedColumns: jest.fn(),
     }),
   })
 );

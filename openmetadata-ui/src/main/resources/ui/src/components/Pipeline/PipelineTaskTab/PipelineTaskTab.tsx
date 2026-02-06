@@ -15,7 +15,7 @@ import { Card, Segmented, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
@@ -64,6 +64,7 @@ export const PipelineTaskTab = () => {
     onUpdate,
     openColumnDetailPanel,
     selectedColumn,
+    setDisplayedColumns,
   } = useGenericContext<Pipeline>();
   const {
     entityFqn: pipelineFQN,
@@ -90,6 +91,11 @@ export const PipelineTaskTab = () => {
     openColumnDetailPanel,
     selectedColumn: selectedColumn as Task | null,
   });
+
+  // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
+  useEffect(() => {
+    setDisplayedColumns(pipelineDetails.tasks ?? []);
+  }, [pipelineDetails.tasks, setDisplayedColumns]);
 
   const {
     editDescriptionPermission,

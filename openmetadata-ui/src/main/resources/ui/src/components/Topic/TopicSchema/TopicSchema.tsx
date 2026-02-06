@@ -104,6 +104,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     currentVersionData,
     openColumnDetailPanel,
     selectedColumn,
+    setDisplayedColumns,
   } = useGenericContext<Topic>();
 
   const {
@@ -226,6 +227,11 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     openColumnDetailPanel,
     selectedColumn: selectedColumn as Field | null,
   });
+
+  // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
+  useEffect(() => {
+    setDisplayedColumns(messageSchema?.schemaFields ?? []);
+  }, [messageSchema?.schemaFields, setDisplayedColumns]);
 
   const toggleExpandAll = () => {
     if (expandedRowKeys.length < schemaAllRowKeys.length) {

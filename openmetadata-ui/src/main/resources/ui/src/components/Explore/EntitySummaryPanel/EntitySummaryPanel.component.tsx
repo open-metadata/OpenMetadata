@@ -697,11 +697,43 @@ export default function EntitySummaryPanel({
   };
 
   const renderTabContent = () => {
+    if (isPermissionLoading) {
+      return <Loader />;
+    }
+
+    if (!viewPermission) {
+      return (
+        <>
+          {!isSideDrawer && (
+            <EntityTitleSection
+              className="title-section"
+              entityDetails={entityDetails.details}
+              entityDisplayName={entityData?.displayName}
+              entityLink={entityLink}
+              entityType={entityType}
+              hasEditPermission={getPrioritizedEditPermission(
+                entityPermissions,
+                Operation.EditDisplayName
+              )}
+              onDisplayNameUpdate={handleDisplayNameUpdate}
+            />
+          )}
+          <ErrorPlaceHolder
+            className="border-none h-min-80"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.data-asset'),
+            })}
+            size={SIZE.MEDIUM}
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
+        </>
+      );
+    }
     switch (activeTab) {
       case EntityRightPanelTab.OVERVIEW:
         return (
           <>
-            {viewPermission && !isSideDrawer && (
+            {!isSideDrawer && (
               <EntityTitleSection
                 className="title-section"
                 entityDetails={entityDetails.details}
@@ -715,13 +747,14 @@ export default function EntitySummaryPanel({
                 onDisplayNameUpdate={handleDisplayNameUpdate}
               />
             )}
-            <div className="overview-tab-content">{summaryComponentV1}</div>
+
+              <div className="overview-tab-content">{summaryComponentV1}</div>
           </>
         );
       case EntityRightPanelTab.SCHEMA:
         return (
           <>
-            {viewPermission && !isSideDrawer && (
+            {!isSideDrawer && (
               <EntityTitleSection
                 className="title-section"
                 entityDetails={entityDetails.details}
@@ -741,7 +774,7 @@ export default function EntitySummaryPanel({
       case EntityRightPanelTab.LINEAGE:
         return (
           <>
-            {viewPermission && !isSideDrawer && (
+            {!isSideDrawer && (
               <EntityTitleSection
                 className="title-section"
                 entityDetails={entityDetails.details}
@@ -762,7 +795,7 @@ export default function EntitySummaryPanel({
       case EntityRightPanelTab.DATA_QUALITY:
         return (
           <>
-            {viewPermission && !isSideDrawer && (
+            {!isSideDrawer && (
               <EntityTitleSection
                 className="title-section"
                 entityDetails={entityDetails.details}
@@ -778,7 +811,7 @@ export default function EntitySummaryPanel({
       case EntityRightPanelTab.CUSTOM_PROPERTIES: {
         return (
           <>
-            {viewPermission && !isSideDrawer && (
+            {!isSideDrawer && (
               <EntityTitleSection
                 className="title-section"
                 entityDetails={entityDetails.details}

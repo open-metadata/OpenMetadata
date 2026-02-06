@@ -76,6 +76,7 @@ const mockUseGenericContextResult = {
   data: null as Worksheet | null,
   permissions: {} as OperationPermission,
   onUpdate: jest.fn(),
+  setDisplayedColumns: jest.fn(),
 };
 
 jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({

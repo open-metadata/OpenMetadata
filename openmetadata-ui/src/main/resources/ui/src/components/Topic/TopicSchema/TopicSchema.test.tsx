@@ -165,6 +165,7 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
     type: 'topic',
     currentVersionData: undefined,
     openColumnDetailPanel: jest.fn(),
+    setDisplayedColumns: jest.fn(),
   })),
 }));
 

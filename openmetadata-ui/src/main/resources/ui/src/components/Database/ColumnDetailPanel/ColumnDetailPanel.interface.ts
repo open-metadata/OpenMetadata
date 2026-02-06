@@ -38,7 +38,8 @@ export interface ColumnDetailPanelProps<T extends ColumnOrTask = Column> {
   onClose: () => void;
   onColumnFieldUpdate?: (
     fqn: string,
-    update: ColumnFieldUpdate
+    update: ColumnFieldUpdate,
+    source?: string
   ) => Promise<T | undefined>;
   deleted?: boolean;
   allColumns?: T[];

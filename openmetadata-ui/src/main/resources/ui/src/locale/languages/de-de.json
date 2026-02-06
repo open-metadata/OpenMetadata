@@ -1833,6 +1833,7 @@
     "syntax": "Syntax",
     "tab": "Registerkarte",
     "table": "Tabelle",
+    "table-column": "Tabellenspalte",
     "table-constraint-plural": "Tabellenbeschränkungen",
     "table-constraints": "Tabellenbeschränkungen",
     "table-details": "Tabellendetails",

@@ -182,7 +182,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
       {errorMessage && (
         <div className="m-b-md">
           <AlertBar
-            defafultExpand
+            defaultExpand
             className="test-definition-form-alert"
             message={errorMessage}
             type="error"

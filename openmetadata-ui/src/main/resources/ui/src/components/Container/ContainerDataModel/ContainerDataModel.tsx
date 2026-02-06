@@ -21,7 +21,7 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   HIGHLIGHTED_ROW_SELECTOR,
@@ -78,7 +78,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   entityFqn,
 }) => {
   const { t } = useTranslation();
-  const { openColumnDetailPanel, selectedColumn } =
+  const { openColumnDetailPanel, selectedColumn, setDisplayedColumns } =
     useGenericContext<Container>();
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
@@ -86,6 +86,11 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
   const schema = pruneEmptyChildren(dataModel?.columns ?? []);
+
+  // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
+  useEffect(() => {
+    setDisplayedColumns(schema);
+  }, [schema, setDisplayedColumns]);
 
   const { columnFqn: columnPart, fqn } = useFqn({
     type: EntityType.CONTAINER,
