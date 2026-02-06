@@ -11,186 +11,394 @@
  *  limitations under the License.
  */
 
-import { Popover, Tag, Typography } from 'antd';
-import classNames from 'classnames';
+import { Box, Link, Popover, Typography, useTheme } from '@mui/material';
 import { DateTime } from 'luxon';
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArticalIcon } from '../../../assets/svg/artical.svg';
-import { ReactComponent as StoryLaneIcon } from '../../../assets/svg/story-lane.svg';
-import { ReactComponent as VideoIcon } from '../../../assets/svg/video.svg';
-import { DEFAULT_THEME } from '../../../constants/Appearance.constants';
-import {
-  MAX_VISIBLE_TAGS,
-  ResourceType,
-} from '../../../constants/Learning.constants';
+import { ReactComponent as ArticleIcon } from '../../../assets/svg/ic_article.svg';
+import { ReactComponent as StoryLaneIcon } from '../../../assets/svg/ic_storylane.svg';
+import { ReactComponent as VideoIcon } from '../../../assets/svg/ic_video.svg';
+import { ResourceType } from '../../../constants/Learning.constants';
 import { LEARNING_CATEGORIES } from '../Learning.interface';
-import './learning-resource-card.less';
 import { LearningResourceCardProps } from './LearningResourceCard.interface';
 
-const { Text, Paragraph, Link } = Typography;
+const MAX_VISIBLE_CATEGORIES_IN_CARD = 2;
+const DESCRIPTION_VIEW_MORE_THRESHOLD = 100;
 
 export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
   resource,
   onClick,
 }) => {
   const { t } = useTranslation();
-  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
-  const [isDescriptionTruncated, setIsDescriptionTruncated] = useState(false);
+  const theme = useTheme();
 
-  const resourceTypeIcon = useMemo(() => {
-    switch (resource.resourceType) {
-      case ResourceType.Video:
-        return <VideoIcon className="resource-type-icon video-icon" />;
-      case ResourceType.Storylane:
-        return <StoryLaneIcon className="resource-type-icon storylane-icon" />;
-      case ResourceType.Article:
-        return <ArticalIcon className="resource-type-icon article-icon" />;
-      default:
-        return <ArticalIcon className="resource-type-icon article-icon" />;
-    }
-  }, [resource.resourceType]);
+  const iconColors = {
+    video: theme.palette.allShades?.blue?.[600],
+    storylane: theme.palette.allShades?.purple?.[600],
+    article: theme.palette.allShades?.success?.[500],
+  };
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
-  const formattedDuration = useMemo(() => {
-    if (!resource.estimatedDuration) {
-      return null;
-    }
-    const minutes = Math.floor(resource.estimatedDuration / 60);
+  const showViewMore =
+    resource.description &&
+    resource.description.length > DESCRIPTION_VIEW_MORE_THRESHOLD;
 
-    return `${minutes} ${t('label.min-read')}`;
-  }, [resource.estimatedDuration, t]);
+  const type = resource.resourceType.toLowerCase();
+  const iconColor =
+    iconColors[type as keyof typeof iconColors] ?? iconColors.article;
+  const iconProps = { height: 24, width: 24, style: { color: iconColor } };
+  const resourceTypeIcon =
+    resource.resourceType === ResourceType.Video ? (
+      <VideoIcon {...iconProps} />
+    ) : resource.resourceType === ResourceType.Storylane ? (
+      <StoryLaneIcon {...iconProps} />
+    ) : (
+      <ArticleIcon {...iconProps} />
+    );
 
-  const formattedDate = useMemo(() => {
-    if (!resource.updatedAt) {
-      return null;
-    }
+  const formattedDuration = resource.estimatedDuration
+    ? `${Math.floor(resource.estimatedDuration / 60)} ${
+        resource.resourceType === 'Article'
+          ? t('label.min-read')
+          : t('label.min-watch')
+      }`
+    : null;
 
-    return DateTime.fromMillis(resource.updatedAt).toFormat('LLL dd, yyyy');
-  }, [resource.updatedAt]);
+  const formattedDate = resource.updatedAt
+    ? DateTime.fromMillis(resource.updatedAt).toFormat('LLL dd, yyyy')
+    : null;
 
-  const categoryTags = useMemo(() => {
-    if (!resource.categories || resource.categories.length === 0) {
-      return { visible: [], hidden: [], remaining: 0 };
-    }
+  const categoryTags =
+    !resource.categories || resource.categories.length === 0
+      ? { visible: [] as string[], hidden: [] as string[], remaining: 0 }
+      : {
+          visible: resource.categories.slice(0, MAX_VISIBLE_CATEGORIES_IN_CARD),
+          hidden: resource.categories.slice(MAX_VISIBLE_CATEGORIES_IN_CARD),
+          remaining:
+            resource.categories.length - MAX_VISIBLE_CATEGORIES_IN_CARD,
+        };
 
-    const visible = resource.categories.slice(0, MAX_VISIBLE_TAGS);
-    const hidden = resource.categories.slice(MAX_VISIBLE_TAGS);
-    const remaining = resource.categories.length - MAX_VISIBLE_TAGS;
-
-    return { visible, hidden, remaining };
-  }, [resource.categories]);
-
-  const getCategoryColor = (category: string) => {
-    const categoryInfo =
+  const getCategoryColors = (category: string) => {
+    const info =
       LEARNING_CATEGORIES[category as keyof typeof LEARNING_CATEGORIES];
 
-    return categoryInfo?.color ?? DEFAULT_THEME.primaryColor;
+    return {
+      bgColor: info?.bgColor ?? '#f8f9fc',
+      borderColor: info?.borderColor ?? '#d5d9eb',
+      color: info?.color ?? '#363f72',
+    };
   };
 
   const handleViewMoreClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsDescriptionExpanded(!isDescriptionExpanded);
+    onClick?.(resource);
+  };
+
+  const handleMoreTagClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setAnchorEl(e.currentTarget as HTMLElement);
+  };
+
+  const handlePopoverClose = () => {
+    setAnchorEl(null);
   };
 
   return (
-    <div
-      className={classNames('learning-resource-card', {
-        'learning-resource-card-clickable': !!onClick,
-      })}
+    <Box
+      bgcolor={theme.palette.allShades?.white}
+      border="1px solid"
+      borderColor={theme.palette.allShades?.blueGray?.[50]}
+      borderRadius="12px"
+      boxShadow="0 1px 2px 0 rgba(10, 13, 18, 0.05)"
+      data-clickable={onClick ? 'true' : undefined}
       data-testid={`learning-resource-card-${resource.name}`}
+      sx={{
+        width: '100%',
+        minWidth: 0,
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1.5,
+        transition: 'all 0.2s ease',
+        ...(onClick && {
+          cursor: 'pointer',
+          '&:hover': {
+            boxShadow:
+              '0 4px 6px -2px rgba(10, 13, 18, 0.05), 0 2px 4px -2px rgba(10, 13, 18, 0.05)',
+          },
+        }),
+      }}
       onClick={() => onClick?.(resource)}>
-      <div className="learning-resource-content">
-        <div className="learning-resource-header">
-          {resourceTypeIcon}
-          <Text strong className="learning-resource-title">
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 1.5,
+            minWidth: 0,
+          }}>
+          <Box sx={{ flexShrink: 0, mt: '2px' }}>{resourceTypeIcon}</Box>
+          <Typography
+            component="span"
+            fontWeight={600}
+            sx={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: 14,
+              lineHeight: 1.43,
+              color: theme.palette.allShades?.gray?.[900],
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+            }}>
             {resource.displayName || resource.name}
-          </Text>
-        </div>
+          </Typography>
+        </Box>
 
-        {resource.description && (
-          <div className="learning-resource-description-container">
-            <Paragraph
-              className="learning-resource-description"
-              ellipsis={
-                isDescriptionExpanded
-                  ? false
-                  : { rows: 2, onEllipsis: setIsDescriptionTruncated }
-              }>
-              {resource.description}
-            </Paragraph>
-            {(isDescriptionTruncated || isDescriptionExpanded) && (
-              <Link className="view-more-link" onClick={handleViewMoreClick}>
-                {isDescriptionExpanded
-                  ? t('label.view-less')
-                  : t('label.view-more')}
-              </Link>
-            )}
-          </div>
-        )}
-
-        <div className="learning-resource-footer">
-          <div className="learning-resource-tags">
-            {categoryTags.visible.map((category) => (
-              <Tag
-                className="category-tag"
-                key={category}
-                style={{
-                  backgroundColor: `${getCategoryColor(category)}15`,
-                  borderColor: getCategoryColor(category),
-                  color: getCategoryColor(category),
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 0.5,
+            minHeight: 0,
+          }}>
+          {resource.description ? (
+            <>
+              <Typography
+                aria-label={resource.description}
+                component="span"
+                data-testid="learning-resource-description"
+                sx={{
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  color: theme.palette.allShades?.gray?.[600],
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
                 }}>
-                {LEARNING_CATEGORIES[
-                  category as keyof typeof LEARNING_CATEGORIES
-                ]?.label ?? category}
-              </Tag>
-            ))}
-            {categoryTags.remaining > 0 && (
-              <Popover
-                content={
-                  <div className="hidden-tags-popover">
-                    {categoryTags.hidden.map((category) => (
-                      <Tag
-                        className="category-tag"
+                {resource.description}
+              </Typography>
+              {showViewMore && (
+                <Link
+                  component="button"
+                  sx={{
+                    fontSize: 12,
+                    color: theme.palette.allShades?.brand?.[600],
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    alignSelf: 'flex-start',
+                    mt: 0.25,
+                    '&:hover': { textDecoration: 'underline' },
+                  }}
+                  type="button"
+                  onClick={handleViewMoreClick}>
+                  {t('label.view-more')}
+                </Link>
+              )}
+            </>
+          ) : (
+            <Typography
+              component="span"
+              data-testid="learning-resource-description"
+              sx={{
+                color: theme.palette.allShades?.gray?.[500] ?? '#717680',
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontStyle: 'italic',
+                fontWeight: 400,
+                lineHeight: '20px',
+              }}>
+              {t('label.no-entity-added', {
+                entity: t('label.description-lowercase'),
+              })}
+            </Typography>
+          )}
+        </Box>
+
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1.5,
+          }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              minWidth: 0,
+              overflow: 'hidden',
+            }}>
+            {categoryTags.visible.length > 0 ? (
+              <>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexWrap: 'nowrap',
+                    gap: '6px',
+                    minWidth: 0,
+                    overflow: 'hidden',
+                  }}>
+                  {categoryTags.visible.map((category) => {
+                    const colors = getCategoryColors(category);
+
+                    return (
+                      <Box
+                        component="span"
                         key={category}
-                        style={{
-                          backgroundColor: `${getCategoryColor(category)}15`,
-                          borderColor: getCategoryColor(category),
-                          color: getCategoryColor(category),
+                        sx={{
+                          flexShrink: 0,
+                          fontSize: 12,
+                          lineHeight: 1.5,
+                          padding: '2px 6px',
+                          borderRadius: '6px',
+                          fontWeight: 500,
+                          backgroundColor: colors.bgColor,
+                          border: '1px solid',
+                          borderColor: colors.borderColor,
+                          color: colors.color,
                         }}>
                         {LEARNING_CATEGORIES[
                           category as keyof typeof LEARNING_CATEGORIES
                         ]?.label ?? category}
-                      </Tag>
-                    ))}
-                  </div>
-                }
-                trigger="click">
-                <Tag
-                  className="category-tag more-tag"
-                  onClick={(e) => e.stopPropagation()}>
-                  +{categoryTags.remaining}
-                </Tag>
-              </Popover>
-            )}
-          </div>
+                      </Box>
+                    );
+                  })}
+                </Box>
+                {categoryTags.remaining > 0 && (
+                  <>
+                    <Box
+                      component="span"
+                      sx={{
+                        flexShrink: 0,
+                        fontSize: 12,
+                        lineHeight: 1.5,
+                        padding: '2px 6px',
+                        borderRadius: '6px',
+                        fontWeight: 500,
+                        backgroundColor: theme.palette.allShades?.brand?.[50],
+                        border: 'none',
+                        color: theme.palette.allShades?.brand?.[700],
+                        cursor: 'pointer',
+                        '&:hover': {
+                          backgroundColor:
+                            theme.palette.allShades?.brand?.[100],
+                        },
+                      }}
+                      onClick={handleMoreTagClick}>
+                      +{categoryTags.remaining}
+                    </Box>
+                    <Popover
+                      anchorEl={anchorEl}
+                      anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                      open={Boolean(anchorEl)}
+                      slotProps={{
+                        root: {
+                          onClick: (e: React.MouseEvent) => e.stopPropagation(),
+                        },
+                      }}
+                      transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                      onClose={handlePopoverClose}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: 0.5,
+                          maxWidth: 250,
+                          p: 1.5,
+                        }}
+                        onClick={(e) => e.stopPropagation()}>
+                        {categoryTags.hidden.map((category) => {
+                          const colors = getCategoryColors(category);
 
-          <div className="learning-resource-meta">
+                          return (
+                            <Box
+                              component="span"
+                              key={category}
+                              sx={{
+                                fontSize: 12,
+                                lineHeight: 1.5,
+                                padding: '2px 6px',
+                                borderRadius: '6px',
+                                fontWeight: 500,
+                                backgroundColor: colors.bgColor,
+                                border: '1px solid',
+                                borderColor: colors.borderColor,
+                                color: colors.color,
+                              }}>
+                              {LEARNING_CATEGORIES[
+                                category as keyof typeof LEARNING_CATEGORIES
+                              ]?.label ?? category}
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    </Popover>
+                  </>
+                )}
+              </>
+            ) : (
+              <Typography
+                component="span"
+                sx={{
+                  color: theme.palette.allShades?.gray?.[500] ?? '#717680',
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  fontStyle: 'italic',
+                  fontWeight: 400,
+                  lineHeight: '20px',
+                }}>
+                {t('label.no-entity-added', {
+                  entity: t('label.category-lowercase'),
+                })}
+              </Typography>
+            )}
+          </Box>
+
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.75,
+              flexShrink: 0,
+            }}>
             {formattedDate && (
-              <Text className="meta-text" type="secondary">
+              <Typography
+                component="span"
+                sx={{
+                  fontSize: 12,
+                  color: theme.palette.allShades?.gray?.[600],
+                }}>
                 {formattedDate}
-              </Text>
+              </Typography>
             )}
             {formattedDate && formattedDuration && (
-              <span className="meta-separator">|</span>
+              <Typography
+                component="span"
+                sx={{
+                  fontSize: 12,
+                  color: theme.palette.allShades?.blueGray?.[100],
+                }}>
+                |
+              </Typography>
             )}
             {formattedDuration && (
-              <Text className="meta-text" type="secondary">
+              <Typography
+                component="span"
+                sx={{
+                  fontSize: 12,
+                  color: theme.palette.allShades?.gray?.[600],
+                }}>
                 {formattedDuration}
-              </Text>
+              </Typography>
             )}
-          </div>
-        </div>
-      </div>
-    </div>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 };
