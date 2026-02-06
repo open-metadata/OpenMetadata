@@ -296,6 +296,11 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
                       anchorEl={anchorEl}
                       anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
                       open={Boolean(anchorEl)}
+                      slotProps={{
+                        root: {
+                          onClick: (e: React.MouseEvent) => e.stopPropagation(),
+                        },
+                      }}
                       transformOrigin={{ vertical: 'top', horizontal: 'left' }}
                       onClose={handlePopoverClose}>
                       <Box
@@ -305,7 +310,8 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
                           gap: 0.5,
                           maxWidth: 250,
                           p: 1.5,
-                        }}>
+                        }}
+                        onClick={(e) => e.stopPropagation()}>
                         {categoryTags.hidden.map((category) => {
                           const colors = getCategoryColors(category);
 

@@ -86,16 +86,6 @@ export const useLearningResources = ({
         fields: 'categories,contexts,difficulty,estimatedDuration,owners',
       };
 
-      const context = filterState.context?.[0];
-      const status = filterState.status?.[0];
-
-      if (context) {
-        apiParams.pageId = context;
-      }
-      if (status) {
-        apiParams.status = status;
-      }
-
       const response = await getLearningResourcesList(apiParams);
       setResources(response.data ?? []);
     } catch (error) {
@@ -106,7 +96,7 @@ export const useLearningResources = ({
     } finally {
       setIsLoading(false);
     }
-  }, [t, filterState.context, filterState.status]);
+  }, [t]);
 
   useEffect(() => {
     fetchResources();
