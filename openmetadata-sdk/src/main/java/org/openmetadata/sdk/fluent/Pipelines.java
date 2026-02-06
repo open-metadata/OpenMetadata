@@ -1,9 +1,18 @@
 package org.openmetadata.sdk.fluent;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.models.ListResponse;
 
 /**
  * Pure Fluent API for Pipeline operations.
@@ -117,6 +126,21 @@ public final class Pipelines {
 
   public static Pipeline getVersion(String id, Double version) {
     return getClient().pipelines().getVersion(id, version);
+  }
+
+  // ==================== Pipeline Status ====================
+
+  public static Pipeline addPipelineStatus(String fqn, PipelineStatus status) {
+    return getClient().pipelines().addPipelineStatus(fqn, status);
+  }
+
+  public static Pipeline addBulkPipelineStatus(String fqn, List<PipelineStatus> statuses) {
+    return getClient().pipelines().addBulkPipelineStatus(fqn, statuses);
+  }
+
+  public static ListResponse<PipelineStatus> listPipelineStatuses(
+      String fqn, Long startTs, Long endTs) {
+    return getClient().pipelines().listPipelineStatuses(fqn, startTs, endTs);
   }
 
   // ==================== Finding/Retrieval ====================
@@ -329,6 +353,20 @@ public final class Pipelines {
       pipeline.setDisplayName(displayName);
       modified = true;
       return this;
+    }
+
+    public Pipeline addPipelineStatus(PipelineStatus status) {
+      return client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), status);
+    }
+
+    public Pipeline addBulkPipelineStatus(List<PipelineStatus> statuses) {
+      return client.pipelines().addBulkPipelineStatus(pipeline.getFullyQualifiedName(), statuses);
+    }
+
+    public ListResponse<PipelineStatus> listPipelineStatuses(Long startTs, Long endTs) {
+      return client
+          .pipelines()
+          .listPipelineStatuses(pipeline.getFullyQualifiedName(), startTs, endTs);
     }
 
     public FluentPipeline save() {

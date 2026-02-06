@@ -256,7 +256,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             if not pipeline_details.job_id:
                 return
 
-            lookback_days = self.source_config.numberOfStatus or 1
+            lookback_days = self.source_config.statusLookbackDays or 1
             cutoff_ts = int(
                 (datetime.now(timezone.utc) - timedelta(days=lookback_days)).timestamp()
                 * 1000

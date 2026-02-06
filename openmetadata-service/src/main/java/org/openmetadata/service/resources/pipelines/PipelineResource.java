@@ -29,6 +29,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -520,7 +521,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
-      @Valid List<PipelineStatus> pipelineStatuses) {
+      @Valid @Size(max = 1000, message = "Bulk pipeline status list cannot exceed 1000 items")
+          List<PipelineStatus> pipelineStatuses) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));

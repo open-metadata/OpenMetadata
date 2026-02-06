@@ -82,11 +82,11 @@
       "default": true,
       "title": "Include UnDeployed Pipelines"
     },
-    "numberOfStatus": {
+    "statusLookbackDays": {
       "description": "Number of days of pipeline run status history to ingest. Only runs within the last N days will be fetched.",
       "type": "integer",
       "default": 1,
-      "title": "Number Of Status"
+      "title": "Status Lookback Days"
     },
     "overrideMetadata":{
       "title": "Override Metadata",

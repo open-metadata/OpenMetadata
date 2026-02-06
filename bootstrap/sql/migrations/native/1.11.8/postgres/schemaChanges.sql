@@ -11,3 +11,7 @@ WHERE serviceType = 'Salesforce'
   AND json->'connection'->'config'->>'sobjectName' IS NOT NULL;
 
 -- No changes needed for PostgreSQL - TIMESTAMP already has microsecond precision.
+
+-- No changes needed for entity_extension_time_series.timestamp on PostgreSQL.
+-- PostgreSQL already uses STORED for the generated timestamp column (since table creation).
+-- MySQL migration changes it from VIRTUAL to STORED for consistency and performance.

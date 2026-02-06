@@ -6,19 +6,33 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreatePipeline;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.PipelineStatus;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.Status;
+import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
@@ -674,18 +688,12 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     assertNotNull(pipeline);
 
     // Create pipeline status with task statuses
-    org.openmetadata.schema.type.Status t1Status =
-        new org.openmetadata.schema.type.Status()
-            .withName("task1")
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful);
-    org.openmetadata.schema.type.Status t2Status =
-        new org.openmetadata.schema.type.Status()
-            .withName("task2")
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed);
+    Status t1Status = new Status().withName("task1").withExecutionStatus(StatusType.Successful);
+    Status t2Status = new Status().withName("task2").withExecutionStatus(StatusType.Failed);
 
-    org.openmetadata.schema.entity.data.PipelineStatus pipelineStatus =
-        new org.openmetadata.schema.entity.data.PipelineStatus()
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed)
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Failed)
             .withTimestamp(System.currentTimeMillis())
             .withTaskStatus(Arrays.asList(t1Status, t2Status));
 
@@ -702,9 +710,7 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     Pipeline updatedPipeline =
         client.pipelines().get(pipeline.getId().toString(), "pipelineStatus");
     assertNotNull(updatedPipeline.getPipelineStatus());
-    assertEquals(
-        org.openmetadata.schema.type.StatusType.Failed,
-        updatedPipeline.getPipelineStatus().getExecutionStatus());
+    assertEquals(StatusType.Failed, updatedPipeline.getPipelineStatus().getExecutionStatus());
   }
 
   @Test
@@ -722,14 +728,12 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     Pipeline pipeline = createEntity(request);
 
     // Create status with invalid task name
-    org.openmetadata.schema.type.Status invalidTaskStatus =
-        new org.openmetadata.schema.type.Status()
-            .withName("invalidTask")
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed);
+    Status invalidTaskStatus =
+        new Status().withName("invalidTask").withExecutionStatus(StatusType.Failed);
 
-    org.openmetadata.schema.entity.data.PipelineStatus pipelineStatus =
-        new org.openmetadata.schema.entity.data.PipelineStatus()
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed)
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Failed)
             .withTimestamp(System.currentTimeMillis())
             .withTaskStatus(Arrays.asList(invalidTaskStatus));
 
@@ -907,15 +911,13 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     Pipeline pipeline = createEntity(request);
 
     // Create task status for task1
-    org.openmetadata.schema.type.Status task1StatusSuccess =
-        new org.openmetadata.schema.type.Status()
-            .withName("task1")
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful);
+    Status task1StatusSuccess =
+        new Status().withName("task1").withExecutionStatus(StatusType.Successful);
 
     // Add first status (with taskStatus)
-    org.openmetadata.schema.entity.data.PipelineStatus status1 =
-        new org.openmetadata.schema.entity.data.PipelineStatus()
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful)
+    PipelineStatus status1 =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
             .withTimestamp(System.currentTimeMillis() - 3600000)
             .withTaskStatus(Arrays.asList(task1StatusSuccess));
 
@@ -923,15 +925,13 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), status1);
 
     // Create task status for second update
-    org.openmetadata.schema.type.Status task1StatusFailed =
-        new org.openmetadata.schema.type.Status()
-            .withName("task1")
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed);
+    Status task1StatusFailed =
+        new Status().withName("task1").withExecutionStatus(StatusType.Failed);
 
     // Add second status (with taskStatus)
-    org.openmetadata.schema.entity.data.PipelineStatus status2 =
-        new org.openmetadata.schema.entity.data.PipelineStatus()
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed)
+    PipelineStatus status2 =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Failed)
             .withTimestamp(System.currentTimeMillis())
             .withTaskStatus(Arrays.asList(task1StatusFailed));
 
@@ -1111,23 +1111,16 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     Pipeline pipeline = createEntity(request);
     assertNotNull(pipeline);
 
-    org.openmetadata.schema.type.Status t1Status =
-        new org.openmetadata.schema.type.Status()
-            .withName("task1")
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful);
-    org.openmetadata.schema.type.Status t2Status =
-        new org.openmetadata.schema.type.Status()
-            .withName("task2")
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed);
-    List<org.openmetadata.schema.type.Status> taskStatuses = Arrays.asList(t1Status, t2Status);
+    Status t1Status = new Status().withName("task1").withExecutionStatus(StatusType.Successful);
+    Status t2Status = new Status().withName("task2").withExecutionStatus(StatusType.Failed);
+    List<Status> taskStatuses = Arrays.asList(t1Status, t2Status);
 
     long baseTime = System.currentTimeMillis() - 5 * 3600000;
-    List<org.openmetadata.schema.entity.data.PipelineStatus> bulkStatuses =
-        new java.util.ArrayList<>();
+    List<PipelineStatus> bulkStatuses = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      org.openmetadata.schema.entity.data.PipelineStatus ps =
-          new org.openmetadata.schema.entity.data.PipelineStatus()
-              .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful)
+      PipelineStatus ps =
+          new PipelineStatus()
+              .withExecutionStatus(StatusType.Successful)
               .withTimestamp(baseTime + i * 3600000)
               .withTaskStatus(taskStatuses);
       bulkStatuses.add(ps);
@@ -1140,31 +1133,45 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     assertEquals(
         bulkStatuses.get(4).getTimestamp(), putResponse.getPipelineStatus().getTimestamp());
 
+    // Verify ALL 5 statuses were persisted as separate rows, not overwritten
+    var statusList =
+        client
+            .pipelines()
+            .listPipelineStatuses(
+                pipeline.getFullyQualifiedName(), baseTime - 1, baseTime + 5 * 3600000);
+    assertEquals(5, statusList.getData().size(), "All 5 statuses should be persisted");
+
     Pipeline fetched = client.pipelines().get(pipeline.getId().toString(), "pipelineStatus");
     assertNotNull(fetched.getPipelineStatus());
     assertEquals(bulkStatuses.get(4).getTimestamp(), fetched.getPipelineStatus().getTimestamp());
 
-    org.openmetadata.schema.entity.data.PipelineStatus overlapStatus =
-        new org.openmetadata.schema.entity.data.PipelineStatus()
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed)
+    PipelineStatus overlapStatus =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Failed)
             .withTimestamp(bulkStatuses.get(4).getTimestamp())
             .withTaskStatus(taskStatuses);
-    org.openmetadata.schema.entity.data.PipelineStatus newStatus =
-        new org.openmetadata.schema.entity.data.PipelineStatus()
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed)
+    PipelineStatus newStatus =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Failed)
             .withTimestamp(baseTime + 5 * 3600000)
             .withTaskStatus(taskStatuses);
 
-    List<org.openmetadata.schema.entity.data.PipelineStatus> overlapStatuses =
-        Arrays.asList(overlapStatus, newStatus);
+    List<PipelineStatus> overlapStatuses = Arrays.asList(overlapStatus, newStatus);
 
     putResponse =
         client.pipelines().addBulkPipelineStatus(pipeline.getFullyQualifiedName(), overlapStatuses);
     assertNotNull(putResponse);
     assertEquals(newStatus.getTimestamp(), putResponse.getPipelineStatus().getTimestamp());
+    assertEquals(StatusType.Failed, putResponse.getPipelineStatus().getExecutionStatus());
+
+    // Verify overlap upserted (still 5 original + 1 new = 6 total, not 7)
+    statusList =
+        client
+            .pipelines()
+            .listPipelineStatuses(
+                pipeline.getFullyQualifiedName(), baseTime - 1, baseTime + 6 * 3600000);
     assertEquals(
-        org.openmetadata.schema.type.StatusType.Failed,
-        putResponse.getPipelineStatus().getExecutionStatus());
+        6, statusList.getData().size(), "Should be 6: 5 original + 1 new, overlap upserted");
   }
 
   @Test
@@ -1179,14 +1186,12 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
 
     Pipeline pipeline = createEntity(request);
 
-    org.openmetadata.schema.type.Status invalidTaskStatus =
-        new org.openmetadata.schema.type.Status()
-            .withName("nonExistentTask")
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed);
+    Status invalidTaskStatus =
+        new Status().withName("nonExistentTask").withExecutionStatus(StatusType.Failed);
 
-    org.openmetadata.schema.entity.data.PipelineStatus ps =
-        new org.openmetadata.schema.entity.data.PipelineStatus()
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed)
+    PipelineStatus ps =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Failed)
             .withTimestamp(System.currentTimeMillis())
             .withTaskStatus(Arrays.asList(invalidTaskStatus));
 
@@ -1217,16 +1222,16 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     long startTime = System.currentTimeMillis();
     long endTime = startTime + 600000; // 10 minutes duration
 
-    org.openmetadata.schema.type.Status taskStatus =
-        new org.openmetadata.schema.type.Status()
+    Status taskStatus =
+        new Status()
             .withName("task1")
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful)
+            .withExecutionStatus(StatusType.Successful)
             .withStartTime(startTime)
             .withEndTime(endTime);
 
-    org.openmetadata.schema.entity.data.PipelineStatus pipelineStatus =
-        new org.openmetadata.schema.entity.data.PipelineStatus()
-            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful)
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
             .withTimestamp(endTime)
             .withEndTime(endTime)
             .withTaskStatus(Arrays.asList(taskStatus));
@@ -1242,11 +1247,54 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     assertNotNull(updatedPipeline.getPipelineStatus().getTaskStatus());
     assertEquals(1, updatedPipeline.getPipelineStatus().getTaskStatus().size());
 
-    org.openmetadata.schema.type.Status retrievedTask =
-        updatedPipeline.getPipelineStatus().getTaskStatus().get(0);
+    Status retrievedTask = updatedPipeline.getPipelineStatus().getTaskStatus().get(0);
     assertNotNull(retrievedTask.getStartTime());
     assertNotNull(retrievedTask.getEndTime());
     assertEquals(startTime, retrievedTask.getStartTime());
     assertEquals(endTime, retrievedTask.getEndTime());
+  }
+
+  @Test
+  void put_pipelineStatusReindexesDownstreamLineage_200_OK(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    PipelineService pipelineService = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline createPipeline = new CreatePipeline();
+    createPipeline.setName(ns.prefix("pipeline_lineage_reindex"));
+    createPipeline.setService(pipelineService.getFullyQualifiedName());
+    createPipeline.setTasks(Arrays.asList(new Task().withName("task1").withDescription("Task 1")));
+    Pipeline pipeline = createEntity(createPipeline);
+
+    DatabaseService dbService = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, dbService);
+    CreateTable createTable = new CreateTable();
+    createTable.setName(ns.prefix("downstream_table"));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)));
+    Table table = client.tables().create(createTable);
+
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(pipeline.getEntityReference())
+                    .withToEntity(table.getEntityReference()));
+    client.lineage().addLineage(addLineage);
+
+    Status taskStatus = new Status().withName("task1").withExecutionStatus(StatusType.Successful);
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withTimestamp(System.currentTimeMillis())
+            .withTaskStatus(Arrays.asList(taskStatus));
+
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), pipelineStatus);
+
+    Pipeline updatedPipeline =
+        client.pipelines().get(pipeline.getId().toString(), "pipelineStatus");
+    assertNotNull(updatedPipeline.getPipelineStatus());
+    assertEquals(StatusType.Successful, updatedPipeline.getPipelineStatus().getExecutionStatus());
+    assertEquals(pipelineStatus.getTimestamp(), updatedPipeline.getPipelineStatus().getTimestamp());
   }
 }

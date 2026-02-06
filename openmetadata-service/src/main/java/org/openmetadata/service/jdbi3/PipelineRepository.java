@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
@@ -365,6 +366,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     // Update the pipeline's own ES index with latest status
     searchRepository.updateEntityIndex(pipeline);
+    searchRepository
+        .getSearchClient()
+        .reindexAcrossIndices(
+            "upstreamLineage.pipeline.fullyQualifiedName", pipeline.getEntityReference());
 
     return new RestUtil.PutResponse<>(
         Response.Status.OK,
@@ -374,14 +379,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   public RestUtil.PutResponse<?> addBulkPipelineStatus(
       String fqn, List<PipelineStatus> pipelineStatuses) {
-    if (pipelineStatuses == null || pipelineStatuses.isEmpty()) {
-      Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
-      pipeline.setService(getContainer(pipeline.getId()));
-      return new RestUtil.PutResponse<>(Response.Status.OK, pipeline, ENTITY_UPDATED);
-    }
-
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
     pipeline.setService(getContainer(pipeline.getId()));
+
+    if (pipelineStatuses == null || pipelineStatuses.isEmpty()) {
+      return new RestUtil.PutResponse<>(Response.Status.OK, pipeline, ENTITY_NO_CHANGE);
+    }
 
     Set<String> validatedTasks = new HashSet<>();
     for (PipelineStatus pipelineStatus : pipelineStatuses) {
