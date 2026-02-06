@@ -237,7 +237,7 @@ test.describe('Learning Resources Admin Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, ()
   });
 });
 
-test.describe('Learning Resources Admin Page - Additional Tests', () => {
+test.describe('Learning Resources Admin Page - Additional Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
@@ -340,7 +340,7 @@ test.describe('Learning Resources Admin Page - Additional Tests', () => {
   });
 });
 
-test.describe('Learning Icon on Pages', () => {
+test.describe('Learning Icon on Pages', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test('should display learning icon on glossary page when resources exist', async ({ page }) => {
     // Navigate to home first to ensure auth context is established
     await redirectToHomePage(page);
@@ -515,7 +515,7 @@ test.describe('Learning Icon on Pages', () => {
   });
 });
 
-test.describe.serial('Learning Resources E2E Flow', () => {
+test.describe.serial('Learning Resources E2E Flow', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test('should create resource via UI and verify learning icon appears on target page', async ({ page }) => {
     const uniqueId = uuid();
     const resourceName = `PW_Create_E2E_${uniqueId}`;
@@ -596,7 +596,7 @@ test.describe.serial('Learning Resources E2E Flow', () => {
   });
 
   test('should update resource context and verify learning icon moves to new page', async ({ page }) => {
-   test.slow()
+    test.slow()
     // Navigate to home first to ensure auth context is established
     await redirectToHomePage(page);
 

@@ -90,7 +90,7 @@ test.beforeAll('Setup shared test data', async ({ browser }) => {
   await afterAction();
 });
 
-test.describe('Right Entity Panel - Admin User Flow', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
+test.describe('Right Entity Panel - Admin User Flow', () => {
   test.beforeAll('Setup lineage test entities', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await Promise.all([
@@ -637,7 +637,7 @@ test.describe('Right Entity Panel - Admin User Flow', PLAYWRIGHT_SAMPLE_DATA_TAG
     await expect(tierSectionAfterRemove.getByText('Tier1')).not.toBeVisible();
   });
 
-  test('Admin - Overview Tab - Domains Section - Add and Update', async ({
+  test('Admin - Overview Tab - Domains Section - Add and Update', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({
     adminPage,
   }) => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
@@ -652,7 +652,7 @@ test.describe('Right Entity Panel - Admin User Flow', PLAYWRIGHT_SAMPLE_DATA_TAG
     ).toBeVisible();
   });
 
-  test('Admin - Overview Tab - Remove Domain', async ({ adminPage }) => {
+  test('Admin - Overview Tab - Remove Domain', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ adminPage }) => {
     await editDomain(adminPage, 'TestDomain');
 
     await expect(
@@ -1683,7 +1683,7 @@ test.describe('Right Entity Panel - Admin User Flow', PLAYWRIGHT_SAMPLE_DATA_TAG
   });
 });
 
-test.describe('Right Entity Panel - Data Steward User Flow', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
+test.describe('Right Entity Panel - Data Steward User Flow', () => {
   test.beforeEach('Navigate to explore page', async ({ dataStewardPage }) => {
     await navigateToExploreAndSelectTable(
       dataStewardPage,
