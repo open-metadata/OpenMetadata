@@ -1,0 +1,93 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# OpenMetadata Configuration with Keycloak SAML SSO
+# Use this for local testing with Keycloak as SAML Identity Provider
+
+authenticationConfiguration:
+  provider: "saml"
+  providerName: "Keycloak SAML"
+  publicKeyUrls:
+    - "http://keycloak:8080/realms/openmetadata/protocol/saml/descriptor"
+  authority: "${AUTHENTICATION_AUTHORITY:-http://localhost:8080}"
+  clientId: "${AUTHENTICATION_CLIENT_ID:-http://localhost:8585}"
+  callbackUrl: "${AUTHENTICATION_CALLBACK_URL:-http://localhost:8585/callback}"
+
+  jwtPrincipalClaims:
+    - "email"
+    - "sub"
+
+  samlConfiguration:
+    debugMode: false
+    idp:
+      entityId: "http://localhost:8080/realms/openmetadata"
+      ssoLoginUrl: "http://localhost:8080/realms/openmetadata/protocol/saml"
+      authorityUrl: "${AUTHENTICATION_AUTHORITY:-http://localhost:8080}"
+      nameId: "email"
+    sp:
+      entityId: "${AUTHENTICATION_CLIENT_ID:-http://localhost:8585}"
+      acs: "${AUTHENTICATION_CALLBACK_URL:-http://localhost:8585/callback}"
+      callback: "${AUTHENTICATION_CALLBACK_URL:-http://localhost:8585/callback}"
+    security:
+      strictMode: false
+      tokenValidity: 3600
+      wantAssertionsSigned: false
+      wantMessagesSigned: false
+      sendSignedAuthRequest: false
+
+authorizerConfiguration:
+  className: "${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}"
+  containerRequestFilter: "${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}"
+  adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin@openmetadata.org, adminuser]}
+  principalDomain: "${AUTHORIZER_PRINCIPAL_DOMAIN:-http://localhost:8080}"
+
+server:
+  rootPath: '/api/*'
+  applicationConnectors:
+    - type: http
+      port: 8585
+  adminConnectors:
+    - type: http
+      port: 8586
+
+database:
+  driverClass: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
+  url: jdbc:mysql://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+  user: ${DB_USER:-openmetadata_user}
+  password: ${DB_USER_PASSWORD:-openmetadata_password}
+
+elasticsearch:
+  host: ${ELASTICSEARCH_HOST:-localhost}
+  port: ${ELASTICSEARCH_PORT:-9200}
+  scheme: ${ELASTICSEARCH_SCHEME:-http}
+  trustStore:
+    path: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
+    password: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
+  searchIndexMappingLanguage: ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
+
+pipelineServiceClientConfiguration:
+  className: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
+  apiEndpoint: ${PIPELINE_SERVICE_CLIENT_ENDPOINT:-http://localhost:8080}
+  metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
+  hostIp: ${PIPELINE_SERVICE_IP:-""}
+
+eventHandlerConfiguration:
+  eventHandlerClassNames: ${EVENT_HANDLER_CLASS_NAMES:-[]}
+
+secretsManagerConfiguration:
+  secretsManager: ${SECRET_MANAGER:-noop}
+
+health:
+  delayedShutdownHandlerEnabled: true
+  shutdownWaitPeriod: 1s
+  healthChecks:
+    - name: "OpenMetadataServerHealthCheck"
+      critical: true
