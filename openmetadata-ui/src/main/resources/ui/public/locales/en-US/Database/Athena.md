@@ -174,6 +174,18 @@ You can find more information about <a href="https://docs.aws.amazon.com/athena/
 $$
 
 $$section
+### Catalog ID $(id="catalogId")
+
+The catalog ID for Athena. This is required when ingesting metadata from:
+- **S3 Tables**: Use the format `s3tablescatalog/<bucket-name>` (e.g., `s3tablescatalog/my-table-bucket`)
+- **Cross-account catalogs**: Use the AWS account ID of the account that owns the Glue Data Catalog
+
+If not provided, defaults to the caller's AWS account.
+
+Find more information about <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables.html" target="_blank">S3 Tables</a> and <a href="https://docs.aws.amazon.com/glue/latest/dg/cross-account-access.html" target="_blank">Cross-account access in AWS Glue</a>.
+$$
+
+$$section
 ### Database Name $(id="databaseName")
 
 In OpenMetadata, the Database Service hierarchy works as follows:

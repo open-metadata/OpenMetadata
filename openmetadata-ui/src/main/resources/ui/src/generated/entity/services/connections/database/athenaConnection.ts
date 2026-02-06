@@ -14,7 +14,13 @@
  * AWS Athena Connection Config
  */
 export interface AthenaConnection {
-    awsConfig:            AWSCredentials;
+    awsConfig: AWSCredentials;
+    /**
+     * Catalog ID for Athena. For S3 Tables, use the format 's3tablescatalog/<bucket-name>'. For
+     * cross-account Glue catalogs, use the AWS account ID. If not provided, defaults to the
+     * caller's AWS account.
+     */
+    catalogId?:           string;
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**

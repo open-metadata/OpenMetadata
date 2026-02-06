@@ -157,11 +157,13 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             raw_connection = self._raw_connection(connection)
             schema = schema if schema else raw_connection.schema_name
 
-            # Use the provided Glue client or create one with default credentials
             glue_client = kw.get("glue_client")
+            catalog_id = kw.get("catalog_id")
 
-            # Get full table metadata from Glue
-            response = glue_client.get_table(DatabaseName=schema, Name=table_name)
+            get_table_params = {"DatabaseName": schema, "Name": table_name}
+            if catalog_id:
+                get_table_params["CatalogId"] = catalog_id
+            response = glue_client.get_table(**get_table_params)
 
             table_info = response["Table"]
 
