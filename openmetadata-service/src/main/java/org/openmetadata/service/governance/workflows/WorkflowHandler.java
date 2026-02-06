@@ -130,8 +130,15 @@ public class WorkflowHandler {
             workflowSettings.getExecutorConfiguration().getTimerJobAcquisitionInterval());
 
     // Setting History CleanUp
+    // For tests we'd want history to be written in the same transaction as the task
+    boolean asyncHistoryEnabled = true;
+    String historyMode = System.getProperty("openmetadata.flowable.historyMode");
+    if (historyMode != null) {
+      asyncHistoryEnabled = !"sync".equals(historyMode);
+    }
+
     processEngineConfiguration
-        .setAsyncHistoryEnabled(true)
+        .setAsyncHistoryEnabled(asyncHistoryEnabled)
         .setEnableHistoryCleaning(true)
         .setCleanInstancesEndedAfter(
             Duration.ofDays(
@@ -156,13 +163,21 @@ public class WorkflowHandler {
         .addMapper(SqlMapper.class);
   }
 
-  public static void initialize(OpenMetadataApplicationConfig config) {
+  public static synchronized void initialize(OpenMetadataApplicationConfig config) {
     if (!initialized) {
       instance = new WorkflowHandler(config);
       initialized = true;
     } else {
       LOG.info("WorkflowHandler already initialized.");
     }
+  }
+
+  public static synchronized void initialize(OpenMetadataApplicationConfig config, boolean force) {
+    if (force && initialized && instance != null) {
+      instance.processEngine.close();
+      initialized = false;
+    }
+    initialize(config);
   }
 
   public static WorkflowHandler getInstance() {
