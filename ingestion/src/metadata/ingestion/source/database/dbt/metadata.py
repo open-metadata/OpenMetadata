@@ -1407,12 +1407,12 @@ class DbtSource(DbtServiceSource):
                     table_entity.fullyQualifiedName.root
                 )
                 data_model = data_model_link.datamodel
-                force_override = False
-                if (
-                    data_model.resourceType != DbtCommonEnum.SOURCE.value
-                    and self.source_config.dbtUpdateDescriptions
-                ):
-                    force_override = True
+                # Determine if we should override metadata based on resource type and configuration
+                is_source = data_model.resourceType == DbtCommonEnum.SOURCE.value
+                force_override = (
+                    (not is_source and self.source_config.dbtUpdateDescriptions)
+                    or (is_source and self.source_config.overrideMetadata)
+                )
 
                 # Patch table descriptions from DBT
                 if data_model.description:
@@ -1466,10 +1466,14 @@ class DbtSource(DbtServiceSource):
             )
             try:
                 data_model = data_model_link.datamodel
-                if (
-                    data_model.resourceType != DbtCommonEnum.SOURCE.value
-                    and self.source_config.dbtUpdateOwners
-                ):
+                # Determine if we should update owners based on resource type and configuration
+                is_source = data_model.resourceType == DbtCommonEnum.SOURCE.value
+                should_update_owners = (
+                    (not is_source and self.source_config.dbtUpdateOwners)
+                    or (is_source and self.source_config.overrideMetadata)
+                )
+                
+                if should_update_owners:
                     logger.debug(
                         f"Overwriting owners with DBT owners: {table_entity.fullyQualifiedName.root}"
                     )
