@@ -43,6 +43,9 @@ public class SigV4Hc5RequestSigningInterceptor implements HttpRequestInterceptor
     this.signer = Aws4Signer.create();
   }
 
+  private static final String UNSIGNED_PAYLOAD = "UNSIGNED-PAYLOAD";
+  private static final String X_AMZ_CONTENT_SHA256 = "x-amz-content-sha256";
+
   @Override
   public void process(HttpRequest request, EntityDetails entity, HttpContext context)
       throws HttpException, IOException {
@@ -58,8 +61,9 @@ public class SigV4Hc5RequestSigningInterceptor implements HttpRequestInterceptor
           "No target host found in HTTP context, cannot perform SigV4 signing for AWS OpenSearch");
     }
 
-    byte[] requestBody = extractRequestBody(request, entity);
-    SdkHttpFullRequest sdkRequest = buildSdkRequest(request, targetHost, requestBody);
+    BodyExtractionResult bodyResult = extractRequestBody(request, entity);
+    SdkHttpFullRequest sdkRequest =
+        buildSdkRequest(request, targetHost, bodyResult.body, bodyResult.useUnsignedPayload);
     SdkHttpFullRequest signedRequest = signRequest(sdkRequest);
 
     applySignedHeaders(request, signedRequest);
@@ -67,22 +71,30 @@ public class SigV4Hc5RequestSigningInterceptor implements HttpRequestInterceptor
     LOG.debug("Successfully signed request with AWS SigV4 for service: {}", serviceName);
   }
 
-  private byte[] extractRequestBody(HttpRequest request, EntityDetails entity) throws IOException {
+  private record BodyExtractionResult(byte[] body, boolean useUnsignedPayload) {}
+
+  private BodyExtractionResult extractRequestBody(HttpRequest request, EntityDetails entity)
+      throws IOException {
     if (entity != null
         && request instanceof org.apache.hc.core5.http.ClassicHttpRequest classicHttpRequest) {
       var httpEntity = classicHttpRequest.getEntity();
       if (httpEntity != null) {
         byte[] content = EntityUtils.toByteArray(httpEntity);
         classicHttpRequest.setEntity(new ByteArrayEntity(content, ContentType.APPLICATION_JSON));
-        return content;
+        return new BodyExtractionResult(content, false);
       }
     }
-    // For async requests or requests without accessible body, return empty array
-    // SigV4 will compute signature with empty body hash
-    return new byte[0];
+    // For async requests or requests without accessible body, use UNSIGNED-PAYLOAD
+    // This tells AWS to skip body verification (safe over HTTPS)
+    boolean hasBody = entity != null && entity.getContentLength() != 0;
+    if (hasBody) {
+      LOG.debug("Cannot extract body from async request, using UNSIGNED-PAYLOAD for SigV4 signing");
+    }
+    return new BodyExtractionResult(null, hasBody);
   }
 
-  private SdkHttpFullRequest buildSdkRequest(HttpRequest request, HttpHost host, byte[] body) {
+  private SdkHttpFullRequest buildSdkRequest(
+      HttpRequest request, HttpHost host, byte[] body, boolean useUnsignedPayload) {
     String uri = request.getRequestUri();
     String path = uri.split("\\?")[0];
 
@@ -107,12 +119,18 @@ public class SigV4Hc5RequestSigningInterceptor implements HttpRequestInterceptor
       if (!headerName.equals("host")
           && !headerName.equals("content-length")
           && !headerName.equals("content-type")
-          && !headerName.equals("transfer-encoding")) {
+          && !headerName.equals("transfer-encoding")
+          && !headerName.equals(X_AMZ_CONTENT_SHA256)) {
         builder.appendHeader(header.getName(), header.getValue());
       }
     }
 
-    if (body != null) {
+    if (useUnsignedPayload) {
+      // For async requests where body can't be extracted, use UNSIGNED-PAYLOAD
+      // AWS will skip body verification (safe over HTTPS to AWS-managed services)
+      builder.appendHeader(X_AMZ_CONTENT_SHA256, UNSIGNED_PAYLOAD);
+      builder.appendHeader("Content-Type", "application/json");
+    } else if (body != null && body.length > 0) {
       final byte[] finalBody = body;
       builder.contentStreamProvider(() -> new ByteArrayInputStream(finalBody));
       builder.appendHeader("Content-Type", "application/json");
