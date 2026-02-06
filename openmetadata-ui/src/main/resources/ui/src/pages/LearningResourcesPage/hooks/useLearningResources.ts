@@ -35,31 +35,22 @@ const matchesFilters = (
       return false;
     }
   }
-  const type = Array.isArray(filters.type) ? filters.type : filters.type;
-  if (type?.length && !type.includes(resource.resourceType)) {
+  if (filters.type?.length && !filters.type.includes(resource.resourceType)) {
     return false;
   }
-  const category = Array.isArray(filters.category)
-    ? filters.category
-    : filters.category;
+  const { category, context, status } = filters;
   if (
     category?.length &&
     !resource.categories?.some((c) => category.includes(c))
   ) {
     return false;
   }
-  const context = Array.isArray(filters.context)
-    ? filters.context
-    : filters.context;
   if (
     context?.length &&
     !resource.contexts?.some((c) => context.includes(c.pageId))
   ) {
     return false;
   }
-  const status = Array.isArray(filters.status)
-    ? filters.status
-    : filters.status;
   if (status?.length && !status.includes(resource.status ?? 'Active')) {
     return false;
   }
@@ -95,19 +86,9 @@ export const useLearningResources = ({
         fields: 'categories,contexts,difficulty,estimatedDuration,owners',
       };
 
-      const category = Array.isArray(filterState.category)
-        ? filterState.category[0]
-        : filterState.category;
-      const context = Array.isArray(filterState.context)
-        ? filterState.context[0]
-        : filterState.context;
-      const status = Array.isArray(filterState.status)
-        ? filterState.status[0]
-        : filterState.status;
+      const context = filterState.context?.[0];
+      const status = filterState.status?.[0];
 
-      if (category) {
-        apiParams.category = category;
-      }
       if (context) {
         apiParams.pageId = context;
       }
@@ -125,7 +106,7 @@ export const useLearningResources = ({
     } finally {
       setIsLoading(false);
     }
-  }, [t, filterState.category, filterState.context, filterState.status]);
+  }, [t, filterState.context, filterState.status]);
 
   useEffect(() => {
     fetchResources();
