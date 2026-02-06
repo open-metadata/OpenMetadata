@@ -1678,6 +1678,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   private V1Job buildAutomationJob(Workflow workflow, String runId, String jobName) {
+    List<V1EnvVar> envVars = new ArrayList<>();
+    envVars.add(new V1EnvVar().name(ENV_CONFIG).value(JsonUtils.pojoToJson(workflow)));
+    addExtraEnvVars(envVars);
+
     return new V1Job()
         .metadata(
             new V1ObjectMeta()
@@ -1711,11 +1715,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                             .image(k8sConfig.getIngestionImage())
                                             .imagePullPolicy(k8sConfig.getImagePullPolicy())
                                             .command(List.of(PYTHON_MAIN_PY, RUN_AUTOMATION_PY))
-                                            .env(
-                                                List.of(
-                                                    new V1EnvVar()
-                                                        .name(ENV_CONFIG)
-                                                        .value(JsonUtils.pojoToJson(workflow))))
+                                            .env(envVars)
                                             .resources(
                                                 new V1ResourceRequirements()
                                                     .requests(k8sConfig.getResourceRequests())
@@ -1724,6 +1724,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   private V1Job buildApplicationJob(App application, String runId, String jobName) {
     Map<String, String> labels = buildApplicationLabels(application, runId);
+    List<V1EnvVar> envVars = new ArrayList<>();
+    envVars.add(new V1EnvVar().name(ENV_CONFIG).value(JsonUtils.pojoToJson(application)));
+    addExtraEnvVars(envVars);
+
     return new V1Job()
         .metadata(
             new V1ObjectMeta().name(jobName).namespace(k8sConfig.getNamespace()).labels(labels))
@@ -1753,11 +1757,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                                     PYTHON_MAIN_PY,
                                                     APPLICATIONS_RUNNER,
                                                     APPLICATIONS_RUNNER_MODULE))
-                                            .env(
-                                                List.of(
-                                                    new V1EnvVar()
-                                                        .name(ENV_CONFIG)
-                                                        .value(JsonUtils.pojoToJson(application))))
+                                            .env(envVars)
                                             .resources(
                                                 new V1ResourceRequirements()
                                                     .requests(k8sConfig.getResourceRequests())
@@ -1767,6 +1767,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private OMJob buildApplicationOMJob(App application, String runId, String jobName) {
     Map<String, String> labels = buildApplicationLabels(application, runId);
 
+    List<V1EnvVar> envVars = new ArrayList<>();
+    envVars.add(new V1EnvVar().name(ENV_CONFIG).value(JsonUtils.pojoToJson(application)));
+    addExtraEnvVars(envVars);
+
     OMJob.OMJobPodSpec mainPodSpec =
         OMJob.OMJobPodSpec.builder()
             .image(k8sConfig.getIngestionImage())
@@ -1775,7 +1779,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                 k8sConfig.getImagePullSecrets().isEmpty() ? null : k8sConfig.getImagePullSecrets())
             .serviceAccountName(k8sConfig.getServiceAccountName())
             .command(List.of(PYTHON_MAIN_PY, APPLICATIONS_RUNNER, APPLICATIONS_RUNNER_MODULE))
-            .env(List.of(new V1EnvVar().name(ENV_CONFIG).value(JsonUtils.pojoToJson(application))))
+            .env(envVars)
             .resources(
                 new V1ResourceRequirements()
                     .requests(k8sConfig.getResourceRequests())

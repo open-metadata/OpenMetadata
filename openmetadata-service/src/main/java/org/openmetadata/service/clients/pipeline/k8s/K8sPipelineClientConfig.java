@@ -356,9 +356,9 @@ public class K8sPipelineClientConfig {
     rawMap.forEach(
         keyValue -> {
           try {
-            String key = keyValue.split(separator)[0];
-            String value = keyValue.split(separator)[1];
-            map.put(key, value);
+            // Split with limit=2 to handle values containing the separator (e.g., URLs with colons)
+            String[] parts = keyValue.split(separator, 2);
+            map.put(parts[0], parts[1]);
           } catch (Exception e) {
             LOG.error(
                 String.format(
