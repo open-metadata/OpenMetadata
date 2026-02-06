@@ -448,6 +448,11 @@ class JSONLogicSearchClassBase {
         widgets: {
           multiselect: {
             operators: ['like', 'not_like', 'is_null', 'is_not_null'],
+            widgetProps: {
+              customProps: {
+                open: false,
+              },
+            },
           },
         },
         fieldSettings: {
