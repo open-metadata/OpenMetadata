@@ -2022,6 +2022,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
                       try {
                         return new String(b.bodyAsBytes(), StandardCharsets.UTF_8);
                       } catch (Exception e) {
+                        LOG.warn("Failed to read response body for indices", e);
                         return "[]";
                       }
                     })

@@ -715,6 +715,14 @@ public class ElasticSearchClient implements SearchClient {
                         esConfig.getUsername(), esConfig.getPassword().toCharArray()));
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
               }
+
+              if (esConfig.getKeepAliveTimeoutSecs() != null
+                  && esConfig.getKeepAliveTimeoutSecs() > 0) {
+                httpAsyncClientBuilder.setKeepAliveStrategy(
+                    (response, context) ->
+                        org.apache.hc.core5.util.TimeValue.ofSeconds(
+                            esConfig.getKeepAliveTimeoutSecs()));
+              }
             });
 
         restClientBuilder.setRequestConfigCallback(
