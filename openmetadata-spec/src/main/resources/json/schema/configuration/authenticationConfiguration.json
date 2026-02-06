@@ -73,7 +73,7 @@
     },
     "jwtPrincipalClaims": {
       "title": "Jwt Principal Claims",
-      "description": "Jwt Principal Claim",
+      "description": "[DEPRECATED: Use 'emailClaim' instead] Use this claim from the JWT to identify the principal/subject of the token. Defaults are sub, email, preferred_username, name, upn, email_verified",
       "type": "array",
       "items": {
         "type": "string"
@@ -81,12 +81,22 @@
     },
     "jwtPrincipalClaimsMapping": {
       "title": "Jwt Principal Claims Mapping",
-      "description": "Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or 'email'. Both username and email mappings are required.",
+      "description": "[DEPRECATED: Use 'emailClaim' and 'displayNameClaim' instead] Use these claims from the JWT to identify the principal/subject and extract email. Format: 'username:claim_name,email:claim_name'",
       "type": "array",
       "items": {
         "type": "string",
         "pattern": "^(username|email):[a-zA-Z0-9_-]+$"
       }
+    },
+    "emailClaim": {
+      "description": "JWT claim name containing the user's email address. Defaults based on provider: 'email' for OIDC/SAML, 'mail' for LDAP.",
+      "type": "string",
+      "default": "email"
+    },
+    "displayNameClaim": {
+      "description": "JWT claim name containing the user's display name. Defaults based on provider: 'name' for OIDC/SAML, 'displayName' for LDAP.",
+      "type": "string",
+      "default": "name"
     },
     "jwtTeamClaimMapping": {
       "title": "Jwt Team Claim Mapping",

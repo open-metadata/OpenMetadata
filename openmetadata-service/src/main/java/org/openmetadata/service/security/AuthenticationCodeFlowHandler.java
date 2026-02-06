@@ -4,11 +4,15 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
 import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
+import static org.openmetadata.service.security.SecurityUtil.extractDisplayNameFromClaim;
+import static org.openmetadata.service.security.SecurityUtil.extractEmailFromClaim;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
+import static org.openmetadata.service.security.SecurityUtil.validateEmailDomain;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
+import static org.openmetadata.service.util.UserUtil.isAdminEmail;
 import static org.pac4j.core.util.CommonHelper.assertNotNull;
 import static org.pac4j.core.util.CommonHelper.isNotEmpty;
 
@@ -70,6 +74,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
@@ -102,6 +107,7 @@ import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.UserUtil;
 import org.pac4j.core.context.HttpConstants;
 import org.pac4j.core.exception.TechnicalException;
@@ -748,13 +754,38 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     claims.putAll(jwt.getJWTClaimsSet().getClaims());
 
-    String userName = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
-    String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
+    String email;
+    String displayName;
+    String userName;
+
+    String emailClaimConfig = authenticationConfiguration.getEmailClaim();
+    if (!nullOrEmpty(emailClaimConfig) && !shouldUseLegacyFlow()) {
+      email = extractEmailFromClaim(claims, emailClaimConfig);
+
+      List<String> allowedDomains =
+          authorizerConfiguration.getAllowedEmailDomains() != null
+              ? new ArrayList<>(authorizerConfiguration.getAllowedEmailDomains())
+              : new ArrayList<>();
+      validateEmailDomain(email, allowedDomains);
+
+      String displayNameClaimConfig = authenticationConfiguration.getDisplayNameClaim();
+      displayName = extractDisplayNameFromClaim(claims, displayNameClaimConfig, email);
+
+      userName = email.split("@")[0];
+      LOG.debug(
+          "OIDC email-first flow: email={}, userName={}, displayName={}",
+          email,
+          userName,
+          displayName);
+    } else {
+      userName = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
+      email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
+      displayName = null;
+    }
 
     String redirectUri = (String) httpSession.getAttribute(SESSION_REDIRECT_URI);
-    User user = getOrCreateOidcUser(userName, email, claims);
+    User user = getOrCreateOidcUser(email, displayName, claims);
     Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
-    // Store user info in session for logout audit
     httpSession.setAttribute(SESSION_USER_ID, user.getId().toString());
     httpSession.setAttribute(SESSION_USERNAME, user.getName());
     if (Entity.getAuditLogRepository() != null) {
@@ -765,37 +796,48 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     String url =
         String.format(
             "%s?id_token=%s&email=%s&name=%s",
-            redirectUri, credentials.getIdToken().getParsedString(), email, userName);
+            redirectUri, credentials.getIdToken().getParsedString(), email, user.getName());
     response.sendRedirect(url);
   }
 
-  private User getOrCreateOidcUser(String userName, String email, Map<String, Object> claims) {
-    // Extract teams from claims if configured (supports array claims like groups)
+  private boolean shouldUseLegacyFlow() {
+    return claimsMapping != null && !claimsMapping.isEmpty();
+  }
+
+  private User getOrCreateOidcUser(String email, String displayName, Map<String, Object> claims) {
     List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
 
     try {
-      // Fetch user with teams relationship loaded to preserve existing team memberships
       User user =
-          Entity.getEntityByName(Entity.USER, userName, "id,roles,teams", Include.NON_DELETED);
+          Entity.getUserRepository()
+              .getByEmail(null, email, new Fields(Set.of("id", "roles", "teams", "displayName")));
 
-      boolean shouldBeAdmin = getAdminPrincipals().contains(userName);
       boolean needsUpdate = false;
 
+      boolean shouldBeAdmin = isUserAdmin(email, user.getName());
       LOG.info(
-          "OIDC login - Username: {}, Email: {}, Should be admin: {}, Current admin status: {}",
-          userName,
+          "OIDC login - Email: {}, Username: {}, Should be admin: {}, Current admin status: {}",
           email,
+          user.getName(),
           shouldBeAdmin,
           user.getIsAdmin());
-      LOG.info("Admin principals list: {}", getAdminPrincipals());
 
       if (shouldBeAdmin && !Boolean.TRUE.equals(user.getIsAdmin())) {
-        LOG.info("Updating user {} to admin based on adminPrincipals", userName);
+        LOG.info("Updating user {} to admin based on adminEmails/adminPrincipals", user.getName());
         user.setIsAdmin(true);
         needsUpdate = true;
       }
 
-      // Assign teams from claims if provided (this only adds, doesn't remove existing teams)
+      if (displayName != null && !displayName.equals(user.getDisplayName())) {
+        LOG.info(
+            "Updating displayName for user {} from '{}' to '{}'",
+            user.getName(),
+            user.getDisplayName(),
+            displayName);
+        user.setDisplayName(displayName);
+        needsUpdate = true;
+      }
+
       boolean teamsAssigned = UserUtil.assignTeamsFromClaim(user, teamsFromClaim);
       needsUpdate = needsUpdate || teamsAssigned;
 
@@ -805,28 +847,58 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
       return user;
     } catch (EntityNotFoundException e) {
-      LOG.debug("User not found, will create new user: {}", userName);
+      LOG.debug("User not found by email {}, will create new user", email);
     }
 
-    if (authenticationConfiguration.getEnableSelfSignup()) {
-      boolean isAdmin = getAdminPrincipals().contains(userName);
-      LOG.info("Creating new OIDC user - Username: {}, Should be admin: {}", userName, isAdmin);
-      LOG.info("Admin principals list: {}", getAdminPrincipals());
-
-      String domain = email.split("@")[1];
-      User newUser =
-          UserUtil.user(userName, domain, userName).withIsAdmin(isAdmin).withIsEmailVerified(true);
-
-      // Assign teams from claims if provided
-      UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
-
-      return UserUtil.addOrUpdateUser(newUser);
+    if (!Boolean.TRUE.equals(authenticationConfiguration.getEnableSelfSignup())) {
+      throw new AuthenticationException(
+          "User not registered. Contact administrator to create an account.");
     }
-    throw new AuthenticationException("User not found and self-signup is disabled");
+
+    String userName = UserUtil.generateUsernameFromEmail(email, this::usernameExists);
+    boolean isAdmin = isUserAdmin(email, userName);
+    LOG.info(
+        "Creating new OIDC user - Email: {}, Generated username: {}, Is admin: {}",
+        email,
+        userName,
+        isAdmin);
+
+    String domain = email.split("@")[1];
+    User newUser =
+        UserUtil.user(userName, domain, userName)
+            .withEmail(email)
+            .withDisplayName(displayName != null ? displayName : userName)
+            .withIsAdmin(isAdmin)
+            .withIsEmailVerified(true);
+
+    UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
+
+    return UserUtil.addOrUpdateUser(newUser);
+  }
+
+  private boolean isUserAdmin(String email, String username) {
+    List<String> adminEmails =
+        authorizerConfiguration.getAdminEmails() != null
+            ? new ArrayList<>(authorizerConfiguration.getAdminEmails())
+            : new ArrayList<>();
+    if (isAdminEmail(email, adminEmails)) {
+      return true;
+    }
+    return getAdminPrincipals().contains(username);
+  }
+
+  private boolean usernameExists(String username) {
+    try {
+      Entity.getEntityByName(Entity.USER, username, "id", Include.NON_DELETED);
+      return true;
+    } catch (EntityNotFoundException e) {
+      return false;
+    }
   }
 
   private Set<String> getAdminPrincipals() {
-    return new HashSet<>(authorizerConfiguration.getAdminPrincipals());
+    Set<String> principals = authorizerConfiguration.getAdminPrincipals();
+    return principals != null ? new HashSet<>(principals) : new HashSet<>();
   }
 
   private void renewOidcCredentials(HttpSession httpSession, OidcCredentials credentials) {

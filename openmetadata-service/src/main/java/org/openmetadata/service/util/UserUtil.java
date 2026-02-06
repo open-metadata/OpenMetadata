@@ -26,6 +26,7 @@ import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -33,8 +34,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
@@ -66,8 +69,62 @@ import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
 public final class UserUtil {
+  private static final SecureRandom RANDOM = new SecureRandom();
+  private static final String SUFFIX_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
+  private static final int SUFFIX_LENGTH = 4;
+  private static final int MAX_USERNAME_GENERATION_ATTEMPTS = 100;
+
   private UserUtil() {
     // Private constructor for util class
+  }
+
+  /**
+   * Generate a unique username from email address. Uses email prefix, adds random suffix on
+   * collision.
+   *
+   * @param email user's email address
+   * @param existsChecker predicate to check if username already exists
+   * @return unique username
+   * @throws IllegalArgumentException if email is null/empty or existsChecker is null
+   * @throws IllegalStateException if unable to generate unique username after max attempts
+   */
+  public static String generateUsernameFromEmail(String email, Predicate<String> existsChecker) {
+    if (nullOrEmpty(email)) {
+      throw new IllegalArgumentException("Email cannot be null or empty");
+    }
+    if (existsChecker == null) {
+      throw new IllegalArgumentException("ExistsChecker predicate cannot be null");
+    }
+
+    String baseUsername = email.toLowerCase().split("@")[0];
+
+    if (!existsChecker.test(baseUsername)) {
+      return baseUsername;
+    }
+
+    int attempts = 0;
+    String username;
+    do {
+      if (attempts >= MAX_USERNAME_GENERATION_ATTEMPTS) {
+        throw new IllegalStateException(
+            String.format(
+                "Unable to generate unique username for email '%s' after %d attempts",
+                email, MAX_USERNAME_GENERATION_ATTEMPTS));
+      }
+      String suffix = generateRandomSuffix();
+      username = baseUsername + "_" + suffix;
+      attempts++;
+    } while (existsChecker.test(username));
+
+    return username;
+  }
+
+  private static String generateRandomSuffix() {
+    StringBuilder sb = new StringBuilder(SUFFIX_LENGTH);
+    for (int i = 0; i < SUFFIX_LENGTH; i++) {
+      sb.append(SUFFIX_CHARS.charAt(RANDOM.nextInt(SUFFIX_CHARS.length())));
+    }
+    return sb.toString();
   }
 
   public static void addUsers(
@@ -88,6 +145,130 @@ public final class UserUtil {
       }
     } catch (Exception ex) {
       LOG.error("[BootstrapUser] Encountered Exception while bootstrapping admin user", ex);
+    }
+  }
+
+  /**
+   * Create or update admin users based on email addresses from configuration. Processes adminEmails
+   * (new config) first, then falls back to adminPrincipals (legacy) for backward compatibility.
+   *
+   * @param authProvider authentication provider
+   * @param authConfig authorizer configuration containing adminEmails and adminPrincipals
+   */
+  public static void createOrUpdateAdminUsers(
+      AuthProvider authProvider, AuthorizerConfiguration authConfig) {
+    if (authConfig == null) {
+      LOG.warn("[BootstrapUser] AuthorizerConfiguration is null, skipping admin user creation");
+      return;
+    }
+
+    Set<String> processedEmails = new HashSet<>();
+
+    Set<String> adminEmails = authConfig.getAdminEmails();
+    if (adminEmails != null && !adminEmails.isEmpty()) {
+      for (String email : adminEmails) {
+        if (nullOrEmpty(email)) {
+          continue;
+        }
+        String normalizedEmail = email.toLowerCase();
+        if (processedEmails.contains(normalizedEmail)) {
+          continue;
+        }
+        processedEmails.add(normalizedEmail);
+        try {
+          createOrUpdateAdminByEmail(authProvider, normalizedEmail);
+        } catch (Exception ex) {
+          LOG.error("[BootstrapUser] Failed to create/update admin user for email: {}", email, ex);
+        }
+      }
+    }
+
+    Set<String> adminPrincipals = authConfig.getAdminPrincipals();
+    if (adminPrincipals != null && !adminPrincipals.isEmpty()) {
+      String domain = authConfig.getPrincipalDomain();
+      if (nullOrEmpty(domain)) {
+        domain = "openmetadata.org";
+      }
+      for (String principal : adminPrincipals) {
+        if (nullOrEmpty(principal)) {
+          continue;
+        }
+        String email = (principal + "@" + domain).toLowerCase();
+        if (processedEmails.contains(email)) {
+          LOG.debug(
+              "[BootstrapUser] Skipping adminPrincipal '{}' - already processed via adminEmails",
+              principal);
+          continue;
+        }
+        processedEmails.add(email);
+        try {
+          createOrUpdateAdminByEmail(authProvider, email);
+        } catch (Exception ex) {
+          LOG.error(
+              "[BootstrapUser] Failed to create/update admin user for principal: {}",
+              principal,
+              ex);
+        }
+      }
+    }
+  }
+
+  private static void createOrUpdateAdminByEmail(AuthProvider authProvider, String email) {
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+
+    User existingUser = null;
+    try {
+      Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
+      fieldList.add(AUTH_MECHANISM_FIELD);
+      existingUser = userRepository.getByEmail(null, email, new Fields(fieldList));
+    } catch (EntityNotFoundException e) {
+      LOG.debug("[BootstrapUser] No existing user found for email: {}", email);
+    }
+
+    if (existingUser != null) {
+      if (Boolean.TRUE.equals(existingUser.getIsBot())) {
+        LOG.error(
+            "[BootstrapUser] Cannot promote bot user '{}' to admin. "
+                + "Bot users cannot be configured as admins.",
+            existingUser.getName());
+        return;
+      }
+
+      if (!Boolean.TRUE.equals(existingUser.getIsAdmin())) {
+        existingUser.setIsAdmin(true);
+        addOrUpdateUser(existingUser);
+        LOG.info("[BootstrapUser] Updated existing user '{}' to admin", existingUser.getName());
+      } else {
+        LOG.debug(
+            "[BootstrapUser] User '{}' is already an admin, no update needed",
+            existingUser.getName());
+      }
+    } else {
+      Predicate<String> existsChecker = name -> userRepository.checkUserNameExists(name);
+      String username = generateUsernameFromEmail(email, existsChecker);
+      String displayName = email.split("@")[0];
+      String password = getPassword(username);
+
+      User newUser =
+          new User()
+              .withId(UUID.randomUUID())
+              .withName(username)
+              .withFullyQualifiedName(EntityInterfaceUtil.quoteName(username))
+              .withEmail(email)
+              .withDisplayName(displayName)
+              .withIsAdmin(true)
+              .withIsBot(false)
+              .withIsEmailVerified(true)
+              .withUpdatedBy(username)
+              .withUpdatedAt(System.currentTimeMillis());
+
+      if (authProvider.equals(AuthProvider.BASIC)) {
+        updateUserWithHashedPwd(newUser, password);
+        EmailUtil.sendInviteMailToAdmin(newUser, password);
+      }
+
+      addOrUpdateUser(newUser);
+      LOG.info("[BootstrapUser] Created new admin user '{}' with email '{}'", username, email);
     }
   }
 
@@ -317,6 +498,40 @@ public final class UserUtil {
   }
 
   /**
+   * Create or update a bot user using the botDomain from AuthorizerConfiguration.
+   *
+   * @param botName name of the bot
+   * @param authConfig authorizer configuration containing botDomain
+   * @return created or updated bot user
+   */
+  public static User addOrUpdateBotUser(String botName, AuthorizerConfiguration authConfig) {
+    if (nullOrEmpty(botName)) {
+      throw new IllegalArgumentException("Bot name cannot be null or empty");
+    }
+    if (authConfig == null) {
+      throw new IllegalArgumentException("AuthorizerConfiguration cannot be null");
+    }
+    String botDomain = authConfig.getBotDomain();
+    if (nullOrEmpty(botDomain)) {
+      botDomain = "openmetadata.org";
+    }
+
+    String botEmail = createBotEmail(botName, botDomain);
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName(botName.toLowerCase())
+            .withFullyQualifiedName(EntityInterfaceUtil.quoteName(botName.toLowerCase()))
+            .withEmail(botEmail)
+            .withIsBot(true)
+            .withIsAdmin(false)
+            .withUpdatedBy(botName.toLowerCase())
+            .withUpdatedAt(System.currentTimeMillis());
+
+    return addOrUpdateBotUser(user);
+  }
+
+  /**
    * This method add auth mechanism in the following way:
    *
    * <ul>
@@ -497,6 +712,43 @@ public final class UserUtil {
         .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, create.getDomains()))
         .withExternalId(create.getExternalId())
         .withScimUserName(create.getScimUserName());
+  }
+
+  /**
+   * Check if email is in the admin emails list.
+   *
+   * @param email user's email address
+   * @param adminEmails list of admin email addresses
+   * @return true if email is an admin email
+   */
+  public static boolean isAdminEmail(String email, List<String> adminEmails) {
+    if (nullOrEmpty(email)) {
+      return false;
+    }
+    if (adminEmails == null || adminEmails.isEmpty()) {
+      return false;
+    }
+
+    String normalizedEmail = email.toLowerCase();
+    return adminEmails.stream()
+        .anyMatch(adminEmail -> adminEmail.toLowerCase().equals(normalizedEmail));
+  }
+
+  /**
+   * Create email address for a system bot.
+   *
+   * @param botName name of the bot
+   * @param botDomain domain for bot emails
+   * @return bot email address
+   */
+  public static String createBotEmail(String botName, String botDomain) {
+    if (nullOrEmpty(botName)) {
+      throw new IllegalArgumentException("Bot name cannot be null or empty");
+    }
+    if (nullOrEmpty(botDomain)) {
+      throw new IllegalArgumentException("Bot domain cannot be null or empty");
+    }
+    return String.format("%s@%s", botName.toLowerCase(), botDomain.toLowerCase());
   }
 
   public static void validateUserPersonaPreferencesImage(LandingPageSettings settings) {
