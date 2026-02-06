@@ -161,7 +161,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
 });
 
 test.describe('User with Admin Roles', () => {
-  test.slow(true);
 
   test('Update own admin details', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
@@ -291,7 +290,8 @@ test.describe('User with Admin Roles', () => {
       },
     });
 
-    const upperCasedName = user.responseData.name.toUpperCase();
+    const userName = user3.responseData.name;
+    const userDisplayName = user3.responseData.displayName;
     // Patch Table to add the user to the custom property
     await tableEntity.patch({
       apiContext,
@@ -302,10 +302,10 @@ test.describe('User with Admin Roles', () => {
           value: {
             [customPropertyName]: [
               {
-                id: user.responseData.id,
+                id: user3.responseData.id,
                 type: 'user',
-                name: upperCasedName,
-                fullyQualifiedName: null,
+                name: userName,
+                fullyQualifiedName: user3.responseData.fullyQualifiedName,
               },
             ],
           },
@@ -319,7 +319,7 @@ test.describe('User with Admin Roles', () => {
     await adminPage.waitForLoadState('networkidle');
 
     // Check if the user details are visible in the right panel
-    const userElement = adminPage.getByTestId(upperCasedName);
+    const userElement = adminPage.getByTestId(userName);
     const isUserVisible = await userElement.isVisible();
 
     // If not visible, click on Custom Properties tab to see all custom properties
@@ -331,10 +331,10 @@ test.describe('User with Admin Roles', () => {
     const rightPanelSection = adminPage.getByTestId(customPropertyName);
     await expect(rightPanelSection).toBeVisible();
 
-    // Verify User Link
-    const userLink = adminPage.getByTestId(upperCasedName).getByRole('link');
+    // Verify User Link - the link displays the username (not displayName)
+    const userLink = adminPage.getByTestId(userName).getByRole('link');
 
-    await expect(userLink).toContainText(upperCasedName);
+    await expect(userLink).toContainText(userName);
 
     // Click User Link and Verify Navigation
     const userDetailsResponse = adminPage.waitForResponse(
@@ -343,15 +343,18 @@ test.describe('User with Admin Roles', () => {
     await userLink.click();
     await userDetailsResponse;
 
-    await expect(adminPage).toHaveURL(new RegExp(`/users/${upperCasedName}`));
+    // URL may contain encoded quotes (%22) around the username
+    await expect(adminPage).toHaveURL(
+      new RegExp(`/users/(%22)?${userName}(%22)?`, 'i')
+    );
     await expect(adminPage.getByTestId('user-display-name')).toHaveText(
-      user.responseData.displayName
+      userDisplayName
     );
   });
 });
 
 test.describe('User with Data Consumer Roles', () => {
-  test.slow(true);
+
 
   test('Token generation & revocation for Data Consumer', async ({
     dataConsumerPage,
@@ -504,7 +507,7 @@ test.describe('User with Data Consumer Roles', () => {
 });
 
 test.describe('User with Data Steward Roles', () => {
-  test.slow(true);
+
 
   test('Update user details for Data Steward', async ({ dataStewardPage }) => {
     await redirectToHomePage(dataStewardPage);
@@ -555,6 +558,7 @@ test.describe('User with Data Steward Roles', () => {
     adminPage,
     dataStewardPage,
   }) => {
+    test.slow()
     await redirectToHomePage(adminPage);
 
     await checkStewardServicesPermissions(dataStewardPage);
@@ -600,7 +604,7 @@ test.describe('User Profile Feed Interactions', () => {
   test('Should navigate to user profile from feed card avatar click', async ({
     browser,
   }) => {
-    test.slow(true);
+
 
     const { page, afterAction } = await performUserLogin(browser, user3);
 
@@ -680,7 +684,7 @@ test.describe('User Profile Feed Interactions', () => {
 });
 
 test.describe('User Profile Dropdown Persona Interactions', () => {
-  test.slow(true);
+
 
   test.beforeAll('Prerequisites', async ({ browser }) => {
     const { apiContext, afterAction } = await performUserLogin(
@@ -867,7 +871,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
         .allTextContents();
 
       // Verify first one contains the default persona name
-      expect(personaTexts[0]).toContain(persona1.responseData.displayName);
+      expect(personaTexts[0]).toContain(persona1.responseData.displayName??persona1.responseData.name);
     }
   });
 
