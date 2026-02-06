@@ -53,7 +53,7 @@ export const searchData = <SI extends SearchIndex>(
   );
 
   return APIClient.get<SearchResponse<SI>>(`/search/query?q=${q}`, {
-    params
+    params,
   });
 };
 
