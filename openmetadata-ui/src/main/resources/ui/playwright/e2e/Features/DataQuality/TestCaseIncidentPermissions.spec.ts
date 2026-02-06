@@ -435,7 +435,10 @@ test.describe(
         const { apiContext } = await getApiContext(viewIncidentsPage);
 
         const res = await apiContext.get(
-          '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
+          '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list',
+          {
+            params: { limit: 10, offset: 0, latest: true },
+          }
         );
         expect(res.status()).toBe(200);
       });
