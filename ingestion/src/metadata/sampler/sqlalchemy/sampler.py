@@ -19,6 +19,8 @@ from sqlalchemy import Column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
+from sqlalchemy.sql import ColumnElement
+from sqlalchemy.sql.operators import ColumnOperators
 from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
@@ -155,17 +157,25 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         hash_object = hashlib.md5(encoded_name)
         return hash_object.hexdigest()
 
+    def get_random_modulo_column(self, mod: int) -> ColumnElement:
+        """Generate a random column"""
+        return ModuloFn(RandomNumFn(), mod)
+
+    def random_filtering_criterion(self, column: Column) -> ColumnOperators:
+        """Generate a random filtering criterion"""
+        return column <= self.sample_config.profileSample
+
     def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
         with self.session_factory() as client:
             if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
                 rnd = self._base_sample_query(
                     column,
-                    (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
+                    self.get_random_modulo_column(100).label(RANDOM_LABEL),
                 ).cte(f"{self.get_sampler_table_name()}_rnd")
                 session_query = client.query(rnd)
                 return session_query.where(
-                    rnd.c.random <= self.sample_config.profileSample
+                    self.random_filtering_criterion(rnd.c.random)
                 ).cte(f"{self.get_sampler_table_name()}_sample")
 
             table_query = client.query(self.raw_dataset)
@@ -173,7 +183,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 table_query = self.get_partitioned_query(table_query)
             session_query = self._base_sample_query(
                 column,
-                (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
+                self.get_random_modulo_column(table_query.count()).label(RANDOM_LABEL)
                 if self.sample_config.randomizedSample
                 else None,
             )
