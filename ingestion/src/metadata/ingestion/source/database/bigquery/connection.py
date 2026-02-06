@@ -16,6 +16,7 @@ import os
 from datetime import datetime
 from functools import partial
 from typing import Optional
+from urllib.parse import parse_qs, quote, urlparse
 
 from google.api_core.exceptions import NotFound
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
@@ -58,32 +59,60 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+def _add_location(url: str, connection: BigQueryConnection) -> str:
+    """
+    Attach the `usageLocation` value to the URL when available.
+    """
+    location = getattr(connection, "usageLocation", None)
+    if not location:
+        return url
+
+    # Parse the URL to check if location parameter already exists
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query)
+
+    if "location" in params:
+        return url
+
+    # Add location parameter with proper URL encoding
+    separator = "&" if parsed.query else "?"
+    encoded_location = quote(str(location), safe="")
+    return f"{url}{separator}location={encoded_location}"
+
+
 def get_connection_url(connection: BigQueryConnection) -> str:
     """
     Build the connection URL and set the project
     environment variable when needed
     """
+    url = None
 
     if isinstance(connection.credentials.gcpConfig, GcpCredentialsValues):
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
             if not connection.credentials.gcpConfig.projectId.root:
-                return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root or ''}"
-            if (
+                url = (
+                    f"{connection.scheme.value}://"
+                    f"{connection.credentials.gcpConfig.projectId.root or ''}"
+                )
+            elif (
                 not connection.credentials.gcpConfig.privateKey
                 and connection.credentials.gcpConfig.projectId.root
             ):
                 project_id = connection.credentials.gcpConfig.projectId.root
                 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
+                url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
+            else:
+                url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
         elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
             for project_id in connection.credentials.gcpConfig.projectId.root:
                 if not connection.credentials.gcpConfig.privateKey and project_id:
-                    # Setting environment variable based on project id given by user / set in ADC
                     os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-                return f"{connection.scheme.value}://{project_id}"
-            return f"{connection.scheme.value}://"
+                url = f"{connection.scheme.value}://{project_id}"
+                break
+            if url is None:
+                url = f"{connection.scheme.value}://"
 
     # If gcpConfig is the JSON key path and projectId is defined, we use it by default
     elif (
@@ -93,11 +122,11 @@ def get_connection_url(connection: BigQueryConnection) -> str:
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
-            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
-
+            url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
         elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
             for project_id in connection.credentials.gcpConfig.projectId.root:
-                return f"{connection.scheme.value}://{project_id}"
+                url = f"{connection.scheme.value}://{project_id}"
+                break
 
     # If gcpConfig is the GCP ADC and projectId is defined, we use it by default
     elif (
@@ -107,13 +136,16 @@ def get_connection_url(connection: BigQueryConnection) -> str:
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcpConfig.projectId, SingleProjectId
         ):
-            return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
-
+            url = f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId.root}"
         elif isinstance(connection.credentials.gcpConfig.projectId, MultipleProjectId):
             for project_id in connection.credentials.gcpConfig.projectId.root:
-                return f"{connection.scheme.value}://{project_id}"
+                url = f"{connection.scheme.value}://{project_id}"
+                break
 
-    return f"{connection.scheme.value}://"
+    if url is None:
+        url = f"{connection.scheme.value}://"
+
+    return _add_location(url, connection)
 
 
 def get_connection(connection: BigQueryConnection) -> Engine:
