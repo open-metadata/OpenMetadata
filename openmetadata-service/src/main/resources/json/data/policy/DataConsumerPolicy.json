@@ -2,15 +2,15 @@
   "name": "DataConsumerPolicy",
   "displayName": "Data Consumer Policy",
   "fullyQualifiedName": "DataConsumerPolicy",
-  "description": "Policy for Data Consumer to perform operations on metadata entities",
+  "description": "Policy for Data Consumer to perform operations on data assets (excludes services)",
   "enabled": true,
   "allowDelete": false,
   "provider": "system",
   "rules": [
     {
       "name": "DataConsumerPolicy-EditRule",
-      "description" : "Allow some of the edit operations on a resource for everyone.",
-      "resources" : ["all"],
+      "description" : "Allow some of the edit operations on data assets for everyone. Excludes services and other administrative resources.",
+      "resources" : ["dataAsset"],
       "operations": ["ViewAll", "EditDescription", "EditTags", "EditGlossaryTerms", "EditTier", "EditCertification"],
       "effect": "allow"
     }

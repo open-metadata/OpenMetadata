@@ -1,8 +1,14 @@
 package org.openmetadata.it.factories;
 
+import java.util.List;
 import java.util.UUID;
+import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Users;
 
@@ -35,6 +41,29 @@ public class UserTestFactory {
     } catch (OpenMetadataException e) {
       throw new RuntimeException("Failed to create user: " + email, e);
     }
+  }
+
+  /**
+   * Create a user with the DataConsumer role assigned.
+   * This creates a unique user for testing DataConsumer permissions.
+   */
+  public static User createDataConsumerUser(TestNamespace ns, String baseName) {
+    String uniqueSuffix = UUID.randomUUID().toString().substring(0, 8);
+    String name = ns.prefix(baseName + "_" + uniqueSuffix);
+    String email = name + "@test.om.org";
+
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+
+    Role dataConsumerRole = adminClient.roles().getByName("DataConsumer");
+
+    CreateUser createUser = new CreateUser();
+    createUser.setName(name);
+    createUser.setEmail(email);
+    createUser.setDescription("Test DataConsumer user for permission testing");
+    createUser.setRoles(
+        List.of(new EntityReference().withId(dataConsumerRole.getId()).withType("role")));
+
+    return adminClient.users().create(createUser);
   }
 
   /**

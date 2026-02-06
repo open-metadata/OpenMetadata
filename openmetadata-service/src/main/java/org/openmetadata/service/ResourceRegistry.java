@@ -61,6 +61,10 @@ public class ResourceRegistry {
     Collections.sort(allOperations);
     RESOURCE_DESCRIPTORS.add(
         new ResourceDescriptor().withName("all").withOperations(allOperations));
+
+    // Set up "dataAsset" resource descriptor for data asset operations (excludes services)
+    RESOURCE_DESCRIPTORS.add(
+        new ResourceDescriptor().withName("dataAsset").withOperations(allOperations));
   }
 
   private ResourceRegistry() {}
