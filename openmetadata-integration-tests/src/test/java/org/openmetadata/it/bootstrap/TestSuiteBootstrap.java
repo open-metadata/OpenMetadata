@@ -26,6 +26,7 @@ import io.dropwizard.jersey.validation.Validators;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.validation.Validator;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -43,7 +44,10 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
@@ -56,6 +60,7 @@ import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.JobDAO;
@@ -464,7 +469,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       String nativeMigrationSQLPath,
       String extensionSQLScriptRootPath,
       String flywayPath,
-      boolean forceMigrations) {
+      boolean forceMigrations)
+      throws ConfigurationException, IOException {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
         new MigrationWorkflow(
@@ -482,7 +488,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
     workflow.runMigrationWorkflows(false);
-    WorkflowHandler.initialize(config);
+
+    initializeTestWorkflowSettings();
+    WorkflowHandler.initialize(config, true);
     SettingsCache.initialize(config);
     ApplicationHandler.initialize(config);
     ApplicationContext.initialize();
@@ -495,6 +503,43 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     Entity.setSearchRepository(searchRepository);
     LOG.info("Creating {} indexes...", searchType);
     searchRepository.createIndexes();
+  }
+
+  private WorkflowSettings readTestWorkflowSettings(String path)
+      throws IOException, ConfigurationException {
+    ObjectMapper objectMapper = Jackson.newObjectMapper();
+    Validator validator = Validators.newValidator();
+
+    YamlConfigurationFactory<WorkflowSettings> factory =
+        new YamlConfigurationFactory<>(WorkflowSettings.class, validator, objectMapper, "dw");
+
+    return factory.build(
+        new SubstitutingSourceProvider(
+            new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+        path);
+  }
+
+  private void initializeTestWorkflowSettings() throws IOException, ConfigurationException {
+    String workflowSettingsPath = ResourceHelpers.resourceFilePath("test-workflow-settings.yaml");
+
+    WorkflowSettings testSettings = readTestWorkflowSettings(workflowSettingsPath);
+
+    SystemRepository repo = new SystemRepository();
+    WorkflowSettings existingSettings = repo.getWorkflowSettingsOrDefault();
+
+    Settings settings =
+        new Settings()
+            .withConfigType(SettingsType.WORKFLOW_SETTINGS)
+            .withConfigValue(
+                existingSettings.withExecutorConfiguration(
+                    testSettings.getExecutorConfiguration()));
+
+    try (Response res = repo.createNewSetting(settings)) {
+      if (!res.getStatusInfo().getFamily().equals(Response.Status.Family.SUCCESSFUL)) {
+        throw new RuntimeException(
+            String.format("Failed to create test workflow settings: %s", res.getEntity()));
+      }
+    }
   }
 
   private ElasticSearchConfiguration getSearchConfig() {
@@ -574,6 +619,16 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       }
     } catch (Exception e) {
       LOG.warn("Error cleaning up shared entities", e);
+    }
+
+    try {
+      if (WorkflowHandler.isInitialized()) {
+        LOG.info("Shutting down Flowable ProcessEngine...");
+        org.flowable.engine.ProcessEngines.destroy();
+        LOG.info("Flowable ProcessEngine shut down successfully");
+      }
+    } catch (Exception e) {
+      LOG.warn("Error shutting down Flowable ProcessEngine", e);
     }
 
     try {

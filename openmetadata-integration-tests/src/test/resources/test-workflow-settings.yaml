@@ -1,0 +1,8 @@
+executorConfiguration:
+  corePoolSize: 32
+  maxPoolSize: 32
+  queueSize: 10000
+  tasksDuePerAcquisition: 500
+  jobLockTimeInMillis: 1296000000
+  asyncJobAcquisitionInterval: 500
+  timerJobAcquisitionInterval: 500
