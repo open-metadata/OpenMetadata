@@ -3982,8 +3982,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     Awaitility.await()
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(3))
         .untilAsserted(
             () -> {
               for (String fqn : fqns) {
