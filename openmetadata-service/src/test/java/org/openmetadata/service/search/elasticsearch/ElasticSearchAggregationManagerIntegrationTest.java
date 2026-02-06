@@ -12,8 +12,8 @@ import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch.core.IndexRequest;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
-import es.co.elastic.clients.transport.rest_client.RestClientTransport;
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -65,8 +65,8 @@ class ElasticSearchAggregationManagerIntegrationTest extends OpenMetadataApplica
         "test_agg_"
             + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS"));
 
-    RestClient restClient = getSearchClient();
-    RestClientTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
+    Rest5Client restClient = getSearchClient();
+    Rest5ClientTransport transport = new Rest5ClientTransport(restClient, new JacksonJsonpMapper());
     client = new ElasticsearchClient(transport);
 
     aggregationManager = new ElasticSearchAggregationManager(client);
