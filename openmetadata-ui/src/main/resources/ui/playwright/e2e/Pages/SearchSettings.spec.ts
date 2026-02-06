@@ -24,10 +24,11 @@ import {
   setSliderValue,
 } from '../../utils/searchSettingUtils';
 import { settingClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Search Settings Tests', () => {
+test.describe('Search Settings Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
