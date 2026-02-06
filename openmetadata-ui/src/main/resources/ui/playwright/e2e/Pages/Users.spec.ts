@@ -79,18 +79,18 @@ const updatedUserDetails = {
   newPassword: `NewUser@${uuid()}`,
 };
 
-const adminUser = new UserClass();
-const dataConsumerUser = new UserClass();
-const dataStewardUser = new UserClass();
-const user = new UserClass();
-const user2 = new UserClass();
-const user3 = new UserClass();
-const tableEntity = new TableClass();
-const tableEntity2 = new TableClass();
-const policy = new PolicyClass();
-const role = new RolesClass();
-const persona1 = new PersonaClass();
-const persona2 = new PersonaClass();
+let adminUser: UserClass;
+let dataConsumerUser: UserClass;
+let dataStewardUser: UserClass;
+let user: UserClass;
+let user2: UserClass;
+let user3: UserClass;
+let tableEntity: TableClass;
+let tableEntity2: TableClass;
+let policy: PolicyClass;
+let role: RolesClass;
+let persona1: PersonaClass;
+let persona2: PersonaClass;
 
 const entities = [
   EntityDataClass.table1,
@@ -138,6 +138,19 @@ const test = base.extend<{
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow(true);
+
+  adminUser = new UserClass();
+  dataConsumerUser = new UserClass();
+  dataStewardUser = new UserClass();
+  user = new UserClass();
+  user2 = new UserClass();
+  user3 = new UserClass();
+  tableEntity = new TableClass();
+  tableEntity2 = new TableClass();
+  policy = new PolicyClass();
+  role = new RolesClass();
+  persona1 = new PersonaClass();
+  persona2 = new PersonaClass();
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -615,15 +628,6 @@ test.describe('User Profile Feed Interactions', () => {
     await feedResponse;
 
     await page.waitForSelector('[data-testid="message-container"]');
-    const userDetailsResponse = page.waitForResponse('/api/v1/users/name/*');
-
-    const userFeedResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/feed') &&
-        response.url().includes('type=Conversation') &&
-        response.url().includes('filterType=OWNER_OR_FOLLOWS') &&
-        response.url().includes('userId=')
-    );
 
     const avatar = page
       .locator('#feedData [data-testid="message-container"]')
@@ -632,31 +636,29 @@ test.describe('User Profile Feed Interactions', () => {
       .first();
 
     await avatar.hover();
-    await page.waitForSelector('.ant-popover-card');
+    const popover = page.locator('.ant-popover-card');
+    await popover.waitFor({ state: 'visible' });
 
-    // Ensure popover is stable and visible before clicking
-    await page.waitForTimeout(500); // Give popover time to stabilize
+    // Get the expected username from the popover BEFORE clicking
+    const userNameElement = popover.getByTestId('user-name');
+    const expectedUserName = await userNameElement.textContent();
 
-    // Get the user name element and ensure it's ready for interaction
-    const userNameElement = page.getByTestId('user-name').nth(1);
+    // Set up response listener AFTER getting expected name and BEFORE clicking
+    const userDetailsResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/name/') &&
+        response.status() === 200
+    );
 
-    // Click with force to handle pointer event interception
-    await userNameElement.click({ force: true });
-
+    await userNameElement.click();
     await userDetailsResponse;
-    await userFeedResponse;
 
-    const [response] = await Promise.all([
-      userDetailsResponse,
-      userFeedResponse,
-    ]);
-    const { name, displayName } = await response.json();
+   // redirecting on new page
+    await page.waitForLoadState('networkidle');
 
-    // The UI shows displayName if available, otherwise falls back to name
-    const expectedText = displayName ?? name;
-
+    // Verify we navigated to the correct user's profile
     await expect(page.locator('[data-testid="user-display-name"]')).toHaveText(
-      expectedText
+      expectedUserName ?? ''
     );
 
     await afterAction();
