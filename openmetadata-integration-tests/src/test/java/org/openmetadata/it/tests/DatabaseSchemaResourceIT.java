@@ -1836,6 +1836,8 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
           imported.getDomains().size(),
           "Schema domain count should match");
     }
+
+  // ===================================================================
   // BULK API SUPPORT
   // ===================================================================
 
