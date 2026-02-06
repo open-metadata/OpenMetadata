@@ -742,6 +742,7 @@ export const TestCases = () => {
               url: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
             },
           ]}
+          enableBulkActions
           fetchTestCases={sortTestCase}
           isLoading={isLoading}
           pagingData={pagingData}
