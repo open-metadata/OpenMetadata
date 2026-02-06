@@ -54,8 +54,8 @@ public class SigV4Hc5RequestSigningInterceptor implements HttpRequestInterceptor
       }
     }
     if (targetHost == null) {
-      LOG.warn("No target host found in HTTP context, skipping SigV4 signing");
-      return;
+      throw new IllegalStateException(
+          "No target host found in HTTP context, cannot perform SigV4 signing for AWS OpenSearch");
     }
 
     byte[] requestBody = extractRequestBody(request, entity);
