@@ -286,6 +286,8 @@ export interface ServiceConnection {
  *
  * Kinesis Connection Config
  *
+ * Google Cloud Pub/Sub Connection Config
+ *
  * Custom Messaging Service Connection to build a source that is not supported by
  * OpenMetadata yet.
  *
@@ -592,6 +594,8 @@ export interface ConfigObject {
      *
      * Host and port of the Microsoft Fabric SQL endpoint (e.g.,
      * your-workspace.datawarehouse.fabric.microsoft.com:1433).
+     *
+     * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
@@ -1103,7 +1107,7 @@ export interface ConfigObject {
      *
      * GCP Credentials for Google Drive API
      */
-    credentials?: GCPCredentials;
+    credentials?: CredentialsClass;
     /**
      * Regex to only include/exclude databases that matches the pattern.
      *
@@ -1685,6 +1689,31 @@ export interface ConfigObject {
      * Regex to only fetch topics that matches the pattern.
      */
     topicFilterPattern?: FilterPattern;
+    /**
+     * GCP credentials configuration for authenticating with Pub/Sub.
+     */
+    gcpConfig?: GcpConfigClass;
+    /**
+     * Include dead letter topics in metadata extraction.
+     */
+    includeDeadLetterTopics?: boolean;
+    /**
+     * Include subscription metadata for each topic.
+     */
+    includeSubscriptions?: boolean;
+    /**
+     * GCP Project ID where Pub/Sub topics are located. If not specified, will be read from
+     * credentials.
+     */
+    projectId?: string;
+    /**
+     * Enable fetching schemas from Pub/Sub Schema Registry.
+     */
+    schemaRegistryEnabled?: boolean;
+    /**
+     * Connect to a Pub/Sub emulator rather than the production service.
+     */
+    useEmulator?: boolean;
     /**
      * Enable encryption for the Amundsen Neo4j Connection.
      */
@@ -3126,6 +3155,8 @@ export interface ConfigSourceConnection {
  *
  * GCP Credentials
  *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
  * GCP Credentials for Google Drive API
  *
  * AWS credentials configs.
@@ -3700,6 +3731,8 @@ export enum InitialConsumerOffsets {
  *
  * GCP Credentials
  *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
  * GCP Credentials for Google Drive API
  *
  * Azure Cloud Credentials
@@ -3708,7 +3741,7 @@ export enum InitialConsumerOffsets {
  *
  * Azure Credentials
  */
-export interface GCPCredentials {
+export interface CredentialsClass {
     /**
      * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
      * Credentials Path
@@ -3875,6 +3908,27 @@ export enum FHIRVersion {
     Dstu2 = "DSTU2",
     R4 = "R4",
     Stu3 = "STU3",
+}
+
+/**
+ * GCP credentials configs.
+ *
+ * GCP Credentials
+ *
+ * GCP credentials configuration for authenticating with Pub/Sub.
+ *
+ * GCP Credentials for Google Drive API
+ */
+export interface GcpConfigClass {
+    /**
+     * We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP
+     * Credentials Path
+     */
+    gcpConfig: GCPCredentialsConfiguration;
+    /**
+     * we enable the authenticated service account to impersonate another service account
+     */
+    gcpImpersonateServiceAccount?: GCPImpersonateServiceAccountValues;
 }
 
 /**
@@ -4665,6 +4719,7 @@ export enum PurpleType {
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
     Presto = "Presto",
+    PubSub = "PubSub",
     QlikCloud = "QlikCloud",
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
