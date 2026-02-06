@@ -53,6 +53,7 @@ import {
   verifyDeletedEntityNotVisible,
 } from '../../utils/entityPanel';
 import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 let adminTestEntity: TableClass;
 const dataStewardTestEntity = new TableClass();
@@ -636,7 +637,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     await expect(tierSectionAfterRemove.getByText('Tier1')).not.toBeVisible();
   });
 
-  test('Admin - Overview Tab - Domains Section - Add and Update', async ({
+  test('Admin - Overview Tab - Domains Section - Add and Update', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({
     adminPage,
   }) => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
@@ -651,7 +652,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     ).toBeVisible();
   });
 
-  test('Admin - Overview Tab - Remove Domain', async ({ adminPage }) => {
+  test('Admin - Overview Tab - Remove Domain', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ adminPage }) => {
     await editDomain(adminPage, 'TestDomain');
 
     await expect(
@@ -995,9 +996,8 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       const testCase2 = await adminTestEntity.createTestCase(apiContext, {
         name: `pw_test_case_failed_${uuid()}`,
-        entityLink: `<#E::table::${
-          adminTestEntity.entityResponseData?.['fullyQualifiedName']
-        }::columns::${(adminTestEntity.entity?.columns as Column[])[0].name}>`,
+        entityLink: `<#E::table::${adminTestEntity.entityResponseData?.['fullyQualifiedName']
+          }::columns::${(adminTestEntity.entity?.columns as Column[])[0].name}>`,
         testDefinition: 'columnValueLengthsToBeBetween',
         parameterValues: [
           { name: 'minLength', value: 3 },
@@ -1947,7 +1947,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
   });
 });
 
-test.describe('Right Entity Panel - Data Consumer User Flow', () => {
+test.describe('Right Entity Panel - Data Consumer User Flow', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach('Navigate to explore page', async ({ dataConsumerPage }) => {
     await navigateToExploreAndSelectTable(
       dataConsumerPage,

@@ -23,6 +23,7 @@ import {
   saveCustomizeLayoutPage,
   setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 const adminUser = new UserClass();
 const persona = new PersonaClass();
@@ -54,7 +55,7 @@ base.afterAll('Cleanup', async ({ browser }) => {
   await afterAction();
 });
 
-test.describe('Customize Landing Page Flow', () => {
+test.describe('Customize Landing Page Flow', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test('Check all default widget present', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
     await checkAllDefaultWidgets(adminPage);
