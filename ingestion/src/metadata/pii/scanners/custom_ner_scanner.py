@@ -198,7 +198,7 @@ class CustomNERScanner:
         Find tags that have recognizers for the given entity type.
 
         Args:
-            entity_type: The entity type detected by Presidio
+            entity_type: The entity type detected by Presidio (now matches tag FQN)
             classification_fqn: Optional classification to filter tags
 
         Returns:
@@ -216,13 +216,8 @@ class CustomNERScanner:
             if not tag.autoClassificationEnabled or not tag.recognizers:
                 continue
 
-            for recognizer in tag.recognizers:
-                if recognizer.recognizerConfig and hasattr(
-                    recognizer.recognizerConfig, "supportedEntity"
-                ):
-                    if recognizer.recognizerConfig.supportedEntity == entity_type:
-                        matching_tags.append(tag)
-                        break
+            if tag.fullyQualifiedName == entity_type:
+                matching_tags.append(tag)
 
         return matching_tags
 
