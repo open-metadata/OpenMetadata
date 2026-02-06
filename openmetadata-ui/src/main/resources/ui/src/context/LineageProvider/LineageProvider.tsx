@@ -40,9 +40,7 @@ import {
   Node,
   NodeProps,
   ReactFlowInstance,
-  useEdgesState,
   useKeyPress,
-  useNodesState,
   useUpdateNodeInternals,
 } from 'reactflow';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -93,6 +91,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
+import { useMapBasedNodesEdges } from '../../hooks/useMapBasedNodesEdges';
 import {
   exportLineageAsync,
   getDataQualityLineage,
@@ -212,8 +211,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     loading: boolean;
     status: ElementLoadingState;
   }>(ELEMENT_DELETE_STATE);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const {
+    nodes,
+    edges,
+    setNodes,
+    setEdges,
+    onNodesChange,
+    onEdgesChange,
+    removeNodeById,
+    removeEdgeById,
+    removeEdgesBySourceTarget,
+    removeEdgesByDocId,
+    addNodes,
+    updateEdge,
+  } = useMapBasedNodesEdges([], []);
   const [loading, setLoading] = useState(true);
   const [init, setInit] = useState(false);
   const [status, setStatus] = useState<LoadingState>('initial');
@@ -918,16 +929,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     let filteredEdges: EdgeDetails[] = [];
 
     if (customPipelineEdge) {
-      // find all edges where customPipelineEdge.docId is equal to extraInfo.docId
       filteredEdges = (entityLineage.edges ?? []).filter(
         (item) => item.extraInfo?.docId !== customPipelineEdge.docId
       );
 
-      setEdges((prev) =>
-        prev.filter(
-          (item) => item.data.edge.extraInfo?.docId !== customPipelineEdge.docId
-        )
-      );
+      removeEdgesByDocId(customPipelineEdge.docId);
     } else {
       filteredEdges = (entityLineage.edges ?? []).filter(
         (item) =>
@@ -937,16 +943,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           )
       );
 
-      // Remove the source and target nodes if they are not connected to any other nodes
       const updatedNodes = removeUnconnectedNodes(edgeData, nodes, edges);
       setNodes(updatedNodes);
 
-      setEdges((prev) =>
-        prev.filter(
-          (item) =>
-            !(item.source === edgeData.fromId && item.target === edgeData.toId)
-        )
-      );
+      removeEdgesBySourceTarget(edgeData.fromId, edgeData.toId);
     }
 
     setUpdatedEntityLineage(() => {
@@ -988,7 +988,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       };
     });
 
-    setEdges((prev) => prev.filter((item) => item.id !== edge.id));
+    removeEdgeById(edge.id);
 
     // Recompute columnsHavingLineage after removing the column edge
     const seenIds = new Set<string>();
@@ -1047,15 +1047,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             )
           );
 
-          setEdges((prev) =>
-            prev.filter(
-              (item) =>
-                !(
-                  item.source === edgeData.fromId &&
-                  item.target === edgeData.toId
-                )
-            )
-          );
+          removeEdgesBySourceTarget(edgeData.fromId, edgeData.toId);
         })
       );
 
@@ -1063,9 +1055,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         (previousNode) => previousNode.id !== node.id
       );
 
-      setNodes((prev) =>
-        prev.filter((previousNode) => previousNode.id !== node.id)
-      );
+      removeNodeById(node.id);
 
       setUpdatedEntityLineage(() => {
         return {
@@ -1121,7 +1111,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           isNewNode: true,
         },
       };
-      setNodes((nds) => [...nds, newNode as Node]);
+      addNodes([newNode as Node]);
 
       setNewAddedNode(newNode as Node);
     }
@@ -1620,25 +1610,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             },
           };
         });
-        setEdges((prev) =>
-          prev.map((edge) =>
-            edge.id === selectedEdge?.id
-              ? {
-                  ...edge,
-                  data: {
-                    ...edge.data,
-                    edge: {
-                      ...edge.data?.edge,
-                      columns:
-                        updatedEdgeDetails.edge.lineageDetails?.columnsLineage,
-                      description,
-                      sqlQuery,
-                    },
-                  },
-                }
-              : edge
-          )
-        );
+        if (selectedEdge?.id) {
+          updateEdge(selectedEdge.id, (edge) => ({
+            ...edge,
+            data: {
+              ...edge.data,
+              edge: {
+                ...edge.data?.edge,
+                columns: updatedEdgeDetails.edge.lineageDetails?.columnsLineage,
+                description,
+                sqlQuery,
+              },
+            },
+          }));
+        }
       } catch (err) {
         showErrorToast(err as AxiosError);
       }
