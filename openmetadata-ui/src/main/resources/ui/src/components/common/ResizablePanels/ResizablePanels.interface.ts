@@ -18,6 +18,8 @@ export interface ResizablePanelsProps {
   pageTitle?: string;
   hideSecondPanel?: boolean;
   showLearningIcon?: boolean;
+  learningPageId?: string;
+  learningTitle?: string;
 }
 
 export interface ResizablePanelsLeftProps extends ResizablePanelsProps {
