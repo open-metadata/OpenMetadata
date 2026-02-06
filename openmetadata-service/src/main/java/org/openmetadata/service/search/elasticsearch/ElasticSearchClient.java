@@ -115,7 +115,7 @@ public class ElasticSearchClient implements SearchClient {
               Stream.of("schemaDefinition", "customMetrics", "embedding"))
           .toList();
 
-  private static final Header[] defaultHeaders =
+  private static final Header[] defaultHeadersEs7 =
       new Header[] {
         new BasicHeader(
             HttpHeaders.ACCEPT, "application/vnd.elasticsearch+json; compatible-with=7"),
@@ -157,7 +157,7 @@ public class ElasticSearchClient implements SearchClient {
         LOG.error("Cannot create Elasticsearch client with null Rest5Client");
         return null;
       }
-      // Create transport and new client
+      // Create transport - the Rest5ClientTransport handles content-type headers automatically
       Rest5ClientTransport transport =
           new Rest5ClientTransport(lowLevelClient, new JacksonJsonpMapper());
       ElasticsearchClient newClient = new ElasticsearchClient(transport);
@@ -742,8 +742,9 @@ public class ElasticSearchClient implements SearchClient {
         tempClient.close();
 
         if (isElasticsearch7) {
-          restClientBuilder.setDefaultHeaders(defaultHeaders);
+          restClientBuilder.setDefaultHeaders(defaultHeadersEs7);
         }
+        // For ES 9.x, don't set custom headers - the client handles content-type automatically
 
         return restClientBuilder.build();
       } catch (Exception e) {

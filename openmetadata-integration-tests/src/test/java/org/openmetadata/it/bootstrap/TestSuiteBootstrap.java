@@ -107,8 +107,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static final String DEFAULT_POSTGRES_IMAGE = "postgres:15";
   private static final String DEFAULT_MYSQL_IMAGE = "mysql:8.3.0";
   private static final String DEFAULT_ELASTICSEARCH_IMAGE =
-      "docker.elastic.co/elasticsearch/elasticsearch:9.0.0";
-  private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.0.0";
+      "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
+  private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
 
   private static final String FUSEKI_IMAGE = "stain/jena-fuseki:latest";
   private static final int FUSEKI_PORT = 3030;
