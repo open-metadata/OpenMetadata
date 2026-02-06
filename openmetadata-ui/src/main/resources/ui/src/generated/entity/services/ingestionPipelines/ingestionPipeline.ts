@@ -1257,6 +1257,11 @@ export interface Pipeline {
      */
     markDeletedPipelines?: boolean;
     /**
+     * Number of days of pipeline run status history to ingest. Only runs within the last N days
+     * will be fetched.
+     */
+    numberOfStatus?: number;
+    /**
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?: FilterPattern;
