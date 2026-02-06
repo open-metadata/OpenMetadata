@@ -97,7 +97,6 @@
                 "score": 0.6
               }
             ],
-            "supportedEntity": "DATE_TIME",
             "regexFlags": {
               "dotAll": true,
               "multiline": true,
@@ -124,7 +123,6 @@
                 "score": 0.6
               }
             ],
-            "supportedEntity": "NRP",
             "regexFlags": {
               "dotAll": true,
               "multiline": true,
@@ -151,7 +149,6 @@
                 "score": 0.6
               }
             ],
-            "supportedEntity": "LOCATION",
             "regexFlags": {
               "dotAll": true,
               "multiline": true,
@@ -178,7 +175,6 @@
                 "score": 0.6
               }
             ],
-            "supportedEntity": "PHONE_NUMBER",
             "regexFlags": {
               "dotAll": true,
               "multiline": true,
@@ -766,7 +762,6 @@
                   "score": 0.6
                 }
               ],
-              "supportedEntity": "US_SSN",
               "regexFlags": {
                 "dotAll": true,
                 "multiline": true,
@@ -793,7 +788,6 @@
                   "score": 0.6
                 }
               ],
-              "supportedEntity": "CREDIT_CARD",
               "regexFlags": {
                 "dotAll": true,
                 "multiline": true,
@@ -825,7 +819,6 @@
                   "score": 0.6
                 }
               ],
-              "supportedEntity": "US_BANK_NUMBER",
               "regexFlags": {
                 "dotAll": true,
                 "multiline": true,
@@ -872,7 +865,6 @@
                   "score": 0.6
                 }
               ],
-              "supportedEntity": "IBAN_CODE",
               "regexFlags": {
                 "dotAll": true,
                 "multiline": true,
@@ -899,7 +891,6 @@
                   "score": 0.6
                 }
               ],
-              "supportedEntity": "EMAIL_ADDRESS",
               "regexFlags": {
                 "dotAll": true,
                 "multiline": true,
@@ -926,7 +917,6 @@
                   "score": 0.6
                 }
               ],
-              "supportedEntity": "PERSON",
               "regexFlags": {
                 "dotAll": true,
                 "multiline": true,
