@@ -166,12 +166,12 @@ export const generateSearchDropdownLabel = (
 ) => {
   return (
     <div className="d-flex justify-between">
-      <Space
-        align="center"
-        className="m-x-sm"
-        data-testid={option.key}
-        size={8}>
-        <Checkbox checked={checked} data-testid={`${option.key}-checkbox`} />
+      <Space align="start" className="m-x-sm" data-testid={option.key} size={8}>
+        <Checkbox
+          checked={checked}
+          data-testid={`${option.key}-checkbox`}
+          style={option.description ? { marginTop: 4 } : undefined}
+        />
         {showProfilePicture && (
           <ProfilePicture
             displayName={option.label}
@@ -179,16 +179,26 @@ export const generateSearchDropdownLabel = (
             width="18"
           />
         )}
-        <Typography.Text
-          ellipsis
-          className="dropdown-option-label"
-          title={option.label}>
-          <span
-            dangerouslySetInnerHTML={{
-              __html: getSearchLabel(option.label, searchKey),
-            }}
-          />
-        </Typography.Text>
+        <div>
+          <Typography.Text
+            ellipsis
+            className="dropdown-option-label"
+            title={option.label}>
+            <span
+              dangerouslySetInnerHTML={{
+                __html: getSearchLabel(option.label, searchKey),
+              }}
+            />
+          </Typography.Text>
+          {option.description && (
+            <Typography.Text
+              className="text-xs d-block"
+              data-testid={`${option.key}-description`}
+              type="secondary">
+              {option.description}
+            </Typography.Text>
+          )}
+        </div>
       </Space>
       {!hideCounts && getCountBadge(option.count, 'm-r-sm', false)}
     </div>

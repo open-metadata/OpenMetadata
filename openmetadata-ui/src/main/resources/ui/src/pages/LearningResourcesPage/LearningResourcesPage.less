@@ -12,6 +12,7 @@
  */
 
 @import (reference) '../../styles/variables.less';
+@import '../../components/common/atoms/filters/FilterSelection.less';
 
 .learning-resources-page {
   padding: @padding-lg;
@@ -450,22 +451,6 @@
       background-color: @grey-50;
       border: 1px solid @grey-200;
       color: #414651;
-    }
-  }
-
-  .action-buttons {
-    .action-btn {
-      color: @grey-500;
-
-      &:hover {
-        color: @grey-700;
-        background-color: @grey-100;
-      }
-
-      &.delete-btn:hover {
-        color: @error-color;
-        background-color: @red-9;
-      }
     }
   }
 }
