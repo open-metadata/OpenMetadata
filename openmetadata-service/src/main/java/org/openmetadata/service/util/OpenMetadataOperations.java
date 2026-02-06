@@ -1997,8 +1997,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
             (es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client)
                 searchClient.getLowLevelClient();
         var response = lowLevelClient.performRequest(request);
-        String responseBody =
-            new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
+        String responseBody;
+        try (var is = response.getEntity().getContent()) {
+          responseBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        }
 
         com.fasterxml.jackson.databind.JsonNode root = JsonUtils.readTree(responseBody);
         for (com.fasterxml.jackson.databind.JsonNode node : root) {

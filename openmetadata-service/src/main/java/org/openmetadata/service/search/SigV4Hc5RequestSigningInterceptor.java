@@ -77,7 +77,9 @@ public class SigV4Hc5RequestSigningInterceptor implements HttpRequestInterceptor
         return content;
       }
     }
-    return null;
+    // For async requests or requests without accessible body, return empty array
+    // SigV4 will compute signature with empty body hash
+    return new byte[0];
   }
 
   private SdkHttpFullRequest buildSdkRequest(HttpRequest request, HttpHost host, byte[] body) {

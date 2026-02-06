@@ -966,10 +966,10 @@ public class ElasticSearchClient implements SearchClient {
           new es.co.elastic.clients.transport.rest5_client.low_level.Request("GET", "/");
       es.co.elastic.clients.transport.rest5_client.low_level.Response response =
           restClient.performRequest(request);
-      String responseBody =
-          new String(
-              response.getEntity().getContent().readAllBytes(),
-              java.nio.charset.StandardCharsets.UTF_8);
+      String responseBody;
+      try (var is = response.getEntity().getContent()) {
+        responseBody = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+      }
       JsonNode jsonNode = JsonUtils.readTree(responseBody);
       JsonNode versionNode = jsonNode.get("version");
       if (versionNode != null && versionNode.get("number") != null) {
