@@ -68,7 +68,7 @@ VERSIONS = {
     "opensearch": "opensearch-py~=2.4.0",
     "starrocks": "pymysql~=1.0",
     "pydoris": "pydoris-custom>=1.0.2,<1.5",
-    "pyiceberg": "pyiceberg==0.5.1",
+    "pyiceberg": "pyiceberg==0.10.0",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.25.0",
     "s3fs": "s3fs~=2023.12.1",

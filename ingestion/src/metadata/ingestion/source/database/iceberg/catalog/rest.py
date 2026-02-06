@@ -44,8 +44,14 @@ class IcebergRestCatalog(IcebergCatalogBase):
             )
 
             credential = f"{client_id}:{client_secret}"
+            scope = (
+                catalog.connection.credential.scopes
+                if catalog.connection.credential.scopes
+                else None
+            )
         else:
             credential = None
+            scope = None
 
         parameters = {
             "warehouse": catalog.warehouseLocation,
@@ -55,6 +61,9 @@ class IcebergRestCatalog(IcebergCatalogBase):
             if catalog.connection.token
             else None,
         }
+
+        if scope:
+            parameters["scope"] = scope
 
         if catalog.connection.fileSystem:
             parameters = {
