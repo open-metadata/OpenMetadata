@@ -22,6 +22,7 @@ import athena from '../assets/img/service-icon-athena.png';
 import atlas from '../assets/img/service-icon-atlas.svg';
 import azuresql from '../assets/img/service-icon-azuresql.png';
 import bigtable from '../assets/img/service-icon-bigtable.png';
+import burstiq from '../assets/img/service-icon-burstiq.png';
 import cassandra from '../assets/img/service-icon-cassandra.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
 import cockroach from '../assets/img/service-icon-cockroach.png';
@@ -228,6 +229,7 @@ export const GRAFANA = grafana;
 export const GOOGLE_DRIVE = googleDrive;
 export const SFTP = sftp;
 export const TIMESCALE = timescale;
+export const BURSTIQ = burstiq;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -458,6 +460,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.Mulesoft,
   DatabaseServiceType.MicrosoftFabric,
   PipelineServiceType.MicrosoftFabricPipeline,
+  DatabaseServiceType.BurstIQ,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
