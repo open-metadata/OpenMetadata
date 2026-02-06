@@ -4265,6 +4265,24 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertEquals(0, result.getNumberOfRowsFailed());
   }
 
+  @Test
+  void test_bulkCreateOrUpdate_tripleDuplicateFqnsInBatch(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = createBulkRequests(ns, "bulk_trip_", 1);
+    K original = createRequests.get(0);
+
+    // Add the same request two more times (triple duplicate FQN)
+    createRequests.add(original);
+    createRequests.add(original);
+
+    BulkOperationResult result = executeBulkCreate(createRequests);
+
+    assertEquals(3, result.getNumberOfRowsProcessed());
+    assertEquals(3, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+  }
+
   /**
    * Test: Concurrent bulk requests do not corrupt data.
    *

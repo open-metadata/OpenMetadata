@@ -7719,7 +7719,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateEntities.stream()
             .map(e -> existingByFqn.get(e.getFullyQualifiedName()))
             .collect(Collectors.toList());
-    setFieldsInBulk(putFields, originals);
+    try {
+      setFieldsInBulk(putFields, originals);
+    } catch (Exception e) {
+      LOG.error("setFieldsInBulk failed, marking all updates as failed", e);
+      for (T entity : updateEntities) {
+        failedRequests.add(
+            new BulkResponse()
+                .withRequest(entity.getFullyQualifiedName())
+                .withStatus(Status.BAD_REQUEST.getStatusCode())
+                .withMessage("Batch field loading failed: " + e.getMessage()));
+      }
+      return;
+    }
 
     // Per-entity updater (relationships + change description)
     List<EntityUpdater> updaters = new ArrayList<>();
@@ -7915,6 +7927,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
         List<T> newlyCreated = dao.findEntityByNames(updateFqns, Include.ALL);
         for (T created : newlyCreated) {
           existingByFqn.put(created.getFullyQualifiedName(), created);
+        }
+      }
+
+      // Filter out entities whose original doesn't exist (e.g., duplicate FQN whose
+      // first occurrence failed to create). These can't be updated — report as failed.
+      Iterator<T> it = updateEntities.iterator();
+      while (it.hasNext()) {
+        T entity = it.next();
+        if (!existingByFqn.containsKey(entity.getFullyQualifiedName())) {
+          it.remove();
+          failedRequests.add(
+              new BulkResponse()
+                  .withRequest(entity.getFullyQualifiedName())
+                  .withStatus(Status.BAD_REQUEST.getStatusCode())
+                  .withMessage("Entity does not exist and could not be created"));
         }
       }
     }

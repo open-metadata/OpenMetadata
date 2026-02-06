@@ -1080,7 +1080,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       result.setStatus(ApiStatus.PARTIAL_SUCCESS);
       result.setFailedRequest(authFailedResponses);
     } else {
-      result.setStatus(ApiStatus.RUNNING);
+      result.setStatus(ApiStatus.SUCCESS);
     }
 
     return Response.accepted().entity(result).build();
