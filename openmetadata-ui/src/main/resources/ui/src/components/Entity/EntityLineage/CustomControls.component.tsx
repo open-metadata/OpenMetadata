@@ -41,6 +41,7 @@ import { ExportTypes } from '../../../constants/Export.constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../context/LineageProvider/LineageProvider.interface';
+import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/entityCountLineageRequest';
@@ -55,6 +56,7 @@ import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
+import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
 import {
   StyledIconButton,
   StyledMenu,
@@ -70,6 +72,7 @@ const CustomControls: FC<{
   queryFilterNodeIds?: string[];
   deleted?: boolean;
   hasEditAccess?: boolean;
+  impactLevel?: EImpactLevel;
 }> = ({
   nodeDepthOptions,
   onSearchValueChange,
@@ -77,6 +80,7 @@ const CustomControls: FC<{
   queryFilterNodeIds,
   deleted = false,
   hasEditAccess = false,
+  impactLevel,
 }) => {
   const { t } = useTranslation();
   const {
@@ -89,6 +93,8 @@ const CustomControls: FC<{
     onLineageEditClick,
     isEditMode,
     platformView,
+    columnFilter,
+    setColumnFilter,
   } = useLineageProvider();
   const [filterSelectionActive, setFilterSelectionActive] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -272,7 +278,8 @@ const CustomControls: FC<{
     setSelectedQuickFilters((prev) =>
       (prev ?? []).map((filter) => ({ ...filter, value: [] }))
     );
-  }, [setSelectedQuickFilters]);
+    setColumnFilter('');
+  }, [setSelectedQuickFilters, setColumnFilter]);
 
   // Function to handle export click
   const handleImpactAnalysisExport = useCallback(
@@ -283,8 +290,9 @@ const CustomControls: FC<{
         direction: lineageDirection,
         nodeDepth: nodeDepth,
         query_filter: quickFilters,
+        column_filter: columnFilter,
       }),
-    [fqn, entityType, lineageDirection, nodeDepth, quickFilters]
+    [fqn, entityType, lineageDirection, nodeDepth, quickFilters, columnFilter]
   );
 
   const handleExportClick = useCallback(() => {
@@ -316,11 +324,25 @@ const CustomControls: FC<{
     },
   };
 
-  const filterApplied = useMemo(() => {
-    return selectedQuickFilters.some(
-      (filter) => (filter.value ?? []).length > 0
+  // Filter quick filters based on impact level
+  // Column filter should only show when Impact On is Column
+  const filteredQuickFilters = useMemo(() => {
+    if (impactLevel === EImpactLevel.ColumnLevel) {
+      return selectedQuickFilters;
+    }
+
+    // In TableLevel mode, hide Column filter (it doesn't make sense for table-level impact)
+    return selectedQuickFilters.filter(
+      (filter) => filter.key !== EntityFields.COLUMN
     );
-  }, [selectedQuickFilters]);
+  }, [selectedQuickFilters, impactLevel]);
+
+  const filterApplied = useMemo(() => {
+    return (
+      selectedQuickFilters.some((filter) => (filter.value ?? []).length > 0) ||
+      columnFilter.length > 0
+    );
+  }, [selectedQuickFilters, columnFilter]);
 
   const searchBarComponent = useMemo(() => {
     return activeTab === 'impact_analysis' && onSearchValueChange ? (
@@ -512,7 +534,7 @@ const CustomControls: FC<{
               independent
               aggregations={{}}
               defaultQueryFilter={queryFilter}
-              fields={selectedQuickFilters}
+              fields={filteredQuickFilters}
               index={SearchIndex.ALL}
               optionPageSize={AGGREGATE_PAGE_SIZE_LARGE}
               showDeleted={false}

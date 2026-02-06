@@ -38,7 +38,8 @@ export const exportLineageAsync = async (
   fqn: string,
   entityType?: string,
   config?: LineageConfig,
-  queryFilter?: string
+  queryFilter?: string,
+  columnFilter?: string
 ) => {
   const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
   const response = await APIClient.get<CSVExportResponse>(
@@ -50,6 +51,7 @@ export const exportLineageAsync = async (
         upstreamDepth,
         downstreamDepth,
         query_filter: queryFilter,
+        column_filter: columnFilter,
         includeDeleted: false,
       },
     }
@@ -63,6 +65,7 @@ export const getLineageDataByFQN = async ({
   entityType,
   config,
   queryFilter,
+  columnFilter,
   from,
   direction,
 }: {
@@ -70,6 +73,7 @@ export const getLineageDataByFQN = async ({
   entityType: string;
   config?: LineageConfig;
   queryFilter?: string;
+  columnFilter?: string;
   from?: number;
   direction?: LineageDirection;
 }) => {
@@ -86,6 +90,7 @@ export const getLineageDataByFQN = async ({
       upstreamDepth: upstreamDepth === 0 ? 0 : upstreamDepth,
       downstreamDepth,
       query_filter: queryFilter,
+      column_filter: columnFilter,
       includeDeleted: false,
       size: config?.nodesPerLayer,
       from,
@@ -98,10 +103,12 @@ export const getLineageDataByFQN = async ({
 export const getPlatformLineage = async ({
   config,
   queryFilter,
+  columnFilter,
   view,
 }: {
   config?: LineageConfig;
   queryFilter?: string;
+  columnFilter?: string;
   view: string;
 }) => {
   const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
@@ -113,6 +120,7 @@ export const getPlatformLineage = async ({
       upstreamDepth,
       downstreamDepth,
       query_filter: queryFilter,
+      column_filter: columnFilter,
       includeDeleted: false,
       size: config?.nodesPerLayer,
     },
@@ -124,7 +132,8 @@ export const getPlatformLineage = async ({
 export const getDataQualityLineage = async (
   fqn: string,
   config?: Partial<LineageConfig>,
-  queryFilter?: string
+  queryFilter?: string,
+  columnFilter?: string
 ) => {
   const { upstreamDepth = 1 } = config ?? {};
   const response = await APIClient.get<EntityLineageResponse>(
@@ -135,6 +144,7 @@ export const getDataQualityLineage = async (
         upstreamDepth,
         includeDeleted: false,
         query_filter: queryFilter,
+        column_filter: columnFilter,
       },
     }
   );
@@ -150,6 +160,7 @@ export const getLineageByEntityCount = async (params: {
   from: number;
   size: number;
   query_filter?: string;
+  column_filter?: string;
 }) => {
   const response = await APIClient.get<{
     nodes: Record<string, LineageNodeData>;
@@ -170,6 +181,7 @@ export const exportLineageByEntityCountAsync = async (params: {
   from?: number;
   size?: number;
   query_filter?: string;
+  column_filter?: string;
 }) => {
   const response = await APIClient.get<CSVExportResponse>(
     `lineage/exportByEntityCountAsync`,
@@ -185,6 +197,7 @@ export const getLineagePagingData = async (params: {
   fqn: string;
   type?: EntityType;
   query_filter?: string;
+  column_filter?: string;
 }) => {
   const response = await APIClient.get<LineagePagingInfo>(
     `lineage/getPaginationInfo`,

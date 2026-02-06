@@ -118,8 +118,8 @@ public class ColumnMetadataCache {
     List<Map<String, Object>> columns = (List<Map<String, Object>>) columnsObj;
 
     for (Map<String, Object> column : columns) {
-      String columnName = (String) column.get("name");
-      if (columnName != null && columnFqns.contains(columnName)) {
+      String columnFqn = (String) column.get("fullyQualifiedName");
+      if (columnFqn != null && columnFqns.contains(columnFqn)) {
         ColumnMetadata metadata = new ColumnMetadata();
 
         // Extract tags
@@ -135,7 +135,7 @@ public class ColumnMetadataCache {
           metadata.setTags(tagFqns);
         }
 
-        cache.put(columnName, metadata);
+        cache.put(columnFqn, metadata);
       }
     }
   }
