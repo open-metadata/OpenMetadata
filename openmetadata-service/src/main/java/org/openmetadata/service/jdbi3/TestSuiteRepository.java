@@ -17,6 +17,7 @@ import static org.openmetadata.service.search.SearchUtils.getAggregationObject;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.escapeDoubleQuotes;
 
+import com.google.gson.Gson;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
@@ -651,6 +652,20 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     entity.setTests(null);
     store(entity, update);
     entity.setTests(tests);
+  }
+
+  @Override
+  public void storeEntities(List<TestSuite> entities) {
+    List<TestSuite> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (TestSuite entity : entities) {
+      List<EntityReference> tests = entity.getTests();
+      entity.setTests(null);
+      String jsonCopy = gson.toJson(entity);
+      entitiesToStore.add(gson.fromJson(jsonCopy, TestSuite.class));
+      entity.setTests(tests);
+    }
+    storeMany(entitiesToStore);
   }
 
   @Override
