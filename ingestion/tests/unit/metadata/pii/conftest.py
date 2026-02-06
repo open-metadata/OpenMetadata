@@ -34,7 +34,6 @@ from metadata.generated.schema.entity.classification.classification import (
     ConflictResolution,
 )
 from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.generated.schema.type.piiEntity import PIIEntity
 from metadata.generated.schema.type.predefinedRecognizer import Name as PredefinedName
 from metadata.generated.schema.type.recognizer import Target
 from metadata.pii.models import ScoredTag
@@ -93,7 +92,6 @@ def email_tag_pii(pii_classification: Classification) -> Tag:
     email_pattern_recognizer = PatternRecognizerFactory.create(
         patterns=[email_pattern],
         context=[],
-        supportedEntity=PIIEntity.EMAIL_ADDRESS,
         supportedLanguage="en",
     )
 
@@ -128,7 +126,6 @@ def phone_tag_pii(pii_classification: Classification) -> Tag:
     phone_pattern_recognizer = PatternRecognizerFactory.create(
         patterns=[phone_pattern_1, phone_pattern_2],
         context=[],
-        supportedEntity=PIIEntity.PHONE_NUMBER,
         supportedLanguage="en",
     )
 
