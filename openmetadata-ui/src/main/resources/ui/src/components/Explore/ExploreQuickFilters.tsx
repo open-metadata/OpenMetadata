@@ -255,6 +255,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         return (
           <SearchDropdown
             highlight
+            dropdownClassName={field.dropdownClassName}
             fixedOrderOptions={field.key === TIER_FQN_KEY}
             hasNullOption={hasNullOption}
             hideCounts={field.hideCounts ?? false}

@@ -55,6 +55,7 @@ import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -77,6 +78,7 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.OM;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
@@ -104,13 +106,16 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   {
     // Table CSV export exports columns from a specific table, not tables from a schema
-    // The test framework expects export from a container (schema), but tables use a different API
-    supportsImportExport = false;
+    // Enable import/export for table column CSV testing
+    supportsImportExport = true;
+    supportsBatchImport = true;
+    supportsRecursiveImport = false; // Tables don't support recursive import
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
   }
 
   private DatabaseSchema lastCreatedSchema;
+  private Table lastCreatedTable;
 
   // ===================================================================
   // OVERRIDE: Tables allow duplicates in different schemas
@@ -260,11 +265,14 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   @Override
   protected String getImportExportContainerName(TestNamespace ns) {
-    if (lastCreatedSchema == null) {
-      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-      lastCreatedSchema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    // For table CSV import/export, we need a table FQN, not a schema FQN
+    // Create a table for CSV operations if it doesn't exist
+    if (lastCreatedTable == null) {
+      CreateTable tableRequest = createMinimalRequest(ns);
+      tableRequest.setName(ns.prefix("csv_table"));
+      lastCreatedTable = createEntity(tableRequest);
     }
-    return lastCreatedSchema.getFullyQualifiedName();
+    return lastCreatedTable.getFullyQualifiedName();
   }
 
   // ===================================================================
@@ -4319,6 +4327,437 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // Now refresh it
     Request refreshRequest = new Request("POST", "/" + getTableSearchIndexName() + "/_refresh");
     searchClient.performRequest(refreshRequest);
+  }
+
+  // ===================================================================
+  // TABLE CONSTRAINTS PRESERVATION TESTS
+  // ===================================================================
+
+  @Test
+  void test_tableConstraintsCsvBulkOperation_preservesConstraints(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    // Create table with multiple types of constraints
+    Column idColumn = ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build();
+    Column emailColumn = ColumnBuilder.of("email", "VARCHAR").dataLength(255).build();
+    Column usernameColumn = ColumnBuilder.of("username", "VARCHAR").dataLength(100).build();
+
+    // Create table constraints - UNIQUE and PRIMARY_KEY
+    TableConstraint uniqueConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+            .withColumns(List.of("email"));
+
+    TableConstraint primaryKeyConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.PRIMARY_KEY)
+            .withColumns(List.of("id"));
+
+    TableConstraint multiColumnUniqueConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+            .withColumns(List.of("username", "email"));
+
+    CreateTable createRequest = new CreateTable();
+    createRequest.setName(ns.prefix("constraints_bulk_test"));
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setColumns(List.of(idColumn, emailColumn, usernameColumn));
+    createRequest.setTableConstraints(
+        List.of(uniqueConstraint, primaryKeyConstraint, multiColumnUniqueConstraint));
+
+    // Create the table
+    Table originalTable = createEntity(createRequest);
+
+    // Verify constraints were created correctly
+    assertNotNull(originalTable.getTableConstraints(), "Table should have constraints");
+    assertEquals(3, originalTable.getTableConstraints().size(), "Should have 3 constraints");
+
+    // Get the table's current version before any operations
+    Double originalVersion = originalTable.getVersion();
+
+    // Simulate the exact scenario that caused the bug:
+    // 1. Load table with minimal fields (like CSV import does)
+    // 2. Trigger bulk operation versioning
+    // 3. Verify constraints survive
+
+    Table tableForUpdate =
+        client.tables().getByName(originalTable.getFullyQualifiedName(), "tableConstraints");
+
+    // Verify constraints are present before update
+    assertNotNull(
+        tableForUpdate.getTableConstraints(), "Constraints should exist before bulk operation");
+    assertEquals(
+        3,
+        tableForUpdate.getTableConstraints().size(),
+        "Should have 3 constraints before bulk operation");
+
+    // Perform update that triggers createChangeEventForBulkOperation
+    // This is the critical path that was deleting constraints
+    tableForUpdate.setDescription("Updated via bulk operation");
+    Table updatedTable = client.tables().update(tableForUpdate.getId(), tableForUpdate);
+
+    // CRITICAL TEST: Verify constraints survived the bulk operation
+    assertNotNull(
+        updatedTable.getTableConstraints(),
+        "Constraints should survive bulk operation (this was the bug)");
+    assertEquals(
+        3,
+        updatedTable.getTableConstraints().size(),
+        "Should still have 3 constraints after bulk operation");
+
+    // Verify specific constraints are preserved
+    List<TableConstraint> constraints = updatedTable.getTableConstraints();
+
+    // Check UNIQUE constraint on email
+    assertTrue(
+        constraints.stream()
+            .anyMatch(
+                c ->
+                    c.getConstraintType() == TableConstraint.ConstraintType.UNIQUE
+                        && c.getColumns().size() == 1
+                        && c.getColumns().contains("email")),
+        "UNIQUE constraint on email should be preserved");
+
+    // Check PRIMARY_KEY constraint on id
+    assertTrue(
+        constraints.stream()
+            .anyMatch(
+                c ->
+                    c.getConstraintType() == TableConstraint.ConstraintType.PRIMARY_KEY
+                        && c.getColumns().contains("id")),
+        "PRIMARY_KEY constraint should be preserved");
+
+    // Check multi-column UNIQUE constraint
+    assertTrue(
+        constraints.stream()
+            .anyMatch(
+                c ->
+                    c.getConstraintType() == TableConstraint.ConstraintType.UNIQUE
+                        && c.getColumns().size() == 2
+                        && c.getColumns().containsAll(List.of("username", "email"))),
+        "Multi-column UNIQUE constraint should be preserved");
+
+    // Verify version was incremented (indicating change event was created)
+    assertTrue(
+        updatedTable.getVersion() > originalVersion,
+        "Version should be incremented after bulk operation");
+
+    // Test version history preservation
+    EntityHistory history = getVersionHistory(updatedTable.getId());
+    assertNotNull(history, "Should have version history");
+    assertTrue(history.getVersions().size() >= 2, "Should have at least 2 versions");
+
+    // Get the original version from history and verify it has constraints
+    Table historicalVersion = getVersion(updatedTable.getId(), originalVersion);
+    assertNotNull(historicalVersion, "Should be able to retrieve historical version");
+    assertNotNull(
+        historicalVersion.getTableConstraints(), "Historical version should preserve constraints");
+    assertEquals(
+        3,
+        historicalVersion.getTableConstraints().size(),
+        "Historical version should have all 3 constraints");
+  }
+
+  @Test
+  void test_tableConstraintsVersioning_multipleBulkOperations(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    // Create table with constraints
+    CreateTable createRequest = new CreateTable();
+    createRequest.setName(ns.prefix("multi_bulk_constraints"));
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("code", "VARCHAR").dataLength(50).build()));
+
+    TableConstraint uniqueConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+            .withColumns(List.of("code"));
+    createRequest.setTableConstraints(List.of(uniqueConstraint));
+
+    Table originalTable = createEntity(createRequest);
+    Double version1 = originalTable.getVersion();
+
+    // Multiple bulk operations to test constraint preservation across versions
+    for (int i = 0; i < 3; i++) {
+      Table currentTable =
+          client.tables().getByName(originalTable.getFullyQualifiedName(), "tableConstraints");
+      currentTable.setDescription("Bulk update iteration " + (i + 1));
+
+      Table updated = client.tables().update(currentTable.getId(), currentTable);
+
+      // Verify constraints survive each bulk operation
+      assertNotNull(
+          updated.getTableConstraints(),
+          "Constraints should survive bulk operation iteration " + (i + 1));
+      assertEquals(
+          1,
+          updated.getTableConstraints().size(),
+          "Should have 1 constraint after bulk operation iteration " + (i + 1));
+      assertEquals(
+          TableConstraint.ConstraintType.UNIQUE,
+          updated.getTableConstraints().get(0).getConstraintType(),
+          "Constraint type should be preserved in iteration " + (i + 1));
+
+      assertTrue(
+          updated.getVersion() > version1, "Version should increment in iteration " + (i + 1));
+    }
+
+    // Verify all versions in history preserve constraints
+    EntityHistory history = getVersionHistory(originalTable.getId());
+    assertNotNull(history, "Should have version history");
+    assertTrue(
+        history.getVersions().size() > 1, "Should have multiple versions (original + updates)");
+
+    // Check that each historical version preserved constraints
+    for (Object versionObj : history.getVersions()) {
+      if (versionObj instanceof String versionJson) {
+        assertTrue(
+            versionJson.contains("tableConstraints"),
+            "Historical version should contain tableConstraints in JSON");
+        assertTrue(
+            versionJson.contains("UNIQUE"),
+            "Historical version should contain UNIQUE constraint type");
+      }
+    }
+  }
+
+  // ===================================================================
+  // CSV IMPORT/EXPORT SUPPORT
+  // ===================================================================
+
+  protected String generateValidCsvData(TestNamespace ns, List<Table> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return null;
+    }
+
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "column.name*,column.displayName,column.description,column.dataTypeDisplay,column.dataType*,column.arrayDataType,column.dataLength,column.tags,column.glossaryTerms\n");
+
+    for (Table table : entities) {
+      if (table.getColumns() != null) {
+        for (Column column : table.getColumns()) {
+          csv.append(escapeCSVValue(column.getName())).append(",");
+          csv.append(escapeCSVValue(column.getDisplayName())).append(",");
+          csv.append(escapeCSVValue(column.getDescription())).append(",");
+          csv.append(escapeCSVValue(column.getDataTypeDisplay())).append(",");
+          csv.append(escapeCSVValue(column.getDataType().toString())).append(",");
+          csv.append(
+                  escapeCSVValue(
+                      column.getArrayDataType() != null
+                          ? column.getArrayDataType().toString()
+                          : ""))
+              .append(",");
+          csv.append(
+                  escapeCSVValue(
+                      column.getDataLength() != null ? column.getDataLength().toString() : ""))
+              .append(",");
+          csv.append(escapeCSVValue(formatTagsForCsv(column.getTags()))).append(",");
+          csv.append(escapeCSVValue("")); // glossaryTerms - not available on Column
+          csv.append("\n");
+        }
+      }
+    }
+
+    return csv.toString();
+  }
+
+  protected String generateInvalidCsvData(TestNamespace ns) {
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "column.name*,column.displayName,column.description,column.dataTypeDisplay,column.dataType*,column.arrayDataType,column.dataLength,column.tags,column.glossaryTerms\n");
+    // Missing required column.name and column.dataType (empty name and empty datatype)
+    csv.append(",Test Column,Description,,,,,,,\n");
+    // Invalid data type
+    csv.append("invalid_column,,,,INVALID_TYPE,,,,,\n");
+    return csv.toString();
+  }
+
+  protected List<String> getRequiredCsvHeaders() {
+    return List.of(
+        "column.name*",
+        "column.displayName",
+        "column.description",
+        "column.dataTypeDisplay",
+        "column.dataType*",
+        "column.arrayDataType",
+        "column.dataLength",
+        "column.tags",
+        "column.glossaryTerms");
+  }
+
+  protected List<String> getAllCsvHeaders() {
+    return List.of(
+        "column.name*",
+        "column.displayName",
+        "column.description",
+        "column.dataTypeDisplay",
+        "column.dataType*",
+        "column.arrayDataType",
+        "column.dataLength",
+        "column.tags",
+        "column.glossaryTerms");
+  }
+
+  protected boolean validateCsvRow(String[] row, List<String> headers) {
+    if (row.length != headers.size()) {
+      return false;
+    }
+
+    int nameIndex = headers.indexOf("column.name*");
+    int dataTypeIndex = headers.indexOf("column.dataType*");
+
+    if (nameIndex >= 0 && (row[nameIndex] == null || row[nameIndex].trim().isEmpty())) {
+      return false;
+    }
+
+    if (dataTypeIndex >= 0 && (row[dataTypeIndex] == null || row[dataTypeIndex].trim().isEmpty())) {
+      return false;
+    }
+
+    // Validate data type if present
+    if (dataTypeIndex >= 0 && !row[dataTypeIndex].trim().isEmpty()) {
+      try {
+        ColumnDataType.fromValue(row[dataTypeIndex].trim());
+      } catch (IllegalArgumentException e) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private String formatTagsForCsv(List<TagLabel> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return "";
+    }
+    return tags.stream().map(TagLabel::getTagFQN).reduce((a, b) -> a + ";" + b).orElse("");
+  }
+
+  private String escapeCSVValue(String value) {
+    if (value == null) {
+      return "";
+    }
+    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+      return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+    return value;
+  }
+
+  // ===================================================================
+  // DATA PERSISTENCE VALIDATION - Critical for CSV import testing
+  // ===================================================================
+
+  @Override
+  protected void validateCsvDataPersistence(
+      List<Table> originalEntities, String csvData, CsvImportResult result) {
+    super.validateCsvDataPersistence(originalEntities, csvData, result);
+
+    if (result.getStatus() != ApiStatus.SUCCESS) {
+      return;
+    }
+
+    if (lastCreatedTable != null) {
+      Table originalTable = lastCreatedTable;
+      Table updatedTable =
+          SdkClients.adminClient()
+              .tables()
+              .get(originalTable.getId().toString(), "columns,tags,owners");
+      assertNotNull(updatedTable, "Table should exist after CSV import");
+
+      validateTableFieldsAfterImport(originalTable, updatedTable);
+
+      if (originalTable.getColumns() != null && updatedTable.getColumns() != null) {
+        validateColumnsAfterImport(originalTable.getColumns(), updatedTable.getColumns());
+      }
+    }
+  }
+
+  private void validateTableFieldsAfterImport(Table original, Table imported) {
+    if (original.getDescription() != null) {
+      assertEquals(
+          original.getDescription(),
+          imported.getDescription(),
+          "Table description should be preserved");
+    }
+
+    if (original.getDisplayName() != null) {
+      assertEquals(
+          original.getDisplayName(),
+          imported.getDisplayName(),
+          "Table displayName should be preserved");
+    }
+
+    if (original.getOwners() != null && !original.getOwners().isEmpty()) {
+      assertNotNull(imported.getOwners(), "Table owners should be preserved");
+      assertEquals(
+          original.getOwners().size(),
+          imported.getOwners().size(),
+          "Table owner count should match");
+    }
+  }
+
+  private void validateColumnsAfterImport(
+      List<Column> originalColumns, List<Column> importedColumns) {
+    assertEquals(
+        originalColumns.size(), importedColumns.size(), "Column count should be preserved");
+
+    for (Column originalColumn : originalColumns) {
+      Column importedColumn = findColumnByName(importedColumns, originalColumn.getName());
+      assertNotNull(
+          importedColumn, "Column " + originalColumn.getName() + " should exist after import");
+
+      assertEquals(originalColumn.getName(), importedColumn.getName(), "Column name should match");
+      assertEquals(
+          originalColumn.getDataType(),
+          importedColumn.getDataType(),
+          "Column data type should match");
+
+      if (originalColumn.getDescription() != null) {
+        assertEquals(
+            originalColumn.getDescription(),
+            importedColumn.getDescription(),
+            "Column description should be preserved");
+      }
+
+      if (originalColumn.getDisplayName() != null) {
+        assertEquals(
+            originalColumn.getDisplayName(),
+            importedColumn.getDisplayName(),
+            "Column displayName should be preserved");
+      }
+
+      if (originalColumn.getDataLength() != null) {
+        assertEquals(
+            originalColumn.getDataLength(),
+            importedColumn.getDataLength(),
+            "Column data length should be preserved");
+      }
+
+      if (originalColumn.getTags() != null && !originalColumn.getTags().isEmpty()) {
+        assertNotNull(importedColumn.getTags(), "Column tags should be preserved");
+        assertEquals(
+            originalColumn.getTags().size(),
+            importedColumn.getTags().size(),
+            "Column tag count should match");
+      }
+    }
+  }
+
+  private Column findColumnByName(List<Column> columns, String columnName) {
+    return columns.stream()
+        .filter(col -> col.getName().equals(columnName))
+        .findFirst()
+        .orElse(null);
   }
 
   // ===================================================================

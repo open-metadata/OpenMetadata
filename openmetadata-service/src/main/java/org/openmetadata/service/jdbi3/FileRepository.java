@@ -25,6 +25,7 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FILE;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +36,7 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.File;
@@ -131,6 +133,30 @@ public class FileRepository extends EntityRepository<File> {
     store(file, update);
     // Restore columns with tags
     file.withColumns(columnsWithTags);
+  }
+
+  @Override
+  public void storeEntities(List<File> files) {
+    List<File> filesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (File file : files) {
+      // Don't store column tags as JSON but build it on the fly based on relationships
+      List<Column> columnsWithTags = file.getColumns();
+      file.setColumns(ColumnUtil.cloneWithoutTags(columnsWithTags));
+      if (file.getColumns() != null) {
+        file.getColumns().forEach(column -> column.setTags(null));
+      }
+
+      // Clone for storage
+      String jsonCopy = gson.toJson(file);
+      filesToStore.add(gson.fromJson(jsonCopy, File.class));
+
+      // Restore columns with tags in original
+      file.withColumns(columnsWithTags);
+    }
+
+    storeMany(filesToStore);
   }
 
   @Override
@@ -283,8 +309,15 @@ public class FileRepository extends EntityRepository<File> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     File file = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
-    return new FileCsv(file, user).exportCsv(listOf(file));
+    return new FileCsv(file, user).exportCsv(listOf(file), callback);
   }
 
   @Override
