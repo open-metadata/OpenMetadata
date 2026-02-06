@@ -81,6 +81,12 @@ export interface Connection {
     registryUri?:                string;
     supportsMetadataExtraction?: boolean;
     /**
+     * Authentication token for MLflow. This will be set as the MLFLOW_TRACKING_TOKEN
+     * environment variable for secure access to MLflow deployments. Supports Databricks, AWS
+     * SageMaker, and other hosted MLflow instances.
+     */
+    token?: string;
+    /**
      * Mlflow Experiment tracking URI. E.g., http://localhost:5000
      */
     trackingUri?: string;

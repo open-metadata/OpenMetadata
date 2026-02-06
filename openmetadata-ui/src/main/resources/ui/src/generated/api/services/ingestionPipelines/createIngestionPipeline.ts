@@ -2972,6 +2972,10 @@ export interface ConfigObject {
      * Generated Token to connect to DBTCloud.
      *
      * Token to connect to Stitch api doc
+     *
+     * Authentication token for MLflow. This will be set as the MLFLOW_TRACKING_TOKEN
+     * environment variable for secure access to MLflow deployments. Supports Databricks, AWS
+     * SageMaker, and other hosted MLflow instances.
      */
     token?: string;
     /**
