@@ -98,6 +98,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.ValidatorUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -1060,16 +1061,16 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       List<BulkResponse> authFailedResponses,
       int totalRequests) {
     repository
-        .submitAsyncBulkOperation(uriInfo, entities, userName, existingByFqn)
+        .submitAsyncBulkOperation(
+            uriInfo, entities, userName, existingByFqn, authFailedResponses, totalRequests)
         .thenAccept(
-            result -> {
-              LOG.info(
-                  "Async bulk operation completed for {} {}: {} succeeded, {} failed",
-                  entities.size(),
-                  entityType,
-                  result.getNumberOfRowsPassed(),
-                  result.getNumberOfRowsFailed());
-            });
+            result ->
+                LOG.info(
+                    "Async bulk operation completed for {} {}: {} succeeded, {} failed",
+                    entities.size(),
+                    entityType,
+                    result.getNumberOfRowsPassed(),
+                    result.getNumberOfRowsFailed()));
 
     BulkOperationResult result = new BulkOperationResult();
     result.setNumberOfRowsProcessed(totalRequests);
@@ -1079,7 +1080,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       result.setStatus(ApiStatus.PARTIAL_SUCCESS);
       result.setFailedRequest(authFailedResponses);
     } else {
-      result.setStatus(ApiStatus.SUCCESS);
+      result.setStatus(ApiStatus.RUNNING);
     }
 
     return Response.accepted().entity(result).build();
@@ -1102,11 +1103,15 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     List<T> validEntities = new ArrayList<>();
     List<BulkResponse> failedResponses = new ArrayList<>();
 
-    // Phase 1: Prepare all entities (in-memory, no DB)
+    // Phase 1: Validate and prepare all entities (in-memory, no DB)
     List<T> preparedEntities = new ArrayList<>();
     Map<String, C> entityToRequest = new HashMap<>();
     for (C createRequest : createRequests) {
       try {
+        String violations = ValidatorUtil.validate(createRequest);
+        if (violations != null) {
+          throw new IllegalArgumentException(violations);
+        }
         T entity =
             mapper.createToEntity(createRequest, securityContext.getUserPrincipal().getName());
         repository.prepareInternal(entity, false);

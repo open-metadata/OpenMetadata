@@ -7640,13 +7640,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       new ConcurrentHashMap<>();
 
   public CompletableFuture<BulkOperationResult> submitAsyncBulkOperation(
-      UriInfo uriInfo, List<T> entities, String userName, Map<String, T> existingByFqn) {
+      UriInfo uriInfo,
+      List<T> entities,
+      String userName,
+      Map<String, T> existingByFqn,
+      List<BulkResponse> authFailedResponses,
+      int totalRequests) {
 
     String jobId = UUID.randomUUID().toString();
     LOG.info(
         "Submitting async bulk operation with jobId: {} for {} entities", jobId, entities.size());
 
-    // Use BulkExecutor for async operations too
     CompletableFuture<BulkOperationResult> job =
         CompletableFuture.supplyAsync(
             () -> {
@@ -7664,15 +7668,37 @@ public abstract class EntityRepository<T extends EntityInterface> {
             },
             BulkExecutor.getInstance().getExecutor());
 
-    BULK_JOBS.put(jobId, job);
+    // Merge auth failures into the final result so polling clients see the complete picture
+    CompletableFuture<BulkOperationResult> mergedJob =
+        job.thenApply(
+            result -> {
+              if (!authFailedResponses.isEmpty()) {
+                result.setNumberOfRowsFailed(
+                    result.getNumberOfRowsFailed() + authFailedResponses.size());
+                result.setNumberOfRowsProcessed(totalRequests);
+                if (result.getFailedRequest() == null) {
+                  result.setFailedRequest(new ArrayList<>(authFailedResponses));
+                } else {
+                  result.getFailedRequest().addAll(authFailedResponses);
+                }
+                if (result.getNumberOfRowsPassed() > 0) {
+                  result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+                } else {
+                  result.setStatus(ApiStatus.FAILURE);
+                }
+              }
+              return result;
+            });
 
-    job.whenComplete(
+    BULK_JOBS.put(jobId, mergedJob);
+
+    mergedJob.whenComplete(
         (result, throwable) -> {
           CompletableFuture.delayedExecutor(1, TimeUnit.HOURS)
               .execute(() -> BULK_JOBS.remove(jobId));
         });
 
-    return job;
+    return mergedJob;
   }
 
   private void bulkUpdateEntities(
@@ -7764,6 +7790,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
         setInheritedFields(updater.getUpdated(), new Fields(allowedFields));
         postUpdate(updater.getOriginal(), updater.getUpdated());
+        EventType changeType =
+            updater.incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
+        createChangeEventForBulkOperation(updater.getUpdated(), changeType, userName);
         entityLatenciesNanos.add(perEntityDuration);
         recordEntityMetrics(entityType, perEntityDuration, 0, true);
         successRequests.add(
@@ -7776,8 +7805,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       for (EntityUpdater updater : updaters) {
         try {
           updater.storeUpdate();
+          if (updater.isVersionChanged() || updater.isEntityChanged()) {
+            writeThroughCache(updater.getUpdated(), true);
+          }
           setInheritedFields(updater.getUpdated(), new Fields(allowedFields));
           postUpdate(updater.getOriginal(), updater.getUpdated());
+          EventType changeType =
+              updater.incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
+          createChangeEventForBulkOperation(updater.getUpdated(), changeType, userName);
           successRequests.add(
               new BulkResponse()
                   .withRequest(updater.getUpdated().getFullyQualifiedName())
@@ -7837,13 +7872,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
               new BulkResponse()
                   .withRequest(entity.getFullyQualifiedName())
                   .withStatus(Status.OK.getStatusCode()));
+          createChangeEventForBulkOperation(entity, ENTITY_CREATED, userName);
         }
       } catch (Exception batchError) {
         LOG.warn("Batch create failed, falling back to per-entity creates", batchError);
         for (T entity : newEntities) {
           long entityStartTime = System.nanoTime();
           try {
-            createOrUpdate(uriInfo, entity, userName);
+            PutResponse<T> putResponse = createOrUpdate(uriInfo, entity, userName);
             long entityDuration = System.nanoTime() - entityStartTime;
             entityLatenciesNanos.add(entityDuration);
             recordEntityMetrics(entityType, entityDuration, 0, true);
@@ -7851,6 +7887,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 new BulkResponse()
                     .withRequest(entity.getFullyQualifiedName())
                     .withStatus(Status.OK.getStatusCode()));
+            createChangeEventForBulkOperation(
+                putResponse.getEntity(), putResponse.getChangeType(), userName);
           } catch (Exception e) {
             long entityDuration = System.nanoTime() - entityStartTime;
             entityLatenciesNanos.add(entityDuration);
