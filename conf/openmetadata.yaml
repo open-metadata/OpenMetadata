@@ -17,7 +17,7 @@ swagger:
 
 assets:
   resourcePath: /assets/
-  uriPath: /
+  uriPath: ${BASE_PATH:-/}
 
 basePath: ${BASE_PATH:-/}
 
