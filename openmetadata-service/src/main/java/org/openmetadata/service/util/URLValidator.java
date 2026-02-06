@@ -32,7 +32,7 @@ public class URLValidator {
   private static final List<String> ALLOWED_SCHEMES = Arrays.asList("http", "https");
   private static final Pattern PRIVATE_IP_PATTERN =
       Pattern.compile(
-          "^(127\\.|10\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.|169\\.254\\.|::1|[fF][cCdD]|[fF][eE][80-9a-fA-F]:).*");
+          "^(127\\.|10\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.|169\\.254\\.|\\[?::1\\]?|\\[?[fF][cCdD][0-9a-fA-F]{0,2}:|\\[?[fF][eE][80-9a-bA-B][0-9a-fA-F]:).*");
 
   public static void validateURL(String urlString) {
     if (urlString == null || urlString.trim().isEmpty()) {
@@ -64,6 +64,11 @@ public class URLValidator {
       throw new BadRequestException("URL scheme not allowed: " + protocol);
     }
 
-    return url.getHost().toLowerCase();
+    String host = url.getHost();
+    if (host == null || host.trim().isEmpty()) {
+      throw new BadRequestException("URL must have a valid host");
+    }
+
+    return host.toLowerCase();
   }
 }
