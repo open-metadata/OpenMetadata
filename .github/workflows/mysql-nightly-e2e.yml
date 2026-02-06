@@ -86,7 +86,8 @@ jobs:
             npx playwright test \
               --project=setup \
               --project=DataAssetRulesEnabled \
-              --project=DataAssetRulesDisabled
+              --project=DataAssetRulesDisabled \
+              --project=IsolatedTests
 
           else
             # Shards 2-6 handle chromium tests (5 workers total)

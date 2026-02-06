@@ -86,7 +86,8 @@ jobs:
             npx playwright test \
               --project=setup \
               --project=DataAssetRulesEnabled \
-              --project=DataAssetRulesDisabled
+              --project=DataAssetRulesDisabled \
+              --project=IsolatedTests
 
 
           else

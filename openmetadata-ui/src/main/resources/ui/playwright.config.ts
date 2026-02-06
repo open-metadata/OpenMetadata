@@ -87,6 +87,7 @@ export default defineConfig({
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
+        '**/AutoPilot.spec.ts',
       ],
     },
     {
@@ -117,6 +118,13 @@ export default defineConfig({
       testMatch: '**/DataAssetRulesDisabled.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['DataAssetRulesEnabled'],
+      fullyParallel: true,
+    },
+    {
+      name: 'IsolatedTests',
+      testMatch: '**/AutoPilot.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
       fullyParallel: true,
     },
     // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)

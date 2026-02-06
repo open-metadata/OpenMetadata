@@ -78,7 +78,9 @@ services.forEach((ServiceClass) => {
 
   test.describe.serial(
     service.serviceType,
-    PLAYWRIGHT_INGESTION_TAG_OBJ,
+    {
+      tag: [PLAYWRIGHT_INGESTION_TAG_OBJ.tag, '@dataAssetRules'],
+    },
     () => {
       const testData = {
         service: {
