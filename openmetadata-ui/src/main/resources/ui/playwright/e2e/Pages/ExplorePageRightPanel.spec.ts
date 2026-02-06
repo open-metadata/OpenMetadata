@@ -19,7 +19,6 @@ import { LineagePageObject } from '../PageObject/Explore/LineagePageObject';
 import { DataQualityPageObject } from '../PageObject/Explore/DataQualityPageObject';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
 import { openEntitySummaryPanel } from '../../utils/entityPanel';
-
 import { TableClass } from '../../support/entity/TableClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
@@ -37,6 +36,8 @@ import { MlModelClass } from '../../support/entity/MlModelClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { Domain } from '../../support/domain/Domain';
+import { UserClass } from '../../support/user/UserClass';
+
 
 // Test data setup
 const tableEntity = new TableClass();
@@ -50,6 +51,7 @@ const mlmodelEntity = new MlModelClass();
 const containerEntity = new ContainerClass();
 const searchIndexEntity = new SearchIndexClass();
 const domainEntity = new Domain();
+const user1 = new UserClass();
 
 
 const testClassification = new ClassificationClass();
@@ -85,12 +87,14 @@ const domainToUpdate = domainEntity.responseData?.displayName ?? domainEntity.da
 const glossaryTermToUpdate = testGlossaryTerm.responseData?.displayName ?? testGlossaryTerm.data.displayName;
 const tagToUpdate = testTag.responseData?.displayName ?? testTag.data.displayName;
 const testTier = 'Tier1';
+const customPropertyData: Record<string, { property: { name: string } }> = {};
 
 
 test.describe('Right Panel Test Suite', () => {
 
   // Setup test data and page objects
   test.beforeAll(async ({ browser }) => {
+    test.setTimeout(300_000); // 5 minutes
     const { apiContext, afterAction } = await performAdminLogin(browser);
     
     try {
@@ -101,11 +105,30 @@ test.describe('Right Panel Test Suite', () => {
         )
       );
 
+      // Create custom properties sequentially to avoid timeout (each call creates 4 users + multiple properties)
+      // Only create for entities that support custom properties
+      for (const [entityType, entityInstance] of Object.entries(entityMap)) {
+        try {
+          await entityInstance.prepareCustomProperty(apiContext);
+          
+          // Populate customPropertyData from entity's customPropertyValue
+          // Get the first property from customPropertyValue (which is keyed by property type names like 'string', 'integer', etc.)
+          const firstProperty = Object.values(entityInstance.customPropertyValue)[0];
+          if (firstProperty) {
+            customPropertyData[entityType] = { property: firstProperty.property };
+          }
+        } catch (error) {
+          console.warn(`Failed to create custom property for ${entityType}:`, error);
+          // Continue with other entities even if one fails
+        }
+      }
+
       await testClassification.create(apiContext);
       await testTag.create(apiContext);
       await testGlossary.create(apiContext);
       await testGlossaryTerm.create(apiContext);
       await domainEntity.create(apiContext);
+      await user1.create(apiContext);
     } finally {
       await afterAction();
     }
@@ -113,7 +136,7 @@ test.describe('Right Panel Test Suite', () => {
 
   // Setup page objects before each test
   test.beforeEach(async ({ adminPage }) => {
-    test.slow(true);
+    // test.slow(true);
     rightPanel = new RightPanelPageObject(adminPage);
     overview = new OverviewPageObject(rightPanel, adminPage);
     schema = new SchemaPageObject(rightPanel, adminPage);
@@ -125,7 +148,7 @@ test.describe('Right Panel Test Suite', () => {
   // Cleanup test data
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-
+    
     try {
       await tableEntity.delete(apiContext);
       await dashboardEntity.delete(apiContext);
@@ -197,11 +220,9 @@ test.describe('Right Panel Test Suite', () => {
         await rightPanel.waitForPanelLoaded();
         await rightPanel.waitForPanelVisible();
 
-        const ownerToUpdate = 'Aaron Johnson'
-        await overview.addOwnerWithoutValidation(ownerToUpdate);
-        await overview.shouldShowOwner(ownerToUpdate);
-        // await overview.shouldShowOwner(ownerToUpdate);
-   
+        
+        await overview.addOwnerWithoutValidation(user1.getUserDisplayName());
+        await overview.shouldShowOwner(user1.getUserDisplayName());
       })
 
       test(`Should update domain for ${entityType}`, async ({ adminPage }) => {
@@ -343,7 +364,8 @@ test.describe('Right Panel Test Suite', () => {
       // ============ CUSTOM PROPERTIES PAGE OBJECT TESTS ============
 
     test.describe('CustomProperties - Search and Management', () => {
-
+      
+      
       Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
         
         test(`Should navigate to custom properties and show interface for ${entityType}`, async ({ adminPage }) => {
@@ -355,8 +377,8 @@ test.describe('Right Panel Test Suite', () => {
             const customPropertiesTabExists = await rightPanel.verifyTabExists('Custom Property');
             if (customPropertiesTabExists) {
               await customProperties.navigateToCustomPropertiesTab();
-              //Right now we are checking for empty custom properties container
-              await customProperties.shouldShowEmptyCustomPropertiesContainer();
+            
+              await customProperties.shouldShowCustomPropertiesContainer();
             }
           } catch {
             console.debug(`No custom properties exists for ${entityType}`);
@@ -364,7 +386,7 @@ test.describe('Right Panel Test Suite', () => {
         });
 
         //Skipping since no custom properties are available for the entities
-        test.skip(`Should handle search functionality for ${entityType}`, async ({ adminPage }) => {
+        test(`Should handle search functionality for ${entityType}`, async ({ adminPage }) => {
           await redirectToHomePage(adminPage);
           await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
           await rightPanel.waitForPanelLoaded();
@@ -374,7 +396,15 @@ test.describe('Right Panel Test Suite', () => {
             const customPropertiesTabExists = await rightPanel.verifyTabExists('Custom Property');
             if (customPropertiesTabExists) {
               await customProperties.navigateToCustomPropertiesTab();
-              await customProperties.shouldBeVisible();
+              await customProperties.shouldShowCustomPropertiesContainer();
+              // Fixing error by explicitly defining the type of customPropertyData
+              // Assuming customPropertyData is defined as: Record<string, { property: { name: string } }>
+              const propertyName =
+                (customPropertyData)[entityType]?.property?.name;
+              if (propertyName) {
+                await customProperties.searchCustomProperties(propertyName);
+                await customProperties.shouldShowCustomProperty(propertyName);
+              }
             }
           } catch {
             console.debug(`No custom properties exists for ${entityType}`);

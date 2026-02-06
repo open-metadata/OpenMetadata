@@ -21,22 +21,21 @@ import { RightPanelPageObject } from './RightPanelPageObject';
  */
 export class CustomPropertiesPageObject {
   private readonly rightPanel: RightPanelPageObject;
-
   // ============ PRIVATE LOCATORS (scoped to container) ============
   private readonly container: Locator;
   private readonly searchBar: Locator;
   private readonly propertyCard: Locator;
   private readonly emptyCustomPropertiesContainer: Locator;
-
+  private readonly customPropertiesContainer: Locator;
   constructor(rightPanel: RightPanelPageObject) {
     this.rightPanel = rightPanel;
-
     // Base container - scoped to right panel summary panel
     this.container = this.rightPanel.getSummaryPanel().locator('.custom-properties-container');
+    this.customPropertiesContainer = this.rightPanel.page.locator('.custom-properties-section-container');
 
     // Sub-components within the container
-    this.searchBar = this.container.locator('.searchbar-container input, .searchbar-container input[type="text"]');
-    this.propertyCard = this.container.locator('.custom-property, [class*="property"]');
+    this.searchBar = this.rightPanel.page.getByTestId('searchbar');
+    this.propertyCard = this.rightPanel.page.getByTestId('custom-property-right-panel-card');
     this.emptyCustomPropertiesContainer = this.rightPanel.page.getByTestId('no-data-placeholder');
   }
 
@@ -61,6 +60,7 @@ export class CustomPropertiesPageObject {
    */
   async searchCustomProperties(searchTerm: string): Promise<CustomPropertiesPageObject> {
     await this.searchBar.fill(searchTerm);
+    await this.searchBar.press('Enter');
     await this.rightPanel.waitForLoadersToDisappear();
     return this;
   }
@@ -93,6 +93,10 @@ export class CustomPropertiesPageObject {
     await this.container.waitFor({ state: 'visible' });
   }
 
+  async shouldShowCustomPropertiesContainer(): Promise<void> {
+    await this.customPropertiesContainer.waitFor({ state: 'visible' });
+  }
+
   /**
    * Verify custom property is visible
    * @param propertyName - Name of the custom property
@@ -100,6 +104,7 @@ export class CustomPropertiesPageObject {
   async shouldShowCustomProperty(propertyName: string): Promise<void> {
     // Use semantic selectors - look for property by name text
     const propertyCard = this.propertyCard.filter({ hasText: propertyName });
+    await propertyCard.scrollIntoViewIfNeeded();
     await propertyCard.waitFor({ state: 'visible' });
   }
 
