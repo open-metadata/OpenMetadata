@@ -701,6 +701,14 @@ public class OpenSearchClient implements SearchClient {
               httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
             }
 
+            if (esConfig.getKeepAliveTimeoutSecs() != null
+                && esConfig.getKeepAliveTimeoutSecs() > 0) {
+              httpClientBuilder.setKeepAliveStrategy(
+                  (response, context) ->
+                      org.apache.hc.core5.util.TimeValue.ofSeconds(
+                          esConfig.getKeepAliveTimeoutSecs()));
+            }
+
             return httpClientBuilder;
           });
 
@@ -710,6 +718,8 @@ public class OpenSearchClient implements SearchClient {
                   .setConnectTimeout(Timeout.ofSeconds(esConfig.getConnectionTimeoutSecs()))
                   .setResponseTimeout(Timeout.ofSeconds(esConfig.getSocketTimeoutSecs())));
 
+      builder.setCompressionEnabled(true);
+      builder.setChunkedEnabled(true);
       return builder.build();
     } catch (Exception e) {
       LOG.error("Failed to create HC5 transport for OpenSearch", e);
