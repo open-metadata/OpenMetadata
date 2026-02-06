@@ -13,25 +13,7 @@
 Unit tests for Trino connection handling
 """
 
-import sys
-from types import ModuleType
-from unittest.mock import MagicMock
-
 import pytest
-
-mock_trino = ModuleType("trino")
-mock_trino_auth = ModuleType("trino.auth")
-mock_trino_auth.BasicAuthentication = MagicMock()
-mock_trino_auth.JWTAuthentication = MagicMock()
-mock_trino_auth.OAuth2Authentication = MagicMock()
-mock_trino_sqlalchemy = ModuleType("trino.sqlalchemy")
-mock_trino_sqlalchemy_dialect = ModuleType("trino.sqlalchemy.dialect")
-mock_trino_sqlalchemy_dialect.TrinoDialect = MagicMock()
-
-sys.modules["trino"] = mock_trino
-sys.modules["trino.auth"] = mock_trino_auth
-sys.modules["trino.sqlalchemy"] = mock_trino_sqlalchemy
-sys.modules["trino.sqlalchemy.dialect"] = mock_trino_sqlalchemy_dialect
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
@@ -60,7 +42,6 @@ class TestTrinoConnectionHttpScheme:
 
     @pytest.fixture
     def basic_connection_config(self) -> TrinoConnectionConfig:
-        """Create a basic Trino connection config with BasicAuth"""
         return TrinoConnectionConfig(
             scheme=TrinoScheme.trino,
             hostPort="localhost:8080",
@@ -70,7 +51,6 @@ class TestTrinoConnectionHttpScheme:
 
     @pytest.fixture
     def jwt_connection_config(self) -> TrinoConnectionConfig:
-        """Create a Trino connection config with JwtAuth"""
         return TrinoConnectionConfig(
             scheme=TrinoScheme.trino,
             hostPort="localhost:8080",
@@ -80,7 +60,6 @@ class TestTrinoConnectionHttpScheme:
 
     @pytest.fixture
     def oauth2_connection_config(self) -> TrinoConnectionConfig:
-        """Create a Trino connection config with OAuth2"""
         return TrinoConnectionConfig(
             scheme=TrinoScheme.trino,
             hostPort="localhost:8080",
@@ -89,7 +68,6 @@ class TestTrinoConnectionHttpScheme:
         )
 
     def test_basic_auth_defaults_to_https(self, basic_connection_config):
-        """Test that http_scheme defaults to 'https' when not explicitly set"""
         connection_args = init_empty_connection_arguments()
 
         TrinoConnection.set_basic_auth(basic_connection_config, connection_args)
@@ -98,7 +76,6 @@ class TestTrinoConnectionHttpScheme:
         assert "auth" in connection_args.root
 
     def test_basic_auth_preserves_explicit_http_scheme(self, basic_connection_config):
-        """Test that explicit http_scheme is preserved and not overwritten"""
         connection_args = init_empty_connection_arguments()
         connection_args.root["http_scheme"] = "http"
 
@@ -108,7 +85,6 @@ class TestTrinoConnectionHttpScheme:
         assert "auth" in connection_args.root
 
     def test_basic_auth_preserves_custom_https(self, basic_connection_config):
-        """Test that explicitly set 'https' is preserved"""
         connection_args = init_empty_connection_arguments()
         connection_args.root["http_scheme"] = "https"
 
@@ -117,7 +93,6 @@ class TestTrinoConnectionHttpScheme:
         assert connection_args.root["http_scheme"] == "https"
 
     def test_jwt_auth_defaults_to_https(self, jwt_connection_config):
-        """Test that JWT auth defaults http_scheme to 'https' when not set"""
         connection_args = init_empty_connection_arguments()
 
         TrinoConnection.set_jwt_auth(jwt_connection_config, connection_args)
@@ -126,7 +101,6 @@ class TestTrinoConnectionHttpScheme:
         assert "auth" in connection_args.root
 
     def test_jwt_auth_preserves_explicit_http_scheme(self, jwt_connection_config):
-        """Test that explicit http_scheme is preserved with JWT auth"""
         connection_args = init_empty_connection_arguments()
         connection_args.root["http_scheme"] = "http"
 
@@ -136,7 +110,6 @@ class TestTrinoConnectionHttpScheme:
         assert "auth" in connection_args.root
 
     def test_oauth2_auth_defaults_to_https(self, oauth2_connection_config):
-        """Test that OAuth2 auth defaults http_scheme to 'https' when not set"""
         connection_args = init_empty_connection_arguments()
 
         TrinoConnection.set_oauth2_auth(oauth2_connection_config, connection_args)
@@ -145,7 +118,6 @@ class TestTrinoConnectionHttpScheme:
         assert "auth" in connection_args.root
 
     def test_oauth2_auth_preserves_explicit_http_scheme(self, oauth2_connection_config):
-        """Test that explicit http_scheme is preserved with OAuth2 auth"""
         connection_args = init_empty_connection_arguments()
         connection_args.root["http_scheme"] = "http"
 
@@ -155,7 +127,6 @@ class TestTrinoConnectionHttpScheme:
         assert "auth" in connection_args.root
 
     def test_build_connection_args_preserves_http_scheme(self, basic_connection_config):
-        """Test that build_connection_args preserves explicit http_scheme"""
         basic_connection_config.connectionArguments = ConnectionArguments(
             root={"http_scheme": "http"}
         )
@@ -165,7 +136,6 @@ class TestTrinoConnectionHttpScheme:
         assert result.root["http_scheme"] == "http"
 
     def test_build_connection_args_defaults_http_scheme(self, basic_connection_config):
-        """Test that build_connection_args defaults http_scheme when not set"""
         result = TrinoConnection.build_connection_args(basic_connection_config)
 
         assert result.root["http_scheme"] == "https"
