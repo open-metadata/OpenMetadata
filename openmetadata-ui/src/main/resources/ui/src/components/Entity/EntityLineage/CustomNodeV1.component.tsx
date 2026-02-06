@@ -17,6 +17,7 @@ import { useLineageProvider } from '../../../context/LineageProvider/LineageProv
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
+import { useLineageStore } from '../../../hooks/useLineageStore';
 import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
 import './custom-node.less';
 import {
@@ -146,15 +147,14 @@ const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
 
   const {
-    isEditMode,
-    tracedNodes,
     selectedNode,
     onNodeCollapse,
     removeNodeHandler,
     loadChildNodesHandler,
-    activeLayer,
     dataQualityLineage,
   } = useLineageProvider();
+
+  const { activeLayer, isEditMode, tracedNodes } = useLineageStore();
 
   const {
     label,
@@ -311,7 +311,7 @@ const CustomNodeV1 = (props: NodeProps) => {
   );
 
   useEffect(() => {
-    setIsTraced(tracedNodes.includes(id));
+    setIsTraced(tracedNodes.has(id));
   }, [tracedNodes, id]);
 
   return (

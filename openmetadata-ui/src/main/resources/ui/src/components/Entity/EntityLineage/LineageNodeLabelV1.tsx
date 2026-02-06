@@ -14,12 +14,11 @@ import { Breadcrumbs, Button, Chip, IconButton, Tooltip } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-filter.svg';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
 import { LineageLayer } from '../../../generated/settings/settings';
@@ -27,6 +26,7 @@ import {
   EntityReference,
   TestSummary,
 } from '../../../generated/tests/testCase';
+import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageUtils';
 import {
@@ -154,7 +154,7 @@ const TestSuiteSummaryContainer = ({ node }: LineageNodeLabelPropsExtended) => {
     }
   };
 
-  const { activeLayer } = useLineageProvider();
+  const { activeLayer } = useLineageStore();
 
   const { showDataObservability } = useMemo(() => {
     return {
@@ -192,58 +192,68 @@ const TestSuiteSummaryContainer = ({ node }: LineageNodeLabelPropsExtended) => {
   );
 };
 
-const EntityTypeIcon = ({ entityType }: { entityType?: string }) => {
+const EntityTypeIcon = React.memo(({ entityType }: { entityType?: string }) => {
   return (
     <span style={{ width: '16px', height: '16px' }}>
       {getEntityTypeIcon(entityType)}
     </span>
   );
-};
+});
 
-const EntityFooter = ({
-  isChildrenListExpanded,
-  node,
-  toggleColumnsList,
-  toggleOnlyShowColumnsWithLineageFilterActive,
-  isOnlyShowColumnsWithLineageFilterActive,
-}: LineageNodeLabelPropsExtended) => {
-  const { t } = useTranslation();
-  const { children, childrenHeading } = useMemo(
-    () => getEntityChildrenAndLabel(node),
-    [node.id]
-  );
-  const { isEditMode } = useLineageProvider();
+const EntityFooter = React.memo(
+  ({
+    isChildrenListExpanded,
+    node,
+    toggleColumnsList,
+    toggleOnlyShowColumnsWithLineageFilterActive,
+    isOnlyShowColumnsWithLineageFilterActive,
+  }: LineageNodeLabelPropsExtended) => {
+    const { t } = useTranslation();
+    const { childrenHeading, childrenCount } = useMemo(() => {
+      const { children, childrenHeading } = getEntityChildrenAndLabel(node);
 
-  const childrenCount = children.length;
+      return {
+        childrenHeading,
+        childrenCount: children.length,
+      };
+    }, [node.id]);
+    const { isEditMode } = useLineageStore();
 
-  const childrenInfoDropdownLabel = useMemo(
-    () => `${childrenCount} ${childrenHeading}`,
-    [childrenCount, childrenHeading]
-  );
+    const handleClickColumnInfoDropdown = useCallback(
+      (e: React.MouseEvent) => {
+        e.stopPropagation();
+        toggleColumnsList?.();
+      },
+      [toggleColumnsList]
+    );
 
-  const handleClickColumnInfoDropdown = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      toggleColumnsList?.();
-    },
-    [toggleColumnsList]
-  );
+    const columnInfoDropdown = useMemo(() => {
+      const label = `${childrenCount} ${childrenHeading}`;
 
-  const handleOnlyShowColumnsWithLineage = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      toggleOnlyShowColumnsWithLineageFilterActive?.();
-    },
-    [toggleOnlyShowColumnsWithLineageFilterActive]
-  );
+      return (
+        <Button
+          className={classNames(
+            'children-info-dropdown-label',
+            isChildrenListExpanded ? 'expanded' : 'collapsed'
+          )}
+          data-testid="children-info-dropdown-btn"
+          variant="outlined"
+          onClick={handleClickColumnInfoDropdown}>
+          {label}
+        </Button>
+      );
+    }, [childrenCount, childrenHeading, handleClickColumnInfoDropdown]);
 
-  if (childrenCount === 0) {
-    return null;
-  }
+    const handleOnlyShowColumnsWithLineage = useCallback(
+      (e: React.MouseEvent) => {
+        e.stopPropagation();
+        toggleOnlyShowColumnsWithLineageFilterActive?.();
+      },
+      [toggleOnlyShowColumnsWithLineageFilterActive]
+    );
 
-  return (
-    <div className="entity-footer">
-      <div className="entity-footer__entity-type-and-dropdown">
+    const entityType = useMemo(() => {
+      return (
         <Chip
           icon={<EntityTypeIcon entityType={node.entityType} />}
           label={capitalize(node.entityType)}
@@ -254,37 +264,40 @@ const EntityFooter = ({
           }}
           variant="outlined"
         />
-        <Button
-          className={classNames(
-            'children-info-dropdown-label',
-            isChildrenListExpanded ? 'expanded' : 'collapsed'
-          )}
-          data-testid="children-info-dropdown-btn"
-          variant="outlined"
-          onClick={handleClickColumnInfoDropdown}>
-          {childrenInfoDropdownLabel}
-        </Button>
+      );
+    }, [node.entityType]);
+
+    if (childrenCount === 0) {
+      return null;
+    }
+
+    return (
+      <div className="entity-footer">
+        <div className="entity-footer__entity-type-and-dropdown">
+          {entityType}
+          {columnInfoDropdown}
+        </div>
+        <div className="entity-footer__test-summary-and-filter">
+          <TestSuiteSummaryContainer node={node} />
+          <Tooltip
+            placement="right"
+            title={t('message.only-show-columns-with-lineage')}>
+            <IconButton
+              className={classNames(
+                'only-show-columns-with-lineage-filter-button',
+                isOnlyShowColumnsWithLineageFilterActive && 'active'
+              )}
+              data-testid="lineage-filter-button"
+              disabled={isEditMode}
+              onClick={handleOnlyShowColumnsWithLineage}>
+              <FilterIcon height={20} width={20} />
+            </IconButton>
+          </Tooltip>
+        </div>
       </div>
-      <div className="entity-footer__test-summary-and-filter">
-        <TestSuiteSummaryContainer node={node} />
-        <Tooltip
-          placement="right"
-          title={t('message.only-show-columns-with-lineage')}>
-          <IconButton
-            className={classNames(
-              'only-show-columns-with-lineage-filter-button',
-              isOnlyShowColumnsWithLineageFilterActive && 'active'
-            )}
-            data-testid="lineage-filter-button"
-            disabled={isEditMode}
-            onClick={handleOnlyShowColumnsWithLineage}>
-            <FilterIcon height={20} width={20} />
-          </IconButton>
-        </Tooltip>
-      </div>
-    </div>
-  );
-};
+    );
+  }
+);
 
 const LineageNodeLabelV1 = ({
   node,
@@ -311,4 +324,4 @@ const LineageNodeLabelV1 = ({
   );
 };
 
-export default LineageNodeLabelV1;
+export default React.memo(LineageNodeLabelV1);

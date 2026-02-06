@@ -24,9 +24,6 @@ import {
   dragHandle,
   nodeTypes,
   onNodeContextMenu,
-  onNodeMouseEnter,
-  onNodeMouseLeave,
-  onNodeMouseMove,
 } from '../../utils/EntityLineageUtils';
 import Loader from '../common/Loader/Loader';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
@@ -164,9 +161,6 @@ const Lineage = ({
               onNodeDrag={dragHandle}
               onNodeDragStart={dragHandle}
               onNodeDragStop={dragHandle}
-              onNodeMouseEnter={onNodeMouseEnter}
-              onNodeMouseLeave={onNodeMouseLeave}
-              onNodeMouseMove={onNodeMouseMove}
               onNodesChange={onNodesChange}
               onPaneClick={onPaneClick}>
               <Background gap={12} size={1} />
