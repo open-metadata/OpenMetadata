@@ -18,49 +18,12 @@ import jakarta.validation.constraints.Min;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * Configuration for bulk operations with connection-aware throttling.
- *
- * <p>Uses a semaphore to limit database connections used by bulk operations, preventing pool
- * starvation while maintaining good throughput. Once a request is accepted, it will complete.
- *
- * <p>Auto-scaling (poolPercent=20):
- *
- * <pre>
- * Pool=15  → 3 connections for bulk
- * Pool=50  → 10 connections for bulk
- * Pool=100 → 20 connections for bulk (capped)
- * </pre>
- */
+/** Configuration for bulk operations with bounded thread pool and admission control. */
 @Getter
 @Setter
 public class BulkOperationConfiguration {
 
-  /** Hard override for bulk connections. Set 0 for auto-scaling based on poolPercent. */
-  @JsonProperty
-  @Min(0)
-  @Max(100)
-  private int maxConnections = 0;
-
-  /** Percentage of pool for bulk operations. Only used when maxConnections=0. Default: 20% */
-  @JsonProperty
-  @Min(5)
-  @Max(50)
-  private int poolPercent = 20;
-
-  /** Floor for auto-scaling. Ensures bulk works in small installations. Default: 2 */
-  @JsonProperty
-  @Min(1)
-  @Max(10)
-  private int minConnections = 2;
-
-  /** Ceiling for auto-scaling. Prevents DB contention in large installations. Default: 20 */
-  @JsonProperty
-  @Min(5)
-  @Max(100)
-  private int maxConnectionsLimit = 20;
-
-  /** Max threads for processing. Capped by connection limit. Default: 10 */
+  /** Max threads for processing. Default: 10 */
   @JsonProperty
   @Min(1)
   @Max(100)
@@ -77,17 +40,4 @@ public class BulkOperationConfiguration {
   @Min(30)
   @Max(3600)
   private int timeoutSeconds = 300;
-
-  public int calculateConnectionLimit(int poolSize) {
-    if (maxConnections > 0) {
-      // Ensure at least 1 permit to prevent bulk operations from hanging indefinitely
-      return Math.max(1, Math.min(maxConnections, poolSize - 1));
-    }
-    int calculated = (poolSize * poolPercent) / 100;
-    return Math.max(minConnections, Math.min(calculated, maxConnectionsLimit));
-  }
-
-  public int calculateEffectiveThreads(int connectionLimit) {
-    return Math.min(maxThreads, connectionLimit);
-  }
 }

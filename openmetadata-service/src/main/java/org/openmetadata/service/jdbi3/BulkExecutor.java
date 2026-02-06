@@ -16,7 +16,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,13 +24,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.config.BulkOperationConfiguration;
 
 /**
- * Manages bulk operations with connection-aware throttling.
+ * Manages bulk operations with a bounded thread pool and admission control.
  *
  * <p>Key guarantees:
  *
  * <ul>
- *   <li>Once a request is accepted, it will complete (never fails due to connection unavailability)
- *   <li>Bulk operations are limited to a calculated number of connections (20% of pool by default)
+ *   <li>Once a request is accepted, it will complete (never fails due to resource unavailability)
  *   <li>Admission control rejects requests with 503 when queue is full
  * </ul>
  */
@@ -46,20 +44,13 @@ public class BulkExecutor {
   @Getter private final int maxThreads;
   @Getter private final int queueSize;
   @Getter private final int timeoutSeconds;
-  @Getter private final int connectionLimit;
-  @Getter private final int poolSize;
 
-  private final Semaphore connectionSemaphore;
   private volatile boolean isShutdown = false;
 
-  private BulkExecutor(BulkOperationConfiguration config, int poolSize) {
-    this.poolSize = poolSize;
-    this.connectionLimit = config.calculateConnectionLimit(poolSize);
-    this.maxThreads = config.calculateEffectiveThreads(connectionLimit);
+  private BulkExecutor(BulkOperationConfiguration config) {
+    this.maxThreads = config.getMaxThreads();
     this.queueSize = config.getQueueSize();
     this.timeoutSeconds = config.getTimeoutSeconds();
-
-    this.connectionSemaphore = new Semaphore(connectionLimit, true);
 
     this.executor =
         new ThreadPoolExecutor(
@@ -75,12 +66,7 @@ public class BulkExecutor {
             },
             new ThreadPoolExecutor.AbortPolicy());
 
-    LOG.info(
-        "BulkExecutor initialized: poolSize={}, bulkConnections={}, threads={}, queue={}",
-        poolSize,
-        connectionLimit,
-        maxThreads,
-        queueSize);
+    LOG.info("BulkExecutor initialized: threads={}, queue={}", maxThreads, queueSize);
 
     registerShutdownHook();
   }
@@ -99,11 +85,11 @@ public class BulkExecutor {
     }
   }
 
-  public static void initialize(BulkOperationConfiguration config, int poolSize) {
+  public static void initialize(BulkOperationConfiguration config) {
     if (instance == null) {
       synchronized (LOCK) {
         if (instance == null) {
-          instance = new BulkExecutor(config, poolSize);
+          instance = new BulkExecutor(config);
         }
       }
     }
@@ -113,8 +99,8 @@ public class BulkExecutor {
     if (instance == null) {
       synchronized (LOCK) {
         if (instance == null) {
-          LOG.warn("BulkExecutor not initialized, using defaults with pool size 20");
-          instance = new BulkExecutor(new BulkOperationConfiguration(), 20);
+          LOG.warn("BulkExecutor not initialized, using defaults");
+          instance = new BulkExecutor(new BulkOperationConfiguration());
         }
       }
     }
@@ -129,44 +115,6 @@ public class BulkExecutor {
         instance = null;
       }
     }
-  }
-
-  /** Acquire a connection permit. Times out if permit is not available within configured timeout. */
-  public void acquireConnection() throws InterruptedException {
-    if (!connectionSemaphore.tryAcquire(timeoutSeconds, TimeUnit.SECONDS)) {
-      throw new RejectedExecutionException(
-          "Could not acquire bulk connection permit within " + timeoutSeconds + "s");
-    }
-  }
-
-  /**
-   * Release a connection permit.
-   *
-   * <p>IMPORTANT: Must only be called after a successful {@link #acquireConnection()}. Always use
-   * in a finally block to ensure release even on exceptions. Calling without a prior acquire will
-   * corrupt the semaphore state and allow more concurrent connections than intended.
-   *
-   * <p>Example usage:
-   *
-   * <pre>{@code
-   * bulkExecutor.acquireConnection();
-   * try {
-   *   // perform database operation
-   * } finally {
-   *   bulkExecutor.releaseConnection();
-   * }
-   * }</pre>
-   */
-  public void releaseConnection() {
-    connectionSemaphore.release();
-  }
-
-  public int getAvailableConnections() {
-    return connectionSemaphore.availablePermits();
-  }
-
-  public int getWaitingForConnection() {
-    return connectionSemaphore.getQueueLength();
   }
 
   public boolean hasCapacity() {
@@ -217,13 +165,8 @@ public class BulkExecutor {
 
   public String getStats() {
     return String.format(
-        "BulkExecutor[pool=%d, connLimit=%d, active=%d, queued=%d, connAvail=%d, connWait=%d]",
-        poolSize,
-        connectionLimit,
-        getActiveCount(),
-        getQueueDepth(),
-        getAvailableConnections(),
-        getWaitingForConnection());
+        "BulkExecutor[threads=%d, active=%d, queued=%d]",
+        maxThreads, getActiveCount(), getQueueDepth());
   }
 
   public void shutdown() {
