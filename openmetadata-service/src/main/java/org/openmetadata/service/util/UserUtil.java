@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -49,7 +50,9 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.LandingPageSettings;
+import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.UserCreationException;
@@ -314,6 +317,66 @@ public final class UserUtil {
     }
 
     return anyTeamAssigned;
+  }
+
+  /**
+   * Apply user profile attributes extracted from SSO claims. Only updates fields if not already
+   * set to preserve manual edits.
+   */
+  public static boolean applyUserAttributesFromClaims(
+      User user, Map<String, String> attributes, boolean overwrite) {
+    if (nullOrEmpty(attributes)) {
+      return false;
+    }
+
+    boolean updated = false;
+
+    // Display Name
+    String displayName = attributes.get("displayName");
+    if (!nullOrEmpty(displayName) && (overwrite || nullOrEmpty(user.getDisplayName()))) {
+      user.setDisplayName(displayName);
+      updated = true;
+      LOG.debug("Set displayName '{}' for user '{}' from SSO", displayName, user.getName());
+    }
+
+    // Profile Picture
+    String pictureUrl = attributes.get("profilePicture");
+    if (!nullOrEmpty(pictureUrl)) {
+      try {
+        URI imageUri = new URI(pictureUrl);
+        if (user.getProfile() == null) {
+          user.setProfile(new Profile());
+        }
+        if (user.getProfile().getImages() == null) {
+          user.getProfile().setImages(new ImageList());
+        }
+        if (overwrite || nullOrEmpty(user.getProfile().getImages().getImage())) {
+          user.getProfile().getImages().setImage(imageUri.toString());
+          updated = true;
+          LOG.debug("Set profile picture for user '{}' from SSO", user.getName());
+        }
+      } catch (URISyntaxException e) {
+        LOG.warn("Invalid profile picture URL from SSO: {}", pictureUrl);
+      }
+    }
+
+    // Timezone
+    String timezone = attributes.get("timezone");
+    if (!nullOrEmpty(timezone) && (overwrite || nullOrEmpty(user.getTimezone()))) {
+      user.setTimezone(timezone);
+      updated = true;
+      LOG.debug("Set timezone '{}' for user '{}' from SSO", timezone, user.getName());
+    }
+
+    // Description
+    String description = attributes.get("description");
+    if (!nullOrEmpty(description) && (overwrite || nullOrEmpty(user.getDescription()))) {
+      user.setDescription(description);
+      updated = true;
+      LOG.debug("Set description for user '{}' from SSO", user.getName());
+    }
+
+    return updated;
   }
 
   /**
