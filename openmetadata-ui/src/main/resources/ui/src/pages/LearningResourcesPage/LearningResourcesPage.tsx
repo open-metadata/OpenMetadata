@@ -498,7 +498,6 @@ export const LearningResourcesPage: React.FC = () => {
             </Box>
             {filterSelectionDisplay}
           </Box>
-
           {view === 'table' ? (
             <Box
               data-testid="table-view-container"

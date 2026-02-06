@@ -17,8 +17,11 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.PERSONA;
 import static org.openmetadata.service.Entity.USER;
 
+import com.google.gson.Gson;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.teams.Persona;
@@ -78,6 +81,32 @@ public class PersonaRepository extends EntityRepository<Persona> {
 
     // Restore the relationships
     persona.withUsers(users);
+  }
+
+  @Override
+  public void storeEntities(List<Persona> entities) {
+    List<Persona> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Persona persona : entities) {
+      List<EntityReference> users = persona.getUsers();
+
+      persona.withUsers(null);
+
+      String jsonCopy = gson.toJson(persona);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Persona.class));
+
+      persona.withUsers(users);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Persona> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Persona::getId).toList();
+    deleteFromMany(ids, Entity.PERSONA, Relationship.APPLIED_TO, Entity.USER);
   }
 
   @Override
