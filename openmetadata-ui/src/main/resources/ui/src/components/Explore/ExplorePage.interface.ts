@@ -124,6 +124,7 @@ export interface ExploreQuickFilterField {
   hideSearchBar?: boolean;
   searchIndex?: SearchIndex;
   searchKey?: string;
+  dropdownClassName?: string;
 }
 
 // Type for all the explore tab entities
