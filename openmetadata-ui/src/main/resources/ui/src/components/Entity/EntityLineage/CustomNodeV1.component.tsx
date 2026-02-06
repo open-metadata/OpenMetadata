@@ -311,7 +311,7 @@ const CustomNodeV1 = (props: NodeProps) => {
   );
 
   useEffect(() => {
-    setIsTraced(tracedNodes.includes(id));
+    setIsTraced(tracedNodes.has(id));
   }, [tracedNodes, id]);
 
   return (

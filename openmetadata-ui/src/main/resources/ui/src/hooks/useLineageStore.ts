@@ -23,8 +23,8 @@ interface LineageState {
   // state properties
   isEditMode: boolean;
   lineageConfig: LineageConfig;
-  tracedColumns: string[];
-  tracedNodes: string[];
+  tracedColumns: Set<string>;
+  tracedNodes: Set<string>;
   zoomValue: number;
   columnsHavingLineage: Set<string>;
   expandAllColumns: boolean;
@@ -39,9 +39,9 @@ interface LineageState {
   setIsEditMode: (isEditMode: boolean) => void;
   toggleEditMode: () => void;
   setLineageConfig: (lineageConfig: LineageConfig) => void;
-  setTracedColumns: (tracedColumns: string[]) => void;
+  setTracedColumns: (tracedColumns: Set<string>) => void;
   addTracedColumns: (newColumn: string) => void;
-  setTracedNodes: (tracedNodes: string[]) => void;
+  setTracedNodes: (tracedNodes: Set<string>) => void;
   addTracedNodes: (newNode: string) => void;
   setZoomValue: (zoomValue: number) => void;
   setColumnsHavingLineage: (columnsHavingLineage: Set<string>) => void;
@@ -67,8 +67,8 @@ const defaultLineageSettings = {
 export const useLineageStore = create<LineageState>((set, get) => ({
   isEditMode: false,
   lineageConfig: defaultLineageSettings,
-  tracedColumns: [],
-  tracedNodes: [],
+  tracedColumns: new Set(),
+  tracedNodes: new Set(),
   zoomValue: ZOOM_VALUE,
   columnsHavingLineage: new Set(),
   expandAllColumns: false,
@@ -91,7 +91,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
     if (!isEditMode && !hasColumnLayer) {
       updateActiveLayer(LineageLayer.ColumnLevelLineage);
     } else if (isEditMode) {
-      set({ tracedColumns: [], tracedNodes: [] });
+      set({ tracedColumns: new Set(), tracedNodes: new Set() });
     }
 
     set({
@@ -102,20 +102,20 @@ export const useLineageStore = create<LineageState>((set, get) => ({
     });
   },
 
-  setTracedColumns: (tracedColumns: string[]) => set({ tracedColumns }),
+  setTracedColumns: (tracedColumns: Set<string>) => set({ tracedColumns }),
 
   addTracedColumns: (newColumn: string) => {
     const { tracedColumns } = get();
 
-    set({ tracedColumns: [...tracedColumns, newColumn] });
+    set({ tracedColumns: new Set([...tracedColumns, newColumn]) });
   },
 
-  setTracedNodes: (tracedNodes: string[]) => set({ tracedNodes }),
+  setTracedNodes: (tracedNodes: Set<string>) => set({ tracedNodes }),
 
   addTracedNodes: (newNode: string) => {
     const { tracedNodes } = get();
 
-    set({ tracedNodes: [...tracedNodes, newNode] });
+    set({ tracedNodes: new Set([...tracedNodes, newNode]) });
   },
 
   setZoomValue: (zoomValue: number) => set({ zoomValue }),
@@ -134,9 +134,9 @@ export const useLineageStore = create<LineageState>((set, get) => ({
     const { tracedColumns } = get();
     if (
       !activeLayer.includes(LineageLayer.ColumnLevelLineage) &&
-      tracedColumns.length > 0
+      tracedColumns.size > 0
     ) {
-      set({ tracedColumns: [] });
+      set({ tracedColumns: new Set() });
     }
 
     if (
@@ -173,8 +173,8 @@ export const useLineageStore = create<LineageState>((set, get) => ({
     set({
       isEditMode: false,
       lineageConfig: defaultLineageSettings,
-      tracedColumns: [],
-      tracedNodes: [],
+      tracedColumns: new Set(),
+      tracedNodes: new Set(),
       zoomValue: ZOOM_VALUE,
       expandAllColumns: false,
       activeLayer: [],

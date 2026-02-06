@@ -242,7 +242,7 @@ const EntityFooter = React.memo(
           {label}
         </Button>
       );
-    }, [childrenCount, childrenHeading]);
+    }, [childrenCount, childrenHeading, handleClickColumnInfoDropdown]);
 
     const handleOnlyShowColumnsWithLineage = useCallback(
       (e: React.MouseEvent) => {

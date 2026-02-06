@@ -478,9 +478,7 @@ const NodeChildren = ({
 
   const renderRecord = useCallback(
     (record: Column) => {
-      const isColumnTraced = tracedColumns.includes(
-        record.fullyQualifiedName ?? ''
-      );
+      const isColumnTraced = tracedColumns.has(record.fullyQualifiedName ?? '');
 
       const columnSummary = getColumnSummary(record);
 
@@ -511,9 +509,7 @@ const NodeChildren = ({
         if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
           return renderRecord(child);
         } else {
-          const isColumnTraced = tracedColumns.includes(
-            fullyQualifiedName ?? ''
-          );
+          const isColumnTraced = tracedColumns.has(fullyQualifiedName ?? '');
 
           if (!isColumnVisible(child)) {
             return null;
@@ -574,7 +570,7 @@ const NodeChildren = ({
       if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
         return renderRecord(column);
       } else {
-        const isColumnTraced = tracedColumns.includes(fullyQualifiedName ?? '');
+        const isColumnTraced = tracedColumns.has(fullyQualifiedName ?? '');
         if (!isColumnVisible(column)) {
           return null;
         }
@@ -616,7 +612,7 @@ const NodeChildren = ({
   const renderSentinel = useCallback(
     (column: Column) => {
       const { fullyQualifiedName } = column;
-      const isColumnTraced = tracedColumns.includes(fullyQualifiedName ?? '');
+      const isColumnTraced = tracedColumns.has(fullyQualifiedName ?? '');
 
       if (!isColumnTraced) {
         return null;

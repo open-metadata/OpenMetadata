@@ -233,10 +233,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     Record<string, string[]>
   >({});
 
-  const allColumnsInCurrentPagesSet = useMemo(
-    () => new Set(Object.values(columnsInCurrentPages).flat()),
-    [columnsInCurrentPages]
-  );
+  const allColumnsInCurrentPagesSet = useMemo(() => {
+    const columns: string[] = [];
+    for (const pageColumns of Object.values(columnsInCurrentPages)) {
+      columns.push(...pageColumns);
+    }
+
+    return new Set(columns);
+  }, [columnsInCurrentPages]);
 
   // Add state for entityFqn that can be updated independently of URL params
   const [entityFqn, setEntityFqn] = useState<string>(decodedFqn);
@@ -728,16 +732,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           entityFqn
         );
 
-        const uniqueNodes = [...(entityLineage.nodes ?? [])];
-        for (const nNode of newNodes ?? []) {
-          if (
-            !uniqueNodes.some(
-              (n) => n.fullyQualifiedName === nNode.fullyQualifiedName
-            )
-          ) {
-            uniqueNodes.push(nNode);
-          }
-        }
+        const existingFqnSet = new Set(
+          (entityLineage.nodes ?? []).map((n) => n.fullyQualifiedName)
+        );
+        const uniqueNodes = [
+          ...(entityLineage.nodes ?? []),
+          ...(newNodes ?? []).filter(
+            (nNode) => !existingFqnSet.has(nNode.fullyQualifiedName)
+          ),
+        ];
 
         const updatedEntityLineage = {
           entity: entityLineage.entity,
@@ -809,16 +812,16 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const handleLineageTracing = useCallback(
     (selectedNode: Node) => {
-      // Skip processing if this is the same node that was already traced
-      if (activeNode?.id === selectedNode.id && tracedNodes.length > 0) {
+      if (activeNode?.id === selectedNode.id && tracedNodes.size > 0) {
         return;
       }
       const { normalEdge } = getClassifiedEdge(edges);
       const connectedNodeIds = new Set<string>([selectedNode.id]);
       const nodesToProcess = [selectedNode];
+      let processIndex = 0;
 
-      // Process upstream nodes (incomers)
-      for (const node of nodesToProcess) {
+      while (processIndex < nodesToProcess.length) {
+        const node = nodesToProcess[processIndex++];
         const incomers = getIncomers(node, nodes, normalEdge);
         for (const incomer of incomers) {
           if (!connectedNodeIds.has(incomer.id)) {
@@ -828,11 +831,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         }
       }
 
-      // Reset and process downstream nodes (outgoers)
       nodesToProcess.length = 0;
       nodesToProcess.push(selectedNode);
+      processIndex = 0;
 
-      for (const node of nodesToProcess) {
+      while (processIndex < nodesToProcess.length) {
+        const node = nodesToProcess[processIndex++];
         const outgoers = getOutgoers(node, nodes, normalEdge);
         for (const outgoer of outgoers) {
           if (!connectedNodeIds.has(outgoer.id)) {
@@ -842,8 +846,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         }
       }
 
-      setTracedNodes(Array.from(connectedNodeIds));
-      setTracedColumns([]);
+      setTracedNodes(connectedNodeIds);
+      setTracedColumns(new Set());
     },
     [nodes, edges, activeNode, tracedNodes]
   );
@@ -875,7 +879,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       );
 
       setTracedColumns(connectedColumnEdges);
-      setTracedNodes([]);
+      setTracedNodes(new Set());
       setSelectedEdge(undefined);
     },
     [nodes, edges]
@@ -894,7 +898,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const onColumnMouseLeave = useCallback(() => {
-    setTracedColumns([]);
+    setTracedColumns(new Set());
   }, []);
 
   const removeEdgeHandler = async (
@@ -919,11 +923,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         (item) => item.extraInfo?.docId !== customPipelineEdge.docId
       );
 
-      setEdges((prev) => {
-        return prev.filter(
+      setEdges((prev) =>
+        prev.filter(
           (item) => item.data.edge.extraInfo?.docId !== customPipelineEdge.docId
-        );
-      });
+        )
+      );
     } else {
       filteredEdges = (entityLineage.edges ?? []).filter(
         (item) =>
@@ -937,12 +941,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       const updatedNodes = removeUnconnectedNodes(edgeData, nodes, edges);
       setNodes(updatedNodes);
 
-      setEdges((prev) => {
-        return prev.filter(
+      setEdges((prev) =>
+        prev.filter(
           (item) =>
             !(item.source === edgeData.fromId && item.target === edgeData.toId)
-        );
-      });
+        )
+      );
     }
 
     setUpdatedEntityLineage(() => {
@@ -984,10 +988,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       };
     });
 
-    // filter the edge from edges
-    setEdges((prev) => {
-      return prev.filter((item) => item.id !== edge.id);
-    });
+    setEdges((prev) => prev.filter((item) => item.id !== edge.id));
 
     // Recompute columnsHavingLineage after removing the column edge
     const seenIds = new Set<string>();
@@ -1046,15 +1047,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             )
           );
 
-          setEdges((prev) => {
-            return prev.filter(
+          setEdges((prev) =>
+            prev.filter(
               (item) =>
                 !(
                   item.source === edgeData.fromId &&
                   item.target === edgeData.toId
                 )
-            );
-          });
+            )
+          );
         })
       );
 
@@ -1062,9 +1063,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         (previousNode) => previousNode.id !== node.id
       );
 
-      setNodes((prev) => {
-        return prev.filter((previousNode) => previousNode.id !== node.id);
-      });
+      setNodes((prev) =>
+        prev.filter((previousNode) => previousNode.id !== node.id)
+      );
 
       setUpdatedEntityLineage(() => {
         return {
@@ -1120,7 +1121,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           isNewNode: true,
         },
       };
-      setNodes([...nodes, newNode as Node]);
+      setNodes((nds) => [...nds, newNode as Node]);
+
       setNewAddedNode(newNode as Node);
     }
   };
@@ -1174,11 +1176,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         entityFqn
       );
 
+      const uniqueNodeMap = new Map<string, typeof newNodes[0]>();
+      newNodes.forEach((n) => uniqueNodeMap.set(n.id, n));
+
+      const uniqueEdgeMap = new Map<string, typeof newEdges[0]>();
+      newEdges.forEach((e) => {
+        const key = `${e.fromEntity.id}-${e.toEntity.id}`;
+        uniqueEdgeMap.set(key, e);
+      });
+
       updateLineageData(
         {
           ...entityLineage,
-          nodes: uniqWith([...newNodes], isEqual),
-          edges: uniqWith([...newEdges], isEqual),
+          nodes: Array.from(uniqueNodeMap.values()),
+          edges: Array.from(uniqueEdgeMap.values()),
         },
         {
           shouldRedraw: true,
@@ -1261,10 +1272,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setSelectedEdge(edge);
     setActiveNode(undefined);
     setSelectedNode(undefined);
-    setTracedNodes([]);
+    setTracedNodes(new Set());
     const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
     if (sourceHandle && targetHandle) {
-      setTracedColumns([sourceHandle, targetHandle]);
+      setTracedColumns(new Set([sourceHandle, targetHandle]));
     }
   }, []);
 
@@ -1319,11 +1330,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         params.sourceHandle = decodeLineageHandles(params.sourceHandle);
         params.targetHandle = decodeLineageHandles(params.targetHandle);
 
-        if (!tracedColumns.includes(params.sourceHandle as string)) {
+        if (!tracedColumns.has(params.sourceHandle as string)) {
           addTracedColumns(params.sourceHandle as string);
         }
 
-        if (!tracedColumns.includes(params.targetHandle as string)) {
+        if (!tracedColumns.has(params.targetHandle as string)) {
           addTracedColumns(params.targetHandle as string);
         }
       }
@@ -1378,20 +1389,18 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             setStatus('success');
             setLoading(false);
 
-            const allNodes = uniqWith(
-              [
-                ...(entityLineage.nodes ?? []),
-                sourceNode?.data.node as EntityReference,
-                targetNode?.data.node as EntityReference,
-              ],
-              isEqual
+            const existingNodeIds = new Set(
+              (entityLineage.nodes ?? []).map((n) => n.id)
             );
+            const nodesToAdd = [
+              sourceNode?.data.node as EntityReference,
+              targetNode?.data.node as EntityReference,
+            ].filter((n) => !existingNodeIds.has(n.id));
+
+            const allNodes = [...(entityLineage.nodes ?? []), ...nodesToAdd];
 
             const allEdges = isUndefined(currentEdge)
-              ? uniqWith(
-                  [...(entityLineage.edges ?? []), newEdgeWithFqn.edge],
-                  isEqual
-                )
+              ? [...(entityLineage.edges ?? []), newEdgeWithFqn.edge]
               : entityLineage.edges ?? [];
 
             if (currentEdge && columnConnection) {
@@ -1428,7 +1437,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           .finally(() => {
             setStatus('initial');
             setLoading(false);
-            setTracedNodes([]);
+            setTracedNodes(new Set());
           });
       }
     },
@@ -1611,10 +1620,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             },
           };
         });
-        // Update the edge in the edges array
-        setEdges((prev) => {
-          return prev.map((edge) => {
-            return edge.id === selectedEdge?.id
+        setEdges((prev) =>
+          prev.map((edge) =>
+            edge.id === selectedEdge?.id
               ? {
                   ...edge,
                   data: {
@@ -1628,9 +1636,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
                     },
                   },
                 }
-              : edge;
-          });
-        });
+              : edge
+          )
+        );
       } catch (err) {
         showErrorToast(err as AxiosError);
       }
@@ -2069,22 +2077,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         )}
         {children}
         <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
-
-        {!isEditMode && selectedEdge && (
-          <Drawer
-            anchor="right"
-            className="lineage-entity-panel"
-            data-testid="lineage-entity-panel"
-            sx={{
-              zIndex: 999,
-              '& .MuiDrawer-paper': {
-                width: 576,
-              },
-            }}
-            transitionDuration={300}
-            onClose={onCloseDrawer}
-          />
-        )}
 
         {!isEditMode && (selectedEdge || selectedNode) && (
           <Drawer

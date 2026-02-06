@@ -148,8 +148,8 @@ export const CustomEdge = ({
     });
 
     return (
-      tracedColumns.includes(decodedHandles.sourceHandle ?? '') &&
-      tracedColumns.includes(decodedHandles.targetHandle ?? '')
+      tracedColumns.has(decodedHandles.sourceHandle ?? '') &&
+      tracedColumns.has(decodedHandles.targetHandle ?? '')
     );
   }, [isColumnLineage, tracedColumns, sourceHandle, targetHandle]);
 
@@ -168,8 +168,7 @@ export const CustomEdge = ({
   // Calculate edge style with memoization
   const updatedStyle = useMemo(() => {
     const isNodeTraced =
-      tracedNodes.includes(edge.fromEntity.id) &&
-      tracedNodes.includes(edge.toEntity.id);
+      tracedNodes.has(edge.fromEntity.id) && tracedNodes.has(edge.toEntity.id);
 
     let stroke = '';
     let display = 'block';
@@ -178,14 +177,14 @@ export const CustomEdge = ({
     // For nodes edges
     if (isNodeTraced) {
       stroke = theme.palette.primary.main;
-    } else if (!(tracedNodes.length === 0) || !(tracedColumns.length === 0)) {
+    } else if (!(tracedNodes.size === 0) || !(tracedColumns.size === 0)) {
       opacity = 0.3;
     }
 
     // For columns edges
     if (isColumnLineage) {
       display = 'none';
-      const noTracing = tracedNodes.length === 0 && tracedColumns.length === 0;
+      const noTracing = tracedNodes.size === 0 && tracedColumns.size === 0;
 
       if (isColumnHighlighted) {
         display = 'block';
@@ -212,7 +211,7 @@ export const CustomEdge = ({
     tracedNodes,
     edge.fromEntity.id,
     edge.toEntity.id,
-    tracedColumns.length,
+    tracedColumns.size,
     isColumnLineage,
     showDqTracing,
     style,

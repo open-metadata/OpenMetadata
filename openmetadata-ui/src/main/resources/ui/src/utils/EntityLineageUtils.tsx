@@ -564,11 +564,11 @@ export const getAllTracedColumnEdge = (column: string, columnEdge: Edge[]) => {
   return {
     incomingColumnEdges,
     outGoingColumnEdges,
-    connectedColumnEdges: [
+    connectedColumnEdges: new Set([
       column,
       ...incomingColumnEdges,
       ...outGoingColumnEdges,
-    ],
+    ]),
   };
 };
 
