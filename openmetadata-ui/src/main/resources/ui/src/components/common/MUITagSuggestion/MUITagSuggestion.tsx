@@ -181,6 +181,8 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
         } as HtmlHTMLAttributes<HTMLUListElement>
       }
       autoFocus={autoFocus}
+      data-testid="tag-suggestion"
+      filterOptions={asyncFilterOptions}
       getOptionLabel={(option) =>
         typeof option === 'string' ? option : option.label
       }

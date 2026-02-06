@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { LoadingOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import { Spin } from 'antd';
 import classNames from 'classnames';
 import { FC } from 'react';
@@ -19,13 +19,26 @@ import { ReactComponent as SuccessIcon } from '../../../assets/svg/banner/ic-ban
 import './banner.less';
 
 export interface BannerProps extends React.HTMLAttributes<HTMLDivElement> {
-  type: 'success' | 'error';
+  type: 'success' | 'error' | 'info';
   message: string;
   isLoading?: boolean;
 }
 
+const getIcon = (type: BannerProps['type']) => {
+  switch (type) {
+    case 'success':
+      return <SuccessIcon />;
+    case 'error':
+      return <ErrorIcon />;
+    case 'info':
+      return <InfoCircleOutlined className="info-icon" />;
+    default:
+      return <SuccessIcon />;
+  }
+};
+
 const Banner: FC<BannerProps> = ({ type, message, className, isLoading }) => {
-  const icon = type === 'success' ? <SuccessIcon /> : <ErrorIcon />;
+  const icon = getIcon(type);
 
   return (
     <div className={classNames('message-banner-wrapper', type, className)}>

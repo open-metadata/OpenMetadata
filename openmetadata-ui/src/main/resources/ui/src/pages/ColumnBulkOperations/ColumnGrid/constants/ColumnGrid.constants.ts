@@ -67,14 +67,28 @@ export const COLUMN_GRID_FILTERS: ExploreQuickFilterField[] = [
     hideCounts: true,
     hideSearchBar: true,
     key: 'metadataStatus',
+    dropdownClassName: 'column-bulk-operations-metadata-dropdown',
     options: [
-      { key: 'HAS_DESCRIPTION', label: i18n.t('message.has-description') },
       {
-        key: 'MISSING_DESCRIPTION',
-        label: i18n.t('message.missing-description'),
+        key: 'MISSING',
+        label: i18n.t('label.missing'),
+        description: i18n.t('message.metadata-status-missing-description'),
       },
-      { key: 'HAS_TAGS', label: i18n.t('message.has-tags') },
-      { key: 'HAS_GLOSSARY', label: i18n.t('message.has-glossary') },
+      {
+        key: 'INCOMPLETE',
+        label: i18n.t('label.incomplete'),
+        description: i18n.t('message.metadata-status-incomplete-description'),
+      },
+      {
+        key: 'INCONSISTENT',
+        label: i18n.t('label.inconsistent'),
+        description: i18n.t('message.metadata-status-inconsistent-description'),
+      },
+      {
+        key: 'COMPLETE',
+        label: i18n.t('label.complete'),
+        description: i18n.t('message.metadata-status-complete-description'),
+      },
     ],
   },
 ];

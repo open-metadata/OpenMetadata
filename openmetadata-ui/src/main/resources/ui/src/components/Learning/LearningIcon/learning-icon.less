@@ -24,43 +24,40 @@
   }
 }
 
-.ant-badge.learning-icon-badge {
+.learning-icon-badge {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   vertical-align: middle;
   position: relative;
   border-radius: 16px;
+  background: @grey-100;
   padding: 4px !important;
   height: fit-content;
-
-  .ant-badge-count {
-    background-color: @red-14;
-    font-size: 10px;
-    min-width: 16px;
-    height: 16px;
-    line-height: 16px;
-    padding: 0 4px;
-    box-shadow: 0 0 0 1px @white;
-    position: absolute !important;
-    top: -4px !important;
-    right: -6px !important;
-    transform: none !important;
-  }
 }
 
 .learning-tooltip-popover {
+  &.ant-popover-placement-bottom,
+  &.ant-popover-placement-bottomLeft,
+  &.ant-popover-placement-bottomRight {
+    padding-top: 6px;
+  }
+
   .ant-popover-inner {
-    padding: 0;
     border-radius: @border-rad-sm;
-    background-color: @grey-50;
+    background: linear-gradient(180deg, @grey-50 0%, @grey-100 100%);
+    box-shadow: @box-shadow-base;
+  }
+
+  .ant-popover-inner-content {
+    padding: 4px 10px;
   }
 }
 
 .learning-tooltip-content {
   display: flex;
   align-items: center;
-  gap: @size-sm;
+  gap: 8px;
 
   .learning-tooltip-text {
     font-size: 13px;
@@ -68,10 +65,7 @@
   }
 
   .learning-tooltip-button {
-    font-size: 12px;
-    border-radius: @border-rad-sm;
-    background-color: @white;
-    border: none;
-    color: @grey-700;
+    border-radius: 8px;
+    min-width: 0;
   }
 }

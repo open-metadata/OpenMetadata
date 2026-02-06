@@ -24,6 +24,7 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // Grant clipboard permissions for copy link tests
 test.use({
@@ -132,7 +133,7 @@ test.describe('Container entity specific tests ', () => {
     );
   });
 
-  test('expand / collapse should not appear after updating nested fields for container', async ({
+  test('expand / collapse should not appear after updating nested fields for container', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({
     page,
   }) => {
     await page.goto('/container/s3_storage_sample.departments.finance');
