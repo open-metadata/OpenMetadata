@@ -27,6 +27,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
+import com.google.gson.Gson;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -616,6 +617,27 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
+  public void storeEntities(List<Pipeline> pipelines) {
+    List<Pipeline> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Pipeline pipeline : pipelines) {
+      EntityReference service = pipeline.getService();
+      List<Task> taskWithTagsAndOwners = pipeline.getTasks();
+
+      pipeline.withService(null);
+      pipeline.setTasks(cloneWithoutTagsAndOwners(taskWithTagsAndOwners));
+
+      String jsonCopy = gson.toJson(pipeline);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Pipeline.class));
+
+      pipeline.withService(service).withTasks(taskWithTagsAndOwners);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
   protected void entitySpecificCleanup(Pipeline pipeline) {
     // When a pipeline is removed , the linege needs to be removed
     daoCollection
@@ -624,6 +646,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             pipeline.getId(),
             LineageDetails.Source.PIPELINE_LINEAGE.value(),
             Relationship.UPSTREAM.ordinal());
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Pipeline> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Pipeline::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
   }
 
   @Override
@@ -860,7 +889,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());
       recordChange(
           "pipelineLocation", original.getPipelineLocation(), updated.getPipelineLocation());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
     }
 
     private void updateTasks(Pipeline original, Pipeline updated) {

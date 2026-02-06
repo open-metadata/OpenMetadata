@@ -485,7 +485,7 @@ public class ODCSConverter {
       case TEXT -> ColumnDataType.TEXT;
       case BYTES -> ColumnDataType.BINARY;
       case NULL -> ColumnDataType.NULL;
-      case STRING -> ColumnDataType.VARCHAR;
+      case STRING -> ColumnDataType.STRING;
     };
   }
 
