@@ -1094,6 +1094,111 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   @Test
+  void put_bulkPipelineStatus_200_OK(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_bulk_status"));
+    request.setService(service.getFullyQualifiedName());
+
+    List<Task> tasks =
+        Arrays.asList(
+            new Task().withName("task1").withDescription("First task"),
+            new Task().withName("task2").withDescription("Second task"));
+    request.setTasks(tasks);
+
+    Pipeline pipeline = createEntity(request);
+    assertNotNull(pipeline);
+
+    org.openmetadata.schema.type.Status t1Status =
+        new org.openmetadata.schema.type.Status()
+            .withName("task1")
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful);
+    org.openmetadata.schema.type.Status t2Status =
+        new org.openmetadata.schema.type.Status()
+            .withName("task2")
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed);
+    List<org.openmetadata.schema.type.Status> taskStatuses = Arrays.asList(t1Status, t2Status);
+
+    long baseTime = System.currentTimeMillis() - 5 * 3600000;
+    List<org.openmetadata.schema.entity.data.PipelineStatus> bulkStatuses =
+        new java.util.ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      org.openmetadata.schema.entity.data.PipelineStatus ps =
+          new org.openmetadata.schema.entity.data.PipelineStatus()
+              .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful)
+              .withTimestamp(baseTime + i * 3600000)
+              .withTaskStatus(taskStatuses);
+      bulkStatuses.add(ps);
+    }
+
+    Pipeline putResponse =
+        client.pipelines().addBulkPipelineStatus(pipeline.getFullyQualifiedName(), bulkStatuses);
+    assertNotNull(putResponse);
+    assertNotNull(putResponse.getPipelineStatus());
+    assertEquals(
+        bulkStatuses.get(4).getTimestamp(), putResponse.getPipelineStatus().getTimestamp());
+
+    Pipeline fetched = client.pipelines().get(pipeline.getId().toString(), "pipelineStatus");
+    assertNotNull(fetched.getPipelineStatus());
+    assertEquals(bulkStatuses.get(4).getTimestamp(), fetched.getPipelineStatus().getTimestamp());
+
+    org.openmetadata.schema.entity.data.PipelineStatus overlapStatus =
+        new org.openmetadata.schema.entity.data.PipelineStatus()
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed)
+            .withTimestamp(bulkStatuses.get(4).getTimestamp())
+            .withTaskStatus(taskStatuses);
+    org.openmetadata.schema.entity.data.PipelineStatus newStatus =
+        new org.openmetadata.schema.entity.data.PipelineStatus()
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed)
+            .withTimestamp(baseTime + 5 * 3600000)
+            .withTaskStatus(taskStatuses);
+
+    List<org.openmetadata.schema.entity.data.PipelineStatus> overlapStatuses =
+        Arrays.asList(overlapStatus, newStatus);
+
+    putResponse =
+        client.pipelines().addBulkPipelineStatus(pipeline.getFullyQualifiedName(), overlapStatuses);
+    assertNotNull(putResponse);
+    assertEquals(newStatus.getTimestamp(), putResponse.getPipelineStatus().getTimestamp());
+    assertEquals(
+        org.openmetadata.schema.type.StatusType.Failed,
+        putResponse.getPipelineStatus().getExecutionStatus());
+  }
+
+  @Test
+  void put_bulkPipelineStatus_invalidTask_4xx(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_bulk_invalid"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(Arrays.asList(new Task().withName("task1").withDescription("Task 1")));
+
+    Pipeline pipeline = createEntity(request);
+
+    org.openmetadata.schema.type.Status invalidTaskStatus =
+        new org.openmetadata.schema.type.Status()
+            .withName("nonExistentTask")
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed);
+
+    org.openmetadata.schema.entity.data.PipelineStatus ps =
+        new org.openmetadata.schema.entity.data.PipelineStatus()
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed)
+            .withTimestamp(System.currentTimeMillis())
+            .withTaskStatus(Arrays.asList(invalidTaskStatus));
+
+    assertThrows(
+        Exception.class,
+        () ->
+            client
+                .pipelines()
+                .addBulkPipelineStatus(pipeline.getFullyQualifiedName(), Arrays.asList(ps)));
+  }
+
+  @Test
   void test_pipelineStatusWithTaskTiming_200_OK(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     PipelineService service = PipelineServiceTestFactory.createAirflow(ns);

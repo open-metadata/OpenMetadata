@@ -68,6 +68,36 @@ public interface EntityTimeSeriesDAO {
 
   @ConnectionAwareSqlUpdate(
       value =
+          "INSERT INTO <table>(entityFQNHash, extension, jsonSchema, json) "
+              + "VALUES (:entityFQNHash, :extension, :jsonSchema, :json) "
+              + "ON DUPLICATE KEY UPDATE json = VALUES(json)",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "INSERT INTO <table>(entityFQNHash, extension, jsonSchema, json) "
+              + "VALUES (:entityFQNHash, :extension, :jsonSchema, (:json :: jsonb)) "
+              + "ON CONFLICT (entityFQNHash, extension, timestamp) DO UPDATE SET json = EXCLUDED.json",
+      connectionType = POSTGRES)
+  void upsert(
+      @Define("table") String table,
+      @BindFQN("entityFQNHash") String entityFQNHash,
+      @Bind("extension") String extension,
+      @Bind("jsonSchema") String jsonSchema,
+      @Bind("json") String json);
+
+  default void upsert(String entityFQN, String extension, String jsonSchema, String json) {
+    upsert(getTimeSeriesTableName(), entityFQN, extension, jsonSchema, json);
+  }
+
+  default void upsertBatch(
+      String entityFQN, String extension, String jsonSchema, List<String> jsons) {
+    for (String json : jsons) {
+      upsert(entityFQN, extension, jsonSchema, json);
+    }
+  }
+
+  @ConnectionAwareSqlUpdate(
+      value =
           "INSERT INTO <table>(entityFQNHash, jsonSchema, json) "
               + "VALUES (:entityFQNHash, :jsonSchema, :json)",
       connectionType = MYSQL)

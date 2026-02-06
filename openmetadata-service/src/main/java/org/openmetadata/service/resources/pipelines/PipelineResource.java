@@ -496,6 +496,37 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return repository.addPipelineStatus(fqn, pipelineStatus).toResponse();
   }
 
+  @PUT
+  @Path("/{fqn}/status/bulk")
+  @Operation(
+      operationId = "addBulkStatusData",
+      summary = "Add bulk status data",
+      description = "Add multiple status records to the pipeline in a single request.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The pipeline with the latest status",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Pipeline.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response addBulkPipelineStatus(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the pipeline",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Valid List<PipelineStatus> pipelineStatuses) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    return repository.addBulkPipelineStatus(fqn, pipelineStatuses).toResponse();
+  }
+
   @GET
   @Path("/{fqn}/status")
   @Operation(
