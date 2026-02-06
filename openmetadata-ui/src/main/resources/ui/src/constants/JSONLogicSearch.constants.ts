@@ -37,4 +37,5 @@ export const COMMON_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
   EntityReferenceFields.UPDATED_AT,
   EntityReferenceFields.UPDATED_BY,
   EntityReferenceFields.VERSION,
+  EntityReferenceFields.ENTITY_STATUS,
 ];

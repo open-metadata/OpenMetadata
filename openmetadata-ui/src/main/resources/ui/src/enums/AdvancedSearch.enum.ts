@@ -115,4 +115,5 @@ export enum EntityReferenceFields {
   VERSION = 'version',
   RELATED_TERMS = 'relatedTerms',
   SYNONYMS = 'synonyms',
+  ENTITY_STATUS = 'entityStatus',
 }

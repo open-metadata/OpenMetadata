@@ -22,6 +22,7 @@ import {
 } from '@react-awesome-query-builder/antd';
 import { get, sortBy, toLower } from 'lodash';
 import {
+  LIST_VALUE_OPERATORS,
   RANGE_FIELD_OPERATORS,
   TEXT_FIELD_DESCRIPTION_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
@@ -36,6 +37,7 @@ import {
   EntityReferenceFields,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { EntityStatus } from '../generated/entity/data/glossaryTerm';
 import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
@@ -412,6 +414,22 @@ class JSONLogicSearchClassBase {
         },
       },
 
+      [EntityReferenceFields.ENTITY_STATUS]: {
+        label: t('label.status'),
+        type: 'select',
+        operators: LIST_VALUE_OPERATORS,
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+        fieldSettings: {
+          listValues: Object.values(EntityStatus).map((status) => ({
+            value: status,
+            title: status,
+          })),
+          showSearch: true,
+          useAsyncSearch: false,
+        },
+      },
+
       [EntityReferenceFields.REVIEWERS]: {
         label: t('label.reviewer-plural'),
         type: '!group',
@@ -541,26 +559,26 @@ class JSONLogicSearchClassBase {
     fieldLabel,
     queryFilter,
   }) => {
-      return (search) => {
-        return searchQuery({
-          query: Array.isArray(search) ? search.join(',') : search ?? '',
-          pageNumber: 1,
-          pageSize: PAGE_SIZE_BASE,
-          queryFilter,
-          searchIndex: searchIndex ?? SearchIndex.DATA_ASSET,
-        }).then((response) => {
-          const data = response.hits.hits;
+    return (search) => {
+      return searchQuery({
+        query: Array.isArray(search) ? search.join(',') : search ?? '',
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_BASE,
+        queryFilter,
+        searchIndex: searchIndex ?? SearchIndex.DATA_ASSET,
+      }).then((response) => {
+        const data = response.hits.hits;
 
-          return {
-            values: data.map((item) => ({
-              value: get(item._source, fieldName, ''),
-              title: get(item._source, fieldLabel, ''),
-            })),
-            hasMore: false,
-          };
-        });
-      };
+        return {
+          values: data.map((item) => ({
+            value: get(item._source, fieldName, ''),
+            title: get(item._source, fieldLabel, ''),
+          })),
+          hasMore: false,
+        };
+      });
     };
+  };
 
   mainWidgetProps = {
     fullWidth: true,
@@ -596,8 +614,8 @@ class JSONLogicSearchClassBase {
       values: !search
         ? resolvedTierOptions
         : resolvedTierOptions.filter((tier: ListItem) =>
-          tier.title?.toLowerCase()?.includes(toLower(search))
-        ),
+            tier.title?.toLowerCase()?.includes(toLower(search))
+          ),
       hasMore: false,
     } as AsyncFetchListValuesResult;
   };
