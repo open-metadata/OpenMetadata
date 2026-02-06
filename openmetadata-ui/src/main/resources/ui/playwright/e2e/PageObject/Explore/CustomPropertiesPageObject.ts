@@ -104,6 +104,7 @@ export class CustomPropertiesPageObject {
   async shouldShowCustomProperty(propertyName: string): Promise<void> {
     // Use semantic selectors - look for property by name text
     const propertyCard = this.propertyCard.filter({ hasText: propertyName });
+    await propertyCard.scrollIntoViewIfNeeded();
     await propertyCard.waitFor({ state: 'visible' });
   }
 

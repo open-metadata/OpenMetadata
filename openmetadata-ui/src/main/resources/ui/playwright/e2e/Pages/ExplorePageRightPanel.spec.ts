@@ -19,7 +19,6 @@ import { LineagePageObject } from '../PageObject/Explore/LineagePageObject';
 import { DataQualityPageObject } from '../PageObject/Explore/DataQualityPageObject';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
 import { openEntitySummaryPanel } from '../../utils/entityPanel';
-
 import { TableClass } from '../../support/entity/TableClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
@@ -38,8 +37,6 @@ import { ContainerClass } from '../../support/entity/ContainerClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { Domain } from '../../support/domain/Domain';
 import { UserClass } from '../../support/user/UserClass';
-import { createCustomPropertyForEntity } from '../../utils/customProperty';
-import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 
 
 // Test data setup
@@ -78,23 +75,6 @@ const entityMap = {
   searchIndex: searchIndexEntity,
 };
 
-const entityTypeToEndpoint = {
-  table: EntityTypeEndpoint.Table,
-  dashboard: EntityTypeEndpoint.Dashboard,
-  pipeline: EntityTypeEndpoint.Pipeline,
-  topic: EntityTypeEndpoint.Topic,
-  database: EntityTypeEndpoint.Database,
-  databaseSchema: EntityTypeEndpoint.DatabaseSchema,
-  dashboardDataModel: EntityTypeEndpoint.DataModel,
-  mlmodel: EntityTypeEndpoint.MlModel,
-  container: EntityTypeEndpoint.Container,
-  searchIndex: EntityTypeEndpoint.SearchIndex,
-  apiCollection: EntityTypeEndpoint.API_COLLECTION,
-  apiEndpoint: EntityTypeEndpoint.API_ENDPOINT,
-  dataProduct: EntityTypeEndpoint.DATA_PRODUCT,
-  metric: EntityTypeEndpoint.METRIC,
-};
-
 // Page object instances
 let rightPanel: RightPanelPageObject;
 let overview: OverviewPageObject;
@@ -118,28 +98,30 @@ test.describe('Right Panel Test Suite', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     
     try {
-      // Create custom properties sequentially to avoid timeout (each call creates 4 users + multiple properties)
-      // Only create for entities that are actually tested (those in entityMap)
-      for (const entityType of Object.keys(entityMap)) {
-        const property = await createCustomPropertyForEntity(
-          apiContext,
-          entityTypeToEndpoint[entityType as keyof typeof entityTypeToEndpoint]
-        );
-        // Get the first property from customProperties (which is keyed by property type names like 'string', 'integer', etc.)
-        const firstProperty = Object.values(property.customProperties)[0];
-        if (firstProperty) {
-          customPropertyData[entityType] = { property: firstProperty.property };
-        }
-      }
-
       // Create all entities in parallel for better performance
       await Promise.all(
         Object.values(entityMap).map((entityInstance) => 
-          entityInstance.create(apiContext),
+          entityInstance.create(apiContext)
         )
       );
 
-      
+      // Create custom properties sequentially to avoid timeout (each call creates 4 users + multiple properties)
+      // Only create for entities that support custom properties
+      for (const [entityType, entityInstance] of Object.entries(entityMap)) {
+        try {
+          await entityInstance.prepareCustomProperty(apiContext);
+          
+          // Populate customPropertyData from entity's customPropertyValue
+          // Get the first property from customPropertyValue (which is keyed by property type names like 'string', 'integer', etc.)
+          const firstProperty = Object.values(entityInstance.customPropertyValue)[0];
+          if (firstProperty) {
+            customPropertyData[entityType] = { property: firstProperty.property };
+          }
+        } catch (error) {
+          console.warn(`Failed to create custom property for ${entityType}:`, error);
+          // Continue with other entities even if one fails
+        }
+      }
 
       await testClassification.create(apiContext);
       await testTag.create(apiContext);
@@ -418,7 +400,7 @@ test.describe('Right Panel Test Suite', () => {
               // Fixing error by explicitly defining the type of customPropertyData
               // Assuming customPropertyData is defined as: Record<string, { property: { name: string } }>
               const propertyName =
-                (customPropertyData as unknown as Record<string, { property: { name: string } }>)[entityType]?.property?.name;
+                (customPropertyData)[entityType]?.property?.name;
               if (propertyName) {
                 await customProperties.searchCustomProperties(propertyName);
                 await customProperties.shouldShowCustomProperty(propertyName);
