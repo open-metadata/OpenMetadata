@@ -17,10 +17,6 @@
       },
       "minItems": 1
     },
-    "supportedEntity": {
-      "description": "The entity type this recognizer detects",
-      "$ref": "piiEntity.json"
-    },
     "supportedLanguage": {
       "description": "Language supported by this recognizer",
       "$ref": "classificationLanguages.json",
@@ -46,6 +42,6 @@
       "default": 0.05
     }
   },
-  "required": ["type", "contextWords", "supportedEntity", "supportedLanguage"],
+  "required": ["type", "contextWords", "supportedLanguage"],
   "additionalProperties": false
 }
