@@ -513,6 +513,12 @@
     }
   }
 
+  .column-name-inner {
+    display: flex;
+    align-items: center;
+    gap: @size-xxs;
+  }
+
   .child-row {
     padding-left: 28px;
   }
@@ -789,5 +795,31 @@
         border-color: @primary-7;
       }
     }
+  }
+}
+.ant-card-body > .ant-space {
+  padding: 8px 0 0 0;
+}
+
+.column-bulk-operations-metadata-dropdown {
+  width: 320px;
+  max-width: 320px;
+
+  .ant-dropdown-menu {
+    width: 100%;
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+
+  .dropdown-option-label {
+    max-width: 100%;
+    white-space: normal;
+    word-wrap: break-word;
+  }
+
+  .text-xs.d-block {
+    white-space: normal;
+    word-wrap: break-word;
+    word-break: break-word;
   }
 }

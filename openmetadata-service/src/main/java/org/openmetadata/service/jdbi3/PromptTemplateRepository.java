@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.jdbi3;
 
+import com.google.gson.Gson;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.PromptTemplate;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -57,6 +60,17 @@ public class PromptTemplateRepository extends EntityRepository<PromptTemplate> {
   @Override
   public void storeEntity(PromptTemplate promptTemplate, boolean update) {
     store(promptTemplate, update);
+  }
+
+  @Override
+  public void storeEntities(List<PromptTemplate> entities) {
+    List<PromptTemplate> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (PromptTemplate entity : entities) {
+      String jsonCopy = gson.toJson(entity);
+      entitiesToStore.add(gson.fromJson(jsonCopy, PromptTemplate.class));
+    }
+    storeMany(entitiesToStore);
   }
 
   @Override

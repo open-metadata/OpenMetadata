@@ -26,6 +26,7 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.SPREADSHEET;
 import static org.openmetadata.service.Entity.WORKSHEET;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -40,6 +41,7 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.Worksheet;
@@ -143,6 +145,42 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
     store(worksheet, update);
     // Restore the relationships
     worksheet.withColumns(columnWithTags).withService(service).withSpreadsheet(spreadsheet);
+  }
+
+  @Override
+  public void storeEntities(List<Worksheet> worksheets) {
+    List<Worksheet> worksheetsToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Worksheet worksheet : worksheets) {
+      // Save entity-specific relationships
+      EntityReference service = worksheet.getService();
+      EntityReference spreadsheet = worksheet.getSpreadsheet();
+      List<Column> columnWithTags = worksheet.getColumns();
+
+      // Nullify for storage (same as storeEntity)
+      worksheet.withService(null).withSpreadsheet(null);
+      worksheet.setColumns(ColumnUtil.cloneWithoutTags(columnWithTags));
+      if (worksheet.getColumns() != null) {
+        worksheet.getColumns().forEach(column -> column.setTags(null));
+      }
+
+      // Clone for storage
+      String jsonCopy = gson.toJson(worksheet);
+      worksheetsToStore.add(gson.fromJson(jsonCopy, Worksheet.class));
+
+      // Restore in original
+      worksheet.withColumns(columnWithTags).withService(service).withSpreadsheet(spreadsheet);
+    }
+
+    storeMany(worksheetsToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Worksheet> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Worksheet::getId).toList();
+    deleteToMany(ids, Entity.WORKSHEET, Relationship.CONTAINS, Entity.SPREADSHEET);
   }
 
   @Override
@@ -304,8 +342,15 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     Worksheet worksheet = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
-    return new WorksheetCsv(worksheet, user).exportCsv(listOf(worksheet));
+    return new WorksheetCsv(worksheet, user).exportCsv(listOf(worksheet), callback);
   }
 
   @Override
