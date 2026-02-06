@@ -12,6 +12,7 @@
  */
 
 import { ClientType } from '../generated/configuration/securityConfiguration';
+import { ConfigSource } from '../generated/type/configSource';
 import {
   getAuthorityUrl,
   getCallbackUrl,
@@ -826,6 +827,7 @@ export const VALIDATION_STATUS = {
 } as const;
 
 export interface AuthenticationConfiguration {
+  configSource?: ConfigSource;
   provider: string;
   providerName: string;
   authority: string;
@@ -845,6 +847,7 @@ export interface AuthenticationConfiguration {
 }
 
 export interface AuthorizerConfiguration {
+  configSource?: ConfigSource;
   className: string;
   containerRequestFilter: string;
   adminPrincipals: string[];

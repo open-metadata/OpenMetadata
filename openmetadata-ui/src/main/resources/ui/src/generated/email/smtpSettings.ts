@@ -15,6 +15,10 @@
  */
 export interface SMTPSettings {
     /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
+    /**
      * Emailing Entity
      */
     emailingEntity?: string;
@@ -49,6 +53,17 @@ export interface SMTPSettings {
      * Smtp Server Username
      */
     username?: string;
+}
+
+/**
+ * Determines where this configuration is read from.
+ *
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
 }
 
 export enum Templates {

@@ -11,16 +11,28 @@
  *  limitations under the License.
  */
 
-import { AuthProvider } from '../../../generated/settings/settings';
+import { Alert } from 'antd';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { ConfigSourceIndicatorProps } from './ConfigSourceIndicator.interface';
 
-export interface ProviderSelectorProps {
-  selectedProvider?: AuthProvider;
-  onProviderSelect: (provider: AuthProvider) => void;
-  disabled?: boolean;
-}
+const ConfigSourceIndicator: React.FC<ConfigSourceIndicatorProps> = ({
+  configSource,
+}) => {
+  const { t } = useTranslation();
 
-export interface ProviderOption {
-  key: AuthProvider;
-  label: string;
-  icon: string;
-}
+  if (configSource !== 'ENV') {
+    return null;
+  }
+
+  return (
+    <Alert
+      showIcon
+      description={t('message.setting-managed-by-env-description')}
+      message={t('label.managed-by-env')}
+      type="info"
+    />
+  );
+};
+
+export default ConfigSourceIndicator;

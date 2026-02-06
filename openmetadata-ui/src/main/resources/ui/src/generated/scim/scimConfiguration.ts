@@ -16,6 +16,10 @@
  */
 export interface ScimConfiguration {
     /**
+     * Determines where this configuration is read from.
+     */
+    configSource?: ConfigSource;
+    /**
      * Whether SCIM provisioning is enabled.
      */
     enabled?: boolean;
@@ -23,4 +27,15 @@ export interface ScimConfiguration {
      * The name of the identity provider for SCIM (e.g., azure, okta).
      */
     identityProvider?: string;
+}
+
+/**
+ * Determines where this configuration is read from.
+ *
+ * Determines where configuration is read from.
+ */
+export enum ConfigSource {
+    Auto = "AUTO",
+    DB = "DB",
+    Env = "ENV",
 }

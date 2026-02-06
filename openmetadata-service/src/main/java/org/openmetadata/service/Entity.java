@@ -78,6 +78,7 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -104,7 +105,7 @@ public final class Entity {
   @Getter @Setter private static UsageRepository usageRepository;
   @Getter @Setter private static SystemRepository systemRepository;
   @Getter @Setter private static ChangeEventRepository changeEventRepository;
-  @Getter @Setter private static SearchRepository searchRepository;
+  @Setter private static SearchRepository searchRepository;
   @Getter @Setter private static AuditLogRepository auditLogRepository;
   @Getter @Setter private static SuggestionRepository suggestionRepository;
   @Getter @Setter private static TypeRepository typeRepository;
@@ -876,8 +877,9 @@ public final class Entity {
   }
 
   public static SearchIndex buildSearchIndex(String entityType, Object entity) {
-    if (searchRepository != null) {
-      return searchRepository.getSearchIndexFactory().buildIndex(entityType, entity);
+    SearchRepository repo = getSearchRepository();
+    if (repo != null) {
+      return repo.getSearchIndexFactory().buildIndex(entityType, entity);
     }
     throw new BadRequestException("searchrepository not initialized");
   }
@@ -886,8 +888,25 @@ public final class Entity {
     return (T) collectionDAO;
   }
 
+  public static SearchRepository getSearchRepository() {
+    if (searchRepository == null) {
+      synchronized (Entity.class) {
+        OpenMetadataApplicationConfig config = OpenMetadataApplicationConfigHolder.getInstance();
+        if (config != null && config.getElasticSearchConfiguration() != null) {
+          searchRepository =
+              SearchRepositoryFactory.createSearchRepository(
+                  config.getElasticSearchConfiguration(),
+                  config.getDataSourceFactory() != null
+                      ? config.getDataSourceFactory().getMaxSize()
+                      : 50);
+        }
+      }
+    }
+    return searchRepository;
+  }
+
   public static <T> T getSearchRepo() {
-    return (T) searchRepository;
+    return (T) getSearchRepository();
   }
 
   public static String getServiceType(String entityType) {

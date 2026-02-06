@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { AuthProvider } from '../../generated/settings/settings';
+import { ConfigSource } from '../../generated/type/configSource';
 import {
   getSecurityConfiguration,
   patchSecurityConfiguration,
@@ -29,6 +30,7 @@ import { getProviderDisplayName, getProviderIcon } from '../../utils/SSOUtils';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
+import ConfigSourceIndicator from '../Settings/ConfigSourceIndicator';
 import ProviderSelector from './ProviderSelector/ProviderSelector';
 import './settings-sso.less';
 import SSOConfigurationForm from './SSOConfigurationForm/SSOConfigurationForm';
@@ -128,6 +130,14 @@ const SettingsSso = () => {
     return updatedBaseBreadcrumb;
   }, [searchParams, hasExistingConfig]);
 
+  const isEnvManaged = useMemo(() => {
+    return (
+      securityConfig?.authenticationConfiguration?.configSource ===
+        ConfigSource.Env ||
+      securityConfig?.authorizerConfiguration?.configSource === ConfigSource.Env
+    );
+  }, [securityConfig]);
+
   // If existing configuration, show tabs
   const tabItems = useMemo(() => {
     const items = [];
@@ -181,11 +191,17 @@ const SettingsSso = () => {
     items.push({
       key: 'configure',
       label: t('label.configure'),
+      disabled: isEnvManaged,
       children: (
         <div>
+          {isEnvManaged && (
+            <div className="m-b-md">
+              <ConfigSourceIndicator configSource={ConfigSource.Env} />
+            </div>
+          )}
           <SSOConfigurationForm
             hideBorder
-            forceEditMode={activeTab === 'configure'}
+            forceEditMode={activeTab === 'configure' && !isEnvManaged}
             securityConfig={securityConfig}
             onChangeProvider={handleChangeProvider}
           />
@@ -217,6 +233,7 @@ const SettingsSso = () => {
     activeTab,
     securityConfig,
     handleChangeProvider,
+    isEnvManaged,
   ]);
 
   // Combined effect to handle URL parameters and existing configuration
@@ -363,8 +380,15 @@ const SettingsSso = () => {
           titleLinks={breadcrumb}
         />
 
+        {isEnvManaged && (
+          <div className="m-b-md m-t-md">
+            <ConfigSourceIndicator configSource={ConfigSource.Env} />
+          </div>
+        )}
+
         <div className="m-t-lg sso-provider-selection">
           <ProviderSelector
+            disabled={isEnvManaged}
             selectedProvider={currentProvider as AuthProvider | undefined}
             onProviderSelect={handleProviderSelect}
           />
@@ -421,6 +445,12 @@ const SettingsSso = () => {
                 </Typography.Title>
               </div>
             </div>
+          </div>
+        )}
+
+        {isEnvManaged && (
+          <div className="m-b-md">
+            <ConfigSourceIndicator configSource={ConfigSource.Env} />
           </div>
         )}
 

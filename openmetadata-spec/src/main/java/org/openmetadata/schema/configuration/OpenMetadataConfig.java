@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,27 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * This schema defines the OpenMetadata base URL configuration
- */
-export interface OpenMetadataBaseURLConfiguration {
-    /**
-     * Determines where this configuration is read from.
-     */
-    configSource?: ConfigSource;
-    /**
-     * OpenMetadata Server Endpoint
-     */
-    openMetadataUrl?: string;
-}
+
+package org.openmetadata.schema.configuration;
+
+import org.openmetadata.schema.type.ConfigSource;
 
 /**
- * Determines where this configuration is read from.
- *
- * Determines where configuration is read from.
+ * Base configuration interface for all OpenMetadata settings that support configSource. The
+ * configSource field determines where the configuration is read from: ENV (always from
+ * YAML/environment), DB (always from database), or AUTO (last-write-wins based on timestamps).
  */
-export enum ConfigSource {
-    Auto = "AUTO",
-    DB = "DB",
-    Env = "ENV",
+public interface OpenMetadataConfig {
+
+  ConfigSource getConfigSource();
+
+  void setConfigSource(ConfigSource configSource);
 }

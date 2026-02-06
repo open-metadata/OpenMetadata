@@ -26,6 +26,7 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8124,6 +8125,47 @@ public interface CollectionDAO {
 
     @SqlUpdate(value = "DELETE from openmetadata_settings WHERE configType = :configType")
     void delete(@Bind("configType") String configType);
+
+    @SqlUpdate(
+        "UPDATE openmetadata_settings SET json = :json, env_hash = :envHash, "
+            + "env_sync_timestamp = :envSyncTimestamp, db_modified_timestamp = :dbModifiedTimestamp "
+            + "WHERE configType = :configType")
+    void updateConfigWithMetadata(
+        @Bind("configType") String configType,
+        @Bind("json") String json,
+        @Bind("envHash") String envHash,
+        @Bind("envSyncTimestamp") Timestamp envSyncTimestamp,
+        @Bind("dbModifiedTimestamp") Timestamp dbModifiedTimestamp);
+
+    @SqlUpdate(
+        "UPDATE openmetadata_settings SET env_hash = :envHash, "
+            + "env_sync_timestamp = :envSyncTimestamp, db_modified_timestamp = :dbModifiedTimestamp "
+            + "WHERE configType = :configType")
+    void updateConfigMetadata(
+        @Bind("configType") String configType,
+        @Bind("envHash") String envHash,
+        @Bind("envSyncTimestamp") Timestamp envSyncTimestamp,
+        @Bind("dbModifiedTimestamp") Timestamp dbModifiedTimestamp);
+
+    @SqlUpdate(
+        "UPDATE openmetadata_settings SET env_hash = :envHash WHERE configType = :configType")
+    void updateEnvHash(@Bind("configType") String configType, @Bind("envHash") String envHash);
+
+    @SqlUpdate(
+        "UPDATE openmetadata_settings SET db_modified_timestamp = :dbModifiedTimestamp WHERE configType = :configType")
+    void updateDbModifiedTimestamp(
+        @Bind("configType") String configType,
+        @Bind("dbModifiedTimestamp") Timestamp dbModifiedTimestamp);
+
+    @SqlQuery("SELECT env_hash FROM openmetadata_settings WHERE configType = :configType")
+    String getEnvHash(@Bind("configType") String configType);
+
+    @SqlQuery("SELECT env_sync_timestamp FROM openmetadata_settings WHERE configType = :configType")
+    Timestamp getEnvSyncTimestamp(@Bind("configType") String configType);
+
+    @SqlQuery(
+        "SELECT db_modified_timestamp FROM openmetadata_settings WHERE configType = :configType")
+    Timestamp getDbModifiedTimestamp(@Bind("configType") String configType);
 
     @SqlQuery("SELECT 42")
     Integer testConnection() throws StatementException;

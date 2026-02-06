@@ -5,7 +5,13 @@
   "description": "This schema defines the Login Configuration",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.configuration.LoginConfiguration",
+  "javaInterfaces": ["org.openmetadata.schema.configuration.OpenMetadataConfig"],
   "properties": {
+    "configSource": {
+      "description": "Determines where this configuration is read from.",
+      "$ref": "../type/configSource.json",
+      "default": "DB"
+    },
     "maxLoginFailAttempts": {
       "description": "Failed Login Attempts allowed for user.",
       "type": "integer",

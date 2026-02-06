@@ -5,6 +5,7 @@
   "description": "This schema defines the Workflow Settings.",
   "type": "object",
   "javaType": "org.openmetadata.schema.configuration.WorkflowSettings",
+  "javaInterfaces": ["org.openmetadata.schema.configuration.OpenMetadataConfig"],
   "definitions": {
     "executorConfiguration": {
       "type": "object",
@@ -81,6 +82,11 @@
     }
   },
   "properties": {
+    "configSource": {
+      "description": "Determines where this configuration is read from.",
+      "$ref": "../type/configSource.json",
+      "default": "DB"
+    },
     "executorConfiguration": {
       "$ref": "#/definitions/executorConfiguration",
       "description": "Used to set up the Workflow Executor Settings."
