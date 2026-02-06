@@ -15,18 +15,29 @@ public class OpenNestedAggregations implements OpenAggregations {
   private String aggregationName;
   private Aggregation aggregation;
   private Map<String, Aggregation> subAggregations = new HashMap<>();
+  private String path;
 
   @Override
   public void createAggregation(SearchAggregationNode node) {
     Map<String, String> params = node.getValue();
     this.aggregationName = node.getName();
+    this.path = params.get("path");
     this.aggregation =
-        Aggregation.of(
-            a -> a.nested(NestedAggregation.of(nested -> nested.path(params.get("path")))));
+        Aggregation.of(a -> a.nested(NestedAggregation.of(nested -> nested.path(path))));
   }
 
   @Override
   public void setSubAggregations(Map<String, Aggregation> subAggregations) {
     this.subAggregations = subAggregations;
+    this.aggregation =
+        Aggregation.of(
+            a ->
+                a.nested(NestedAggregation.of(nested -> nested.path(path)))
+                    .aggregations(subAggregations));
+  }
+
+  @Override
+  public Boolean supportsSubAggregationsNatively() {
+    return true;
   }
 }
