@@ -86,7 +86,14 @@ function FileColumnsTable() {
     };
   }, [permissions, fileDetails]);
 
+  // Original schema with empty children is required to maintain the integrity of the data and for
+  // operations like updating tags and descriptions.
   const schema = fileDetails?.columns;
+  // Prune empty children from schema to avoid rendering expandable icon for columns with empty children array
+  const prunedChildrenSchema = useMemo(
+    () => pruneEmptyChildren(schema ?? []),
+    [schema]
+  );
 
   const handleFileColumnTagChange = async (
     selectedTags: EntityTags[],
@@ -281,7 +288,7 @@ function FileColumnsTable() {
         className="align-table-filter-left"
         columns={columns}
         data-testid="file-columns-table"
-        dataSource={pruneEmptyChildren(schema ?? [])}
+        dataSource={prunedChildrenSchema}
         defaultVisibleColumns={DEFAULT_WORKSHEET_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
           ...getTableExpandableConfig<Column>(),

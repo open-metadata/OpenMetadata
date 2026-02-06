@@ -438,7 +438,9 @@ const SchemaTable = () => {
       : response;
 
     setTableColumns((prev) =>
-      updateColumnInNestedStructure(prev, columnFqn, cleanResponse, field)
+      pruneEmptyChildren(
+        updateColumnInNestedStructure(prev, columnFqn, cleanResponse, field)
+      )
     );
 
     return response;
