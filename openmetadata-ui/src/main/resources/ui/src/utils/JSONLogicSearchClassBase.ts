@@ -445,6 +445,11 @@ class JSONLogicSearchClassBase {
         defaultOperator: 'like',
         mainWidgetProps: this.mainWidgetProps,
         operators: ['like', 'not_like', 'is_null', 'is_not_null'],
+        widgets: {
+          multiselect: {
+            operators: ['like', 'not_like', 'is_null', 'is_not_null'],
+          },
+        },
         fieldSettings: {
           allowCustomValues: true,
           showSearch: false,
