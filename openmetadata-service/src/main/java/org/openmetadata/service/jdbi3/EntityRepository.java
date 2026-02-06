@@ -7776,6 +7776,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       for (EntityUpdater updater : updaters) {
         try {
           updater.storeUpdate();
+          setInheritedFields(updater.getUpdated(), new Fields(allowedFields));
           postUpdate(updater.getOriginal(), updater.getUpdated());
           successRequests.add(
               new BulkResponse()
@@ -7805,12 +7806,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<Long> entityLatenciesNanos = new ArrayList<>();
 
     // Separate into creates and updates using the pre-fetched map
+    // For duplicate FQNs within the batch, first occurrence goes to creates,
+    // subsequent occurrences go to updates (processed after creates)
     List<T> newEntities = new ArrayList<>();
     List<T> updateEntities = new ArrayList<>();
+    Set<String> seenNewFqns = new HashSet<>();
     for (T entity : entities) {
-      if (existingByFqn.containsKey(entity.getFullyQualifiedName())) {
+      String fqn = entity.getFullyQualifiedName();
+      if (existingByFqn.containsKey(fqn)) {
+        updateEntities.add(entity);
+      } else if (seenNewFqns.contains(fqn)) {
         updateEntities.add(entity);
       } else {
+        seenNewFqns.add(fqn);
         newEntities.add(entity);
       }
     }
@@ -7828,21 +7836,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
           successRequests.add(
               new BulkResponse()
                   .withRequest(entity.getFullyQualifiedName())
-                  .withStatus(Status.CREATED.getStatusCode()));
+                  .withStatus(Status.OK.getStatusCode()));
         }
       } catch (Exception batchError) {
         LOG.warn("Batch create failed, falling back to per-entity creates", batchError);
         for (T entity : newEntities) {
           long entityStartTime = System.nanoTime();
           try {
-            createOrUpdateWithOriginal(uriInfo, entity, null, userName);
+            createOrUpdate(uriInfo, entity, userName);
             long entityDuration = System.nanoTime() - entityStartTime;
             entityLatenciesNanos.add(entityDuration);
             recordEntityMetrics(entityType, entityDuration, 0, true);
             successRequests.add(
                 new BulkResponse()
                     .withRequest(entity.getFullyQualifiedName())
-                    .withStatus(Status.CREATED.getStatusCode()));
+                    .withStatus(Status.OK.getStatusCode()));
           } catch (Exception e) {
             long entityDuration = System.nanoTime() - entityStartTime;
             entityLatenciesNanos.add(entityDuration);
@@ -7853,6 +7861,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
                     .withStatus(Status.BAD_REQUEST.getStatusCode())
                     .withMessage(e.getMessage()));
           }
+        }
+      }
+    }
+
+    // For duplicate FQNs within the batch, refresh existingByFqn with newly created entities
+    if (!updateEntities.isEmpty()) {
+      List<String> updateFqns =
+          updateEntities.stream()
+              .map(T::getFullyQualifiedName)
+              .filter(fqn -> !existingByFqn.containsKey(fqn))
+              .distinct()
+              .collect(Collectors.toList());
+      if (!updateFqns.isEmpty()) {
+        List<T> newlyCreated = dao.findEntityByNames(updateFqns, Include.ALL);
+        for (T created : newlyCreated) {
+          existingByFqn.put(created.getFullyQualifiedName(), created);
         }
       }
     }

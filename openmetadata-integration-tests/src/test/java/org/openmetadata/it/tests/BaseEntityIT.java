@@ -2036,6 +2036,21 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
   }
 
+  protected <V> void setFieldViaReflection(
+      K createRequest, String setterName, Class<V> paramType, V value) {
+    try {
+      createRequest.getClass().getMethod(setterName, paramType).invoke(createRequest, value);
+    } catch (Exception e) {
+      fail(
+          "Cannot call "
+              + setterName
+              + " on "
+              + createRequest.getClass().getSimpleName()
+              + ": "
+              + e.getMessage());
+    }
+  }
+
   // ===================================================================
   // PUT OWNER UPDATE TESTS
   // ===================================================================
@@ -3546,6 +3561,338 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       T entity = getEntityByName((String) successResponse.getRequest());
       assertNotNull(entity, "Entity should exist: " + successResponse.getRequest());
       assertNotNull(entity.getId());
+    }
+  }
+
+  /**
+   * Test: Bulk update with tags.
+   *
+   * <p>Creates entities, then bulk-updates them with tags and verifies tags are applied.
+   */
+  @Test
+  void test_bulkUpdate_tags(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsTags) return;
+
+    List<K> createRequests = createBulkRequests(ns, "bulk_tag_", 3);
+    BulkOperationResult createResult = executeBulkCreate(createRequests);
+    assertEquals(3, createResult.getNumberOfRowsPassed());
+
+    SharedEntities shared = SharedEntities.get();
+    for (K req : createRequests) {
+      setFieldViaReflection(req, "setTags", List.class, List.of(shared.PII_SENSITIVE_TAG_LABEL));
+    }
+
+    BulkOperationResult updateResult = executeBulkCreate(createRequests);
+    assertEquals(3, updateResult.getNumberOfRowsPassed());
+    assertEquals(0, updateResult.getNumberOfRowsFailed());
+
+    for (BulkResponse resp : updateResult.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      T entity = getEntityByNameWithFields(fqn, "tags");
+      assertNotNull(entity.getTags(), "Entity should have tags: " + fqn);
+      assertFalse(entity.getTags().isEmpty(), "Tags should not be empty: " + fqn);
+      assertTrue(
+          entity.getTags().stream()
+              .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN())),
+          "Should contain the assigned tag: " + fqn);
+    }
+  }
+
+  /**
+   * Test: Bulk update with owners.
+   *
+   * <p>Creates entities, then bulk-updates them with an owner and verifies.
+   */
+  @Test
+  void test_bulkUpdate_owners(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsOwners) return;
+
+    List<K> createRequests = createBulkRequests(ns, "bulk_own_", 3);
+    BulkOperationResult createResult = executeBulkCreate(createRequests);
+    assertEquals(3, createResult.getNumberOfRowsPassed());
+
+    SharedEntities shared = SharedEntities.get();
+    for (K req : createRequests) {
+      setFieldViaReflection(req, "setOwners", List.class, List.of(shared.USER1_REF));
+    }
+
+    BulkOperationResult updateResult = executeBulkCreate(createRequests);
+    assertEquals(3, updateResult.getNumberOfRowsPassed());
+    assertEquals(0, updateResult.getNumberOfRowsFailed());
+
+    for (BulkResponse resp : updateResult.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      T entity = getEntityByNameWithFields(fqn, "owners");
+      assertNotNull(entity.getOwners(), "Entity should have owners: " + fqn);
+      assertFalse(entity.getOwners().isEmpty(), "Owners should not be empty: " + fqn);
+      assertEquals(shared.USER1.getId(), entity.getOwners().get(0).getId());
+    }
+  }
+
+  /**
+   * Test: Bulk update with domain.
+   *
+   * <p>Creates entities, then bulk-updates them with a domain and verifies.
+   */
+  @Test
+  void test_bulkUpdate_domain(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsDomains) return;
+
+    List<K> createRequests = createBulkRequests(ns, "bulk_dom_", 3);
+    BulkOperationResult createResult = executeBulkCreate(createRequests);
+    assertEquals(3, createResult.getNumberOfRowsPassed());
+
+    SharedEntities shared = SharedEntities.get();
+    for (K req : createRequests) {
+      setFieldViaReflection(
+          req, "setDomains", List.class, List.of(shared.DOMAIN.getFullyQualifiedName()));
+    }
+
+    BulkOperationResult updateResult = executeBulkCreate(createRequests);
+    assertEquals(3, updateResult.getNumberOfRowsPassed());
+    assertEquals(0, updateResult.getNumberOfRowsFailed());
+
+    for (BulkResponse resp : updateResult.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      T entity = getEntityByNameWithFields(fqn, "domains");
+      assertNotNull(entity.getDomains(), "Entity should have domains: " + fqn);
+      assertFalse(entity.getDomains().isEmpty(), "Domains should not be empty: " + fqn);
+      assertEquals(shared.DOMAIN.getId(), entity.getDomains().get(0).getId());
+    }
+  }
+
+  /**
+   * Test: Bulk update with tags, owners, and domain all at once.
+   */
+  @Test
+  void test_bulkUpdate_multipleFields(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsTags || !supportsOwners || !supportsDomains) return;
+
+    List<K> createRequests = createBulkRequests(ns, "bulk_multi_", 3);
+    BulkOperationResult createResult = executeBulkCreate(createRequests);
+    assertEquals(3, createResult.getNumberOfRowsPassed());
+
+    SharedEntities shared = SharedEntities.get();
+    for (K req : createRequests) {
+      setDescription(req, "Multi-field bulk update");
+      setFieldViaReflection(req, "setTags", List.class, List.of(shared.PII_SENSITIVE_TAG_LABEL));
+      setFieldViaReflection(req, "setOwners", List.class, List.of(shared.USER1_REF));
+      setFieldViaReflection(
+          req, "setDomains", List.class, List.of(shared.DOMAIN.getFullyQualifiedName()));
+    }
+
+    BulkOperationResult updateResult = executeBulkCreate(createRequests);
+    assertEquals(3, updateResult.getNumberOfRowsPassed());
+    assertEquals(0, updateResult.getNumberOfRowsFailed());
+
+    for (BulkResponse resp : updateResult.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      T entity = getEntityByNameWithFields(fqn, "tags,owners,domains");
+
+      assertEquals("Multi-field bulk update", entity.getDescription());
+
+      assertNotNull(entity.getTags());
+      assertFalse(entity.getTags().isEmpty());
+
+      assertNotNull(entity.getOwners());
+      assertFalse(entity.getOwners().isEmpty());
+      assertEquals(shared.USER1.getId(), entity.getOwners().get(0).getId());
+
+      assertNotNull(entity.getDomains());
+      assertFalse(entity.getDomains().isEmpty());
+      assertEquals(shared.DOMAIN.getId(), entity.getDomains().get(0).getId());
+    }
+  }
+
+  /**
+   * Test: Bulk update version history is preserved.
+   *
+   * <p>Creates entities, updates them, verifies version history has multiple entries.
+   */
+  @Test
+  void test_bulkUpdate_versionHistory(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsVersionHistory) return;
+
+    List<K> createRequests = createBulkRequests(ns, "bulk_ver_", 2);
+    BulkOperationResult createResult = executeBulkCreate(createRequests);
+    assertEquals(2, createResult.getNumberOfRowsPassed());
+
+    List<String> fqns = new ArrayList<>();
+    List<Double> initialVersions = new ArrayList<>();
+    for (BulkResponse resp : createResult.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByName(fqn);
+      initialVersions.add(entity.getVersion());
+    }
+
+    for (K req : createRequests) {
+      setDescription(req, "Version history test update");
+    }
+    BulkOperationResult updateResult = executeBulkCreate(createRequests);
+    assertEquals(2, updateResult.getNumberOfRowsPassed());
+
+    for (int i = 0; i < fqns.size(); i++) {
+      T entity = getEntityByName(fqns.get(i));
+      assertTrue(
+          entity.getVersion() > initialVersions.get(i),
+          "Version should increment after bulk update");
+      assertNotNull(entity.getChangeDescription(), "Should have change description");
+    }
+  }
+
+  /**
+   * Test: Bulk re-submit with no changes does not increment version.
+   */
+  @Test
+  void test_bulkUpdate_noChangeSameVersion(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = createBulkRequests(ns, "bulk_noop_", 2);
+    BulkOperationResult createResult = executeBulkCreate(createRequests);
+    assertEquals(2, createResult.getNumberOfRowsPassed());
+
+    List<String> fqns = new ArrayList<>();
+    List<Double> versions = new ArrayList<>();
+    for (BulkResponse resp : createResult.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByName(fqn);
+      versions.add(entity.getVersion());
+    }
+
+    // Re-submit identical data
+    BulkOperationResult updateResult = executeBulkCreate(createRequests);
+    assertEquals(2, updateResult.getNumberOfRowsPassed());
+
+    for (int i = 0; i < fqns.size(); i++) {
+      T entity = getEntityByName(fqns.get(i));
+      assertEquals(
+          versions.get(i),
+          entity.getVersion(),
+          "Version should NOT increment when no fields changed: " + fqns.get(i));
+    }
+  }
+
+  /**
+   * Test: Large batch bulk update (50 entities).
+   */
+  @Test
+  void test_bulkUpdate_largeBatch(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    List<K> createRequests = createBulkRequests(ns, "bulk_lg_", 50);
+    BulkOperationResult createResult = executeBulkCreate(createRequests);
+    assertEquals(50, createResult.getNumberOfRowsPassed());
+
+    for (K req : createRequests) {
+      setDescription(req, "Large batch updated");
+    }
+
+    BulkOperationResult updateResult = executeBulkCreate(createRequests);
+    assertEquals(50, updateResult.getNumberOfRowsPassed());
+    assertEquals(0, updateResult.getNumberOfRowsFailed());
+
+    // Spot-check a few
+    List<BulkResponse> successes = updateResult.getSuccessRequest();
+    for (int idx : List.of(0, 24, 49)) {
+      String fqn = (String) successes.get(idx).getRequest();
+      T entity = getEntityByName(fqn);
+      assertEquals("Large batch updated", entity.getDescription());
+    }
+  }
+
+  /**
+   * Test: User-added tags are preserved when ingestion re-runs with description changes.
+   *
+   * <p>Simulates the real-world scenario: a user adds tags to entities, then the ingestion
+   * connector runs again bringing description changes. The tags must NOT be overwritten
+   * since PUT from bots doesn't overwrite user-provided fields like tags.
+   */
+  @Test
+  void test_bulkUpdate_preservesUserTagsOnReIngestion(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsTags) return;
+
+    // Step 1: Ingestion creates entities (no tags)
+    List<K> createRequests = createBulkRequests(ns, "bulk_preserve_", 3);
+    BulkOperationResult createResult = executeBulkCreate(createRequests);
+    assertEquals(3, createResult.getNumberOfRowsPassed());
+
+    // Step 2: User adds tags to entities via PATCH
+    SharedEntities shared = SharedEntities.get();
+    List<String> fqns = new ArrayList<>();
+    for (BulkResponse resp : createResult.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByNameWithFields(fqn, "tags");
+      entity.setTags(List.of(shared.PII_SENSITIVE_TAG_LABEL));
+      patchEntity(entity.getId().toString(), entity);
+    }
+
+    // Verify tags were applied
+    for (String fqn : fqns) {
+      T entity = getEntityByNameWithFields(fqn, "tags");
+      assertNotNull(entity.getTags());
+      assertFalse(entity.getTags().isEmpty(), "Tags should be present after PATCH: " + fqn);
+    }
+
+    // Step 3: Ingestion re-runs — bulk update with only description changes (no tags in request)
+    for (K req : createRequests) {
+      setDescription(req, "Re-ingested description");
+    }
+    BulkOperationResult reIngestionResult = executeBulkCreate(createRequests);
+    assertEquals(3, reIngestionResult.getNumberOfRowsPassed());
+
+    // Step 4: Verify tags are still present after re-ingestion
+    for (String fqn : fqns) {
+      T entity = getEntityByNameWithFields(fqn, "tags");
+      assertEquals("Re-ingested description", entity.getDescription());
+      assertNotNull(entity.getTags(), "Tags should still be present after re-ingestion: " + fqn);
+      assertFalse(entity.getTags().isEmpty(), "Tags should NOT be cleared by re-ingestion: " + fqn);
+      assertTrue(
+          entity.getTags().stream()
+              .anyMatch(t -> t.getTagFQN().equals(shared.PII_SENSITIVE_TAG_LABEL.getTagFQN())),
+          "Original user-added tag should be preserved: " + fqn);
+    }
+  }
+
+  /**
+   * Test: User-added owners are preserved when ingestion re-runs with description changes.
+   */
+  @Test
+  void test_bulkUpdate_preservesUserOwnersOnReIngestion(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsOwners) return;
+
+    // Step 1: Ingestion creates entities (no owners)
+    List<K> createRequests = createBulkRequests(ns, "bulk_own_pres_", 2);
+    BulkOperationResult createResult = executeBulkCreate(createRequests);
+    assertEquals(2, createResult.getNumberOfRowsPassed());
+
+    // Step 2: User adds owners via PATCH
+    SharedEntities shared = SharedEntities.get();
+    List<String> fqns = new ArrayList<>();
+    for (BulkResponse resp : createResult.getSuccessRequest()) {
+      String fqn = (String) resp.getRequest();
+      fqns.add(fqn);
+      T entity = getEntityByNameWithFields(fqn, "owners");
+      entity.setOwners(List.of(shared.USER1_REF));
+      patchEntity(entity.getId().toString(), entity);
+    }
+
+    // Step 3: Re-ingestion with only description changes
+    for (K req : createRequests) {
+      setDescription(req, "Re-ingested with owners");
+    }
+    BulkOperationResult reIngestionResult = executeBulkCreate(createRequests);
+    assertEquals(2, reIngestionResult.getNumberOfRowsPassed());
+
+    // Step 4: Verify owners preserved
+    for (String fqn : fqns) {
+      T entity = getEntityByNameWithFields(fqn, "owners");
+      assertEquals("Re-ingested with owners", entity.getDescription());
+      assertNotNull(entity.getOwners(), "Owners should be preserved: " + fqn);
+      assertFalse(entity.getOwners().isEmpty(), "Owners should NOT be cleared: " + fqn);
+      assertEquals(shared.USER1.getId(), entity.getOwners().get(0).getId());
     }
   }
 
