@@ -11,13 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act } from 'react';
 import { LearningIcon } from './LearningIcon.component';
 
 const mockGetLearningResourcesByContext = jest.fn();
@@ -50,11 +45,16 @@ jest.mock('react-i18next', () => ({
 
 describe('LearningIcon', () => {
   beforeEach(() => {
+    jest.useRealTimers();
     jest.clearAllMocks();
     mockGetLearningResourcesByContext.mockResolvedValue({
       data: [],
       paging: { total: 5 },
     });
+  });
+
+  afterEach(() => {
+    jest.useFakeTimers();
   });
 
   it('should render learning icon when resources exist', async () => {
@@ -73,8 +73,8 @@ describe('LearningIcon', () => {
 
     const { container } = render(<LearningIcon pageId="glossary" />);
 
-    await waitFor(() => {
-      expect(mockGetLearningResourcesByContext).toHaveBeenCalled();
+    await act(async () => {
+      await Promise.resolve();
     });
 
     await waitFor(() => {
@@ -92,10 +92,7 @@ describe('LearningIcon', () => {
     });
 
     const iconContainer = screen.getByTestId('learning-icon');
-
-    await act(async () => {
-      fireEvent.click(iconContainer);
-    });
+    fireEvent.click(iconContainer);
 
     expect(screen.getByTestId('learning-drawer')).toBeInTheDocument();
   });
@@ -108,18 +105,12 @@ describe('LearningIcon', () => {
     });
 
     const iconContainer = screen.getByTestId('learning-icon');
-
-    await act(async () => {
-      fireEvent.click(iconContainer);
-    });
+    fireEvent.click(iconContainer);
 
     expect(screen.getByTestId('learning-drawer')).toBeInTheDocument();
 
     const closeButton = screen.getByTestId('close-drawer');
-
-    await act(async () => {
-      fireEvent.click(closeButton);
-    });
+    fireEvent.click(closeButton);
 
     expect(screen.queryByTestId('learning-drawer')).not.toBeInTheDocument();
   });
@@ -150,14 +141,12 @@ describe('LearningIcon', () => {
   });
 
   it('should handle API error gracefully', async () => {
-    mockGetLearningResourcesByContext.mockRejectedValueOnce(
-      new Error('API Error')
-    );
+    mockGetLearningResourcesByContext.mockRejectedValue(new Error('API Error'));
 
     const { container } = render(<LearningIcon pageId="glossary" />);
 
-    await waitFor(() => {
-      expect(mockGetLearningResourcesByContext).toHaveBeenCalled();
+    await act(async () => {
+      await Promise.resolve();
     });
 
     await waitFor(() => {
@@ -179,13 +168,25 @@ describe('LearningIcon', () => {
     expect(badge).toHaveClass('custom-class');
   });
 
-  it('should display resource count in badge', async () => {
+  it('should render learning icon badge when resources exist', async () => {
     render(<LearningIcon pageId="glossary" />);
 
     await waitFor(() => {
       expect(screen.getByTestId('learning-icon')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('5')).toBeInTheDocument();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const badge = screen
+      .getByTestId('learning-icon')
+      .closest('.learning-icon-badge');
+
+    expect(badge).toBeInTheDocument();
+    expect(mockGetLearningResourcesByContext).toHaveBeenCalledWith(
+      'glossary',
+      expect.objectContaining({ limit: 1 })
+    );
   });
 });

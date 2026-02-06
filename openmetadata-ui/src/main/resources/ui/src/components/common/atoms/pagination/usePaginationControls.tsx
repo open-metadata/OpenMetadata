@@ -48,7 +48,6 @@ interface PaginationControlsConfig {
   rowsPerPageOptions?: number[];
   loading?: boolean;
   prevNextOnly?: boolean;
-  centeredPerPageLayout?: boolean;
 }
 
 export const usePaginationControls = (config: PaginationControlsConfig) => {
@@ -94,89 +93,73 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
     return { start, end };
   }, [config.currentPage, config.pageSize, config.totalEntities]);
 
-  const isCenteredPerPageLayout = config.centeredPerPageLayout ?? false;
-  const hidePageNumbers = config.prevNextOnly || isCenteredPerPageLayout;
-
+  // Inline implementation copying exact EntityPagination styling
   const paginationControls = useMemo(
     () => (
       <Box
         data-testid="pagination"
         sx={{
           display: 'flex',
-          justifyContent: isCenteredPerPageLayout ? 'center' : 'space-between',
+          justifyContent: 'space-between',
           alignItems: 'center',
           borderTop: `1px solid ${theme.palette.allShades?.gray?.[200]}`,
           pt: 3.5,
           px: 6,
           pb: 5,
         }}>
+        <Button
+          color="secondary"
+          data-testid="previous"
+          disabled={config.currentPage === 1}
+          size="small"
+          startIcon={
+            <ArrowLeft
+              style={{ color: theme.palette.allShades?.gray?.[400] }}
+            />
+          }
+          variant="contained"
+          onClick={() => config.onPageChange(config.currentPage - 1)}>
+          {t('label.previous')}
+        </Button>
+
+        {!config.prevNextOnly && (
+          <Pagination
+            hideNextButton
+            hidePrevButton
+            count={config.totalPages}
+            page={config.currentPage}
+            shape="rounded"
+            variant="outlined"
+            onChange={(_, page) => config.onPageChange(page)}
+          />
+        )}
+
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 2,
+            gap: 1.5,
           }}>
-          <Button
-            color="secondary"
-            data-testid="previous"
-            disabled={config.currentPage === 1}
-            size="small"
-            startIcon={
-              <ArrowLeft
-                style={{ color: theme.palette.allShades?.gray?.[400] }}
-              />
-            }
-            variant="contained"
-            onClick={() => config.onPageChange(config.currentPage - 1)}>
-            {t('label.previous')}
-          </Button>
-
-          {!hidePageNumbers && (
-            <Pagination
-              hideNextButton
-              hidePrevButton
-              count={config.totalPages}
-              page={config.currentPage}
-              shape="rounded"
-              variant="outlined"
-              onChange={(_, page) => config.onPageChange(page)}
-            />
-          )}
-
-          {config.onPageSizeChange && (
+          {!config.prevNextOnly && config.onPageSizeChange && (
             <Box
               sx={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,
               }}>
-              {isCenteredPerPageLayout ? (
-                <Typography
-                  component="span"
-                  sx={{
-                    fontSize: theme.typography.pxToRem(14),
-                    color: theme.palette.text.secondary,
-                    whiteSpace: 'nowrap',
-                  }}>
-                  {t('label.per-page')}
-                </Typography>
-              ) : (
-                !config.prevNextOnly && (
-                  <Typography
-                    sx={{
-                      fontSize: theme.typography.pxToRem(14),
-                      color: theme.palette.text.secondary,
-                      whiteSpace: 'nowrap',
-                      marginRight: theme.spacing(1),
-                    }}>
-                    {`${formatNumberWithComma(
-                      displayedRowsRange.start
-                    )}-${formatNumberWithComma(displayedRowsRange.end)} ${t(
-                      'label.of'
-                    )} ${formatNumberWithComma(config.totalEntities)}`}
-                  </Typography>
-                )
-              )}
+              <Typography
+                sx={{
+                  fontSize: theme.typography.pxToRem(14),
+                  color: theme.palette.text.secondary,
+                  whiteSpace: 'nowrap',
+                  marginRight: theme.spacing(1),
+                }}>
+                {`${formatNumberWithComma(
+                  displayedRowsRange.start
+                )}-${formatNumberWithComma(displayedRowsRange.end)} ${t(
+                  'label.of'
+                )} ${formatNumberWithComma(config.totalEntities)}`}
+              </Typography>
               <Select
                 data-testid="rows-per-page-select"
                 size="small"
@@ -224,7 +207,6 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
       config.onPageChange,
       config.onPageSizeChange,
       config.prevNextOnly,
-      config.centeredPerPageLayout,
       rowsPerPageOptions,
       displayedRowsRange,
       selectedPageSize,
