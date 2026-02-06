@@ -26,6 +26,7 @@ import {
 } from '../../utils/common';
 import { addMultiOwner, removeOwnersFromList } from '../../utils/entity';
 import { test } from '../fixtures/pages';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 
 const table = new TableClass();
 const user1 = new UserClass();
@@ -49,7 +50,7 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
-test('Logical TestSuite', async ({ page, ownerPage }) => {
+test('Logical TestSuite', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page, ownerPage }) => {
   test.slow();
 
   const NEW_TEST_SUITE = {

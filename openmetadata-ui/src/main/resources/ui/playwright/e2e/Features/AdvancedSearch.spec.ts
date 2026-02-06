@@ -12,6 +12,7 @@
  */
 
 import { COMMON_TIER_TAG } from '../../constant/common';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -39,7 +40,7 @@ const table2 = new TableClass();
 const topic1 = new TopicClass();
 const topic2 = new TopicClass();
 
-test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
+test.describe('Advanced Search', { tag: ['@advanced-search', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ.tag] }, () => {
   let searchCriteria: Record<string, Array<string>> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
