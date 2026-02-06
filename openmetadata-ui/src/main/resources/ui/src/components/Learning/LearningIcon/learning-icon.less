@@ -24,43 +24,48 @@
   }
 }
 
-.ant-badge.learning-icon-badge {
+.learning-icon-badge {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   vertical-align: middle;
   position: relative;
   border-radius: 16px;
+  background: var(--Gray-100, #f5f5f5);
   padding: 4px !important;
   height: fit-content;
-
-  .ant-badge-count {
-    background-color: @red-14;
-    font-size: 10px;
-    min-width: 16px;
-    height: 16px;
-    line-height: 16px;
-    padding: 0 4px;
-    box-shadow: 0 0 0 1px @white;
-    position: absolute !important;
-    top: -4px !important;
-    right: -6px !important;
-    transform: none !important;
-  }
 }
 
 .learning-tooltip-popover {
+  &.ant-popover-placement-bottom,
+  &.ant-popover-placement-bottomLeft,
+  &.ant-popover-placement-bottomRight {
+    padding-top: 6px;
+  }
+
   .ant-popover-inner {
-    padding: 0;
-    border-radius: @border-rad-sm;
-    background-color: @grey-50;
+    border-radius: var(--radius-lg, 10px);
+    background: var(
+      --gradient-gray-10050180-deg,
+      linear-gradient(
+        180deg,
+        var(--colors-gray-light-mode-50, #fafafa) 0%,
+        var(--colors-gray-light-mode-100, #f5f5f5) 100%
+      )
+    );
+    box-shadow: 0 4px 6px -1px var(--Colors-Effects-Shadows-shadow-md_01, rgba(10, 13, 18, 0.1)),
+      0 2px 4px -2px var(--Colors-Effects-Shadows-shadow-md_02, rgba(10, 13, 18, 0.06));
+  }
+
+  .ant-popover-inner-content {
+    padding: 4px 10px;
   }
 }
 
 .learning-tooltip-content {
   display: flex;
   align-items: center;
-  gap: @size-sm;
+  gap: 8px;
 
   .learning-tooltip-text {
     font-size: 13px;
@@ -68,10 +73,7 @@
   }
 
   .learning-tooltip-button {
-    font-size: 12px;
-    border-radius: @border-rad-sm;
-    background-color: @white;
-    border: none;
-    color: @grey-700;
+    border-radius: 8px !important;
+    min-width: 0;
   }
 }
