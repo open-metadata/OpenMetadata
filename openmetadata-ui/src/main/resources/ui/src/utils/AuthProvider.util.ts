@@ -242,6 +242,80 @@ export const getNameFromEmail = (email: string) => {
   }
 };
 
+/**
+ * Extracts user name from SSO provider user profile with fallback strategy.
+ * Works with all SSO providers (Auth0, Azure, SAML, Google, Okta, Custom OIDC, AWS Cognito).
+ *
+ * Priority order:
+ * 1. user.name (direct name field from provider)
+ * 2. user.given_name + user.family_name (first name + last name combination)
+ * 3. user.given_name or user.family_name (either field if only one is available)
+ * 4. user.preferred_username (extract username part before @)
+ * 5. user.email (extract username part before @)
+ * 6. user.sub (subject identifier as last resort)
+ *
+ * @param user - UserProfile object from SSO provider response (can contain standard OIDC claims)
+ * @returns Extracted username string, or empty string if no valid field found
+ *
+ * @example
+ * // Auth0 provider with name field
+ * extractNameFromUserProfile({ name: 'John Doe', email: 'john@example.com' })
+ * // Returns: 'John Doe'
+ *
+ * @example
+ * // Provider with firstName and lastName (given_name, family_name)
+ * extractNameFromUserProfile({ given_name: 'John', family_name: 'Doe' })
+ * // Returns: 'John Doe'
+ *
+ * @example
+ * // Azure provider with preferred_username
+ * extractNameFromUserProfile({ preferred_username: 'john.doe@company.com' })
+ * // Returns: 'john.doe'
+ *
+ * @example
+ * // SAML provider with email only
+ * extractNameFromUserProfile({ email: 'john@example.com' })
+ * // Returns: 'john'
+ */
+export const extractNameFromUserProfile = (user: UserProfile): string => {
+  if (!user) {
+    return '';
+  }
+
+  if (user.name) {
+    return user.name;
+  }
+
+  const givenName = get(user, 'given_name', '');
+  const familyName = get(user, 'family_name', '');
+
+  if (givenName && familyName) {
+    return `${givenName.trim()} ${familyName.trim()}`;
+  }
+
+  if (givenName) {
+    return givenName;
+  }
+
+  if (familyName) {
+    return familyName;
+  }
+
+  if (user.preferred_username) {
+    return getNameFromEmail(user.preferred_username);
+  }
+
+  if (user.email) {
+    return getNameFromEmail(user.email);
+  }
+
+  if (user.sub) {
+    return user.sub;
+  }
+
+  return '';
+};
+
 export const getNameFromUserData = (
   user: UserProfile,
   jwtPrincipalClaims: AuthenticationConfiguration['jwtPrincipalClaims'] = [],
@@ -251,6 +325,7 @@ export const getNameFromUserData = (
   let userName = '';
   let domain = principleDomain;
   let email = '';
+
   if (isEmpty(jwtPrincipalClaimsMapping)) {
     // filter and extract the present claims in user profile
     const jwtClaims = jwtPrincipalClaims.reduce(
@@ -297,7 +372,12 @@ export const getNameFromUserData = (
     }
   }
 
-  return { name: userName, email: email, picture: user.picture };
+  return {
+    name: userName,
+    email: email,
+    picture: user.picture,
+    displayName: extractNameFromUserProfile(user),
+  };
 };
 
 export const isTourRoute = (pathname: string) => {

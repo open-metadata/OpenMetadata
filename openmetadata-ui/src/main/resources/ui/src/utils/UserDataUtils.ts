@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEqual } from 'lodash';
+import { get, isEqual } from 'lodash';
 import { OidcUser } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { updateUserDetail } from '../rest/userAPI';
 import { User } from './../generated/entity/teams/user';
@@ -42,7 +42,8 @@ export const getUserDataFromOidc = (
   return {
     ...userData,
     email,
-    displayName: oidcUser.profile.name,
+    // newly added DisplayName field in OIDC profile
+    displayName: get(oidcUser, 'profile.displayName', oidcUser.profile.name),
     profile: images ? { ...userData.profile, images } : undefined,
   };
 };
@@ -91,37 +92,57 @@ export const checkIfUpdateRequired = async (
 ): Promise<User> => {
   const updatedUserData = getUserDataFromOidc(existingUserDetails, newUser);
 
-  if (existingUserDetails.email !== updatedUserData.email) {
+  const emailChanged = existingUserDetails.email !== updatedUserData.email;
+  if (emailChanged) {
     return existingUserDetails;
-  } else if (
-    existingUserDetails.email === updatedUserData.email &&
-    // We only want to update images / profile info not any other information
-    updatedUserData.profile?.images &&
-    !matchUserDetails(existingUserDetails, updatedUserData, ['profile'])
-  ) {
-    const finalData = {
-      ...existingUserDetails,
-      //   We want to override any profile information that is coming from the OIDC provider
-      profile: {
-        ...existingUserDetails.profile,
-        ...updatedUserData.profile,
-      },
-    };
-    const jsonPatch = compare(existingUserDetails, finalData);
-
-    try {
-      const res = await updateUserDetail(existingUserDetails.id, jsonPatch);
-
-      return res;
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        i18n.t('server.entity-updating-error', {
-          entity: i18n.t('label.admin-profile'),
-        })
-      );
-    }
   }
 
-  return existingUserDetails;
+  const hasNewProfileImage =
+    updatedUserData.profile?.images &&
+    !matchUserDetails(existingUserDetails, updatedUserData, ['profile']);
+
+  const hasNewDisplayName =
+    !existingUserDetails.displayName && updatedUserData.displayName;
+
+  const shouldUpdateUser = hasNewProfileImage || hasNewDisplayName;
+
+  if (!shouldUpdateUser) {
+    return existingUserDetails;
+  }
+
+  const finalData: User = {
+    ...existingUserDetails,
+  };
+
+  if (hasNewDisplayName) {
+    finalData.displayName = updatedUserData.displayName;
+  }
+
+  if (hasNewProfileImage) {
+    finalData.profile = {
+      ...existingUserDetails.profile,
+      ...updatedUserData.profile,
+    };
+  }
+
+  const jsonPatch = compare(existingUserDetails, finalData);
+
+  if (jsonPatch.length === 0) {
+    return existingUserDetails;
+  }
+
+  try {
+    const res = await updateUserDetail(existingUserDetails.id, jsonPatch);
+
+    return res;
+  } catch (error) {
+    showErrorToast(
+      error as AxiosError,
+      i18n.t('server.entity-updating-error', {
+        entity: i18n.t('label.admin-profile'),
+      })
+    );
+
+    return existingUserDetails;
+  }
 };
