@@ -12,14 +12,13 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Drawer, Form, Input, Select, Space, Typography } from 'antd';
+import { Button, Drawer, Form, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArticalIcon } from '../../assets/svg/artical.svg';
-import { ReactComponent as StoryLaneIcon } from '../../assets/svg/story-lane.svg';
-import { ReactComponent as VideoIcon } from '../../assets/svg/video.svg';
-import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
+import { ReactComponent as ArticleIcon } from '../../assets/svg/ic_article.svg';
+import { ReactComponent as StoryLaneIcon } from '../../assets/svg/ic_storylane.svg';
+import { ReactComponent as VideoIcon } from '../../assets/svg/ic_video.svg';
 import {
   CATEGORIES,
   DURATIONS,
@@ -39,7 +38,6 @@ import './learning-resource-form.less';
 import { LearningResourceFormProps } from './LearningResourceForm.interface';
 
 const { TextArea } = Input;
-const { Text } = Typography;
 
 export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
   open,
@@ -49,27 +47,23 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [embedContent, setEmbedContent] = useState('');
-  const [resourceType, setResourceType] = useState<string>(
-    ResourceType.Article
-  );
 
   const RESOURCE_TYPES: ResourceTypeOption[] = useMemo(
     () => [
       {
         value: ResourceType.Video,
         label: t('label.video'),
-        icon: <VideoIcon height={16} width={16} />,
+        icon: <VideoIcon height={24} width={24} />,
       },
       {
         value: ResourceType.Storylane,
         label: t('label.storylane'),
-        icon: <StoryLaneIcon height={16} width={16} />,
+        icon: <StoryLaneIcon height={24} width={24} />,
       },
       {
         value: ResourceType.Article,
         label: t('label.article'),
-        icon: <ArticalIcon height={16} width={16} />,
+        icon: <ArticleIcon height={24} width={24} />,
       },
     ],
     [t]
@@ -77,31 +71,20 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
 
   useEffect(() => {
     if (resource) {
-      const embedConfig = resource.source.embedConfig as Record<
-        string,
-        unknown
-      >;
-      setEmbedContent((embedConfig?.content as string) || '');
-      setResourceType(resource.resourceType);
       form.setFieldsValue({
         name: resource.name,
-        displayName: resource.displayName,
         description: resource.description,
         resourceType: resource.resourceType,
         categories: resource.categories,
         difficulty: resource.difficulty,
         sourceUrl: resource.source.url,
         sourceProvider: resource.source.provider,
-        estimatedDuration: resource.estimatedDuration
-          ? Math.floor(resource.estimatedDuration / 60)
-          : undefined,
+        estimatedDuration: resource.estimatedDuration,
         contexts: resource.contexts?.map((ctx) => ctx.pageId) || [],
         status: resource.status || LearningResourceStatus.Active,
       });
     } else {
       form.resetFields();
-      setEmbedContent('');
-      setResourceType(ResourceType.Article);
     }
   }, [resource, form]);
 
@@ -123,17 +106,10 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
         contexts,
         description: values.description,
         difficulty: values.difficulty,
-        displayName: values.displayName,
-        estimatedDuration: values.estimatedDuration
-          ? values.estimatedDuration * 60
-          : undefined,
+        estimatedDuration: values.estimatedDuration,
         name: values.name,
         resourceType: values.resourceType,
         source: {
-          embedConfig:
-            values.resourceType === ResourceType.Article && embedContent
-              ? { content: embedContent }
-              : undefined,
           provider: values.sourceProvider,
           url: values.sourceUrl,
         },
@@ -158,14 +134,14 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
 
       onClose();
     } catch (error) {
-      if (error instanceof Error && 'errorFields' in error) {
+      if (error && typeof error === 'object' && 'errorFields' in error) {
         return;
       }
       showErrorToast(error as AxiosError);
     } finally {
       setIsSubmitting(false);
     }
-  }, [form, resource, embedContent, t, onClose]);
+  }, [form, resource, t, onClose]);
 
   const parseDuration = (duration: string): number => {
     const match = duration.match(/(\d+)/);
@@ -209,7 +185,11 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       <Form
         className="learning-resource-form"
         form={form}
-        initialValues={{ status: LearningResourceStatus.Active }}
+        initialValues={{
+          categories: [],
+          contexts: [],
+          status: LearningResourceStatus.Active,
+        }}
         layout="vertical">
         <Form.Item
           className="form-item-required"
@@ -229,16 +209,8 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           />
         </Form.Item>
 
-        <Form.Item label={t('label.display-name')} name="displayName">
-          <Input
-            placeholder={t('label.enter-entity', {
-              entity: t('label.display-name'),
-            })}
-          />
-        </Form.Item>
-
         <Form.Item
-          className="form-item-required"
+          className="form-item-required form-item-description"
           label={t('label.description')}
           name="description"
           rules={[
@@ -249,11 +221,11 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
               required: true,
             },
           ]}>
-          <TextArea placeholder={t('message.enter-description')} rows={3} />
+          <TextArea placeholder={t('message.enter-description')} rows={6} />
         </Form.Item>
 
         <Form.Item
-          className="form-item-required"
+          className="form-item-required form-item-type"
           data-testid="resource-type-form-item"
           label={t('label.type')}
           name="resourceType"
@@ -267,8 +239,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           ]}>
           <Select
             data-testid="resource-type-select"
-            placeholder={t('label.select-field', { field: t('label.type') })}
-            onChange={setResourceType}>
+            placeholder={t('label.select-field', { field: t('label.type') })}>
             {RESOURCE_TYPES.map((type) => (
               <Select.Option key={type.value} value={type.value}>
                 <Space align="center">
@@ -285,6 +256,9 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           data-testid="categories-form-item"
           label={t('label.category-plural')}
           name="categories"
+          normalize={(val) =>
+            Array.isArray(val) ? val : val != null ? [val] : []
+          }
           rules={[
             {
               message: t('label.field-required', {
@@ -304,8 +278,11 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
         <Form.Item
           className="form-item-required"
           data-testid="contexts-form-item"
-          label={t('label.page-plural')}
+          label={t('label.context')}
           name="contexts"
+          normalize={(val) =>
+            Array.isArray(val) ? val : val != null ? [val] : []
+          }
           rules={[
             {
               validator: async (_, contexts) => {
@@ -313,7 +290,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
                   return Promise.reject(
                     new Error(
                       t('label.field-required', {
-                        field: t('label.page-plural'),
+                        field: t('label.context'),
                       })
                     )
                   );
@@ -325,7 +302,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
             data-testid="contexts-select"
             mode="multiple"
             options={PAGE_IDS}
-            placeholder={t('label.select-page-plural')}
+            placeholder={t('label.select-field', { field: t('label.context') })}
           />
         </Form.Item>
 
@@ -368,19 +345,6 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
             placeholder={t('label.select-status')}
           />
         </Form.Item>
-
-        {resourceType === ResourceType.Article && (
-          <Form.Item label={t('label.embedded-content')}>
-            <Text className="embedded-content-hint" type="secondary">
-              {t('message.optional-markdown-content')}
-            </Text>
-            <RichTextEditor
-              initialValue={embedContent}
-              placeHolder={t('message.write-markdown-content')}
-              onTextChange={setEmbedContent}
-            />
-          </Form.Item>
-        )}
       </Form>
     </Drawer>
   );

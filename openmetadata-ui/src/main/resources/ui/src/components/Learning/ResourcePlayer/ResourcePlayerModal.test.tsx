@@ -127,13 +127,22 @@ describe('ResourcePlayerModal', () => {
     expect(screen.getByText('Governance')).toBeInTheDocument();
   });
 
-  it('should display formatted duration', () => {
+  it('should display formatted duration with min watch for Video', () => {
     const resource = createMockResource('Video');
     render(
       <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
     );
 
     expect(screen.getByText('5 label.min-watch')).toBeInTheDocument();
+  });
+
+  it('should display formatted duration with min read for Article', () => {
+    const resource = createMockResource('Article');
+    render(
+      <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
+    );
+
+    expect(screen.getByText('5 label.min-read')).toBeInTheDocument();
   });
 
   it('should call onClose when close button is clicked', () => {
@@ -159,7 +168,7 @@ describe('ResourcePlayerModal', () => {
     expect(screen.getByText('test-resource')).toBeInTheDocument();
   });
 
-  it('should show +N tag when more than 3 categories', () => {
+  it('should display all category tags when more than 3 categories', () => {
     const resource = createMockResource('Video', {
       categories: [
         'Discovery',
@@ -173,7 +182,11 @@ describe('ResourcePlayerModal', () => {
       <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
     );
 
-    expect(screen.getByText('+2')).toBeInTheDocument();
+    expect(screen.getByText('Discovery')).toBeInTheDocument();
+    expect(screen.getByText('Governance')).toBeInTheDocument();
+    expect(screen.getByText('Observability')).toBeInTheDocument();
+    expect(screen.getByText('Data Quality')).toBeInTheDocument();
+    expect(screen.getByText('Admin')).toBeInTheDocument();
   });
 
   it('should not display duration when not provided', () => {
