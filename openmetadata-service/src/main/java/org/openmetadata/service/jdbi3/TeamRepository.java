@@ -57,7 +57,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -566,21 +565,14 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void setInheritedFields(Team team, Fields fields) {
-    // If user does not have domain, then inherit it from parent Team
-    // TODO have default team when a user belongs to multiple teams
     if (fields.contains(FIELD_DOMAINS)) {
-      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
       List<EntityReference> parents =
           !fields.contains(PARENTS_FIELD) ? getParents(team) : team.getParents();
-      if (!nullOrEmpty(parents)) {
-        for (EntityReference parentRef : parents) {
-          Team parentTeam = Entity.getEntity(TEAM, parentRef.getId(), "domains", ALL);
-          combinedParent.addAll(parentTeam.getDomains());
-        }
-      }
+      // Batch load domains from all parent teams and their ancestors
+      Set<EntityReference> inheritedDomains = batchLoadDomainsWithHierarchy(parents, ALL);
       team.setDomains(
           EntityUtil.mergedInheritedEntityRefs(
-              team.getDomains(), combinedParent.stream().toList()));
+              team.getDomains(), inheritedDomains.stream().toList()));
     }
   }
 

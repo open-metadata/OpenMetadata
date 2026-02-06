@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
@@ -375,21 +374,14 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public void setInheritedFields(User user, Fields fields) {
-    // If user does not have domain, then inherit it from parent Team
-    // TODO have default team when a user belongs to multiple teams
     if (fields.contains(FIELD_DOMAINS)) {
-      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
       List<EntityReference> teams =
           !fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams();
-      if (!nullOrEmpty(teams)) {
-        for (EntityReference team : teams) {
-          Team parent = Entity.getEntity(TEAM, team.getId(), "domains", ALL);
-          combinedParent.addAll(parent.getDomains());
-        }
-      }
+      // Batch load domains from all teams and their parent hierarchy
+      Set<EntityReference> inheritedDomains = batchLoadDomainsWithHierarchy(teams, ALL);
       user.setDomains(
           EntityUtil.mergedInheritedEntityRefs(
-              user.getDomains(), combinedParent.stream().toList()));
+              user.getDomains(), inheritedDomains.stream().toList()));
     }
   }
 

@@ -1900,6 +1900,256 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
+  @Test
+  void test_inheritDomainFromTeamHierarchy(TestInfo test) throws IOException {
+    // Test that user inherits domains from the entire team hierarchy (parent -> grandparent)
+    // This tests the fix for the N+1 query performance issue with deep hierarchies
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+
+    // Create a domain for the division level
+    CreateDomain createDomain = domainResourceTest.createRequest(test);
+    Domain divisionDomain = domainResourceTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    // Create hierarchy: Division (with domain) -> Department -> Group
+    // Division has the domain
+    CreateTeam createDivision =
+        teamResourceTest
+            .createRequest(test)
+            .withName("division_" + test.getDisplayName())
+            .withTeamType(CreateTeam.TeamType.DIVISION)
+            .withDomains(List.of(divisionDomain.getFullyQualifiedName()));
+    Team division = teamResourceTest.createEntity(createDivision, ADMIN_AUTH_HEADERS);
+
+    // Department under Division (no domain)
+    CreateTeam createDept =
+        teamResourceTest
+            .createRequest(test, 1)
+            .withName("dept_" + test.getDisplayName())
+            .withTeamType(CreateTeam.TeamType.DEPARTMENT)
+            .withParents(listOf(division.getId()));
+    Team department = teamResourceTest.createEntity(createDept, ADMIN_AUTH_HEADERS);
+
+    // Group under Department (no domain)
+    CreateTeam createGroup =
+        teamResourceTest
+            .createRequest(test, 2)
+            .withName("group_" + test.getDisplayName())
+            .withTeamType(GROUP)
+            .withParents(listOf(department.getId()));
+    Team group = teamResourceTest.createEntity(createGroup, ADMIN_AUTH_HEADERS);
+
+    // Create user in the Group - should inherit domain from Division (grandparent)
+    CreateUser createUser = createRequest(test).withTeams(listOf(group.getId()));
+    User user = createEntity(createUser.withDomains(null), ADMIN_AUTH_HEADERS);
+
+    // Verify user inherited the domain from the division (through the hierarchy)
+    User fetchedUser = getEntity(user.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedUser.getDomains());
+    assertEquals(1, fetchedUser.getDomains().size());
+    assertEquals(divisionDomain.getId(), fetchedUser.getDomains().get(0).getId());
+    assertTrue(fetchedUser.getDomains().get(0).getInherited());
+  }
+
+  @Test
+  void test_inheritDomainFromMultipleGroupsWithHierarchy(TestInfo test) throws IOException {
+    // Test that user in multiple groups inherits domains from all group hierarchies
+    // This tests the fix for performance issue when user belongs to many groups
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+
+    // Create two domains for different divisions
+    CreateDomain createDomain1 = domainResourceTest.createRequest(test);
+    Domain domain1 = domainResourceTest.createEntity(createDomain1, ADMIN_AUTH_HEADERS);
+
+    CreateDomain createDomain2 = domainResourceTest.createRequest(test, 1);
+    Domain domain2 = domainResourceTest.createEntity(createDomain2, ADMIN_AUTH_HEADERS);
+
+    // Hierarchy 1: Division1 (domain1) -> Group1
+    CreateTeam createDiv1 =
+        teamResourceTest
+            .createRequest(test)
+            .withName("div1_" + test.getDisplayName())
+            .withTeamType(CreateTeam.TeamType.DIVISION)
+            .withDomains(List.of(domain1.getFullyQualifiedName()));
+    Team division1 = teamResourceTest.createEntity(createDiv1, ADMIN_AUTH_HEADERS);
+
+    CreateTeam createGroup1 =
+        teamResourceTest
+            .createRequest(test, 1)
+            .withName("group1_" + test.getDisplayName())
+            .withTeamType(GROUP)
+            .withParents(listOf(division1.getId()));
+    Team group1 = teamResourceTest.createEntity(createGroup1, ADMIN_AUTH_HEADERS);
+
+    // Hierarchy 2: Division2 (domain2) -> Group2
+    CreateTeam createDiv2 =
+        teamResourceTest
+            .createRequest(test, 2)
+            .withName("div2_" + test.getDisplayName())
+            .withTeamType(CreateTeam.TeamType.DIVISION)
+            .withDomains(List.of(domain2.getFullyQualifiedName()));
+    Team division2 = teamResourceTest.createEntity(createDiv2, ADMIN_AUTH_HEADERS);
+
+    CreateTeam createGroup2 =
+        teamResourceTest
+            .createRequest(test, 3)
+            .withName("group2_" + test.getDisplayName())
+            .withTeamType(GROUP)
+            .withParents(listOf(division2.getId()));
+    Team group2 = teamResourceTest.createEntity(createGroup2, ADMIN_AUTH_HEADERS);
+
+    // Create user in both groups - should inherit domains from both divisions
+    CreateUser createUser = createRequest(test).withTeams(listOf(group1.getId(), group2.getId()));
+    User user = createEntity(createUser.withDomains(null), ADMIN_AUTH_HEADERS);
+
+    // Verify user inherited both domains from the respective divisions
+    User fetchedUser = getEntity(user.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedUser.getDomains());
+    assertEquals(2, fetchedUser.getDomains().size());
+
+    Set<UUID> domainIds =
+        fetchedUser.getDomains().stream().map(EntityReference::getId).collect(Collectors.toSet());
+    assertTrue(domainIds.contains(domain1.getId()));
+    assertTrue(domainIds.contains(domain2.getId()));
+
+    // All domains should be marked as inherited
+    assertTrue(fetchedUser.getDomains().stream().allMatch(EntityReference::getInherited));
+  }
+
+  @Test
+  void test_inheritDomainFromManyGroups(TestInfo test) throws IOException {
+    // Test user belonging to many groups (simulates the 100 groups performance scenario)
+    // Verifies batch loading works correctly with multiple groups
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+
+    // Create a shared domain at division level
+    CreateDomain createDomain = domainResourceTest.createRequest(test);
+    Domain sharedDomain = domainResourceTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    // Create a division with the domain
+    CreateTeam createDivision =
+        teamResourceTest
+            .createRequest(test)
+            .withName("shared_div_" + test.getDisplayName())
+            .withTeamType(CreateTeam.TeamType.DIVISION)
+            .withDomains(List.of(sharedDomain.getFullyQualifiedName()));
+    Team division = teamResourceTest.createEntity(createDivision, ADMIN_AUTH_HEADERS);
+
+    // Create 10 groups under the division (simulates many groups scenario)
+    List<UUID> groupIds = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      CreateTeam createGroup =
+          teamResourceTest
+              .createRequest(test, i + 1)
+              .withName("group_" + i + "_" + test.getDisplayName())
+              .withTeamType(GROUP)
+              .withParents(listOf(division.getId()));
+      Team group = teamResourceTest.createEntity(createGroup, ADMIN_AUTH_HEADERS);
+      groupIds.add(group.getId());
+    }
+
+    // Create user in all 10 groups
+    CreateUser createUser = createRequest(test).withTeams(groupIds);
+    User user = createEntity(createUser.withDomains(null), ADMIN_AUTH_HEADERS);
+
+    // Verify user inherited the domain from division (should appear only once, not 10 times)
+    User fetchedUser = getEntity(user.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+    assertNotNull(fetchedUser.getDomains());
+    assertEquals(1, fetchedUser.getDomains().size());
+    assertEquals(sharedDomain.getId(), fetchedUser.getDomains().get(0).getId());
+    assertTrue(fetchedUser.getDomains().get(0).getInherited());
+  }
+
+  @Test
+  void test_userWith100GroupsPerformance(TestInfo test) throws IOException {
+    // This test reproduces the exact scenario from the GitHub issue:
+    // "Create a full organizational structure with 100 groups at the bottom of it.
+    // Create a user that is a member of all 100 groups."
+    // This verifies the N+1 query fix for domain inheritance performance.
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    DomainResourceTest domainResourceTest = new DomainResourceTest();
+
+    // Create domain at organization level
+    CreateDomain createDomain = domainResourceTest.createRequest(test);
+    Domain orgDomain = domainResourceTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    // Create hierarchy: Organization (domain) -> Division -> Department -> 100 Groups
+    // Division level
+    CreateTeam createDivision =
+        teamResourceTest
+            .createRequest(test)
+            .withName("perf_division_" + test.getDisplayName())
+            .withTeamType(CreateTeam.TeamType.DIVISION)
+            .withDomains(List.of(orgDomain.getFullyQualifiedName()));
+    Team division = teamResourceTest.createEntity(createDivision, ADMIN_AUTH_HEADERS);
+
+    // Department level
+    CreateTeam createDept =
+        teamResourceTest
+            .createRequest(test, 1)
+            .withName("perf_dept_" + test.getDisplayName())
+            .withTeamType(CreateTeam.TeamType.DEPARTMENT)
+            .withParents(listOf(division.getId()));
+    Team department = teamResourceTest.createEntity(createDept, ADMIN_AUTH_HEADERS);
+
+    // Create 100 groups under the department
+    List<UUID> groupIds = new ArrayList<>();
+    for (int i = 0; i < 100; i++) {
+      CreateTeam createGroup =
+          teamResourceTest
+              .createRequest(test, i + 10) // offset to avoid name conflicts
+              .withName("perf_group_" + i + "_" + test.getDisplayName())
+              .withTeamType(GROUP)
+              .withParents(listOf(department.getId()));
+      Team group = teamResourceTest.createEntity(createGroup, ADMIN_AUTH_HEADERS);
+      groupIds.add(group.getId());
+    }
+
+    // Create user belonging to all 100 groups
+    CreateUser createUser =
+        createRequest(test)
+            .withName("user_100_groups_" + test.getDisplayName())
+            .withTeams(groupIds);
+
+    // Measure time to create user (includes domain inheritance)
+    long startCreate = System.currentTimeMillis();
+    User user = createEntity(createUser.withDomains(null), ADMIN_AUTH_HEADERS);
+    long createTime = System.currentTimeMillis() - startCreate;
+
+    // Measure time to fetch user with domains field
+    long startFetch = System.currentTimeMillis();
+    User fetchedUser = getEntity(user.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+    long fetchTime = System.currentTimeMillis() - startFetch;
+
+    // Verify the domain is inherited correctly
+    assertNotNull(fetchedUser.getDomains());
+    assertEquals(1, fetchedUser.getDomains().size());
+    assertEquals(orgDomain.getId(), fetchedUser.getDomains().get(0).getId());
+    assertTrue(fetchedUser.getDomains().get(0).getInherited());
+
+    // Verify user has all 100 teams
+    User userWithTeams = getEntity(user.getId(), "teams", ADMIN_AUTH_HEADERS);
+    assertEquals(100, userWithTeams.getTeams().size());
+
+    // Log performance metrics (these should be reasonable with the batch loading fix)
+    // Before fix: could take 10+ seconds
+    // After fix: should take < 2 seconds
+    System.out.println(
+        "Performance test with 100 groups - Create time: "
+            + createTime
+            + "ms, Fetch time: "
+            + fetchTime
+            + "ms");
+
+    // Assert reasonable performance (with batch loading, should be fast)
+    // Setting generous thresholds to avoid flaky tests, but these should catch major regressions
+    assertTrue(
+        fetchTime < 10000,
+        "Fetching user with 100 groups took too long: " + fetchTime + "ms (expected < 10s)");
+  }
+
   public User assertSingleDomainInheritance(
       CreateUser createRequest, EntityReference expectedDomain) throws IOException {
     User entity = createEntity(createRequest.withDomains(null), ADMIN_AUTH_HEADERS);

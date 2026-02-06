@@ -38,6 +38,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
@@ -48,6 +49,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Personas;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.models.ListParams;
@@ -2216,5 +2218,243 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   @Override
   protected User getVersion(UUID id, Double version) {
     return Users.getVersion(id.toString(), version);
+  }
+
+  // ===================================================================
+  // DOMAIN INHERITANCE HIERARCHY TESTS - N+1 Query Performance Fix
+  // ===================================================================
+
+  @Test
+  void test_inheritDomainFromTeamHierarchy(TestNamespace ns) {
+    // Test that user inherits domains from the entire team hierarchy (parent -> grandparent)
+    // This tests the fix for the N+1 query performance issue with deep hierarchies
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a domain for the division level
+    String domainName = ns.prefix("divisionDomain");
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName(domainName)
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withDescription("Domain for hierarchy test");
+    org.openmetadata.schema.entity.domains.Domain divisionDomain =
+        org.openmetadata.sdk.fluent.Domains.create(createDomain);
+
+    // Create hierarchy: Division (with domain) -> Department -> Group
+    CreateTeam createDivision =
+        new CreateTeam()
+            .withName(ns.prefix("division"))
+            .withTeamType(TeamType.DIVISION)
+            .withDomains(List.of(divisionDomain.getFullyQualifiedName()))
+            .withDescription("Division with domain");
+    Team division = client.teams().create(createDivision);
+
+    CreateTeam createDept =
+        new CreateTeam()
+            .withName(ns.prefix("dept"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withParents(List.of(division.getId()))
+            .withDescription("Department under division");
+    Team department = client.teams().create(createDept);
+
+    CreateTeam createGroup =
+        new CreateTeam()
+            .withName(ns.prefix("group"))
+            .withTeamType(TeamType.GROUP)
+            .withParents(List.of(department.getId()))
+            .withDescription("Group under department");
+    Team group = client.teams().create(createGroup);
+
+    // Create user in the Group - should inherit domain from Division (grandparent)
+    String userName = ns.prefix("hierarchyUser");
+    CreateUser createUser =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(toValidEmail(userName))
+            .withTeams(List.of(group.getId()))
+            .withDescription("User to test hierarchy domain inheritance");
+    User user = createEntity(createUser);
+
+    // Verify user inherited the domain from the division (through the hierarchy)
+    User fetchedUser = Users.get(user.getId().toString(), "domains");
+    assertNotNull(fetchedUser.getDomains());
+    assertEquals(1, fetchedUser.getDomains().size());
+    assertEquals(divisionDomain.getId(), fetchedUser.getDomains().get(0).getId());
+    assertTrue(fetchedUser.getDomains().get(0).getInherited());
+  }
+
+  @Test
+  void test_inheritDomainFromMultipleGroupsWithHierarchy(TestNamespace ns) {
+    // Test that user in multiple groups inherits domains from all group hierarchies
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create two domains for different divisions
+    String domain1Name = ns.prefix("domain1");
+    CreateDomain createDomain1 =
+        new CreateDomain()
+            .withName(domain1Name)
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withDescription("Domain 1");
+    org.openmetadata.schema.entity.domains.Domain domain1 =
+        org.openmetadata.sdk.fluent.Domains.create(createDomain1);
+
+    String domain2Name = ns.prefix("domain2");
+    CreateDomain createDomain2 =
+        new CreateDomain()
+            .withName(domain2Name)
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withDescription("Domain 2");
+    org.openmetadata.schema.entity.domains.Domain domain2 =
+        org.openmetadata.sdk.fluent.Domains.create(createDomain2);
+
+    // Hierarchy 1: Division1 (domain1) -> Group1
+    CreateTeam createDiv1 =
+        new CreateTeam()
+            .withName(ns.prefix("div1"))
+            .withTeamType(TeamType.DIVISION)
+            .withDomains(List.of(domain1.getFullyQualifiedName()))
+            .withDescription("Division 1");
+    Team division1 = client.teams().create(createDiv1);
+
+    CreateTeam createGroup1 =
+        new CreateTeam()
+            .withName(ns.prefix("group1"))
+            .withTeamType(TeamType.GROUP)
+            .withParents(List.of(division1.getId()))
+            .withDescription("Group 1");
+    Team group1 = client.teams().create(createGroup1);
+
+    // Hierarchy 2: Division2 (domain2) -> Group2
+    CreateTeam createDiv2 =
+        new CreateTeam()
+            .withName(ns.prefix("div2"))
+            .withTeamType(TeamType.DIVISION)
+            .withDomains(List.of(domain2.getFullyQualifiedName()))
+            .withDescription("Division 2");
+    Team division2 = client.teams().create(createDiv2);
+
+    CreateTeam createGroup2 =
+        new CreateTeam()
+            .withName(ns.prefix("group2"))
+            .withTeamType(TeamType.GROUP)
+            .withParents(List.of(division2.getId()))
+            .withDescription("Group 2");
+    Team group2 = client.teams().create(createGroup2);
+
+    // Create user in both groups - should inherit domains from both divisions
+    String userName = ns.prefix("multiGroupUser");
+    CreateUser createUser =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(toValidEmail(userName))
+            .withTeams(List.of(group1.getId(), group2.getId()))
+            .withDescription("User in multiple groups");
+    User user = createEntity(createUser);
+
+    // Verify user inherited both domains from the respective divisions
+    User fetchedUser = Users.get(user.getId().toString(), "domains");
+    assertNotNull(fetchedUser.getDomains());
+    assertEquals(2, fetchedUser.getDomains().size());
+
+    java.util.Set<UUID> domainIds =
+        fetchedUser.getDomains().stream()
+            .map(EntityReference::getId)
+            .collect(java.util.stream.Collectors.toSet());
+    assertTrue(domainIds.contains(domain1.getId()));
+    assertTrue(domainIds.contains(domain2.getId()));
+
+    // All domains should be marked as inherited
+    assertTrue(fetchedUser.getDomains().stream().allMatch(EntityReference::getInherited));
+  }
+
+  @Test
+  void test_userWith100GroupsPerformance(TestNamespace ns) {
+    // This test reproduces the exact scenario from the GitHub issue:
+    // "Create a full organizational structure with 100 groups at the bottom of it.
+    // Create a user that is a member of all 100 groups."
+    // This verifies the N+1 query fix for domain inheritance performance.
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create domain at organization level
+    String domainName = ns.prefix("perfDomain");
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName(domainName)
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withDescription("Domain for performance test");
+    org.openmetadata.schema.entity.domains.Domain orgDomain =
+        org.openmetadata.sdk.fluent.Domains.create(createDomain);
+
+    // Create hierarchy: Division (domain) -> Department -> 100 Groups
+    CreateTeam createDivision =
+        new CreateTeam()
+            .withName(ns.prefix("perfDivision"))
+            .withTeamType(TeamType.DIVISION)
+            .withDomains(List.of(orgDomain.getFullyQualifiedName()))
+            .withDescription("Division with domain");
+    Team division = client.teams().create(createDivision);
+
+    CreateTeam createDept =
+        new CreateTeam()
+            .withName(ns.prefix("perfDept"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withParents(List.of(division.getId()))
+            .withDescription("Department under division");
+    Team department = client.teams().create(createDept);
+
+    // Create 100 groups under the department
+    List<UUID> groupIds = new ArrayList<>();
+    for (int i = 0; i < 100; i++) {
+      CreateTeam createGroup =
+          new CreateTeam()
+              .withName(ns.prefix("perfGroup" + i))
+              .withTeamType(TeamType.GROUP)
+              .withParents(List.of(department.getId()))
+              .withDescription("Group " + i);
+      Team group = client.teams().create(createGroup);
+      groupIds.add(group.getId());
+    }
+
+    // Create user belonging to all 100 groups
+    String userName = ns.prefix("user100groups");
+    CreateUser createUser =
+        new CreateUser()
+            .withName(userName)
+            .withEmail(toValidEmail(userName))
+            .withTeams(groupIds)
+            .withDescription("User in 100 groups");
+
+    // Measure time to create user (includes domain inheritance)
+    long startCreate = System.currentTimeMillis();
+    User user = createEntity(createUser);
+    long createTime = System.currentTimeMillis() - startCreate;
+
+    // Measure time to fetch user with domains field
+    long startFetch = System.currentTimeMillis();
+    User fetchedUser = Users.get(user.getId().toString(), "domains");
+    long fetchTime = System.currentTimeMillis() - startFetch;
+
+    // Verify the domain is inherited correctly
+    assertNotNull(fetchedUser.getDomains());
+    assertEquals(1, fetchedUser.getDomains().size());
+    assertEquals(orgDomain.getId(), fetchedUser.getDomains().get(0).getId());
+    assertTrue(fetchedUser.getDomains().get(0).getInherited());
+
+    // Verify user has all 100 teams
+    User userWithTeams = Users.get(user.getId().toString(), "teams");
+    assertEquals(100, userWithTeams.getTeams().size());
+
+    // Log performance metrics
+    System.out.println(
+        "Performance test with 100 groups - Create time: "
+            + createTime
+            + "ms, Fetch time: "
+            + fetchTime
+            + "ms");
+
+    // Assert reasonable performance (with batch loading, should be fast)
+    assertTrue(
+        fetchTime < 30000,
+        "Fetching user with 100 groups took too long: " + fetchTime + "ms (expected < 30s)");
   }
 }

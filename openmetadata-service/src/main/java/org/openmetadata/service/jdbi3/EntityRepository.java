@@ -126,6 +126,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -7224,6 +7225,94 @@ public abstract class EntityRepository<T extends EntityInterface> {
         });
 
     return childrenMap;
+  }
+
+  /**
+   * Batch load all ancestor team IDs for a list of team IDs. This traverses the team hierarchy
+   * upward level by level using batch queries.
+   *
+   * @param teamIds Initial set of team IDs
+   * @param include Include parameter for soft-deleted entities
+   * @return Set of all team IDs including the input teams and all their ancestors
+   */
+  protected static Set<UUID> batchLoadAncestorTeamIds(Set<UUID> teamIds, Include include) {
+    Set<UUID> allTeamIds = new HashSet<>(teamIds);
+    Set<UUID> currentLevel = new HashSet<>(teamIds);
+
+    CollectionDAO dao = Entity.getCollectionDAO();
+
+    while (!currentLevel.isEmpty()) {
+      List<String> currentIds = currentLevel.stream().map(UUID::toString).toList();
+
+      // Batch query to find all parents for current level
+      // Relationship: Parent --(PARENT_OF)--> Child
+      // findFromBatch with toIds=currentIds finds Parents
+      List<CollectionDAO.EntityRelationshipObject> parentRecords =
+          dao.relationshipDAO()
+              .findFromBatch(currentIds, Relationship.PARENT_OF.ordinal(), TEAM, TEAM);
+
+      // Collect parent IDs that we haven't visited yet
+      Set<UUID> newParents = new HashSet<>();
+      for (CollectionDAO.EntityRelationshipObject rec : parentRecords) {
+        UUID parentId = UUID.fromString(rec.getFromId());
+        if (!allTeamIds.contains(parentId)) {
+          newParents.add(parentId);
+          allTeamIds.add(parentId);
+        }
+      }
+
+      // Move to next level (parents become the new current level)
+      currentLevel = newParents;
+    }
+
+    return allTeamIds;
+  }
+
+  /**
+   * Batch load domains for a list of team references including their entire ancestor hierarchy.
+   * This is used to properly inherit domains from parent teams.
+   *
+   * @param teamRefs List of team references (the teams a user belongs to or parent teams)
+   * @param include Include parameter for soft-deleted entities
+   * @return Set of all domain references from the teams and their ancestors
+   */
+  protected static Set<EntityReference> batchLoadDomainsWithHierarchy(
+      List<EntityReference> teamRefs, Include include) {
+    Set<EntityReference> allDomains = new TreeSet<>(EntityUtil.compareEntityReferenceById);
+
+    if (teamRefs == null || teamRefs.isEmpty()) {
+      return allDomains;
+    }
+
+    // Step 1: Collect all team IDs including ancestors
+    Set<UUID> initialTeamIds =
+        teamRefs.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    Set<UUID> allTeamIds = batchLoadAncestorTeamIds(initialTeamIds, include);
+
+    if (allTeamIds.isEmpty()) {
+      return allDomains;
+    }
+
+    // Step 2: Batch load domains for all teams (including ancestors)
+    List<String> teamIdStrings = allTeamIds.stream().map(UUID::toString).toList();
+
+    CollectionDAO dao = Entity.getCollectionDAO();
+    List<CollectionDAO.EntityRelationshipObject> domainRecords =
+        dao.relationshipDAO()
+            .findFromBatch(teamIdStrings, Relationship.HAS.ordinal(), DOMAIN, include);
+
+    if (domainRecords.isEmpty()) {
+      return allDomains;
+    }
+
+    // Step 3: Batch fetch all domain entity references
+    List<UUID> domainIds =
+        domainRecords.stream().map(rec -> UUID.fromString(rec.getFromId())).distinct().toList();
+
+    List<EntityReference> domainRefs = Entity.getEntityReferencesByIds(DOMAIN, domainIds, include);
+    allDomains.addAll(domainRefs);
+
+    return allDomains;
   }
 
   List<String> entityListToStrings(List<T> entities) {
