@@ -58,6 +58,7 @@ const mockPropsWithFreshness = {
   ],
 };
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTime: jest.fn().mockReturnValue('Jan 3, 2024, 6:45 PM (UTC+05:30)'),
   formatDateTimeLong: jest
     .fn()
     .mockReturnValue('Jan 3, 2024, 6:45 PM (UTC+05:30)'),
@@ -95,8 +96,8 @@ describe('Test TestSummaryCustomTooltip component', () => {
     expect((await screen.findByTestId('maxValueLength')).textContent).toBe(
       '24'
     );
-    expect((await screen.findByTestId('passedRows')).textContent).toBe('4');
-    expect((await screen.findByTestId('failedRows')).textContent).toBe('2');
+    expect((await screen.findByTestId('rows-passed')).textContent).toBe('4/6');
+    expect((await screen.findByTestId('rows-failed')).textContent).toBe('2/6');
     expect(
       (await screen.findByTestId('passedRowsPercentage')).textContent
     ).toBe('60%');

@@ -300,9 +300,15 @@ describe('TestCaseResultTab', () => {
 
       render(<TestCaseResultTab />);
 
-      expect(
-        await screen.findByTestId('computed-row-count-container')
-      ).toBeInTheDocument();
+      const parameterContainer = await screen.findByTestId(
+        'parameter-container'
+      );
+
+      expect(parameterContainer).toBeInTheDocument();
+      // Check that compute row count label is present in the parameter section
+      expect(screen.getByText('label.compute-row-count:')).toBeInTheDocument();
+      // Check that the value "true" is present
+      expect(screen.getByText('true')).toBeInTheDocument();
     });
 
     it('should not show Compute Row Count when testDefinition does not support supportsRowLevelPassedFailed', async () => {
@@ -321,8 +327,9 @@ describe('TestCaseResultTab', () => {
 
       await screen.findByTestId('test-case-result-tab-container');
 
+      // Compute row count should not be shown in parameter section when not supported
       expect(
-        screen.queryByTestId('computed-row-count-container')
+        screen.queryByText('label.compute-row-count:')
       ).not.toBeInTheDocument();
     });
 
@@ -342,8 +349,9 @@ describe('TestCaseResultTab', () => {
 
       await screen.findByTestId('test-case-result-tab-container');
 
+      // Compute row count should not be shown when computePassedFailedRowCount is undefined
       expect(
-        screen.queryByTestId('computed-row-count-container')
+        screen.queryByText('label.compute-row-count:')
       ).not.toBeInTheDocument();
     });
   });
