@@ -425,7 +425,7 @@ test.describe('Persona customization', () => {
 
         await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-        const dialogTextbox = adminPage.getByRole('dialog').getByRole('textbox');
+        const dialogTextbox = adminPage.getByTestId('add-tab-input');
         await dialogTextbox.fill('Custom Tab');
 
         const addButton = adminPage
@@ -574,7 +574,7 @@ test.describe('Persona customization', () => {
 
         await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-        const dialogTextbox = adminPage.getByRole('dialog').getByRole('textbox');
+        const dialogTextbox = adminPage.getByTestId('add-tab-input');
         await dialogTextbox.fill('Custom Tab');
 
         const addButton = adminPage
