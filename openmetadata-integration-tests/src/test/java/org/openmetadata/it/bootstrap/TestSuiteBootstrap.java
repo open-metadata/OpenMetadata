@@ -14,8 +14,8 @@
 package org.openmetadata.it.bootstrap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import es.org.elasticsearch.client.RestClient;
-import es.org.elasticsearch.client.RestClientBuilder;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5ClientBuilder;
 import io.dropwizard.configuration.ConfigurationException;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
@@ -29,11 +29,10 @@ import jakarta.validation.Validator;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
+import org.apache.hc.core5.http.HttpHost;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
@@ -711,22 +710,23 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   /**
-   * Creates a RestClient for direct search operations in tests. Works with both Elasticsearch and
+   * Creates a Rest5Client for direct search operations in tests. Works with both Elasticsearch and
    * OpenSearch.
    */
-  public static RestClient createSearchClient() {
+  public static Rest5Client createSearchClient() {
     if (SEARCH_CONTAINER == null || !SEARCH_CONTAINER.isRunning()) {
       throw new IllegalStateException(
           "Search container is not running. Ensure TestSuiteBootstrap has initialized.");
     }
 
-    CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+    BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
     credentialsProvider.setCredentials(
-        AuthScope.ANY, new UsernamePasswordCredentials(ELASTIC_USER, ELASTIC_PASSWORD));
+        new AuthScope(null, -1),
+        new UsernamePasswordCredentials(ELASTIC_USER, ELASTIC_PASSWORD.toCharArray()));
 
-    String hostAddress = searchHost + ":" + searchPort;
-    RestClientBuilder builder =
-        RestClient.builder(HttpHost.create(hostAddress))
+    HttpHost httpHost = new HttpHost("http", searchHost, searchPort);
+    Rest5ClientBuilder builder =
+        Rest5Client.builder(httpHost)
             .setHttpClientConfigCallback(
                 httpClientBuilder ->
                     httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));

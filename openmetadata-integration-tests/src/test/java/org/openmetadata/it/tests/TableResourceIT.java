@@ -7,9 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.Response;
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -3425,7 +3425,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Thread.sleep(2000);
 
     // Search using REST client to Elasticsearch directly
-    try (RestClient searchClient = TestSuiteBootstrap.createSearchClient()) {
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
 
       // Refresh index to make documents searchable
       refreshSearchIndex(searchClient);
@@ -3455,7 +3455,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       Response response = searchClient.performRequest(request);
 
       // Verify response
-      assertEquals(200, response.getStatusLine().getStatusCode());
+      assertEquals(200, response.getStatusCode());
 
       // Parse response to check tables without descriptions were found
       String responseBody =
@@ -3498,7 +3498,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Thread.sleep(2000);
 
     // Search for tables containing "email" in columns
-    try (RestClient searchClient = TestSuiteBootstrap.createSearchClient()) {
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
 
       // Refresh index to make documents searchable
       refreshSearchIndex(searchClient);
@@ -3524,7 +3524,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
       Response response = searchClient.performRequest(request);
 
-      assertEquals(200, response.getStatusLine().getStatusCode());
+      assertEquals(200, response.getStatusCode());
 
       String responseBody =
           new String(
@@ -3643,7 +3643,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
           "All table domains should be marked as inherited");
 
       // Wait for Elasticsearch indexing using Awaitility
-      try (RestClient searchClient = TestSuiteBootstrap.createSearchClient()) {
+      try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
         String tableId = table.getId().toString();
         AtomicReference<String> responseBodyRef = new AtomicReference<>();
 
@@ -3674,7 +3674,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                   request.setJsonEntity(tableSearchQuery);
                   Response response = searchClient.performRequest(request);
 
-                  if (response.getStatusLine().getStatusCode() != 200) {
+                  if (response.getStatusCode() != 200) {
                     return false;
                   }
 
@@ -4280,7 +4280,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
    * Ensure Elasticsearch index exists. If not, wait for it to be created by SearchIndexHandler.
    * The index is created lazily when the first table is indexed.
    */
-  private void ensureSearchIndexExists(RestClient searchClient) throws Exception {
+  private void ensureSearchIndexExists(Rest5Client searchClient) throws Exception {
     String indexName = getTableSearchIndexName();
     Request checkRequest = new Request("HEAD", "/" + indexName);
 
@@ -4320,7 +4320,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
    * Refresh Elasticsearch index to make sure all documents are searchable.
    * Must be called after creating/updating entities before searching.
    */
-  private void refreshSearchIndex(RestClient searchClient) throws Exception {
+  private void refreshSearchIndex(Rest5Client searchClient) throws Exception {
     // First ensure index exists
     ensureSearchIndexExists(searchClient);
 
