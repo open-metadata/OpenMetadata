@@ -14,11 +14,12 @@ import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Collect end point should work properly', () => {
+test.describe('Collect end point should work properly', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   const PAGES = {
     setting: {
       name: 'Settings',

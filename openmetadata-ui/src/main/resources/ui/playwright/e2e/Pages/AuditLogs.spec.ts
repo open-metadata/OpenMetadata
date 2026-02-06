@@ -14,6 +14,7 @@ import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 const navigateToAuditLogsPage = async (page: Page) => {
   await settingClick(page, GlobalSettingOptions.AUDIT_LOGS);
@@ -22,7 +23,7 @@ const navigateToAuditLogsPage = async (page: Page) => {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Audit Logs Page', () => {
+test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await navigateToAuditLogsPage(page);
@@ -728,7 +729,7 @@ test.describe('Audit Logs Page', () => {
 });
 
 // Test audit log search functionality with existing data
-test.describe('Audit Logs - Search Functionality', () => {
+test.describe('Audit Logs - Search Functionality', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
   test('should search and find admin user activity', async ({ page }) => {
@@ -816,7 +817,7 @@ test.describe('Audit Logs - Search Functionality', () => {
 });
 
 // Test export functionality with download verification
-test.describe('Audit Logs - Export Functionality', () => {
+test.describe('Audit Logs - Export Functionality', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
   test('should complete export flow and trigger download', async ({ page }) => {
@@ -1007,7 +1008,7 @@ test.describe('Audit Logs - Export Functionality', () => {
 });
 
 // Test non-admin export access (should be denied)
-test.describe('Audit Logs - Export Non-Admin Access', () => {
+test.describe('Audit Logs - Export Non-Admin Access', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.use({ storageState: 'playwright/.auth/dataConsumer.json' });
 
   test('should deny export access for non-admin users', async ({ page }) => {
@@ -1039,7 +1040,7 @@ test.describe('Audit Logs - Export Non-Admin Access', () => {
 });
 
 // Test non-admin access behavior
-test.describe('Audit Logs Page - Non-Admin Access', () => {
+test.describe('Audit Logs Page - Non-Admin Access', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.use({ storageState: 'playwright/.auth/dataConsumer.json' });
 
   test('should handle audit logs access for non-admin users', async ({
@@ -1072,7 +1073,7 @@ test.describe('Audit Logs Page - Non-Admin Access', () => {
 // These tests verify that audit log entries are actually created when making changes.
 // They create/update/delete entities and verify the events appear in the audit log.
 
-test.describe('Audit Logs - Event Verification', () => {
+test.describe('Audit Logs - Event Verification', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
   const POLL_TIMEOUT = 30000;
