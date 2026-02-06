@@ -28,6 +28,7 @@ import {
   restoreEntity,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 const dashboardEntity = new DashboardServiceClass();
 const dashboard = new DashboardClass();
@@ -198,7 +199,7 @@ test.describe('Dashboard and Charts deleted toggle', () => {
   });
 });
 
-test.describe('Data Model', () => {
+test.describe('Data Model', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test('expand / collapse should not appear after updating nested fields for dashboardDataModels', async ({
     page,
   }) => {

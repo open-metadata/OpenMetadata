@@ -37,6 +37,7 @@ import { MlModelClass } from '../../support/entity/MlModelClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { Domain } from '../../support/domain/Domain';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // Test data setup
 const tableEntity = new TableClass();
@@ -92,11 +93,11 @@ test.describe('Right Panel Test Suite', () => {
   // Setup test data and page objects
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    
+
     try {
       // Create all entities in parallel for better performance
       await Promise.all(
-        Object.values(entityMap).map((entityInstance) => 
+        Object.values(entityMap).map((entityInstance) =>
           entityInstance.create(apiContext)
         )
       );
@@ -140,89 +141,89 @@ test.describe('Right Panel Test Suite', () => {
     }
   });
 
-  
-  test.describe('Explore page right panel tests', () => {  
-    test.describe('Overview panel CRUD operations', () => { 
+
+  test.describe('Explore page right panel tests', () => {
+    test.describe('Overview panel CRUD operations', () => {
       Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
-        test(`Should update description for ${entityType}`, async ({ adminPage }) => {  
-        await redirectToHomePage(adminPage);
+        test(`Should update description for ${entityType}`, async ({ adminPage }) => {
+          await redirectToHomePage(adminPage);
           await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
-        await rightPanel.waitForPanelLoaded();
-        await rightPanel.waitForPanelVisible();
+          await rightPanel.waitForPanelLoaded();
+          await rightPanel.waitForPanelVisible();
 
-        await overview.navigateToOverviewTab();
-        await overview.shouldBeVisible();
-        await overview.shouldShowDescriptionSection();
+          await overview.navigateToOverviewTab();
+          await overview.shouldBeVisible();
+          await overview.shouldShowDescriptionSection();
 
-        const descriptionToUpdate = `${entityType} Test description - ${uuid()}`;
-        await overview.editDescription(descriptionToUpdate);
-        await overview.shouldShowDescriptionWithText(descriptionToUpdate);
-      })
+          const descriptionToUpdate = `${entityType} Test description - ${uuid()}`;
+          await overview.editDescription(descriptionToUpdate);
+          await overview.shouldShowDescriptionWithText(descriptionToUpdate);
+        })
 
         test(`Should update/edit tags for ${entityType}`, async ({ adminPage }) => {
-         await redirectToHomePage(adminPage);
-        await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
-        await rightPanel.waitForPanelLoaded();
-        await rightPanel.waitForPanelVisible();
+          await redirectToHomePage(adminPage);
+          await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+          await rightPanel.waitForPanelLoaded();
+          await rightPanel.waitForPanelVisible();
 
-        await overview.editTags(tagToUpdate);
-        await overview.shouldShowTagsSection();
-        await overview.shouldShowTag(tagToUpdate);
-      })
+          await overview.editTags(tagToUpdate);
+          await overview.shouldShowTagsSection();
+          await overview.shouldShowTag(tagToUpdate);
+        })
 
         test(`Should update/edit tier for ${entityType}`, async ({ adminPage }) => {
-         await redirectToHomePage(adminPage);
-        await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
-        await rightPanel.waitForPanelLoaded();
-        await rightPanel.waitForPanelVisible();
+          await redirectToHomePage(adminPage);
+          await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+          await rightPanel.waitForPanelLoaded();
+          await rightPanel.waitForPanelVisible();
 
-        await overview.assignTier(testTier);
-        await overview.shouldShowTierSection();
-        await overview.shouldShowTier(testTier);
-      })
+          await overview.assignTier(testTier);
+          await overview.shouldShowTierSection();
+          await overview.shouldShowTier(testTier);
+        })
 
-      test(`Should update/edit glossary terms for ${entityType}`, async ({ adminPage }) => {
-        await redirectToHomePage(adminPage);
-        await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
-        await rightPanel.waitForPanelLoaded();
-        await rightPanel.waitForPanelVisible();
+        test(`Should update/edit glossary terms for ${entityType}`, async ({ adminPage }) => {
+          await redirectToHomePage(adminPage);
+          await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+          await rightPanel.waitForPanelLoaded();
+          await rightPanel.waitForPanelVisible();
 
-        await overview.editGlossaryTerms(glossaryTermToUpdate);
-        await overview.shouldShowGlossaryTermsSection();
-      })
+          await overview.editGlossaryTerms(glossaryTermToUpdate);
+          await overview.shouldShowGlossaryTermsSection();
+        })
 
-        test(`Should update owners for ${entityType}`, async ({ adminPage }) => {
-         await redirectToHomePage(adminPage);
-        await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
-        await rightPanel.waitForPanelLoaded();
-        await rightPanel.waitForPanelVisible();
+        test(`Should update owners for ${entityType}`, PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ adminPage }) => {
+          await redirectToHomePage(adminPage);
+          await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+          await rightPanel.waitForPanelLoaded();
+          await rightPanel.waitForPanelVisible();
 
-        const ownerToUpdate = 'Aaron Johnson'
-        await overview.addOwnerWithoutValidation(ownerToUpdate);
-        await overview.shouldShowOwner(ownerToUpdate);
-        // await overview.shouldShowOwner(ownerToUpdate);
-   
-      })
+          const ownerToUpdate = 'Aaron Johnson'
+          await overview.addOwnerWithoutValidation(ownerToUpdate);
+          await overview.shouldShowOwner(ownerToUpdate);
+          // await overview.shouldShowOwner(ownerToUpdate);
 
-      test(`Should update domain for ${entityType}`, async ({ adminPage }) => {
-        await redirectToHomePage(adminPage);
-        await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
-        await rightPanel.waitForPanelLoaded();
-        await rightPanel.waitForPanelVisible();
+        })
 
-        await overview.editDomain(domainToUpdate);
-        await overview.shouldShowDomainsSection();
-        await overview.shouldShowDomain(domainToUpdate);
-      })
-    });
+        test(`Should update domain for ${entityType}`, async ({ adminPage }) => {
+          await redirectToHomePage(adminPage);
+          await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
+          await rightPanel.waitForPanelLoaded();
+          await rightPanel.waitForPanelVisible();
+
+          await overview.editDomain(domainToUpdate);
+          await overview.shouldShowDomainsSection();
+          await overview.shouldShowDomain(domainToUpdate);
+        })
+      });
     })
-    
 
-      // ============ SCHEMA PAGE ============
+
+    // ============ SCHEMA PAGE ============
 
     test.describe('Schema panel tests', () => {
-        
-      Object.entries(entityMap).forEach(([entityType, entityInstance]) => { 
+
+      Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
         test(`Should display and verify schema fields for ${entityType}`, async ({ adminPage }) => {
           await redirectToHomePage(adminPage);
           await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
@@ -238,11 +239,11 @@ test.describe('Right Panel Test Suite', () => {
           } catch {
             console.debug(`No schema exists for ${entityType}`);
           }
-      })
-    });
+        })
+      });
     })
 
-      // ============ LINEAGE PAGE OBJECT TESTS ============
+    // ============ LINEAGE PAGE OBJECT TESTS ============
 
     test.describe('Lineage - Navigation and Expansion', () => {
       Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
@@ -265,38 +266,38 @@ test.describe('Right Panel Test Suite', () => {
         });
 
         test(`Should handle lineage expansion buttons for ${entityType}`, async ({ adminPage }) => {
-        await redirectToHomePage(adminPage);
+          await redirectToHomePage(adminPage);
           await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
           await rightPanel.waitForPanelLoaded();
           await rightPanel.waitForPanelVisible();
 
-          try { 
-            
+          try {
+
             const lineageTabExists = await rightPanel.verifyTabExists('lineage');
             if (lineageTabExists) {
-            await lineage.navigateToLineageTab();
-            const hasUpstreamButton = await lineage.hasUpstreamButton();
-            if (hasUpstreamButton) {
-              await lineage.clickUpstreamButton();
-            } 
+              await lineage.navigateToLineageTab();
+              const hasUpstreamButton = await lineage.hasUpstreamButton();
+              if (hasUpstreamButton) {
+                await lineage.clickUpstreamButton();
+              }
 
-            const hasDownstreamButton = await lineage.hasDownstreamButton();
-            if (hasDownstreamButton) {
-              await lineage.clickDownstreamButton();
-            } 
-            }  
+              const hasDownstreamButton = await lineage.hasDownstreamButton();
+              if (hasDownstreamButton) {
+                await lineage.clickDownstreamButton();
+              }
+            }
           } catch {
             console.debug(`No lineage exists for ${entityType}`);
           }
         });
       });
-      });
+    });
 
-      // ============ DATA QUALITY PAGE OBJECT TESTS ============
+    // ============ DATA QUALITY PAGE OBJECT TESTS ============
 
     test.describe('DataQuality - Stat Cards and Filtering', () => {
-        
-      Object.entries(entityMap).forEach(([entityType, entityInstance]) => { 
+
+      Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
         test(`Should navigate to data quality and show stat cards for ${entityType}`, async ({ adminPage }) => {
           await redirectToHomePage(adminPage);
           await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
@@ -337,20 +338,20 @@ test.describe('Right Panel Test Suite', () => {
           }
         });
       });
-        
-      });
 
-      // ============ CUSTOM PROPERTIES PAGE OBJECT TESTS ============
+    });
+
+    // ============ CUSTOM PROPERTIES PAGE OBJECT TESTS ============
 
     test.describe('CustomProperties - Search and Management', () => {
 
       Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
-        
+
         test(`Should navigate to custom properties and show interface for ${entityType}`, async ({ adminPage }) => {
           await redirectToHomePage(adminPage);
           await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
           await rightPanel.waitForPanelVisible();
-          
+
           try {
             const customPropertiesTabExists = await rightPanel.verifyTabExists('Custom Property');
             if (customPropertiesTabExists) {
@@ -368,7 +369,7 @@ test.describe('Right Panel Test Suite', () => {
           await redirectToHomePage(adminPage);
           await openEntitySummaryPanel(adminPage, entityInstance.entity.name);
           await rightPanel.waitForPanelLoaded();
-            await rightPanel.waitForPanelVisible();
+          await rightPanel.waitForPanelVisible();
 
           try {
             const customPropertiesTabExists = await rightPanel.verifyTabExists('Custom Property');
@@ -380,8 +381,8 @@ test.describe('Right Panel Test Suite', () => {
             console.debug(`No custom properties exists for ${entityType}`);
           }
         });
-       });
-        
       });
+
     });
   });
+});
