@@ -44,7 +44,7 @@ services:
   # OpenSearch for metadata search
   opensearch:
     container_name: openmetadata_opensearch_test
-    image: opensearchproject/opensearch:2.11.1
+    image: opensearchproject/opensearch:3.4.0
     restart: always
     environment:
       - discovery.type=single-node

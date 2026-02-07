@@ -11,7 +11,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -69,13 +69,13 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
         .equals(ElasticSearchConfiguration.SearchType.ELASTICSEARCH)) {
       searchInterface =
           new ElasticSearchDataInsightsClient(
-              (RestClient) Entity.getSearchRepository().getSearchClient().getLowLevelClient(),
+              (Rest5Client) Entity.getSearchRepository().getSearchClient().getLowLevelClient(),
               Entity.getSearchRepository().getClusterAlias());
     } else {
       searchInterface =
           new OpenSearchDataInsightsClient(
-              (os.org.opensearch.client.RestClient)
-                  Entity.getSearchRepository().getSearchClient().getLowLevelClient(),
+              (os.org.opensearch.client.opensearch.OpenSearchClient)
+                  Entity.getSearchRepository().getSearchClient().getHighLevelClient(),
               Entity.getSearchRepository().getClusterAlias());
     }
     try {

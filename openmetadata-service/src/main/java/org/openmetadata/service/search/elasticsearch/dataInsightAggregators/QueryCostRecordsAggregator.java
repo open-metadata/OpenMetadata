@@ -56,11 +56,13 @@ public class QueryCostRecordsAggregator {
                                             "total_count", "total_count")))
                             .script(
                                 s ->
-                                    s.inline(
-                                        i ->
-                                            i.lang("painless")
-                                                .source(
-                                                    "params.total_duration / params.total_count"))))));
+                                    s.source(
+                                            ss ->
+                                                ss.scriptString(
+                                                    "params.total_duration / params.total_count"))
+                                        .lang(
+                                            es.co.elastic.clients.elasticsearch._types
+                                                .ScriptLanguage.Painless)))));
 
     // Top hits for query details
     queryGroupsSubAggs.put(
@@ -151,7 +153,8 @@ public class QueryCostRecordsAggregator {
 
       var totalCountAgg = bucket.aggregations().get("total_count");
       if (totalCountAgg != null && totalCountAgg.isSum()) {
-        totalCount = (long) totalCountAgg.sum().value();
+        Double countValue = totalCountAgg.sum().value();
+        totalCount = countValue != null ? countValue.longValue() : 0L;
       }
 
       var totalDurationAgg = bucket.aggregations().get("total_duration");
@@ -230,7 +233,8 @@ public class QueryCostRecordsAggregator {
 
     var totalExecutionCountAgg = response.aggregations().get("total_execution_count");
     if (totalExecutionCountAgg != null && totalExecutionCountAgg.isSum()) {
-      totalExecutionCountValue = (int) totalExecutionCountAgg.sum().value();
+      Double countValue = totalExecutionCountAgg.sum().value();
+      totalExecutionCountValue = countValue != null ? countValue.intValue() : 0;
     }
 
     OverallStats overallStats =

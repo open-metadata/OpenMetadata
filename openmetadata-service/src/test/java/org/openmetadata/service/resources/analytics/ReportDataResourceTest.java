@@ -13,9 +13,9 @@ import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.Response;
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.text.ParseException;
@@ -229,7 +229,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   private JsonNode runSearchQuery(String query, String index) throws IOException {
-    RestClient searchClient = getSearchClient();
+    Rest5Client searchClient = getSearchClient();
     Response response;
     Request request =
         new Request(
@@ -237,7 +237,9 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             String.format(
                 "/%s/_search",
                 Entity.getSearchRepository().getIndexOrAliasName(String.valueOf(index))));
-    request.setJsonEntity(query);
+    request.setEntity(
+        new org.apache.hc.core5.http.io.entity.StringEntity(
+            query, org.apache.hc.core5.http.ContentType.APPLICATION_JSON));
     try {
       response = searchClient.performRequest(request);
     } finally {
