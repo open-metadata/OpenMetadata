@@ -177,6 +177,26 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
           DATA_CONTRACT_DETAILS.description
         );
 
+        const ownersResponse = page.waitForResponse((response) => {
+          return (
+            response.url().includes('/api/v1/search/query') &&
+            response.request().method() === 'GET' &&
+            response.status() === 200
+          );
+        });
+        await page.getByTestId('select-owners').click();  
+        await ownersResponse; 
+
+        await expect(
+          page.getByTestId('selectable-virtual-list')
+            .getByTestId(/selectable-list-item-/)
+            .first()
+        ).toBeVisible();
+
+        await page.getByTestId('selectable-virtual-list')
+          .getByTestId(/selectable-list-item-/)
+          .first()
+          .click();
         // Add owner using created user to verify displayName is shown in UserTag
         await addOwnerWithoutValidation({
           page,
