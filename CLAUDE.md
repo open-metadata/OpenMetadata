@@ -198,6 +198,8 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - Follow existing project patterns and conventions
 - Generate production-ready code, not tutorial code
 - Create integration tests in openmetadata-integration-tests
+- Do not use Fully Qualified Names in the code such as org.openmetadata.schema.type.Status instead import the class name
+- Do not import wild-card packages instead import exactly required packages
 
 ### TypeScript/Frontend Code Requirements
 - **NEVER use `any` type** in TypeScript code - always use proper types

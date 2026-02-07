@@ -14,6 +14,7 @@ Databricks pipeline source to extract metadata
 """
 
 import traceback
+from datetime import datetime, timedelta, timezone
 from typing import Iterable, List, Optional, Tuple
 
 from pydantic import ValidationError
@@ -55,7 +56,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
-from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.models.pipeline_status import OMetaBulkPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
     extract_dlt_table_dependencies,
@@ -250,13 +251,22 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
     def yield_pipeline_status(
         self, pipeline_details: DataBrickPipelineDetails
-    ) -> Iterable[OMetaPipelineStatus]:
+    ) -> Iterable[Either[OMetaBulkPipelineStatus]]:
         try:
             if not pipeline_details.job_id:
                 return
 
+            lookback_days = self.source_config.statusLookbackDays or 1
+            cutoff_ts = int(
+                (datetime.now(timezone.utc) - timedelta(days=lookback_days)).timestamp()
+                * 1000
+            )
+            statuses: List[PipelineStatus] = []
+
             for run in self.client.get_job_runs(job_id=pipeline_details.job_id) or []:
                 run = DBRun(**run)
+                if run.start_time and run.start_time < cutoff_ts:
+                    break
                 task_status = [
                     TaskStatus(
                         name=str(task.name),
@@ -269,14 +279,18 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     )
                     for task in run.tasks or []
                 ]
-                pipeline_status = PipelineStatus(
-                    taskStatus=task_status,
-                    timestamp=Timestamp(run.start_time),
-                    executionStatus=STATUS_MAP.get(
-                        run.state.result_state,
-                        StatusType.Failed,
-                    ),
+                statuses.append(
+                    PipelineStatus(
+                        taskStatus=task_status,
+                        timestamp=Timestamp(run.start_time),
+                        executionStatus=STATUS_MAP.get(
+                            run.state.result_state,
+                            StatusType.Failed,
+                        ),
+                    )
                 )
+
+            if statuses:
                 pipeline_fqn = fqn.build(
                     metadata=self.metadata,
                     entity_type=Pipeline,
@@ -284,9 +298,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     pipeline_name=self.context.get().pipeline,
                 )
                 yield Either(
-                    right=OMetaPipelineStatus(
+                    right=OMetaBulkPipelineStatus(
                         pipeline_fqn=pipeline_fqn,
-                        pipeline_status=pipeline_status,
+                        pipeline_statuses=statuses,
                     )
                 )
         except Exception as exc:

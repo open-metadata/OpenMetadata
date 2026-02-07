@@ -13,7 +13,7 @@ Mixin class containing Pipeline specific methods
 
 To be used by OpenMetadata class
 """
-from typing import List
+from typing import List, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -39,6 +39,26 @@ class OMetaPipelineMixin:
 
     client: REST
 
+    def add_bulk_pipeline_status(
+        self, fqn: str, statuses: List[PipelineStatus]
+    ) -> Pipeline:
+        """
+        Send multiple PipelineStatus records to the Pipeline Entity
+        in a single bulk request
+        """
+        try:
+            parts = fqn_utils.split(fqn)
+            normalized_fqn = fqn_utils._build(*parts, quote=True)
+        except Exception:
+            normalized_fqn = fqn
+
+        resp = self.client.put(
+            f"{self.get_suffix(Pipeline)}/{quote(normalized_fqn)}/status/bulk",
+            data="[" + ",".join(status.model_dump_json() for status in statuses) + "]",
+        )
+
+        return Pipeline(**resp)
+
     def add_pipeline_status(self, fqn: str, status: PipelineStatus) -> Pipeline:
         """
         Given a pipeline and a PipelineStatus, send it
@@ -59,6 +79,34 @@ class OMetaPipelineMixin:
         )
 
         return Pipeline(**resp)
+
+    def list_pipeline_statuses(
+        self,
+        fqn: str,
+        start_ts: int,
+        end_ts: int,
+        limit: Optional[int] = None,
+    ) -> List[PipelineStatus]:
+        """
+        List PipelineStatus records for a Pipeline within a time range.
+        """
+        try:
+            parts = fqn_utils.split(fqn)
+            normalized_fqn = fqn_utils._build(*parts, quote=True)
+        except Exception:
+            normalized_fqn = fqn
+
+        params = f"startTs={start_ts}&endTs={end_ts}"
+        if limit is not None:
+            params += f"&limit={limit}"
+
+        resp = self.client.get(
+            f"{self.get_suffix(Pipeline)}/{quote(normalized_fqn)}/status?{params}",
+        )
+
+        if resp and "data" in resp:
+            return [PipelineStatus(**status) for status in resp["data"]]
+        return []
 
     def add_task_to_pipeline(self, pipeline: Pipeline, *tasks: Task) -> Pipeline:
         """
