@@ -486,8 +486,12 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
     BulkAssets nonMatchingAssetsRequest =
         new BulkAssets().withAssets(List.of(nonMatchingTable.getEntityReference()));
+    InvalidRequestException failException =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> bulkAddAssetsWithResult(dataProduct.getName(), nonMatchingAssetsRequest));
     BulkOperationResult failResult =
-        bulkAddAssetsWithResult(dataProduct.getName(), nonMatchingAssetsRequest);
+        JsonUtils.readValue(failException.getResponseBody(), BulkOperationResult.class);
 
     assertEquals(ApiStatus.FAILURE, failResult.getStatus());
     assertEquals(1, failResult.getNumberOfRowsProcessed());
@@ -2575,13 +2579,17 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         dataProduct.getFullyQualifiedName(),
         new BulkAssets().withAssets(List.of(table.getEntityReference())));
 
-    // Try adding same asset as input port — should fail
+    // Try adding same asset as input port — should fail with 400
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .dataProducts()
+                    .inputPorts(dataProduct.getFullyQualifiedName())
+                    .add(new BulkAssets().withAssets(List.of(table.getEntityReference()))));
     BulkOperationResult result =
-        SdkClients.adminClient()
-            .dataProducts()
-            .inputPorts(dataProduct.getFullyQualifiedName())
-            .add(new BulkAssets().withAssets(List.of(table.getEntityReference())));
-
+        JsonUtils.readValue(exception.getResponseBody(), BulkOperationResult.class);
     assertEquals(ApiStatus.FAILURE, result.getStatus());
     assertEquals(1, result.getNumberOfRowsFailed());
     assertEquals(0, result.getNumberOfRowsPassed());
@@ -2645,13 +2653,17 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
     Table table = createTestTable(ns, "not_dp_asset", domain);
 
-    // Try adding as output port without being a data product asset — should fail
+    // Try adding as output port without being a data product asset — should fail with 400
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .dataProducts()
+                    .outputPorts(dataProduct.getFullyQualifiedName())
+                    .add(new BulkAssets().withAssets(List.of(table.getEntityReference()))));
     BulkOperationResult result =
-        SdkClients.adminClient()
-            .dataProducts()
-            .outputPorts(dataProduct.getFullyQualifiedName())
-            .add(new BulkAssets().withAssets(List.of(table.getEntityReference())));
-
+        JsonUtils.readValue(exception.getResponseBody(), BulkOperationResult.class);
     assertEquals(ApiStatus.FAILURE, result.getStatus());
     assertEquals(1, result.getNumberOfRowsFailed());
     assertEquals(0, result.getNumberOfRowsPassed());
@@ -2672,12 +2684,17 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
     Table table = createTestTable(ns, "will_be_asset", domain);
 
-    // First fails — not a data product asset
+    // First fails — not a data product asset, returns 400
+    InvalidRequestException failException =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .dataProducts()
+                    .outputPorts(dataProduct.getFullyQualifiedName())
+                    .add(new BulkAssets().withAssets(List.of(table.getEntityReference()))));
     BulkOperationResult failResult =
-        SdkClients.adminClient()
-            .dataProducts()
-            .outputPorts(dataProduct.getFullyQualifiedName())
-            .add(new BulkAssets().withAssets(List.of(table.getEntityReference())));
+        JsonUtils.readValue(failException.getResponseBody(), BulkOperationResult.class);
     assertEquals(ApiStatus.FAILURE, failResult.getStatus());
 
     // Add as data product asset
