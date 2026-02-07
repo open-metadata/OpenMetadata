@@ -4,10 +4,7 @@ Pipelines entity SDK with fluent API
 from typing import Any, List, Optional, Type, cast
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
-from metadata.generated.schema.entity.data.pipeline import (
-    Pipeline,
-    PipelineStatus,
-)
+from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
 from metadata.sdk.entities.base import BaseEntity
 
 
@@ -32,9 +29,7 @@ class Pipelines(BaseEntity[Pipeline, CreatePipelineRequest]):
     ) -> Pipeline:
         """Add multiple pipeline execution statuses in a single bulk request."""
         client = cls._get_client()
-        result = cast(Any, client).add_bulk_pipeline_status(
-            fqn=fqn, statuses=statuses
-        )
+        result = cast(Any, client).add_bulk_pipeline_status(fqn=fqn, statuses=statuses)
         return cls._coerce_entity(result)
 
     @classmethod
