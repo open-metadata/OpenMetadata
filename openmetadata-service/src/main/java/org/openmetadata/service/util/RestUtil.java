@@ -33,7 +33,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -195,5 +197,65 @@ public final class RestUtil {
           String.format(
               "Timestamp %s is not valid, it should be in milliseconds since epoch", timestamp));
     }
+  }
+
+  public static String normalizeQuotes(String input) {
+    return input
+        .replace('\u201c', '"')
+        .replace('\u201d', '"')
+        .replace('\u2018', '\'')
+        .replace('\u2019', '\'');
+  }
+
+  public static List<String> extractJsonObjects(String input) {
+    List<String> jsonObjects = new ArrayList<>();
+    int i = 0;
+
+    while (i < input.length()) {
+      int start = input.indexOf('{', i);
+      if (start == -1) break;
+
+      int end = findMatchingBrace(input, start);
+      if (end == -1) break;
+
+      jsonObjects.add(input.substring(start, end + 1));
+      i = end + 1;
+    }
+
+    return jsonObjects;
+  }
+
+  public static int findMatchingBrace(String str, int start) {
+    int depth = 0;
+    boolean inString = false;
+    boolean escape = false;
+
+    for (int i = start; i < str.length(); i++) {
+      char c = str.charAt(i);
+
+      if (escape) {
+        escape = false;
+        continue;
+      }
+
+      if (c == '\\' && inString) {
+        escape = true;
+        continue;
+      }
+
+      if (c == '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (!inString) {
+        if (c == '{') depth++;
+        else if (c == '}') {
+          depth--;
+          if (depth == 0) return i;
+        }
+      }
+    }
+    return -1;
   }
 }

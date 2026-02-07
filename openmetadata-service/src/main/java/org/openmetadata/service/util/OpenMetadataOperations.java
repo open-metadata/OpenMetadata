@@ -15,6 +15,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -26,11 +27,14 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
 import jakarta.validation.Validator;
+import java.io.File;
+import java.io.FileWriter;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,7 +54,10 @@ import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.app.App;
@@ -107,6 +114,7 @@ import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.apps.AppMapper;
@@ -165,13 +173,143 @@ public class OpenMetadataOperations implements Callable<Integer> {
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'reindexdi', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes', "
-            + "'setOpenMetadataUrl', 'configureEmailSettings', 'install-app', 'delete-app', 'create-user', 'reset-password', "
+            + "'setOpenMetadataUrl', 'configureEmailSettings', 'get-security-config', 'update-security-config', 'install-app', 'delete-app', 'create-user', 'reset-password', "
             + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     LOG.info(
         "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
     return 0;
+  }
+
+  @Command(
+      name = "info",
+      description =
+          "Shows the list of migrations applied and the pending migration "
+              + "waiting to be applied on the target database")
+  public Integer info() {
+    try {
+      parseConfig();
+
+      // Then get the native migration info from SERVER_CHANGE_LOG and SERVER_MIGRATION_SQL_LOGS
+      LOG.info("Native System Data Migrations:");
+      MigrationDAO migrationDAO = jdbi.onDemand(MigrationDAO.class);
+      List<MigrationDAO.ServerChangeLog> serverChangeLogs =
+          migrationDAO.listMetricsFromDBMigrations();
+
+      // Create a formatted display for native migrations
+      Set<String> columns = new LinkedHashSet<>(Set.of("version", "installedOn", "status"));
+      List<List<String>> rows = new ArrayList<>();
+
+      for (MigrationDAO.ServerChangeLog serverChangeLog : serverChangeLogs) {
+        List<String> row = new ArrayList<>();
+        row.add(serverChangeLog.getVersion());
+        row.add(serverChangeLog.getInstalledOn());
+
+        if (serverChangeLog.getMetrics() != null) {
+          JsonObject metricsJson =
+              new Gson().fromJson(serverChangeLog.getMetrics(), JsonObject.class);
+          for (Map.Entry<String, JsonElement> entry : metricsJson.entrySet()) {
+            if (!columns.contains(entry.getKey())) {
+              columns.add(entry.getKey());
+            }
+            row.add(entry.getValue().toString());
+          }
+        }
+        rows.add(row);
+      }
+
+      printToAsciiTable(columns.stream().toList(), rows, "No Native Migrations Found");
+
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "validate",
+      description =
+          "Checks if the all the migrations haven been applied " + "on the target database.")
+  public Integer validate() {
+    try {
+      parseConfig();
+      // Validate native migrations
+      ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+      DatasourceConfig.initialize(connType.label);
+      MigrationWorkflow workflow =
+          new MigrationWorkflow(
+              jdbi,
+              config.getMigrationConfiguration().getNativePath(),
+              connType,
+              config.getMigrationConfiguration().getExtensionPath(),
+              config.getMigrationConfiguration().getFlywayPath(),
+              config,
+              false);
+      workflow.loadMigrations();
+      workflow.validateMigrationsForServer();
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Database migration validation failed due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "repair",
+      description =
+          "Repairs the SERVER_MIGRATION_SQL_LOGS and SERVER_CHANGE_LOG tables which are used to track "
+              + "all the migrations on the target database This involves removing entries for the failed migrations and update"
+              + "the checksum of migrations already applied on the target database")
+  public Integer repair() {
+    try {
+      parseConfig();
+      // Get the migration workflow to repair native migrations
+      ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+      DatasourceConfig.initialize(connType.label);
+
+      // Handle repair of SERVER_MIGRATION_SQL_LOGS and SERVER_CHANGE_LOG tables
+      try {
+        List<String> failedVersions =
+            jdbi.withHandle(
+                handle ->
+                    handle
+                        .createQuery(
+                            "SELECT version FROM SERVER_CHANGE_LOG WHERE status = 'FAILED'")
+                        .mapTo(String.class)
+                        .list());
+
+        if (!failedVersions.isEmpty()) {
+          LOG.info("Found {} failed migrations in SERVER_CHANGE_LOG", failedVersions.size());
+
+          // Remove failed migrations from SERVER_CHANGE_LOG
+          jdbi.useHandle(
+              handle ->
+                  handle
+                      .createUpdate("DELETE FROM SERVER_CHANGE_LOG WHERE status = 'FAILED'")
+                      .execute());
+
+          // Clean up related entries in SERVER_MIGRATION_SQL_LOGS
+          for (String version : failedVersions) {
+            jdbi.useHandle(
+                handle ->
+                    handle
+                        .createUpdate(
+                            "DELETE FROM SERVER_MIGRATION_SQL_LOGS WHERE version = :version")
+                        .bind("version", version)
+                        .execute());
+          }
+        }
+      } catch (Exception e) {
+        LOG.error("Error repairing SERVER_CHANGE_LOG and SERVER_MIGRATION_SQL_LOGS tables", e);
+        throw e;
+      }
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Repair of migration tables failed due to ", e);
+      return 1;
+    }
   }
 
   @Command(
@@ -314,6 +452,226 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     } catch (Exception e) {
       LOG.error("Failed to configure email settings due to: ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "get-security-config",
+      description =
+          "Export the current security configuration (authentication and authorization) from the database to a YAML file. "
+              + "This command is useful for backup purposes or when you need to review/modify the security configuration externally, "
+              + "especially during SSO lockout scenarios.")
+  public Integer getSecurityConfig(
+      @Option(
+              names = {"-o", "--output-file"},
+              description =
+                  "Path to the output YAML file where the security configuration will be saved",
+              required = true)
+          String outputFile) {
+    try {
+      parseConfig();
+
+      LOG.info("Retrieving security configuration from database...");
+      SystemRepository systemRepository = Entity.getSystemRepository();
+
+      Settings authenticationSettings =
+          systemRepository.getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+      Settings authorizerSettings =
+          systemRepository.getConfigWithKey(SettingsType.AUTHORIZER_CONFIGURATION.value());
+
+      if (authenticationSettings == null && authorizerSettings == null) {
+        LOG.warn("No security configuration found in the database.");
+        LOG.info("The system may not have security configured yet.");
+        return 1;
+      }
+
+      SecurityConfiguration securityConfig = new SecurityConfiguration();
+
+      if (authenticationSettings != null) {
+        AuthenticationConfiguration authConfig =
+            JsonUtils.convertValue(
+                authenticationSettings.getConfigValue(), AuthenticationConfiguration.class);
+        securityConfig.setAuthenticationConfiguration(authConfig);
+
+        LOG.info("Authentication Configuration:");
+        LOG.info("  Provider: {}", authConfig.getProvider());
+        LOG.info("  Provider Name: {}", authConfig.getProviderName());
+
+        if (authConfig.getLdapConfiguration() != null) {
+          LOG.info("  Type: LDAP");
+          LOG.info("  LDAP Host: {}", authConfig.getLdapConfiguration().getHost());
+        } else if (authConfig.getSamlConfiguration() != null) {
+          LOG.info("  Type: SAML");
+        } else if (authConfig.getOidcConfiguration() != null) {
+          LOG.info("  Type: OIDC");
+        }
+      } else {
+        LOG.warn("No authentication configuration found.");
+      }
+
+      if (authorizerSettings != null) {
+        AuthorizerConfiguration authzConfig =
+            JsonUtils.convertValue(
+                authorizerSettings.getConfigValue(), AuthorizerConfiguration.class);
+        securityConfig.setAuthorizerConfiguration(authzConfig);
+
+        LOG.info("Authorization Configuration:");
+        LOG.info("  Class Name: {}", authzConfig.getClassName());
+        LOG.info("  Admin Principals: {}", authzConfig.getAdminPrincipals());
+      } else {
+        LOG.warn("No authorization configuration found.");
+      }
+
+      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      String yamlContent =
+          yamlMapper.writerWithDefaultPrettyPrinter().writeValueAsString(securityConfig);
+
+      File file = new File(outputFile);
+      try (FileWriter writer = new FileWriter(file)) {
+        writer.write(yamlContent);
+      }
+
+      LOG.info("Security configuration successfully exported to: {}", outputFile);
+      LOG.warn("");
+      LOG.warn(
+          "IMPORTANT: The exported file may contain sensitive information (passwords, secrets, certificates).");
+      LOG.warn("Please ensure the file is stored securely and not committed to version control.");
+
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to export security configuration due to: ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "update-security-config",
+      description =
+          "Update the security configuration (authentication and authorization) in the database from a YAML file. "
+              + "This is a critical operation that should be used carefully, especially when users are locked out due to SSO misconfiguration. "
+              + "WARNING: Incorrect configuration may lock all users out of the system!")
+  public Integer updateSecurityConfig(
+      @Option(
+              names = {"-f", "--config-file"},
+              description = "Path to the YAML file containing the security configuration",
+              required = true)
+          String configFile,
+      @Option(
+              names = {"--force"},
+              description = "Skip confirmation prompt and apply changes immediately",
+              defaultValue = "false")
+          boolean force) {
+    try {
+      File file = new File(configFile);
+      if (!file.exists()) {
+        LOG.error("Configuration file not found: {}", configFile);
+        return 1;
+      }
+
+      LOG.info("Reading security configuration from file: {}", configFile);
+      String yamlContent = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+
+      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      SecurityConfiguration securityConfig =
+          yamlMapper.readValue(yamlContent, SecurityConfiguration.class);
+
+      LOG.info("Parsed security configuration:");
+
+      if (securityConfig.getAuthenticationConfiguration() != null) {
+        AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+        LOG.info("Authentication Configuration:");
+        LOG.info("  Provider: {}", authConfig.getProvider());
+        LOG.info("  Provider Name: {}", authConfig.getProviderName());
+        LOG.info("  Authority: {}", authConfig.getAuthority());
+        LOG.info("  Client ID: {}", authConfig.getClientId());
+        LOG.info("  Callback URL: {}", authConfig.getCallbackUrl());
+
+        if (authConfig.getLdapConfiguration() != null) {
+          LOG.info("  LDAP Host: {}", authConfig.getLdapConfiguration().getHost());
+          LOG.info("  LDAP Port: {}", authConfig.getLdapConfiguration().getPort());
+        } else if (authConfig.getSamlConfiguration() != null) {
+          LOG.info(
+              "  SAML IDP Entity ID: {}",
+              authConfig.getSamlConfiguration().getIdp() != null
+                  ? authConfig.getSamlConfiguration().getIdp().getEntityId()
+                  : "N/A");
+        } else if (authConfig.getOidcConfiguration() != null) {
+          LOG.info("  OIDC Discovery URI: {}", authConfig.getOidcConfiguration().getDiscoveryUri());
+        }
+      } else {
+        LOG.warn("No authentication configuration in the file.");
+      }
+
+      if (securityConfig.getAuthorizerConfiguration() != null) {
+        AuthorizerConfiguration authzConfig = securityConfig.getAuthorizerConfiguration();
+        LOG.info("Authorization Configuration:");
+        LOG.info("  Class Name: {}", authzConfig.getClassName());
+        LOG.info("  Admin Principals: {}", authzConfig.getAdminPrincipals());
+      } else {
+        LOG.warn("No authorization configuration in the file.");
+      }
+
+      if (!force) {
+        LOG.warn("");
+        LOG.warn("========================================================================");
+        LOG.warn("WARNING: You are about to update the security configuration!");
+        LOG.warn("========================================================================");
+        LOG.warn("This will replace the current authentication and authorization config.");
+        LOG.warn("Incorrect configuration may lock all users out of the system.");
+        LOG.warn("");
+        LOG.warn("After applying this change, you MUST restart the OpenMetadata service");
+        LOG.warn("for the new configuration to take effect.");
+        LOG.warn("========================================================================");
+        LOG.warn("");
+
+        // Scanner on System.in should not be closed as it would close System.in entirely
+        @SuppressWarnings("resource")
+        Scanner scanner = new Scanner(System.in);
+        LOG.info("Type 'CONFIRM' to proceed with updating the security configuration: ");
+        String input = scanner.next();
+        if (!input.equals("CONFIRM")) {
+          LOG.info("Operation cancelled by user.");
+          return 0;
+        }
+      }
+
+      parseConfig();
+
+      LOG.info("Updating security configuration in database...");
+
+      if (securityConfig.getAuthenticationConfiguration() != null) {
+        Settings authenticationSettings =
+            new Settings()
+                .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
+                .withConfigValue(securityConfig.getAuthenticationConfiguration());
+        Entity.getSystemRepository().createOrUpdate(authenticationSettings);
+        LOG.info("Authentication configuration updated.");
+      }
+
+      if (securityConfig.getAuthorizerConfiguration() != null) {
+        Settings authorizerSettings =
+            new Settings()
+                .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
+                .withConfigValue(securityConfig.getAuthorizerConfiguration());
+        Entity.getSystemRepository().createOrUpdate(authorizerSettings);
+        LOG.info("Authorization configuration updated.");
+      }
+
+      LOG.info("Security configuration successfully updated in the database.");
+      LOG.warn("");
+      LOG.warn("========================================================================");
+      LOG.warn("IMPORTANT: You MUST restart the OpenMetadata service now!");
+      LOG.warn("========================================================================");
+      LOG.warn(
+          "The new security configuration will NOT take effect until the service is restarted.");
+      LOG.warn("Run: 'systemctl restart openmetadata' (or equivalent for your deployment)");
+      LOG.warn("========================================================================");
+
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to update security configuration due to: ", e);
+      LOG.error("Please verify that the YAML file is valid and contains all required fields.");
       return 1;
     }
   }
@@ -537,6 +895,40 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer checkConnection() {
     try {
       parseConfig();
+      // Check native tables
+      try {
+        jdbi.withHandle(
+            handle -> {
+              try {
+                handle
+                    .createQuery("SELECT COUNT(*) FROM SERVER_CHANGE_LOG")
+                    .mapTo(Integer.class)
+                    .findOne();
+                return true;
+              } catch (Exception e) {
+                LOG.warn("Could not access SERVER_CHANGE_LOG table: {}", e.getMessage());
+                return false;
+              }
+            });
+
+        // querying SERVER_MIGRATION_SQL_LOGS table
+        jdbi.withHandle(
+            handle -> {
+              try {
+                handle
+                    .createQuery("SELECT COUNT(*) FROM SERVER_MIGRATION_SQL_LOGS")
+                    .mapTo(Integer.class)
+                    .findOne();
+                return true;
+              } catch (Exception e) {
+                LOG.warn("Could not access SERVER_MIGRATION_SQL_LOGS table: {}", e.getMessage());
+                return false;
+              }
+            });
+
+      } catch (Exception e) {
+        LOG.warn("Error checking migration tables: {}", e.getMessage());
+      }
       jdbi.open().getConnection();
       return 0;
     } catch (Exception e) {
@@ -1650,6 +2042,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
         LOG.warn("This includes authenticationConfiguration and authorizerConfiguration settings.");
         LOG.info("Use --force to skip this confirmation.");
 
+        // Scanner on System.in should not be closed as it would close System.in entirely
+        @SuppressWarnings("resource")
         Scanner scanner = new Scanner(System.in);
         LOG.info("Enter 'DELETE' to confirm removal of security configuration: ");
         String input = scanner.next();
@@ -2056,6 +2450,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     jdbi = JdbiUtils.createAndSetupJDBI(dataSourceFactory);
 
+    // Initialize the MigrationValidationClient, used in the Settings Repository
+    MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), config);
+    // Init repos
+    collectionDAO = jdbi.onDemand(CollectionDAO.class);
+    Entity.setJdbi(jdbi);
+    Entity.setCollectionDAO(collectionDAO);
+    Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(collectionDAO));
+    Entity.setSystemRepository(new SystemRepository());
+
     searchRepository =
         SearchRepositoryFactory.createSearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
@@ -2065,12 +2468,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         SecretsManagerFactory.createSecretsManager(
             config.getSecretsManagerConfiguration(), config.getClusterName());
 
-    collectionDAO = jdbi.onDemand(CollectionDAO.class);
     Entity.setSearchRepository(searchRepository);
-    Entity.setJdbi(jdbi);
-    Entity.setCollectionDAO(collectionDAO);
-    Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(collectionDAO));
-    Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);
     ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
     DatasourceConfig.initialize(connType.label);
@@ -2122,6 +2520,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
                     a lot of information from the users, such as descriptions, tags, etc.
                     """);
     String input = "";
+    // Scanner on System.in should not be closed as it would close System.in entirely
+    @SuppressWarnings("resource")
     Scanner scanner = new Scanner(System.in);
     while (!input.equals("DELETE")) {
       LOG.info("Enter QUIT to quit. If you still want to continue, please enter DELETE: ");

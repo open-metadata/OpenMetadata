@@ -12,10 +12,9 @@
  */
 
 @import (reference) '../../styles/variables.less';
+@import '../../components/common/atoms/filters/FilterSelection.less';
 
 .learning-resources-page {
-  padding: @padding-lg;
-
   .breadcrumb-container {
     margin-bottom: @margin-md;
 
@@ -59,7 +58,7 @@
     margin-bottom: @margin-md;
     border-radius: 12px;
     background: @white;
-    box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+    box-shadow: @button-box-shadow-default;
 
     .page-header-title {
       display: flex;
@@ -88,7 +87,7 @@
   .content-card {
     background-color: @white;
     border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: @box-shadow-base;
     overflow: hidden;
   }
 
@@ -199,6 +198,25 @@
   }
 
   .ant-table-wrapper {
+    .ant-table-body {
+      scrollbar-width: thin;
+      scrollbar-color: @grey-300 transparent;
+    }
+
+    .ant-table-body::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+
+    .ant-table-body::-webkit-scrollbar-thumb {
+      background-color: @grey-300;
+      border-radius: 2px;
+    }
+
+    .ant-table-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
     .ant-table {
       border-radius: 0;
 
@@ -223,8 +241,7 @@
       padding: 12px 24px;
       margin: 0 !important;
       background: @white;
-      box-shadow: 0px -13px 16px -4px rgba(10, 13, 18, 0.04),
-        0px -4px 6px -2px rgba(10, 13, 18, 0.03);
+      box-shadow: @box-shadow-drawer-footer;
 
       .ant-pagination-prev,
       .ant-pagination-next {
@@ -234,10 +251,10 @@
         min-width: 36px !important;
         height: 36px !important;
         margin: 0 !important;
-        border: 1px solid #d5d7da !important;
+        border: 1px solid @grey-300 !important;
         border-radius: 8px !important;
         background: @white !important;
-        box-shadow: 0px 1px 2px 0px rgba(10, 13, 18, 0.05) !important;
+        box-shadow: @button-box-shadow-default !important;
 
         button,
         .ant-pagination-item-link {
@@ -334,20 +351,13 @@
   .ant-table {
     .ant-table-thead > tr > th {
       height: 44px;
-      padding: 12px 24px;
+      padding: 14px;
       background: @grey-50 !important;
       border-bottom: none;
-      font-weight: @font-medium;
-      color: @grey-600;
-      font-size: 12px;
-
-      &:first-child {
-        padding-left: 24px;
-      }
-
-      &:last-child {
-        padding-right: 24px;
-      }
+      color: @grey-500;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 20px;
     }
 
     .ant-table-thead > tr {
@@ -365,18 +375,11 @@
     }
 
     .ant-table-tbody > tr > td {
-      padding: 16px 24px;
+      height: 52px;
+      padding: 14px;
       border-bottom: 1px solid @light-border-color;
       background-color: @white;
       vertical-align: middle;
-
-      &:first-child {
-        padding-left: 24px;
-      }
-
-      &:last-child {
-        padding-right: 24px;
-      }
     }
 
     .ant-table-tbody > tr:hover > td {
@@ -385,6 +388,24 @@
 
     .ant-table-tbody > tr:last-child > td {
       border-bottom: none;
+    }
+  }
+
+  .learning-resource-action-btn.ant-btn {
+    border-radius: 4px;
+    border: 1px solid @border-light;
+    background: @white;
+    padding: 4px;
+    height: auto;
+    min-height: unset;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      border-color: @border-light;
+      background: @white;
     }
   }
 
@@ -443,29 +464,28 @@
       font-weight: @font-medium;
       background-color: @grey-50;
       border: 1px solid @grey-200;
-      color: #414651;
+      color: @grey-700;
     }
 
-    .more-tag {
+    .context-tag.more-tag {
       background-color: @grey-50;
       border: 1px solid @grey-200;
-      color: #414651;
+      color: @grey-700;
     }
   }
 
-  .action-buttons {
-    .action-btn {
-      color: @grey-500;
+  .category-tags .category-tag.more-tag,
+  .context-tags .context-tag.more-tag {
+    cursor: pointer;
+  }
 
-      &:hover {
-        color: @grey-700;
-        background-color: @grey-100;
-      }
-
-      &.delete-btn:hover {
-        color: @error-color;
-        background-color: @red-9;
-      }
-    }
+  .category-tags .category-tag.more-tag {
+    color: @primary-7;
+    border-radius: 6px;
+    background: @primary-50;
+    border: none;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 18px;
   }
 }

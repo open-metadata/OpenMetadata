@@ -8,6 +8,8 @@ on:
     types: [opened, synchronize, reopened, labeled, ready_for_review]
     paths:
       - openmetadata-ui/src/main/resources/ui/**
+      - "!openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
+      - "!openmetadata-ui/src/main/resources/ui/playwright/docs/**"
 
 permissions:
   contents: read
@@ -57,7 +59,7 @@ jobs:
         id: yarn-cache-dir-path
         run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
 
-      - name: Caching NPM dependencies 
+      - name: Caching NPM dependencies
         uses: actions/cache@v4
         id: yarn-cache
         with:

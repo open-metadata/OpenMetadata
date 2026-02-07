@@ -116,12 +116,13 @@ class SearchIndexFailureIntegrationTest {
 
       assertEquals(2, capturedFailures.size());
 
-      // Reader failures should have READER stage
-      assertTrue(capturedFailures.stream().allMatch(r -> "READER".equals(r.getFailureStage())));
+      // Reader failures should have READER_EXCEPTION stage
+      assertTrue(
+          capturedFailures.stream().allMatch(r -> "READER_EXCEPTION".equals(r.getFailureStage())));
 
-      // Reader failures should have null entityId and entityFqn
-      assertTrue(capturedFailures.stream().allMatch(r -> r.getEntityId() == null));
-      assertTrue(capturedFailures.stream().allMatch(r -> r.getEntityFqn() == null));
+      // Reader failures have generated entityId and "BATCH_FAILED" as entityFqn
+      assertTrue(capturedFailures.stream().allMatch(r -> r.getEntityId() != null));
+      assertTrue(capturedFailures.stream().allMatch(r -> "BATCH_FAILED".equals(r.getEntityFqn())));
     }
   }
 
@@ -174,7 +175,9 @@ class SearchIndexFailureIntegrationTest {
       assertEquals(5, capturedFailures.size());
 
       long readerFailures =
-          capturedFailures.stream().filter(r -> "READER".equals(r.getFailureStage())).count();
+          capturedFailures.stream()
+              .filter(r -> "READER_EXCEPTION".equals(r.getFailureStage()))
+              .count();
       long sinkFailures =
           capturedFailures.stream().filter(r -> "SINK".equals(r.getFailureStage())).count();
 

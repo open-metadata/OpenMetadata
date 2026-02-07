@@ -12,7 +12,10 @@ public class IndexingFailureRecorder implements AutoCloseable {
 
   public enum FailureStage {
     READER,
-    SINK
+    READER_EXCEPTION,
+    SINK,
+    PROCESS,
+    VECTOR_SINK
   }
 
   private static final int DEFAULT_BATCH_SIZE = 100;
@@ -43,7 +46,13 @@ public class IndexingFailureRecorder implements AutoCloseable {
   }
 
   public void recordReaderFailure(String entityType, String errorMessage, String stackTrace) {
-    recordFailure(entityType, null, null, FailureStage.READER, errorMessage, stackTrace);
+    recordFailure(
+        entityType,
+        UUID.randomUUID().toString(),
+        "BATCH_FAILED",
+        FailureStage.READER_EXCEPTION,
+        errorMessage,
+        stackTrace);
   }
 
   public void recordSinkFailure(
@@ -58,6 +67,35 @@ public class IndexingFailureRecorder implements AutoCloseable {
       String errorMessage,
       String stackTrace) {
     recordFailure(entityType, entityId, entityFqn, FailureStage.SINK, errorMessage, stackTrace);
+  }
+
+  public void recordProcessFailure(
+      String entityType, String entityId, String entityFqn, String errorMessage) {
+    recordProcessFailure(entityType, entityId, entityFqn, errorMessage, null);
+  }
+
+  public void recordProcessFailure(
+      String entityType,
+      String entityId,
+      String entityFqn,
+      String errorMessage,
+      String stackTrace) {
+    recordFailure(entityType, entityId, entityFqn, FailureStage.PROCESS, errorMessage, stackTrace);
+  }
+
+  public void recordVectorFailure(
+      String entityType, String entityId, String entityFqn, String errorMessage) {
+    recordVectorFailure(entityType, entityId, entityFqn, errorMessage, null);
+  }
+
+  public void recordVectorFailure(
+      String entityType,
+      String entityId,
+      String entityFqn,
+      String errorMessage,
+      String stackTrace) {
+    recordFailure(
+        entityType, entityId, entityFqn, FailureStage.VECTOR_SINK, errorMessage, stackTrace);
   }
 
   private void recordFailure(

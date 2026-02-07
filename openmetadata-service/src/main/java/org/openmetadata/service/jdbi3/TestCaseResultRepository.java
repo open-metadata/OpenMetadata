@@ -4,7 +4,6 @@ import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
-import static org.openmetadata.service.Entity.TEST_SUITE;
 
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
@@ -15,11 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
-import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
@@ -34,6 +34,7 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
+@Slf4j
 public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCaseResult> {
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
@@ -115,6 +116,29 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
             .listLastTestCaseResultsForTestSuite(testSuiteId);
     List<TestCaseResult> testCaseResults = JsonUtils.readObjects(json, TestCaseResult.class);
     return new ResultList<>(testCaseResults, null, null, testCaseResults.size());
+  }
+
+  public Map<UUID, List<ResultSummary>> listResultSummariesForTestSuites(List<UUID> testSuiteIds) {
+    if (testSuiteIds == null || testSuiteIds.isEmpty()) {
+      return Map.of();
+    }
+    List<String> idStrings = testSuiteIds.stream().map(UUID::toString).toList();
+    List<CollectionDAO.TestCaseResultTimeSeriesDAO.ResultSummaryRow> rows =
+        ((CollectionDAO.TestCaseResultTimeSeriesDAO) timeSeriesDao)
+            .listResultSummariesForTestSuites(idStrings);
+
+    return rows.stream()
+        .map(
+            row ->
+                Map.entry(
+                    UUID.fromString(row.testSuiteId()),
+                    new ResultSummary()
+                        .withTestCaseName(row.testCaseFQN())
+                        .withStatus(TestCaseStatus.fromValue(row.testCaseStatus()))
+                        .withTimestamp(row.timestamp())))
+        .collect(
+            Collectors.groupingBy(
+                Map.Entry::getKey, Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
   }
 
   public TestCaseResult listLastTestCaseResult(String testCaseFQN) {
@@ -231,6 +255,13 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
       }
       updated.setTestCaseResult(testCaseResult);
     } else {
+      LOG.warn(
+          "[RACE-CONDITION-MONITOR] Skipping older test result | testCaseFQN={} | "
+              + "incomingTimestamp={} | storedTimestamp={} | threadId={}",
+          testCaseResult.getTestCaseFQN(),
+          testCaseResult.getTimestamp(),
+          original.getTestCaseResult().getTimestamp(),
+          Thread.currentThread().getId());
       return;
     }
     updated.setTestCaseStatus(testCaseResult.getTestCaseStatus());
@@ -238,52 +269,6 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     EntityRepository.EntityUpdater entityUpdater =
         testCaseRepository.getUpdater(original, updated, EntityRepository.Operation.PATCH, null);
     entityUpdater.update();
-    updateTestSuiteSummary(updated);
-  }
-
-  private void updateTestSuiteSummary(TestCase testCase) {
-    List<String> fqns =
-        testCase.getTestSuites() != null
-            ? testCase.getTestSuites().stream().map(TestSuite::getFullyQualifiedName).toList()
-            : null;
-    TestSuiteRepository testSuiteRepository = new TestSuiteRepository();
-    if (fqns != null) {
-      for (String fqn : fqns) {
-        TestSuite testSuite = Entity.getEntityByName(TEST_SUITE, fqn, "*", Include.ALL);
-        if (testSuite != null) {
-          TestSuite original = JsonUtils.deepCopy(testSuite, TestSuite.class);
-          List<ResultSummary> resultSummaries = testSuite.getTestCaseResultSummary();
-
-          if (resultSummaries != null) {
-            resultSummaries.stream()
-                .filter(s -> s.getTestCaseName().equals(testCase.getFullyQualifiedName()))
-                .findFirst()
-                .ifPresentOrElse(
-                    s -> {
-                      s.setStatus(testCase.getTestCaseStatus());
-                      s.setTimestamp(testCase.getTestCaseResult().getTimestamp());
-                    },
-                    () ->
-                        resultSummaries.add(
-                            new ResultSummary()
-                                .withTestCaseName(testCase.getFullyQualifiedName())
-                                .withStatus(testCase.getTestCaseStatus())
-                                .withTimestamp(testCase.getTestCaseResult().getTimestamp())));
-          } else {
-            testSuite.setTestCaseResultSummary(
-                List.of(
-                    new ResultSummary()
-                        .withTestCaseName(testCase.getFullyQualifiedName())
-                        .withStatus(testCase.getTestCaseStatus())
-                        .withTimestamp(testCase.getTestCaseResult().getTimestamp())));
-          }
-          EntityRepository.EntityUpdater entityUpdater =
-              testSuiteRepository.getUpdater(
-                  original, testSuite, EntityRepository.Operation.PATCH, null);
-          entityUpdater.update();
-        }
-      }
-    }
   }
 
   @Override

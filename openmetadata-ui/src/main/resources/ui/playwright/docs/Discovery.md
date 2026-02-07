@@ -2,7 +2,7 @@
 
 # Discovery
 
-> **7 Components** | **26 Files** | **368 Tests** | **380 Scenarios** 🚀
+> **7 Components** | **27 Files** | **367 Tests** | **384 Scenarios** 🚀
 
 ## Table of Contents
 - [Feed](#feed)
@@ -20,7 +20,7 @@
 ## Feed
 
 <details open>
-<summary>📄 <b>ActivityFeed.spec.ts</b> (11 tests, 13 scenarios)</summary>
+<summary>📄 <b>ActivityFeed.spec.ts</b> (11 tests, 14 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/ActivityFeed.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ActivityFeed.spec.ts)
 
@@ -45,6 +45,7 @@
 | | ↳ *Admin user creates a conversation on an entity* | |
 | | ↳ *User1 mentions admin user in a reply* | |
 | | ↳ *Admin user checks notification for correct user and timestamp* | |
+| | ↳ *Update user display name and verify reaction tooltip* | |
 
 ### Mentions: Chinese character encoding in activity feed
 
@@ -364,7 +365,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>Table.spec.ts</b> (13 tests, 13 scenarios)</summary>
+<summary>📄 <b>Table.spec.ts</b> (11 tests, 11 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Table.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Table.spec.ts)
 
@@ -383,10 +384,8 @@
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Table & Data Model columns table pagination** - pagination for table column should work | Pagination for table column should work |
-| 2 | **Table & Data Model columns table pagination** - pagination for dashboard data model columns should work | Pagination for dashboard data model columns should work |
-| 3 | **Table & Data Model columns table pagination** - expand collapse should only visible for nested columns | Expand collapse should only visible for nested columns |
-| 4 | **Table & Data Model columns table pagination** - expand / collapse should not appear after updating nested fields table | Expand / collapse should not appear after updating nested fields table |
+| 1 | **Table & Data Model columns table pagination** - expand collapse should only visible for nested columns | Expand collapse should only visible for nested columns |
+| 2 | **Table & Data Model columns table pagination** - expand / collapse should not appear after updating nested fields table | Expand / collapse should not appear after updating nested fields table |
 
 ### Tags and glossary terms should be consistent for search 
 
@@ -584,6 +583,24 @@
 | | ↳ *Add Constraints* | |
 | | ↳ *Verify Constraints Data* | |
 | | ↳ *Remove Constraints* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>PipelineExecution.spec.ts</b> (1 tests, 5 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/PipelineExecution.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/PipelineExecution.spec.ts)
+
+### Pipeline Execution Tab
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pipeline Execution Tab** - Execution tab should display start time, end time, and duration columns | Execution tab should display start time, end time, and duration columns |
+| | ↳ *Navigate to pipeline entity page* | |
+| | ↳ *Navigate to Executions tab* | |
+| | ↳ *Verify ListView displays timing columns* | |
+| | ↳ *Verify execution data rows are present* | |
+| | ↳ *Verify duration is 10 minutes for both tasks* | |
 
 </details>
 

@@ -2,7 +2,7 @@
 
 # Platform
 
-> **12 Components** | **72 Files** | **1381 Tests** | **1867 Scenarios** 🚀
+> **12 Components** | **79 Files** | **1611 Tests** | **2258 Scenarios** 🚀
 
 ## Table of Contents
 - [Other](#other)
@@ -25,7 +25,61 @@
 ## Other
 
 <details open>
-<summary>📄 <b>AuditLogs.spec.ts</b> (27 tests, 63 scenarios)</summary>
+<summary>📄 <b>ODCSImportExport.spec.ts</b> (42 tests, 42 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/ODCSImportExport.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ODCSImportExport.spec.ts)
+
+### ODCS Import/Export
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **ODCS Import/Export** - Import basic ODCS contract from test-data file | Import basic ODCS contract from test-data file |
+| 2 | **ODCS Import/Export** - Import full ODCS contract with all sections from test-data file | Import full ODCS contract with all sections from test-data file |
+| 3 | **ODCS Import/Export** - Import ODCS contract with draft status from test-data file | Import ODCS contract with draft status from test-data file |
+| 4 | **ODCS Import/Export** - Import ODCS contract with v3.1.0 timestamp types from test-data file | Import ODCS contract with v3.1.0 timestamp types from test-data file |
+| 5 | **ODCS Import/Export** - Import ODCS contract with SLA properties from test-data file | Import ODCS contract with SLA properties from test-data file |
+| 6 | **ODCS Import/Export** - Import malformed ODCS YAML from test-data file shows error | Import malformed ODCS YAML from test-data file shows error |
+| 7 | **ODCS Import/Export** - Import ODCS missing apiVersion from test-data file shows error | Import ODCS missing apiVersion from test-data file shows error |
+| 8 | **ODCS Import/Export** - Import ODCS missing status from test-data file shows error | Import ODCS missing status from test-data file shows error |
+| 9 | **ODCS Import/Export** - Import empty ODCS file from test-data shows error | Import empty ODCS file from test-data shows error |
+| 10 | **ODCS Import/Export** - Import basic ODCS contract from JSON file | Import basic ODCS contract from JSON file |
+| 11 | **ODCS Import/Export** - Import malformed JSON shows error | Import malformed JSON shows error |
+| 12 | **ODCS Import/Export** - Import ODCS with missing kind shows error | Import ODCS with missing kind shows error |
+| 13 | **ODCS Import/Export** - Import ODCS with wrong apiVersion shows error | Import ODCS with wrong apiVersion shows error |
+| 14 | **ODCS Import/Export** - Import ODCS with wrong kind shows error | Import ODCS with wrong kind shows error |
+| 15 | **ODCS Import/Export** - Import minimal ODCS contract (inline) | Import minimal ODCS contract (inline) |
+| 16 | **ODCS Import/Export** - Import malformed ODCS YAML shows error (inline) | Import malformed ODCS YAML shows error (inline) |
+| 17 | **ODCS Import/Export** - Export ODCS YAML and verify download | Export ODCS YAML and verify download |
+| 18 | **ODCS Import/Export** - Import and Export round trip preserves data | Import and Export round trip preserves data |
+| 19 | **ODCS Import/Export** - Merge mode - adds SLA to existing contract and verifies export | Merge mode - adds SLA to existing contract and verifies export |
+| 20 | **ODCS Import/Export** - Replace mode - replaces existing contract completely and verifies export | Replace mode - replaces existing contract completely and verifies export |
+| 21 | **ODCS Import/Export** - Import modal shows merge/replace options for existing contract | Import modal shows merge/replace options for existing contract |
+| 22 | **ODCS Import/Export** - Import modal shows contract preview | Import modal shows contract preview |
+| 23 | **ODCS Import/Export** - Import ODCS and export as OpenMetadata YAML | Import ODCS and export as OpenMetadata YAML |
+| 24 | **ODCS Import/Export** - Import ODCS with description and verify OpenMetadata export | Import ODCS with description and verify OpenMetadata export |
+| 25 | **ODCS Import/Export** - Import ODCS full contract and export both formats | Import ODCS full contract and export both formats |
+| 26 | **ODCS Import/Export** - Verify SLA mapping from ODCS to OpenMetadata format | SLA mapping from ODCS to OpenMetadata format |
+| 27 | **ODCS Import/Export** - Import ODCS with timezone in SLA properties | Import ODCS with timezone in SLA properties |
+| 28 | **ODCS Import/Export** - Import ODCS with security/roles | Import ODCS with security/roles |
+| 29 | **ODCS Import/Export** - Import ODCS with quality rules | Import ODCS with quality rules |
+| 30 | **ODCS Import/Export** - Import ODCS with mustBeBetween quality rules | Import ODCS with mustBeBetween quality rules |
+| 31 | **ODCS Import/Export** - Import ODCS with team owner | Import ODCS with team owner |
+| 32 | **ODCS Import/Export** - Import ODCS with team - contract created successfully | Import ODCS with team - contract created successfully |
+| 33 | **ODCS Import/Export** - Import invalid ODCS missing required fields shows error | Import invalid ODCS missing required fields shows error |
+| 34 | **ODCS Import/Export** - Import button disabled for empty/invalid file | Import button disabled for empty/invalid file |
+| 35 | **ODCS Import/Export** - Schema validation shows warning when fields do not exist in entity | Schema validation shows warning when fields do not exist in entity |
+| 36 | **ODCS Import/Export** - Import button disabled when schema validation fails | Import button disabled when schema validation fails |
+| 37 | **ODCS Import/Export** - Schema validation shows loading state during validation | Schema validation shows loading state during validation |
+| 38 | **ODCS Import/Export** - Schema validation passes for contract without schema definition | Schema validation passes for contract without schema definition |
+| 39 | **ODCS Import/Export** - Multi-object ODCS contract shows object selector | Multi-object ODCS contract shows object selector |
+| 40 | **ODCS Import/Export** - Multi-object ODCS contract - selecting object enables import | Multi-object ODCS contract - selecting object enables import |
+| 41 | **ODCS Import/Export** - Multi-object ODCS contract - object selector shows all schema objects | Multi-object ODCS contract - object selector shows all schema objects |
+| 42 | **ODCS Import/Export** - Single-object ODCS contract does not show object selector | Single-object ODCS contract does not show object selector |
+
+</details>
+
+<details open>
+<summary>📄 <b>AuditLogs.spec.ts</b> (34 tests, 80 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/AuditLogs.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/AuditLogs.spec.ts)
 
@@ -144,6 +198,219 @@
 | 1 | **Audit Logs Page - Non-Admin Access** - should handle audit logs access for non-admin users | Handle audit logs access for non-admin users |
 | | ↳ *Verify page responds without server error* | |
 
+### Audit Logs - Event Verification
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Audit Logs - Event Verification** - should create audit log entry when glossary is created | Create audit log entry when glossary is created |
+| | ↳ *Create a glossary via API* | |
+| | ↳ *Wait for entityCreated audit log entry* | |
+| 2 | **Audit Logs - Event Verification** - should create audit log entry when glossary is updated | Create audit log entry when glossary is updated |
+| | ↳ *Update the glossary description* | |
+| | ↳ *Wait for entityUpdated/entityFieldsChanged audit log entry* | |
+| 3 | **Audit Logs - Event Verification** - should create audit log entry when glossary is soft deleted | Create audit log entry when glossary is soft deleted |
+| | ↳ *Soft delete the glossary* | |
+| | ↳ *Wait for entitySoftDeleted audit log entry* | |
+| 4 | **Audit Logs - Event Verification** - should create audit log entry when glossary is restored | Create audit log entry when glossary is restored |
+| | ↳ *Restore the glossary* | |
+| | ↳ *Wait for entityRestored audit log entry* | |
+| 5 | **Audit Logs - Event Verification** - should create audit log entry when glossary is hard deleted | Create audit log entry when glossary is hard deleted |
+| | ↳ *Hard delete the glossary* | |
+| | ↳ *Wait for entityDeleted audit log entry* | |
+| 6 | **Audit Logs - Event Verification** - should verify complete audit trail for entity lifecycle | Complete audit trail for entity lifecycle |
+| | ↳ *Verify entityCreated event* | |
+| | ↳ *Verify entityUpdated/entityFieldsChanged event* | |
+| | ↳ *Verify entitySoftDeleted event* | |
+| | ↳ *Verify entityRestored event* | |
+| | ↳ *Verify entityDeleted event* | |
+| 7 | **Audit Logs - Event Verification** - should display audit log entry in UI after entity creation | Display audit log entry in UI after entity creation |
+| | ↳ *Filter by entityType=glossary* | |
+| | ↳ *Verify the created glossary appears in the list* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>InputOutputPorts.spec.ts</b> (30 tests, 142 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/InputOutputPorts.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/InputOutputPorts.spec.ts)
+
+### Input Output Ports
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Input Output Ports** - Tab renders with empty state when no ports exist | Tab renders with empty state when no ports exist |
+| | ↳ *Create data product via API* | |
+| | ↳ *Navigate to data product* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify empty states* | |
+| | ↳ *Verify lineage section shows zero counts* | |
+| | ↳ *Cleanup* | |
+| 2 | **Input Output Ports** - Tab displays correct port counts | Tab displays correct port counts |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to data product ports tab* | |
+| | ↳ *Verify port counts* | |
+| | ↳ *Cleanup* | |
+| 3 | **Input Output Ports** - Lineage section is collapsed by default | Lineage section is collapsed by default |
+| | ↳ *Create data product via API* | |
+| | ↳ *Navigate to data product* | |
+| | ↳ *Verify lineage is collapsed* | |
+| | ↳ *Cleanup* | |
+| 4 | **Input Output Ports** - Add single input port | Add single input port |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Add input port* | |
+| | ↳ *Verify port was added* | |
+| | ↳ *Cleanup* | |
+| 5 | **Input Output Ports** - Add single output port | Add single output port |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Add output port* | |
+| | ↳ *Verify port was added* | |
+| | ↳ *Cleanup* | |
+| 6 | **Input Output Ports** - Add multiple input ports at once | Add multiple input ports at once |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Add multiple input ports* | |
+| | ↳ *Verify both ports were added* | |
+| | ↳ *Cleanup* | |
+| 7 | **Input Output Ports** - Add different entity types as ports | Add different entity types as ports |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Add table as input port* | |
+| | ↳ *Add topic as input port* | |
+| | ↳ *Add dashboard as output port* | |
+| | ↳ *Verify different entity types are shown* | |
+| | ↳ *Cleanup* | |
+| 8 | **Input Output Ports** - Cancel adding port | Cancel adding port |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Open and cancel input port drawer* | |
+| | ↳ *Verify empty state still shown* | |
+| | ↳ *Cleanup* | |
+| 9 | **Input Output Ports** - Input ports list displays entity cards | Input ports list displays entity cards |
+| | ↳ *Create data product with input ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify input ports list* | |
+| | ↳ *Cleanup* | |
+| 10 | **Input Output Ports** - Output ports list displays entity cards | Output ports list displays entity cards |
+| | ↳ *Create data product with output ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify output ports list* | |
+| | ↳ *Cleanup* | |
+| 11 | **Input Output Ports** - Port action dropdown visible with EditAll permission | Port action dropdown visible with EditAll permission |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify action dropdown is visible* | |
+| | ↳ *Cleanup* | |
+| 12 | **Input Output Ports** - Remove single input port | Remove single input port |
+| | ↳ *Create data product with input ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Remove first input port* | |
+| | ↳ *Verify port was removed* | |
+| | ↳ *Cleanup* | |
+| 13 | **Input Output Ports** - Remove single output port | Remove single output port |
+| | ↳ *Create data product with output ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Remove first output port* | |
+| | ↳ *Verify port was removed* | |
+| | ↳ *Cleanup* | |
+| 14 | **Input Output Ports** - Cancel port removal | Cancel port removal |
+| | ↳ *Create data product with input port via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Open and cancel removal dialog* | |
+| | ↳ *Verify port still exists* | |
+| | ↳ *Cleanup* | |
+| 15 | **Input Output Ports** - Remove last port shows empty state | Remove last port shows empty state |
+| | ↳ *Create data product with single input port via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Remove the only input port* | |
+| | ↳ *Verify empty state appears* | |
+| | ↳ *Cleanup* | |
+| 16 | **Input Output Ports** - Lineage loads on expand | Lineage loads on expand |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Expand lineage section* | |
+| | ↳ *Verify lineage view is visible* | |
+| | ↳ *Cleanup* | |
+| 17 | **Input Output Ports** - Lineage displays data product center node | Lineage displays data product center node |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to ports tab and expand lineage* | |
+| | ↳ *Verify data product node is visible* | |
+| | ↳ *Cleanup* | |
+| 18 | **Input Output Ports** - Lineage displays input and output ports | Lineage displays input and output ports |
+| | ↳ *Create data product with input and output ports* | |
+| | ↳ *Navigate to ports tab and expand lineage* | |
+| | ↳ *Verify input port nodes are visible* | |
+| | ↳ *Verify output port nodes are visible* | |
+| | ↳ *Cleanup* | |
+| 19 | **Input Output Ports** - Lineage with only input ports | Lineage with only input ports |
+| | ↳ *Create data product with only input ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Verify only input port is shown* | |
+| | ↳ *Cleanup* | |
+| 20 | **Input Output Ports** - Lineage with only output ports | Lineage with only output ports |
+| | ↳ *Create data product with only output ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Verify only output port is shown* | |
+| | ↳ *Cleanup* | |
+| 21 | **Input Output Ports** - Lineage controls work | Lineage controls work |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Verify ReactFlow controls are visible* | |
+| | ↳ *Cleanup* | |
+| 22 | **Input Output Ports** - Lineage section collapse/expand | Lineage section collapse/expand |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify initially collapsed* | |
+| | ↳ *Expand lineage* | |
+| | ↳ *Collapse lineage* | |
+| | ↳ *Cleanup* | |
+| 23 | **Input Output Ports** - Input ports section collapse/expand | Input ports section collapse/expand |
+| | ↳ *Create data product with input port* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify initially expanded* | |
+| | ↳ *Collapse input ports section* | |
+| | ↳ *Expand input ports section* | |
+| | ↳ *Cleanup* | |
+| 24 | **Input Output Ports** - Output ports section collapse/expand | Output ports section collapse/expand |
+| | ↳ *Create data product with output port* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify initially expanded* | |
+| | ↳ *Collapse output ports section* | |
+| | ↳ *Expand output ports section* | |
+| | ↳ *Cleanup* | |
+| 25 | **Input Output Ports** - Multiple sections can be collapsed independently | Multiple sections can be collapsed independently |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Collapse input ports only* | |
+| | ↳ *Expand lineage while keeping input collapsed* | |
+| | ↳ *Cleanup* | |
+| 26 | **Input Output Ports** - Toggle fullscreen mode | Toggle fullscreen mode |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter fullscreen mode* | |
+| | ↳ *Cleanup* | |
+| 27 | **Input Output Ports** - Exit fullscreen with button | Exit fullscreen with button |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter and exit fullscreen mode* | |
+| | ↳ *Cleanup* | |
+| 28 | **Input Output Ports** - Exit fullscreen with Escape key | Exit fullscreen with Escape key |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter fullscreen and exit with Escape* | |
+| | ↳ *Cleanup* | |
+| 29 | **Input Output Ports** - Fullscreen lineage is interactive | Fullscreen lineage is interactive |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter fullscreen and verify controls* | |
+| | ↳ *Cleanup* | |
+| 30 | **Input Output Ports** - Input ports list pagination | Input ports list pagination |
+| | ↳ *Create data product with many input ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify ports list displays* | |
+| | ↳ *Cleanup* | |
+
 </details>
 
 <details open>
@@ -177,6 +444,87 @@
 | 20 | User with matchAnyTag permission can only view Database Schema with the tag | User with matchAnyTag permission can only view Database Schema with the tag |
 | 21 | User with owner permission can only view owned Container | User with owner permission can only view owned Container |
 | 22 | User with matchAnyTag permission can only view Container with the tag | User with matchAnyTag permission can only view Container with the tag |
+
+</details>
+
+<details open>
+<summary>📄 <b>LearningResources.spec.ts</b> (19 tests, 40 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/LearningResources.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/LearningResources.spec.ts)
+
+### Learning Resources Admin Page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Learning Resources Admin Page** - should display learning resources page | Display learning resources page |
+| 2 | **Learning Resources Admin Page** - should open and close add resource drawer | Open and close add resource drawer |
+| | ↳ *Open add resource drawer* | |
+| | ↳ *Close drawer* | |
+| 3 | **Learning Resources Admin Page** - should validate required fields | Validate required fields |
+| 4 | **Learning Resources Admin Page** - should edit an existing learning resource | Edit an existing learning resource |
+| | ↳ *Click edit button and verify drawer opens* | |
+| | ↳ *Close the drawer* | |
+| 5 | **Learning Resources Admin Page** - should delete a learning resource | Delete a learning resource |
+| | ↳ *Click delete button and confirm* | |
+| | ↳ *Verify resource is removed from list* | |
+| 6 | **Learning Resources Admin Page** - should preview a learning resource by clicking on name | Preview a learning resource by clicking on name |
+| | ↳ *Click on resource name to preview* | |
+| | ↳ *Verify preview modal opens* | |
+| | ↳ *Close preview modal* | |
+| 7 | **Learning Resources Admin Page** - should filter resources by type | Filter resources by type |
+| | ↳ *Filter by Video type* | |
+| 8 | **Learning Resources Admin Page** - should search resources by name | Search resources by name |
+| | ↳ *Search for resource* | |
+
+### Learning Resources Admin Page - Additional Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Learning Resources Admin Page - Additional Tests** - should filter resources by category | Filter resources by category |
+| | ↳ *Filter by Governance category* | |
+| 2 | **Learning Resources Admin Page - Additional Tests** - should filter resources by status | Filter resources by status |
+| | ↳ *Filter by Draft status* | |
+| 3 | **Learning Resources Admin Page - Additional Tests** - should edit and save resource changes via UI | Edit and save resource changes via UI |
+| | ↳ *Open edit drawer and modify display name* | |
+| | ↳ *Save changes* | |
+| | ↳ *Verify updated display name in list* | |
+
+### Learning Icon on Pages
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Learning Icon on Pages** - should display learning icon on glossary page when resources exist | Display learning icon on glossary page when resources exist |
+| 2 | **Learning Icon on Pages** - should open learning drawer when icon is clicked | Open learning drawer when icon is clicked |
+| | ↳ *Click learning icon* | |
+| | ↳ *Verify drawer opens with resources* | |
+| | ↳ *Close drawer* | |
+| 3 | **Learning Icon on Pages** - should NOT show draft resources on target pages | NOT show draft resources on target pages |
+| 4 | **Learning Icon on Pages** - should show learning icon on lineage page when resources exist | Show learning icon on lineage page when resources exist |
+| 5 | **Learning Icon on Pages** - should open resource player when clicking on resource card in drawer | Open resource player when clicking on resource card in drawer |
+| | ↳ *Open learning drawer* | |
+| | ↳ *Click on resource card to open player* | |
+| | ↳ *Close player modal* | |
+
+### Learning Resources E2E Flow
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Learning Resources E2E Flow** - should create resource via UI and verify learning icon appears on target page | Create resource via UI and verify learning icon appears on target page |
+| | ↳ *Navigate to Learning Resources admin page* | |
+| | ↳ *Open add resource drawer and fill form* | |
+| | ↳ *Save the resource* | |
+| | ↳ *Navigate to Glossary page and verify learning icon appears* | |
+| | ↳ *Click learning icon and verify the created resource is shown* | |
+| | ↳ *Cleanup - delete the created resource* | |
+| 2 | **Learning Resources E2E Flow** - should update resource context and verify learning icon moves to new page | Update resource context and verify learning icon moves to new page |
+| | ↳ *Verify resource appears on Glossary page initially* | |
+| | ↳ *Navigate to admin page and update resource context to Lineage* | |
+| | ↳ *Verify learning icon no longer appears on Glossary page* | |
+| | ↳ *Verify learning icon now appears on Lineage page* | |
+| 3 | **Learning Resources E2E Flow** - should delete resource and verify learning icon disappears from target page | Delete resource and verify learning icon disappears from target page |
+| | ↳ *Verify resource appears on Glossary page initially* | |
+| | ↳ *Navigate to admin page and delete the resource* | |
+| | ↳ *Verify learning icon no longer shows deleted resource on Glossary page* | |
 
 </details>
 
@@ -226,6 +574,25 @@
 |---|-----------|-------------|
 | 1 | **Airflow** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
 | 2 | **Airflow** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
+
+</details>
+
+<details open>
+<summary>📄 <b>ColumnSorting.spec.ts</b> (7 tests, 7 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/ColumnSorting.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ColumnSorting.spec.ts)
+
+### Table Column Sorting
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Table Column Sorting** - Sort dropdown should be visible on table schema tab | Sort dropdown should be visible on table schema tab |
+| 2 | **Table Column Sorting** - Sort dropdown should show Alphabetical and Original Order options | Sort dropdown should show Alphabetical and Original Order options |
+| 3 | **Table Column Sorting** - Clicking Alphabetical option should sort columns by name | Clicking Alphabetical option should sort columns by name |
+| 4 | **Table Column Sorting** - Clicking Original Order option should sort columns by ordinal position | Clicking Original Order option should sort columns by ordinal position |
+| 5 | **Table Column Sorting** - Clicking Name column header should toggle sort order | Clicking Name column header should toggle sort order |
+| 6 | **Table Column Sorting** - Switching sort field should reset sort order to ascending | Switching sort field should reset sort order to ascending |
+| 7 | **Table Column Sorting** - Sort state should be preserved when searching columns | Sort state should be preserved when searching columns |
 
 </details>
 
@@ -444,6 +811,22 @@
 </details>
 
 <details open>
+<summary>📄 <b>CSVImportWithQuotesAndCommas.spec.ts</b> (1 tests, 3 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts)
+
+### CSV Import with Commas and Quotes - All Entity Types
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **CSV Import with Commas and Quotes - All Entity Types** - Create glossary with CSV, export it, create new glossary and import exported data | Create glossary with CSV, export it, create new glossary and import exported data |
+| | ↳ *Create glossary and import CSV with quotes and commas* | |
+| | ↳ *Export CSV and verify it contains properly escaped quotes* | |
+| | ↳ *Create new glossary and import exported CSV* | |
+
+</details>
+
+<details open>
 <summary>📄 <b>HealthCheck.spec.ts</b> (1 tests, 1 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/HealthCheck.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/HealthCheck.spec.ts)
@@ -477,7 +860,7 @@
 ## Entities
 
 <details open>
-<summary>📄 <b>Entity.spec.ts</b> (357 tests, 451 scenarios)</summary>
+<summary>📄 <b>Entity.spec.ts</b> (357 tests, 463 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts)
 
@@ -525,9 +908,10 @@
 | 21 | **Api Endpoint** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 22 | **Api Endpoint** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 23 | **Api Endpoint** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 24 | **Api Endpoint** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 24 | **Api Endpoint** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 25 | **Api Endpoint** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 26 | **Api Endpoint** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -578,9 +962,10 @@
 | 23 | **Table** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 24 | **Table** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 25 | **Table** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 26 | **Table** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 26 | **Table** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 27 | **Table** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 28 | **Table** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 | 29 | **Table** - Switch from Data Observability tab to Activity Feed tab and verify data appears | Switch from Data Observability tab to Activity Feed tab and verify data appears |
@@ -608,9 +993,10 @@
 | 12 | **Stored Procedure** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 13 | **Stored Procedure** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 14 | **Stored Procedure** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 15 | **Stored Procedure** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 15 | **Stored Procedure** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 16 | **Stored Procedure** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 17 | **Stored Procedure** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -634,9 +1020,10 @@
 | 14 | **Dashboard** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 15 | **Dashboard** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 16 | **Dashboard** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 17 | **Dashboard** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 17 | **Dashboard** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 18 | **Dashboard** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 19 | **Dashboard** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -684,9 +1071,10 @@
 | 21 | **Pipeline** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 22 | **Pipeline** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 23 | **Pipeline** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 24 | **Pipeline** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 24 | **Pipeline** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 25 | **Pipeline** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 26 | **Pipeline** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -734,9 +1122,10 @@
 | 21 | **Topic** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 22 | **Topic** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 23 | **Topic** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 24 | **Topic** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 24 | **Topic** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 25 | **Topic** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 26 | **Topic** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -784,9 +1173,10 @@
 | 21 | **Ml Model** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 22 | **Ml Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 23 | **Ml Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 24 | **Ml Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 24 | **Ml Model** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 25 | **Ml Model** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 26 | **Ml Model** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -809,9 +1199,10 @@
 | 13 | **Container** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 14 | **Container** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 15 | **Container** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 16 | **Container** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 16 | **Container** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 17 | **Container** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 18 | **Container** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -859,9 +1250,10 @@
 | 21 | **Search Index** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 22 | **Search Index** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 23 | **Search Index** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 24 | **Search Index** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 24 | **Search Index** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 25 | **Search Index** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 26 | **Search Index** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -911,9 +1303,10 @@
 | 23 | **Dashboard Data Model** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 24 | **Dashboard Data Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 25 | **Dashboard Data Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 26 | **Dashboard Data Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 26 | **Dashboard Data Model** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 27 | **Dashboard Data Model** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 28 | **Dashboard Data Model** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -935,9 +1328,10 @@
 | 12 | **Metric** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 13 | **Metric** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 14 | **Metric** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 15 | **Metric** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 15 | **Metric** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 16 | **Metric** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 17 | **Metric** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -959,9 +1353,10 @@
 | 12 | **Chart** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 13 | **Chart** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 14 | **Chart** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 15 | **Chart** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 15 | **Chart** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 16 | **Chart** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 17 | **Chart** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -1571,7 +1966,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>ServiceEntity.spec.ts</b> (140 tests, 155 scenarios)</summary>
+<summary>📄 <b>ServiceEntity.spec.ts</b> (140 tests, 158 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/ServiceEntity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ServiceEntity.spec.ts)
 
@@ -1603,9 +1998,10 @@
 | 7 | **Api Collection** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
 | 8 | **Api Collection** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
 | 9 | **Api Collection** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 10 | **Api Collection** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
+| 10 | **Api Collection** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 11 | **Api Collection** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Database Service
@@ -1728,9 +2124,10 @@
 | 8 | **Database** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
 | 9 | **Database** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
 | 10 | **Database** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 11 | **Database** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
+| 11 | **Database** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 12 | **Database** - Follow & Un-follow entity for Database Entity | Tests follow and unfollow actions  Follows the service and then unfollows it to verify state changes |
 | 13 | **Database** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
@@ -1748,9 +2145,10 @@
 | 8 | **Database Schema** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
 | 9 | **Database Schema** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
 | 10 | **Database Schema** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 11 | **Database Schema** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
+| 11 | **Database Schema** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
 | 12 | **Database Schema** - Follow & Un-follow entity for Database Entity | Tests follow and unfollow actions  Follows the service and then unfollows it to verify state changes |
 | 13 | **Database Schema** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
@@ -1809,6 +2207,237 @@
 | 12 | Delete Drive Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
 | | ↳ *Soft delete* | |
 | | ↳ *Hard delete* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>ColumnBulkOperations.spec.ts</b> (79 tests, 79 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/ColumnBulkOperations.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ColumnBulkOperations.spec.ts)
+
+### Column Bulk Operations Page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations Page** - should load the page with stats cards | Load the page with stats cards |
+| 2 | **Column Bulk Operations Page** - should display column grid with data | Display column grid with data |
+| 3 | **Column Bulk Operations Page** - should show no results message when filters match nothing | Show no results message when filters match nothing |
+
+### Column Bulk Operations - Metadata Status Filters
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Metadata Status Filters** - should filter by MISSING metadata status | Filter by MISSING metadata status |
+| 2 | **Column Bulk Operations - Metadata Status Filters** - should filter by Has Description metadata status | Filter by Has Description metadata status |
+| 3 | **Column Bulk Operations - Metadata Status Filters** - should filter by Has Tags metadata status | Filter by Has Tags metadata status |
+| 4 | **Column Bulk Operations - Metadata Status Filters** - should filter by Has Glossary metadata status | Filter by Has Glossary metadata status |
+| 5 | **Column Bulk Operations - Metadata Status Filters** - should make API call when filtering by metadata status | Make API call when filtering by metadata status |
+
+### Column Bulk Operations - Domain Filters
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Domain Filters** - should display Domains filter button | Display Domains filter button |
+| 2 | **Column Bulk Operations - Domain Filters** - should open Domains filter dropdown | Open Domains filter dropdown |
+| 3 | **Column Bulk Operations - Domain Filters** - should have domain options in dropdown when domains exist | Have domain options in dropdown when domains exist |
+
+### Column Bulk Operations - Selection and Edit
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Selection and Edit** - should show disabled edit button when no columns are selected | Show disabled edit button when no columns are selected |
+| 2 | **Column Bulk Operations - Selection and Edit** - should enable edit button when columns are selected | Enable edit button when columns are selected |
+| 3 | **Column Bulk Operations - Selection and Edit** - should open edit drawer when edit button is clicked | Open edit drawer when edit button is clicked |
+| 4 | **Column Bulk Operations - Selection and Edit** - should be able to dismiss drawer | Be able to dismiss drawer |
+| 5 | **Column Bulk Operations - Selection and Edit** - should clear selection when cancel selection button is clicked | Clear selection when cancel selection button is clicked |
+
+### Column Bulk Operations - Bulk Update Flow
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Bulk Update Flow** - should update display name and propagate to all entities | Update display name and propagate to all entities |
+| 2 | **Column Bulk Operations - Bulk Update Flow** - should update all occurrences when selecting expanded column | Update all occurrences when selecting expanded column |
+| 3 | **Column Bulk Operations - Bulk Update Flow** - should show success notification after bulk update | Show success notification after bulk update |
+| 4 | **Column Bulk Operations - Bulk Update Flow** - should populate existing values when editing again | Populate existing values when editing again |
+
+### Column Bulk Operations - Edit Drawer Pre-population
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Edit Drawer Pre-population** - should show tags field in edit drawer when selecting a column | Show tags field in edit drawer when selecting a column |
+| 2 | **Column Bulk Operations - Edit Drawer Pre-population** - should show glossary terms field in edit drawer when selecting a column | Show glossary terms field in edit drawer when selecting a column |
+
+### Column Bulk Operations - Coverage Status Display
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Coverage Status Display** - should display coverage indicators in the grid | Display coverage indicators in the grid |
+| 2 | **Column Bulk Operations - Coverage Status Display** - should display metadata status from API response | Display metadata status from API response |
+
+### Column Bulk Operations - Column Variations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Column Variations** - should show coverage indicator for columns with same name | Show coverage indicator for columns with same name |
+| 2 | **Column Bulk Operations - Column Variations** - should expand column row to show variations when clicked | Expand column row to show variations when clicked |
+
+### Column Bulk Operations - Search
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Search** - should filter columns by search query | Filter columns by search query |
+| 2 | **Column Bulk Operations - Search** - should make server-side API call with columnNamePattern when searching | Make server-side API call with columnNamePattern when searching |
+| 3 | **Column Bulk Operations - Search** - should perform case-insensitive search | Perform case-insensitive search |
+| 4 | **Column Bulk Operations - Search** - should update stats cards when search is applied | Update stats cards when search is applied |
+
+### Column Bulk Operations - Pagination
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Pagination** - should navigate through pages | Navigate through pages |
+
+### Column Bulk Operations - Multi-select
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Multi-select** - should select multiple columns and bulk edit | Select multiple columns and bulk edit |
+| 2 | **Column Bulk Operations - Multi-select** - should select all columns using header checkbox | Select all columns using header checkbox |
+
+### Column Bulk Operations - View Selected Only
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - View Selected Only** - should toggle view selected only mode | Toggle view selected only mode |
+
+### Column Bulk Operations - Aggregate Row Click Behavior
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Aggregate Row Click Behavior** - should open edit drawer when clicking on aggregate row | Open edit drawer when clicking on aggregate row |
+| 2 | **Column Bulk Operations - Aggregate Row Click Behavior** - should NOT open edit drawer when clicking expand button | NOT open edit drawer when clicking expand button |
+
+### Column Bulk Operations - Combined Filters
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Combined Filters** - should apply multiple filters together | Apply multiple filters together |
+| 2 | **Column Bulk Operations - Combined Filters** - should clear individual filters | Clear individual filters |
+
+### Column Bulk Operations - URL State Persistence
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - URL State Persistence** - should restore filters from URL on page load | Restore filters from URL on page load |
+| 2 | **Column Bulk Operations - URL State Persistence** - should persist search query in URL | Persist search query in URL |
+
+### Column Bulk Operations - Edit Drawer Title
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Edit Drawer Title** - should show correct title for single column selection | Show correct title for single column selection |
+| 2 | **Column Bulk Operations - Edit Drawer Title** - should show correct title for multiple column selection | Show correct title for multiple column selection |
+
+### Column Bulk Operations - Cancel Without Saving
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Cancel Without Saving** - should discard changes when closing drawer without saving | Discard changes when closing drawer without saving |
+
+### Column Bulk Operations - Service Filter
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Service Filter** - should show Service filter chip when Service filter is applied from URL | Show Service filter chip when Service filter is applied from URL |
+| 2 | **Column Bulk Operations - Service Filter** - should have filter bar with search and filter options | Have filter bar with search and filter options |
+
+### Column Bulk Operations - Cross Entity Type Support
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Cross Entity Type Support** - should filter by entity type - Table only | Filter by entity type - Table only |
+| 2 | **Column Bulk Operations - Cross Entity Type Support** - should filter by entity type - Dashboard Data Model only | Filter by entity type - Dashboard Data Model only |
+| 3 | **Column Bulk Operations - Cross Entity Type Support** - should show occurrence count for columns appearing in multiple entities | Show occurrence count for columns appearing in multiple entities |
+| 4 | **Column Bulk Operations - Cross Entity Type Support** - should expand row to show entity details for multi-occurrence columns | Expand row to show entity details for multi-occurrence columns |
+
+### Column Bulk Operations - Nested STRUCT Columns
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Nested STRUCT Columns** - should display STRUCT column with expand button | Display STRUCT column with expand button |
+| 2 | **Column Bulk Operations - Nested STRUCT Columns** - should expand STRUCT column to show nested fields | Expand STRUCT column to show nested fields |
+| 3 | **Column Bulk Operations - Nested STRUCT Columns** - should select and edit nested STRUCT field | Select and edit nested STRUCT field |
+| 4 | **Column Bulk Operations - Nested STRUCT Columns** - should show nested levels with proper indentation | Show nested levels with proper indentation |
+
+### Column Bulk Operations - Error Handling
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Error Handling** - should maintain page stability during interactions | Maintain page stability during interactions |
+| 2 | **Column Bulk Operations - Error Handling** - should handle network timeout gracefully | Handle network timeout gracefully |
+
+### Column Bulk Operations - Tag Operations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Tag Operations** - should be able to remove existing tags | Be able to remove existing tags |
+| 2 | **Column Bulk Operations - Tag Operations** - should be able to add multiple tags at once | Be able to add multiple tags at once |
+| 3 | **Column Bulk Operations - Tag Operations** - should be able to clear all tags from a column | Be able to clear all tags from a column |
+
+### Column Bulk Operations - Keyboard Accessibility
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Keyboard Accessibility** - should close drawer with Escape key | Close drawer with Escape key |
+| 2 | **Column Bulk Operations - Keyboard Accessibility** - should navigate form fields with Tab key | Navigate form fields with Tab key |
+| 3 | **Column Bulk Operations - Keyboard Accessibility** - should select checkbox with Space key | Select checkbox with Space key |
+
+### Column Bulk Operations - Selection Edge Cases
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Selection Edge Cases** - should maintain selection after scrolling | Maintain selection after scrolling |
+| 2 | **Column Bulk Operations - Selection Edge Cases** - should allow selecting non-adjacent rows | Allow selecting non-adjacent rows |
+| 3 | **Column Bulk Operations - Selection Edge Cases** - should re-select same row after deselecting | Re-select same row after deselecting |
+
+### Column Bulk Operations - Special Characters & Long Content
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Special Characters & Long Content** - should handle search with special characters | Handle search with special characters |
+| 2 | **Column Bulk Operations - Special Characters & Long Content** - should display long column names with truncation | Display long column names with truncation |
+| 3 | **Column Bulk Operations - Special Characters & Long Content** - should allow entering long description in edit drawer | Allow entering long description in edit drawer |
+| 4 | **Column Bulk Operations - Special Characters & Long Content** - should handle display name with special characters | Handle display name with special characters |
+
+### Column Bulk Operations - Async Job Status
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Async Job Status** - should show loading state during update | Show loading state during update |
+| 2 | **Column Bulk Operations - Async Job Status** - should allow selecting and editing columns | Allow selecting and editing columns |
+
+### Column Bulk Operations - Empty/Edge Values
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Empty/Edge Values** - should allow clearing display name | Allow clearing display name |
+| 2 | **Column Bulk Operations - Empty/Edge Values** - should allow clearing description | Allow clearing description |
+| 3 | **Column Bulk Operations - Empty/Edge Values** - should handle column with no existing metadata | Handle column with no existing metadata |
+
+### Column Bulk Operations - Browser Behavior
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Browser Behavior** - should maintain functionality after page refresh | Maintain functionality after page refresh |
+| 2 | **Column Bulk Operations - Browser Behavior** - should handle multiple visits to the page | Handle multiple visits to the page |
+| 3 | **Column Bulk Operations - Browser Behavior** - should warn before closing page with unsaved changes | Warn before closing page with unsaved changes |
+
+### Column Bulk Operations - Filter Edge Cases
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Column Bulk Operations - Filter Edge Cases** - should allow interacting with filters | Allow interacting with filters |
+| 2 | **Column Bulk Operations - Filter Edge Cases** - should reset search filter properly | Reset search filter properly |
+| 3 | **Column Bulk Operations - Filter Edge Cases** - should show correct count when combining search and filters | Show correct count when combining search and filters |
 
 </details>
 
@@ -1996,7 +2625,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>EntitySummaryPanel.spec.ts</b> (16 tests, 16 scenarios)</summary>
+<summary>📄 <b>EntitySummaryPanel.spec.ts</b> (18 tests, 18 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/EntitySummaryPanel.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/EntitySummaryPanel.spec.ts)
 
@@ -2020,6 +2649,13 @@
 | 14 | **Entity Summary Panel** - should display tags section | Display tags section |
 | 15 | **Entity Summary Panel** - should navigate between tabs | Navigate between tabs |
 | 16 | **Entity Summary Panel** - should display description section | Display description section |
+
+### Entity Title Section - Edit Display Name
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Entity Title Section - Edit Display Name** - should edit display name from entity summary panel | Edit display name from entity summary panel |
+| 2 | **Entity Title Section - Edit Display Name** - should cancel edit display name modal | Cancel edit display name modal |
 
 </details>
 
@@ -3047,9 +3683,20 @@
 ## Lineage (UI)
 
 <details open>
-<summary>📄 <b>Lineage.spec.ts</b> (42 tests, 101 scenarios)</summary>
+<summary>📄 <b>Lineage.spec.ts</b> (48 tests, 107 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Lineage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Lineage.spec.ts)
+
+### node selection edge behavior
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **node selection edge behavior** - highlights traced node-to-node edges when a node is selected | Highlights traced node-to-node edges when a node is selected |
+| 2 | **node selection edge behavior** - hides column-to-column edges when a node is selected | Hides column-to-column edges when a node is selected |
+| 3 | **node selection edge behavior** - grays out non-traced node-to-node edges when a node is selected | Grays out non-traced node-to-node edges when a node is selected |
+| 4 | **node selection edge behavior** - highlights traced column-to-column edges when a column is selected | Highlights traced column-to-column edges when a column is selected |
+| 5 | **node selection edge behavior** - hides non-traced column-to-column edges when a column is selected | Hides non-traced column-to-column edges when a column is selected |
+| 6 | **node selection edge behavior** - grays out node-to-node edges when a column is selected | Grays out node-to-node edges when a column is selected |
 
 ### Test pagination in column level lineage
 
@@ -3192,7 +3839,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>ImpactAnalysis.spec.ts</b> (9 tests, 9 scenarios)</summary>
+<summary>📄 <b>ImpactAnalysis.spec.ts</b> (10 tests, 10 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/ImpactAnalysis.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ImpactAnalysis.spec.ts)
 
@@ -3209,6 +3856,7 @@
 | 7 | **Impact Analysis** - Verify upstream/downstream counts for column level | Upstream/downstream counts for column level |
 | 8 | **Impact Analysis** - Verify column level downstream connections | Column level downstream connections |
 | 9 | **Impact Analysis** - Verify column level upstream connections | Column level upstream connections |
+| 10 | **Impact Analysis** - Verify entity popover card appears on asset hover in lineage-card-table | Entity popover card appears on asset hover in lineage-card-table |
 
 </details>
 
@@ -3233,7 +3881,7 @@
 ## Users & Teams
 
 <details open>
-<summary>📄 <b>Users.spec.ts</b> (28 tests, 33 scenarios)</summary>
+<summary>📄 <b>Users.spec.ts</b> (29 tests, 34 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts)
 
@@ -3246,6 +3894,7 @@
 | | ↳ *User shouldn't be allowed to create User with same Email* | |
 | 3 | **User with Admin Roles** - Admin soft & hard delete and restore user | Admin soft & hard delete and restore user |
 | 4 | **User with Admin Roles** - Admin soft & hard delete and restore user from profile page | Admin soft & hard delete and restore user from profile page |
+| 5 | **User with Admin Roles** - User should be visible in right panel on table page when added as custom property | User should be visible in right panel on table page when added as custom property |
 
 ### User with Data Consumer Roles
 
@@ -3413,7 +4062,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>OnlineUsers.spec.ts</b> (6 tests, 6 scenarios)</summary>
+<summary>📄 <b>OnlineUsers.spec.ts</b> (7 tests, 8 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/OnlineUsers.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OnlineUsers.spec.ts)
 
@@ -3427,6 +4076,9 @@
 | 4 | **Online Users Feature** - Should filter users by time window | Filter users by time window |
 | 5 | **Online Users Feature** - Non-admin users should not see Online Users page | Non-admin users should not see Online Users page |
 | 6 | **Online Users Feature** - Should show correct last activity format | Show correct last activity format |
+| 7 | **Online Users Feature** - Should show user displayName in online users table | Show user displayName in online users table |
+| | ↳ *Visit Explore Page as New User* | |
+| | ↳ *Verify Online User as Admin* | |
 
 </details>
 
@@ -3492,6 +4144,19 @@
 
 </details>
 
+<details open>
+<summary>📄 <b>UserCreationWithPersona.spec.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/UserCreationWithPersona.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/UserCreationWithPersona.spec.ts)
+
+### Create user with persona
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Create user with persona** - Create user with persona and verify on profile | Create user with persona and verify on profile |
+
+</details>
+
 
 ---
 
@@ -3500,7 +4165,7 @@
 ## SSO
 
 <details open>
-<summary>📄 <b>SSOConfiguration.spec.ts</b> (10 tests, 10 scenarios)</summary>
+<summary>📄 <b>SSOConfiguration.spec.ts</b> (43 tests, 43 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts)
 
@@ -3518,6 +4183,39 @@
 | 8 | **SSO Configuration Tests** - should show correct fields when selecting Google provider | Show correct fields when selecting Google provider |
 | 9 | **SSO Configuration Tests** - should show correct fields when selecting Auth0 provider | Show correct fields when selecting Auth0 provider |
 | 10 | **SSO Configuration Tests** - should show correct fields when selecting Okta provider | Show correct fields when selecting Okta provider |
+| 11 | **SSO Configuration Tests** - should show OIDC Callback URL as readonly for Google provider | Show OIDC Callback URL as readonly for Google provider |
+| 12 | **SSO Configuration Tests** - should show OIDC Callback URL as readonly for Auth0 provider | Show OIDC Callback URL as readonly for Auth0 provider |
+| 13 | **SSO Configuration Tests** - should show OIDC Callback URL as readonly for Okta provider | Show OIDC Callback URL as readonly for Okta provider |
+| 14 | **SSO Configuration Tests** - should show OIDC Callback URL as readonly for Azure AD provider | Show OIDC Callback URL as readonly for Azure AD provider |
+| 15 | **SSO Configuration Tests** - should show SAML SP Entity ID and ACS URL as readonly | Show SAML SP Entity ID and ACS URL as readonly |
+| 16 | **SSO Configuration Tests** - should display advanced config collapse for OIDC provider | Display advanced config collapse for OIDC provider |
+| 17 | **SSO Configuration Tests** - should show advanced fields when advanced config is expanded | Show advanced fields when advanced config is expanded |
+| 18 | **SSO Configuration Tests** - should hide publicKeyUrls field for confidential OIDC providers | Hide publicKeyUrls field for confidential OIDC providers |
+| 19 | **SSO Configuration Tests** - should hide serverUrl field for OIDC providers | Hide serverUrl field for OIDC providers |
+| 20 | **SSO Configuration Tests** - should hide preferredJwsAlgorithm and responseType for OIDC providers | Hide preferredJwsAlgorithm and responseType for OIDC providers |
+| 21 | **SSO Configuration Tests** - should hide tokenValidationAlgorithm for OIDC providers | Hide tokenValidationAlgorithm for OIDC providers |
+| 22 | **SSO Configuration Tests** - should hide jwtPrincipalClaims for LDAP provider | Hide jwtPrincipalClaims for LDAP provider |
+| 23 | **SSO Configuration Tests** - should hide jwtPrincipalClaims for SAML provider | Hide jwtPrincipalClaims for SAML provider |
+| 24 | **SSO Configuration Tests** - should hide publicKeyUrls for SAML provider | Hide publicKeyUrls for SAML provider |
+| 25 | **SSO Configuration Tests** - should hide publicKeyUrls for LDAP provider | Hide publicKeyUrls for LDAP provider |
+| 26 | **SSO Configuration Tests** - should hide SAML SP callback URL field | Hide SAML SP callback URL field |
+| 27 | **SSO Configuration Tests** - should hide clientAuthenticationMethod for Auth0 provider | Hide clientAuthenticationMethod for Auth0 provider |
+| 28 | **SSO Configuration Tests** - should show clientAuthenticationMethod for Okta provider | Show clientAuthenticationMethod for Okta provider |
+| 29 | **SSO Configuration Tests** - should hide tenant field for Auth0 provider | Hide tenant field for Auth0 provider |
+| 30 | **SSO Configuration Tests** - should show tenant field for Azure provider | Show tenant field for Azure provider |
+| 31 | **SSO Configuration Tests** - should collapse advanced config by default | Collapse advanced config by default |
+| 32 | **SSO Configuration Tests** - should expand and collapse advanced config when clicked | Expand and collapse advanced config when clicked |
+| 33 | **SSO Configuration Tests** - should add new mapping when Add button is clicked | Add new mapping when Add button is clicked |
+| 34 | **SSO Configuration Tests** - should allow entering LDAP group DN | Allow entering LDAP group DN |
+| 35 | **SSO Configuration Tests** - should allow selecting roles from dropdown | Allow selecting roles from dropdown |
+| 36 | **SSO Configuration Tests** - should allow removing a mapping | Allow removing a mapping |
+| 37 | **SSO Configuration Tests** - should show duplicate error when same LDAP group is added twice | Show duplicate error when same LDAP group is added twice |
+| 38 | **SSO Configuration Tests** - should clear duplicate error when one entry is changed | Clear duplicate error when one entry is changed |
+| 39 | **SSO Configuration Tests** - should allow adding multiple unique mappings | Allow adding multiple unique mappings |
+| 40 | **SSO Configuration Tests** - should maintain mapping when clearing LDAP group input | Maintain mapping when clearing LDAP group input |
+| 41 | **SSO Configuration Tests** - should handle case-insensitive duplicate detection | Handle case-insensitive duplicate detection |
+| 42 | **SSO Configuration Tests** - should handle whitespace in duplicate detection | Handle whitespace in duplicate detection |
+| 43 | **SSO Configuration Tests** - should not display role mapping widget for non-LDAP providers | Not display role mapping widget for non-LDAP providers |
 
 </details>
 

@@ -19,7 +19,6 @@ import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
 import { findSystemTestDefinition } from '../../../utils/testCases';
 
-
 const actionNotAllowed = async (page: Page) => {
   // Verify "Add Test Definition" button is NOT visible (no Create permission)
   const addButton = page.getByTestId('add-test-definition-button');
@@ -37,7 +36,7 @@ const actionNotAllowed = async (page: Page) => {
   // Verify enabled/disabled switches are NOT interactive (no EditAll permission)
   const firstSwitch = page.getByRole('switch').first();
   await expect(firstSwitch).toBeDisabled();
-}
+};
 
 // Define permission policies for different roles
 const TEST_DEFINITION_VIEW_ONLY_RULES = [
@@ -208,254 +207,293 @@ test.afterAll(async ({ browser }) => {
   await afterAction();
 });
 
-test.describe('Test Definition Permissions - View Only User', { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` }, () => {
-  test('should allow viewing test definitions but not create, edit, or delete', async ({
-    viewOnlyPage,
-  }) => {
-    await redirectToHomePage(viewOnlyPage);
+test.describe(
+  'Test Definition Permissions - View Only User',
+  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` },
+  () => {
+    test('should allow viewing test definitions but not create, edit, or delete', async ({
+      viewOnlyPage,
+    }) => {
+      await redirectToHomePage(viewOnlyPage);
 
-    // Navigate to Rules Library
-    await viewOnlyPage.goto('/rules-library');
+      // Navigate to Rules Library
+      await viewOnlyPage.goto('/rules-library');
 
-    // Wait for table to load
-    await viewOnlyPage.waitForSelector(
-      '[data-testid="test-definition-table"]',
-      {
-        state: 'visible',
-      }
-    );
+      // Wait for table to load
+      await viewOnlyPage.waitForSelector(
+        '[data-testid="test-definition-table"]',
+        {
+          state: 'visible',
+        }
+      );
 
-    // Verify user can view the table
-    await expect(
-      viewOnlyPage.getByTestId('test-definition-table')
-    ).toBeVisible();
+      // Verify user can view the table
+      await expect(
+        viewOnlyPage.getByTestId('test-definition-table')
+      ).toBeVisible();
 
-    await actionNotAllowed(viewOnlyPage);
-  });
-});
+      await actionNotAllowed(viewOnlyPage);
+    });
+  }
+);
 
-test.describe('Test Definition Permissions - Data Consumer', { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` }, () => {
-  test('should allow viewing test definitions but not create, edit, or delete', async ({
-    dataConsumerPage,
-  }) => {
-    await redirectToHomePage(dataConsumerPage);
+test.describe(
+  'Test Definition Permissions - Data Consumer',
+  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` },
+  () => {
+    test('should allow viewing test definitions but not create, edit, or delete', async ({
+      dataConsumerPage,
+    }) => {
+      await redirectToHomePage(dataConsumerPage);
 
-    // Navigate to Rules Library
-    await dataConsumerPage.goto('/rules-library');
+      // Navigate to Rules Library
+      await dataConsumerPage.goto('/rules-library');
 
-    // Wait for table to load
-    await dataConsumerPage.waitForSelector(
-      '[data-testid="test-definition-table"]',
-      {
-        state: 'visible',
-      }
-    );
+      // Wait for table to load
+      await dataConsumerPage.waitForSelector(
+        '[data-testid="test-definition-table"]',
+        {
+          state: 'visible',
+        }
+      );
 
-    // Verify user can view the table
-    await expect(
-      dataConsumerPage.getByTestId('test-definition-table')
-    ).toBeVisible();
+      // Verify user can view the table
+      await expect(
+        dataConsumerPage.getByTestId('test-definition-table')
+      ).toBeVisible();
 
-    await actionNotAllowed(dataConsumerPage);
-  });
-});
+      await actionNotAllowed(dataConsumerPage);
+    });
+  }
+);
 
-test.describe('Test Definition Permissions - Data Steward', { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` }, () => {
-  test('should allow viewing and editing but not creating or deleting test definitions', async ({
-    dataStewardPage,
-  }) => {
-    await redirectToHomePage(dataStewardPage);
-
-    // Navigate to Rules Library
-    await dataStewardPage.goto('/rules-library');
-
-    // Wait for table to load
-    await dataStewardPage.waitForSelector(
-      '[data-testid="test-definition-table"]',
-      {
-        state: 'visible',
-      }
-    );
-
-    // Verify user can view the table
-    await expect(
-      dataStewardPage.getByTestId('test-definition-table')
-    ).toBeVisible();
-
-    // Data Steward should NOT have Create permission
-    const addButton = dataStewardPage.getByTestId('add-test-definition-button');
-
-    await expect(addButton).not.toBeVisible();
-
-    // Data Steward should be able to toggle enabled/disabled switches (EditAll permission)
-    const firstSwitch = dataStewardPage.getByRole('switch').first();
-
-    await expect(firstSwitch).toBeEnabled();
-
-    // Wait for API call
-    const response = dataStewardPage.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/dataQuality/testDefinitions/') &&
-        response.request().method() === 'PATCH'
-    );
-
-    // Try to toggle the switch
-    await firstSwitch.click();
-    await response;
-
-    // Verify switch state changed
-    await expect(firstSwitch).toHaveAttribute(
-      'aria-checked',
-      String("false")
-    );
-
-    const response2 = dataStewardPage.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/dataQuality/testDefinitions/') &&
-        response.request().method() === 'PATCH'
-    );
-    // Toggle back to original state
-    await firstSwitch.click();
-    await response2;
-
-    await expect(firstSwitch).toHaveAttribute('aria-checked', String("true"));
-
-
-    // Data Steward should NOT see delete buttons (no Delete permission)
-    const deleteButtons = dataStewardPage.getByTestId(
-      /delete-test-definition-/
-    );
-    await expect(deleteButtons.first()).toBeDisabled();
-  });
-
-  test('should not be able to edit system test definitions', async ({
-    dataStewardPage,
-  }) => {
-    await redirectToHomePage(dataStewardPage);
-
-    const systemTestDef = await findSystemTestDefinition(dataStewardPage);
-
-    // Verify edit button does not exist for system test definition
-    const editButton = dataStewardPage.getByTestId(
-      `edit-test-definition-${systemTestDef.name}`
-    );
-
-    await expect(editButton).toBeDisabled();
-
-    // Verify enabled switch exists and can be toggled
-    const row = dataStewardPage.locator(
-      `[data-row-key="${systemTestDef.id}"]`
-    );
-    const enabledSwitch = row.getByRole('switch');
-
-    await expect(enabledSwitch).toBeVisible();
-    await expect(enabledSwitch).toBeEnabled();
-
-  });
-});
-
-test.describe('Test Definition Permissions - API Level Validation', { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` }, () => {
-  test('should prevent unauthorized users from creating test definitions via API', async ({
-    dataConsumerPage,
-  }) => {
-    await redirectToHomePage(dataConsumerPage);
-    const { apiContext } = await getApiContext(dataConsumerPage);
-
-    // Try to create a test definition via API (should fail)
-    const createResponse = await apiContext.post(
-      '/api/v1/dataQuality/testDefinitions',
-      {
+test.describe(
+  'Test Definition Permissions - Data Steward',
+  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` },
+  () => {
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await apiContext.post('/api/v1/dataQuality/testDefinitions', {
         data: {
-          name: 'unauthorizedTest',
-          description: 'Should not be created',
+          name: `aaaColumnTestDefinition-${uuid()}`,
+          description: `A Column test definition`,
           entityType: 'COLUMN',
           testPlatforms: ['OpenMetadata'],
         },
+      });
+      await afterAction();
+    });
+
+    test('should allow viewing and editing but not creating or deleting test definitions', async ({
+      dataStewardPage,
+    }) => {
+      await redirectToHomePage(dataStewardPage);
+
+      // Navigate to Rules Library
+      await dataStewardPage.goto('/rules-library');
+
+      // Wait for table to load
+      await dataStewardPage.waitForSelector(
+        '[data-testid="test-definition-table"]',
+        {
+          state: 'visible',
+        }
+      );
+
+      // Verify user can view the table
+      await expect(
+        dataStewardPage.getByTestId('test-definition-table')
+      ).toBeVisible();
+
+      // Data Steward should NOT have Create permission
+      const addButton = dataStewardPage.getByTestId(
+        'add-test-definition-button'
+      );
+
+      await expect(addButton).not.toBeVisible();
+
+      // Data Steward should be able to toggle enabled/disabled switches (EditAll permission)
+      const firstSwitch = dataStewardPage.getByRole('switch').first();
+
+      await expect(firstSwitch).toBeEnabled();
+
+      // Wait for API call
+      const response = dataStewardPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/dataQuality/testDefinitions/') &&
+          response.request().method() === 'PATCH'
+      );
+
+      // Try to toggle the switch
+      await firstSwitch.click();
+      await response;
+
+      // Verify switch state changed
+      await expect(firstSwitch).toHaveAttribute(
+        'aria-checked',
+        String('false')
+      );
+
+      const response2 = dataStewardPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/dataQuality/testDefinitions/') &&
+          response.request().method() === 'PATCH'
+      );
+      // Toggle back to original state
+      await firstSwitch.click();
+      await response2;
+
+      await expect(firstSwitch).toHaveAttribute('aria-checked', String('true'));
+
+      // Data Steward should NOT see delete buttons (no Delete permission)
+      const deleteButtons = dataStewardPage.getByTestId(
+        /delete-test-definition-/
+      );
+      await expect(deleteButtons.first()).toBeDisabled();
+    });
+
+    test('should not be able to edit system test definitions', async ({
+      dataStewardPage,
+    }) => {
+      await redirectToHomePage(dataStewardPage);
+
+      const systemTestDef = await findSystemTestDefinition(dataStewardPage);
+
+      if (!systemTestDef) {
+        throw new Error('System test definition not found');
       }
-    );
 
-    // Verify the request failed with 403 Forbidden
-    expect(createResponse.status()).toBe(403);
-  });
+      // Verify edit button does not exist for system test definition
+      const editButton = dataStewardPage.getByTestId(
+        `edit-test-definition-${systemTestDef.name}`
+      );
 
-  test('should prevent unauthorized users from deleting test definitions via API', async ({
-    dataStewardPage,
-    adminPage
-  }) => {
-    await redirectToHomePage(dataStewardPage);
-    await redirectToHomePage(adminPage);
-    const { apiContext } = await getApiContext(dataStewardPage);
-    const { apiContext: adminApiContext } = await getApiContext(adminPage);
+      await expect(editButton).toBeDisabled();
 
-    const createResponse = await adminApiContext.post(
-      '/api/v1/dataQuality/testDefinitions',
-      {
-        data: {
-          name: `unauthorizedTest${uuid()}`,
-          description: `unauthorizedTest`,
-          entityType: 'COLUMN',
-          testPlatforms: ['OpenMetadata'],
-        },
-      }
-    );
+      // Verify enabled switch exists and can be toggled
+      const row = dataStewardPage.locator(
+        `[data-row-key="${systemTestDef.id}"]`
+      );
+      const enabledSwitch = row.getByRole('switch');
 
-    const data = await createResponse.json();
+      await expect(enabledSwitch).toBeVisible();
+      await expect(enabledSwitch).toBeEnabled();
+    });
+  }
+);
 
-    // Try to delete the test definition (should fail - no Delete permission)
-    const deleteResponse = await apiContext.delete(
-      `/api/v1/dataQuality/testDefinitions/${data.id}`
-    );
+test.describe(
+  'Test Definition Permissions - API Level Validation',
+  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` },
+  () => {
+    test('should prevent unauthorized users from creating test definitions via API', async ({
+      dataConsumerPage,
+    }) => {
+      await redirectToHomePage(dataConsumerPage);
+      const { apiContext } = await getApiContext(dataConsumerPage);
 
-    // Verify the request failed with 403 Forbidden
-    expect(deleteResponse.status()).toBe(403);
-
-  });
-
-  test('should prevent all users from modifying system test definition entity type via API', async ({
-    adminPage,
-  }) => {
-    await redirectToHomePage(adminPage);
-    const { apiContext } = await getApiContext(adminPage);
-
-    // Get a system test definition via API directly to ensure we find one
-    const response = await apiContext.get('/api/v1/dataQuality/testDefinitions?limit=100');
-    expect(response.ok()).toBeTruthy();
-    const data = await response.json();
-
-    // Find a system test definition with COLUMN entity type
-    const systemTestDef = data.data.find(
-      (def: { provider: string; entityType: string }) =>
-        def.provider === 'system' && def.entityType === 'COLUMN'
-    );
-
-    // Ensure we found one to test against
-    expect(systemTestDef).toBeDefined();
-
-    // Try to patch the test definition to change entity type (should fail even for admin)
-    const patchResponse = await apiContext.patch(
-      `/api/v1/dataQuality/testDefinitions/${systemTestDef.id}`,
-      {
-        data: [
-          {
-            op: 'replace',
-            path: '/entityType',
-            value: 'TABLE',
+      // Try to create a test definition via API (should fail)
+      const createResponse = await apiContext.post(
+        '/api/v1/dataQuality/testDefinitions',
+        {
+          data: {
+            name: 'unauthorizedTest',
+            description: 'Should not be created',
+            entityType: 'COLUMN',
+            testPlatforms: ['OpenMetadata'],
           },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
+        }
+      );
+
+      // Verify the request failed with 403 Forbidden
+      expect(createResponse.status()).toBe(403);
+    });
+
+    test('should prevent unauthorized users from deleting test definitions via API', async ({
+      dataStewardPage,
+      adminPage,
+    }) => {
+      await redirectToHomePage(dataStewardPage);
+      await redirectToHomePage(adminPage);
+      const { apiContext } = await getApiContext(dataStewardPage);
+      const { apiContext: adminApiContext } = await getApiContext(adminPage);
+
+      const createResponse = await adminApiContext.post(
+        '/api/v1/dataQuality/testDefinitions',
+        {
+          data: {
+            name: `unauthorizedTest${uuid()}`,
+            description: `unauthorizedTest`,
+            entityType: 'COLUMN',
+            testPlatforms: ['OpenMetadata'],
+          },
+        }
+      );
+
+      const data = await createResponse.json();
+
+      // Try to delete the test definition (should fail - no Delete permission)
+      const deleteResponse = await apiContext.delete(
+        `/api/v1/dataQuality/testDefinitions/${data.id}`
+      );
+
+      // Verify the request failed with 403 Forbidden
+      expect(deleteResponse.status()).toBe(403);
+    });
+
+    test('should prevent all users from modifying system test definition entity type via API', async ({
+      adminPage,
+    }) => {
+      await redirectToHomePage(adminPage);
+      const { apiContext } = await getApiContext(adminPage);
+
+      // Get a system test definition via API directly to ensure we find one
+      const response = await apiContext.get(
+        '/api/v1/dataQuality/testDefinitions?limit=100&testPlatform=OpenMetadata'
+      );
+      expect(response.ok()).toBeTruthy();
+      const data = await response.json();
+
+      // Find a system test definition with COLUMN entity type
+      const systemTestDef = data.data.find(
+        (def: { provider: string; entityType: string }) =>
+          def.provider === 'system' && def.entityType === 'COLUMN'
+      );
+
+      // Ensure we found one to test against
+      if (!systemTestDef) {
+        throw new Error(
+          'System test definition with COLUMN entity type not found'
+        );
       }
-    );
 
-    // Verify the request failed with 400 Bad Request
-    expect(patchResponse.status()).toBe(400);
+      const { id } = systemTestDef;
 
-    const errorBody = await patchResponse.json();
+      // Try to patch the test definition to change entity type (should fail even for admin)
+      const patchResponse = await apiContext.patch(
+        `/api/v1/dataQuality/testDefinitions/${id}`,
+        {
+          data: [
+            {
+              op: 'replace',
+              path: '/entityType',
+              value: 'TABLE',
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
 
-    expect(errorBody.message).toContain(
-      'System test definitions cannot have their entity type modified'
-    );
+      // Verify the request failed with 400 Bad Request
+      expect(patchResponse.status()).toBe(400);
 
-  });
-});
+      const errorBody = await patchResponse.json();
+
+      expect(errorBody.message).toContain(
+        'System test definitions cannot have their entity type modified'
+      );
+    });
+  }
+);
