@@ -6,20 +6,28 @@ source:
       type: QlikSense
       hostPort: wss://localhost:4747
       displayUrl: https://localhost
+      # Option 1: JWT Authentication
       certificates:
-        # pass certificate paths
-        clientCertificate: /path/to/client.pem
-        clientKeyCertificate: /path/to/client_key.pem
-        rootCertificate: /path/to/root.pem
+        token: your_jwt_token_here
+      
+      # Option 2: Certificate Paths
+      # certificates:
+      #   clientCertificate: /path/to/client.pem
+      #   clientKeyCertificate: /path/to/client_key.pem
+      #   rootCertificate: /path/to/root.pem
+      #   userId: user_id
+      #   userDirectory: user_dir
 
-        # pass certificate values
-        # clientCertificateData: -----BEGIN CERTIFICATE-----\n....\n.....\n-----END CERTIFICATE-----\n
-        # clientKeyCertificateData: -----BEGIN RSA PRIVATE KEY-----\n....\n....\n-----END RSA PRIVATE KEY-----\n
-        # rootCertificateData: -----BEGIN CERTIFICATE-----\n....\n...-----END CERTIFICATE-----\n
-        # stagingDir: /tmp/stage
-        
-      userId: user_id
-      userDirectory: user_dir
+      # Option 3: Certificate Values
+      # certificates:
+      #   sslConfig:
+      #     root:
+      #       caCertificate: -----BEGIN CERTIFICATE-----\n....\n-----END CERTIFICATE-----\n
+      #       sslCertificate: -----BEGIN CERTIFICATE-----\n....\n.....\n-----END CERTIFICATE-----\n
+      #       sslKey: -----BEGIN RSA PRIVATE KEY-----\n....\n....\n-----END RSA PRIVATE KEY-----\n
+      #     stagingDir: /tmp/stage
+      #   userId: user_id
+      #   userDirectory: user_dir
   sourceConfig:
     config:
       type: DashboardMetadata
