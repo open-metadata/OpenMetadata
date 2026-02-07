@@ -7,15 +7,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.Response;
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import org.apache.http.util.EntityUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -106,14 +106,15 @@ public class SearchIndexFieldLimitIT {
    */
   @Test
   void testExtensionFieldIsFlattenedType(TestNamespace ns) throws Exception {
-    RestClient searchClient = TestSuiteBootstrap.createSearchClient();
+    Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
 
     Request request = new Request("GET", "/" + TABLE_INDEX + "/_mapping");
     Response response = searchClient.performRequest(request);
 
-    assertEquals(200, response.getStatusLine().getStatusCode());
+    assertEquals(200, response.getStatusCode());
 
-    String responseBody = EntityUtils.toString(response.getEntity());
+    String responseBody =
+        new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
     JsonNode root = OBJECT_MAPPER.readTree(responseBody);
 
     JsonNode extensionMapping = findExtensionMapping(root);
@@ -131,14 +132,15 @@ public class SearchIndexFieldLimitIT {
    */
   @Test
   void testVotesFieldHasDynamicFalse(TestNamespace ns) throws Exception {
-    RestClient searchClient = TestSuiteBootstrap.createSearchClient();
+    Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
 
     Request request = new Request("GET", "/" + TABLE_INDEX + "/_mapping");
     Response response = searchClient.performRequest(request);
 
-    assertEquals(200, response.getStatusLine().getStatusCode());
+    assertEquals(200, response.getStatusCode());
 
-    String responseBody = EntityUtils.toString(response.getEntity());
+    String responseBody =
+        new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
     JsonNode root = OBJECT_MAPPER.readTree(responseBody);
 
     JsonNode votesMapping = findFieldMapping(root, "votes");
@@ -155,14 +157,15 @@ public class SearchIndexFieldLimitIT {
    */
   @Test
   void testLifeCycleFieldHasDynamicFalse(TestNamespace ns) throws Exception {
-    RestClient searchClient = TestSuiteBootstrap.createSearchClient();
+    Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
 
     Request request = new Request("GET", "/" + TABLE_INDEX + "/_mapping");
     Response response = searchClient.performRequest(request);
 
-    assertEquals(200, response.getStatusLine().getStatusCode());
+    assertEquals(200, response.getStatusCode());
 
-    String responseBody = EntityUtils.toString(response.getEntity());
+    String responseBody =
+        new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
     JsonNode root = OBJECT_MAPPER.readTree(responseBody);
 
     JsonNode lifeCycleMapping = findFieldMapping(root, "lifeCycle");
@@ -180,14 +183,15 @@ public class SearchIndexFieldLimitIT {
    */
   @Test
   void testCustomPropertiesTypedFieldExists(TestNamespace ns) throws Exception {
-    RestClient searchClient = TestSuiteBootstrap.createSearchClient();
+    Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
 
     Request request = new Request("GET", "/" + TABLE_INDEX + "/_mapping");
     Response response = searchClient.performRequest(request);
 
-    assertEquals(200, response.getStatusLine().getStatusCode());
+    assertEquals(200, response.getStatusCode());
 
-    String responseBody = EntityUtils.toString(response.getEntity());
+    String responseBody =
+        new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
     JsonNode root = OBJECT_MAPPER.readTree(responseBody);
 
     JsonNode customPropsTyped = findFieldMapping(root, "customPropertiesTyped");
@@ -232,7 +236,7 @@ public class SearchIndexFieldLimitIT {
   @Test
   void testManyCustomPropertiesDoNotExplodeFieldCount(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    RestClient searchClient = TestSuiteBootstrap.createSearchClient();
+    Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
 
     int initialFieldCount = getFieldCount(searchClient, TABLE_INDEX);
 
@@ -275,7 +279,7 @@ public class SearchIndexFieldLimitIT {
   @Test
   void testFieldCountStaysBoundedWithMultipleTables(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    RestClient searchClient = TestSuiteBootstrap.createSearchClient();
+    Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
 
     int initialFieldCount = getFieldCount(searchClient, TABLE_INDEX);
 
@@ -313,7 +317,7 @@ public class SearchIndexFieldLimitIT {
   @Test
   void testComplexCustomPropertyTypesDoNotExplodeFieldCount(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    RestClient searchClient = TestSuiteBootstrap.createSearchClient();
+    Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
 
     int initialFieldCount = getFieldCount(searchClient, TABLE_INDEX);
 
@@ -582,11 +586,12 @@ public class SearchIndexFieldLimitIT {
             RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
   }
 
-  private int getFieldCount(RestClient searchClient, String indexName) throws Exception {
+  private int getFieldCount(Rest5Client searchClient, String indexName) throws Exception {
     Request request = new Request("GET", "/" + indexName + "/_mapping");
     Response response = searchClient.performRequest(request);
 
-    String responseBody = EntityUtils.toString(response.getEntity());
+    String responseBody =
+        new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
     JsonNode root = OBJECT_MAPPER.readTree(responseBody);
 
     return countFields(root);

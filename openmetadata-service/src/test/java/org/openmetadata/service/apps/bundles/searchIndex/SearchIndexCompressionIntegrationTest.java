@@ -15,7 +15,9 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -47,14 +49,13 @@ class SearchIndexCompressionIntegrationTest extends OpenMetadataApplicationTest 
   @Test
   void testAutoTuneWithRealElasticSearchCluster() {
     LOG.info("=== Testing Auto-Tune with Real ElasticSearch Cluster ===");
-    RestClient esClient = getSearchClient();
+    Rest5Client esClient = getSearchClient();
     assertNotNull(esClient, "ElasticSearch client should be available");
     assertDoesNotThrow(
         () -> {
-          es.org.elasticsearch.client.Response response =
-              esClient.performRequest(
-                  new es.org.elasticsearch.client.Request("GET", "/_cluster/health"));
-          assertEquals(200, response.getStatusLine().getStatusCode());
+          Request request = new Request("GET", "/_cluster/health");
+          Response response = esClient.performRequest(request);
+          assertEquals(200, response.getStatusCode());
         });
 
     EventPublisherJob jobData =
@@ -189,12 +190,14 @@ class SearchIndexCompressionIntegrationTest extends OpenMetadataApplicationTest 
   }
 
   private Map<String, Object> getClusterSettings() throws Exception {
-    // Get cluster settings from the real ElasticSearch instance
-    RestClient client = getSearchClient();
-    es.org.elasticsearch.client.Response response =
-        client.performRequest(new es.org.elasticsearch.client.Request("GET", "/_cluster/settings"));
+    Rest5Client client = getSearchClient();
+    Request request = new Request("GET", "/_cluster/settings");
+    Response response = client.performRequest(request);
 
-    String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
+    String responseBody =
+        new String(
+            response.getEntity().getContent().readAllBytes(),
+            java.nio.charset.StandardCharsets.UTF_8);
     return JsonUtils.readValue(responseBody, Map.class);
   }
 }
