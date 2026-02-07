@@ -116,8 +116,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flipkart.zjsonpatch.JsonDiff;
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import jakarta.ws.rs.client.WebTarget;
@@ -154,7 +154,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.RandomStringGenerator;
 import org.apache.commons.text.RandomStringGenerator.Builder;
 import org.apache.http.client.HttpResponseException;
-import org.apache.http.util.EntityUtils;
 import org.awaitility.Awaitility;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -1978,9 +1977,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals("INCOMPLETE", sourceAsMap.get("descriptionStatus"));
 
     // Try to search entity with INCOMPLETE description
-    RestClient searchClient = getSearchClient();
+    Rest5Client searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
-    es.org.elasticsearch.client.Response response;
+    es.co.elastic.clients.transport.rest5_client.low_level.Response esResponse;
     // Direct request to es needs to have es clusterAlias appended with indexName
     Request request =
         new Request(
@@ -1989,14 +1988,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
                 "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
-    request.setJsonEntity(query);
+    request.setEntity(
+        new org.apache.hc.core5.http.io.entity.StringEntity(
+            query, org.apache.hc.core5.http.ContentType.APPLICATION_JSON));
     try {
-      response = searchClient.performRequest(request);
+      esResponse = searchClient.performRequest(request);
     } finally {
       searchClient.close();
     }
 
-    String jsonString = EntityUtils.toString(response.getEntity());
+    String jsonString =
+        new String(
+            esResponse.getEntity().getContent().readAllBytes(),
+            java.nio.charset.StandardCharsets.UTF_8);
     HashMap<String, Object> map =
         (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
     LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
@@ -2027,9 +2031,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entityWithDescription = createEntity(createWithDescription, ADMIN_AUTH_HEADERS);
 
     // Search for entities without description
-    RestClient searchClient = getSearchClient();
+    Rest5Client searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
-    es.org.elasticsearch.client.Response response;
+    es.co.elastic.clients.transport.rest5_client.low_level.Response esResponse;
     // Direct request to es needs to have es clusterAlias appended with indexName
     Request request =
         new Request(
@@ -2038,11 +2042,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
                 "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
-    request.setJsonEntity(query);
-    response = searchClient.performRequest(request);
+    request.setEntity(
+        new org.apache.hc.core5.http.io.entity.StringEntity(
+            query, org.apache.hc.core5.http.ContentType.APPLICATION_JSON));
+    esResponse = searchClient.performRequest(request);
     searchClient.close();
 
-    String jsonString = EntityUtils.toString(response.getEntity());
+    String jsonString =
+        new String(
+            esResponse.getEntity().getContent().readAllBytes(),
+            java.nio.charset.StandardCharsets.UTF_8);
     HashMap<String, Object> map =
         (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
     LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
@@ -3850,11 +3859,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   protected void checkIndexCreated() throws IOException, JSONException {
-    RestClient client = getSearchClient();
-    Request request = new Request("GET", "/_cat/indices");
-    request.addParameter("format", "json");
-    es.org.elasticsearch.client.Response response = client.performRequest(request);
-    JSONArray jsonArray = new JSONArray(EntityUtils.toString(response.getEntity()));
+    Rest5Client client = getSearchClient();
+    Request request = new Request("GET", "/_cat/indices?format=json");
+    es.co.elastic.clients.transport.rest5_client.low_level.Response esResponse =
+        client.performRequest(request);
+    JSONArray jsonArray =
+        new JSONArray(
+            new String(
+                esResponse.getEntity().getContent().readAllBytes(),
+                java.nio.charset.StandardCharsets.UTF_8));
     List<String> indexNamesFromResponse = new ArrayList<>();
     for (int i = 0; i < jsonArray.length(); i++) {
       JSONObject jsonObject = jsonArray.getJSONObject(i);
@@ -5897,7 +5910,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   protected void assertEntityReferenceFromSearch(T entity, EntityReference actual, String keyword)
       throws IOException {
-    RestClient searchClient = getSearchClient();
+    Rest5Client searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     // Direct request to es needs to have es clusterAlias appended with indexName
     Request request =
@@ -5908,13 +5921,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     String query =
         String.format(
             "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"_id\":\"%s\"}}]}}}", entity.getId());
-    request.setJsonEntity(query);
+    request.setEntity(
+        new org.apache.hc.core5.http.io.entity.StringEntity(
+            query, org.apache.hc.core5.http.ContentType.APPLICATION_JSON));
     try {
       assertEventually(
           "assertEntityReferenceFromSearch_" + entity.getFullyQualifiedName(),
           () -> {
-            es.org.elasticsearch.client.Response response = searchClient.performRequest(request);
-            String jsonString = EntityUtils.toString(response.getEntity());
+            es.co.elastic.clients.transport.rest5_client.low_level.Response esResponse =
+                searchClient.performRequest(request);
+            String jsonString =
+                new String(
+                    esResponse.getEntity().getContent().readAllBytes(),
+                    java.nio.charset.StandardCharsets.UTF_8);
             @SuppressWarnings("unchecked")
             HashMap<String, Object> map =
                 (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
@@ -6291,10 +6310,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         .on(
             "csvExportChannel",
             args -> {
-              receivedMessage[0] = (String) args[0];
-              System.out.println("Received message: " + receivedMessage[0]);
-              messageLatch.countDown();
-              socket.disconnect();
+              String msg = (String) args[0];
+              CSVExportMessage csvExportMessage = JsonUtils.readValue(msg, CSVExportMessage.class);
+              System.out.println("Received message with status: " + csvExportMessage.getStatus());
+              if (Objects.equals(csvExportMessage.getStatus(), "COMPLETED")
+                  || Objects.equals(csvExportMessage.getStatus(), "FAILED")) {
+                receivedMessage[0] = msg;
+                messageLatch.countDown();
+                socket.disconnect();
+              }
             })
         .on(
             Socket.EVENT_CONNECT_ERROR,
@@ -6617,7 +6641,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public void verifyOwnersInSearch(EntityReference entity, List<EntityReference> expectedOwners)
       throws IOException {
-    RestClient searchClient = getSearchClient();
+    Rest5Client searchClient = getSearchClient();
     String entityType = entity.getType();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     Request request =
@@ -6629,9 +6653,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         format(
             "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
             entity.getId().toString());
-    request.setJsonEntity(query);
-    es.org.elasticsearch.client.Response response = searchClient.performRequest(request);
-    String jsonString = EntityUtils.toString(response.getEntity());
+    request.setEntity(
+        new org.apache.hc.core5.http.io.entity.StringEntity(
+            query, org.apache.hc.core5.http.ContentType.APPLICATION_JSON));
+    es.co.elastic.clients.transport.rest5_client.low_level.Response esResponse =
+        searchClient.performRequest(request);
+    String jsonString =
+        new String(
+            esResponse.getEntity().getContent().readAllBytes(),
+            java.nio.charset.StandardCharsets.UTF_8);
     HashMap<String, Object> map =
         (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
     LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
@@ -6646,7 +6676,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public void verifyDomainsInSearch(EntityReference entity, List<EntityReference> expectedDomains)
       throws IOException {
-    RestClient searchClient = getSearchClient();
+    Rest5Client searchClient = getSearchClient();
     String entityType = entity.getType();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     Request request =
@@ -6658,9 +6688,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         format(
             "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
             entity.getId().toString());
-    request.setJsonEntity(query);
-    es.org.elasticsearch.client.Response response = searchClient.performRequest(request);
-    String jsonString = EntityUtils.toString(response.getEntity());
+    request.setEntity(
+        new org.apache.hc.core5.http.io.entity.StringEntity(
+            query, org.apache.hc.core5.http.ContentType.APPLICATION_JSON));
+    es.co.elastic.clients.transport.rest5_client.low_level.Response esResponse =
+        searchClient.performRequest(request);
+    String jsonString =
+        new String(
+            esResponse.getEntity().getContent().readAllBytes(),
+            java.nio.charset.StandardCharsets.UTF_8);
     HashMap<String, Object> map =
         (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
     LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");

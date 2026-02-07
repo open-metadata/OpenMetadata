@@ -18,6 +18,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import { ENTITIES_CHARTS } from '../../constants/DataInsight.constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -147,13 +148,17 @@ const DataInsightPage = () => {
 
   return (
     <ResizableLeftPanels
+      showLearningIcon
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 280,
         flex: 0.13,
         children: <LeftPanel />,
+        title: t('label.data-insight'),
       }}
+      learningPageId={LEARNING_PAGE_IDS.DATA_INSIGHTS}
+      learningTitle={t('label.data-insight-plural')}
       pageTitle={t('label.data-insight')}
       secondPanel={{
         children: (

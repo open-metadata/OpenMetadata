@@ -17,7 +17,13 @@ public class ElasticAggregationBuilder {
         a ->
             a.terms(
                 t ->
-                    t.script(Script.of(s -> s.inline(i -> i.source(script).lang("painless"))))
+                    t.script(
+                            Script.of(
+                                s ->
+                                    s.source(ss -> ss.scriptString(script))
+                                        .lang(
+                                            es.co.elastic.clients.elasticsearch._types
+                                                .ScriptLanguage.Painless)))
                         .size(size)));
   }
 

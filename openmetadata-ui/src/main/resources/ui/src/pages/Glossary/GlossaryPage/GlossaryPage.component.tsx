@@ -31,6 +31,7 @@ import {
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -500,6 +501,7 @@ const GlossaryPage = () => {
 
   const resizableLayout = isGlossaryActive ? (
     <ResizableLeftPanels
+      showLearningIcon
       className="content-height-with-resizable-panel"
       firstPanel={{
         className:
@@ -521,6 +523,8 @@ const GlossaryPage = () => {
         ),
       }}
       hideFirstPanel={isImportAction}
+      learningPageId={LEARNING_PAGE_IDS.GLOSSARY}
+      learningTitle={t('label.glossary')}
       pageTitle={getEntityName(activeGlossary)}
       secondPanel={{
         children: glossaryElement,

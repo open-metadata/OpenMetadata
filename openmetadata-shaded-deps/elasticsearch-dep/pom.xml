@@ -21,7 +21,7 @@
         <dependency>
             <groupId>co.elastic.clients</groupId>
             <artifactId>elasticsearch-java</artifactId>
-            <version>8.11.0</version>
+            <version>9.2.4</version>
             <optional>true</optional>
             <exclusions>
                 <exclusion>
@@ -31,6 +31,15 @@
                 <exclusion>
                     <groupId>org.eclipse.parsson</groupId>
                     <artifactId>parsson</artifactId>
+                </exclusion>
+                <!-- Exclude Jackson 3.x which requires Java 23 - Jackson 2.x is still the default -->
+                <exclusion>
+                    <groupId>tools.jackson.core</groupId>
+                    <artifactId>jackson-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>tools.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

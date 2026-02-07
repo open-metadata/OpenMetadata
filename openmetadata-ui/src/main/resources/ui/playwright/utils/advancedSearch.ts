@@ -223,7 +223,11 @@ export const selectOption = async (
     .locator(`[title="${optionTitle}"]`)
     .first();
   await expect(optionLocator).toBeVisible();
-  await optionLocator.click();
+
+  // Wait for dropdown animations to settle before clicking
+  // This prevents "element detached from DOM" errors during re-renders
+  await page.waitForTimeout(100);
+  await optionLocator.click({ timeout: 10000 });
 };
 
 export const selectRange = async (

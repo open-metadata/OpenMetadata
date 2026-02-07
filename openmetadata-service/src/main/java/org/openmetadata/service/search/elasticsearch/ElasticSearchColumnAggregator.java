@@ -586,11 +586,13 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
   private SearchResponse<JsonData> executeSearch(
       ColumnAggregationRequest request, Query query, List<String> indexes, String columnNameKeyword)
       throws IOException {
-    Map<String, CompositeAggregationSource> sources = new HashMap<>();
-    sources.put(
-        "column_name",
-        CompositeAggregationSource.of(
-            cas -> cas.terms(t -> t.field(columnNameKeyword).order(SortOrder.Asc))));
+    List<es.co.elastic.clients.util.NamedValue<CompositeAggregationSource>> sources =
+        new ArrayList<>();
+    sources.add(
+        es.co.elastic.clients.util.NamedValue.of(
+            "column_name",
+            CompositeAggregationSource.of(
+                cas -> cas.terms(t -> t.field(columnNameKeyword).order(SortOrder.Asc)))));
 
     // Get the column field path for source fields (e.g., "columns" or "dataModel.columns")
     String columnFieldPath = columnNameKeyword.replace(".name.keyword", "");
@@ -615,7 +617,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
             a ->
                 a.composite(
                         c -> {
-                          c.sources(List.of(sources));
+                          c.sources(sources);
                           c.size(request.getSize());
                           if (afterKey != null) {
                             c.after(afterKey);
@@ -912,9 +914,9 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
             countResponse.aggregations().get("unique_column_names").cardinality().value();
       }
       if (countResponse.aggregations().containsKey("total_column_occurrences")) {
-        totalOccurrences =
-            (long)
-                countResponse.aggregations().get("total_column_occurrences").valueCount().value();
+        Double valueCountValue =
+            countResponse.aggregations().get("total_column_occurrences").valueCount().value();
+        totalOccurrences = valueCountValue != null ? valueCountValue.longValue() : 0L;
       }
     }
 

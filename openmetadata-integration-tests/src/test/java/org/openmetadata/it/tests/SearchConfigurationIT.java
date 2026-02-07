@@ -2,10 +2,10 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.Response;
-import es.org.elasticsearch.client.RestClient;
-import org.apache.http.util.EntityUtils;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,15 +28,16 @@ public class SearchConfigurationIT {
 
   @Test
   void testSearchClientInitialization(TestNamespace ns) throws Exception {
-    RestClient searchClient = TestSuiteBootstrap.createSearchClient();
+    Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
     assertNotNull(searchClient, "Search client should be initialized");
 
     Request request = new Request("GET", "/_cluster/health");
     Response response = searchClient.performRequest(request);
 
-    assertEquals(200, response.getStatusLine().getStatusCode());
+    assertEquals(200, response.getStatusCode());
 
-    String responseBody = EntityUtils.toString(response.getEntity());
+    String responseBody =
+        new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
     assertTrue(
         responseBody.contains("\"status\":\"green\"")
             || responseBody.contains("\"status\":\"yellow\""),
@@ -45,13 +46,13 @@ public class SearchConfigurationIT {
 
   @Test
   void testSearchClientWithConnectionPool(TestNamespace ns) throws Exception {
-    RestClient searchClient = TestSuiteBootstrap.createSearchClient();
+    Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
     assertNotNull(searchClient);
 
     for (int i = 0; i < 10; i++) {
       Request request = new Request("GET", "/_cluster/health");
       Response response = searchClient.performRequest(request);
-      assertEquals(200, response.getStatusLine().getStatusCode());
+      assertEquals(200, response.getStatusCode());
     }
   }
 
@@ -78,38 +79,40 @@ public class SearchConfigurationIT {
 
   @Test
   void testClusterInfo(TestNamespace ns) throws Exception {
-    RestClient searchClient = TestSuiteBootstrap.createSearchClient();
+    Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
 
     Request request = new Request("GET", "/");
     Response response = searchClient.performRequest(request);
 
-    assertEquals(200, response.getStatusLine().getStatusCode());
+    assertEquals(200, response.getStatusCode());
 
-    String responseBody = EntityUtils.toString(response.getEntity());
+    String responseBody =
+        new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
     assertTrue(responseBody.contains("\"version\""), "Response should contain version information");
   }
 
   @Test
   void testNodesInfo(TestNamespace ns) throws Exception {
-    RestClient searchClient = TestSuiteBootstrap.createSearchClient();
+    Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
 
     Request request = new Request("GET", "/_nodes");
     Response response = searchClient.performRequest(request);
 
-    assertEquals(200, response.getStatusLine().getStatusCode());
+    assertEquals(200, response.getStatusCode());
 
-    String responseBody = EntityUtils.toString(response.getEntity());
+    String responseBody =
+        new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
     assertTrue(responseBody.contains("\"nodes\""), "Response should contain nodes information");
   }
 
   @Test
   void testIndexOperations(TestNamespace ns) throws Exception {
-    RestClient searchClient = TestSuiteBootstrap.createSearchClient();
+    Rest5Client searchClient = TestSuiteBootstrap.createSearchClient();
 
     Request request = new Request("GET", "/_cat/indices?format=json");
     Response response = searchClient.performRequest(request);
 
-    assertEquals(200, response.getStatusLine().getStatusCode());
+    assertEquals(200, response.getStatusCode());
   }
 
   @Test

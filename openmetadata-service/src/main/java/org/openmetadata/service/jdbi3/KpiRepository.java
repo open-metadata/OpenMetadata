@@ -7,6 +7,7 @@ import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.getEntityByName;
 import static org.quartz.DateBuilder.MILLISECONDS_IN_DAY;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -175,6 +176,27 @@ public class KpiRepository extends EntityRepository<Kpi> {
     kpi.withDataInsightChart(null).withKpiResult(null);
     store(kpi, update);
     kpi.withDataInsightChart(dataInsightChart).withKpiResult(kpiResults);
+  }
+
+  @Override
+  public void storeEntities(List<Kpi> entities) {
+    List<Kpi> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (Kpi kpi : entities) {
+      EntityReference dataInsightChart = kpi.getDataInsightChart();
+      KpiResult kpiResults = kpi.getKpiResult();
+      String jsonCopy = gson.toJson(kpi.withDataInsightChart(null).withKpiResult(null));
+      entitiesToStore.add(gson.fromJson(jsonCopy, Kpi.class));
+      kpi.withDataInsightChart(dataInsightChart).withKpiResult(kpiResults);
+    }
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Kpi> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Kpi::getId).toList();
+    deleteFromMany(ids, Entity.KPI, Relationship.USES, Entity.DATA_INSIGHT_CUSTOM_CHART);
   }
 
   @Override

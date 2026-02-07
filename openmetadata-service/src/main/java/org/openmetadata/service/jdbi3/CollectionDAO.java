@@ -1429,6 +1429,9 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id")
     void deleteAll(@BindUUID("id") UUID id);
+
+    @SqlUpdate("DELETE FROM entity_extension WHERE id IN (<ids>)")
+    void deleteAllBatch(@BindList("ids") List<String> ids);
   }
 
   class EntityVersionPair {
@@ -2134,6 +2137,40 @@ public interface CollectionDAO {
     void deleteTo(
         @BindUUID("toId") UUID toId,
         @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE toId IN (<toIds>) "
+            + "AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity")
+    void deleteToMany(
+        @BindList("toIds") List<String> toIds,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Bind("fromEntity") String fromEntity);
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE toId IN (<toIds>) "
+            + "AND toEntity = :toEntity AND relation = :relation")
+    void deleteToMany(
+        @BindList("toIds") List<String> toIds,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE fromId IN (<fromIds>) "
+            + "AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity")
+    void deleteFromMany(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE fromId IN (<fromIds>) "
+            + "AND fromEntity = :fromEntity AND relation = :relation")
+    void deleteFromMany(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation);
 
     // Optimized deleteAll implementation that splits OR query for better performance
@@ -4928,6 +4965,9 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where targetFQNHash = :targetFQNHash")
     void deleteTagsByTarget(@BindFQN("targetFQNHash") String targetFQNHash);
 
+    @SqlUpdate("DELETE FROM tag_usage WHERE targetFQNHash IN (<targetFQNHashes>)")
+    void deleteTagsByTargets(@BindListFQN("targetFQNHashes") List<String> targetFQNs);
+
     @SqlUpdate(
         "DELETE FROM tag_usage where tagFQNHash = :tagFqnHash AND targetFQNHash LIKE :targetFQNHash")
     void deleteTagsByTagAndTargetEntity(
@@ -6311,6 +6351,9 @@ public interface CollectionDAO {
         value = "INSERT INTO change_event (json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
     void insert(@Bind("json") String json);
+
+    @SqlBatch("INSERT INTO change_event (json) VALUES (:json)")
+    void insertBatch(@Bind("json") List<String> jsons);
 
     @SqlUpdate("DELETE FROM change_event WHERE entityType = :entityType")
     void deleteAll(@Bind("entityType") String entityType);
@@ -7820,6 +7863,99 @@ public interface CollectionDAO {
     default List<String> listLastTestCaseResultsForTestSuite(UUID testSuiteId) {
       return listLastTestCaseResultsForTestSuite(Map.of("testSuiteId", testSuiteId.toString()));
     }
+
+    record ResultSummaryRow(
+        String testSuiteId, String testCaseFQN, String testCaseStatus, long timestamp) {}
+
+    class ResultSummaryRowMapper implements RowMapper<ResultSummaryRow> {
+      @Override
+      public ResultSummaryRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new ResultSummaryRow(
+            rs.getString("testSuiteId"),
+            rs.getString("testCaseFQN"),
+            rs.getString("testCaseStatus"),
+            rs.getLong("timestamp"));
+      }
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            """
+            WITH suite_test_cases AS (
+                SELECT tc.fqnHash, er.fromId as testSuiteId
+                FROM entity_relationship er
+                INNER JOIN test_case tc ON er.toId = tc.id
+                WHERE er.fromEntity = 'testSuite' AND er.toEntity = 'testCase'
+                AND er.fromId IN (<testSuiteIds>)
+            ),
+            latest_results AS (
+                SELECT dqdts.entityFQNHash,
+                       JSON_UNQUOTE(JSON_EXTRACT(dqdts.json, '$.testCaseFQN')) as testCaseFQN,
+                       JSON_UNQUOTE(JSON_EXTRACT(dqdts.json, '$.testCaseStatus')) as testCaseStatus,
+                       dqdts.timestamp,
+                       ROW_NUMBER() OVER (PARTITION BY dqdts.entityFQNHash ORDER BY dqdts.timestamp DESC) as rn
+                FROM data_quality_data_time_series dqdts
+                WHERE dqdts.entityFQNHash IN (SELECT fqnHash FROM suite_test_cases)
+            )
+            SELECT stc.testSuiteId, lr.testCaseFQN, lr.testCaseStatus, lr.timestamp
+            FROM latest_results lr
+            INNER JOIN suite_test_cases stc ON lr.entityFQNHash = stc.fqnHash
+            WHERE lr.rn = 1
+            """,
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            """
+            WITH suite_test_cases AS (
+                SELECT tc.fqnHash, er.fromId as testSuiteId
+                FROM entity_relationship er
+                INNER JOIN test_case tc ON er.toId = tc.id
+                WHERE er.fromEntity = 'testSuite' AND er.toEntity = 'testCase'
+                AND er.fromId IN (<testSuiteIds>)
+            ),
+            latest_results AS (
+                SELECT dqdts.entityFQNHash,
+                       dqdts.json->>'testCaseFQN' as testCaseFQN,
+                       dqdts.json->>'testCaseStatus' as testCaseStatus,
+                       dqdts.timestamp,
+                       ROW_NUMBER() OVER (PARTITION BY dqdts.entityFQNHash ORDER BY dqdts.timestamp DESC) as rn
+                FROM data_quality_data_time_series dqdts
+                WHERE dqdts.entityFQNHash IN (SELECT fqnHash FROM suite_test_cases)
+            )
+            SELECT stc.testSuiteId, lr.testCaseFQN, lr.testCaseStatus, lr.timestamp
+            FROM latest_results lr
+            INNER JOIN suite_test_cases stc ON lr.entityFQNHash = stc.fqnHash
+            WHERE lr.rn = 1
+            """,
+        connectionType = POSTGRES)
+    @UseRowMapper(ResultSummaryRowMapper.class)
+    List<ResultSummaryRow> listResultSummariesForTestSuites(
+        @BindList("testSuiteIds") List<String> testSuiteIds);
+
+    record SuiteMaxTimestamp(String testSuiteId, long maxTimestamp) {}
+
+    class SuiteMaxTimestampMapper implements RowMapper<SuiteMaxTimestamp> {
+      @Override
+      public SuiteMaxTimestamp map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new SuiteMaxTimestamp(rs.getString("testSuiteId"), rs.getLong("maxTimestamp"));
+      }
+    }
+
+    @SqlQuery(
+        """
+            SELECT er_sub.fromId as testSuiteId, MAX(dqdts.timestamp) as maxTimestamp
+            FROM data_quality_data_time_series dqdts
+            INNER JOIN (
+                SELECT tc.fqnHash, er.fromId
+                FROM entity_relationship er
+                INNER JOIN test_case tc ON er.toId = tc.id
+                WHERE er.fromEntity = 'testSuite' AND er.toEntity = 'testCase'
+                AND er.fromId IN (<testSuiteIds>)
+            ) er_sub ON dqdts.entityFQNHash = er_sub.fqnHash
+            GROUP BY er_sub.fromId""")
+    @UseRowMapper(SuiteMaxTimestampMapper.class)
+    List<SuiteMaxTimestamp> getMaxTimestampForTestSuites(
+        @BindList("testSuiteIds") List<String> testSuiteIds);
   }
 
   interface TestCaseDimensionResultTimeSeriesDAO extends EntityTimeSeriesDAO {

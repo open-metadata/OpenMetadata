@@ -69,3 +69,10 @@ UPDATE data_product_entity
 SET json = JSON_REMOVE(JSON_REMOVE(json, '$.inputPorts'), '$.outputPorts')
 WHERE JSON_CONTAINS_PATH(json, 'one', '$.inputPorts')
    OR JSON_CONTAINS_PATH(json, 'one', '$.outputPorts');
+
+-- Remove orphaned inputPorts and outputPorts fields from entity_extension (version history)
+UPDATE entity_extension
+SET json = JSON_REMOVE(JSON_REMOVE(json, '$.inputPorts'), '$.outputPorts')
+WHERE jsonSchema = 'dataProduct'
+  AND (JSON_CONTAINS_PATH(json, 'one', '$.inputPorts')
+       OR JSON_CONTAINS_PATH(json, 'one', '$.outputPorts'));

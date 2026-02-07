@@ -382,6 +382,46 @@ class DatabricksUnitTest(TestCase):
         for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE_2, table_list)):
             self.assertEqual(expected, original)
 
+    def test_get_schema_definition(self):
+        """Test get_schema_definition for regular tables, views, and materialized views"""
+        mock_inspector = Mock()
+        base_query = "SELECT * FROM base_table"
+
+        with patch(
+            "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.get_schema_definition",
+            return_value=base_query,
+        ):
+            regular_result = self.databricks_source.get_schema_definition(
+                table_type=TableType.Regular,
+                table_name="test_table",
+                schema_name="test_schema",
+                inspector=mock_inspector,
+            )
+            assert regular_result == base_query
+            assert "CREATE VIEW" not in regular_result
+            assert "CREATE MATERIALIZED VIEW" not in regular_result
+
+            view_result = self.databricks_source.get_schema_definition(
+                table_type=TableType.View,
+                table_name="test_view",
+                schema_name="test_schema",
+                inspector=mock_inspector,
+            )
+            expected_view = f"CREATE VIEW `{MOCK_DATABASE.name.root}`.`test_schema`.`test_view` AS {base_query}"
+            assert view_result == expected_view
+            assert "CREATE VIEW" in view_result
+            assert "CREATE MATERIALIZED VIEW" not in view_result
+
+            mv_result = self.databricks_source.get_schema_definition(
+                table_type=TableType.MaterializedView,
+                table_name="test_mv",
+                schema_name="test_schema",
+                inspector=mock_inspector,
+            )
+            expected_mv = f"CREATE MATERIALIZED VIEW `{MOCK_DATABASE.name.root}`.`test_schema`.`test_mv` AS {base_query}"
+            assert mv_result == expected_mv
+            assert "CREATE MATERIALIZED VIEW" in mv_result
+
     @patch("metadata.ingestion.source.database.databricks.metadata._get_column_rows")
     def test_get_columns_delta_uniform_iceberg(self, mock_get_column_rows):
         from metadata.ingestion.source.database.databricks.metadata import get_columns

@@ -179,6 +179,72 @@ public final class SearchUtils {
     return hosts.toArray(new HttpHost[0]);
   }
 
+  /**
+   * Builds an array of HC5 HttpHost objects from the ElasticSearch configuration. Supports single
+   * host or comma-separated list of hosts with optional ports. This method is for use with Apache
+   * HttpClient 5.x (HC5) transports required by Elasticsearch 9.x and OpenSearch 3.x.
+   *
+   * @param esConfig the ElasticSearch configuration
+   * @param searchType the type of search engine (for logging purposes, e.g., "OpenSearch" or
+   *     "Elasticsearch")
+   * @return array of HC5 HttpHost objects
+   * @throws IllegalArgumentException if host configuration is missing or invalid
+   */
+  public static org.apache.hc.core5.http.HttpHost[] buildHttpHostsForHc5(
+      ElasticSearchConfiguration esConfig, String searchType) {
+    List<org.apache.hc.core5.http.HttpHost> hosts = new ArrayList<>();
+    String scheme = esConfig.getScheme();
+    int defaultPort = esConfig.getPort() != null ? esConfig.getPort() : 9200;
+
+    if (StringUtils.isNotEmpty(esConfig.getHost())) {
+      String hostConfig = esConfig.getHost();
+      if (hostConfig.contains(",")) {
+        for (String hostEntry : hostConfig.split(",")) {
+          hostEntry = hostEntry.trim();
+          org.apache.hc.core5.http.HttpHost httpHost =
+              parseHostEntryForHc5(hostEntry, defaultPort, scheme, searchType);
+          hosts.add(httpHost);
+        }
+        LOG.info("Configured {} with {} hosts (HC5)", searchType, hosts.size());
+      } else {
+        org.apache.hc.core5.http.HttpHost httpHost =
+            parseHostEntryForHc5(hostConfig, defaultPort, scheme, searchType);
+        hosts.add(httpHost);
+        LOG.info(
+            "Configured {} with single host (HC5): {}:{}",
+            searchType,
+            httpHost.getHostName(),
+            httpHost.getPort());
+      }
+    } else {
+      throw new IllegalArgumentException(
+          String.format("'host' must be provided in %s configuration", searchType));
+    }
+
+    return hosts.toArray(new org.apache.hc.core5.http.HttpHost[0]);
+  }
+
+  private static org.apache.hc.core5.http.HttpHost parseHostEntryForHc5(
+      String hostEntry, int defaultPort, String scheme, String searchType) {
+    String[] parts = hostEntry.split(":");
+    String host = parts[0].trim();
+    int port = defaultPort;
+
+    if (parts.length > 1) {
+      String portStr = parts[1].trim();
+      try {
+        port = Integer.parseInt(portStr);
+      } catch (NumberFormatException e) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid port '%s' for host '%s' in %s configuration. Port must be a valid integer.",
+                portStr, host, searchType));
+      }
+    }
+
+    return new org.apache.hc.core5.http.HttpHost(scheme, host, port);
+  }
+
   private static HttpHost parseHostEntry(
       String hostEntry, int defaultPort, String scheme, String searchType) {
     String[] parts = hostEntry.split(":");
