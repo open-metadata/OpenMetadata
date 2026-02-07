@@ -32,6 +32,7 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { fillSupersetFormDetails } from '../../utils/serviceFormUtils';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 
 const SERVICE_NAMES = {
   service1: `PlaywrightService_${uuid()}`,
@@ -43,7 +44,7 @@ const adminUser = new UserClass();
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Service form functionality', async () => {
+test.describe('Service form functionality', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });

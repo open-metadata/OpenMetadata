@@ -14,7 +14,7 @@ PowerBI Models
 from datetime import datetime
 from typing import List, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing_extensions import Annotated
 
 
@@ -162,6 +162,16 @@ class PowerBITableSource(BaseModel):
         return v
 
 
+class PowerBIPartition(BaseModel):
+    """
+    PowerBI Table Partition (.pbit files)
+    """
+
+    name: Optional[str] = None
+    mode: Optional[str] = None
+    source: Optional[PowerBITableSource] = None
+
+
 class PowerBiTable(BaseModel):
     """
     PowerBI Table Model
@@ -173,6 +183,20 @@ class PowerBiTable(BaseModel):
     measures: Optional[List[PowerBiMeasures]] = None
     description: Optional[str] = None
     source: Optional[List[PowerBITableSource]] = None
+    partitions: Optional[List[PowerBIPartition]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def extract_source_from_partitions(cls, values):
+        if isinstance(values, dict):
+            if values.get("source") is None and values.get("partitions"):
+                partitions = values.get("partitions", [])
+                if partitions and len(partitions) > 0:
+                    partition_source = partitions[0].get("source")
+                    if partition_source:
+                        values["source"] = [partition_source]
+
+        return values
 
 
 class TablesResponse(BaseModel):

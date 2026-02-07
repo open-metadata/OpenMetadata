@@ -15,8 +15,8 @@ import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
-import es.co.elastic.clients.transport.rest_client.RestClientTransport;
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import jakarta.ws.rs.core.Response;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -83,8 +83,8 @@ class ElasticSearchEntityManagerIntegrationTest extends OpenMetadataApplicationT
         "test_entity_mgr_"
             + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS"));
 
-    RestClient restClient = getSearchClient();
-    RestClientTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
+    Rest5Client restClient = getSearchClient();
+    Rest5ClientTransport transport = new Rest5ClientTransport(restClient, new JacksonJsonpMapper());
     client = new ElasticsearchClient(transport);
 
     entityManager = new ElasticSearchEntityManager(client);

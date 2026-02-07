@@ -1,19 +1,21 @@
 package org.openmetadata.service.apps.bundles.insights.search.elasticsearch;
 
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.Response;
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.IndexTemplate;
 
 public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterface {
-  private final RestClient client;
+  private final Rest5Client client;
   private final String resourcePath = "/dataInsights/elasticsearch";
   private final String clusterAlias;
 
-  public ElasticSearchDataInsightsClient(RestClient client, String clusterAlias) {
+  public ElasticSearchDataInsightsClient(Rest5Client client, String clusterAlias) {
     this.client = client;
     this.clusterAlias = clusterAlias;
   }
@@ -30,7 +32,7 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
 
   private Response performRequest(String method, String path, String payload) throws IOException {
     Request request = new Request(method, path);
-    request.setJsonEntity(payload);
+    request.setEntity(new StringEntity(payload, ContentType.APPLICATION_JSON));
 
     return client.performRequest(request);
   }
@@ -53,7 +55,7 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   @Override
   public Boolean dataAssetDataStreamExists(String name) throws IOException {
     Response response = performRequest("HEAD", String.format("/%s", name));
-    return response.getStatusLine().getStatusCode() == 200;
+    return response.getStatusCode() == 200;
   }
 
   @Override

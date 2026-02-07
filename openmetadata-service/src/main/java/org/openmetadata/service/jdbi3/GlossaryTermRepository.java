@@ -68,6 +68,8 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
@@ -310,9 +312,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   /**
-   * Performs initial validation during CSV dry-run.
-   * Checks only for circular self-references to prevent known import issues.
-   * Full validation is performed during the actual import (dryRun = false) using the validateHierarchy method inside prepareInternal().
+   * Performs validation during CSV import (both dry-run and actual import).
+   * Checks for circular self-references and move-to-child scenarios to prevent import issues.
+   * This validation runs before entity creation/update to catch logical errors early.
    */
   public void validateForDryRun(
       GlossaryTerm entity, Map<String, GlossaryTerm> dryRunCreatedEntities) {
@@ -330,6 +332,57 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               "Invalid hierarchy: Term '%s' cannot be its own parent",
               entity.getParent().getFullyQualifiedName()));
     }
+
+    // Check for move-to-child scenario: does an existing term with the same name
+    // exist that would be moved under its own descendant?
+    String newParentFqn = entity.getParent().getFullyQualifiedName();
+
+    // First, check in-memory dryRunCreatedEntities for terms created earlier in this batch
+    // This avoids redundant DB calls for large batch imports
+    GlossaryTerm existingTerm = findTermByNameInBatch(entity, dryRunCreatedEntities);
+
+    // If not found in batch, check DB for pre-existing terms
+    if (existingTerm == null) {
+      String existingTermString =
+          daoCollection
+              .glossaryTermDAO()
+              .getGlossaryTermByNameAndGlossaryIgnoreCase(
+                  entity.getGlossary().getFullyQualifiedName(), entity.getName());
+      if (existingTermString != null && !existingTermString.isEmpty()) {
+        existingTerm = JsonUtils.readValue(existingTermString, GlossaryTerm.class);
+      }
+    }
+
+    if (existingTerm != null && existingTerm.getFullyQualifiedName() != null) {
+      String existingFqn = existingTerm.getFullyQualifiedName();
+      // If the new parent's FQN starts with the existing term's FQN,
+      // then we're trying to move the term under its own descendant
+      if (FullyQualifiedName.isParent(newParentFqn, existingFqn)) {
+        throw new IllegalArgumentException(invalidGlossaryTermMove(existingFqn, newParentFqn));
+      }
+    }
+  }
+
+  /** Find a term with the same name in the current batch (dryRunCreatedEntities). */
+  private GlossaryTerm findTermByNameInBatch(
+      GlossaryTerm entity, Map<String, GlossaryTerm> dryRunCreatedEntities) {
+    if (dryRunCreatedEntities == null || dryRunCreatedEntities.isEmpty()) {
+      return null;
+    }
+    String glossaryFqn = entity.getGlossary().getFullyQualifiedName();
+    String termName = entity.getName().toLowerCase();
+
+    // Search through batch for a term with the same name in the same glossary
+    for (GlossaryTerm batchTerm : dryRunCreatedEntities.values()) {
+      if (batchTerm.getGlossary() != null
+          && batchTerm.getGlossary().getFullyQualifiedName() != null
+          && batchTerm.getGlossary().getFullyQualifiedName().equals(glossaryFqn)
+          && batchTerm.getName() != null
+          && batchTerm.getName().toLowerCase().equals(termName)) {
+        return batchTerm;
+      }
+    }
+    return null;
   }
 
   @Override
@@ -398,6 +451,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       entity.withGlossary(glossary).withParent(parentTerm).withReviewers(reviewers);
     }
     storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<GlossaryTerm> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(GlossaryTerm::getId).toList();
+    deleteToMany(ids, Entity.GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY);
+    deleteToMany(ids, Entity.GLOSSARY_TERM, Relationship.HAS, Entity.GLOSSARY);
+    deleteToMany(ids, Entity.GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY_TERM);
+    deleteFromMany(ids, Entity.GLOSSARY_TERM, Relationship.RELATED_TO, Entity.GLOSSARY_TERM);
+    deleteToMany(ids, Entity.GLOSSARY_TERM, Relationship.RELATED_TO, Entity.GLOSSARY_TERM);
   }
 
   @Override
@@ -1799,22 +1863,34 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public boolean isUpdateForImport(GlossaryTerm entity) {
-    if (super.isUpdateForImport(entity)) {
-      return true;
+  public GlossaryTerm findMatchForImport(GlossaryTerm entity) {
+    GlossaryTerm original = super.findMatchForImport(entity);
+    if (original != null) {
+      return original;
     }
 
     // A glossary term may have been moved to a different parent causing its FQN to change. So check
     // with name field
-    return Entity.getCollectionDAO()
+    String existingTermJson =
+        daoCollection
             .glossaryTermDAO()
-            .getGlossaryTermCountIgnoreCase(
-                entity.getGlossary().getFullyQualifiedName(), entity.getName())
-        > 0;
+            .getGlossaryTermByNameAndGlossaryIgnoreCase(
+                entity.getGlossary().getFullyQualifiedName(), entity.getName());
+    if (existingTermJson != null && !existingTermJson.isEmpty()) {
+      return JsonUtils.readValue(existingTermJson, GlossaryTerm.class);
+    }
+    return null;
   }
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     Fields fields =
         getFields("owners,reviewers,tags,relatedTerms,synonyms,references,extension,parent");
     GlossaryTerm glossaryTerm = getByName(null, name, fields);
@@ -1826,12 +1902,24 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     List<GlossaryTerm> terms = listAllForCSV(fields, glossaryTerm.getFullyQualifiedName());
 
     terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
-    return new GlossaryRepository.GlossaryCsv(glossary, user).exportCsv(terms);
+    return new GlossaryRepository.GlossaryCsv(glossary, user).exportCsv(terms, callback);
   }
 
   @Override
   public CsvImportResult importFromCsv(
       String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    return importFromCsv(name, csv, dryRun, user, recursive, (CsvImportProgressCallback) null);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
     GlossaryTerm glossaryTerm = getByName(null, name, Fields.EMPTY_FIELDS);
     GlossaryRepository glossaryRepository =
         (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
@@ -1840,6 +1928,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         glossaryRepository.getByName(
             null, glossaryTerm.getGlossary().getName(), Fields.EMPTY_FIELDS);
     GlossaryRepository.GlossaryCsv glossaryCsv = new GlossaryRepository.GlossaryCsv(glossary, user);
-    return glossaryCsv.importCsv(csv, dryRun);
+    return glossaryCsv.importCsv(csv, dryRun, callback);
   }
 }

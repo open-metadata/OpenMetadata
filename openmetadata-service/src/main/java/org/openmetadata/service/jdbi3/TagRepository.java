@@ -28,6 +28,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
+import com.google.gson.Gson;
 import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -295,9 +296,37 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
+  public void storeEntities(List<Tag> entities) {
+    List<Tag> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Tag tag : entities) {
+      EntityReference classification = tag.getClassification();
+      EntityReference parent = tag.getParent();
+
+      tag.withClassification(null).withParent(null);
+
+      String jsonCopy = gson.toJson(tag);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Tag.class));
+
+      tag.withClassification(classification).withParent(parent);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
   public void restorePatchAttributes(Tag original, Tag updated) {
     super.restorePatchAttributes(original, updated);
     updated.setChildren(original.getChildren());
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Tag> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Tag::getId).toList();
+    deleteToMany(ids, Entity.TAG, Relationship.CONTAINS, Entity.CLASSIFICATION);
+    deleteToMany(ids, Entity.TAG, Relationship.CONTAINS, Entity.TAG);
   }
 
   @Override

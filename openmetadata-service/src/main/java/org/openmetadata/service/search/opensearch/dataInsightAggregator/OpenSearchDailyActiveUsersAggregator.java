@@ -24,7 +24,7 @@ public class OpenSearchDailyActiveUsersAggregator
 
   @Override
   protected long getKeyAsEpochTimestamp(DateHistogramBucket bucket) {
-    return Long.parseLong(bucket.key());
+    return bucket.key();
   }
 
   @Override

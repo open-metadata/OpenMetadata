@@ -164,6 +164,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<DataProduct> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(DataProduct::getId).toList();
+    deleteToMany(ids, Entity.DATA_PRODUCT, Relationship.CONTAINS, Entity.DOMAIN);
+    deleteFromMany(ids, Entity.DATA_PRODUCT, Relationship.EXPERT, Entity.USER);
+  }
+
+  @Override
   public void storeRelationships(DataProduct entity) {
     for (EntityReference domain : listOrEmpty(entity.getDomains())) {
       addRelationship(
