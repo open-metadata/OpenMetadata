@@ -14,7 +14,8 @@ import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 
 export const GLOSSARY_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
   EntityReferenceFields.REVIEWERS,
-  EntityReferenceFields.UPDATED_BY,
+  EntityReferenceFields.SYNONYMS,
+  EntityReferenceFields.RELATED_TERMS,
 ];
 
 export const TABLE_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
@@ -34,5 +35,7 @@ export const COMMON_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
   EntityReferenceFields.DATA_PRODUCTS,
   EntityReferenceFields.EXTENSION,
   EntityReferenceFields.UPDATED_AT,
+  EntityReferenceFields.UPDATED_BY,
   EntityReferenceFields.VERSION,
+  EntityReferenceFields.ENTITY_STATUS,
 ];
