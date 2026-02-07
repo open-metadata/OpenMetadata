@@ -78,6 +78,7 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.OM;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -112,6 +113,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     supportsRecursiveImport = false; // Tables don't support recursive import
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
   }
 
   private DatabaseSchema lastCreatedSchema;
@@ -4772,5 +4774,47 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Override
   protected Table getVersion(UUID id, Double version) {
     return SdkClients.adminClient().tables().getVersion(id.toString(), version);
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateTable> createRequests) {
+    return SdkClients.adminClient().tables().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateTable> createRequests) {
+    return SdkClients.adminClient().tables().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateTable createInvalidRequestForBulk(TestNamespace ns) {
+    CreateTable request = new CreateTable();
+    request.setName(ns.prefix("invalid_table"));
+    request.setDatabaseSchema("nonexistent.service.db.schema");
+    request.setColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
+    return request;
+  }
+
+  @Override
+  protected List<CreateTable> createBulkRequests(TestNamespace ns, String prefix, int count) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    List<CreateTable> requests = new ArrayList<>();
+    for (int i = 0; i < count; i++) {
+      CreateTable request = new CreateTable();
+      request.setName(ns.prefix(prefix + i));
+      request.setDatabaseSchema(schema.getFullyQualifiedName());
+      request.setColumns(
+          List.of(
+              ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+              ColumnBuilder.of("name", "VARCHAR").dataLength(255).build()));
+      requests.add(request);
+    }
+    return requests;
   }
 }

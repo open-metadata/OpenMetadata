@@ -23,6 +23,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
@@ -46,6 +47,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     supportsRecursiveImport = true; // DatabaseSchema supports recursive import with nested entities
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
   }
 
   // Store last created schema for import/export tests
@@ -1834,5 +1836,26 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
           imported.getDomains().size(),
           "Schema domain count should match");
     }
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateDatabaseSchema> createRequests) {
+    return SdkClients.adminClient().databaseSchemas().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateDatabaseSchema> createRequests) {
+    return SdkClients.adminClient().databaseSchemas().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateDatabaseSchema createInvalidRequestForBulk(TestNamespace ns) {
+    CreateDatabaseSchema request = new CreateDatabaseSchema();
+    request.setName(ns.prefix("invalid_schema"));
+    return request;
   }
 }

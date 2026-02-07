@@ -252,7 +252,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
 
-    // Initialize bulk operation executor for bounded concurrent processing
+    // Initialize bulk operation executor
     BulkExecutor.initialize(catalogConfig.getBulkOperationConfiguration());
 
     // Phase 1: Core search infrastructure (needed by repositories)

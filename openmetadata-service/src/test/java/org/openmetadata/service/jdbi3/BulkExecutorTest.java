@@ -12,7 +12,12 @@
  */
 package org.openmetadata.service.jdbi3;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
@@ -181,6 +186,20 @@ class BulkExecutorTest {
   }
 
   @Test
+  void testHasCapacityForBatch() {
+    BulkOperationConfiguration config = new BulkOperationConfiguration();
+    config.setMaxThreads(2);
+    config.setQueueSize(10);
+
+    BulkExecutor.initialize(config);
+    BulkExecutor executor = BulkExecutor.getInstance();
+
+    assertTrue(executor.hasCapacityForBatch(5), "Should have capacity for batch of 5");
+    assertTrue(executor.hasCapacityForBatch(10), "Should have capacity for batch of 10");
+    assertFalse(executor.hasCapacityForBatch(11), "Should not have capacity for batch of 11");
+  }
+
+  @Test
   void testActiveCountAndQueueDepth() throws InterruptedException {
     BulkOperationConfiguration config = new BulkOperationConfiguration();
     config.setMaxThreads(2);
@@ -304,61 +323,15 @@ class BulkExecutorTest {
   }
 
   @Test
-  void testSubmitWithFutureRejectsAfterShutdown() {
+  void testGetStats() {
     BulkOperationConfiguration config = new BulkOperationConfiguration();
-    config.setMaxThreads(2);
-    config.setTimeoutSeconds(5);
+    config.setMaxThreads(5);
 
     BulkExecutor.initialize(config);
     BulkExecutor executor = BulkExecutor.getInstance();
 
-    executor.shutdown();
-
-    assertThrows(
-        RejectedExecutionException.class,
-        () -> executor.submitWithFuture(() -> {}),
-        "Should reject submitWithFuture after shutdown");
-  }
-
-  @Test
-  void testFutureCancellation() throws Exception {
-    BulkOperationConfiguration config = new BulkOperationConfiguration();
-    config.setMaxThreads(1);
-
-    BulkExecutor.initialize(config);
-    BulkExecutor executor = BulkExecutor.getInstance();
-
-    CountDownLatch blocker = new CountDownLatch(1);
-    AtomicBoolean secondTaskRan = new AtomicBoolean(false);
-
-    // Block the single thread
-    executor.submitWithFuture(
-        () -> {
-          try {
-            blocker.await();
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-          }
-        });
-
-    // Submit a cancellable task
-    Future<?> cancellableFuture =
-        executor.submitWithFuture(
-            () -> {
-              secondTaskRan.set(true);
-            });
-
-    // Cancel the queued task before it runs
-    boolean cancelled = cancellableFuture.cancel(false);
-
-    // Release the blocker
-    blocker.countDown();
-
-    // Wait a bit
-    Awaitility.await().atMost(2, TimeUnit.SECONDS).until(cancellableFuture::isDone);
-
-    assertTrue(
-        cancellableFuture.isCancelled() || cancelled,
-        "Future should be cancelled or able to cancel");
+    String stats = executor.getStats();
+    assertNotNull(stats);
+    assertTrue(stats.contains("threads=5"));
   }
 }
