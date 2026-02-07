@@ -37,6 +37,7 @@ import {
 } from '../../utils/asyncDelete';
 import {
   clickOutside,
+  closeFirstPopupAlert,
   descriptionBox,
   getAuthContext,
   getRandomLastName,
@@ -2195,6 +2196,9 @@ test.describe('Glossary tests', () => {
           const confirmationInput = page.getByTestId('confirmation-text-input');
 
           await expect(confirmationInput).toBeVisible();
+
+          // Close out all the alerts before filling the confirmation input
+          await closeFirstPopupAlert(page);
 
           await confirmationInput.fill('DELETE');
 
