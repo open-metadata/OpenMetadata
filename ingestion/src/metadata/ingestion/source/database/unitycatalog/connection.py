@@ -187,18 +187,17 @@ def test_connection(
                 ).replace(";", " limit 1;")
             )
 
-    def test_lineage_tables(engine: Engine):
-        with engine.connect() as conn:
-            conn.execute(UNITY_CATALOG_TEST_TABLE_LINEAGE).fetchone()
-            conn.execute(UNITY_CATALOG_TEST_COLUMN_LINEAGE).fetchone()
-
     test_fn = {
         "CheckAccess": connection.catalogs.list,
         "GetDatabases": partial(get_catalogs, connection, table_obj),
         "GetSchemas": partial(get_schemas, connection, table_obj),
         "GetTables": partial(get_tables, connection, table_obj),
         "GetViews": partial(get_tables, connection, table_obj),
-        "GetQueries": partial(test_lineage_tables, engine),
+        "GetQueries": partial(
+            test_database_query,
+            engine=engine,
+            statement=UNITY_CATALOG_SQL_STATEMENT_TEST,
+        ),
         "GetTags": partial(get_tags, service_connection, table_obj),
     }
 
