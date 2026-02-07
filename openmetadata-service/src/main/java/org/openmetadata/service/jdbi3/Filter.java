@@ -26,7 +26,7 @@ public abstract class Filter<T extends Filter<T>> {
   }
 
   public String getQueryParam(String name) {
-    return name.equals("include") ? include.value() : queryParams.get(name);
+    return name.equals("include") && include != null ? include.value() : queryParams.get(name);
   }
 
   public String getCondition() {
