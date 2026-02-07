@@ -11,6 +11,7 @@
 """
 Metadata DAG common functions
 """
+
 import json
 import uuid
 from datetime import datetime, timedelta
@@ -26,6 +27,7 @@ from requests.utils import quote
 from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.driveService import DriveService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
@@ -78,6 +80,7 @@ logger = workflow_logger()
 ENTITY_CLASS_MAP = {
     "apiService": ApiService,
     "databaseService": DatabaseService,
+    "driveService": DriveService,
     "pipelineService": PipelineService,
     "dashboardService": DashboardService,
     "messagingService": MessagingService,
@@ -313,12 +316,12 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
         dag_kwargs["schedule_interval"] = schedule_interval
 
     if not is_airflow_3_or_higher():
-        dag_kwargs[
-            "default_view"
-        ] = ingestion_pipeline.airflowConfig.workflowDefaultView
-        dag_kwargs[
-            "orientation"
-        ] = ingestion_pipeline.airflowConfig.workflowDefaultViewOrientation
+        dag_kwargs["default_view"] = (
+            ingestion_pipeline.airflowConfig.workflowDefaultView
+        )
+        dag_kwargs["orientation"] = (
+            ingestion_pipeline.airflowConfig.workflowDefaultViewOrientation
+        )
 
     concurrency = ingestion_pipeline.airflowConfig.concurrency
     if concurrency is not None:
