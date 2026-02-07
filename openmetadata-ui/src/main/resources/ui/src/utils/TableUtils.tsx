@@ -140,7 +140,6 @@ import SchemaTable from '../components/Database/SchemaTable/SchemaTable.componen
 import TableQueries from '../components/Database/TableQueries/TableQueries';
 import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -203,6 +202,10 @@ import { ordinalize } from './StringsUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 import { extractTopicFields } from './TopicDetailsUtils';
+
+const KnowledgeGraph = lazy(
+  () => import('../components/KnowledgeGraph/KnowledgeGraph')
+);
 
 const EntityLineageTab = lazy(() =>
   import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
@@ -998,20 +1001,22 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.KNOWLEDGE_GRAPH,
       children: (
-        <KnowledgeGraph
-          depth={2}
-          entity={
-            tableDetails
-              ? {
-                  id: tableDetails.id,
-                  name: tableDetails.name,
-                  fullyQualifiedName: tableDetails.fullyQualifiedName,
-                  type: EntityType.TABLE,
-                }
-              : undefined
-          }
-          entityType={EntityType.TABLE}
-        />
+        <Suspense fallback={<Loader />}>
+          <KnowledgeGraph
+            depth={2}
+            entity={
+              tableDetails
+                ? {
+                    id: tableDetails.id,
+                    name: tableDetails.name,
+                    fullyQualifiedName: tableDetails.fullyQualifiedName,
+                    type: EntityType.TABLE,
+                  }
+                : undefined
+            }
+            entityType={EntityType.TABLE}
+          />
+        </Suspense>
       ),
       isHidden: !useApplicationStore.getState().rdfEnabled,
     },

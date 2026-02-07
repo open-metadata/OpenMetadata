@@ -16,8 +16,8 @@ import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import viteCompression from 'vite-plugin-compression';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
-import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import viteSvgrOptimized from './vite-plugin-svgr-optimized';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -56,7 +56,7 @@ export default defineConfig(({ mode }) => {
         },
       },
       react(),
-      svgr(),
+      viteSvgrOptimized(),
       tsconfigPaths(),
       nodePolyfills({
         include: ['process', 'buffer'],
@@ -92,6 +92,9 @@ export default defineConfig(({ mode }) => {
           __dirname,
           'node_modules/@deuex-solutions/react-tour/dist/reacttour.min.js'
         ),
+        'lodash/camelCase': 'lodash-es/camelCase',
+        'lodash/kebabCase': 'lodash-es/kebabCase',
+        'lodash/snakeCase': 'lodash-es/snakeCase',
       },
       extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.less', '.svg'],
       dedupe: [
@@ -143,8 +146,11 @@ export default defineConfig(({ mode }) => {
       assetsDir: 'assets',
       copyPublicDir: true,
       sourcemap: false,
+      target: 'esnext',
+      cssCodeSplit: true,
       minify: mode === 'production' ? 'esbuild' : false,
       rollupOptions: {
+        maxParallelFileOps: 10,
         output: {
           manualChunks: {
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
