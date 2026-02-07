@@ -304,7 +304,7 @@ test.describe('User with Admin Roles', () => {
     });
 
     const userName = user3.responseData.name;
-    const userDisplayName = user3.responseData.displayName;
+    const userDisplayName = user3.responseData.displayName ?? user3.responseData.name;
     // Patch Table to add the user to the custom property
     await tableEntity.patch({
       apiContext,
