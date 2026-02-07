@@ -10,9 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MOCK_TAG_OPTIONS } from './MUITagSuggestion.mock';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import MUITagSuggestion from './MUITagSuggestion';
+import { MOCK_TAG_OPTIONS } from './MUITagSuggestion.mock';
 
 const mockGetTags = jest.fn();
 
@@ -117,11 +123,9 @@ describe('MUITagSuggestion', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole('listbox')).toBeInTheDocument();
+      expect(screen.getByText('Personal')).toBeInTheDocument();
+      expect(screen.getByText('PII')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('Personal')).toBeInTheDocument();
-    expect(screen.getByText('PII')).toBeInTheDocument();
   });
 
   it('should search by name and render all matching options from server', async () => {
@@ -192,11 +196,9 @@ describe('MUITagSuggestion', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole('listbox')).toBeInTheDocument();
+      expect(screen.getByText('Jest 1')).toBeInTheDocument();
+      expect(screen.getByText('Testing 1')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('Jest 1')).toBeInTheDocument();
-    expect(screen.getByText('Testing 1')).toBeInTheDocument();
 
     mockGetTags.mockClear();
 
@@ -237,12 +239,10 @@ describe('MUITagSuggestion', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole('listbox')).toBeInTheDocument();
+      expect(screen.getByText('Personal')).toBeInTheDocument();
+      expect(screen.getByText('PII')).toBeInTheDocument();
+      expect(screen.getByText('Sensitive')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('Personal')).toBeInTheDocument();
-    expect(screen.getByText('PII')).toBeInTheDocument();
-    expect(screen.getByText('Sensitive')).toBeInTheDocument();
   });
 
   it('should call onChange when a tag is selected', async () => {
@@ -257,7 +257,9 @@ describe('MUITagSuggestion', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole('listbox')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('tag-option-PersonalData.Personal')
+      ).toBeInTheDocument();
     });
 
     const option = screen.getByTestId('tag-option-PersonalData.Personal');
@@ -267,7 +269,9 @@ describe('MUITagSuggestion', () => {
     });
 
     expect(mockOnChange).toHaveBeenCalled();
+
     const callArg = mockOnChange.mock.calls[0][0];
+
     expect(callArg).toHaveLength(1);
     expect(callArg[0].tagFQN).toBe('PersonalData.Personal');
   });
