@@ -1801,11 +1801,12 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT COUNT(*) FROM entity_relationship "
-            + "WHERE fromId = :fromId AND toId = :toId AND fromEntity = :fromEntity AND relation = :relation")
+            + "WHERE fromId = :fromId AND toId = :toId AND fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation")
     int existsRelationship(
         @BindUUID("fromId") UUID fromId,
         @BindUUID("toId") UUID toId,
         @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
     @SqlQuery(

@@ -35,9 +35,11 @@ import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -292,20 +294,32 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
             ? Relationship.OUTPUT_PORT
             : Relationship.INPUT_PORT;
 
+    Set<UUID> oppositePortIds = Set.of();
+    Set<UUID> dataProductAssetIds = Set.of();
+    if (isAdd) {
+      oppositePortIds =
+          daoCollection
+              .relationshipDAO()
+              .findTo(dataProduct.getId(), DATA_PRODUCT, oppositeRelationship.ordinal())
+              .stream()
+              .map(CollectionDAO.EntityRelationshipRecord::getId)
+              .collect(Collectors.toCollection(HashSet::new));
+      if (relationship == Relationship.OUTPUT_PORT) {
+        dataProductAssetIds =
+            daoCollection
+                .relationshipDAO()
+                .findTo(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS.ordinal())
+                .stream()
+                .map(CollectionDAO.EntityRelationshipRecord::getId)
+                .collect(Collectors.toCollection(HashSet::new));
+      }
+    }
+
     for (EntityReference ref : assets) {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
       if (isAdd) {
-        boolean existsInOppositePort =
-            daoCollection
-                    .relationshipDAO()
-                    .existsRelationship(
-                        dataProduct.getId(),
-                        ref.getId(),
-                        DATA_PRODUCT,
-                        oppositeRelationship.ordinal())
-                > 0;
-        if (existsInOppositePort) {
+        if (oppositePortIds.contains(ref.getId())) {
           String oppositePortType =
               oppositeRelationship == Relationship.INPUT_PORT ? "input" : "output";
           String msg =
@@ -318,26 +332,16 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           continue;
         }
 
-        if (relationship == Relationship.OUTPUT_PORT) {
-          boolean isDataProductAsset =
-              daoCollection
-                      .relationshipDAO()
-                      .existsRelationship(
-                          dataProduct.getId(),
-                          ref.getId(),
-                          DATA_PRODUCT,
-                          Relationship.HAS.ordinal())
-                  > 0;
-          if (!isDataProductAsset) {
-            String msg =
-                String.format(
-                    "Asset '%s' must belong to the data product before it can be added as an output port",
-                    ref.getFullyQualifiedName());
-            failed.add(new BulkResponse().withRequest(ref).withMessage(msg));
-            result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
-            result.setStatus(ApiStatus.PARTIAL_SUCCESS);
-            continue;
-          }
+        if (relationship == Relationship.OUTPUT_PORT
+            && !dataProductAssetIds.contains(ref.getId())) {
+          String msg =
+              String.format(
+                  "Asset '%s' must belong to the data product before it can be added as an output port",
+                  ref.getFullyQualifiedName());
+          failed.add(new BulkResponse().withRequest(ref).withMessage(msg));
+          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+          result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+          continue;
         }
 
         addRelationship(
