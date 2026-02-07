@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { TagLabel } from '../generated/entity/data/container';
@@ -22,6 +23,7 @@ import {
   ExtraTableDropdownOptions,
   fieldExistsByFQN,
   findColumnByEntityLink,
+  getColumnOptionsFromTableColumn,
   getEntityIcon,
   getExpandAllKeysToDepth,
   getHighlightedRowClassName,
@@ -40,7 +42,15 @@ import {
   updateFieldExtension,
 } from '../utils/TableUtils';
 import EntityLink from './EntityLink';
+import { TableDetailPageTabProps } from './TableClassBase';
 import { extractTableColumns } from './TableUtils';
+import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
+
+type ParentFieldObject = {
+  fullyQualifiedName?: string;
+  children?: ParentFieldObject[];
+  name?: string;
+};
 
 jest.mock(
   '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
@@ -256,6 +266,205 @@ describe('TableUtils', () => {
       );
 
       expect(result).toEqual(columns);
+    });
+
+    it('should update a deeply nested column (3 levels deep)', () => {
+      const columns: Column[] = [
+        {
+          name: 'level1',
+          dataType: DataType.Struct,
+          fullyQualifiedName: 'table.level1',
+          description: 'level 1 description',
+          children: [
+            {
+              name: 'level2',
+              dataType: DataType.Struct,
+              fullyQualifiedName: 'table.level1.level2',
+              description: 'level 2 description',
+              children: [
+                {
+                  name: 'level3',
+                  dataType: DataType.String,
+                  fullyQualifiedName: 'table.level1.level2.level3',
+                  description: 'original deep description',
+                } as Column,
+              ],
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const targetFqn = 'table.level1.level2.level3';
+      const update = { description: 'updated deep description' };
+
+      const result = updateColumnInNestedStructure(columns, targetFqn, update);
+
+      expect(result[0].description).toBe('level 1 description');
+      expect(result[0].children?.[0].description).toBe('level 2 description');
+      expect(result[0].children?.[0].children?.[0].description).toBe(
+        'updated deep description'
+      );
+    });
+
+    it('should update tags on a nested column', () => {
+      const columns: Column[] = [
+        {
+          name: 'parentColumn',
+          dataType: DataType.Struct,
+          fullyQualifiedName: 'table.parentColumn',
+          tags: [],
+          children: [
+            {
+              name: 'childColumn',
+              dataType: DataType.String,
+              fullyQualifiedName: 'table.parentColumn.childColumn',
+              tags: [],
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const targetFqn = 'table.parentColumn.childColumn';
+      const update = {
+        tags: [
+          {
+            tagFQN: 'PII.Sensitive',
+            source: TagSource.Classification,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+        ] as TagLabel[],
+      };
+
+      const result = updateColumnInNestedStructure(columns, targetFqn, update);
+
+      expect(result[0].children?.[0].tags).toHaveLength(1);
+      expect(result[0].children?.[0].tags?.[0].tagFQN).toBe('PII.Sensitive');
+    });
+
+    it('should update displayName on a nested column', () => {
+      const columns: Column[] = [
+        {
+          name: 'products',
+          dataType: DataType.Array,
+          fullyQualifiedName: 'table.products',
+          children: [
+            {
+              name: 'product_id',
+              dataType: DataType.String,
+              fullyQualifiedName: 'table.products.product_id',
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const targetFqn = 'table.products.product_id';
+      const update = { displayName: 'Product Identifier' };
+
+      const result = updateColumnInNestedStructure(columns, targetFqn, update);
+
+      expect(result[0].children?.[0].displayName).toBe('Product Identifier');
+    });
+
+    it('should update multiple properties on a nested column at once', () => {
+      const columns: Column[] = [
+        {
+          name: 'parentColumn',
+          dataType: DataType.Struct,
+          fullyQualifiedName: 'table.parentColumn',
+          children: [
+            {
+              name: 'childColumn',
+              dataType: DataType.String,
+              fullyQualifiedName: 'table.parentColumn.childColumn',
+              description: 'old description',
+              tags: [],
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const targetFqn = 'table.parentColumn.childColumn';
+      const update = {
+        description: 'new description',
+        displayName: 'Child Column Display',
+        tags: [
+          {
+            tagFQN: 'Test.Tag',
+            source: TagSource.Classification,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          },
+        ] as TagLabel[],
+      };
+
+      const result = updateColumnInNestedStructure(columns, targetFqn, update);
+
+      expect(result[0].children?.[0].description).toBe('new description');
+      expect(result[0].children?.[0].displayName).toBe('Child Column Display');
+      expect(result[0].children?.[0].tags).toHaveLength(1);
+    });
+
+    it('should not modify other nested columns when updating one', () => {
+      const columns: Column[] = [
+        {
+          name: 'parentColumn',
+          dataType: DataType.Struct,
+          fullyQualifiedName: 'table.parentColumn',
+          children: [
+            {
+              name: 'child1',
+              dataType: DataType.String,
+              fullyQualifiedName: 'table.parentColumn.child1',
+              description: 'child 1 description',
+            } as Column,
+            {
+              name: 'child2',
+              dataType: DataType.String,
+              fullyQualifiedName: 'table.parentColumn.child2',
+              description: 'child 2 description',
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const targetFqn = 'table.parentColumn.child1';
+      const update = { description: 'updated child 1 description' };
+
+      const result = updateColumnInNestedStructure(columns, targetFqn, update);
+
+      expect(result[0].children?.[0].description).toBe(
+        'updated child 1 description'
+      );
+      expect(result[0].children?.[1].description).toBe('child 2 description');
+    });
+
+    it('should preserve the children property when updating a parent column', () => {
+      const columns: Column[] = [
+        {
+          name: 'parentColumn',
+          dataType: DataType.Struct,
+          fullyQualifiedName: 'table.parentColumn',
+          description: 'old parent description',
+          children: [
+            {
+              name: 'childColumn',
+              dataType: DataType.String,
+              fullyQualifiedName: 'table.parentColumn.childColumn',
+              description: 'child description',
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const targetFqn = 'table.parentColumn';
+      const update = { description: 'new parent description' };
+
+      const result = updateColumnInNestedStructure(columns, targetFqn, update);
+
+      expect(result[0].description).toBe('new parent description');
+      expect(result[0].children).toHaveLength(1);
+      expect(result[0].children?.[0].description).toBe('child description');
     });
   });
 
@@ -840,7 +1049,7 @@ describe('TableUtils', () => {
     });
   });
 
-  const mockProps = {
+  const mockProps: TableDetailPageTabProps = {
     activeTab: EntityTabs.DBT,
     deleted: false,
     editCustomAttributePermission: true,
@@ -853,6 +1062,7 @@ describe('TableUtils', () => {
       totalCount: 0,
       totalTasksCount: 0,
     },
+    viewCustomPropertiesPermission: true,
     fetchTableDetails: jest.fn(),
     getEntityFeedCount: jest.fn(),
     handleFeedCount: jest.fn(),
@@ -1441,7 +1651,10 @@ describe('TableUtils', () => {
                 {
                   fullyQualifiedName: 'table.level1.level2.level3',
                   children: [
-                    { fullyQualifiedName: 'table.level1.level2.level3.level4' },
+                    {
+                      fullyQualifiedName: 'table.level1.level2.level3.level4',
+                      children: [],
+                    },
                   ],
                 },
               ],
@@ -1484,18 +1697,23 @@ describe('TableUtils', () => {
         {
           fullyQualifiedName: 'table.parent1',
           children: [
-            { fullyQualifiedName: 'table.parent1.child1' },
+            { fullyQualifiedName: 'table.parent1.child1', children: [] },
             {
               fullyQualifiedName: 'table.parent1.child2',
               children: [
-                { fullyQualifiedName: 'table.parent1.child2.grandchild' },
+                {
+                  fullyQualifiedName: 'table.parent1.child2.grandchild',
+                  children: [],
+                },
               ],
             },
           ],
         },
         {
           fullyQualifiedName: 'table.parent2',
-          children: [{ fullyQualifiedName: 'table.parent2.child1' }],
+          children: [
+            { fullyQualifiedName: 'table.parent2.child1', children: [] },
+          ],
         },
       ];
 
@@ -1525,8 +1743,8 @@ describe('TableUtils', () => {
         {
           fullyQualifiedName: 'table.parent',
           children: [
-            { fullyQualifiedName: 'table.parent.child1' },
-            { fullyQualifiedName: 'table.parent.child2' },
+            { fullyQualifiedName: 'table.parent.child1', children: [] },
+            { fullyQualifiedName: 'table.parent.child2', children: [] },
           ],
         },
       ];
@@ -1550,7 +1768,10 @@ describe('TableUtils', () => {
                 {
                   fullyQualifiedName: 'table.level1.level2.level3',
                   children: [
-                    { fullyQualifiedName: 'table.level1.level2.level3.level4' },
+                    {
+                      fullyQualifiedName: 'table.level1.level2.level3.level4',
+                      children: [],
+                    },
                   ],
                 },
               ],
@@ -1593,15 +1814,18 @@ describe('TableUtils', () => {
           name: 'parent',
           fullyQualifiedName: undefined,
           children: [
-            { fullyQualifiedName: 'table.parent.child1' },
-            { fullyQualifiedName: 'table.parent.child2' },
+            { fullyQualifiedName: 'table.parent.child1', children: [] },
+            { fullyQualifiedName: 'table.parent.child2', children: [] },
           ],
         },
       ];
 
-      expect(getParentKeysToExpand(items, 'table.parent.child1')).toEqual([
-        'parent',
-      ]);
+      expect(
+        getParentKeysToExpand(
+          items as ParentFieldObject[],
+          'table.parent.child1'
+        )
+      ).toEqual(['parent']);
     });
 
     it('should use empty string when both fullyQualifiedName and name are undefined', () => {
@@ -1609,11 +1833,13 @@ describe('TableUtils', () => {
         {
           name: undefined,
           fullyQualifiedName: undefined,
-          children: [{ fullyQualifiedName: 'table.child1' }],
+          children: [{ fullyQualifiedName: 'table.child1', children: [] }],
         },
       ];
 
-      expect(getParentKeysToExpand(items, 'table.child1')).toEqual(['']);
+      expect(
+        getParentKeysToExpand(items as ParentFieldObject[], 'table.child1')
+      ).toEqual(['']);
     });
 
     it('should handle multiple parents with different children', () => {
@@ -1621,8 +1847,8 @@ describe('TableUtils', () => {
         {
           fullyQualifiedName: 'table.parent1',
           children: [
-            { fullyQualifiedName: 'table.parent1.child1' },
-            { fullyQualifiedName: 'table.parent1.child2' },
+            { fullyQualifiedName: 'table.parent1.child1', children: [] },
+            { fullyQualifiedName: 'table.parent1.child2', children: [] },
           ],
         },
         {
@@ -1631,7 +1857,10 @@ describe('TableUtils', () => {
             {
               fullyQualifiedName: 'table.parent2.child1',
               children: [
-                { fullyQualifiedName: 'table.parent2.child1.grandchild' },
+                {
+                  fullyQualifiedName: 'table.parent2.child1.grandchild',
+                  children: [],
+                },
               ],
             },
           ],
@@ -1650,7 +1879,9 @@ describe('TableUtils', () => {
       const items = [
         {
           fullyQualifiedName: 'table.parent',
-          children: [{ fullyQualifiedName: 'table.parent.child1' }],
+          children: [
+            { fullyQualifiedName: 'table.parent.child1', children: [] },
+          ],
         },
       ];
 
@@ -1666,11 +1897,14 @@ describe('TableUtils', () => {
         {
           fullyQualifiedName: 'table.parent',
           children: [
-            { fullyQualifiedName: 'table.parent.child1' },
+            { fullyQualifiedName: 'table.parent.child1', children: [] },
             {
               fullyQualifiedName: 'table.parent.child2',
               children: [
-                { fullyQualifiedName: 'table.parent.child2.grandchild' },
+                {
+                  fullyQualifiedName: 'table.parent.child2.grandchild',
+                  children: [],
+                },
               ],
             },
           ],
@@ -1726,7 +1960,7 @@ describe('TableUtils', () => {
         fullyQualifiedName: 'test.database.schema.table.column1',
       };
 
-      const result = getHighlightedRowClassName(record, undefined);
+      const result = getHighlightedRowClassName(record);
 
       expect(result).toBe('');
     });
@@ -1757,7 +1991,7 @@ describe('TableUtils', () => {
         fullyQualifiedName: undefined,
       };
 
-      const result = getHighlightedRowClassName(record, undefined);
+      const result = getHighlightedRowClassName(record);
 
       expect(result).toBe('');
     });
@@ -1932,7 +2166,7 @@ describe('TableUtils', () => {
       const newExtension = { property: 'value' };
 
       expect(() => {
-        updateFieldExtension('table.column1', newExtension, undefined);
+        updateFieldExtension('table.column1', newExtension);
       }).not.toThrow();
     });
 
@@ -1982,16 +2216,16 @@ describe('TableUtils', () => {
     });
 
     it('should work with SearchIndexField type', () => {
-      const fields = [
+      const fields: TableFieldsInfoCommonEntities[] = [
         {
           name: 'field1',
           fullyQualifiedName: 'index.field1',
-          dataType: 'TEXT',
+          dataType: DataType.Text,
         },
         {
           name: 'field2',
           fullyQualifiedName: 'index.field2',
-          dataType: 'KEYWORD',
+          dataType: DataType.Geometry,
         },
       ];
 
@@ -2003,16 +2237,16 @@ describe('TableUtils', () => {
     });
 
     it('should work with Field type (Topic)', () => {
-      const fields = [
+      const fields: TableFieldsInfoCommonEntities[] = [
         {
           name: 'topicField1',
           fullyQualifiedName: 'topic.field1',
-          dataType: 'STRING',
+          dataType: DataType.String,
         },
         {
           name: 'topicField2',
           fullyQualifiedName: 'topic.field2',
-          dataType: 'INT',
+          dataType: DataType.Int,
         },
       ];
 
@@ -2144,5 +2378,69 @@ describe('TableUtils', () => {
 
       expect(fields[0].extension).toEqual(emptyExtension);
     });
+  });
+});
+
+describe('getColumnOptionsFromTableColumn', () => {
+  it('should use fullyQualifiedName when useFullyQualifiedName is true', () => {
+    const columns = [
+      {
+        name: 'column1',
+        fullyQualifiedName: 'table.column1',
+        dataType: 'STRING',
+        children: [],
+      },
+      {
+        name: 'nested',
+        fullyQualifiedName: 'table.nested',
+        dataType: 'STRUCT',
+        children: [
+          {
+            name: 'field1',
+            fullyQualifiedName: 'table.nested.field1',
+            dataType: 'STRING',
+            children: [],
+          },
+        ],
+      },
+    ] as Column[];
+
+    const result = getColumnOptionsFromTableColumn(columns, true);
+
+    expect(result).toEqual([
+      { label: 'column1', value: 'table.column1' },
+      { label: 'nested', value: 'table.nested' },
+      { label: 'field1', value: 'table.nested.field1' },
+    ]);
+  });
+
+  it('should use name when useFullyQualifiedName is false', () => {
+    const columns = [
+      {
+        name: 'column1',
+        fullyQualifiedName: 'table.column1',
+        dataType: 'STRING',
+        children: [],
+      },
+    ] as Column[];
+
+    const result = getColumnOptionsFromTableColumn(columns, false);
+
+    expect(result).toEqual([{ label: 'column1', value: 'column1' }]);
+  });
+
+  it('should use name by default when useFullyQualifiedName is not provided', () => {
+    const columns = [
+      {
+        name: 'column1',
+        fullyQualifiedName: 'table.column1',
+        dataType: 'STRING',
+        children: [],
+      },
+    ] as Column[];
+
+    const result = getColumnOptionsFromTableColumn(columns);
+
+    expect(result).toEqual([{ label: 'column1', value: 'column1' }]);
   });
 });

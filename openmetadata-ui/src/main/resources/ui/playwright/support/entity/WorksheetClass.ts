@@ -23,6 +23,14 @@ import {
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
+export interface WorksheetColumn {
+  name: string;
+  displayName: string;
+  dataType: string;
+  dataTypeDisplay?: string;
+  children?: WorksheetColumn[];
+}
+
 export class WorksheetClass extends EntityClass {
   private spreadsheetName = `pw-spreadsheet-${uuid()}`;
   private worksheetName = `pw-worksheet-${uuid()}`;
@@ -56,41 +64,13 @@ export class WorksheetClass extends EntityClass {
     },
   };
 
-  worksheetColumns = [
-    {
-      name: `segment_name-${uuid()}`,
-      displayName: 'Segment Name',
-      dataType: 'STRING',
-      dataTypeDisplay: 'string',
-    },
-    {
-      name: `customer_count-${uuid()}`,
-      displayName: 'Customer Count',
-      dataType: 'INT',
-      dataTypeDisplay: 'int',
-      children: [
-        {
-          name: `ltv-${uuid()}`,
-          displayName: 'Lifetime Value',
-          dataType: 'DECIMAL',
-          dataTypeDisplay: 'decimal(12,2)',
-          children: [],
-        },
-      ],
-    },
-    {
-      name: `avg_revenue_per_customer-${uuid()}`,
-      displayName: 'Avg Revenue per Customer',
-      dataType: 'DECIMAL',
-      dataTypeDisplay: 'decimal(10,2)',
-      children: [],
-    },
-  ];
-  entity = {
-    name: this.worksheetName,
-    displayName: this.worksheetName,
-    service: this.service.name,
-    description: 'description',
+  children: WorksheetColumn[];
+  entity: {
+    name: string;
+    displayName: string;
+    service: string;
+    description: string;
+    columns?: WorksheetColumn[];
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -105,7 +85,54 @@ export class WorksheetClass extends EntityClass {
     this.type = 'Worksheet';
     this.serviceCategory = SERVICE_TYPE.DriveService;
     this.serviceType = ServiceTypes.DRIVE_SERVICES;
-    this.childrenSelectorId = `${this.service.name}.${this.spreadsheetName}.${this.worksheetName}.${this.worksheetColumns[0].name}`;
+
+    this.children = [
+      {
+        name: `segment_name-${uuid()}`,
+        displayName: 'Segment Name',
+        dataType: 'STRING',
+        dataTypeDisplay: 'string',
+      },
+      {
+        name: `customer_count-${uuid()}`,
+        displayName: 'Customer Count',
+        dataType: 'INT',
+        dataTypeDisplay: 'int',
+        children: [
+          {
+            name: `ltv-${uuid()}`,
+            displayName: 'Lifetime Value',
+            dataType: 'DECIMAL',
+            dataTypeDisplay: 'decimal(12,2)',
+            children: [
+              {
+                name: `number`,
+                displayName: 'Number',
+                dataType: 'DECIMAL',
+                dataTypeDisplay: 'decimal(12,2)',
+                children: [],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        name: `avg_revenue_per_customer-${uuid()}`,
+        displayName: 'Avg Revenue per Customer',
+        dataType: 'DECIMAL',
+        dataTypeDisplay: 'decimal(10,2)',
+        children: [],
+      },
+    ];
+
+    this.childrenSelectorId = `${this.service.name}.${this.spreadsheetName}.${this.worksheetName}.${this.children[0].name}`;
+    this.entity = {
+      name: this.worksheetName,
+      displayName: this.worksheetName,
+      service: this.service.name,
+      description: 'description',
+      columns: this.children,
+    };
   }
 
   async create(apiContext: APIRequestContext) {
@@ -134,10 +161,8 @@ export class WorksheetClass extends EntityClass {
       `/api/v1/${EntityTypeEndpoint.Worksheet}`,
       {
         data: {
-          name: this.worksheetName,
+          ...this.entity,
           spreadsheet: this.spreadsheetResponseData.fullyQualifiedName,
-          columns: this.worksheetColumns,
-          description: this.entity.description,
         },
       }
     );

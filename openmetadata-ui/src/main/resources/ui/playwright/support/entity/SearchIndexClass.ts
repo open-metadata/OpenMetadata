@@ -23,6 +23,14 @@ import {
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
+export interface SearchIndexChildrenDetails {
+  name: string;
+  dataType: string;
+  dataTypeDisplay: string;
+  description: string;
+  tags: unknown[];
+  children?: Array<SearchIndexChildrenDetails>;
+}
 export class SearchIndexClass extends EntityClass {
   service: {
     name: string;
@@ -43,20 +51,7 @@ export class SearchIndexClass extends EntityClass {
   private searchIndexName: string;
   private fqn: string;
 
-  children: Array<{
-    name: string;
-    dataType: string;
-    dataTypeDisplay: string;
-    description: string;
-    tags: unknown[];
-    children?: Array<{
-      name: string;
-      dataType: string;
-      dataTypeDisplay: string;
-      description: string;
-      tags: unknown[];
-    }>;
-  }>;
+  children: Array<SearchIndexChildrenDetails>;
 
   entity: {
     name: string;
@@ -135,6 +130,15 @@ export class SearchIndexClass extends EntityClass {
             dataTypeDisplay: 'text',
             description: 'Column Name.',
             tags: [],
+            children: [
+              {
+                name: `child_column${uuid()}`,
+                dataType: 'TEXT',
+                dataTypeDisplay: 'text',
+                description: 'Child Column Name.',
+                tags: [],
+              },
+            ],
           },
           {
             name: `description${uuid()}`,

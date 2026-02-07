@@ -23,6 +23,15 @@ import {
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
+export interface DashboardDataModelChild {
+  name: string;
+  dataType: string;
+  dataLength: number;
+  dataTypeDisplay: string;
+  description: string;
+  children?: Array<DashboardDataModelChild>;
+}
+
 export class DashboardDataModelClass extends EntityClass {
   private dashboardDataModelName: string;
   private projectName: string;
@@ -43,13 +52,7 @@ export class DashboardDataModelClass extends EntityClass {
     };
   };
 
-  children: Array<{
-    name: string;
-    dataType: string;
-    dataLength: number;
-    dataTypeDisplay: string;
-    description: string;
-  }>;
+  children: Array<DashboardDataModelChild>;
 
   entity: {
     name: string;
@@ -95,6 +98,38 @@ export class DashboardDataModelClass extends EntityClass {
         dataLength: 256,
         dataTypeDisplay: 'varchar',
         description: 'Name of the country.',
+      },
+      {
+        name: 'user_details',
+        dataType: 'VARCHAR',
+        dataLength: 256,
+        dataTypeDisplay: 'varchar',
+        description: 'User details.',
+        children: [
+          {
+            name: 'name',
+            dataType: 'VARCHAR',
+            dataLength: 256,
+            dataTypeDisplay: 'varchar',
+            description: 'Name of the user.',
+            children: [
+              {
+                name: 'first_name',
+                dataType: 'VARCHAR',
+                dataLength: 256,
+                dataTypeDisplay: 'varchar',
+                description: 'First name of the user.',
+              },
+              {
+                name: 'last_name',
+                dataType: 'VARCHAR',
+                dataLength: 256,
+                dataTypeDisplay: 'varchar',
+                description: 'Last name of the user.',
+              },
+            ],
+          },
+        ],
       },
     ];
 

@@ -86,7 +86,14 @@ function FileColumnsTable() {
     };
   }, [permissions, fileDetails]);
 
-  const schema = pruneEmptyChildren(fileDetails?.columns ?? []);
+  // Original schema with empty children is required to maintain the integrity of the data and for
+  // operations like updating tags and descriptions.
+  const schema = fileDetails?.columns;
+  // Prune empty children from schema to avoid rendering expandable icon for columns with empty children array
+  const prunedChildrenSchema = useMemo(
+    () => pruneEmptyChildren(schema ?? []),
+    [schema]
+  );
 
   const handleFileColumnTagChange = async (
     selectedTags: EntityTags[],
@@ -121,7 +128,7 @@ function FileColumnsTable() {
   };
 
   const tagFilter = useMemo(() => {
-    const tags = getAllTags(schema);
+    const tags = getAllTags(schema ?? []);
 
     return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
       TagSource,
@@ -155,13 +162,13 @@ function FileColumnsTable() {
                   {name}
                 </Typography.Text>
               </div>
-              {!isEmpty(displayName) ? (
+              {isEmpty(displayName) ? null : (
                 <Typography.Text
                   className="m-b-0 d-block break-word"
                   data-testid="column-display-name">
                   {getEntityName(record)}
                 </Typography.Text>
-              ) : null}
+              )}
             </div>
           );
         },
@@ -281,7 +288,7 @@ function FileColumnsTable() {
         className="align-table-filter-left"
         columns={columns}
         data-testid="file-columns-table"
-        dataSource={schema}
+        dataSource={prunedChildrenSchema}
         defaultVisibleColumns={DEFAULT_WORKSHEET_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
           ...getTableExpandableConfig<Column>(),

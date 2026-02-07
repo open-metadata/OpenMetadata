@@ -23,6 +23,13 @@ import {
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
+export interface FileChildrenDetails {
+  name: string;
+  dataType: string;
+  dataTypeDisplay?: string;
+  children?: Array<FileChildrenDetails>;
+}
+
 export class FileClass extends EntityClass {
   private fileName = `pw-file-${uuid()}`;
   private serviceName = `pw-directory-service-${uuid()}`;
@@ -55,11 +62,13 @@ export class FileClass extends EntityClass {
     },
   };
 
-  entity = {
-    name: this.fileName,
-    displayName: this.fileName,
-    service: this.service.name,
-    description: 'description',
+  children: Array<FileChildrenDetails>;
+  entity: {
+    name: string;
+    displayName: string;
+    service: string;
+    description: string;
+    columns?: FileChildrenDetails[];
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -73,6 +82,43 @@ export class FileClass extends EntityClass {
     this.serviceCategory = SERVICE_TYPE.DriveService;
     this.serviceType = ServiceTypes.DRIVE_SERVICES;
     this.childrenSelectorId = `${this.service.name}.${this.fileName}`;
+    this.children = [
+      {
+        name: 'sample_column_1',
+        dataType: 'BITMAP',
+      },
+      {
+        name: 'sample_column_2',
+        dataType: 'BITMAP',
+        children: [
+          {
+            name: 'nested_column_1',
+            dataType: 'BITMAP',
+            children: [
+              {
+                name: 'deeply_nested_column_1',
+                dataType: 'BIGINT',
+              },
+              {
+                name: 'deeply_nested_column_2',
+                dataType: 'BIGINT',
+              },
+            ],
+          },
+          {
+            name: 'nested_column_2',
+            dataType: 'BIGINT',
+          },
+        ],
+      },
+    ];
+    this.entity = {
+      name: this.fileName,
+      displayName: this.fileName,
+      service: this.service.name,
+      description: 'description',
+      columns: this.children,
+    };
   }
 
   async create(apiContext: APIRequestContext) {
@@ -88,11 +134,7 @@ export class FileClass extends EntityClass {
     const entityResponse = await apiContext.post(
       `/api/v1/${EntityTypeEndpoint.File}`,
       {
-        data: {
-          name: this.fileName,
-          description: this.entity.description,
-          service: this.serviceResponseData.fullyQualifiedName,
-        },
+        data: this.entity,
       }
     );
     this.entityResponseData = await entityResponse.json();
