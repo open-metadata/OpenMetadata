@@ -505,11 +505,11 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         new BulkAssets().withAssets(List.of(nonMatchingTable.getEntityReference()));
 
     BulkOperationResult failResult =
-        TestUtils.put(
+        TestUtils.putExpectStatus(
             getCollection().path("/" + dataProduct.getName() + "/assets/add"),
             nonMatchingAssetsRequest,
             BulkOperationResult.class,
-            Status.OK,
+            Status.BAD_REQUEST,
             ADMIN_AUTH_HEADERS);
 
     assertEquals(ApiStatus.FAILURE, failResult.getStatus());

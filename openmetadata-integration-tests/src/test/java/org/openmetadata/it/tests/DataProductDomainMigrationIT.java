@@ -169,7 +169,18 @@ public class DataProductDomainMigrationIT {
     Table inputTable = createTestTableInDomain(ns, "input_port_table", sourceDomain);
     Table outputTable = createTestTableInDomain(ns, "output_port_table", sourceDomain);
 
-    // Add input port
+    // Output port assets must first be added as HAS assets (data product assets)
+    // before they can be designated as output ports
+    List<EntityReference> outputAssetRefs =
+        List.of(
+            new EntityReference()
+                .withId(outputTable.getId())
+                .withType("table")
+                .withFullyQualifiedName(outputTable.getFullyQualifiedName()));
+    BulkAssets outputAssetRequest = new BulkAssets().withAssets(outputAssetRefs);
+    client.dataProducts().bulkAddAssets(dataProduct.getFullyQualifiedName(), outputAssetRequest);
+
+    // Add input port (no HAS requirement - input ports can come from any domain)
     List<EntityReference> inputPorts =
         List.of(
             new EntityReference()
@@ -179,7 +190,7 @@ public class DataProductDomainMigrationIT {
     BulkAssets inputRequest = new BulkAssets().withAssets(inputPorts);
     client.dataProducts().bulkAddInputPorts(dataProduct.getFullyQualifiedName(), inputRequest);
 
-    // Add output port
+    // Add output port (requires HAS relationship first)
     List<EntityReference> outputPorts =
         List.of(
             new EntityReference()
