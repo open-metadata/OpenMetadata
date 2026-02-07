@@ -269,7 +269,9 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
             connection.username,
             auth_type.password.get_secret_value() if auth_type.password else None,
         )
-        connection_args.root["http_scheme"] = "https"
+
+        if connection_args.root.get("http_scheme") is None:
+            connection_args.root["http_scheme"] = "https"
 
     @staticmethod
     def get_jwt_auth_dict(connection: TrinoConnectionConfig) -> dict:
@@ -296,7 +298,9 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         connection_args.root["auth"] = JWTAuthentication(
             auth_type.jwt.get_secret_value()
         )
-        connection_args.root["http_scheme"] = "https"
+
+        if connection_args.root.get("http_scheme") is None:
+            connection_args.root["http_scheme"] = "https"
 
     @staticmethod
     def get_azure_auth_dict(connection: TrinoConnectionConfig) -> dict:
@@ -320,7 +324,8 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         connection_args.root["auth"] = JWTAuthentication(
             TrinoConnection.get_azure_token(connection)
         )
-        connection_args.root["http_scheme"] = "https"
+        if connection_args.root.get("http_scheme") is None:
+            connection_args.root["http_scheme"] = "https"
 
     @staticmethod
     def get_oauth2_auth_dict(connection: TrinoConnectionConfig) -> dict:
@@ -341,7 +346,8 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         assert connection_args.root is not None
 
         connection_args.root["auth"] = OAuth2Authentication()
-        connection_args.root["http_scheme"] = "https"
+        if connection_args.root.get("http_scheme") is None:
+            connection_args.root["http_scheme"] = "https"
 
     @staticmethod
     def get_azure_token(connection: TrinoConnectionConfig) -> str:
