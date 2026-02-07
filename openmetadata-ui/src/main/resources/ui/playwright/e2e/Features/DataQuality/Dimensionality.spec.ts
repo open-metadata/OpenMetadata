@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect, Response } from '@playwright/test';
-import { DOMAIN_TAGS } from '../../../constant/config';
+import { DOMAIN_TAGS, PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../../utils/common';
 import { visitDataQualityTab } from '../../../utils/testCases';
@@ -47,7 +47,7 @@ test.slow();
  * Dimensionality Tests
  * @description Creates a dimension-level test case, edits dimension columns, and validates the dimension selector in the details view.
  */
-test('Dimensionality Tests', { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` }, async ({ page }) => {
+test('Dimensionality Tests', { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, PLAYWRIGHT_INGESTION_TAG_OBJ.tag] }, async ({ page }) => {
   await test.step('Add dimensionality test case', async () => {
     /**
      * Step 1: Create dimension-level test case

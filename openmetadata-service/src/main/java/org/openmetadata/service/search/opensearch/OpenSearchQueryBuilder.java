@@ -90,7 +90,7 @@ public class OpenSearchQueryBuilder {
                     m.operator(operator);
                   }
                   if (tieBreaker != null) {
-                    m.tieBreaker(Double.parseDouble(tieBreaker));
+                    m.tieBreaker(Float.parseFloat(tieBreaker));
                   }
                   if (fuzziness != null && !fuzziness.equals("0")) {
                     m.fuzziness(fuzziness);
@@ -167,7 +167,7 @@ public class OpenSearchQueryBuilder {
                   if (fuzzyPrefixLength > 0) {
                     qs.fuzzyPrefixLength(fuzzyPrefixLength);
                   }
-                  qs.tieBreaker(tieBreaker);
+                  qs.tieBreaker((float) tieBreaker);
                   if (type != null) {
                     qs.type(type);
                   }
@@ -304,7 +304,7 @@ public class OpenSearchQueryBuilder {
   public static os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore weightFunction(
       Query filter, double weight) {
     return os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore.of(
-        f -> f.filter(filter).weight(weight));
+        f -> f.filter(filter).weight((float) weight));
   }
 
   public static os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore
@@ -321,7 +321,7 @@ public class OpenSearchQueryBuilder {
               fvf -> {
                 fvf.field(field);
                 if (factor != null) {
-                  fvf.factor(factor);
+                  fvf.factor(factor.floatValue());
                 }
                 if (missing != null) {
                   fvf.missing(missing);

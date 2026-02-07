@@ -909,7 +909,11 @@ const DomainDetails = ({
               isFollowing={isFollowing}
               isFollowingLoading={isFollowingLoading}
               serviceName=""
-              suffix={<LearningIcon pageId={LEARNING_PAGE_IDS.DOMAIN} />}
+              suffix={
+                !isTreeView && (
+                  <LearningIcon pageId={LEARNING_PAGE_IDS.DOMAIN} />
+                )
+              }
               titleColor={domain.style?.color}
             />
           </Box>

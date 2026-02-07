@@ -111,14 +111,10 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
 
         GetMappingResponse response = client.indices().getMapping(m -> m.index(indexName));
 
-        response
-            .result()
-            .forEach(
-                (index, indexMappings) -> {
-                  if (indexMappings.mappings().properties() != null) {
-                    getFieldNames(indexMappings.mappings().properties(), "", fields, type);
-                  }
-                });
+        var indexMappingRecord = response.get(indexName);
+        if (indexMappingRecord != null && indexMappingRecord.mappings().properties() != null) {
+          getFieldNames(indexMappingRecord.mappings().properties(), "", fields, type);
+        }
       } catch (Exception e) {
         LOG.error("Failed to get mappings for type: {}", type, e);
       }
@@ -340,9 +336,15 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
               q ->
                   q.range(
                       r ->
-                          r.field(DataInsightChartRepository.TIMESTAMP)
-                              .gte(JsonData.of(startTs))
-                              .lte(JsonData.of(endTs))));
+                          r.untyped(
+                              u ->
+                                  u.field(DataInsightChartRepository.TIMESTAMP)
+                                      .gte(
+                                          es.co.elastic.clients.json.JsonData.of(
+                                              String.valueOf(startTs)))
+                                      .lte(
+                                          es.co.elastic.clients.json.JsonData.of(
+                                              String.valueOf(endTs))))));
       boolQueryBuilder.must(rangeQuery);
     }
 
