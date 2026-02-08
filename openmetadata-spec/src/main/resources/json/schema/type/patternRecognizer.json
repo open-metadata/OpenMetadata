@@ -28,16 +28,12 @@
       },
       "default": []
     },
-    "supportedEntity": {
-      "description": "The entity type this recognizer detects",
-      "$ref": "piiEntity.json"
-    },
     "supportedLanguage": {
       "description": "Language supported by this recognizer",
       "$ref": "classificationLanguages.json",
       "default": "en"
     }
   },
-  "required": ["type", "patterns", "supportedEntity", "supportedLanguage", "regexFlags", "context"],
+  "required": ["type", "patterns", "supportedLanguage", "regexFlags", "context"],
   "additionalProperties": false
 }

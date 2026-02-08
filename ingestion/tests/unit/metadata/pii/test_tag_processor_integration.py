@@ -49,7 +49,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     SourceConfig,
 )
-from metadata.generated.schema.type.piiEntity import PIIEntity
 from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import Target
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
@@ -186,7 +185,6 @@ class TestTagProcessorMultiClassification:
         password_pattern_recognizer = PatternRecognizerFactory.create(
             patterns=[pwd_pattern],
             context=[],
-            supportedEntity=PIIEntity.PERSON,
             supportedLanguage="en",
         )
         recognizer = RecognizerFactory.create(
@@ -210,7 +208,6 @@ class TestTagProcessorMultiClassification:
         secret_pattern_recognizer = PatternRecognizerFactory.create(
             patterns=[secret_pattern],
             context=[],
-            supportedEntity=PIIEntity.PERSON,
             supportedLanguage="en",
         )
         recognizer = RecognizerFactory.create(
