@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+@import (reference) '../../../../styles/variables.less';
+
 .table-profiler-summary {
   .overall-summary-card:not(:first-child) {
-    border-left: 1px solid rgb(229, 231, 235);
+    border-left: 1px solid @om-border;
     padding-left: 16px;
   }
 
@@ -21,7 +23,7 @@
     .ant-statistic {
       .ant-statistic-title {
         font-weight: 500;
-        color: #6b7280;
+        color: @om-text-secondary;
       }
     }
   }

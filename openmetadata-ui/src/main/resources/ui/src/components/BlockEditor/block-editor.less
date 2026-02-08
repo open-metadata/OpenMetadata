@@ -13,14 +13,14 @@
 @import (reference) '../../styles/variables.less';
 
 @border-radius: 6px;
-@border-color: #e8e8ed;
-@markdown-bg-color: #f8f8fa;
-@hover-bg: #00000005;
-@callout-bg: #f8f8fa;
+@border-color: @om-border;
+@markdown-bg-color: @om-bg-raised;
+@hover-bg: @om-bg-hover;
+@callout-bg: @om-bg-raised;
 @callout-warning-bg: #fff3dc;
 @callout-info-bg: @primary-1;
 @callout-danger-bg: #ff4c3b33;
-@callout-border: #afafc1;
+@callout-border: @om-border-strong;
 
 .block-editor-wrapper {
   .om-block-editor > p:last-child {
@@ -232,7 +232,7 @@
   }
 
   &.block-editor-wrapper--bar-menu {
-    border: 1px solid #dadde6;
+    border: 1px solid @om-border;
     border-radius: 4px;
 
     // do not show drag handle and block handle in bar menu mode
@@ -269,7 +269,7 @@
 }
 
 .menu-wrapper {
-  background-color: @white;
+  background-color: @om-bg-card;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -287,7 +287,7 @@
 .slash-menu-wrapper {
   max-height: 300px;
   padding: 12px 0px;
-  background-color: @white;
+  background-color: @om-bg-card;
   border: @global-border;
   border-radius: @border-rad-base;
   overflow-y: auto;
@@ -297,7 +297,7 @@
       display: block;
       object-fit: cover;
       border-radius: 4px;
-      background: white;
+      background: @om-bg-card;
       width: 32px;
       height: 32px;
       box-shadow: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px;
@@ -312,7 +312,7 @@
   max-height: 300px;
   max-width: 300px;
   padding: 12px 0px;
-  background-color: @white;
+  background-color: @om-bg-card;
   border: @global-border;
   border-radius: @border-rad-base;
   overflow-y: auto;
@@ -357,7 +357,7 @@
 .link-popup {
   align-items: center;
   padding: 4px;
-  background: @white;
+  background: @om-bg-card;
   border: @global-border;
   border-radius: @border-rad-base;
 
@@ -373,7 +373,7 @@
 .ProseMirror:not(.om-node-dragging) .ProseMirror-selectednode {
   outline: none !important;
   border-radius: 0.2rem;
-  background-color: @grey-2;
+  background-color: @om-bg-hover;
   transition: background-color 0.2s;
   box-shadow: none;
 }
@@ -393,11 +393,11 @@
   z-index: 50;
   cursor: grab;
   &:hover {
-    background-color: @grey-2;
+    background-color: @om-bg-hover;
     transition: background-color 0.2s;
   }
   &:active {
-    background-color: @grey-2;
+    background-color: @om-bg-hover;
     transition: background-color 0.2s;
   }
 
@@ -440,7 +440,7 @@
 .om-image-node-wrapper {
   border-radius: 4px;
   padding: 8px;
-  border: 1px solid @grey-3;
+  border: 1px solid @om-border-strong;
 }
 
 .om-image-node-popover {
@@ -528,7 +528,7 @@ body .om-image-node-embed-link-btn-col {
 
 .table-menu {
   padding: 4px 8px;
-  background-color: @white;
+  background-color: @om-bg-card;
   border: @global-border;
   border-radius: @border-rad-base;
   button {

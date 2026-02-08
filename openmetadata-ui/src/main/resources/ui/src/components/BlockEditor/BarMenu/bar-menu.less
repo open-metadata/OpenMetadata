@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
-@button-bg-color-hover: #ecedee;
-@button-bg-color: #e8e8e9;
-@format-group-separator-color: #e5e7eb;
-@menu-bg-color: #f7f9fc;
+@import (reference) '../../../styles/variables.less';
+
+@button-bg-color-hover: @om-bg-hover;
+@button-bg-color: @om-border;
+@format-group-separator-color: @om-border;
+@menu-bg-color: @om-bg-raised;
 
 .bar-menu-wrapper {
   border-top-left-radius: 4px;

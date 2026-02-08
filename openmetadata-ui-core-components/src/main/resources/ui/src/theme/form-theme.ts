@@ -22,7 +22,11 @@ import {
   COMPONENT_LINE_HEIGHTS,
 } from './typography-constants';
 
-export const formTheme = (colors: any) => ({
+export const formTheme = (colors: any, mode: 'light' | 'dark' = 'light') => {
+  const isDark = mode === 'dark';
+  const surfaceBg = isDark ? colors.surface : colors.white;
+
+  return ({
   MuiTextField: {
     defaultProps: {
       variant: 'outlined' as const,
@@ -38,7 +42,7 @@ export const formTheme = (colors: any) => ({
       root: {
         '& .MuiOutlinedInput-root': {
           borderRadius: '8px',
-          backgroundColor: colors.white,
+          backgroundColor: surfaceBg,
           boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.gray[300]} inset`,
           transition: 'box-shadow 100ms linear',
 
@@ -174,7 +178,7 @@ export const formTheme = (colors: any) => ({
 
       outlined: {
         borderRadius: '8px',
-        backgroundColor: colors.white,
+        backgroundColor: surfaceBg,
       },
 
       select: {
@@ -315,7 +319,7 @@ export const formTheme = (colors: any) => ({
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: '50%',
-        backgroundColor: colors.white,
+        backgroundColor: surfaceBg,
 
         boxShadow: `0px 0px 0px 1px ${colors.gray[300]} inset`,
         border: 'none',
@@ -513,7 +517,7 @@ export const formTheme = (colors: any) => ({
       paper: {
         boxShadow:
           '0px 12px 16px -4px rgba(10, 13, 18, 0.08), 0px 4px 6px -2px rgba(10, 13, 18, 0.03), 0px 2px 2px -1px rgba(10, 13, 18, 0.04)',
-        border: '1px solid rgba(0, 0, 0, 0.08)',
+        border: `1px solid ${isDark ? colors.gray[200] : 'rgba(0, 0, 0, 0.08)'}`,
       },
     },
   },
@@ -525,3 +529,4 @@ export const formTheme = (colors: any) => ({
     },
   },
 });
+};

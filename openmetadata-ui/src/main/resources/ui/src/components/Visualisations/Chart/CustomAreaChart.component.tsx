@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useTheme } from '@mui/material';
 import { Card, Divider, Typography } from 'antd';
 import { useMemo } from 'react';
 import {
@@ -32,6 +33,9 @@ const CustomAreaChart = ({
   colorScheme,
   valueFormatter,
 }: CustomAreaChartProps) => {
+  const muiTheme = useTheme();
+  const isDark = muiTheme.palette.mode === 'dark';
+
   const CustomTooltip = (props: TooltipProps<string, number | string>) => {
     const { active, payload = [] } = props;
 
@@ -66,17 +70,21 @@ const CustomAreaChart = ({
           <stop
             offset="0%"
             stopColor={colorScheme?.gradientStartColor ?? BLUE_2}
-            stopOpacity="0.7"
+            stopOpacity={isDark ? 0.3 : 0.7}
           />
           <stop
             offset="100%"
-            stopColor={colorScheme?.gradientEndColor ?? WHITE_COLOR}
-            stopOpacity="0.2"
+            stopColor={
+              isDark
+                ? colorScheme?.gradientStartColor ?? BLUE_2
+                : colorScheme?.gradientEndColor ?? WHITE_COLOR
+            }
+            stopOpacity={isDark ? 0.05 : 0.2}
           />
         </linearGradient>
       </defs>
     );
-  }, [colorScheme, gradientId]);
+  }, [colorScheme, gradientId, isDark]);
 
   return (
     <ResponsiveContainer

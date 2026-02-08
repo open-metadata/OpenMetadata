@@ -19,11 +19,17 @@ import {
 import { COMPONENT_FONT_SIZES, COMPONENT_LINE_HEIGHTS } from './typography-constants';
 
 export const buttonTheme = (
-  colors: any
+  colors: any,
+  mode: 'light' | 'dark' = 'light'
 ): Pick<
   Components<Theme>,
   'MuiButtonBase' | 'MuiButton' | 'MuiIconButton' | 'MuiButtonGroup'
-> => ({
+> => {
+  const isDark = mode === 'dark';
+  const buttonBg = isDark ? colors.surface : colors.white;
+  const buttonHoverBg = isDark ? colors.surfaceRaised : colors.gray[50];
+
+  return ({
   MuiButtonBase: {
     defaultProps: {
       disableRipple: true,
@@ -109,13 +115,13 @@ export const buttonTheme = (
         },
       },
       containedSecondary: {
-        backgroundColor: colors.white,
+        backgroundColor: buttonBg,
         color: colors.gray[700],
         boxShadow: buttonConstants.shadows.XS_SKEUMORPHIC(colors.gray[300]),
         border: 'none',
         ...buttonConstants.iconStyles.createIconColors(),
         '&:hover': {
-          backgroundColor: colors.gray[50],
+          backgroundColor: buttonHoverBg,
           color: colors.gray[800],
           boxShadow: buttonConstants.shadows.XS_SKEUMORPHIC(colors.gray[300]),
         },
@@ -162,11 +168,11 @@ export const buttonTheme = (
       outlinedPrimary: {
         borderColor: 'transparent',
         color: colors.gray[700],
-        backgroundColor: colors.white,
+        backgroundColor: buttonBg,
         boxShadow: buttonConstants.shadows.XS_SKEUMORPHIC(colors.gray[300]),
         ...buttonConstants.iconStyles.createIconColors(),
         '&:hover': {
-          backgroundColor: colors.gray[50],
+          backgroundColor: buttonHoverBg,
           borderColor: 'transparent',
           color: colors.gray[800],
           boxShadow: buttonConstants.shadows.XS_SKEUMORPHIC(colors.gray[300]),
@@ -186,7 +192,7 @@ export const buttonTheme = (
       outlinedError: {
         borderColor: 'transparent',
         color: colors.error[600],
-        backgroundColor: colors.white,
+        backgroundColor: buttonBg,
 
         boxShadow: buttonConstants.shadows.XS_SKEUMORPHIC(colors.error[300]),
         ...buttonConstants.iconStyles.createIconColors(),
@@ -201,7 +207,7 @@ export const buttonTheme = (
           outlineOffset: '2px',
         },
         '&.Mui-disabled': {
-          backgroundColor: colors.white,
+          backgroundColor: buttonBg,
           borderColor: 'transparent',
           color: colors.gray[500],
 
@@ -212,7 +218,7 @@ export const buttonTheme = (
         color: colors.gray[600],
         ...buttonConstants.iconStyles.createIconColors(),
         '&:hover': {
-          backgroundColor: colors.gray[50],
+          backgroundColor: buttonHoverBg,
           color: colors.gray[700],
         },
       },
@@ -220,7 +226,7 @@ export const buttonTheme = (
         color: colors.gray[600],
         ...buttonConstants.iconStyles.createIconColors(),
         '&:hover': {
-          backgroundColor: colors.gray[50],
+          backgroundColor: buttonHoverBg,
           color: colors.gray[700],
         },
       },
@@ -228,7 +234,7 @@ export const buttonTheme = (
         color: colors.gray[600],
         ...buttonConstants.iconStyles.createIconColors(),
         '&:hover': {
-          backgroundColor: colors.gray[50],
+          backgroundColor: buttonHoverBg,
           color: colors.gray[700],
         },
       },
@@ -274,8 +280,8 @@ export const buttonTheme = (
       sizeMedium: createIconButtonSizeVariant('medium'),
       sizeLarge: createIconButtonSizeVariant('large'),
 
-      colorPrimary: createIconButtonColorVariant('tertiary', colors),
-      colorSecondary: createIconButtonColorVariant('secondary', colors),
+      colorPrimary: createIconButtonColorVariant('tertiary', colors, isDark),
+      colorSecondary: createIconButtonColorVariant('secondary', colors, isDark),
     },
   },
   MuiButtonGroup: {
@@ -316,7 +322,7 @@ export const buttonTheme = (
           position: 'relative' as const,
           zIndex: 1,
           borderColor: 'transparent',
-          backgroundColor: colors.white,
+          backgroundColor: buttonBg,
           color: colors.gray[700],
           fontWeight: 600,
           whiteSpace: 'nowrap',
@@ -326,7 +332,7 @@ export const buttonTheme = (
           transition: 'all 100ms linear',
 
           '&:hover': {
-            backgroundColor: colors.gray[50],
+            backgroundColor: buttonHoverBg,
             borderColor: 'transparent',
             color: colors.gray[800],
             zIndex: 2,
@@ -342,25 +348,25 @@ export const buttonTheme = (
 
           '&.Mui-disabled': {
             cursor: 'not-allowed',
-            backgroundColor: colors.white,
+            backgroundColor: buttonBg,
             color: colors.gray[500],
           },
 
           '&.MuiButton-contained': {
-            backgroundColor: colors.gray[50],
+            backgroundColor: buttonHoverBg,
             color: colors.gray[800],
             zIndex: 1,
 
-            boxShadow: `0px 0px 0px 1px rgba(10, 13, 18, 0.18) inset, 0px -2px 0px 0px rgba(10, 13, 18, 0.05) inset, 0px 0px 0px 1px rgb(213, 215, 218) inset`,
+            boxShadow: `0px 0px 0px 1px rgba(10, 13, 18, 0.18) inset, 0px -2px 0px 0px rgba(10, 13, 18, 0.05) inset, 0px 0px 0px 1px ${isDark ? colors.gray[300] : 'rgb(213, 215, 218)'} inset`,
 
             '&:hover': {
-              backgroundColor: colors.gray[50],
+              backgroundColor: buttonHoverBg,
               color: colors.gray[800],
               zIndex: 2,
             },
 
             '&.Mui-disabled': {
-              backgroundColor: colors.gray[50],
+              backgroundColor: buttonHoverBg,
               color: colors.gray[500],
             },
           },
@@ -369,3 +375,4 @@ export const buttonTheme = (
     },
   },
 });
+};

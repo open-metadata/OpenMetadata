@@ -13,10 +13,10 @@
 
 @import '../../styles/variables.less';
 
-@trigger-btn-hover-bg: #efefef;
-@remove-icon-color: #bbb;
-@remove-icon-hover-color: #373737;
-@update-btn-hover-bg: #e2e2e2;
+@trigger-btn-hover-bg: @om-bg-hover;
+@remove-icon-color: @om-text-tertiary;
+@remove-icon-hover-color: @om-text;
+@update-btn-hover-bg: @om-bg-hover;
 
 .custom-dropdown-render {
   flex-direction: row-reverse;
@@ -48,7 +48,7 @@
   }
 
   mark {
-    background-color: #ffe1a6;
+    background-color: @warning-100;
   }
 }
 
@@ -71,6 +71,6 @@
   }
 
   .filters-label.ant-typography {
-    color: @grey-600;
+    color: @om-text-secondary;
   }
 }

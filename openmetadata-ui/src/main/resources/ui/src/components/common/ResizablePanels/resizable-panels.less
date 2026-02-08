@@ -71,8 +71,8 @@ body.reflex-row-resize {
 }
 
 .horizontal > .reflex-splitter {
-  border-bottom: 1px solid #c6c6c6;
-  border-top: 1px solid #c6c6c6;
+  border-bottom: 1px solid @om-border-subtle;
+  border-top: 1px solid @om-border-subtle;
   cursor: row-resize;
   width: 100%;
   height: 2px;
@@ -87,8 +87,8 @@ body.reflex-row-resize {
 
 .reflex-container.horizontal > .reflex-splitter:hover,
 .reflex-container.horizontal > .reflex-splitter.active {
-  border-bottom: 1px solid #eeeeee;
-  border-top: 1px solid #eeeeee;
+  border-bottom: 1px solid @om-border;
+  border-top: 1px solid @om-border;
 }
 
 .reflex-container.vertical > .reflex-splitter {
@@ -122,8 +122,8 @@ body.reflex-row-resize {
 
 .reflex-container.horizontal > .reflex-splitter.reflex-thin.active,
 .reflex-container.horizontal > .reflex-splitter.reflex-thin:hover {
-  border-bottom: 8px solid #e4e4e4;
-  border-top: 8px solid #e4e4e4;
+  border-bottom: 8px solid @om-border;
+  border-top: 8px solid @om-border;
 }
 
 .reflex-container.vertical > .reflex-splitter.reflex-thin {
@@ -142,7 +142,7 @@ body.reflex-row-resize {
   bottom: 0;
   right: 0;
   z-index: 10;
-  background-color: #fff;
+  background-color: @om-bg-card;
   overflow: hidden;
   padding-top: 24px;
   display: flex;
@@ -156,7 +156,7 @@ h2.rotated-header {
   font-weight: 600;
   font-size: 20px;
   line-height: 26px;
-  color: #37352f;
+  color: @om-text;
 }
 
 .counter-clockwise {
@@ -178,7 +178,7 @@ h2.rotated-header {
 }
 
 .handle-icon {
-  background-color: #e8e8ed;
+  background-color: @om-bg-hover;
   border-radius: 6px;
 }
 
@@ -237,7 +237,7 @@ h2.rotated-header {
   left: -24px;
   padding: 4px 8px;
   z-index: 10;
-  background: white !important;
+  background: @om-bg-card !important;
 
   .collapse-icon {
     vertical-align: middle;
@@ -288,7 +288,7 @@ h2.rotated-header {
   display: flex;
   justify-content: flex-end;
   padding: 4px;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid @om-border;
 }
 
 .ant-btn.header-collapse-button,

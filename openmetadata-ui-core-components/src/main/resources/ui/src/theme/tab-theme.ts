@@ -15,17 +15,21 @@ import type { ThemeColors } from "../types";
 import { BODY_FONT_SIZES, BODY_LINE_HEIGHTS } from "./typography-constants";
 
 export const tabTheme = (
-  colors: ThemeColors
-): Pick<Components<Theme>, "MuiTabs" | "MuiTab"> => ({
+  colors: ThemeColors,
+  mode: 'light' | 'dark' = 'light'
+): Pick<Components<Theme>, "MuiTabs" | "MuiTab"> => {
+  const surfaceBg = mode === 'dark' ? colors.surface : colors.white;
+
+  return ({
   MuiTabs: {
     styleOverrides: {
       root: () => ({
         width: "100%",
-        background: colors.white,
+        background: surfaceBg,
         color: colors.gray[900],
         "& .MuiTabs-scroller": {
           height: "48px",
-          backgroundColor: colors.white,
+          backgroundColor: surfaceBg,
           borderRadius: "12px",
           border: `1px solid ${colors.blueGray?.[100] || colors.gray[200]}`,
           padding: "0 20px",
@@ -90,3 +94,4 @@ export const tabTheme = (
     },
   },
 });
+};

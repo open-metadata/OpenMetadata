@@ -54,3 +54,6 @@ import './fonts.less';
 import './modal.less';
 import './temp.css';
 import './tree.less';
+
+// IMPORTANT: theme.less must be imported LAST to override all other styles for dark mode
+import './theme.less';

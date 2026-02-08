@@ -397,7 +397,7 @@ export const QualityTab = () => {
                   borderRadius: '8px',
                 },
                 '.Mui-selected, .MuiTab-root:hover': {
-                  backgroundColor: `${theme.palette.grey['50']}`,
+                  backgroundColor: `${theme.palette.background.paper}`,
                   color: `${theme.palette.grey['800']}`,
                 },
                 '.MuiButtonBase-root': {

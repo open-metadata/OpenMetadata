@@ -33,3 +33,6 @@ declare module '@mui/material/Chip' {
     blueGray: true;
   }
 }
+
+// Dummy export to ensure this module is included when re-exported
+export const MUI_THEME_TYPES_LOADED = true;

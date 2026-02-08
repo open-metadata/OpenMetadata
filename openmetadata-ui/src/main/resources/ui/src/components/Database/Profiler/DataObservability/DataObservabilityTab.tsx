@@ -199,6 +199,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
                   padding: '4px',
                   height: '100%',
                   borderRadius: '10px',
+                  backgroundColor: theme.palette.grey[100],
                 },
                 '.MuiTab-root:not(:first-of-type)': {
                   marginLeft: '4px',

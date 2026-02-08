@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import url('../../../../../styles/variables.less');
+@import (reference) '../../../../../styles/variables.less';
 
 .dimensionality-heatmap {
   width: 100%;
@@ -25,7 +25,7 @@
   &__labels-column {
     flex-shrink: 0;
     width: 150px;
-    background-color: @white;
+    background-color: @om-bg-card;
   }
 
   &__scroll-wrapper {
@@ -52,7 +52,7 @@
     justify-content: flex-start;
     height: 30px;
     padding-bottom: 2px;
-    background-color: @white;
+    background-color: @om-bg-card;
   }
 
   &__header-row {
@@ -82,8 +82,8 @@
     line-height: 20px;
     font-size: 12px;
     font-weight: 500;
-    color: #111827;
-    background-color: @white;
+    color: @om-text;
+    background-color: @om-bg-card;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -116,13 +116,13 @@
     }
 
     &--placeholder {
-      border: 1px solid #e5e7eb;
+      border: 1px solid @om-border;
       background: repeating-linear-gradient(
         135deg,
-        #e8ecf5,
-        #e8ecf5 2px,
-        #f5f7fb 2px,
-        #f5f7fb 4px
+        @om-bg-raised,
+        @om-bg-raised 2px,
+        @om-bg-card 2px,
+        @om-bg-card 4px
       );
       cursor: default;
       pointer-events: none;
@@ -150,7 +150,7 @@
         rgba(255, 255, 255, 0) 0%,
         rgba(255, 255, 255, 0.8) 20%,
         rgba(255, 255, 255, 0.95) 40%,
-        @white 60%
+        @om-bg-card 60%
       );
 
       &::after {
@@ -161,7 +161,7 @@
         transform: translateY(-50%);
         width: 30px;
         height: 30px;
-        background-color: @white;
+        background-color: @om-bg-card;
         border-radius: 50%;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         transition: all 0.2s ease;
@@ -191,7 +191,7 @@
         rgba(255, 255, 255, 0) 0%,
         rgba(255, 255, 255, 0.8) 20%,
         rgba(255, 255, 255, 0.95) 40%,
-        @white 60%
+        @om-bg-card 60%
       );
 
       &::after {
@@ -202,7 +202,7 @@
         transform: translateY(-50%);
         width: 30px;
         height: 30px;
-        background-color: @white;
+        background-color: @om-bg-card;
         border-radius: 50%;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         transition: all 0.2s ease;
@@ -273,7 +273,7 @@
   &__cell--no-data,
   &__legend-box--no-data {
     border: 1px solid @grey-400;
-    background: @grey-9;
+    background: @om-bg-raised;
   }
 
   &__empty {
@@ -281,7 +281,7 @@
     align-items: center;
     justify-content: center;
     padding: 40px;
-    color: #6b7280;
+    color: @om-text-tertiary;
     font-size: 14px;
   }
 

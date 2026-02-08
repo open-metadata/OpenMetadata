@@ -787,7 +787,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       return (
         <Box
           sx={{
-            backgroundColor: theme.palette.grey[50],
+            backgroundColor: theme.palette.background.paper,
             borderRadius: '8px',
             height: '100%',
             display: 'flex',
@@ -809,7 +809,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         <Box
           data-testid="server-validation-error-panel"
           sx={{
-            backgroundColor: theme.palette.grey[50],
+            backgroundColor: theme.palette.background.paper,
             borderRadius: '8px',
             height: '100%',
             display: 'flex',
@@ -892,7 +892,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         <Box
           data-testid="server-validation-failed-error-panel"
           sx={{
-            backgroundColor: theme.palette.grey[50],
+            backgroundColor: theme.palette.background.paper,
             borderRadius: '8px',
             height: '100%',
             display: 'flex',
@@ -995,7 +995,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
       <Box
         data-testid="validation-success-panel"
         sx={{
-          backgroundColor: theme.palette.grey[50],
+          backgroundColor: theme.palette.background.paper,
           borderRadius: '8px',
           height: '100%',
           display: 'flex',
@@ -1453,7 +1453,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               sx={{
                 backgroundColor: parseError
                   ? theme.palette.allShades.error[50]
-                  : theme.palette.grey[50],
+                  : theme.palette.background.paper,
               }}>
               {renderValidationPanel()}
             </Box>

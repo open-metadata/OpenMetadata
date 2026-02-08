@@ -693,7 +693,7 @@ const IncidentManager = ({
       sx={{
         border: `1px solid ${theme.palette.grey[200]}`,
         borderRadius: '10px',
-        backgroundColor: theme.palette.common.white,
+        backgroundColor: theme.palette.background.paper,
       }}>
       <Box
         className="new-form-style"

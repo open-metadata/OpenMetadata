@@ -91,25 +91,25 @@ export const buttonConstants = {
       large: { padding: '8px', iconSize: '24px' },
     },
     colorVariants: {
-      secondary: (colors: any) => ({
-        backgroundColor: colors.white,
+      secondary: (colors: any, isDark = false) => ({
+        backgroundColor: isDark ? colors.surface : colors.white,
         color: colors.gray[400],
         boxShadow: (shadows: any) => shadows.XS_SKEUMORPHIC(colors.gray[300]),
         hover: {
-          backgroundColor: colors.gray[50],
+          backgroundColor: isDark ? colors.surfaceRaised : colors.gray[50],
           color: colors.gray[500],
         },
         disabled: {
-          backgroundColor: colors.white,
+          backgroundColor: isDark ? colors.surface : colors.white,
           color: colors.gray[300],
           boxShadow: (shadows: any) => shadows.XS_DISABLED(colors.gray[200]),
         },
       }),
-      tertiary: (colors: any) => ({
+      tertiary: (colors: any, isDark = false) => ({
         backgroundColor: 'transparent',
         color: colors.gray[400],
         hover: {
-          backgroundColor: colors.gray[50],
+          backgroundColor: isDark ? colors.surfaceRaised : colors.gray[50],
           color: colors.gray[500],
         },
         disabled: {
@@ -138,9 +138,10 @@ export const createIconButtonSizeVariant = (
 
 export const createIconButtonColorVariant = (
   variant: 'secondary' | 'tertiary',
-  colors: any
+  colors: any,
+  isDark = false
 ) => {
-  const config = buttonConstants.iconButton.colorVariants[variant](colors);
+  const config = buttonConstants.iconButton.colorVariants[variant](colors, isDark);
 
   return {
     backgroundColor: config.backgroundColor,

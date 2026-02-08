@@ -47,7 +47,7 @@ export const EntityAvatar: FC<EntityAvatarProps> = ({
   ...avatarProps
 }) => {
   const theme = useTheme();
-  const bgColor = entity.style?.color || theme.palette.allShades.brand[600];
+  const bgColor = entity.style?.color || theme.palette.primary.main;
   const avatarAlt = alt ?? entity.name ?? entity.displayName;
 
   // Check if it's a URL (for Avatar src prop)
@@ -68,7 +68,7 @@ export const EntityAvatar: FC<EntityAvatarProps> = ({
             width: size,
             height: size,
             backgroundColor: bgColor,
-            color: theme.palette.allShades.white,
+            color: theme.palette.primary.contrastText,
             '& .MuiAvatar-img': {
               width: size * 0.6,
               height: size * 0.6,
@@ -96,7 +96,7 @@ export const EntityAvatar: FC<EntityAvatarProps> = ({
             width: size,
             height: size,
             backgroundColor: bgColor,
-            color: theme.palette.allShades.white,
+            color: theme.palette.primary.contrastText,
           },
           customSx,
         ]}
@@ -118,7 +118,7 @@ export const EntityAvatar: FC<EntityAvatarProps> = ({
           width: size,
           height: size,
           backgroundColor: bgColor,
-          color: theme.palette.allShades.white,
+          color: theme.palette.primary.contrastText,
         },
         customSx,
       ]}

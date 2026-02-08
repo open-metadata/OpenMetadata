@@ -58,8 +58,8 @@
     padding: 24px;
     margin-bottom: @margin-md;
     border-radius: 12px;
-    background: @white;
-    box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+    background: @om-bg-card;
+    box-shadow: @box-shadow-card-subtle;
 
     .page-header-title {
       display: flex;
@@ -86,9 +86,9 @@
   }
 
   .content-card {
-    background-color: @white;
+    background-color: @om-bg-card;
     border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: @box-shadow-card-subtle;
     overflow: hidden;
   }
 
@@ -97,14 +97,14 @@
     padding: 16px 24px;
     align-items: center;
     gap: 24px;
-    background: @white;
+    background: @om-bg-card;
 
     .search-input {
       width: 240px;
       height: 36px;
       border-radius: 8px;
-      background-color: @grey-50;
-      border-color: @grey-200;
+      background-color: @om-bg-raised;
+      border-color: @om-border;
 
       .ant-input {
         font-size: 16px;
@@ -157,7 +157,7 @@
         }
 
         .ant-select-clear {
-          background: @white;
+          background: @om-bg-card;
           right: 0;
         }
 
@@ -222,7 +222,7 @@
       gap: 12px;
       padding: 12px 24px;
       margin: 0 !important;
-      background: @white;
+      background: @om-bg-card;
       box-shadow: 0px -13px 16px -4px rgba(10, 13, 18, 0.04),
         0px -4px 6px -2px rgba(10, 13, 18, 0.03);
 
@@ -234,9 +234,9 @@
         min-width: 36px !important;
         height: 36px !important;
         margin: 0 !important;
-        border: 1px solid #d5d7da !important;
+        border: 1px solid @om-border-strong !important;
         border-radius: 8px !important;
-        background: @white !important;
+        background: @om-bg-card !important;
         box-shadow: 0px 1px 2px 0px rgba(10, 13, 18, 0.05) !important;
 
         button,
@@ -335,7 +335,7 @@
     .ant-table-thead > tr > th {
       height: 44px;
       padding: 12px 24px;
-      background: @grey-50 !important;
+      background: @om-bg-raised !important;
       border-bottom: none;
       font-weight: @font-medium;
       color: @grey-600;
@@ -366,8 +366,8 @@
 
     .ant-table-tbody > tr > td {
       padding: 16px 24px;
-      border-bottom: 1px solid @light-border-color;
-      background-color: @white;
+      border-bottom: 1px solid @om-border-light;
+      background-color: @om-bg-card;
       vertical-align: middle;
 
       &:first-child {
@@ -380,7 +380,7 @@
     }
 
     .ant-table-tbody > tr:hover > td {
-      background-color: @grey-50;
+      background-color: @om-bg-raised;
     }
 
     .ant-table-tbody > tr:last-child > td {
@@ -441,15 +441,15 @@
       padding: 2px 6px;
       border-radius: 6px;
       font-weight: @font-medium;
-      background-color: @grey-50;
-      border: 1px solid @grey-200;
-      color: #414651;
+      background-color: @om-bg-raised;
+      border: 1px solid @om-border;
+      color: @om-text-secondary;
     }
 
     .more-tag {
-      background-color: @grey-50;
-      border: 1px solid @grey-200;
-      color: #414651;
+      background-color: @om-bg-raised;
+      border: 1px solid @om-border;
+      color: @om-text-secondary;
     }
   }
 

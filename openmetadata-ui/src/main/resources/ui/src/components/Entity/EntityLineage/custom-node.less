@@ -12,15 +12,15 @@
  */
 @import (reference) '../../../styles/variables.less';
 
-@lineage-border: #b1b1b7;
-@lineage-collapse-header: #fafafa;
+@lineage-border: @om-border-strong;
+@lineage-collapse-header: @om-bg-raised;
 
 .ant-btn.ant-btn-background-ghost.expand-btn {
-  background-color: white;
+  background-color: @om-bg-card;
   box-shadow: none;
 
   &:hover {
-    background-color: white;
+    background-color: @om-bg-card;
   }
 }
 
@@ -153,9 +153,9 @@
             gap: 6px;
 
             .MuiChip-root {
-              background-color: @grey-9;
-              border-color: @grey-15;
-              color: @grey-600;
+              background-color: @om-bg-raised;
+              border-color: @om-border;
+              color: @om-text-secondary;
             }
           }
 
@@ -235,7 +235,7 @@
       min-height: 48px;
       padding: 12px;
       padding-top: 0;
-      background-color: @grey-9;
+      background-color: @om-bg-raised;
 
       .inside-current-page-item {
         margin-top: 0px;
@@ -256,7 +256,7 @@
       }
 
       .outside-current-page-items:has(.custom-node-header-column-tracing) {
-        border-top: 1px solid silver;
+        border-top: 1px solid @om-border;
         margin-top: 8px;
         padding-top: 8px;
       }
@@ -339,7 +339,7 @@
       .label-container {
         .custom-node-label-container {
           .entity-footer {
-            background-color: @grey-9;
+            background-color: @om-bg-raised;
           }
         }
       }
@@ -347,22 +347,22 @@
   }
 
   &.custom-node-header-active {
-    background-color: #eff8ff;
+    background-color: @om-bg-selected;
 
     .lineage-node-content {
       .label-container {
-        background-color: #eff8ff;
+        background-color: @om-bg-selected;
 
         .custom-node-label-container {
           .entity-footer {
-            background-color: #eff8ff;
+            background-color: @om-bg-selected;
           }
         }
       }
     }
 
     .lineage-node-badge-container {
-      background-color: #eff8ff;
+      background-color: @om-bg-selected;
     }
 
     &.columns-expanded {
@@ -374,13 +374,13 @@
 
           .custom-node-label-container {
             .entity-footer {
-              background-color: #eff8ff;
+              background-color: @om-bg-selected;
             }
           }
         }
 
         .column-container {
-          background-color: #eff8ff;
+          background-color: @om-bg-selected;
         }
       }
 
@@ -391,45 +391,45 @@
   }
 
   &.custom-node-header-active.data-quality-failed-custom-node-header {
-    background-color: #fffbfa;
+    background-color: @red-6;
 
     .lineage-node-content {
       .label-container {
-        background-color: #fffbfa;
+        background-color: @red-6;
 
         .custom-node-label-container {
           .entity-footer {
-            background-color: #fffbfa;
+            background-color: @red-6;
           }
         }
       }
     }
 
     .lineage-node-badge-container {
-      background-color: #fffbfa;
-      border-color: #d92d20;
+      background-color: @red-6;
+      border-color: @red-14;
     }
 
     &.columns-expanded {
-      background-color: #fee4e2;
+      background-color: @red-19;
 
       .lineage-node-badge-container {
-        background-color: #fee4e2;
+        background-color: @red-19;
       }
 
       .lineage-node-content {
         .label-container {
-          background-color: #fee4e2;
+          background-color: @red-19;
 
           .custom-node-label-container {
             .entity-footer {
-              background-color: #fffbfa;
+              background-color: @red-6;
             }
           }
         }
 
         .column-container {
-          background-color: #fffbfa;
+          background-color: @red-6;
         }
       }
     }
@@ -494,12 +494,12 @@
     width: 68px;
     height: 15px;
 
-    border: 1px solid rgb(177, 177, 183);
+    border: 1px solid @lineage-border;
     border-bottom: 0px;
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
 
-    background: rgb(255, 255, 255);
+    background: @om-bg-card;
 
     .lineage-node-badge {
       position: absolute;
@@ -516,7 +516,7 @@
       border-radius: 7px;
 
       background-color: #175cd3;
-      color: white;
+      color: @white;
 
       font-size: 12px;
       font-weight: 500;
@@ -551,7 +551,7 @@
   padding: 0 !important;
   border: none !important;
   box-shadow: none !important;
-  background-color: @white !important;
+  background-color: @om-bg-card !important;
 }
 
 .react-flow__node-load-more {
@@ -575,7 +575,7 @@
     border-color: @primary-color;
 
     .lineage-node-badge-container {
-      border-color: rgb(53, 111, 231);
+      border-color: @primary-color;
     }
   }
 
@@ -590,12 +590,12 @@
       .column-container {
         .custom-node-column-container {
           &:hover {
-            background-color: #fef3f2;
-            color: #bc1b06;
-            border-left-color: #d92d20;
+            background-color: @red-6;
+            color: @red-3;
+            border-left-color: @red-14;
 
             .profiler-item {
-              color: black;
+              color: @om-text;
             }
           }
         }
@@ -608,8 +608,8 @@
       .column-container {
         .custom-node-column-container {
           &:hover {
-            background-color: #fef3f2;
-            border-left-color: #d92d20;
+            background-color: @red-6;
+            border-left-color: @red-14;
           }
         }
       }
@@ -623,9 +623,9 @@
     .lineage-node-content {
       .column-container {
         .custom-node-column-container.custom-node-header-column-tracing {
-          border-color: #d92d20;
-          background-color: #ffffff;
-          color: black;
+          border-color: @red-14;
+          background-color: @om-bg-card;
+          color: @om-text;
         }
       }
     }
@@ -633,7 +633,7 @@
 }
 
 .react-flow__handle.connectable {
-  background-color: @text-color;
+  background-color: @om-text;
 }
 
 .react-flow {
@@ -653,7 +653,7 @@
     height: 20px !important;
     border-radius: 4px !important;
     border-color: @lineage-border !important;
-    background: @white !important;
+    background: @om-bg-card !important;
     top: min(58px, 50%) !important;
 
     gap: 1px;
@@ -688,7 +688,7 @@
 
       &:hover {
         color: @primary-color;
-        background-color: #eff8ff;
+        background-color: @om-bg-selected;
       }
     }
 
@@ -711,7 +711,7 @@
   height: 20px !important;
   border-radius: 20% !important;
   border-color: @lineage-border !important;
-  background: @white !important;
+  background: @om-bg-card !important;
   top: 60px !important; // Need to show handles on top half
   top: min(58px, 50%) !important;
 
@@ -750,7 +750,7 @@
   }
 
   svg:first-child {
-    border-right: 1px solid @grey-15;
+    border-right: 1px solid @om-border;
     width: 22px;
     padding-right: 6px;
   }
@@ -759,7 +759,7 @@
 .custom-node-deleted-icon {
   border-radius: 4px;
   border: 1px solid @error-color;
-  background-color: @white;
+  background-color: @om-bg-card;
 }
 
 .manage-node {

@@ -44,7 +44,7 @@ const StyledButton = styled((props: ToggleButtonProps) => (
   flexDirection: 'column',
   alignItems: 'center',
   gap: '4px',
-  backgroundColor: theme.palette.allShades.white,
+  backgroundColor: theme.palette.background.paper,
   fontSize: theme.typography.pxToRem(10),
   color: theme.palette.text.primary,
   wordBreak: 'break-word',
@@ -60,7 +60,7 @@ const StyledButton = styled((props: ToggleButtonProps) => (
     // To show all the border on hover
     zIndex: 1,
     margin: '0',
-    backgroundColor: theme.palette.allShades.white,
+    backgroundColor: theme.palette.background.paper,
 
     svg: {
       color: theme.palette.primary.main,
@@ -82,7 +82,7 @@ const StyledButton = styled((props: ToggleButtonProps) => (
     // To show all the border on hover
     zIndex: 1,
     margin: '0',
-    backgroundColor: theme.palette.allShades.white,
+    backgroundColor: theme.palette.background.paper,
 
     svg: {
       color: theme.palette.primary.main,

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useTheme } from '@mui/material';
 import { Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { Cell, Pie, PieChart, Tooltip } from 'recharts';
@@ -17,6 +18,8 @@ import { GREY_200 } from '../../../../constants/Color.constants';
 import { formatNumberWithComma } from '../../../../utils/CommonUtils';
 import { SummaryPieChartCardProps } from '../SummaryPanel.interface';
 import './summary-pie-chart-card.style.less';
+
+const DARK_RING_BG = '#30363d';
 
 const SummaryPieChartCard = ({
   title,
@@ -28,6 +31,9 @@ const SummaryPieChartCard = ({
   paddingAngle = 0,
   iconData,
 }: SummaryPieChartCardProps) => {
+  const theme = useTheme();
+  const ringBg = theme.palette.mode === 'dark' ? DARK_RING_BG : GREY_200;
+
   return (
     <Card className="pie-chart-summary-panel h-full" loading={isLoading}>
       <div className="d-flex justify-between items-center">
@@ -83,7 +89,7 @@ const SummaryPieChartCard = ({
               // to hide tooltip when there is no data
               pointerEvents="none"
               startAngle={90}>
-              <Cell fill={GREY_200} />
+              <Cell fill={ringBg} />
             </Pie>
             <Pie
               cx="50%"

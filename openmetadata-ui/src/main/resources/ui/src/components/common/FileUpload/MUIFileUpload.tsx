@@ -258,7 +258,7 @@ const MUIFileUpload: FC<MUIFileUploadProps> = ({
             border: '1px solid',
             borderColor: theme.palette.allShades?.blueGray?.[100],
             borderRadius: 1,
-            backgroundColor: theme.palette.allShades?.gray?.[50],
+            backgroundColor: theme.palette.background.paper,
           }}>
           <Box
             aria-label={t('label.upload-file')}

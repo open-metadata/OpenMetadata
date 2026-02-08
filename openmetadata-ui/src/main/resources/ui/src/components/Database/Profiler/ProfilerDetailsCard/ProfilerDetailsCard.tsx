@@ -167,8 +167,18 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                     {chartType === 'area' && (
                       <Area
                         dataKey={info.dataKey}
-                        fill={info.fill ?? info.color}
-                        fillOpacity={info.fill ? 1 : 0.1}
+                        fill={
+                          theme.palette.mode === 'dark'
+                            ? info.color
+                            : info.fill ?? info.color
+                        }
+                        fillOpacity={
+                          theme.palette.mode === 'dark'
+                            ? 0.15
+                            : info.fill
+                            ? 1
+                            : 0.1
+                        }
                         hide={
                           activeKeys.length
                             ? !activeKeys.includes(info.dataKey)

@@ -97,7 +97,7 @@ export const HeatmapCellTooltip: FC<HeatmapCellTooltipProps> = ({ cell }) => {
     <Card
       sx={(theme) => ({
         p: TOOLTIP_STYLES.CARD_PADDING,
-        bgcolor: theme.palette.allShades.white,
+        bgcolor: theme.palette.background.paper,
       })}>
       <Typography
         sx={(theme) => ({

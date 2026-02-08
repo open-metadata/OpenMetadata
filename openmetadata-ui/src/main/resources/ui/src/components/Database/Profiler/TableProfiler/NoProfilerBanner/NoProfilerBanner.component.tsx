@@ -35,7 +35,7 @@ const NoProfilerBanner = () => {
           color="secondary"
           icon={<NoDataIcon />}
           sx={{
-            backgroundColor: theme.palette.allShades.white,
+            backgroundColor: theme.palette.background.paper,
             height: '40px',
             width: '40px',
             borderRadius: '8px',

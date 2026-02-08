@@ -13,9 +13,9 @@
 
 @import './../../../styles/variables.less';
 @border-radius: 6px;
-@border-color: #e8e8ed;
-@markdown-bg-color: #f8f8fa;
-@admonition-border-color: #afafc1;
+@rte-border-color: @om-border;
+@markdown-bg-color: @om-bg-raised;
+@admonition-border-color: @om-border-strong;
 
 .markdown-parser {
   .toastui-editor-contents {
@@ -92,7 +92,7 @@
 
     th,
     td {
-      border: 1px solid @border-color;
+      border: 1px solid @rte-border-color;
       margin: 0;
       padding: 8px 16px;
     }
@@ -104,7 +104,7 @@
     }
 
     blockquote {
-      border-left: 4px solid @border-color;
+      border-left: 4px solid @rte-border-color;
       padding-left: 16px;
       margin-left: 25px;
     }
@@ -129,7 +129,7 @@
         padding: 15px;
         overflow: auto;
         border-radius: 8px;
-        border-bottom: 2px solid @border-color;
+        border-bottom: 2px solid @rte-border-color;
       }
     }
 
@@ -239,7 +239,7 @@
       cursor: pointer;
       z-index: 1;
       padding: 2px;
-      background: @border-color;
+      background: @rte-border-color;
       border-radius: 4px;
     }
 
@@ -251,7 +251,7 @@
       pointer-events: all;
       cursor: pointer;
       z-index: 2;
-      background: @border-color;
+      background: @rte-border-color;
       border-radius: 4px;
       padding: 0px 4px;
     }

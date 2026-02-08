@@ -42,7 +42,7 @@
 
     .data-value {
       border-radius: @border-rad-md;
-      background-color: @grey-31;
+      background-color: @om-bg-raised;
     }
   }
 
@@ -70,8 +70,8 @@
     }
 
     .date-box {
-      border: 1px solid @grey-2;
-      background: @grey-29;
+      border: 1px solid @om-border;
+      background: @om-bg-raised;
       padding: @padding-xs @padding-sm;
       border-radius: @border-rad-sm;
       text-align: center;
@@ -81,23 +81,24 @@
       max-width: 60px;
 
       .month {
-        color: @grey-32;
+        color: @om-text-tertiary;
       }
 
       &.selected {
-        border: 1px solid @blue-36;
-        background: @blue-38;
+        border: 1px solid @primary-color;
+        background: @om-bg-selected;
+        color: @om-text;
       }
     }
   }
 
   .recharts-tooltip-item-name,
   .recharts-tooltip-item-value {
-    color: @black;
+    color: @om-text;
   }
 
   .recharts-default-tooltip {
-    background-color: @white;
+    background-color: @om-bg-card;
     border-radius: @border-rad-md;
     padding: @padding-sm;
     border: none !important;

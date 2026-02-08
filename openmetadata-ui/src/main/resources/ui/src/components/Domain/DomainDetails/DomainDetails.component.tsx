@@ -855,7 +855,7 @@ const DomainDetails = ({
         sx={{
           borderRadius: '5px',
           border: '2px solid',
-          borderColor: theme.palette.allShades.white,
+          borderColor: theme.palette.background.default,
           marginTop: isTreeView ? 0 : '-25px',
           marginRight: 2,
         }}

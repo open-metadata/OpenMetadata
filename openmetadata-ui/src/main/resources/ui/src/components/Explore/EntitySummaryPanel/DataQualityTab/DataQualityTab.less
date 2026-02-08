@@ -43,7 +43,7 @@
 
 .data-quality-test-overview-section {
   border-radius: 8px;
-  border: 1px solid @grey-15;
+  border: 1px solid @om-border;
 }
 .data-quality-test-overview-section-row {
   padding-top: 12px;
@@ -54,10 +54,10 @@
 .data-quality-tab-content {
   padding-left: 16px;
   height: 100vh;
-  background-color: @white;
+  background-color: @om-bg-card;
 }
 .dotted-row {
-  border-bottom: 1px dashed @grey-15;
+  border-bottom: 1px dashed @om-border;
   padding-bottom: 10px;
 }
 .stat-card-vertical-divider {
@@ -78,9 +78,9 @@
     }
     .data-quality-tab-count {
       border-radius: 4px;
-      background-color: @grey-9;
+      background-color: @om-bg-raised;
       border: 1px solid @grey-38;
-      color: @grey-600;
+      color: @om-text-secondary;
       font-size: 11px;
       font-weight: 500;
       padding: 0px 4px;
@@ -104,7 +104,7 @@
       position: sticky;
       top: 54px;
       z-index: 3;
-      background-color: @white;
+      background-color: @om-bg-card;
       .ant-tabs-nav-wrap {
         .ant-tabs-nav-list {
           justify-content: center;
@@ -148,21 +148,21 @@
   .incidents-tab-content {
     padding-left: 16px;
     padding-right: 16px;
-    background-color: @white;
+    background-color: @om-bg-card;
     .incidents-stats-container {
       display: flex;
-      border: 1px solid @grey-15;
+      border: 1px solid @om-border;
       border-radius: 8px;
       flex-direction: column;
       margin-bottom: 14px;
       position: static;
       top: 48px;
       z-index: 2;
-      background: @white;
+      background: @om-bg-card;
 
       .incidents-stats-cards-container {
         display: flex;
-        border-bottom: 1px solid @grey-15;
+        border-bottom: 1px solid @om-border;
         border-bottom-left-radius: 8px;
         border-bottom-right-radius: 8px;
       }
@@ -211,12 +211,12 @@
             }
           }
           .stat-count.new {
-            color: @grey-600;
+            color: @om-text-secondary;
             font-weight: 600;
           }
 
           .stat-label.new {
-            color: @grey-600;
+            color: @om-text-secondary;
             font-weight: 400;
           }
 
@@ -244,12 +244,12 @@
             }
           }
           .stat-count.ack {
-            color: @grey-600;
+            color: @om-text-secondary;
             font-weight: 600;
           }
 
           .stat-label.ack {
-            color: @grey-600;
+            color: @om-text-secondary;
           }
 
           &.active {
@@ -267,7 +267,7 @@
         &.assigned-card {
           width: 25%;
           .stat-count.assigned {
-            color: @grey-600;
+            color: @om-text-secondary;
             font-weight: 600;
           }
           &:hover {
@@ -280,7 +280,7 @@
             }
           }
           .stat-label.assigned {
-            color: @grey-600;
+            color: @om-text-secondary;
           }
 
           &.active {
@@ -310,7 +310,7 @@
       padding-right: 12px;
       border-bottom-right-radius: 8px;
       border-bottom-left-radius: 8px;
-      background-color: @white;
+      background-color: @om-bg-card;
       &.active {
         background-color: @green-9;
       }
@@ -352,7 +352,7 @@
 
   .test-case-card {
     padding-bottom: 8px;
-    border: 0.6px solid @grey-15;
+    border: 0.6px solid @om-border;
     margin-right: 16px;
     border-radius: 10px !important;
     margin-left: 16px;
@@ -364,7 +364,7 @@
         border-top-left-radius: 10px !important;
         padding-top: 12px;
         display: flex;
-        background-color: @grey-9;
+        background-color: @om-bg-raised;
         justify-content: space-between;
         align-items: center;
         gap: 24px;
@@ -374,7 +374,7 @@
           padding-left: 16px;
           .test-case-name {
             font-size: 12px;
-            color: @grey-900;
+            color: @om-text;
             font-weight: 500;
             line-height: 20px;
             display: -webkit-box;
@@ -411,7 +411,7 @@
           }
         }
         .status-badge.status-badge-v2 {
-          border-color: @grey-15;
+          border-color: @om-border;
         }
       }
 
@@ -429,7 +429,7 @@
           gap: 4px;
           .detail-label {
             font-size: 13px;
-            color: @grey-700;
+            color: @om-text-secondary;
             min-width: 60px;
             font-weight: 400;
 
@@ -441,7 +441,7 @@
 
           .detail-value {
             font-size: 12px;
-            color: @grey-900;
+            color: @om-text;
             font-weight: 500;
           }
 
@@ -462,7 +462,7 @@
 
             .assignee-name {
               font-size: 12px;
-              color: @grey-11;
+              color: @om-text;
               font-weight: 500;
             }
           }

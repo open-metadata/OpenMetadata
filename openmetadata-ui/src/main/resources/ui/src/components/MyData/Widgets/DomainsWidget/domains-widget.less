@@ -46,7 +46,7 @@
     flex-shrink: 0;
     margin-top: auto;
     width: 100%;
-    background-color: @white;
+    background-color: @om-bg-card;
     border-bottom-right-radius: @size-sm;
     border-bottom-left-radius: @size-sm;
   }
@@ -69,12 +69,12 @@
 .domain-card {
   display: flex;
   align-items: center;
-  background: @white;
+  background: @om-bg-card;
   box-shadow: @button-box-shadow-default;
   position: relative;
   overflow: hidden;
   height: 32px;
-  border: 1px solid #dbe0e7;
+  border: 1px solid @om-border;
   border-radius: @size-xs;
 }
 
@@ -97,7 +97,7 @@
   gap: @size-xs;
   font-size: @font-size-base;
   font-weight: @font-medium;
-  color: @grey-700;
+  color: @om-text;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -115,8 +115,8 @@
 }
 
 .domain-card-count {
-  background: @grey-15;
-  color: @grey-700;
+  background: @om-bg-raised;
+  color: @om-text;
   font-size: @size-sm;
   font-weight: @font-semibold;
   border-radius: @size-md;
@@ -129,8 +129,8 @@
 .domain-card-full {
   display: flex;
   align-items: center;
-  background: @white;
-  border: 1px solid #dbe0e7;
+  background: @om-bg-card;
+  border: 1px solid @om-border;
   border-radius: @size-sm;
   box-shadow: @button-box-shadow-default;
   height: 70px !important;
@@ -168,17 +168,17 @@
   align-items: center;
   gap: @size-xs;
   margin-bottom: 2px;
-  color: @grey-700;
+  color: @om-text;
 
   .ant-typography {
-    color: @grey-700;
+    color: @om-text;
     max-width: 240px;
   }
 }
 
 .domain-card-full-count {
-  background: @grey-15;
-  color: @grey-700;
+  background: @om-bg-raised;
+  color: @om-text;
   font-size: @size-sm;
   font-weight: @font-semibold;
   border-radius: @size-md;

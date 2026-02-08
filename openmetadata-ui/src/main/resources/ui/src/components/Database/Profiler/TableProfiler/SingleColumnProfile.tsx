@@ -331,7 +331,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                     sx={{
                       p: 4,
                       borderRadius: '6px',
-                      bgcolor: theme.palette.grey[50],
+                      bgcolor: theme.palette.background.paper,
                       width: '100%',
                     }}>
                     {columnTestData.map((item) => (

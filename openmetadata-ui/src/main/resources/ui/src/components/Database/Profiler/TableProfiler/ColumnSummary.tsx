@@ -59,7 +59,7 @@ const ColumnSummary: FC<ColumnSummaryProps> = ({ column }) => {
         <DataPill
           sx={{
             border: `1px solid ${theme.palette.grey[200]}`,
-            backgroundColor: theme.palette.grey[50],
+            backgroundColor: theme.palette.background.paper,
             fontSize: theme.typography.pxToRem(12),
             fontWeight: theme.typography.fontWeightMedium,
             color: theme.palette.grey[700],

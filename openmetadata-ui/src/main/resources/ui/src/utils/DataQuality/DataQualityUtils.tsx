@@ -397,7 +397,7 @@ export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
       <Card
         sx={(theme) => ({
           p: '10px',
-          bgcolor: theme.palette.allShades.white,
+          bgcolor: theme.palette.background.paper,
         })}>
         <Typography
           sx={(theme) => ({

@@ -29,6 +29,7 @@ import AsyncDeleteProvider from './context/AsyncDeleteProvider/AsyncDeleteProvid
 import PermissionProvider from './context/PermissionProvider/PermissionProvider';
 import TourProvider from './context/TourProvider/TourProvider';
 import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
+import { useCurrentUserPreferences } from './hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from './hooks/useApplicationStore';
 import {
   getCustomUiThemePreference,
@@ -40,6 +41,7 @@ import GlobalStyles from '@mui/material/GlobalStyles';
 import { ThemeProvider } from '@mui/material/styles';
 import {
   createMuiTheme,
+  injectCSSVariables,
   SnackbarContent,
 } from '@openmetadata/ui-core-components';
 import { SnackbarProvider } from 'notistack';
@@ -59,10 +61,14 @@ const App: FC = () => {
       }))
     );
 
+  const { preferences } = useCurrentUserPreferences();
+  const themeMode = preferences.themeMode ?? 'light';
+
   // Create dynamic MUI theme based on user customizations
   const muiTheme = useMemo(
-    () => createMuiTheme(applicationConfig?.customTheme, DEFAULT_THEME),
-    [applicationConfig?.customTheme]
+    () =>
+      createMuiTheme(applicationConfig?.customTheme, DEFAULT_THEME, themeMode),
+    [applicationConfig?.customTheme, themeMode]
   );
 
   const fetchApplicationConfig = async () => {
@@ -88,6 +94,27 @@ const App: FC = () => {
   useEffect(() => {
     fetchApplicationConfig();
   }, []);
+
+  // Set theme mode attribute on document element and body class
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', themeMode);
+    document.documentElement.style.colorScheme = themeMode;
+    // Add class to body for higher CSS specificity
+    if (themeMode === 'dark') {
+      document.body.classList.add('dark-mode');
+      document.body.classList.remove('light-mode');
+    } else {
+      document.body.classList.add('light-mode');
+      document.body.classList.remove('dark-mode');
+    }
+  }, [themeMode]);
+
+  // Inject design tokens as CSS custom properties
+  useEffect(() => {
+    if (muiTheme.palette.allShades) {
+      injectCSSVariables(muiTheme.palette.allShades, themeMode);
+    }
+  }, [muiTheme, themeMode]);
 
   useEffect(() => {
     const faviconHref = isEmpty(

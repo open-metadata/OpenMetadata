@@ -22,22 +22,22 @@
 
   &:hover {
     color: inherit;
-    background-color: @grey-1;
+    background-color: @om-bg-hover;
   }
 }
 .activity-feed-card-new {
   border-radius: 12px;
-  background: @grey-9;
+  background: @om-bg-raised;
   display: flex;
   flex-direction: column;
   flex-wrap: wrap;
   width: inherit;
 
   &.ant-card {
-    background: @grey-9;
+    background: @om-bg-raised;
     border-radius: 12px;
     margin-bottom: 20px;
-    border: 0.5px solid @grey-15;
+    border: 0.5px solid @om-border;
   }
 
   .ant-card-body {
@@ -56,10 +56,10 @@
 }
 .activity-feed-card-new-right-panel {
   &.ant-card {
-    border: 1px solid @white;
+    border: 1px solid @om-bg-card;
     .ant-card-body {
-      background-color: @white;
-      border: 1px solid @white;
+      background-color: @om-bg-card;
+      border: 1px solid @om-bg-card;
     }
   }
 }
@@ -101,26 +101,26 @@
   border-radius: 12px;
   padding: 16px;
   margin: 20px 0px 0px 0px;
-  background: @grey-9;
-  border: 0.5px solid @grey-15;
+  background: @om-bg-raised;
+  border: 0.5px solid @om-border;
   input.ant-input,
   textarea.ant-input {
     border-radius: 20px;
-    background-color: @grey-16;
-    border: 1px solid @grey-15;
+    background-color: @om-bg-raised;
+    border: 1px solid @om-border;
   }
 }
 
 .activity-feed-reply-button {
   border-radius: 24px;
-  border: 1px solid #d4d4d8;
-  color: #52525b;
+  border: 1px solid @om-border-strong;
+  color: @om-text-secondary;
   font-size: 12px;
 }
 .comments-input-field {
-  background-color: @grey-16;
+  background-color: @om-bg-raised;
   border-radius: 20px;
-  border: 1px solid @grey-15;
+  border: 1px solid @om-border;
   height: 36px;
   font-size: 12px;
   line-height: 14.52px;
@@ -134,6 +134,6 @@
   input.ant-input,
   textarea.ant-input {
     border-radius: 20px;
-    background-color: @grey-16;
+    background-color: @om-bg-raised;
   }
 }

@@ -13,7 +13,12 @@
 import type { Components, Theme } from '@mui/material/styles';
 import { BODY_FONT_SIZES } from './typography-constants';
 
-export const navigationTheme = (colors: any): Components<Theme> => ({
+export const navigationTheme = (colors: any, mode: 'light' | 'dark' = 'light'): Components<Theme> => {
+  const isDark = mode === 'dark';
+  const surfaceBg = isDark ? colors.surface : colors.white;
+  const hoverBg = isDark ? colors.surfaceRaised : colors.gray[50];
+
+  return ({
   MuiBreadcrumbs: {
     styleOverrides: {
       root: {
@@ -59,9 +64,9 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         },
 
         '.MuiBreadcrumbs-root &': {
-          color: '#787486',
+          color: colors.gray[400],
           '&:hover': {
-            color: '#535862',
+            color: colors.gray[600],
           },
         },
       },
@@ -170,12 +175,12 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         width: '248px',
         overflow: 'auto',
         borderRadius: '8px',
-        backgroundColor: colors.white,
+        backgroundColor: surfaceBg,
 
         boxShadow:
           '0px 12px 16px -4px rgba(10, 13, 18, 0.08), 0px 4px 6px -2px rgba(10, 13, 18, 0.03), 0px 2px 2px -1px rgba(10, 13, 18, 0.04)',
 
-        border: `1px solid rgba(0, 0, 0, 0.08)`,
+        border: `1px solid ${isDark ? colors.gray[200] : 'rgba(0, 0, 0, 0.08)'}`,
         marginTop: '4px',
         willChange: 'transform',
       },
@@ -274,3 +279,4 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
     },
   },
 });
+};

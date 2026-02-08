@@ -43,7 +43,7 @@ const ProfilerLatestValue = ({
       alignItems="center"
       data-testid="data-summary-container"
       sx={{
-        backgroundColor: theme.palette.grey[50],
+        backgroundColor: theme.palette.background.paper,
         borderRadius: '10px',
         p: '16px 30px',
       }}>

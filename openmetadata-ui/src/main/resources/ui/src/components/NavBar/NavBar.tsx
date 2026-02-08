@@ -87,6 +87,7 @@ import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
+import ThemeToggle from './ThemeToggle';
 
 const cookieStorage = new CookieStorage();
 
@@ -111,7 +112,7 @@ const NavBar = () => {
   const { appVersion: version, setAppVersion } = useApplicationStore();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const {
-    preferences: { isSidebarCollapsed, language },
+    preferences: { isSidebarCollapsed, language, themeMode },
     setPreference,
   } = useCurrentUserPreferences();
 
@@ -523,6 +524,10 @@ const NavBar = () => {
                 <DropDownIcon width={12} />
               </Button>
             </Dropdown>
+            <ThemeToggle
+              themeMode={themeMode}
+              onChange={(mode) => setPreference({ themeMode: mode })}
+            />
             <Dropdown
               destroyPopupOnHide
               className="cursor-pointer"

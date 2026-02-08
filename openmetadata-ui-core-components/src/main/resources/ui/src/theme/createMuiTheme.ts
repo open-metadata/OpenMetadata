@@ -13,6 +13,7 @@
 
 import type { Shadows } from "@mui/material/styles";
 import { createTheme } from "@mui/material/styles";
+import { darkColors } from "../colors/darkColors";
 import { defaultColors } from "../colors/defaultColors";
 import { generateAllMuiPalettes } from "../colors/generateMuiPalettes";
 import type { CustomColors, ThemeColors } from "../types";
@@ -35,6 +36,7 @@ import {
  * Creates dynamic MUI theme with user customizations or default colors
  * @param customColors User's custom color preferences
  * @param defaultTheme Optional default theme colors (uses built-in fallback if not provided)
+ * @param mode Theme mode - 'light' or 'dark'
  * @returns MUI Theme with dynamic or default color palettes
  */
 export const createMuiTheme = (
@@ -47,16 +49,20 @@ export const createMuiTheme = (
     successColor: string;
     warningColor: string;
     errorColor: string;
-  }
+  },
+  mode: 'light' | 'dark' = 'light'
 ) => {
+  // Select base colors based on mode
+  const baseColors = mode === 'dark' ? darkColors : defaultColors;
+
   // Generate dynamic palettes or use static defaults
   const dynamicPalettes = customColors
-    ? generateAllMuiPalettes(customColors, defaultColors, defaultTheme)
+    ? generateAllMuiPalettes(customColors, baseColors, defaultTheme)
     : null;
 
   // Create final theme colors for components
   const themeColors: ThemeColors = {
-    ...defaultColors,
+    ...baseColors,
     ...(dynamicPalettes && {
       brand: dynamicPalettes.brand,
       success: dynamicPalettes.success,
@@ -66,22 +72,56 @@ export const createMuiTheme = (
     }),
   };
 
+  // For dark mode buttons, use light-mode brand colors so primary buttons
+  // stay vibrant (#1570EF) instead of washed-out (#79b8ff).
+  const buttonColors = mode === 'dark'
+    ? { ...themeColors, brand: defaultColors.brand }
+    : themeColors;
+
   // Generate component themes with dynamic colors
   const componentThemes = {
-    ...buttonTheme(themeColors),
-    ...formTheme(themeColors),
-    ...navigationTheme(themeColors),
-    ...dataDisplayTheme(themeColors),
-    ...tabTheme(themeColors),
+    ...buttonTheme(buttonColors, mode),
+    ...formTheme(themeColors, mode),
+    ...navigationTheme(themeColors, mode),
+    ...dataDisplayTheme(themeColors, mode),
+    ...tabTheme(themeColors, mode),
   };
+
+  // Background and text colors based on mode
+  const backgroundColors = mode === 'dark'
+    ? {
+        default: themeColors.page,      // #0d1117
+        paper: themeColors.surface,     // #161b22
+      }
+    : {
+        default: themeColors.white,
+        paper: themeColors.white,
+      };
+
+  const textColors = mode === 'dark'
+    ? {
+        primary: themeColors.gray[800],   // #e6edf3 - light text
+        secondary: themeColors.gray[500], // #8b949e
+        disabled: themeColors.gray[400],  // #6e7681
+      }
+    : {
+        primary: themeColors.gray[900],   // #181d27 - dark text
+        secondary: themeColors.gray[700], // #414651
+        disabled: themeColors.gray[500],  // #717680
+      };
 
   return createTheme({
     palette: {
+      mode,
       primary: {
-        main: themeColors.brand[600],
-        light: themeColors.brand[400],
-        dark: themeColors.brand[700],
-        contrastText: themeColors.white,
+        // Use the same vibrant blue for buttons in both modes.
+        // The dark mode brand scale is inverted (lighter = higher number),
+        // so brand[600] in dark = #79b8ff (washed out). We use the light
+        // mode values (#1570EF) which have excellent contrast on dark bgs.
+        main: mode === 'dark' ? defaultColors.brand[600] : themeColors.brand[600],
+        light: mode === 'dark' ? defaultColors.brand[400] : themeColors.brand[400],
+        dark: mode === 'dark' ? defaultColors.brand[700] : themeColors.brand[700],
+        contrastText: '#ffffff',
       },
       secondary: {
         main: themeColors.gray[600],
@@ -125,15 +165,8 @@ export const createMuiTheme = (
         800: themeColors.gray[800],
         900: themeColors.gray[900],
       },
-      background: {
-        default: themeColors.white,
-        paper: themeColors.white,
-      },
-      text: {
-        primary: themeColors.gray[900],
-        secondary: themeColors.gray[700],
-        disabled: themeColors.gray[500],
-      },
+      background: backgroundColors,
+      text: textColors,
       // Full color scales accessible via theme.palette.allShades
       allShades: themeColors,
     },
@@ -147,69 +180,69 @@ export const createMuiTheme = (
         fontWeight: 600,
         lineHeight: HEADING_LINE_HEIGHTS.H1,
         letterSpacing: "-1.2px",
-        color: "var(--color-text-primary)",
+        color: "var(--om-text-primary)",
       },
       h2: {
         fontSize: HEADING_FONT_SIZES.H2,
         fontWeight: 600,
         lineHeight: HEADING_LINE_HEIGHTS.H2,
         letterSpacing: "-0.96px",
-        color: "var(--color-text-primary)",
+        color: "var(--om-text-primary)",
       },
       h3: {
         fontSize: HEADING_FONT_SIZES.H3,
         fontWeight: 600,
         lineHeight: HEADING_LINE_HEIGHTS.H3,
         letterSpacing: "-0.72px",
-        color: "var(--color-text-primary)",
+        color: "var(--om-text-primary)",
       },
       h4: {
         fontSize: HEADING_FONT_SIZES.H4,
         fontWeight: 600,
         lineHeight: HEADING_LINE_HEIGHTS.H4,
-        color: "var(--color-text-primary)",
+        color: "var(--om-text-primary)",
       },
       h5: {
         fontSize: HEADING_FONT_SIZES.H5,
         fontWeight: 600,
         lineHeight: HEADING_LINE_HEIGHTS.H5,
-        color: "var(--color-text-primary)",
+        color: "var(--om-text-primary)",
       },
       h6: {
         fontSize: HEADING_FONT_SIZES.H6,
         fontWeight: 600,
         lineHeight: HEADING_LINE_HEIGHTS.H6,
-        color: "var(--color-text-primary)",
+        color: "var(--om-text-primary)",
       },
       subtitle1: {
         fontSize: BODY_FONT_SIZES.SUBTITLE1,
         lineHeight: BODY_LINE_HEIGHTS.SUBTITLE1,
         fontWeight: 400,
-        color: "var(--color-text-secondary)",
+        color: "var(--om-text-secondary)",
       },
       subtitle2: {
         fontSize: BODY_FONT_SIZES.SUBTITLE2,
         lineHeight: BODY_LINE_HEIGHTS.SUBTITLE2,
         fontWeight: 500,
-        color: "var(--color-text-secondary)",
+        color: "var(--om-text-secondary)",
       },
       body1: {
         fontSize: BODY_FONT_SIZES.BODY1,
         lineHeight: BODY_LINE_HEIGHTS.BODY1,
         fontWeight: 400,
-        color: "var(--color-text-tertiary)",
+        color: "var(--om-text-tertiary)",
       },
       body2: {
         fontSize: BODY_FONT_SIZES.BODY2,
         lineHeight: BODY_LINE_HEIGHTS.BODY2,
         fontWeight: 400,
-        color: "var(--color-text-tertiary)",
+        color: "var(--om-text-tertiary)",
       },
       caption: {
         fontSize: BODY_FONT_SIZES.CAPTION,
         lineHeight: BODY_LINE_HEIGHTS.CAPTION,
         fontWeight: 400,
-        color: "var(--color-text-quaternary)",
+        color: "var(--om-text-tertiary)",
       },
       overline: {
         fontSize: BODY_FONT_SIZES.CAPTION,
@@ -217,7 +250,7 @@ export const createMuiTheme = (
         fontWeight: 600,
         textTransform: "uppercase" as const,
         letterSpacing: "0.5px",
-        color: "var(--color-text-quaternary)",
+        color: "var(--om-text-tertiary)",
       },
       button: {
         fontSize: BODY_FONT_SIZES.BUTTON,

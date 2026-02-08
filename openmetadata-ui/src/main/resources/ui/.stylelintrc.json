@@ -1,0 +1,135 @@
+{
+  "_docs": {
+    "_dark_mode_variable_mapping": {
+      "description": "When this rule flags a hardcoded hex color, replace it with the appropriate @om-* variable from variables.less",
+      "backgrounds": {
+        "@om-bg-card": "Card / panel backgrounds (replaces #ffffff, @white)",
+        "@om-bg-raised": "Raised surface with subtle lift (replaces #f8f9fc, @grey-50)",
+        "@om-bg-body": "Page body background (replaces #f8f9fc, @grey-9)",
+        "@om-bg-hover": "Hover state backgrounds (replaces #f5f5f5, @grey-100)",
+        "@om-bg-page": "Full page background (replaces #ffffff)",
+        "@om-bg-input": "Input field backgrounds (replaces #ffffff)",
+        "@om-bg-overlay": "Overlay/modal backgrounds (replaces #ffffff)",
+        "@om-bg-header": "Header backgrounds (replaces #ffffff)",
+        "@om-bg-sidebar": "Sidebar backgrounds (replaces #ffffff)",
+        "@om-bg-selected": "Selected state backgrounds (replaces #eff8ff)",
+        "@om-bg-disabled": "Disabled state backgrounds (replaces #f5f5f5)"
+      },
+      "text": {
+        "@om-text": "Primary text (replaces #181d27, #000, @grey-900, @grey-800)",
+        "@om-text-secondary": "Secondary text (replaces #535862, @grey-600, @grey-700)",
+        "@om-text-tertiary": "Tertiary/muted text (replaces #717680, @grey-500, @grey-4)",
+        "@om-text-disabled": "Disabled text (replaces #a4a7ae, @grey-400)",
+        "@om-text-inverse": "Inverse text on dark backgrounds (replaces #fafafa)",
+        "@om-text-link": "Link text (replaces #1570ef)"
+      },
+      "borders": {
+        "@om-border": "Default borders (replaces #e9eaeb, @grey-200, @grey-15)",
+        "@om-border-light": "Light borders (replaces #f5f5f5)",
+        "@om-border-strong": "Strong/emphasized borders (replaces #d5d7da, @grey-300)",
+        "@om-border-subtle": "Subtle borders, dividers (replaces #f5f5f5)",
+        "@om-border-focus": "Focus ring borders (replaces #1570ef)"
+      }
+    }
+  },
+  "customSyntax": "postcss-less",
+  "rules": {
+    "declaration-property-value-disallowed-list": [
+      {
+        "background": [
+          "/^#[0-9a-fA-F]{3,8}$/",
+          "/^@white/",
+          "/^@grey-[0-9]/",
+          "/^@grey-text/"
+        ],
+        "background-color": [
+          "/^#[0-9a-fA-F]{3,8}$/",
+          "/^@white/",
+          "/^@grey-[0-9]/",
+          "/^@grey-text/"
+        ],
+        "color": [
+          "/^#[0-9a-fA-F]{3,8}$/",
+          "/^@white/",
+          "/^@grey-[0-9]/",
+          "/^@grey-text/",
+          "/^@black/"
+        ],
+        "border-color": [
+          "/^#[0-9a-fA-F]{3,8}$/",
+          "/^@white/",
+          "/^@grey-[0-9]/"
+        ],
+        "border": [
+          "/\\s#[0-9a-fA-F]{3,8}/",
+          "/\\s@white/",
+          "/\\s@grey-[0-9]/"
+        ],
+        "border-top": [
+          "/\\s#[0-9a-fA-F]{3,8}/",
+          "/\\s@grey-[0-9]/"
+        ],
+        "border-bottom": [
+          "/\\s#[0-9a-fA-F]{3,8}/",
+          "/\\s@grey-[0-9]/"
+        ],
+        "border-left": [
+          "/\\s#[0-9a-fA-F]{3,8}/",
+          "/\\s@grey-[0-9]/"
+        ],
+        "border-right": [
+          "/\\s#[0-9a-fA-F]{3,8}/",
+          "/\\s@grey-[0-9]/"
+        ],
+        "border-top-color": [
+          "/^#[0-9a-fA-F]{3,8}$/",
+          "/^@grey-[0-9]/"
+        ],
+        "border-bottom-color": [
+          "/^#[0-9a-fA-F]{3,8}$/",
+          "/^@grey-[0-9]/"
+        ],
+        "border-left-color": [
+          "/^#[0-9a-fA-F]{3,8}$/",
+          "/^@grey-[0-9]/"
+        ],
+        "border-right-color": [
+          "/^#[0-9a-fA-F]{3,8}$/",
+          "/^@grey-[0-9]/"
+        ],
+        "outline-color": [
+          "/^#[0-9a-fA-F]{3,8}$/",
+          "/^@grey-[0-9]/"
+        ]
+      },
+      {
+        "message": "Hardcoded color value breaks dark mode. Use @om-* variable wrappers instead (defined in variables.less). Backgrounds: @om-bg-card, @om-bg-raised, @om-bg-body, @om-bg-hover. Text: @om-text, @om-text-secondary, @om-text-tertiary. Borders: @om-border, @om-border-light, @om-border-strong, @om-border-subtle.",
+        "severity": "warning"
+      }
+    ],
+    "color-named": [
+      "never",
+      {
+        "ignore": ["inside-function"],
+        "message": "Named colors (e.g. 'white', 'black') break dark mode. Use @om-* CSS variable wrappers from variables.less.",
+        "severity": "warning"
+      }
+    ]
+  },
+  "ignoreFiles": [
+    "node_modules/**",
+    "**/node_modules/**",
+    "src/styles/variables.less",
+    "src/styles/theme.less",
+    "src/styles/antd-master.less"
+  ],
+  "overrides": [
+    {
+      "files": ["src/styles/variables.less", "src/styles/theme.less"],
+      "rules": {
+        "declaration-property-value-disallowed-list": null,
+        "color-named": null
+      }
+    }
+  ]
+}

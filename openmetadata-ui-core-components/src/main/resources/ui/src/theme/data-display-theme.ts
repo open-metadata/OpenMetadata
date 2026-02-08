@@ -19,8 +19,13 @@ import {
 } from './typography-constants';
 
 export const dataDisplayTheme = (
-  colors: any
-): Components<Theme> & Record<string, any> => ({
+  colors: any,
+  mode: 'light' | 'dark' = 'light'
+): Components<Theme> & Record<string, any> => {
+  const isDark = mode === 'dark';
+  const surfaceBg = isDark ? colors.surface : colors.white;
+
+  return ({
   MuiCard: {
     styleOverrides: {
       root: {
@@ -54,7 +59,7 @@ export const dataDisplayTheme = (
       root: {
         borderRadius: "12px",
         fontSize: "1rem",
-        backgroundColor: colors.white,
+        backgroundColor: surfaceBg,
         border: `1px solid ${colors.gray[300]}`,
         color: colors.gray[900],
         boxShadow: shadows.xs,
@@ -284,7 +289,7 @@ export const dataDisplayTheme = (
         alignItems: "flex-start",
         gap: "4px",
         borderRadius: "8px",
-        backgroundColor: colors.white,
+        backgroundColor: surfaceBg,
         color: colors.gray[700],
         padding: "8px 12px",
         fontSize: BODY_FONT_SIZES.CAPTION,
@@ -311,7 +316,7 @@ export const dataDisplayTheme = (
         },
       },
       arrow: {
-        color: colors.white,
+        color: surfaceBg,
 
         fontSize: "10px",
       },
@@ -365,7 +370,7 @@ export const dataDisplayTheme = (
       },
       paper: {
         borderRadius: "16px",
-        backgroundColor: colors.white,
+        backgroundColor: surfaceBg,
         boxShadow: shadows.xl,
         maxWidth: "544px",
         width: "100%",
@@ -454,7 +459,7 @@ export const dataDisplayTheme = (
     styleOverrides: {
       root: {
         borderRadius: "12px",
-        backgroundColor: colors.white,
+        backgroundColor: surfaceBg,
         boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05)`,
         border: `1px solid ${colors.gray[200]}`,
         overflow: "hidden" as const,
@@ -500,7 +505,7 @@ export const dataDisplayTheme = (
   MuiTableBody: {
     styleOverrides: {
       root: {
-        backgroundColor: colors.white,
+        backgroundColor: surfaceBg,
         "& .MuiTableRow-root": {
           height: "72px",
           position: "relative" as const,
@@ -588,7 +593,7 @@ export const dataDisplayTheme = (
         fontWeight: 400,
         lineHeight: BODY_LINE_HEIGHTS.BODY2, // line-height for text-sm
         letterSpacing: "0%",
-        color: "#181D27", // --Component-colors-Utility-Gray-utility-gray-900
+        color: colors.gray[900],
         position: "relative" as const,
 
         "&::after": {
@@ -673,3 +678,4 @@ export const dataDisplayTheme = (
     },
   },
 });
+};

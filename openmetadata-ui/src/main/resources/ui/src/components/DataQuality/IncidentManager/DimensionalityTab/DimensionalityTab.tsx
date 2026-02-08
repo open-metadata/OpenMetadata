@@ -342,7 +342,7 @@ const DimensionalityTab = () => {
                 border: `1px solid ${theme.palette.grey[200]}`,
               },
               '&:hover .MuiSelect-select': {
-                bgcolor: theme.palette.grey[50],
+                bgcolor: theme.palette.background.paper,
               },
             }}
             value={selectedDimension}

@@ -13,14 +13,14 @@
 @import '../../../styles/variables.less';
 
 .feed-explore-heading {
-  background-color: @grey-1;
+  background-color: @om-bg-raised;
 }
 
 .activity-feed-tab {
   display: flex;
   width: 100%;
   overflow-x: hidden;
-  border: 1px solid @grey-15;
+  border: 1px solid @om-border;
   border-radius: @border-rad-sm;
 
   .custom-menu.ant-menu-root.ant-menu-inline {
@@ -35,11 +35,11 @@
     height: @user-profile-page-panel-height;
     overflow-y: scroll;
     border-radius: 12px;
-    background-color: @white;
+    background-color: @om-bg-card;
     margin-right: 20px;
     display: flex;
     flex-direction: column;
-    border: 1px solid @grey-15;
+    border: 1px solid @om-border;
 
     &.full-width {
       flex: 10;
@@ -53,9 +53,9 @@
     border: none;
     height: @user-profile-page-panel-height;
     overflow-y: scroll;
-    background-color: @white;
+    background-color: @om-bg-card;
     border-radius: 12px;
-    border: 1px solid @grey-15;
+    border: 1px solid @om-border;
 
     .full-width {
       flex: 0;
@@ -69,21 +69,21 @@
       border-radius: 12px;
       padding: 16px;
       margin: 20px 0px 0px 0px;
-      border: 0.5px solid #eaecf5;
-      background: @grey-9;
+      border: 0.5px solid @om-border;
+      background: @om-bg-raised;
     }
 
     .activity-feed-reply-button {
       border-radius: 24px;
-      border: 1px solid #d4d4d8;
-      color: #52525b;
+      border: 1px solid @om-border-strong;
+      color: @om-text-secondary;
       font-size: 12px;
     }
 
     .comments-input-field {
-      background-color: @grey-16;
+      background-color: @om-bg-raised;
       border-radius: 20px;
-      border: 1px solid #eaecf5;
+      border: 1px solid @om-border;
       height: 36px;
       font-size: 12px;
       line-height: 14.52px;
@@ -105,7 +105,7 @@
   }
 
   .three-panel-layout.right-container {
-    border-left: 1px solid @grey-15;
+    border-left: 1px solid @om-border;
   }
 
   .hide-panel {
@@ -121,12 +121,12 @@
 
   .activity-feed-card-new {
     border-radius: 12px;
-    background: @grey-9;
+    background: @om-bg-raised;
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
     width: inherit;
-    border: 0.5px solid #eaecf5;
+    border: 0.5px solid @om-border;
 
     .ant-card-body {
       width: inherit;
@@ -145,10 +145,10 @@
 
   .activity-feed-card-message {
     padding: 20px;
-    background-color: @white;
+    background-color: @om-bg-card;
     width: inherit;
     margin-top: 2px;
-    border: 0.5px solid #eaecf5;
+    border: 0.5px solid @om-border;
 
     .ant-card-body {
       padding: 0px;
@@ -157,7 +157,7 @@
   }
 
   .activity-feed-card-message-right-panel {
-    background: rgba(239, 244, 250, 0.25);
+    background: @om-bg-raised;
     margin-top: 10px;
   }
 
@@ -174,8 +174,8 @@
       padding: 0px;
       //  margin: 10px  0px 20px 0px;
       padding-top: 20px;
-      border-bottom: 1.5px solid #d4d4d8;
-      background: rgba(239, 244, 250, 0.25);
+      border-bottom: 1.5px solid @om-border-strong;
+      background: @om-bg-raised;
 
       padding-bottom: 16px;
 
@@ -187,7 +187,7 @@
     .activity-feed-reply-card-message {
       padding-left: 50px;
       border: none;
-      background: rgba(239, 244, 250, 0.25);
+      background: @om-bg-raised;
 
       .ant-card-body {
         margin: 0px;
@@ -195,19 +195,19 @@
         margin-bottom: -6px;
         border: none;
         padding: 0px;
-        background: rgba(239, 244, 250, 0.25);
+        background: @om-bg-raised;
       }
 
       .activity-feed-comment-text {
         word-wrap: break-word;
         white-space: normal;
-        color: #535862;
+        color: @om-text-secondary;
       }
     }
   }
 
   .activity-feed-card-new-right-panel {
-    background-color: @white;
+    background-color: @om-bg-card;
     border: none;
   }
 
@@ -243,7 +243,7 @@
 }
 
 .activity-feed-task {
-  background-color: @grey-1;
+  background-color: @om-bg-raised;
 }
 
 .count-loader.ant-skeleton-element .ant-skeleton-button-sm {
@@ -251,14 +251,14 @@
 }
 
 .activity-feed-editor-container-new {
-  background-color: @grey-9;
-  border: 0.5px solid @grey-15;
+  background-color: @om-bg-raised;
+  border: 0.5px solid @om-border;
   border-radius: 10px;
   width: 100%;
 
   .ql-container {
-    background-color: @grey-9;
-    border: 1px solid @grey-15;
+    background-color: @om-bg-raised;
+    border: 1px solid @om-border;
     width: 100%;
 
     &:focus-within {
@@ -267,8 +267,8 @@
   }
 
   .ql-toolbar {
-    background-color: @grey-9;
-    border: 1px solid @grey-15;
+    background-color: @om-bg-raised;
+    border: 1px solid @om-border;
     flex-wrap: wrap;
 
     &:focus-within {
@@ -277,7 +277,7 @@
   }
 
   .ql-toolbar button {
-    color: #292929;
+    color: @om-text;
   }
 }
 
@@ -309,11 +309,11 @@
   font-weight: 600;
   line-height: 20px;
   letter-spacing: 0.03em;
-  color: #181d27;
+  color: @om-text;
 }
 
 .activity-feed-user-name.ant-typography a {
-  color: #181d27;
+  color: @om-text;
   font-weight: 600;
 }
 
@@ -321,7 +321,7 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 24px;
-  color: #373e44;
+  color: @om-text;
 }
 
 .activity-feed-reply-card-footer {
@@ -329,14 +329,14 @@
 }
 
 .active-card {
-  background-color: #e6f1fe !important;
+  background-color: @om-bg-selected !important;
 }
 
 .task-tab-custom-dropdown {
   border-radius: 6px;
 
   .task-tab-filter-item {
-    color: @text-color;
+    color: @om-text;
     font-size: 14px;
     font-weight: 400;
     line-height: 20px;
@@ -351,7 +351,7 @@
   }
 
   .task-count-container {
-    background: #e9eaeb;
+    background: @om-border;
     border-radius: 16px;
     width: 30px;
     height: 22px;
@@ -365,7 +365,7 @@
     }
 
     .task-count-text {
-      color: #414651;
+      color: @om-text;
       text-align: center;
       font-family: Inter;
       font-size: 12px;
@@ -394,13 +394,13 @@
 }
 
 .task-toggle {
-  background: @white;
+  background: @om-bg-card;
   border-radius: @size-sm;
   padding: 4px;
-  border: 1px solid @grey-20;
+  border: 1px solid @om-border;
 
   .ant-segmented-item {
-    color: @text-color;
+    color: @om-text;
     transition: all 0.3s ease;
 
     &-selected {
@@ -466,11 +466,11 @@
   font-style: normal;
   font-weight: 600;
   line-height: 20px;
-  color: #414651;
+  color: @om-text;
 }
 
 .card-style-feed-header {
-  color: #535862;
+  color: @om-text-secondary;
   font-size: 14px;
   font-style: normal;
   font-weight: 400;
@@ -502,11 +502,11 @@
 }
 
 .reply-card-border-bottom {
-  border-bottom: 0.5px solid #e4e4e4;
+  border-bottom: 0.5px solid @om-border;
 }
 
 .reply-message {
-  color: #4a4a4a;
+  color: @om-text-secondary;
   white-space: normal;
   word-break: break-word;
   display: block;
@@ -514,7 +514,7 @@
 }
 
 .reply-card-user-name.activity-feed-user-name.ant-typography a {
-  color: @text-color;
+  color: @om-text;
   font-style: normal;
   font-weight: 500;
   line-height: 24px;
@@ -522,24 +522,24 @@
 
 .feed-footer-avatar-group .ant-avatar {
   margin-inline-end: -8px !important;
-  border: 1px solid #fff;
+  border: 1px solid @om-bg-card;
 }
 
 .no-description-suggestion-card {
   padding: 20px;
-  border: 0.5px solid #eaecf5;
-  background: @white;
+  border: 0.5px solid @om-border;
+  background: @om-bg-card;
   border-radius: 12px;
   margin-top: 16px;
 }
 
 .task-toggle.ant-segmented {
-  background-color: @white;
+  background-color: @om-bg-card;
   border-radius: @size-sm;
 
   &:hover {
     .ant-segmented-item:not(.ant-segmented-item-selected) {
-      background-color: @white;
+      background-color: @om-bg-card;
     }
   }
 }
@@ -594,10 +594,10 @@
 
 .owner-chip {
   border-radius: 8px;
-  background: @grey-16;
+  background: @om-bg-raised;
   padding: 4px 8px;
   margin-right: @margin-xs;
-  border: 1px solid @grey-15;
+  border: 1px solid @om-border;
 
   .owner-team-icon {
     font-size: 24px !important;
@@ -605,7 +605,7 @@
 }
 
 .owner-chip-text {
-  color: @text-color;
+  color: @om-text;
   font-style: normal;
   font-weight: 400;
   line-height: normal;
@@ -625,7 +625,7 @@
       stroke: border-color-2;
       border-radius: @size-xs;
       border: 1px solid @grey-100;
-      background: @white;
+      background: @om-bg-card;
     }
     &:not(.disabled):hover {
       border: 1px solid @blue-12;

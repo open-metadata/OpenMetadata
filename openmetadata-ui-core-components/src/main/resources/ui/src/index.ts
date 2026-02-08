@@ -17,8 +17,11 @@
 // Theme system
 export * from './theme';
 
-// Color system  
+// Color system
 export * from './colors';
+
+// Design tokens (CSS variable generation)
+export * from './tokens';
 
 // Components
 export * from './components';

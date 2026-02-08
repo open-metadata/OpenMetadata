@@ -74,17 +74,37 @@ const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
       `--ant-primary-color-active`,
       selectedColor
     );
+    // Set the main primary color (used by @primary-color in Less)
+    document.documentElement.style.setProperty(
+      `--ant-primary-color`,
+      applicationConfig?.customTheme?.primaryColor ?? DEFAULT_THEME.primaryColor
+    );
+    // Set success, warning, error, info colors
+    document.documentElement.style.setProperty(
+      `--ant-success-color`,
+      applicationConfig?.customTheme?.successColor ?? DEFAULT_THEME.successColor
+    );
+    document.documentElement.style.setProperty(
+      `--ant-warning-color`,
+      applicationConfig?.customTheme?.warningColor ?? DEFAULT_THEME.warningColor
+    );
+    document.documentElement.style.setProperty(
+      `--ant-error-color`,
+      applicationConfig?.customTheme?.errorColor ?? DEFAULT_THEME.errorColor
+    );
+    document.documentElement.style.setProperty(
+      `--ant-info-color`,
+      applicationConfig?.customTheme?.infoColor ?? DEFAULT_THEME.infoColor
+    );
   }, [
     applicationConfig?.customTheme?.primaryColor,
     applicationConfig?.customTheme?.hoverColor,
     applicationConfig?.customTheme?.selectedColor,
+    applicationConfig?.customTheme?.successColor,
+    applicationConfig?.customTheme?.warningColor,
+    applicationConfig?.customTheme?.errorColor,
+    applicationConfig?.customTheme?.infoColor,
   ]);
-
-  ConfigProvider.config({
-    theme: {
-      ...applicationConfig?.customTheme,
-    },
-  });
 
   return <ConfigProvider direction={i18n.dir()}>{children}</ConfigProvider>;
 };

@@ -18,19 +18,19 @@
   position: relative;
   border-radius: @border-rad-base;
   overflow: hidden;
-  background: @white;
+  background: @om-bg-card;
   border: 1px solid @border-color;
   user-select: none;
   transition: all 0.3s ease;
 
   &:hover {
-    border-color: @border-color-2;
+    border-color: @om-border;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   }
 
   &.ProseMirror-selectednode {
     outline: none;
-    background: @white;
+    background: @om-bg-card;
     border: 1px solid @primary-color;
     box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
   }
@@ -44,17 +44,17 @@
   .media-content {
     padding: @padding-sm;
     transition: all 0.3s;
-    background: @white;
+    background: @om-bg-card;
     position: relative;
 
     &:hover {
-      background: @grey-1;
+      background: @om-bg-hover;
     }
 
     &:focus,
     &:focus-within {
       outline: none;
-      background: @grey-1;
+      background: @om-bg-hover;
     }
   }
 
@@ -204,7 +204,7 @@
       padding: 0;
       overflow: hidden;
       border-radius: @border-rad-base;
-      background: @grey-2;
+      background: @om-bg-hover;
 
       .video-player {
         width: 100%;
@@ -259,7 +259,7 @@
 
     .media-content {
       padding: 0;
-      background: @grey-1;
+      background: @om-bg-raised;
       border-radius: @border-rad-base;
 
       .audio-player {
@@ -271,7 +271,7 @@
         outline: none;
 
         &::-webkit-media-controls-panel {
-          background: @white;
+          background: @om-bg-card;
           border: 1px solid @border-color;
           border-radius: @border-rad-base;
           padding: @padding-xs;
@@ -317,7 +317,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(255, 255, 255, 0.8);
+    background-color: @om-bg-overlay;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -353,7 +353,7 @@
     justify-content: center;
     gap: 12px;
     padding: 0;
-    background-color: @grey-1;
+    background-color: @om-bg-raised;
     border: 1px dashed @border-color;
     border-radius: @border-rad-base;
     cursor: pointer;
@@ -363,7 +363,7 @@
 
     &:hover {
       border-color: @primary-color;
-      background-color: @grey-2;
+      background-color: @om-bg-hover;
     }
 
     .anticon {
@@ -393,7 +393,7 @@
 
   .ant-spin {
     min-height: max-content;
-    background: @grey-1;
+    background: @om-bg-raised;
 
     .ant-spin-dot {
       transform: scale(1.2);
@@ -418,12 +418,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f5f5f5;
+    background: @om-bg-raised;
     border-radius: 4px;
     overflow: hidden;
 
     &.loading-state {
-      background: #fafafa;
+      background: @om-bg-raised;
     }
 
     .loading-overlay {
@@ -435,7 +435,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(255, 255, 255, 0.8);
+      background: @om-bg-overlay;
     }
 
     img {
@@ -453,7 +453,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(255, 255, 255, 0.8);
+    background: @om-bg-overlay;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -472,7 +472,7 @@
     bottom: 0;
     left: 0;
     height: 4px;
-    background: #1890ff;
+    background: @primary-color;
     transition: width 0.3s ease;
   }
 }

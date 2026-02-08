@@ -103,12 +103,12 @@ export const StyledIconButton = styled(
   },
   boxShadow: theme.shadows[1],
   borderColor: theme.palette.allShades.gray[200],
-  backgroundColor: theme.palette.allShades.white,
+  backgroundColor: theme.palette.background.paper,
   border: '1px solid',
   borderRadius: theme.shape.borderRadius,
 
   '&:hover': {
-    backgroundColor: theme.palette.allShades.white,
+    backgroundColor: theme.palette.background.paper,
     borderColor: theme.palette.allShades.blue[700],
     color: theme.palette.allShades.blue[700],
 

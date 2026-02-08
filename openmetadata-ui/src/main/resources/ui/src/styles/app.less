@@ -18,7 +18,7 @@
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: @background-primary;
+  background: @om-bg-body;
   font-feature-settings: normal !important;
 }
 
@@ -298,7 +298,7 @@ a[href].link-text-grey,
 }
 
 .bg-white {
-  background-color: @white;
+  background-color: @om-bg-card;
 }
 
 .bg-transparent {
@@ -306,7 +306,7 @@ a[href].link-text-grey,
 }
 
 .bg-body-main {
-  background: @background-primary;
+  background: @om-bg-body;
 }
 
 .bg-primary-lite {
@@ -322,7 +322,7 @@ a[href].link-text-grey,
 }
 
 .bg-grey {
-  background-color: @grey-9;
+  background-color: @om-bg-body;
 }
 
 .bg-grey-1 {
@@ -439,7 +439,7 @@ a[href].link-text-grey,
   font-weight: 700;
   font-size: 18px;
   line-height: 22px;
-  color: @text-color;
+  color: @om-text;
   text-decoration: none !important;
 }
 
@@ -507,7 +507,7 @@ a[href].link-text-grey,
 // Row highlight animation for direct URL navigation
 @keyframes highlight-fade {
   0% {
-    background-color: fade(@grey-100, 30%);
+    background-color: rgba(245, 245, 245, 0.3);
   }
   100% {
     background-color: transparent;
@@ -649,7 +649,7 @@ a[href].link-text-grey,
   [id*='rc-tabs-'][id*='-panel-lineage'],
   [id*='rc-tabs-'][id*='-panel-erDiagram'],
   [id*='rc-tabs-'][id*='-panel-custom_properties'] {
-    background-color: @grey-9;
+    background-color: @om-bg-body;
     // This will remove extra space below the lineage graph
     height: initial;
   }
@@ -720,7 +720,7 @@ a[href].link-text-grey,
   font-style: normal;
   font-weight: 400;
   line-height: 20px;
-  color: @text-color;
+  color: @om-text;
 }
 
 .diff-normal-new strong {
@@ -863,7 +863,7 @@ a[href].link-text-grey,
 
 .notification-dropdown-list-btn:hover,
 .notification-dropdown-list-btn:focus {
-  background-color: @background-primary;
+  background-color: @om-bg-body;
 }
 
 /* ToastUI Editor style */
@@ -962,7 +962,7 @@ a[href].link-text-grey,
 }
 
 .placeholder-title {
-  color: @text-color;
+  color: @om-text;
   text-align: center;
   font-size: 18px;
   font-style: normal;

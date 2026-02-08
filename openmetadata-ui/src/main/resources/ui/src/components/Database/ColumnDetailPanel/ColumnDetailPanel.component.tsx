@@ -862,7 +862,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
               sx={{
                 height: 6,
                 width: 6,
-                backgroundColor: theme.palette.allShades?.white,
+                backgroundColor: theme.palette.background.paper,
                 padding: 4,
               }}
               onClick={handlePreviousColumn}>
@@ -878,7 +878,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 height: 6,
                 width: 6,
                 padding: 4,
-                backgroundColor: theme.palette.allShades?.white,
+                backgroundColor: theme.palette.background.paper,
               }}
               onClick={handleNextColumn}>
               <ChevronDown

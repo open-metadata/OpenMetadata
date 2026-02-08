@@ -1,0 +1,2894 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+// ============================================================================
+// THEME OVERRIDES
+// Centralized dark mode overrides. Imported LAST in styles/index.ts.
+//
+// All overrides are scoped inside html[data-theme='dark'] so light mode
+// uses Ant Design v4's compiled defaults untouched.
+//
+// Component LESS files use @om-* CSS variable wrappers (from variables.less)
+// which auto-switch via runtime CSS variable injection (injectCSSVariables).
+// This file handles Ant Design internal component overrides that the CSS
+// variable wrappers can't reach.
+// ============================================================================
+
+@import (reference) './variables.less';
+
+// ============================================================================
+// DARK MODE OVERRIDES
+// For states, text colors, borders, gradients, and component-specific
+// treatments that CSS variables alone can't handle.
+// ============================================================================
+
+// Dark mode color palette
+@dark-bg-primary: #0d1117;
+@dark-bg-secondary: #161b22;
+@dark-bg-tertiary: #21262d;
+@dark-bg-elevated: #30363d;
+
+@dark-text-primary: #e6edf3;
+@dark-text-secondary: #8b949e;
+@dark-text-tertiary: #6e7681;
+
+// Border hierarchy: subtle < default < emphasis
+// Most borders should use @dark-border-default (barely visible against panels)
+@dark-border-subtle: #1b2028; // panel separators, dividers (almost invisible)
+@dark-border-default: #21262d; // standard borders (cards, containers)
+@dark-border-emphasis: #30363d; // emphasized borders (inputs, active states)
+
+// Keep old names as aliases for backward compat within this file
+@dark-border-primary: @dark-border-emphasis;
+@dark-border-secondary: @dark-border-default;
+
+@dark-primary-color: #1570ef;
+
+// Semantic status colors (bright, for text/icons on dark backgrounds)
+@dark-red-bright: #f87171;
+@dark-green-bright: #4ade80;
+@dark-amber-bright: #fbbf24;
+@dark-blue-bright: #58a6ff;
+@dark-purple-bright: #a78bfa;
+@dark-green-alt: #3fb950;
+
+// Status base colors (for backgrounds via fade())
+@dark-red-base: #f04438;
+@dark-green-base: #17b26a;
+@dark-amber-base: #f79009;
+@dark-amber-deep: #dc6803;
+@dark-red-deep: #d92d20;
+@dark-green-deep: #23aa66;
+@dark-blue-base: #3ca2f4;
+@dark-purple-base: #7c3aed;
+
+// Inline alert border colors
+@dark-inline-error-border: #cb2531;
+@dark-inline-warning-border: #f59638;
+@dark-inline-success-border: #1d7c4d;
+@dark-inline-info-border: #3062d4;
+@dark-inline-default-bg: #cfd6dd;
+
+// CodeMirror syntax highlighting (GitHub dark theme palette)
+@dark-cm-keyword: #79c0ff;
+@dark-cm-atom: #ff7b72;
+@dark-cm-string: #a5d6ff;
+@dark-cm-string-2: #ffa657;
+@dark-cm-property: #7ee787;
+
+// Link hover
+@dark-link-hover: #79b8ff;
+
+// Selected item contrast color
+@dark-selected-text: #ffffff;
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+
+  // ==========================================================================
+  // 1. BASE
+  // ==========================================================================
+  body {
+    background-color: @dark-bg-primary;
+    color: @dark-text-primary;
+  }
+
+  // ==========================================================================
+  // 2. ANT LAYOUT
+  // ==========================================================================
+  .ant-layout,
+  .ant-layout-content {
+    background: @dark-bg-primary;
+  }
+
+  .ant-layout-header {
+    background: @dark-bg-primary;
+    border-bottom: none;
+  }
+
+  .ant-layout-sider {
+    background: transparent;
+  }
+
+  // ==========================================================================
+  // 3. GLOBAL TEXT COLOR
+  // ==========================================================================
+  .ant-typography,
+  .ant-typography h1,
+  .ant-typography h2,
+  .ant-typography h3,
+  .ant-typography h4,
+  .ant-typography h5,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
+    color: @dark-text-primary;
+  }
+
+  .ant-typography.ant-typography-secondary {
+    color: @dark-text-secondary;
+  }
+
+  // ==========================================================================
+  // 4. CARDS
+  // ==========================================================================
+  .ant-card {
+    background-color: @dark-bg-secondary !important;
+    border-color: @dark-border-subtle;
+    color: @dark-text-primary;
+  }
+
+  .ant-card-head {
+    background-color: @dark-bg-secondary !important;
+    border-bottom-color: @dark-border-subtle;
+    color: @dark-text-primary;
+  }
+
+  .ant-card-body {
+    background-color: @dark-bg-secondary !important;
+    color: @dark-text-primary;
+  }
+
+  // Structural wrapper cards — transparent so page background shows through.
+  // The explore center area uses the deepest background (#0d1117) so search
+  // result cards (#161b22) visually pop.
+  .explore-main-card,
+  .explore-main-card > .ant-card-body,
+  .card-padding-0.m-b-box,
+  .card-padding-0.m-b-box > .ant-card-body {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  // Explore left panel: elevated surface with right border for separation
+  .reflex-card {
+    background-color: @dark-bg-secondary !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .reflex-card > .ant-card-head {
+    background-color: @dark-bg-secondary !important;
+    border-bottom-color: @dark-border-subtle !important;
+  }
+
+  .reflex-card > .ant-card-body {
+    background-color: @dark-bg-secondary !important;
+  }
+
+  .ant-card.new-header-border-card {
+    border-color: @dark-border-default;
+
+    .ant-card-head {
+      background: @dark-bg-tertiary;
+    }
+  }
+
+  // ==========================================================================
+  // 5. TABLES
+  // ==========================================================================
+  .ant-table {
+    background-color: @dark-bg-secondary;
+    color: @dark-text-primary;
+  }
+
+  .ant-table-thead > tr > th,
+  .ant-table-thead > tr > td {
+    background-color: @dark-bg-tertiary;
+    color: @dark-text-secondary;
+    border-bottom-color: @dark-border-default;
+  }
+
+  .ant-table-tbody > tr > td {
+    background-color: @dark-bg-secondary;
+    border-bottom-color: @dark-border-subtle;
+    color: @dark-text-primary;
+  }
+
+  .ant-table-tbody > tr:hover > td,
+  .ant-table-tbody > tr.ant-table-row:hover > td {
+    background-color: @dark-bg-tertiary !important;
+  }
+
+  .ant-table-tbody > tr > td.ant-table-cell-fix-left,
+  .ant-table-tbody > tr > td.ant-table-cell-fix-right {
+    background-color: @dark-bg-secondary !important;
+  }
+
+  .ant-table-thead > tr > th.ant-table-cell-fix-left,
+  .ant-table-thead > tr > th.ant-table-cell-fix-right {
+    background-color: @dark-bg-tertiary !important;
+  }
+
+  .ant-table-thead > tr > th.ant-table-column-sort {
+    background-color: @dark-bg-tertiary !important;
+  }
+
+  .ant-table-tbody > tr:hover > td.ant-table-cell-fix-left,
+  .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right,
+  .ant-table-tbody > tr.ant-table-row:hover > td.ant-table-cell-fix-left,
+  .ant-table-tbody > tr.ant-table-row:hover > td.ant-table-cell-fix-right {
+    background-color: @dark-bg-tertiary !important;
+  }
+
+  .ant-table-filter-trigger-container {
+    background-color: transparent;
+  }
+
+  .ant-table-placeholder {
+    .ant-table-cell {
+      background-color: @dark-bg-secondary !important;
+    }
+  }
+
+  .ant-empty-description {
+    color: @dark-text-tertiary;
+  }
+
+  // ==========================================================================
+  // 6. FORMS & INPUTS
+  // ==========================================================================
+  .ant-input,
+  .ant-input-affix-wrapper,
+  .ant-select-selector,
+  .ant-picker,
+  .ant-input-number,
+  .ant-input-textarea,
+  .ant-cascader-picker,
+  .ant-mentions {
+    background-color: @dark-bg-tertiary !important;
+    border-color: @dark-border-emphasis !important;
+    color: @dark-text-primary;
+  }
+
+  .ant-input-affix-wrapper > input.ant-input {
+    background-color: transparent !important;
+  }
+
+  .ant-select-selection-placeholder,
+  .ant-input::placeholder,
+  .ant-input-number-input::placeholder {
+    color: @dark-text-tertiary !important;
+  }
+
+  .ant-select-selection-item {
+    color: @dark-text-primary;
+  }
+
+  .ant-form-item-label > label {
+    color: @dark-text-primary;
+  }
+
+  .ant-form-item-explain,
+  .ant-form-item-extra {
+    color: @dark-text-tertiary;
+  }
+
+  .ant-radio-wrapper,
+  .ant-checkbox-wrapper {
+    color: @dark-text-primary;
+  }
+
+  .ant-select-multiple .ant-select-selection-item {
+    background-color: @dark-bg-elevated;
+    border-color: @dark-border-primary;
+    color: @dark-text-primary;
+  }
+
+  .form-container {
+    box-shadow: none;
+  }
+
+  // RJSF forms
+  .rjsf .form-control {
+    color: @dark-text-primary;
+  }
+
+  .rjsf .field-description {
+    color: @dark-text-tertiary;
+  }
+
+  .rjsf .control-label {
+    color: @dark-text-primary;
+  }
+
+  // ==========================================================================
+  // 7. DROPDOWNS & OVERLAYS
+  // ==========================================================================
+  .ant-dropdown-menu,
+  .ant-select-dropdown,
+  .ant-picker-dropdown,
+  .ant-picker-panel-container {
+    background-color: @dark-bg-tertiary !important;
+  }
+
+  .ant-popover-inner {
+    background-color: @dark-bg-tertiary !important;
+  }
+
+  .ant-dropdown-menu-item,
+  .ant-select-item {
+    color: @dark-text-primary !important;
+
+    &:hover {
+      background-color: @dark-bg-elevated !important;
+    }
+  }
+
+  .ant-select-item-option-selected {
+    background-color: @dark-bg-elevated !important;
+  }
+
+  .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+    background-color: @dark-bg-elevated !important;
+  }
+
+  textarea,
+  textarea.ant-input {
+    background-color: @dark-bg-tertiary !important;
+    border-color: @dark-border-emphasis !important;
+    color: @dark-text-primary !important;
+  }
+
+  .ant-popover-inner-content {
+    color: @dark-text-primary;
+  }
+
+  .ant-popover-title {
+    color: @dark-text-primary;
+    border-bottom-color: @dark-border-primary;
+  }
+
+  // Picker panels
+  .ant-picker-cell {
+    color: @dark-text-tertiary;
+  }
+
+  .ant-picker-cell-in-view {
+    color: @dark-text-primary;
+  }
+
+  .ant-picker-header,
+  .ant-picker-footer {
+    color: @dark-text-primary;
+    border-color: @dark-border-primary;
+  }
+
+  .ant-picker-content th {
+    color: @dark-text-secondary;
+  }
+
+  // ==========================================================================
+  // 8. MODALS
+  // ==========================================================================
+  .ant-modal-content {
+    background-color: @dark-bg-secondary;
+    color: @dark-text-primary;
+  }
+
+  .ant-modal-header {
+    background-color: @dark-bg-secondary;
+    border-bottom-color: @dark-border-subtle;
+  }
+
+  .ant-modal-title {
+    color: @dark-text-primary;
+  }
+
+  .ant-modal-close-x {
+    color: @dark-text-secondary;
+  }
+
+  .ant-modal-footer {
+    border-top-color: @dark-border-subtle;
+  }
+
+  .ant-modal-confirm-body .ant-modal-confirm-content {
+    color: @dark-text-secondary;
+  }
+
+  // ==========================================================================
+  // 9. TABS
+  // ==========================================================================
+  .ant-tabs-nav {
+    background-color: transparent;
+
+    &::before {
+      border-bottom-color: @dark-border-subtle;
+    }
+  }
+
+  .ant-tabs-tab {
+    color: @dark-text-secondary !important;
+
+    &:hover {
+      color: @dark-text-primary !important;
+    }
+  }
+
+  .ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: @dark-primary-color !important;
+  }
+
+  // Tab ink bar (active underline)
+  .ant-tabs-ink-bar {
+    background: @dark-primary-color;
+  }
+
+  // New tab style (tabs-new)
+  .ant-tabs.tabs-new {
+    .ant-tabs-nav {
+      background: @dark-bg-secondary;
+      border-color: @dark-border-default;
+    }
+
+    .ant-tabs-tabpane {
+      background-color: @dark-bg-secondary;
+    }
+  }
+
+  .glossary-details,
+  .entity-details-page-tabs {
+    .ant-tabs.tabs-new {
+      .ant-tabs-tabpane {
+        background-color: @dark-bg-primary;
+      }
+    }
+  }
+
+  // Entity detail page tab panels (lineage, custom_properties backgrounds)
+  .entity-details-page-tabs {
+    [id*='rc-tabs-'][id*='-panel-contract'],
+    [id*='rc-tabs-'][id*='-panel-lineage'],
+    [id*='rc-tabs-'][id*='-panel-erDiagram'],
+    [id*='rc-tabs-'][id*='-panel-custom_properties'] {
+      background-color: @dark-bg-primary;
+    }
+  }
+
+  // ==========================================================================
+  // 10. BUTTONS
+  // ==========================================================================
+  .ant-btn-primary {
+    background: @dark-primary-color;
+    border-color: @dark-primary-color;
+    color: @dark-selected-text;
+
+    &:hover,
+    &:focus {
+      background: darken(@dark-primary-color, 8%);
+      border-color: darken(@dark-primary-color, 8%);
+      color: @dark-selected-text;
+    }
+  }
+
+  .ant-btn-default {
+    background-color: @dark-bg-tertiary;
+    border-color: @dark-border-primary;
+    color: @dark-text-primary;
+
+    &:hover,
+    &:focus {
+      background-color: @dark-bg-elevated;
+      border-color: @dark-border-primary;
+      color: @dark-text-primary;
+    }
+  }
+
+  .ant-btn-text {
+    color: @dark-text-secondary;
+
+    &:hover {
+      background-color: @dark-bg-tertiary;
+      color: @dark-text-primary;
+    }
+  }
+
+  .ant-btn.ant-btn-icon-only.bordered {
+    background-color: @dark-bg-tertiary;
+    border-color: @dark-border-primary;
+
+    svg {
+      color: @dark-text-secondary;
+    }
+  }
+
+  .ant-btn-group.spaced .ant-btn-default {
+    background-color: @dark-bg-tertiary;
+  }
+
+  .remove-button-background-hover.ant-btn-text:hover {
+    background-color: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 11. TAGS, BADGES
+  // ==========================================================================
+  .ant-tag {
+    background-color: @dark-bg-tertiary;
+    border-color: @dark-border-primary;
+    color: @dark-text-secondary;
+  }
+
+  .ant-badge-count {
+    color: @dark-text-primary;
+  }
+
+  // ==========================================================================
+  // 12. DIVIDERS - use subtle borders for clean look
+  // ==========================================================================
+  .ant-divider {
+    border-color: @dark-border-subtle;
+  }
+
+  // ==========================================================================
+  // 13. TREE
+  // ==========================================================================
+  .ant-tree {
+    background-color: transparent;
+    color: @dark-text-primary;
+  }
+
+  .ant-tree-node-content-wrapper:hover {
+    background-color: @dark-bg-tertiary;
+  }
+
+  .ant-tree-node-selected,
+  .ant-tree-node-content-wrapper.ant-tree-node-selected {
+    background-color: fade(@dark-primary-color, 18%) !important;
+    color: @dark-primary-color;
+  }
+
+  // ==========================================================================
+  // 14. DRAWER
+  // ==========================================================================
+  .ant-drawer-content {
+    background-color: @dark-bg-secondary;
+  }
+
+  .ant-drawer-header {
+    background-color: @dark-bg-secondary;
+    border-bottom-color: @dark-border-subtle;
+  }
+
+  .ant-drawer-title {
+    color: @dark-text-primary;
+  }
+
+  .ant-drawer-body {
+    color: @dark-text-primary;
+  }
+
+  // ==========================================================================
+  // 15. COLLAPSE / ACCORDION
+  // ==========================================================================
+  .ant-collapse {
+    background-color: @dark-bg-secondary;
+    border-color: @dark-border-default;
+  }
+
+  .ant-collapse-header {
+    color: @dark-text-primary !important;
+    background-color: @dark-bg-tertiary;
+  }
+
+  .ant-collapse-content {
+    background-color: @dark-bg-secondary;
+    border-top-color: @dark-border-subtle;
+    color: @dark-text-primary;
+  }
+
+  .ant-collapse-item {
+    border-bottom-color: @dark-border-subtle;
+  }
+
+  // ==========================================================================
+  // 16. ALERTS
+  // ==========================================================================
+  .ant-alert {
+    border-color: @dark-border-primary;
+    color: @dark-text-primary;
+  }
+
+  .ant-alert-info {
+    background-color: fade(@dark-primary-color, 15%);
+  }
+
+  .ant-alert-success {
+    background-color: fade(@dark-green-base, 15%);
+  }
+
+  .ant-alert-warning {
+    background-color: fade(@dark-amber-base, 15%);
+  }
+
+  .ant-alert-error {
+    background-color: fade(@dark-red-base, 15%);
+  }
+
+  .ant-alert-message {
+    color: @dark-text-primary;
+  }
+
+  .ant-alert-description {
+    color: @dark-text-secondary;
+  }
+
+  // Inline alert overrides (custom alert classes from InlineAlert component)
+  .inline-error-container {
+    &.error-alert {
+      background-color: fade(@dark-inline-error-border, 15%);
+      border-color: @dark-inline-error-border;
+    }
+
+    &.warning-alert {
+      background-color: fade(@dark-inline-warning-border, 15%);
+      border-color: @dark-inline-warning-border;
+    }
+
+    &.success-alert {
+      background-color: fade(@dark-inline-success-border, 15%);
+      border-color: @dark-inline-success-border;
+    }
+
+    &.info-alert {
+      background-color: fade(@dark-inline-info-border, 15%);
+      border-color: @dark-inline-info-border;
+    }
+
+    &.default-alert {
+      background-color: fade(@dark-inline-default-bg, 10%);
+      border-color: @dark-border-primary;
+    }
+
+    .ant-alert-description {
+      color: @dark-text-primary;
+    }
+
+    // Preserve icon colors inside inline alerts
+    .alert-icon {
+      &.error-icon {
+        color: @dark-red-bright;
+      }
+      &.warning-icon {
+        color: @dark-amber-bright;
+      }
+      &.success-icon {
+        color: @dark-green-bright;
+      }
+      &.info-icon {
+        color: @dark-blue-bright;
+      }
+    }
+
+    // Hide Ant Design's default alert icon - InlineAlert renders its own custom icons
+    .ant-alert-icon {
+      display: none !important;
+    }
+  }
+
+  // AlertBar component overrides (used by contract page, toast alerts, etc.)
+  .alert-container {
+    color: @dark-text-primary;
+
+    .ant-alert-description {
+      color: @dark-text-primary;
+    }
+
+    .alert-close-icon {
+      color: @dark-text-secondary;
+    }
+
+    &.error {
+      background-color: fade(@dark-red-base, 15%);
+      border-color: @dark-red-bright;
+
+      #alert-icon {
+        background-color: fade(@dark-red-base, 25%);
+        border-color: fade(@dark-red-base, 15%);
+        color: @dark-red-bright;
+      }
+    }
+
+    &.warning {
+      background-color: fade(@dark-amber-base, 15%);
+      border-color: @dark-amber-bright;
+
+      #alert-icon {
+        background-color: fade(@dark-amber-base, 25%);
+        border-color: fade(@dark-amber-base, 15%);
+        color: @dark-amber-bright;
+      }
+    }
+
+    &.success {
+      background-color: fade(@dark-green-base, 15%);
+      border-color: @dark-green-bright;
+
+      .ant-alert-icon svg {
+        > rect {
+          fill: fade(@dark-green-deep, 25%);
+          stroke: fade(@dark-green-deep, 40%);
+        }
+        path {
+          stroke: @dark-green-bright;
+        }
+      }
+    }
+
+    &.info {
+      background-color: fade(@dark-primary-color, 15%);
+      border-color: @dark-blue-bright;
+
+      #alert-icon {
+        background-color: fade(@dark-primary-color, 25%);
+        border-color: fade(@dark-primary-color, 15%);
+        color: @dark-blue-bright;
+      }
+    }
+
+    &.grey-info {
+      background-color: @dark-bg-tertiary;
+      border-color: @dark-border-default;
+
+      #alert-icon {
+        background-color: @dark-bg-secondary;
+        border-color: @dark-border-default;
+        color: @dark-text-secondary;
+        box-shadow: none;
+      }
+    }
+  }
+
+  // Contract approved stamp - PNG has white background that shows in dark mode
+  .contract-header-container .contract-status-img {
+    border-radius: 50%;
+  }
+
+  // ==========================================================================
+  // 17. TOOLTIP
+  // ==========================================================================
+  .ant-tooltip-inner {
+    background-color: @dark-bg-elevated;
+    color: @dark-text-primary;
+  }
+
+  // ==========================================================================
+  // 18. MENU
+  // ==========================================================================
+  .ant-menu {
+    background-color: transparent;
+    color: @dark-text-primary;
+  }
+
+  // Collapsed sidebar popup submenu needs a solid background
+  .ant-menu-submenu-popup,
+  .ant-menu-submenu-popup > .ant-menu {
+    background-color: @dark-bg-secondary !important;
+    border: 1px solid @dark-border-default;
+    border-radius: 8px;
+    box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  .ant-menu-item:hover,
+  .ant-menu-item-active {
+    background-color: @dark-bg-tertiary;
+  }
+
+  // Must match Ant Design's specificity: .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected
+  .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected,
+  .ant-menu-item-selected {
+    background-color: fade(@dark-primary-color, 15%);
+    color: @dark-primary-color;
+
+    &::after {
+      border-color: @dark-primary-color;
+    }
+
+    svg {
+      color: @dark-primary-color;
+    }
+
+    .ant-menu-title-content {
+      color: @dark-primary-color;
+    }
+  }
+
+  .ant-menu-item-group-title {
+    color: @dark-text-tertiary;
+  }
+
+  // ==========================================================================
+  // 19. PAGINATION
+  // ==========================================================================
+  .ant-pagination-item {
+    background-color: @dark-bg-tertiary;
+    border-color: @dark-border-primary;
+
+    a {
+      color: @dark-text-primary !important;
+    }
+  }
+
+  .ant-pagination-item-active {
+    border-color: @dark-primary-color;
+  }
+
+  .ant-pagination-prev .ant-pagination-item-link,
+  .ant-pagination-next .ant-pagination-item-link {
+    background-color: @dark-bg-tertiary;
+    border-color: @dark-border-primary;
+    color: @dark-text-primary;
+  }
+
+  .ant-pagination-jump-prev,
+  .ant-pagination-jump-next {
+    .ant-pagination-item-ellipsis {
+      color: @dark-text-secondary !important;
+    }
+    .ant-pagination-item-link-icon {
+      color: @dark-primary-color !important;
+    }
+  }
+
+  // ==========================================================================
+  // 20. STEPS
+  // ==========================================================================
+  .ant-steps-item-title {
+    color: @dark-text-primary !important;
+  }
+
+  .ant-steps-item-description {
+    color: @dark-text-tertiary !important;
+  }
+
+  .ant-steps-item-tail::after {
+    background-color: @dark-border-primary;
+  }
+
+  // ==========================================================================
+  // 21. SWITCH
+  // ==========================================================================
+  .ant-switch {
+    background-color: @dark-bg-elevated;
+  }
+
+  .ant-switch-checked {
+    background: @dark-bg-tertiary;
+    border-color: @dark-primary-color;
+  }
+
+  // ==========================================================================
+  // 22. SEGMENTED
+  // ==========================================================================
+  .ant-segmented {
+    background-color: @dark-bg-tertiary;
+    color: @dark-text-primary;
+  }
+
+  .ant-segmented-item-selected {
+    background-color: @dark-bg-elevated;
+    color: @dark-text-primary;
+  }
+
+  // ==========================================================================
+  // 23. SCROLLBAR - use overlay scrollbars to match light mode auto-hide
+  // ==========================================================================
+  * {
+    scrollbar-color: @dark-bg-elevated transparent;
+    scrollbar-width: thin;
+  }
+
+  // ==========================================================================
+  // 24. SKELETON
+  // ==========================================================================
+  .ant-skeleton-content .ant-skeleton-title,
+  .ant-skeleton-content .ant-skeleton-paragraph > li {
+    background: linear-gradient(
+      90deg,
+      @dark-bg-tertiary 25%,
+      @dark-bg-elevated 50%,
+      @dark-bg-tertiary 75%
+    ) !important;
+    background-size: 200% 100%;
+  }
+
+  .ant-skeleton-avatar,
+  .ant-skeleton-image {
+    background-color: @dark-bg-tertiary;
+  }
+
+  // ==========================================================================
+  // 25. LIST
+  // ==========================================================================
+  .ant-list-item {
+    border-bottom-color: @dark-border-subtle;
+    color: @dark-text-primary;
+  }
+
+  // ==========================================================================
+  // 26. BREADCRUMB
+  // ==========================================================================
+  .ant-breadcrumb-link,
+  .ant-breadcrumb-separator,
+  .ant-breadcrumb a {
+    color: @dark-text-secondary !important;
+  }
+
+  // ==========================================================================
+  // 27. NOTIFICATION / MESSAGE
+  // ==========================================================================
+  .ant-notification-notice {
+    background-color: @dark-bg-secondary;
+    color: @dark-text-primary;
+  }
+
+  .ant-message-notice-content {
+    background-color: @dark-bg-secondary;
+    color: @dark-text-primary;
+  }
+
+  // ==========================================================================
+  // 28. TIMELINE
+  // ==========================================================================
+  .ant-timeline-item-content {
+    color: @dark-text-primary;
+  }
+
+  .ant-timeline-item-tail {
+    border-color: @dark-border-primary;
+  }
+
+  // ==========================================================================
+  // 29. DESCRIPTIONS
+  // ==========================================================================
+  .ant-descriptions-bordered .ant-descriptions-item-label {
+    background-color: @dark-bg-tertiary;
+    color: @dark-text-secondary;
+  }
+
+  .ant-descriptions-bordered .ant-descriptions-item-content {
+    color: @dark-text-primary;
+  }
+
+  .ant-descriptions-bordered .ant-descriptions-view {
+    border-color: @dark-border-primary;
+  }
+
+  .ant-descriptions-bordered .ant-descriptions-row {
+    border-bottom-color: @dark-border-primary;
+  }
+
+  // ==========================================================================
+  // 30. UTILITY CLASS OVERRIDES (from app.less)
+  // ==========================================================================
+  // .bg-white, .bg-grey, .bg-body-main now use @om-* CSS variables in app.less
+  // and auto-switch. Only override classes that DON'T use CSS variables.
+
+  .background-white {
+    background-color: @dark-bg-secondary !important;
+  }
+
+  .bg-grey-1 {
+    background-color: @dark-bg-tertiary !important;
+  }
+
+  .bg-grey-2 {
+    background-color: @dark-bg-tertiary !important;
+  }
+
+  .bg-grey-4 {
+    background-color: @dark-bg-elevated !important;
+  }
+
+  .bg-grey-5 {
+    background-color: @dark-bg-elevated !important;
+  }
+
+  .bg-grey-6 {
+    background-color: @dark-bg-elevated !important;
+  }
+
+  .bg-primary {
+    background-color: @dark-primary-color !important;
+  }
+
+  // Error placeholders should blend with page, not show as a card
+  [data-testid='search-error-placeholder'],
+  [data-testid^='create-error-placeholder'],
+  [data-testid^='assign-error-placeholder'],
+  [data-testid='permission-error-placeholder'] {
+    background-color: transparent !important;
+    border-color: @dark-border-default !important;
+  }
+
+  .bg-primary-lite,
+  .bg-primary-hover-lite {
+    background-color: fade(@dark-primary-color, 10%) !important;
+  }
+
+  // Border utility classes - use subtle borders for clean look
+  .global-border,
+  .border {
+    border-color: @dark-border-default;
+  }
+
+  .border-main,
+  .border-gray {
+    border-color: @dark-border-default !important;
+  }
+
+  .border-light-gray {
+    border-color: @dark-border-subtle !important;
+  }
+
+  // Shadow overrides
+  .shadow-custom,
+  .card-box-shadow,
+  .shadow-base,
+  .card-shadow {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  // ==========================================================================
+  // 31. TEXT COLOR CLASSES
+  // ==========================================================================
+  .entity-header-display-name {
+    color: @dark-text-primary;
+  }
+
+  .right-panel-label {
+    color: @dark-text-secondary;
+  }
+
+  .placeholder-title {
+    color: @dark-text-primary;
+  }
+
+  .placeholder-text {
+    color: @dark-text-tertiary;
+  }
+
+  .common-left-panel-card-heading {
+    color: @dark-text-tertiary;
+  }
+
+  .description-text {
+    color: @dark-text-primary;
+  }
+
+  .diff-normal-new {
+    color: @dark-text-primary;
+  }
+
+  .page-search-bar label {
+    color: @dark-text-secondary;
+  }
+
+  .breadcrumb-item .link-title {
+    color: @dark-text-secondary !important;
+  }
+
+  .link-text-grey {
+    color: @dark-text-primary;
+
+    &:hover,
+    &:focus {
+      color: @dark-text-primary;
+    }
+  }
+
+  // ==========================================================================
+  // 32. LINKS
+  // ==========================================================================
+  a:not(.ant-btn):not(.ant-tabs-tab-btn):not(.entity-title-link) {
+    color: @dark-primary-color;
+
+    &:hover {
+      color: @dark-link-hover;
+    }
+  }
+
+  // ==========================================================================
+  // 33. LEFT SIDEBAR
+  // ==========================================================================
+  .left-sidebar-menu {
+    .ant-menu-item {
+      color: @dark-text-primary;
+
+      &.ant-menu-item-selected {
+        background-color: @dark-primary-color !important;
+        color: @dark-selected-text !important;
+
+        * {
+          color: @dark-selected-text !important;
+        }
+
+        svg {
+          color: @dark-selected-text !important;
+          stroke: @dark-selected-text !important;
+          fill: transparent !important;
+
+          path,
+          circle,
+          rect,
+          line,
+          polyline,
+          polygon {
+            stroke: @dark-selected-text !important;
+          }
+        }
+      }
+
+      &.ant-menu-item-active:not(.ant-menu-item-selected) {
+        background: fade(@dark-primary-color, 10%);
+
+        .anticon,
+        svg {
+          color: @dark-primary-color;
+          stroke: @dark-primary-color;
+        }
+
+        .left-panel-label {
+          color: @dark-primary-color;
+        }
+      }
+    }
+
+    .ant-menu-item:not(.ant-menu-item-selected) {
+      .anticon,
+      svg {
+        color: @dark-text-primary;
+        stroke: @dark-text-primary;
+      }
+    }
+
+    .ant-menu-submenu-title {
+      color: @dark-text-primary;
+
+      .anticon,
+      svg {
+        color: @dark-text-primary;
+        stroke: @dark-text-primary;
+      }
+    }
+
+    .ant-menu-submenu.ant-menu-submenu-open {
+      background-color: @dark-bg-secondary;
+      border-color: fade(@dark-primary-color, 30%);
+
+      .ant-menu-submenu-title {
+        background-color: @dark-primary-color;
+        color: @dark-selected-text;
+
+        .left-panel-label {
+          color: @dark-selected-text;
+        }
+
+        .ant-menu-submenu-arrow {
+          color: @dark-selected-text;
+        }
+      }
+
+      .ant-menu.ant-menu-sub.ant-menu-inline {
+        background-color: @dark-bg-secondary;
+      }
+    }
+
+    .ant-menu-submenu.ant-menu-submenu-selected:not(.ant-menu-submenu-open) {
+      .ant-menu-submenu-title {
+        background: @dark-primary-color;
+        color: @dark-selected-text;
+
+        .ant-menu-submenu-arrow {
+          color: @dark-selected-text;
+        }
+      }
+    }
+  }
+
+  // ==========================================================================
+  // 34. DOMAIN BUTTON (Navbar)
+  // ==========================================================================
+  .ant-btn.domain-nav-btn {
+    background-color: transparent;
+    border-color: @dark-border-primary;
+    color: @dark-text-primary;
+
+    &:hover,
+    &:focus {
+      background-color: @dark-bg-tertiary;
+      border-color: @dark-border-primary;
+    }
+
+    &.domain-active {
+      background-color: fade(@dark-primary-color, 15%);
+      border-color: @dark-primary-color;
+      color: @dark-primary-color;
+    }
+  }
+
+  // ==========================================================================
+  // 35. SEARCH BAR (Navbar)
+  // ==========================================================================
+  .search-container {
+    background-color: @dark-bg-secondary;
+    border-color: @dark-border-default;
+
+    input,
+    .ant-input,
+    .ant-input-affix-wrapper {
+      background-color: transparent !important;
+      color: @dark-text-primary !important;
+      border-color: transparent !important;
+    }
+
+    .ant-select-selector {
+      background-color: transparent !important;
+      border-color: transparent !important;
+    }
+
+    .nav-search-button {
+      background-color: transparent !important;
+      border-color: @dark-border-primary !important;
+    }
+  }
+
+  // Global search overlay
+  .global-search-overlay .ant-popover-inner-content {
+    background-color: @dark-bg-tertiary;
+  }
+
+  // ==========================================================================
+  // 36. SETTINGS MENUS
+  // ==========================================================================
+  .custom-menu.ant-menu-root.ant-menu-inline {
+    background-color: @dark-bg-secondary;
+
+    .ant-menu-item-group-title {
+      color: @dark-text-tertiary;
+    }
+
+    .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected {
+      border-right: none;
+    }
+  }
+
+  .custom-menu-v1.ant-menu-root.ant-menu-inline {
+    background-color: @dark-bg-secondary;
+    .ant-menu-item:not(.ant-menu-item-selected, .ant-menu-item-active) {
+      svg {
+        color: @dark-text-tertiary;
+      }
+      .ant-menu-title-content {
+        color: @dark-text-secondary;
+      }
+    }
+
+    .ant-menu-item-selected,
+    .ant-menu-item-active {
+      background-color: @dark-bg-tertiary;
+      border-color: @dark-primary-color;
+      box-shadow: none;
+
+      svg {
+        color: @dark-primary-color;
+      }
+
+      .ant-menu-title-content {
+        color: @dark-primary-color;
+      }
+    }
+  }
+
+  // ==========================================================================
+  // 37. CODE BLOCKS
+  // ==========================================================================
+  pre,
+  code,
+  .code-block {
+    background-color: @dark-bg-tertiary;
+    border-color: @dark-border-primary;
+    color: @dark-text-primary;
+  }
+
+  .CodeMirror {
+    background-color: @dark-bg-tertiary;
+    color: @dark-text-primary;
+
+    .CodeMirror-gutters {
+      background-color: @dark-bg-secondary;
+      border-color: @dark-border-primary;
+    }
+
+    .CodeMirror-cursor {
+      border-color: @dark-text-primary;
+    }
+
+    .CodeMirror-activeline-background {
+      background-color: @dark-bg-elevated;
+    }
+
+    .CodeMirror-selected,
+    .CodeMirror-focused .CodeMirror-selected {
+      background-color: @dark-bg-elevated;
+    }
+
+    .CodeMirror-linenumber {
+      color: @dark-text-tertiary;
+    }
+
+    // YAML / code syntax token colors
+    .cm-keyword {
+      color: @dark-cm-keyword;
+    }
+    .cm-atom {
+      color: @dark-cm-atom;
+    }
+    .cm-number {
+      color: @dark-cm-keyword;
+    }
+    .cm-string {
+      color: @dark-cm-string;
+    }
+    .cm-string-2 {
+      color: @dark-cm-string-2;
+    }
+    .cm-variable,
+    .cm-variable-2 {
+      color: @dark-text-primary;
+    }
+    .cm-property {
+      color: @dark-cm-property;
+    }
+    .cm-comment {
+      color: @dark-text-tertiary;
+    }
+  }
+
+  // Contract action dropdown menu icons
+  .contract-action-dropdown {
+    .ant-dropdown-menu {
+      .ant-dropdown-menu-item {
+        .contract-action-dropdown-item {
+          color: @dark-text-primary;
+          .anticon {
+            color: @dark-text-primary;
+          }
+          &.contract-action-dropdown-delete-item {
+            color: @dark-red-bright;
+            .anticon {
+              color: @dark-red-bright;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Contract schema pagination
+  .ant-pagination.schema-custom-pagination {
+    .ant-pagination-prev,
+    .ant-pagination-next {
+      background: @dark-bg-tertiary;
+      box-shadow: none;
+      border: 1px solid @dark-border-default;
+      .anticon {
+        color: @dark-text-secondary;
+      }
+      &:hover {
+        background: @dark-bg-elevated;
+      }
+    }
+    .ant-pagination-item {
+      background: @dark-bg-tertiary;
+      border: 1px solid @dark-border-default;
+      a {
+        color: @dark-text-secondary;
+      }
+    }
+    .ant-pagination-item-active {
+      background: @dark-primary-color;
+      border-color: @dark-primary-color;
+      a {
+        color: @dark-selected-text;
+      }
+    }
+  }
+
+  // ==========================================================================
+  // 38. EXPLORE SEARCH CARD
+  // ==========================================================================
+  .explore-search-card {
+    background-color: @dark-bg-secondary !important;
+    border-color: @dark-border-default !important;
+
+    &.highlight-card {
+      background: fade(@dark-primary-color, 8%) !important;
+      border-left: 4px solid @dark-primary-color !important;
+      border-color: @dark-border-subtle !important;
+      border-left-color: @dark-primary-color !important;
+    }
+
+    .entity-summary-details .no-owner {
+      color: @dark-text-tertiary;
+    }
+  }
+
+  .asset-info-card.explore-search-card {
+    background-color: @dark-bg-tertiary !important;
+  }
+
+  // ==========================================================================
+  // 39. ENTITY SUMMARY PANEL
+  // ==========================================================================
+  .entity-summary-panel-container,
+  .column-detail-panel-container {
+    background: @dark-bg-secondary !important;
+
+    &.explore,
+    &.lineage,
+    &.glossary-term-assets-tab {
+      background: @dark-bg-primary !important;
+    }
+
+    .summary-panel-container {
+      border-color: @dark-border-subtle !important;
+
+      .ant-typography {
+        color: @dark-text-primary;
+      }
+
+      .ant-typography.ant-typography-secondary {
+        color: @dark-text-secondary;
+      }
+    }
+
+    .content-area {
+      background: @dark-bg-secondary !important;
+    }
+
+    .title-section {
+      background-color: @dark-bg-secondary !important;
+    }
+
+    .title-container {
+      background-color: @dark-bg-tertiary !important;
+    }
+
+    .summary-panel-card {
+      background-color: @dark-bg-tertiary !important;
+      border-color: @dark-border-default;
+    }
+
+    .ant-divider {
+      border-color: @dark-border-subtle;
+    }
+
+    .custom-properties-list {
+      .custom-property-card-right-panel {
+        background-image: linear-gradient(
+          to right,
+          @dark-border-default 66%,
+          transparent 0%
+        );
+      }
+    }
+
+    .drawer-summary-panel-container {
+      .data-quality-tab-container {
+        .data-quality-tabs {
+          .ant-tabs-tabpane {
+            background-color: @dark-bg-secondary;
+          }
+        }
+      }
+    }
+  }
+
+  // ==========================================================================
+  // 40. ENTITY TAG RIGHT PANEL
+  // ==========================================================================
+  .entity-tag-right-panel-container {
+    border-left-color: @dark-border-subtle;
+  }
+
+  // ==========================================================================
+  // 41. ENTITY DETAILS CONTAINER
+  // ==========================================================================
+  .entity-details-container {
+    color: @dark-text-primary;
+  }
+
+  // ==========================================================================
+  // 42. ACTIVITY FEED
+  // ==========================================================================
+  .activity-feed-card-text {
+    color: @dark-text-primary;
+  }
+
+  .feed-message {
+    color: @dark-text-primary;
+  }
+
+  // ==========================================================================
+  // 43. BLOCK EDITOR
+  // ==========================================================================
+  .block-editor-wrapper {
+    background-color: transparent;
+    border-color: transparent;
+
+    // Only apply dark backgrounds when in actual editing mode (with toolbar)
+    &.block-editor-wrapper--bar-menu,
+    &.block-editor-wrapper--bubble-menu {
+      background-color: @dark-bg-secondary;
+      border-color: @dark-border-primary;
+    }
+
+    .bar-menu-wrapper {
+      background-color: @dark-bg-tertiary;
+      border-color: @dark-border-primary;
+    }
+  }
+
+  .om-block-editor {
+    color: @dark-text-primary;
+  }
+
+  // Only add background to editor when it's in an actual editable context
+  .block-editor-wrapper--bar-menu .om-block-editor,
+  .block-editor-wrapper--bubble-menu .om-block-editor {
+    background-color: @dark-bg-secondary;
+  }
+
+  .ProseMirror {
+    color: @dark-text-primary;
+
+    .placeholder {
+      color: @dark-text-tertiary !important;
+    }
+  }
+
+  .block-menu {
+    background-color: @dark-bg-tertiary;
+    border-color: @dark-border-primary;
+  }
+
+  // ==========================================================================
+  // 44. ENTITY LINEAGE
+  // ==========================================================================
+  .react-flow__node {
+    .lineage-node {
+      background-color: @dark-bg-secondary;
+      border-color: @dark-border-primary;
+      color: @dark-text-primary;
+    }
+  }
+
+  .lineage-node-container,
+  .custom-node-header {
+    background-color: @dark-bg-secondary;
+    color: @dark-text-primary;
+  }
+
+  .entity-lineage-node-card {
+    background-color: @dark-bg-secondary !important;
+    border-color: @dark-border-primary;
+  }
+
+  .lineage-control-panel {
+    background-color: @dark-bg-secondary;
+    border-color: @dark-border-primary;
+  }
+
+  // Custom lineage nodes
+  .custom-node-container {
+    background-color: @dark-bg-secondary;
+
+    .custom-node-header-container {
+      background-color: @dark-bg-secondary;
+    }
+  }
+
+  .lineage-column-node {
+    background-color: @dark-bg-tertiary;
+  }
+
+  // Observability status indicators on lineage nodes
+  .profiler-item {
+    &.green {
+      background-color: fade(@dark-green-deep, 20%);
+      color: @dark-green-bright;
+    }
+
+    &.amber {
+      background-color: fade(@dark-amber-deep, 20%);
+      color: @dark-amber-bright;
+    }
+
+    &.red {
+      background-color: fade(@dark-red-deep, 20%);
+      color: @dark-red-bright;
+    }
+  }
+
+  // ==========================================================================
+  // 45. EXPLORE PAGE PANEL STRUCTURE
+  // Left panel (#161b22) | Center (#0d1117 deep) | Right panel (#161b22)
+  // ==========================================================================
+  .explore-page {
+    // Right panel: elevated surface with left border
+    .explore-right-panel {
+      border-left: 1px solid @dark-border-subtle;
+    }
+  }
+
+  .explore-tree {
+    .ant-tree-treenode-selected {
+      .explore-node-count span {
+        background: @dark-primary-color;
+      }
+      .ant-tree-title {
+        color: @dark-selected-text;
+      }
+    }
+  }
+
+  // ==========================================================================
+  // 46. SERVICE / INGESTION COMPONENTS
+  // ==========================================================================
+  .service-form-container {
+    color: @dark-text-primary;
+  }
+
+  .metadata-agents-widget {
+    background-color: @dark-bg-secondary;
+    border-color: @dark-border-secondary;
+  }
+
+  .setting-item-card {
+    background-color: @dark-bg-secondary;
+    border-color: @dark-border-secondary;
+  }
+
+  // Ingestion cards
+  .ingestion-recent-run-container {
+    background-color: @dark-bg-tertiary;
+    border-color: @dark-border-secondary;
+  }
+
+  // ==========================================================================
+  // 47. TEAMS
+  // ==========================================================================
+  .teams-info-card {
+    background-color: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 48. DATA QUALITY
+  // ==========================================================================
+  .data-quality-tab-container {
+    .test-case-result-card {
+      background-color: @dark-bg-secondary;
+    }
+  }
+
+  // ==========================================================================
+  // 49. GLOSSARY
+  // ==========================================================================
+  .glossary-synonym-tag {
+    color: @dark-text-primary;
+  }
+
+  // ==========================================================================
+  // 50. UPLOAD / FILE NODE
+  // ==========================================================================
+  .upload-file-container,
+  .file-node-container {
+    background: @dark-bg-secondary;
+    border-color: @dark-border-primary;
+  }
+
+  // ==========================================================================
+  // 51. NOTIFICATION DROPDOWN
+  // ==========================================================================
+  .notification-dropdown-list-btn:hover,
+  .notification-dropdown-list-btn:focus {
+    background-color: @dark-bg-tertiary;
+  }
+
+  // ==========================================================================
+  // 52. AUDIT LOG
+  // ==========================================================================
+  .audit-log-list-card,
+  .audit-log-filter-card {
+    background: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 53. SCORE CONTAINER (explore)
+  // ==========================================================================
+  .score-container {
+    background-color: @dark-bg-tertiary;
+
+    .score {
+      color: @dark-text-primary;
+    }
+  }
+
+  // ==========================================================================
+  // 54. USER PROFILE COLLAPSE
+  // ==========================================================================
+  .header-collapse-custom-collapse .header-collapse-custom-panel {
+    background: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 55. SEARCH SETTINGS
+  // ==========================================================================
+  .entity-search-settings-container {
+    background-color: @dark-bg-primary;
+  }
+
+  .term-boost-container {
+    background-color: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 56. CUSTOMIZATION / GENERIC TAB
+  // ==========================================================================
+  .generic-tab-content {
+    background: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 57. BETA TAG
+  // ==========================================================================
+  .service-beta-tag sup,
+  .service-beta-page-header sup {
+    background: fade(@dark-primary-color, 15%);
+    border-color: fade(@dark-primary-color, 30%);
+    color: @dark-primary-color;
+  }
+
+  // ==========================================================================
+  // 58. DELETED BADGE
+  // ==========================================================================
+  .deleted-badge-button {
+    background-color: fade(@dark-red-base, 15%);
+  }
+
+  // ==========================================================================
+  // 59. ACTIVE CATEGORY (sidebar highlight)
+  // ==========================================================================
+  .activeCategory {
+    background: fade(@dark-primary-color, 10%);
+    border-left-color: @dark-primary-color;
+  }
+
+  // ==========================================================================
+  // 60. HIGHLIGHTED ROW
+  // ==========================================================================
+  .highlighted-row > td {
+    background-color: @dark-bg-tertiary !important;
+  }
+
+  @keyframes highlight-fade {
+    0% {
+      background-color: fade(@dark-primary-color, 20%);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  // ==========================================================================
+  // 61. TEXT HIGHLIGHTER
+  // ==========================================================================
+  .text-highlighter {
+    background-color: fade(@dark-amber-base, 25%);
+  }
+
+  // ==========================================================================
+  // 62. DATA CONTRACT
+  // ==========================================================================
+  .add-data-contract-container,
+  .contract-detail-container,
+  .contract-schema-container,
+  .contract-security-form-tab,
+  .contract-sla-form-tab,
+  .contract-semantic-form-tab {
+    .ant-card,
+    .form-section {
+      background-color: @dark-bg-secondary;
+    }
+  }
+
+  // ==========================================================================
+  // 63. ALERTS CONFIG
+  // ==========================================================================
+  .alert-config-details {
+    .alert-config-card,
+    .alert-config-item {
+      background-color: @dark-bg-secondary;
+    }
+  }
+
+  // ==========================================================================
+  // 64. ALERT BAR
+  // ==========================================================================
+  .alert-bar-container {
+    .alert-bar-card {
+      background-color: @dark-bg-tertiary;
+      border-color: @dark-border-secondary;
+
+      .alert-bar-action-btn {
+        background-color: @dark-bg-secondary;
+      }
+    }
+  }
+
+  // ==========================================================================
+  // 65. TASK TAB
+  // ==========================================================================
+  .task-feed-body,
+  .task-tab-container {
+    background: @dark-bg-secondary;
+  }
+
+  .task-info-section {
+    background: @dark-bg-tertiary;
+  }
+
+  // ==========================================================================
+  // 66. ENTITY VERSION TIMELINE
+  // ==========================================================================
+  .entity-version-timeline {
+    .version-node {
+      background: @dark-bg-secondary;
+    }
+  }
+
+  // ==========================================================================
+  // 67. RADIO / TOGGLE
+  // ==========================================================================
+  .ant-radio-button-wrapper {
+    background-color: @dark-bg-tertiary;
+    border-color: @dark-border-primary;
+    color: @dark-text-primary;
+
+    &:hover {
+      color: @dark-primary-color;
+    }
+  }
+
+  .ant-radio-button-wrapper-checked {
+    background-color: @dark-bg-elevated;
+    color: @dark-primary-color;
+  }
+
+  // ==========================================================================
+  // 67b. DATA ASSETS WIDGET COUNT CHIPS
+  // ==========================================================================
+  .data-asset-badge {
+    background-color: fade(@dark-primary-color, 15%) !important;
+
+    .ant-typography {
+      color: @dark-primary-color !important;
+    }
+  }
+
+  // ==========================================================================
+  // 68. SERVICE INSIGHTS
+  // ==========================================================================
+  .service-insights-container {
+    .insight-card {
+      background-color: @dark-bg-secondary;
+    }
+
+    .agents-status-widget-card {
+      background-color: @dark-bg-secondary;
+    }
+  }
+
+  // ==========================================================================
+  // 69. DOMAIN COMPONENT
+  // ==========================================================================
+  .domain-type-card {
+    background: @dark-bg-secondary;
+  }
+
+  .add-domain-form-container {
+    background-color: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 70. REACT DATA GRID (RDG)
+  // ==========================================================================
+  .rdg {
+    background-color: @dark-bg-secondary;
+    border-color: @dark-border-primary;
+    color: @dark-text-primary;
+
+    .rdg-header-row {
+      background-color: @dark-bg-tertiary;
+    }
+
+    .rdg-row {
+      background-color: @dark-bg-secondary;
+      border-color: @dark-border-secondary;
+
+      &:hover {
+        background-color: @dark-bg-tertiary;
+      }
+    }
+
+    .rdg-cell {
+      border-color: @dark-border-secondary;
+    }
+  }
+
+  // ==========================================================================
+  // 71. KNOWLEDGE GRAPH
+  // ==========================================================================
+  .knowledge-graph-container {
+    border-color: @dark-border-primary;
+  }
+
+  // ==========================================================================
+  // 72. MESSAGE / SAMPLE DATA CARD
+  // ==========================================================================
+  .message-card {
+    background-color: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 73. QUERY EDITOR
+  // ==========================================================================
+  .table-query-editor {
+    background-color: @dark-bg-tertiary;
+  }
+
+  // ==========================================================================
+  // 74. REACT FLOW (lineage)
+  // ==========================================================================
+  .react-flow__background {
+    background-color: @dark-bg-primary;
+  }
+
+  .react-flow__minimap {
+    background-color: @dark-bg-secondary;
+  }
+
+  .react-flow__controls {
+    background-color: @dark-bg-secondary;
+    border-color: @dark-border-primary;
+
+    button {
+      background-color: @dark-bg-tertiary;
+      border-color: @dark-border-primary;
+      color: @dark-text-primary;
+
+      svg {
+        fill: @dark-text-primary;
+      }
+    }
+  }
+
+  // ==========================================================================
+  // 75. RESIZABLE PANELS (splitter) - must be very subtle like light mode
+  // ==========================================================================
+  .reflex-container > .reflex-splitter {
+    background-color: transparent !important;
+    border-color: @dark-border-subtle !important;
+  }
+
+  .horizontal > .reflex-splitter {
+    border-bottom-color: @dark-border-subtle !important;
+    border-top-color: @dark-border-subtle !important;
+  }
+
+  .reflex-container.horizontal > .reflex-splitter:hover,
+  .reflex-container.horizontal > .reflex-splitter.active {
+    border-bottom-color: @dark-border-default !important;
+    border-top-color: @dark-border-default !important;
+  }
+
+  .reflex-container.vertical > .reflex-splitter {
+    background-color: transparent !important;
+    border-color: @dark-border-subtle !important;
+  }
+
+  .reflex-container.horizontal > .reflex-splitter.reflex-thin {
+    border-bottom-color: transparent !important;
+    border-top-color: transparent !important;
+  }
+
+  .reflex-container.horizontal > .reflex-splitter.reflex-thin.active,
+  .reflex-container.horizontal > .reflex-splitter.reflex-thin:hover {
+    border-bottom-color: @dark-border-default !important;
+    border-top-color: @dark-border-default !important;
+  }
+
+  .reflex-container.vertical > .reflex-splitter.reflex-thin {
+    border-right-color: transparent !important;
+    border-left-color: transparent !important;
+  }
+
+  .handle-icon {
+    background-color: @dark-border-default;
+  }
+
+  .collapse-button {
+    background: @dark-bg-secondary !important;
+    border-color: @dark-border-default;
+  }
+
+  .light-overlay {
+    background-color: @dark-bg-secondary;
+  }
+
+  h2.rotated-header {
+    color: @dark-text-primary;
+  }
+
+  .card-header-splitter {
+    border-bottom-color: @dark-border-subtle;
+  }
+
+  // ==========================================================================
+  // 76. QUICK FILTER
+  // ==========================================================================
+  .quick-filter-dropdown-trigger-btn {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    color: @dark-text-secondary !important;
+
+    &:hover,
+    &:focus {
+      background-color: @dark-bg-tertiary !important;
+      border-color: @dark-border-default !important;
+      color: @dark-text-primary !important;
+    }
+
+    .filters-label.ant-typography {
+      color: @dark-text-secondary;
+    }
+
+    .active .filters-label.ant-typography {
+      color: @dark-primary-color;
+    }
+  }
+
+  .custom-dropdown-render {
+    background-color: @dark-bg-tertiary !important;
+
+    .ant-dropdown-menu {
+      background-color: @dark-bg-tertiary;
+    }
+
+    .ant-dropdown-menu-item:hover {
+      background-color: @dark-bg-elevated;
+    }
+
+    .update-btn {
+      background-color: @dark-primary-color !important;
+      border-color: @dark-primary-color !important;
+      color: @dark-selected-text !important;
+
+      &:hover {
+        background-color: darken(@dark-primary-color, 8%) !important;
+        border-color: darken(@dark-primary-color, 8%) !important;
+      }
+    }
+  }
+
+  // ==========================================================================
+  // 77. ADVANCED SEARCH MODAL
+  // ==========================================================================
+  .advanced-search-modal {
+    .query-builder {
+      background-color: @dark-bg-secondary;
+    }
+  }
+
+  // ==========================================================================
+  // 78. LINEAGE TAB CONTENT (in summary panel)
+  // ==========================================================================
+  .lineage-tab-content {
+    .lineage-node-chip {
+      background-color: @dark-bg-tertiary;
+      color: @dark-text-primary;
+    }
+
+    .lineage-node-chip-active {
+      background-color: @dark-bg-secondary;
+      color: @dark-text-primary;
+    }
+  }
+
+  // ==========================================================================
+  // 79. SUMMARY LIST
+  // ==========================================================================
+  .summary-list-item {
+    background-color: @dark-bg-secondary;
+  }
+
+  .summary-list-card {
+    background-color: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 80. STEP COMPONENT
+  // ==========================================================================
+  .step-icon {
+    background: @dark-bg-tertiary;
+  }
+
+  // ==========================================================================
+  // 81. ADD-EDIT FORM STEPS (wizard)
+  // ==========================================================================
+  .add-edit-form-steps {
+    background-color: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 82. SCHEDULE INTERVAL
+  // ==========================================================================
+  .schedule-interval-container {
+    .cron-card {
+      background-color: @dark-bg-secondary;
+      border-color: @dark-border-secondary;
+    }
+  }
+
+  // ==========================================================================
+  // 83. WORKFLOW HISTORY
+  // ==========================================================================
+  .workflow-history-card {
+    background-color: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 84. ASSETS TABS (glossary)
+  // ==========================================================================
+  .assets-tab-container {
+    .asset-card {
+      background-color: @dark-bg-secondary;
+    }
+  }
+
+  // ==========================================================================
+  // 85. CONNECTION DETAILS
+  // ==========================================================================
+  .service-connection-details-container {
+    background-color: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 86. TAGS V1
+  // ==========================================================================
+  .custom-tag-chip {
+    background: @dark-bg-tertiary;
+    border-color: @dark-border-primary;
+  }
+
+  // ==========================================================================
+  // 87. DATA QUALITY SUMMARY TAB
+  // ==========================================================================
+  .data-quality-stats-container,
+  .incidents-stats-container {
+    background-color: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 88. PROFILER
+  // ==========================================================================
+  .profiler-container {
+    .profiler-card {
+      background-color: @dark-bg-secondary;
+    }
+  }
+
+  // ==========================================================================
+  // 89. NEW FORM STYLE (darker borders in dark)
+  // ==========================================================================
+  .new-form-style {
+    .ant-input,
+    .ant-picker,
+    .ant-input-number,
+    .ant-mentions,
+    .ant-cascader-picker,
+    .ant-tree-select-selector,
+    .ant-upload.ant-upload-drag,
+    .ant-select:not(.ant-select-customize-input) .ant-select-selector,
+    .ant-btn.ant-btn-default:not(:hover) {
+      border-color: @dark-border-primary;
+    }
+
+    .block-editor-wrapper.block-editor-wrapper--bar-menu {
+      border-color: @dark-border-primary;
+
+      .bar-menu-wrapper,
+      .om-block-editor {
+        border-color: @dark-border-primary;
+      }
+    }
+
+    .form-switch-container .ant-typography,
+    .ant-form-item-label > label,
+    .form-label-title {
+      color: @dark-text-primary;
+    }
+  }
+
+  // ==========================================================================
+  // 90. ODCS IMPORT MODAL
+  // ==========================================================================
+  .odcs-import-modal {
+    .code-preview-area {
+      background: @dark-bg-tertiary;
+    }
+  }
+
+  // ==========================================================================
+  // 91. SEARCH PREVIEW
+  // ==========================================================================
+  .search-preview-container {
+    border-color: @dark-border-secondary;
+  }
+
+  // ==========================================================================
+  // 92. CATCH-ALL: Common white/light backgrounds used by many components
+  // These broad selectors catch components not explicitly listed above.
+  // ==========================================================================
+
+  // Any element with inline style background white
+  [style*='background: white'],
+  [style*='background-color: white'],
+  [style*='background: #fff'],
+  [style*='background-color: #fff'],
+  [style*='background: #ffffff'],
+  [style*='background-color: #ffffff'],
+  [style*='background: rgb(255, 255, 255)'],
+  [style*='background-color: rgb(255, 255, 255)'] {
+    background-color: @dark-bg-secondary !important;
+  }
+
+  // Ant Design internal overrides for components that set bg inline
+  .ant-upload.ant-upload-drag {
+    background-color: @dark-bg-tertiary;
+    border-color: @dark-border-primary;
+  }
+
+  .ant-upload-list-item {
+    background-color: @dark-bg-secondary;
+    border-color: @dark-border-primary;
+  }
+
+  .ant-spin-container {
+    color: @dark-text-primary;
+  }
+
+  .ant-result-title {
+    color: @dark-text-primary;
+  }
+
+  .ant-result-subtitle {
+    color: @dark-text-secondary;
+  }
+
+  // Avatar
+  .ant-avatar {
+    background-color: @dark-bg-elevated;
+    color: @dark-text-primary;
+  }
+
+  // Select clear button
+  .ant-select-clear {
+    background-color: @dark-bg-tertiary;
+    color: @dark-text-secondary;
+  }
+
+  // Transfer component
+  .ant-transfer-list {
+    background-color: @dark-bg-secondary;
+    border-color: @dark-border-primary;
+  }
+
+  .ant-transfer-list-header {
+    background-color: @dark-bg-tertiary;
+    border-bottom-color: @dark-border-primary;
+    color: @dark-text-primary;
+  }
+
+  // Comment
+  .ant-comment-content-author-name {
+    color: @dark-text-primary;
+  }
+
+  .ant-comment-content-detail {
+    color: @dark-text-secondary;
+  }
+
+  // Empty state
+  .ant-empty-normal .ant-empty-description {
+    color: @dark-text-tertiary;
+  }
+
+  // Input group addon
+  .ant-input-group-addon {
+    background-color: @dark-bg-tertiary;
+    border-color: @dark-border-primary;
+    color: @dark-text-secondary;
+  }
+
+  // Calendar
+  .ant-picker-calendar {
+    background-color: @dark-bg-secondary;
+  }
+
+  // Anchor
+  .ant-anchor-link-active > .ant-anchor-link-title {
+    color: @dark-primary-color;
+  }
+
+  // ==========================================================================
+  // 93. ACTIVITY FEED TAB - dark-specific treatments only
+  // Base bg/border/text handled by activity-feed-tab.less via @om-* vars
+  // ==========================================================================
+  .activity-feed-tab {
+    .activity-feed-card-new.is-active {
+      background: fade(@dark-primary-color, 10%);
+      border-color: fade(@dark-primary-color, 30%);
+    }
+
+    .activity-feed-card-message-right-panel {
+      background: fade(@dark-primary-color, 5%);
+    }
+
+    .activity-feed-reply-card {
+      .ant-card-body {
+        background: fade(@dark-primary-color, 5%);
+      }
+
+      .activity-feed-reply-card-message {
+        background: fade(@dark-primary-color, 5%);
+
+        .ant-card-body {
+          background: fade(@dark-primary-color, 5%);
+        }
+      }
+    }
+  }
+
+  .active-card {
+    background-color: fade(@dark-primary-color, 15%) !important;
+  }
+
+  .task-toggle,
+  .task-toggle.ant-segmented {
+    .ant-segmented-item-selected {
+      background: @dark-bg-elevated;
+    }
+  }
+
+  // ==========================================================================
+  // STATUS BADGES
+  // ==========================================================================
+  .status-badge {
+    &.success {
+      background-color: fade(@dark-green-base, 15%);
+      border-color: fade(@dark-green-base, 30%);
+      color: @dark-green-bright;
+    }
+
+    &.stopped,
+    &.failure,
+    &.failed {
+      background-color: fade(@dark-red-base, 15%);
+      border-color: fade(@dark-red-base, 30%);
+      color: @dark-red-bright;
+    }
+
+    &.warning,
+    &.pending {
+      background-color: fade(@dark-amber-base, 15%);
+      border-color: fade(@dark-amber-base, 30%);
+      color: @dark-amber-bright;
+    }
+
+    &.aborted {
+      background-color: fade(@dark-amber-deep, 15%);
+      border-color: fade(@dark-amber-deep, 30%);
+      color: @dark-amber-bright;
+    }
+
+    &.no-data {
+      background-color: @dark-bg-tertiary;
+      border-color: @dark-border-default;
+      color: @dark-text-secondary;
+    }
+
+    &.acknowledged {
+      background-color: fade(@dark-primary-color, 15%);
+      border-color: fade(@dark-primary-color, 30%);
+      color: @dark-blue-bright;
+    }
+
+    &.started,
+    &.inReview {
+      background-color: fade(@dark-purple-base, 15%);
+      border-color: fade(@dark-purple-base, 30%);
+      color: @dark-purple-bright;
+    }
+
+    &.activeError {
+      background-color: fade(@dark-red-base, 20%);
+      border-color: fade(@dark-red-base, 40%);
+      color: @dark-red-bright;
+    }
+  }
+
+  // ==========================================================================
+  // 94. FEED CARD BODY
+  // ==========================================================================
+  .common-style {
+    color: @dark-text-secondary;
+  }
+
+  .show-thread {
+    background: fade(@dark-bg-tertiary, 40%);
+    border-color: @dark-border-secondary;
+  }
+
+  .hide-thread {
+    background: fade(@dark-bg-tertiary, 40%);
+    border-color: @dark-border-secondary;
+  }
+
+  // ==========================================================================
+  // 95. FEED EDITOR
+  // ==========================================================================
+  .feed-editor {
+    background-color: @dark-bg-secondary;
+    border-color: @dark-border-primary;
+  }
+
+  .send-button-container {
+    .ant-btn-primary {
+      background: @dark-primary-color;
+    }
+  }
+
+  // ==========================================================================
+  // 96. FEED PANEL
+  // ==========================================================================
+  .feed-panel-body-v1 {
+    background-color: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 97. ACTIVITY FEED ACTIONS
+  // ==========================================================================
+  .feed-actions-container {
+    background-color: @dark-bg-secondary;
+    border-color: @dark-border-primary;
+  }
+
+  // ==========================================================================
+  // 98. REACTIONS
+  // ==========================================================================
+  .emoji-picker-container {
+    background-color: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 99. QUILL EDITOR (used in feeds)
+  // ==========================================================================
+  .ql-editor {
+    color: @dark-text-primary;
+    background-color: @dark-bg-tertiary;
+  }
+
+  .ql-editor.ql-blank::before {
+    color: @dark-text-tertiary;
+  }
+
+  .ql-container {
+    background-color: @dark-bg-tertiary;
+  }
+
+  .ql-snow .ql-stroke {
+    stroke: @dark-text-secondary;
+  }
+
+  .ql-snow .ql-fill {
+    fill: @dark-text-secondary;
+  }
+
+  .ql-snow .ql-picker-label {
+    color: @dark-text-secondary;
+  }
+
+  .ql-toolbar.ql-snow {
+    background-color: @dark-bg-secondary;
+  }
+
+  // ==========================================================================
+  // 100. SVG / ICON COLOR FIXES
+  // ==========================================================================
+  .anticon {
+    color: inherit;
+  }
+
+  // ==========================================================================
+  // 101. ADDITIONAL BORDER OVERRIDES
+  // ==========================================================================
+  // Many components use hardcoded #eaecf5 borders
+  .entity-right-panel-vertical-nav {
+    background: @dark-bg-secondary;
+    border-color: @dark-border-secondary;
+  }
+
+  // Schedule interval
+  .cron-container {
+    background-color: @dark-bg-secondary;
+    border-color: @dark-border-secondary;
+  }
+
+  // ==========================================================================
+  // 102. APPLIED FILTER
+  // ==========================================================================
+  .applied-filter-text {
+    background-color: @dark-bg-tertiary;
+    border-color: @dark-border-primary;
+    color: @dark-text-primary;
+  }
+
+  // ==========================================================================
+  // 103. QUERY BUILDER (advanced search)
+  // ==========================================================================
+  .query-builder {
+    background-color: @dark-bg-secondary;
+
+    .rule--body,
+    .group--body {
+      background-color: @dark-bg-secondary;
+    }
+
+    .rule--header,
+    .group--header {
+      background-color: @dark-bg-tertiary;
+    }
+  }
+
+  // ==========================================================================
+  // 104. GLOSSARY ASSETS TAB
+  // ==========================================================================
+  .glossary-assets-tab {
+    .asset-card {
+      background-color: @dark-bg-secondary;
+    }
+  }
+
+  // ==========================================================================
+  // 105. COLUMN DETAIL PANEL
+  // ==========================================================================
+  .column-detail-panel {
+    .ant-drawer-content {
+      background-color: @dark-bg-primary !important;
+    }
+
+    .navigation-container {
+      background-color: @dark-bg-primary !important;
+    }
+
+    .data-type-chip {
+      background-color: fade(@dark-primary-color, 15%);
+      color: @dark-text-primary;
+    }
+  }
+
+  // ==========================================================================
+  // 106. MISC HARDCODED COLOR OVERRIDES
+  // ==========================================================================
+
+  // Form label colors
+  .new-form-style .form-switch-container .ant-typography,
+  .new-form-style .ant-form-item-label > label,
+  .new-form-style .form-label-title {
+    color: @dark-text-primary;
+  }
+
+  // Quill toolbar
+  .ql-toolbar.ql-snow {
+    border-color: @dark-border-primary;
+  }
+
+  .ql-container.ql-snow {
+    border-color: @dark-border-primary;
+  }
+
+  // App bar profile dropdown
+  .profile-dropdown {
+    .more-teams-pill {
+      background: @dark-bg-tertiary;
+      border-color: @dark-border-primary;
+      color: @dark-text-secondary;
+    }
+  }
+
+  // Data grid cell backgrounds
+  .rdg-cell-glossaryTerms {
+    background-color: @dark-bg-tertiary;
+  }
+
+  // Segment toggle (radio.less)
+  .segment-toggle {
+    background: @dark-bg-tertiary;
+
+    &.ant-segmented {
+      background-color: @dark-bg-tertiary;
+    }
+  }
+
+  // React Awesome Query Builder
+  .react-awesome-query-builder {
+    .rule--body,
+    .group-or-rule {
+      background-color: @dark-bg-secondary;
+    }
+  }
+
+  // ==========================================================================
+  // 107. NAVBAR ICONS (bell, help, theme toggle) - must be visible
+  // ==========================================================================
+  .navbar-container {
+    .navbar-title {
+      color: @dark-text-primary;
+    }
+
+    // Make all navbar icon buttons visible
+    .ant-btn-text {
+      color: @dark-text-primary;
+
+      svg {
+        color: @dark-text-primary;
+      }
+
+      &:hover {
+        color: @dark-text-primary;
+        background-color: @dark-bg-tertiary;
+      }
+    }
+  }
+
+  // Notification badge
+  .ant-badge-dot {
+    box-shadow: 0 0 0 1px @dark-bg-primary;
+  }
+
+  // ==========================================================================
+  // 108. EXPLORE QUICK FILTERS - transparent, no visible rectangles
+  // ==========================================================================
+  .explore-quick-filters-container {
+    .ant-select-selector {
+      background-color: transparent !important;
+      border-color: transparent !important;
+    }
+
+    .ant-select:hover .ant-select-selector {
+      border-color: @dark-border-default !important;
+    }
+
+    .ant-select-focused .ant-select-selector {
+      border-color: @dark-primary-color !important;
+    }
+
+    .ant-select-selection-item {
+      color: @dark-text-primary;
+    }
+
+    .ant-select-arrow {
+      color: @dark-text-secondary;
+    }
+  }
+
+  // Generic filter dropdowns in explore page should be transparent
+  .ant-select:not(.ant-select-customize-input):not(.global-search-select) {
+    .ant-select-selector {
+      background-color: transparent !important;
+      border-color: @dark-border-default !important;
+    }
+  }
+
+  // ==========================================================================
+  // 109. SVG ICON COLORS - ensure all SVGs with currentColor are visible
+  // ==========================================================================
+  svg {
+    // SVGs using fill="currentColor" need to inherit proper dark text color
+    &[fill='currentColor'] {
+      color: @dark-text-primary;
+    }
+  }
+
+  // Help icon has a clipPath rect with fill="white" - hide it
+  .ant-btn svg clipPath rect[fill='white'] {
+    fill: transparent;
+  }
+
+  // ==========================================================================
+  // 110. GLOBAL TEXT COLOR OVERRIDES
+  // All text that uses production dark colors must be light in dark mode
+  // ==========================================================================
+  // Ensure any text using @text-color, @grey-900, etc. becomes readable
+  .ant-typography,
+  .ant-form-item-label > label,
+  .ant-select-selection-item,
+  .ant-table-cell,
+  .ant-list-item,
+  .ant-card-head-title,
+  .ant-drawer-title,
+  .ant-collapse-header,
+  .ant-modal-title,
+  .ant-descriptions-item-label,
+  .ant-descriptions-item-content,
+  .ant-timeline-item-content,
+  .ant-comment-content-author-name,
+  .ant-steps-item-title {
+    color: @dark-text-primary;
+  }
+
+  // Secondary text colors
+  .ant-form-item-explain,
+  .ant-form-item-extra,
+  .ant-typography.ant-typography-secondary,
+  .ant-table-column-title,
+  .ant-comment-content-detail,
+  .ant-steps-item-description {
+    color: @dark-text-secondary;
+  }
+
+  // Sections 111-114 removed: handled by component @om-* vars and earlier sections
+
+  // ==========================================================================
+  // 115. GLOBAL BORDER SOFTENING - catch any remaining harsh borders
+  // Override common Ant Design border patterns to use subtle colors
+  // ==========================================================================
+  .ant-card-bordered {
+    border-color: @dark-border-subtle;
+  }
+
+  .ant-table-bordered {
+    .ant-table-container {
+      border-color: @dark-border-subtle;
+    }
+  }
+
+  // Timeline border
+  .ant-timeline-item-tail {
+    border-color: @dark-border-subtle;
+  }
+
+  // Transfer
+  .ant-transfer-list {
+    border-color: @dark-border-default;
+  }
+
+  .ant-transfer-list-header {
+    border-bottom-color: @dark-border-subtle;
+  }
+
+  // Descriptions
+  .ant-descriptions-bordered .ant-descriptions-view {
+    border-color: @dark-border-default;
+  }
+
+  .ant-descriptions-bordered .ant-descriptions-row {
+    border-bottom-color: @dark-border-subtle;
+  }
+
+  // Select dropdown subtle border
+  .ant-select-dropdown {
+    border: 1px solid @dark-border-default;
+  }
+
+  // Popover subtle border
+  .ant-popover-inner {
+    border: 1px solid @dark-border-subtle;
+  }
+
+  // ==========================================================================
+  // 116. DATA ASSETS / EXPLORE TREE - sidebar text
+  // ==========================================================================
+  .explore-tree {
+    color: @dark-text-primary;
+
+    .ant-tree-title {
+      color: @dark-text-primary;
+    }
+
+    .ant-tree-switcher {
+      color: @dark-text-secondary;
+    }
+  }
+
+  // "Data Assets" heading text
+  .left-panel-label {
+    color: inherit;
+  }
+
+  // ==========================================================================
+  // RECHARTS - grid lines and axis text
+  // ==========================================================================
+  .recharts-cartesian-grid-horizontal line,
+  .recharts-cartesian-grid-vertical line {
+    stroke: @dark-border-subtle !important;
+  }
+
+  .recharts-text.recharts-cartesian-axis-tick-value {
+    fill: @dark-text-secondary !important;
+  }
+
+  // ==========================================================================
+  // DATA QUALITY PIE CHARTS
+  // ==========================================================================
+  .pie-chart-summary-panel .legend-text {
+    color: @dark-text-secondary;
+  }
+
+  .data-quality-page {
+    .data-assets-coverage-icon,
+    .all-tests-icon {
+      &.icon-container {
+        background-color: fade(@dark-blue-base, 15%);
+        svg {
+          color: @dark-blue-bright;
+        }
+      }
+    }
+
+    .health-check-icon {
+      &.icon-container {
+        background-color: fade(@dark-green-base, 15%);
+        svg {
+          color: @dark-green-alt;
+        }
+      }
+    }
+  }
+}

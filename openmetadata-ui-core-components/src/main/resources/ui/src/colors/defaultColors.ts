@@ -37,6 +37,9 @@ import type { ThemeColors } from '../types';
  */
 export const defaultColors: ThemeColors = {
   white: '#ffffff',
+  page: '#ffffff',           // Main page background (light mode)
+  surface: '#ffffff',        // Card/panel surface (light mode)
+  surfaceRaised: '#f8f9fc',  // Elevated surface like headers (light mode)
   brand: {
     25: '#F5FAFF',
     50: '#EFF8FF',

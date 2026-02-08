@@ -39,7 +39,7 @@
     // Header section (filters, search) should not scroll - sticky at top
     > .MuiBox-root:first-child {
       flex-shrink: 0;
-      background-color: @white;
+      background-color: @om-bg-card;
       z-index: 11;
     }
 
@@ -68,7 +68,7 @@
     // Pagination footer stays fixed at bottom - does not scroll
     > .MuiBox-root[data-testid='pagination'] {
       flex-shrink: 0;
-      background-color: @white;
+      background-color: @om-bg-card;
       z-index: 11;
     }
   }
@@ -140,7 +140,7 @@
   gap: 0;
   width: 100%;
   padding: 0;
-  background: @white;
+  background: @om-bg-card;
   border: 1px solid @grey-200;
   border-radius: @border-rad-xs;
   overflow: hidden;
@@ -153,7 +153,7 @@
     align-items: center;
     gap: @size-md;
     margin-right: @size-lg;
-    background: @white;
+    background: @om-bg-card;
     border-right: 1px solid @grey-200;
 
     &:last-child {
@@ -184,7 +184,7 @@
 // Filter Bar - MUI Components (no border, attached to table)
 .column-grid-quick-filters-container {
   padding: @size-md @size-mlg;
-  background: @white;
+  background: @om-bg-card;
   border: 1px solid @grey-200;
   border-bottom: none;
   border-radius: @border-rad-xs @border-rad-xs 0 0;
@@ -355,7 +355,7 @@
   border: 1px solid @grey-200;
   border-top: none;
   border-radius: 0 0 @border-rad-xs @border-rad-xs;
-  background: @white;
+  background: @om-bg-card;
 
   .rdg {
     border: none;
@@ -383,7 +383,7 @@
   --rdg-selection-color: transparent;
   --rdg-row-height: 72px;
   --rdg-header-row-height: 48px;
-  --rdg-background-color: @white;
+  --rdg-background-color: @om-bg-card;
   --rdg-header-background-color: @grey-50;
 
   .rdg-cell {
@@ -397,7 +397,7 @@
 
   // Ensure frozen columns have proper background and z-index to stay fixed
   .rdg-cell-frozen {
-    background-color: @white;
+    background-color: @om-bg-card;
     z-index: 3;
     position: sticky;
     left: 0;
@@ -436,7 +436,7 @@
   }
 
   .rdg-row {
-    background-color: @white;
+    background-color: @om-bg-card;
 
     &:hover {
       background-color: @grey-50;
@@ -609,7 +609,7 @@
     padding: 2px 10px;
     font-size: 12px;
     border-radius: @size-xxs;
-    background: @white;
+    background: @om-bg-card;
     border: 1px solid @grey-300;
     color: @grey-700;
     line-height: 18px;
@@ -631,7 +631,7 @@
   bottom: @size-mlg;
   left: 50%;
   transform: translateX(-50%);
-  background: @white;
+  background: @om-bg-card;
   padding: @size-sm @size-lg;
   border-radius: @border-rad-xs;
   box-shadow: @box-shadow-base;

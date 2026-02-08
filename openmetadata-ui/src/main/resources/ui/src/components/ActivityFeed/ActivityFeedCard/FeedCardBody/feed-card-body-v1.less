@@ -14,7 +14,7 @@
 @import (reference) '../../../../styles/variables.less';
 
 .asset-info-card.explore-search-card {
-  background-color: @grey-5;
+  background-color: @om-bg-raised;
   padding: 8px;
 }
 
@@ -37,14 +37,14 @@
 .common-style {
   border-radius: 8px;
   font-size: 14px;
-  color: #535862;
+  color: @om-text-secondary;
   line-height: 20px;
 }
 
 .show-thread {
-  background: @grey-9;
+  background: @om-bg-raised;
   padding: 20px;
-  border: 0.5px solid #eaecf5;
+  border: 0.5px solid @om-border;
   margin-top: 20px;
   border-radius: 8px;
   max-height: 400px;
@@ -61,14 +61,14 @@
 }
 
 .hide-thread {
-  background: white;
+  background: @om-bg-card;
   padding: 20px;
   margin-top: 2px;
   border-radius: 8px;
   max-height: 200px;
   overflow-y: scroll;
   overflow-x: hidden;
-  border: 0.5px solid #eaecf5;
+  border: 0.5px solid @om-border;
   scrollbar-width: none;
 
   &::-webkit-scrollbar {

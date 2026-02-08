@@ -21,7 +21,7 @@
   -webkit-backdrop-filter: none;
   cursor: pointer;
   overflow: hidden;
-  background: @white !important;
+  background: @om-bg-card;
 
   &.disabled {
     cursor: not-allowed;
@@ -38,7 +38,7 @@
       justify-content: space-between;
       align-items: flex-start;
       margin-bottom: @size-xs;
-      background: @white !important;
+      background: @om-bg-card;
       border-radius: @border-rad-xs;
 
       .announcement-title-section {
@@ -48,7 +48,11 @@
         flex: 1;
         min-width: 0;
         height: 44px;
-        background: linear-gradient(270deg, @white -12.07%, @blue-24 500.72%);
+        background: linear-gradient(
+          270deg,
+          @om-bg-card -12.07%,
+          @blue-24 500.72%
+        );
         border-radius: @border-rad-xs;
 
         .user-name {

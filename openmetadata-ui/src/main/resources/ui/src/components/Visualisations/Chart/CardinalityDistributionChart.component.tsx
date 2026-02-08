@@ -104,7 +104,7 @@ const CardinalityDistributionChart = ({
         <Card
           sx={{
             p: '10px',
-            bgcolor: theme.palette.allShades.white,
+            bgcolor: theme.palette.background.paper,
           }}>
           <Typography
             sx={{

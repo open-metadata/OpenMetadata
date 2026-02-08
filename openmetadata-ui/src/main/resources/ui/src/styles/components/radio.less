@@ -39,25 +39,25 @@
 
 // Global styling for segment toggle classs
 .segment-toggle {
-  background: @white;
+  background: @om-bg-card;
   border-radius: @size-sm;
-  border: 1px solid @grey-20;
+  border: 1px solid @om-border;
 
   .ant-segmented-item {
     color: @text-color;
     transition: all 0.3s ease;
 
     &-selected {
-      background: @blue-23;
-      color: @primary-heading-color;
+      background: @om-bg-selected;
+      color: @primary-color;
       text-align: center;
       border-radius: @size-xs;
       .ant-segmented-item-label {
-        color: @primary-heading-color;
+        color: @primary-color;
       }
 
       svg path {
-        fill: @primary-heading-color;
+        fill: @primary-color;
       }
     }
   }
@@ -76,7 +76,7 @@
   }
 }
 .segment-toggle.ant-segmented {
-  background-color: @white;
+  background-color: @om-bg-card;
   border-radius: @size-sm;
 }
 

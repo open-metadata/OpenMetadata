@@ -256,14 +256,16 @@ const MuiDatePickerMenu = ({
           height: BUTTON_HEIGHTS[size],
           textTransform: 'none',
           color: selectedTimeRangeKey
-            ? theme.palette.grey[900]
-            : theme.palette.grey[400],
+            ? theme.palette.text.primary
+            : theme.palette.text.disabled,
           fontWeight: selectedTimeRangeKey ? 600 : 400,
           fontSize: theme.typography.pxToRem(12),
           boxShadow: 'none',
-          border: `1px solid ${theme.palette.grey[200]}`,
+          backgroundColor: theme.palette.background.paper,
+          border: `1px solid ${theme.palette.divider}`,
           '&:hover': {
-            border: `1px solid ${theme.palette.grey[200]}`,
+            border: `1px solid ${theme.palette.divider}`,
+            backgroundColor: theme.palette.background.paper,
             boxShadow: 'none',
           },
         }}

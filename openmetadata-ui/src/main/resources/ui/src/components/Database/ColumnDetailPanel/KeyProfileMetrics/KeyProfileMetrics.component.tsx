@@ -165,7 +165,7 @@ export const KeyProfileMetrics = ({
             sx={{
               flex: 1,
               height: 'auto',
-              backgroundColor: theme.palette.allShades.gray[50],
+              backgroundColor: theme.palette.background.paper,
               borderRadius: theme.spacing(1),
               border: 'none',
               padding: theme.spacing(1),

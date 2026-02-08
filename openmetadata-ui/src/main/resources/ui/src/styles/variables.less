@@ -158,18 +158,18 @@
 @aborted-color: #efae2f;
 @text-color: @grey-900;
 @text-color-tertiary: @grey-700;
-@grey-1: #f8f8f8;
-@grey-2: #f2f2f2;
+@grey-1: @om-bg-raised;
+@grey-2: @om-bg-raised;
 @grey-3: #959595;
-@grey-4: #757575;
-@grey-5: #fbfbfb;
-@grey-6: #f9f9f9;
+@grey-4: @om-text-tertiary;
+@grey-5: @om-bg-raised;
+@grey-6: @om-bg-raised;
 @grey-7: #9ca3af;
-@grey-9: #f8f9fc;
+@grey-9: @om-bg-body;
 @grey-10: #8c8c8c;
 @grey-11: #262626;
 @grey-13: #71717a;
-@grey-15: #eaecf5;
+@grey-15: @om-border;
 @grey-16: #f4f5f7;
 @grey-18: #afb5d9;
 @grey-19: #363f72;
@@ -244,14 +244,14 @@
 @border-color-3: #d4d4d8;
 @border-color-4: #e4e4e7;
 @border-color-5: #dde3ea;
-@border-color-6: #dfdfdf;
+@border-color-6: @om-border;
 @border-color-7: #faf9fc;
 @border-color-8: #e9e8eb;
 @global-border: 1px solid @border-color;
 @nlp-border-color: #b9e6fe;
 @active-color: #e8f4ff;
 @rdg-cell-range-selections-background-color: #e9effd;
-@background-color: #ffffff;
+@background-color: @om-bg-card;
 @announcement-background: @blue-28;
 @announcement-background-dark: #e1edff;
 @announcement-border: @blue-27;
@@ -431,16 +431,16 @@
 
 //grey colors
 @grey-25: #fdfdfd;
-@grey-50: #fafafa;
-@grey-100: #f5f5f5;
-@grey-200: #e9eaeb;
-@grey-300: #d5d7da;
-@grey-400: #a4a7ae;
-@grey-500: #717680;
-@grey-600: #535862;
-@grey-700: #414651;
-@grey-800: #252b37;
-@grey-900: #181d27;
+@grey-50: @om-bg-raised;
+@grey-100: @om-bg-hover;
+@grey-200: @om-border;
+@grey-300: @om-border-strong;
+@grey-400: @om-text-disabled;
+@grey-500: @om-text-tertiary;
+@grey-600: @om-text-secondary;
+@grey-700: @om-text-secondary;
+@grey-800: @om-text;
+@grey-900: @om-text;
 @tag-text: #404040;
 
 //Blue colors (based on design system)
@@ -459,10 +459,10 @@
 @font-bold: 700;
 
 // new Theme border color
-@border-light: #ebeef2;
+@border-light: @om-border;
 @border-secondary: #e2c6f2;
 
-@background-primary: #f8f9fa;
+@background-primary: @om-bg-raised;
 
 @primary-heading-color: @blue-9;
 @navigation-text-color: #787486;
@@ -476,3 +476,45 @@
 @focus-outline-color: #e6f4ff;
 @om-rdg-border-color: #e0e0e0;
 @om-rdg-header-color: #4a4a4a;
+
+// ============================================================================
+// Theme-Aware CSS Variable Wrappers
+// ============================================================================
+// These LESS variables reference --om-* CSS custom properties that auto-switch
+// between light and dark mode at runtime (injected by injectCSSVariables).
+//
+// USE THESE in custom component .less files instead of @white, @grey-9, etc.
+// DO NOT replace Ant Design's core LESS variables with these — antd v4 needs
+// static hex values at build time.
+//
+// Fallback values (after the comma) are the light mode defaults, used before
+// React mounts and CSS variables are injected.
+// ============================================================================
+
+// Surface / Background
+@om-bg-page: ~'var(--om-surface-default, #ffffff)';
+@om-bg-body: ~'var(--om-surface-body, #f8f9fc)';
+@om-bg-card: ~'var(--om-surface-card, #ffffff)';
+@om-bg-raised: ~'var(--om-surface-raised, #f8f9fc)';
+@om-bg-input: ~'var(--om-surface-input, #ffffff)';
+@om-bg-overlay: ~'var(--om-surface-overlay, #ffffff)';
+@om-bg-header: ~'var(--om-surface-header, #ffffff)';
+@om-bg-sidebar: ~'var(--om-surface-sidebar, #ffffff)';
+@om-bg-hover: ~'var(--om-surface-hover, #f5f5f5)';
+@om-bg-selected: ~'var(--om-surface-selected, #eff8ff)';
+@om-bg-disabled: ~'var(--om-surface-disabled, #f5f5f5)';
+
+// Text
+@om-text: ~'var(--om-text-primary, #181d27)';
+@om-text-secondary: ~'var(--om-text-secondary, #535862)';
+@om-text-tertiary: ~'var(--om-text-tertiary, #717680)';
+@om-text-disabled: ~'var(--om-text-disabled, #a4a7ae)';
+@om-text-inverse: ~'var(--om-text-inverse, #fafafa)';
+@om-text-link: ~'var(--om-text-link, #1570ef)';
+
+// Borders
+@om-border: ~'var(--om-border-default, #e9eaeb)';
+@om-border-light: ~'var(--om-border-light, #f5f5f5)';
+@om-border-strong: ~'var(--om-border-strong, #d5d7da)';
+@om-border-subtle: ~'var(--om-border-subtle, #f5f5f5)';
+@om-border-focus: ~'var(--om-border-focus, #1570ef)';

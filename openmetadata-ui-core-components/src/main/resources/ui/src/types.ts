@@ -35,6 +35,9 @@ export interface ColorPalette {
  */
 export interface ThemeColors {
   white: string;
+  page: string;
+  surface: string;
+  surfaceRaised: string;
   brand: ColorPalette;
   gray: ColorPalette & { 725: string; 750: string }; // Gray has extra custom shades
   blueGray: Partial<ColorPalette> & {
