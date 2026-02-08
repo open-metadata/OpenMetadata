@@ -484,6 +484,7 @@ export const CustomizeTabWidget = () => {
           onOk={() => add()}>
           <Input
             autoFocus
+            data-testid="add-tab-input"
             value={newTabName}
             onChange={(e) => setNewTabName(e.target.value)}
           />

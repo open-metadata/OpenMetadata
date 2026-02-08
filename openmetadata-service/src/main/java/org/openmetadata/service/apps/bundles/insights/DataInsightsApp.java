@@ -6,7 +6,7 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET
 import static org.openmetadata.service.socket.WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -103,13 +103,12 @@ public class DataInsightsApp extends AbstractNativeApplication {
         .equals(ElasticSearchConfiguration.SearchType.ELASTICSEARCH)) {
       searchInterface =
           new ElasticSearchDataInsightsClient(
-              (RestClient) searchRepository.getSearchClient().getLowLevelClient(),
+              (Rest5Client) searchRepository.getSearchClient().getLowLevelClient(),
               searchRepository.getClusterAlias());
     } else {
       searchInterface =
           new OpenSearchDataInsightsClient(
-              (os.org.opensearch.client.RestClient)
-                  searchRepository.getSearchClient().getLowLevelClient(),
+              searchRepository.getSearchClient().getHighLevelClient(),
               searchRepository.getClusterAlias());
     }
     return searchInterface;
