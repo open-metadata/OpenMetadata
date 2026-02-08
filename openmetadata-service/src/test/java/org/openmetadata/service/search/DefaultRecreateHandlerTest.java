@@ -427,6 +427,31 @@ class DefaultRecreateHandlerTest {
           .when(client)
           .deleteIndexWithBackoff(anyString());
 
+      lenient()
+          .doAnswer(
+              invocation -> {
+                @SuppressWarnings("unchecked")
+                Set<String> oldIndices = (Set<String>) invocation.getArgument(0);
+                String newIndex = invocation.getArgument(1);
+                @SuppressWarnings("unchecked")
+                Set<String> aliases = new HashSet<>((Set<String>) invocation.getArgument(2));
+
+                // Remove aliases from old indices
+                for (String oldIndex : oldIndices) {
+                  Set<String> oldAliases = indexAliases.get(oldIndex);
+                  if (oldAliases != null) {
+                    oldAliases.removeAll(aliases);
+                  }
+                }
+
+                // Add aliases to new index
+                indexAliases.computeIfAbsent(newIndex, k -> new HashSet<>()).addAll(aliases);
+
+                return true;
+              })
+          .when(client)
+          .swapAliases(anySet(), anyString(), anySet());
+
       return client;
     }
   }

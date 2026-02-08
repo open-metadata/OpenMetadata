@@ -83,6 +83,7 @@ public class DistributedSearchIndexCoordinator {
   private final CollectionDAO collectionDAO;
   private final PartitionCalculator partitionCalculator;
   private final String serverId;
+  private EntityCompletionTracker entityTracker;
 
   public DistributedSearchIndexCoordinator(CollectionDAO collectionDAO) {
     this.collectionDAO = collectionDAO;
@@ -99,6 +100,15 @@ public class DistributedSearchIndexCoordinator {
 
   public CollectionDAO getCollectionDAO() {
     return collectionDAO;
+  }
+
+  /**
+   * Set the entity completion tracker for per-entity index promotion.
+   *
+   * @param tracker The entity completion tracker
+   */
+  public void setEntityCompletionTracker(EntityCompletionTracker tracker) {
+    this.entityTracker = tracker;
   }
 
   /**
@@ -398,6 +408,17 @@ public class DistributedSearchIndexCoordinator {
         successCount,
         failedCount);
 
+    // Record partition completion for per-entity index promotion
+    if (entityTracker != null) {
+      LOG.debug(
+          "Recording partition completion for entity '{}' (failed={}) in tracker",
+          record.entityType(),
+          failedCount > 0);
+      entityTracker.recordPartitionComplete(record.entityType(), failedCount > 0);
+    } else {
+      LOG.debug("Entity tracker is null, skipping per-entity completion tracking");
+    }
+
     // Check if job should be marked as complete
     checkAndUpdateJobCompletion(UUID.fromString(record.jobId()));
   }
@@ -465,6 +486,11 @@ public class DistributedSearchIndexCoordinator {
           partitionId,
           MAX_PARTITION_RETRIES,
           errorMessage);
+
+      // Record partition completion (with failure) for per-entity index promotion
+      if (entityTracker != null) {
+        entityTracker.recordPartitionComplete(record.entityType(), true);
+      }
 
       checkAndUpdateJobCompletion(UUID.fromString(record.jobId()));
     }

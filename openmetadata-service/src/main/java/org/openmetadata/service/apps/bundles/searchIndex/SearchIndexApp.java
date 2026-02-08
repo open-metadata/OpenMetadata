@@ -11,6 +11,7 @@ import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.ws.rs.core.Response;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -326,6 +327,23 @@ public class SearchIndexApp extends AbstractNativeApplication {
     monitorDistributedJob(jobExecutionContext, distributedJob.getId());
 
     if (searchIndexSink != null) {
+      // Wait for vector embedding tasks to complete before closing
+      int pendingVectorTasks = searchIndexSink.getPendingVectorTaskCount();
+      if (pendingVectorTasks > 0) {
+        LOG.info("Waiting for {} pending vector embedding tasks to complete", pendingVectorTasks);
+        boolean vectorComplete = searchIndexSink.awaitVectorCompletion(120);
+        if (!vectorComplete) {
+          LOG.warn("Vector embedding wait timed out - some tasks may not be reflected in stats");
+        }
+      }
+
+      // Flush and wait for pending bulk requests
+      LOG.info("Flushing sink and waiting for pending bulk requests");
+      boolean flushComplete = searchIndexSink.flushAndAwait(60);
+      if (!flushComplete) {
+        LOG.warn("Sink flush timed out - some requests may not be reflected in stats");
+      }
+
       searchIndexSink.close();
     }
 
@@ -715,17 +733,37 @@ public class SearchIndexApp extends AbstractNativeApplication {
       return;
     }
 
+    // Get already-promoted entities from distributed executor (if running in distributed mode)
+    Set<String> promotedEntities = Collections.emptySet();
+    if (distributedExecutor != null && distributedExecutor.getEntityTracker() != null) {
+      promotedEntities = distributedExecutor.getEntityTracker().getPromotedEntities();
+    }
+
+    // Calculate entities that still need finalization
+    Set<String> entitiesToFinalize = new HashSet<>(recreateContext.getEntities());
+    entitiesToFinalize.removeAll(promotedEntities);
+
+    if (entitiesToFinalize.isEmpty()) {
+      LOG.info(
+          "All {} entities already promoted during execution, skipping finalizeAllEntityReindex",
+          promotedEntities.size());
+      recreateContext = null;
+      return;
+    }
+
+    LOG.info(
+        "Finalizing {} remaining entities (already promoted: {})",
+        entitiesToFinalize.size(),
+        promotedEntities.size());
+
     try {
-      recreateContext
-          .getEntities()
-          .forEach(
-              entityType -> {
-                try {
-                  finalizeEntityReindex(entityType, true);
-                } catch (Exception ex) {
-                  LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
-                }
-              });
+      for (String entityType : entitiesToFinalize) {
+        try {
+          finalizeEntityReindex(entityType, finalSuccess);
+        } catch (Exception ex) {
+          LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
+        }
+      }
     } finally {
       recreateContext = null;
     }
