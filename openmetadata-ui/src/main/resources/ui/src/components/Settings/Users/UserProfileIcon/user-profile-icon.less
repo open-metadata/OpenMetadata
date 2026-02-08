@@ -61,6 +61,39 @@
   }
 }
 
+html[data-theme='dark'] .profile-dropdown {
+  .ant-dropdown-menu {
+    background-color: #21262d;
+    border: 1px solid #30363d;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .ant-dropdown-menu-item-divider {
+    background-color: #30363d;
+  }
+
+  .ant-dropdown-menu-item-group-title {
+    color: #e6edf3;
+  }
+
+  .ant-dropdown-menu-item,
+  .ant-dropdown-menu-item-only-child {
+    color: #c9d1d9;
+
+    &:hover {
+      background-color: #30363d;
+    }
+  }
+
+  .ant-dropdown-menu-item-disabled {
+    color: #8b949e !important;
+  }
+
+  .ant-radio-wrapper {
+    color: #c9d1d9;
+  }
+}
+
 .user-profile-btn.ant-btn {
   padding: 0;
   gap: @padding-md;

@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../styles/variables.less';
+
 .audit-log-filter-trigger {
   min-width: 140px;
   max-width: 220px;
@@ -32,7 +34,7 @@
 
 .audit-log-raw-json {
   code {
-    background-color: #f5f5f5;
+    background-color: @om-bg-raised;
     border-radius: 4px;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     font-size: 12px;
@@ -44,6 +46,6 @@
 
 .export-progress-container {
   padding: 12px;
-  background-color: #f5f5f5;
+  background-color: @om-bg-raised;
   border-radius: 6px;
 }

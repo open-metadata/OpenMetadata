@@ -19,7 +19,8 @@ import { formatNumberWithComma } from '../../../../utils/CommonUtils';
 import { SummaryPieChartCardProps } from '../SummaryPanel.interface';
 import './summary-pie-chart-card.style.less';
 
-const DARK_RING_BG = '#30363d';
+const DARK_RING_BG = '#2d333b';
+const DARK_CARD_BG = '#161b22';
 
 const SummaryPieChartCard = ({
   title,
@@ -32,7 +33,9 @@ const SummaryPieChartCard = ({
   iconData,
 }: SummaryPieChartCardProps) => {
   const theme = useTheme();
-  const ringBg = theme.palette.mode === 'dark' ? DARK_RING_BG : GREY_200;
+  const isDark = theme.palette.mode === 'dark';
+  const ringBg = isDark ? DARK_RING_BG : GREY_200;
+  const strokeColor = isDark ? DARK_CARD_BG : '#ffffff';
 
   return (
     <Card className="pie-chart-summary-panel h-full" loading={isLoading}>
@@ -100,12 +103,25 @@ const SummaryPieChartCard = ({
               innerRadius={45}
               outerRadius={60}
               paddingAngle={paddingAngle}
-              startAngle={90}>
+              startAngle={90}
+              stroke={strokeColor}>
               {chartData.map((entry, index) => (
                 <Cell fill={entry.color} key={`cell-${index}`} />
               ))}
             </Pie>
-            <Tooltip />
+            <Tooltip
+              contentStyle={
+                isDark
+                  ? {
+                      backgroundColor: '#21262d',
+                      borderColor: '#30363d',
+                      color: '#e6edf3',
+                      borderRadius: 6,
+                    }
+                  : undefined
+              }
+              itemStyle={isDark ? { color: '#e6edf3' } : undefined}
+            />
             <text
               className="chart-center-text"
               dominantBaseline="middle"

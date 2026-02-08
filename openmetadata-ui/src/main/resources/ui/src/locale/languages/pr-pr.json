@@ -1824,6 +1824,8 @@
     "supported-service-plural": "سرویس‌های پشتیبانی‌شده",
     "supports-yaml-format": "پشتیبانی از فرمت YAML (.yaml, .yml)",
     "switch-persona": "تغییر شخصیت",
+    "switch-to-dark-mode": "Switch to Dark Mode",
+    "switch-to-light-mode": "Switch to Light Mode",
     "sync-alert-offset": "همگام‌سازی هشدار",
     "synonym-lowercase-plural": "مترادف‌ها",
     "synonym-plural": "مترادف‌ها",

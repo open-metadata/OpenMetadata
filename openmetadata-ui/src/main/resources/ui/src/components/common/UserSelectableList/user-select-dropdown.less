@@ -62,3 +62,25 @@
     color: @primary-color;
   }
 }
+
+html[data-theme='dark'] .selectable-list-item-checkmark.anticon {
+  opacity: 0 !important;
+  &.active {
+    opacity: 1 !important;
+    color: #58a6ff !important;
+  }
+}
+
+html[data-theme='dark'] .user-select-popover {
+  .ant-list-vertical .selectable-list-item {
+    color: #e6edf3 !important;
+
+    &:hover {
+      background-color: #30363d !important;
+    }
+
+    &.active {
+      background-color: rgba(21, 112, 239, 0.2) !important;
+    }
+  }
+}

@@ -38,7 +38,8 @@
     "playwright:open": "playwright test --ui",
     "playwright:codegen": "playwright codegen",
     "generate:app-docs": "node generateApplicationDocs.js",
-    "generate:e2e-docs": "PLAYWRIGHT_IS_OSS=true node playwright/doc-generator/generate.js"
+    "generate:e2e-docs": "PLAYWRIGHT_IS_OSS=true node playwright/doc-generator/generate.js",
+    "lint:styles": "stylelint 'src/**/*.less' --allow-empty-input"
   },
   "dependencies": {
     "@analytics/session-utils": "^0.1.17",
@@ -226,8 +227,10 @@
     "organize-imports-cli": "^0.10.0",
     "pinst": "^3.0.0",
     "postcss": "8.4.31",
+    "postcss-less": "^6.0.0",
     "prettier": "^2.1.2",
     "react-test-renderer": "^18.2.0",
+    "stylelint": "^16.8.0",
     "sync-i18n": "^0.0.20",
     "terser": "^5.43.1",
     "ts-jest": "^29.1.2",

@@ -650,3 +650,82 @@
 .no-data-placeholder-container-right-panel {
   margin-top: @size-xl;
 }
+
+html[data-theme='dark'] {
+  .activity-feed-card-container:not(:last-child) .horizontal-line {
+    background-color: #21262d !important;
+  }
+
+  .activity-feed-tab {
+    border: none !important;
+
+    .center-container {
+      border: none !important;
+    }
+
+    .right-container {
+      border: none !important;
+    }
+
+    .left-container {
+      border-right: 1px solid #21262d !important;
+    }
+
+    .three-panel-layout.right-container {
+      border-left: 1px solid #21262d !important;
+    }
+
+    .activity-feed-card-new {
+      border: 0.5px solid #30363d !important;
+    }
+
+    .activity-feed-card-new.active-card.is-active {
+      background: rgba(21, 112, 239, 0.15) !important;
+      border: 1px solid rgba(21, 112, 239, 0.4) !important;
+    }
+
+    .activity-feed-card-message {
+      border: none !important;
+    }
+
+    .activity-feed-reply-card .ant-card-body {
+      border-bottom: 1px solid #21262d !important;
+    }
+
+    .right-container .activity-feed-comments-container {
+      border: 0.5px solid #30363d !important;
+    }
+
+    .right-container .activity-feed-reply-button {
+      border: 1px solid #30363d !important;
+    }
+
+    .right-container .comments-input-field {
+      border: 1px solid #30363d !important;
+    }
+
+    .ant-card-bordered {
+      border: none !important;
+    }
+
+    .reply-card-border-bottom {
+      border-bottom: 1px solid #21262d !important;
+    }
+  }
+
+  .activity-feed-editor-container-new {
+    border: 0.5px solid #30363d !important;
+
+    .ql-container {
+      border: none !important;
+    }
+
+    .ql-toolbar {
+      border-bottom: 1px solid #30363d !important;
+    }
+  }
+
+  .no-description-suggestion-card {
+    border: 0.5px solid #30363d !important;
+  }
+}

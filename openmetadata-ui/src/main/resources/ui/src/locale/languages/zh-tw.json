@@ -1824,6 +1824,8 @@
     "supported-service-plural": "支援的服務",
     "supports-yaml-format": "支援 YAML 格式 (.yaml, .yml)",
     "switch-persona": "切換角色",
+    "switch-to-dark-mode": "Switch to Dark Mode",
+    "switch-to-light-mode": "Switch to Light Mode",
     "sync-alert-offset": "同步警示",
     "synonym-lowercase-plural": "同義詞",
     "synonym-plural": "同義詞",

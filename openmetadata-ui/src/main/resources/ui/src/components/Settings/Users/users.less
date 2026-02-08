@@ -80,7 +80,7 @@
 
 .summary-panel-container {
   border-radius: 12px;
-  border: 1px solid #eaecf5;
+  border: 1px solid @om-border;
   background-color: @om-bg-card;
 
   .ant-card-body {
@@ -99,7 +99,7 @@
     justify-content: center;
     align-items: center;
     border-radius: 12px;
-    border: 1px solid #eaecf5;
+    border: 1px solid @om-border;
 
     .user-details-menu-icon {
       position: absolute;
@@ -113,7 +113,7 @@
       font-style: normal;
       font-weight: 600;
       line-height: 28px;
-      color: #181d27;
+      color: @om-text;
       text-align: center;
       word-break: break-word;
     }
@@ -153,7 +153,7 @@
   font-weight: 600;
   font-size: 16px;
   line-height: 24px;
-  color: #414654;
+  color: @om-text-secondary;
 }
 
 .profile-section-card-list {
@@ -194,7 +194,7 @@
   padding: 20px 20px 10px 20px;
   border-radius: 12px;
   margin-bottom: 20px;
-  border: 1px solid #eaecf5;
+  border: 1px solid @om-border;
 
   .user-profile-card-header {
     margin-bottom: @margin-xs;
@@ -282,14 +282,14 @@
     .ant-select-selector {
       border-radius: 5px !important;
       border: none;
-      background: #fdfdfd;
+      background: @om-bg-card;
       display: flex;
       align-items: center;
       padding: 12px;
 
       .ant-select-selection-item {
         border-radius: 4px;
-        border: 0.5px solid #d4d4d8;
+        border: 0.5px solid @om-border-strong;
         background: none;
         align-items: center;
         margin-right: 8px;
@@ -298,7 +298,7 @@
       }
 
       .ant-select-selection-item-content {
-        color: #292929;
+        color: @om-text;
         font-family: Inter;
         font-size: 12px;
         font-style: normal;
@@ -385,7 +385,7 @@
 
 .custom-domain-edit-select {
   .ant-select-selector {
-    border: 1px solid #dde3ea !important;
+    border: 1px solid @om-border-strong !important;
   }
 
   width: 339px;

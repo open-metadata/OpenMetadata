@@ -1824,6 +1824,8 @@
     "supported-service-plural": "Поддерживаемые Сервисы",
     "supports-yaml-format": "Поддерживает формат YAML (.yaml, .yml)",
     "switch-persona": "Переключить Персону",
+    "switch-to-dark-mode": "Switch to Dark Mode",
+    "switch-to-light-mode": "Switch to Light Mode",
     "sync-alert-offset": "Синхронизировать оповещение",
     "synonym-lowercase-plural": "синонимы",
     "synonym-plural": "Синонимы",

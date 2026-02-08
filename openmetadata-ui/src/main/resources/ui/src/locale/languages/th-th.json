@@ -1824,6 +1824,8 @@
     "supported-service-plural": "บริการที่รองรับ",
     "supports-yaml-format": "รองรับรูปแบบ YAML (.yaml, .yml)",
     "switch-persona": "สลับเปอร์โซนา",
+    "switch-to-dark-mode": "Switch to Dark Mode",
+    "switch-to-light-mode": "Switch to Light Mode",
     "sync-alert-offset": "ซิงค์การแจ้งเตือน",
     "synonym-lowercase-plural": "คำพ้อง",
     "synonym-plural": "คำพ้องหลายคำ",

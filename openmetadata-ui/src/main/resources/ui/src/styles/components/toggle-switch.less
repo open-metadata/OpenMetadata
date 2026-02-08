@@ -33,3 +33,23 @@
     background-color: @primary-color;
   }
 }
+
+html[data-theme='dark'] {
+  .ant-switch {
+    background-color: rgba(110, 118, 129, 0.4);
+    border-color: #6e7681;
+  }
+
+  .ant-switch-handle::before {
+    background-color: #8b949e;
+  }
+
+  .ant-switch-checked {
+    background-color: rgba(21, 112, 239, 0.3);
+    border-color: #1570ef;
+
+    .ant-switch-handle::before {
+      background-color: #58a6ff;
+    }
+  }
+}

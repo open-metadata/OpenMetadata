@@ -677,16 +677,6 @@ a[href].link-text-grey,
 
 /* Diff style */
 
-.diff-added {
-  // background: @success-background-color;
-  width: fit-content;
-  color: @success-color;
-
-  * {
-    color: @success-color;
-  }
-}
-
 .diff-added-new,
 .diff-added {
   font-family: Inter, sans-serif;
@@ -696,7 +686,24 @@ a[href].link-text-grey,
   font-weight: 400;
   line-height: 20px;
   width: fit-content;
-  color: #027a48;
+  color: @diff-added-color;
+
+  // Ensure color propagates through block editor / ProseMirror
+  .om-block-editor,
+  .ProseMirror,
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  a,
+  th,
+  code,
+  span {
+    color: inherit !important;
+  }
 }
 
 .diff-removed-new,
@@ -709,9 +716,37 @@ a[href].link-text-grey,
   width: fit-content;
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
-  text-decoration-color: #f97066;
+  text-decoration-color: @diff-removed-color;
   text-decoration-skip-ink: auto;
-  color: #f97066;
+  color: @diff-removed-color;
+
+  .om-block-editor,
+  .ProseMirror,
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  a,
+  th,
+  code,
+  span {
+    color: inherit !important;
+  }
+}
+
+.diff-tag-added {
+  background: @diff-added-bg;
+  color: @diff-added-color;
+  border-color: transparent;
+}
+
+.diff-tag-removed {
+  color: @diff-removed-color;
+  text-decoration: line-through;
+  border-color: transparent;
 }
 
 .diff-normal-new {
@@ -725,7 +760,7 @@ a[href].link-text-grey,
 
 .diff-normal-new strong {
   font-weight: 600;
-  color: #000;
+  color: @om-text;
   /* Adjust color if needed */
 }
 

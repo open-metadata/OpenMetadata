@@ -151,7 +151,7 @@
 @blue-42: #1d4ed8;
 @blue-43: #374151;
 @blue-44: #155eef;
-@grey-text: #2c2c2c;
+@grey-text: @om-text;
 @partial-success-1: #06a4a4;
 @partial-success-2: #bdeeee;
 @black: #000000;
@@ -160,42 +160,42 @@
 @text-color-tertiary: @grey-700;
 @grey-1: @om-bg-raised;
 @grey-2: @om-bg-raised;
-@grey-3: #959595;
+@grey-3: @om-text-tertiary;
 @grey-4: @om-text-tertiary;
 @grey-5: @om-bg-raised;
 @grey-6: @om-bg-raised;
-@grey-7: #9ca3af;
+@grey-7: @om-text-disabled;
 @grey-9: @om-bg-body;
-@grey-10: #8c8c8c;
+@grey-10: @om-text-tertiary;
 @grey-11: #262626;
-@grey-13: #71717a;
+@grey-13: @om-text-tertiary;
 @grey-15: @om-border;
-@grey-16: #f4f5f7;
+@grey-16: @om-bg-raised;
 @grey-18: #afb5d9;
 @grey-19: #363f72;
 @grey-20: #dce3ec;
-@grey-21: #ababab;
-@grey-22: #d9d9d9;
-@grey-23: #f7f7f7;
-@grey-24: #979797;
+@grey-21: @om-text-disabled;
+@grey-22: @om-border-strong;
+@grey-23: @om-bg-raised;
+@grey-24: @om-text-tertiary;
 @grey-25: #dbe0e7;
-@grey-26: #fcfcfd;
+@grey-26: @om-bg-card;
 @grey-27: #0a0d120d;
 @grey-28: #00000040;
-@grey-29: #f9faff;
-@grey-30: #f4f6fb;
-@grey-31: #f1f3fc;
+@grey-29: @om-bg-raised;
+@grey-30: @om-bg-raised;
+@grey-31: @om-bg-raised;
 @grey-32: #6b7f99;
 @grey-33: #4c526c;
-@grey-34: #d3d3d3;
+@grey-34: @om-border-strong;
 @grey-35: #0a0d120a;
-@grey-46: #eeeeee;
-@grey-36: #f3f4f6;
+@grey-46: @om-border;
+@grey-36: @om-bg-raised;
 @grey-37: #ebf5ff;
-@grey-38: #f2f3f9;
+@grey-38: @om-bg-raised;
 @grey-40: #dbe0e7;
 @text-grey-muted: @grey-4;
-@de-active-color: #6b7280;
+@de-active-color: @om-text-tertiary;
 @font-size-base: 14px;
 @box-shadow-base: 0px 2px 10px rgba(0, 0, 0, 0.12);
 @button-box-shadow-default: 0px 1px 2px 0px rgba(10, 13, 18, 0.05);
@@ -258,7 +258,7 @@
 @announcement-border-light: #e2e2e2;
 @test-parameter-bg-color: #e7ebf0;
 @group-title-color: #76746f;
-@light-border-color: #f0f0f0;
+@light-border-color: @om-border-light;
 @code-background: #ebeff480;
 @timestamp-color: #9197b3;
 @left-sidebar-icon-hover: #edecf8;
@@ -270,8 +270,14 @@
 @success-background-color: rgba(0, 131, 118, 0.2);
 @tag-background-color: rgba(0, 0, 0, 0.03);
 @overlay-background-color: rgba(0, 0, 0, 0.45);
-@trigger-btn-hover-bg: #efefef;
+@trigger-btn-hover-bg: @om-bg-hover;
 @text-highlighter: #ffc34e40;
+
+// Diff colors - centralized for light/dark mode
+@diff-added-color: ~'var(--om-diff-added, #027a48)';
+@diff-removed-color: ~'var(--om-diff-removed, #f97066)';
+@diff-added-bg: ~'var(--om-diff-added-bg, rgba(0, 131, 118, 0.2))';
+@diff-removed-bg: ~'var(--om-diff-removed-bg, transparent)';
 @team-avatar-bg: #0950c51a;
 @om-navbar-height: ~'var(--ant-navbar-height)';
 @sidebar-width: 84px;
@@ -430,7 +436,7 @@
 @checkbox-border-radius: 4px; // to override ant design default 2px
 
 //grey colors
-@grey-25: #fdfdfd;
+@grey-25: @om-bg-card;
 @grey-50: @om-bg-raised;
 @grey-100: @om-bg-hover;
 @grey-200: @om-border;
@@ -441,7 +447,7 @@
 @grey-700: @om-text-secondary;
 @grey-800: @om-text;
 @grey-900: @om-text;
-@tag-text: #404040;
+@tag-text: @om-text;
 
 //Blue colors (based on design system)
 @blue-500: #0ba5ec;
@@ -465,7 +471,7 @@
 @background-primary: @om-bg-raised;
 
 @primary-heading-color: @blue-9;
-@navigation-text-color: #787486;
+@navigation-text-color: @om-text-tertiary;
 @primary-button-background: @primary-50;
 
 // button sizes

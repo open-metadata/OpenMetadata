@@ -1824,6 +1824,8 @@
     "supported-service-plural": "Unterstützte Dienste",
     "supports-yaml-format": "Unterstützt YAML-Format (.yaml, .yml)",
     "switch-persona": "Persona wechseln",
+    "switch-to-dark-mode": "Switch to Dark Mode",
+    "switch-to-light-mode": "Switch to Light Mode",
     "sync-alert-offset": "Warnung synchronisieren",
     "synonym-lowercase-plural": "Synonyme",
     "synonym-plural": "Synonyme",

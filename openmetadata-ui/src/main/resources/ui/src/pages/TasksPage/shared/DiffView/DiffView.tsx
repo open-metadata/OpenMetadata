@@ -37,9 +37,9 @@ const DiffView = ({
     if (diff.removed) {
       return (
         <del
+          className="diff-removed"
           data-testid="diff-removed"
-          key={uniqueId()}
-          style={{ color: 'grey', textDecoration: 'line-through' }}>
+          key={uniqueId()}>
           <RichTextEditorPreviewerV1 markdown={diff.value} />
         </del>
       );

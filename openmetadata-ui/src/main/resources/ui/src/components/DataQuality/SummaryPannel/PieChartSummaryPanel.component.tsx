@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useTheme } from '@mui/material';
 import { Col, Row } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +34,9 @@ const PieChartSummaryPanel = ({
   showAdditionalSummary = true,
 }: SummaryPanelProps) => {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const emptySegmentColor =
+    theme.palette.mode === 'dark' ? '#2d333b' : GREY_200;
   const {
     total: totalTests = 0,
     success: successTests = 0,
@@ -58,10 +62,10 @@ const PieChartSummaryPanel = ({
       {
         name: 'Unhealthy',
         value: totalDQEntities - healthyDataAssets,
-        color: GREY_200,
+        color: emptySegmentColor,
       },
     ],
-    [healthyDataAssets, totalDQEntities]
+    [healthyDataAssets, totalDQEntities, emptySegmentColor]
   );
 
   const coverageData = useMemo(
@@ -70,10 +74,10 @@ const PieChartSummaryPanel = ({
       {
         name: 'Uncovered',
         value: totalEntityCount - totalDQEntities,
-        color: GREY_200,
+        color: emptySegmentColor,
       },
     ],
-    [totalDQEntities, totalEntityCount]
+    [totalDQEntities, totalEntityCount, emptySegmentColor]
   );
 
   const percentages = useMemo(

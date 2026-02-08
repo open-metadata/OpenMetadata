@@ -13,10 +13,10 @@
 @import (reference) '../../../styles/variables.less';
 
 .owner-label-section {
-  color: #21263c !important;
+  color: @om-text !important;
 }
 .loading-text {
-  color: #666;
+  color: @om-text-tertiary;
   font-size: 14px;
   font-weight: 500;
 }
@@ -28,8 +28,8 @@
   display: none;
 
   .selected-owner-chip {
-    background-color: #f9fafc;
-    border: 1px solid #e3e8f0;
+    background-color: @om-bg-raised;
+    border: 1px solid @om-border;
     border-radius: 16px;
     padding: 4px 12px;
     display: flex;
@@ -39,7 +39,7 @@
     .owner-name {
       font-weight: 500;
       font-size: 12px;
-      color: #21263c;
+      color: @om-text;
     }
   }
 }
@@ -91,7 +91,7 @@
       }
 
       .owner-placeholder {
-        color: #8c8c8c;
+        color: @om-text-tertiary;
         font-size: 14px;
         font-style: italic;
       }

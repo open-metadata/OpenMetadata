@@ -847,7 +847,7 @@
   font-size: 32px;
 }
 .ql-snow .ql-color-picker.ql-background .ql-picker-item {
-  background-color: #fff;
+  background-color: @om-bg-card;
 }
 .ql-snow .ql-color-picker.ql-color .ql-picker-item {
   background-color: #000;
@@ -917,7 +917,7 @@
   border-right: 1px solid @om-border;
   content: 'Edit';
   padding-right: 8px;
-  color: #ffffff;
+  color: @om-text-inverse;
   background: @primary-color;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -928,7 +928,7 @@
 .ql-snow .ql-tooltip a.ql-remove::before {
   content: 'Remove';
   margin-left: 8px;
-  color: #ffffff;
+  color: @om-text-inverse;
   background: @primary-color;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -965,7 +965,7 @@
   content: 'Save';
   padding-right: 0px;
   margin: 0px;
-  color: #ffffff;
+  color: @om-text-inverse;
   background: @primary-color;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -1043,6 +1043,23 @@
 .ql-mention-list-item.selected {
   background-color: var(--ant-primary-1);
   text-decoration: none;
+}
+
+html[data-theme='dark'] {
+  .ql-mention-list-container {
+    background-color: #21262d !important;
+    border-color: #30363d !important;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.4) !important;
+  }
+
+  .ql-mention-list-item {
+    color: #e6edf3 !important;
+  }
+
+  .ql-mention-list-item.selected {
+    background-color: #30363d !important;
+    color: #e6edf3 !important;
+  }
 }
 
 .ql-snow.ql-toolbar .ql-formats:nth-child(5) {

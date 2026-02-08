@@ -674,7 +674,10 @@ const SchemaTable = () => {
               data-testid="sort-indicator"
               height={12}
               style={{
-                color: sortBy === 'name' ? 'var(--primary-color)' : '#6B7280',
+                color:
+                  sortBy === 'name'
+                    ? 'var(--primary-color)'
+                    : 'var(--om-text-tertiary, #6B7280)',
                 transform: sortOrder === 'desc' ? 'rotate(180deg)' : 'none',
                 transition: 'transform 0.2s ease',
               }}

@@ -237,6 +237,10 @@ html[data-theme='dark'] {
     background-color: @dark-bg-tertiary !important;
   }
 
+  .ant-table-thead .text-primary {
+    color: @dark-text-primary !important;
+  }
+
   .ant-table-tbody > tr:hover > td.ant-table-cell-fix-left,
   .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right,
   .ant-table-tbody > tr.ant-table-row:hover > td.ant-table-cell-fix-left,
@@ -372,6 +376,102 @@ html[data-theme='dark'] {
     border-bottom-color: @dark-border-primary;
   }
 
+  // User/Team selectable list (owner picker)
+  .selectable-list-item-checkmark.anticon {
+    opacity: 0 !important;
+    &.active {
+      opacity: 1 !important;
+      color: #58a6ff !important;
+    }
+  }
+
+  .user-team-select-popover,
+  .user-select-popover {
+    background: @dark-bg-tertiary !important;
+    border-color: @dark-border-primary !important;
+
+    .ant-popover-inner {
+      background-color: @dark-bg-tertiary !important;
+    }
+
+    .ant-popover-inner-content {
+      background-color: @dark-bg-tertiary !important;
+    }
+
+    .ant-tabs-nav {
+      background-color: @dark-bg-tertiary !important;
+    }
+
+    .ant-tabs-tabpane {
+      background-color: @dark-bg-tertiary !important;
+    }
+
+    .user-team-popover-header {
+      background-color: @dark-bg-elevated !important;
+    }
+
+    .ant-list,
+    .ant-list-split,
+    .ant-list-header,
+    .ant-list-footer {
+      background-color: @dark-bg-tertiary !important;
+      color: @dark-text-primary !important;
+    }
+
+    .selectable-list-virtual-list {
+      background-color: @dark-bg-tertiary !important;
+    }
+
+    .ant-list-vertical .selectable-list-item {
+      color: @dark-text-primary !important;
+
+      &:hover {
+        background-color: @dark-bg-elevated !important;
+      }
+
+      &.active {
+        background-color: fade(@dark-primary-color, 20%) !important;
+      }
+    }
+
+    .page-search-bar {
+      background-color: @dark-bg-tertiary !important;
+    }
+
+    .ant-input-wrapper,
+    .ant-input-affix-wrapper,
+    .ant-input {
+      background-color: @dark-bg-secondary !important;
+      border-color: @dark-border-primary !important;
+      color: @dark-text-primary !important;
+    }
+
+    .user-team-pills {
+      border-color: @dark-primary-color !important;
+      color: @dark-text-primary !important;
+    }
+
+    .ant-btn {
+      color: @dark-text-primary;
+    }
+  }
+
+  // Mention/hashtag suggestion dropdown (Quill @mention and BlockEditor)
+  .suggestion-menu-wrapper {
+    background-color: @dark-bg-tertiary !important;
+    border-color: @dark-border-primary !important;
+
+    .mention-item,
+    .hashtag-item,
+    .handlebars-item {
+      color: @dark-text-primary !important;
+
+      &.bg-grey-2 {
+        background-color: @dark-bg-elevated !important;
+      }
+    }
+  }
+
   // Picker panels
   .ant-picker-cell {
     color: @dark-text-tertiary;
@@ -441,6 +541,21 @@ html[data-theme='dark'] {
 
   .ant-tabs-tab-active .ant-tabs-tab-btn {
     color: @dark-primary-color !important;
+  }
+
+  // Card-type tabs (e.g., Description Current/Diff/New)
+  .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab {
+    background: @dark-bg-tertiary;
+    border-color: @dark-border-primary;
+    color: @dark-text-secondary !important;
+  }
+
+  .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-active {
+    background: @dark-bg-elevated;
+    border-color: @dark-border-primary;
+    .ant-tabs-tab-btn {
+      color: @dark-primary-color !important;
+    }
   }
 
   // Tab ink bar (active underline)
@@ -532,6 +647,32 @@ html[data-theme='dark'] {
 
   .remove-button-background-hover.ant-btn-text:hover {
     background-color: @dark-bg-secondary;
+  }
+
+  .ant-btn.entity-follow-button {
+    background-color: fade(@dark-primary-color, 15%);
+    border: 1px solid fade(@dark-primary-color, 30%);
+    .ant-typography {
+      color: @dark-blue-bright;
+    }
+    svg {
+      color: @dark-primary-color;
+    }
+    &:hover,
+    &:active,
+    &:focus {
+      background-color: fade(@dark-primary-color, 20%);
+    }
+  }
+
+  .ant-btn.ant-btn-default.source-url-button {
+    background-color: fade(@dark-primary-color, 12%);
+    border: 1px solid fade(@dark-primary-color, 25%);
+    color: @dark-blue-bright;
+    span.anticon {
+      background-color: fade(@dark-primary-color, 20%);
+      border-color: fade(@dark-primary-color, 10%);
+    }
   }
 
   // ==========================================================================
@@ -884,11 +1025,18 @@ html[data-theme='dark'] {
   // ==========================================================================
   .ant-switch {
     background-color: @dark-bg-elevated;
+    border-color: @dark-border-primary;
+    .ant-switch-handle::before {
+      background-color: @dark-text-tertiary;
+    }
   }
 
   .ant-switch-checked {
-    background: @dark-bg-tertiary;
+    background: fade(@dark-primary-color, 20%);
     border-color: @dark-primary-color;
+    .ant-switch-handle::before {
+      background-color: @dark-primary-color;
+    }
   }
 
   // ==========================================================================
@@ -1551,9 +1699,9 @@ html[data-theme='dark'] {
     background-color: transparent;
     border-color: transparent;
 
-    // Only apply dark backgrounds when in actual editing mode (with toolbar)
-    &.block-editor-wrapper--bar-menu,
-    &.block-editor-wrapper--bubble-menu {
+    // Only apply dark backgrounds when editor is actually editable
+    &.block-editor-wrapper--bar-menu:has(.om-block-editor[contenteditable='true']),
+    &.block-editor-wrapper--bubble-menu:has(.om-block-editor[contenteditable='true']) {
       background-color: @dark-bg-secondary;
       border-color: @dark-border-primary;
     }
@@ -1561,6 +1709,10 @@ html[data-theme='dark'] {
     .bar-menu-wrapper {
       background-color: @dark-bg-tertiary;
       border-color: @dark-border-primary;
+
+      .bar-menu-wrapper--format--button--icon {
+        filter: invert(1);
+      }
     }
   }
 
@@ -1568,9 +1720,9 @@ html[data-theme='dark'] {
     color: @dark-text-primary;
   }
 
-  // Only add background to editor when it's in an actual editable context
-  .block-editor-wrapper--bar-menu .om-block-editor,
-  .block-editor-wrapper--bubble-menu .om-block-editor {
+  // Only add background to editor when it's actually editable
+  .block-editor-wrapper--bar-menu .om-block-editor[contenteditable='true'],
+  .block-editor-wrapper--bubble-menu .om-block-editor[contenteditable='true'] {
     background-color: @dark-bg-secondary;
   }
 
@@ -2367,42 +2519,215 @@ html[data-theme='dark'] {
   }
 
   // ==========================================================================
-  // 93. ACTIVITY FEED TAB - dark-specific treatments only
-  // Base bg/border/text handled by activity-feed-tab.less via @om-* vars
+  // 92b. DIFF VIEW COLORS - set CSS variables for automatic adaptation
+  // ==========================================================================
+  --om-diff-added: @dark-green-bright;
+  --om-diff-removed: @dark-red-bright;
+  --om-diff-added-bg: fade(@dark-green-bright, 20%);
+  --om-diff-removed-bg: transparent;
+
+  // ==========================================================================
+  // 93. ACTIVITY FEED TAB
   // ==========================================================================
   .activity-feed-tab {
-    .activity-feed-card-new.is-active {
-      background: fade(@dark-primary-color, 10%);
-      border-color: fade(@dark-primary-color, 30%);
+    --om-border-default: @dark-border-subtle;
+    --om-border-light: @dark-border-subtle;
+    --om-border-strong: @dark-border-primary;
+
+    background-color: @dark-bg-secondary;
+    border-color: @dark-border-subtle;
+
+    .center-container {
+      background-color: @dark-bg-secondary;
+      border-color: @dark-border-subtle;
+    }
+
+    .right-container {
+      background-color: @dark-bg-secondary;
+      border-color: @dark-border-subtle;
+    }
+
+    .left-container {
+      border-right-color: @dark-border-subtle !important;
+    }
+
+    .three-panel-layout.right-container {
+      border-left-color: @dark-border-subtle;
+    }
+
+    .activity-feed-card-new {
+      background: @dark-bg-tertiary;
+      border-color: @dark-border-subtle;
+    }
+
+    .activity-feed-card-new.active-card.is-active {
+      background: fade(@dark-primary-color, 18%);
+      border-color: fade(@dark-primary-color, 40%);
+    }
+
+    .activity-feed-card-message {
+      background-color: @dark-bg-tertiary;
+      border-color: @dark-border-subtle;
+    }
+
+    .activity-feed-card-new-right-panel {
+      background-color: @dark-bg-secondary;
+      border-color: @dark-border-subtle;
     }
 
     .activity-feed-card-message-right-panel {
       background: fade(@dark-primary-color, 5%);
     }
 
-    .activity-feed-reply-card {
-      .ant-card-body {
-        background: fade(@dark-primary-color, 5%);
-      }
+    .activity-feed-reply-card .ant-card-body {
+      border-bottom-color: @dark-border-subtle;
+      background: @dark-bg-tertiary;
+    }
 
-      .activity-feed-reply-card-message {
-        background: fade(@dark-primary-color, 5%);
+    .activity-feed-reply-card .activity-feed-reply-card-message,
+    .activity-feed-reply-card .activity-feed-reply-card-message .ant-card-body {
+      background: @dark-bg-tertiary;
+    }
 
-        .ant-card-body {
-          background: fade(@dark-primary-color, 5%);
-        }
-      }
+    .right-container .activity-feed-comments-container {
+      background: @dark-bg-tertiary;
+      border-color: @dark-border-subtle;
+    }
+
+    .right-container .activity-feed-reply-button {
+      border-color: @dark-border-primary;
+      color: @dark-text-secondary;
+    }
+
+    .right-container .comments-input-field {
+      background-color: @dark-bg-tertiary;
+      border-color: @dark-border-subtle;
+      color: @dark-text-primary;
+    }
+
+    .ant-card-bordered {
+      border-color: @dark-border-subtle;
     }
   }
 
+  .feed-explore-heading {
+    background-color: @dark-bg-tertiary;
+  }
+
+  .activity-feed-editor-container-new {
+    background-color: @dark-bg-tertiary;
+    border: 0.5px solid @dark-border-subtle;
+
+    .ql-container,
+    .ql-toolbar {
+      background-color: @dark-bg-tertiary;
+      border: 1px solid @dark-border-subtle;
+    }
+  }
+
+  .no-description-suggestion-card {
+    background: @dark-bg-tertiary;
+    border: 0.5px solid @dark-border-subtle;
+  }
+
   .active-card {
-    background-color: fade(@dark-primary-color, 15%) !important;
+    background-color: fade(@dark-primary-color, 20%) !important;
+  }
+
+  // Task feed cards
+  .task-feed-card-v1-new {
+    background: @dark-bg-tertiary;
+    border: 0.5px solid @dark-border-subtle;
+
+    &.active {
+      background: fade(@dark-primary-color, 18%);
+      border: 1px solid fade(@dark-primary-color, 50%);
+    }
+
+    .task-body {
+      background-color: @dark-bg-tertiary;
+    }
+  }
+
+  .task-feed-desc-diff {
+    background-color: @dark-bg-tertiary;
+  }
+
+  .no-bg-border {
+    background: @dark-bg-tertiary;
+  }
+
+  // Feed card body
+  .show-thread {
+    background: @dark-bg-tertiary;
+    border: 0.5px solid @dark-border-subtle;
+  }
+
+  .hide-thread {
+    background: @dark-bg-tertiary;
+    border: 0.5px solid @dark-border-subtle;
+  }
+
+  // Task tab right panel
+  .diff-view-container-card {
+    background: @dark-bg-tertiary;
+    border: 0.5px solid @dark-border-subtle;
+  }
+
+  .diff-view-container-card-right-panel {
+    background: @dark-bg-tertiary;
+    border: 0.5px solid @dark-border-subtle;
+  }
+
+  .tags-details-contianer {
+    background: @dark-bg-tertiary;
+    border: 0.5px solid @dark-border-subtle;
+  }
+
+  .action-required-card {
+    background: linear-gradient(
+      270deg,
+      fade(@dark-primary-color, 15%) 0.56%,
+      fade(@dark-primary-color, 10%) 16.47%,
+      fade(@dark-bg-tertiary, 80%) 99.98%
+    );
+    border: 0.5px solid @dark-border-subtle;
   }
 
   .task-toggle,
   .task-toggle.ant-segmented {
+    background: @dark-bg-secondary;
+    border: 1px solid @dark-border-primary;
+
     .ant-segmented-item-selected {
       background: @dark-bg-elevated;
+    }
+  }
+
+  .owner-chip {
+    background: @dark-bg-tertiary;
+    border: 1px solid @dark-border-subtle;
+  }
+
+  .activity-feed-card-container:not(:last-child) .horizontal-line {
+    background-color: @dark-border-subtle;
+  }
+
+  .feed-filter-icon {
+    &.ant-btn.ant-btn-default {
+      border: 1px solid @dark-border-primary;
+
+      &.disabled {
+        background: @dark-bg-tertiary;
+        border: 1px solid @dark-border-primary;
+      }
+
+      &.selected,
+      &.ant-dropdown-open,
+      &.ant-popover-open {
+        background: fade(@dark-primary-color, 15%);
+        border: 1px solid @dark-primary-color;
+      }
     }
   }
 
@@ -2546,6 +2871,21 @@ html[data-theme='dark'] {
 
   .ql-toolbar.ql-snow {
     background-color: @dark-bg-secondary;
+  }
+
+  .ql-mention-list-container {
+    background-color: @dark-bg-tertiary;
+    border-color: @dark-border-primary;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  .ql-mention-list-item {
+    color: @dark-text-primary;
+  }
+
+  .ql-mention-list-item.selected {
+    background-color: @dark-bg-elevated;
+    color: @dark-text-primary;
   }
 
   // ==========================================================================
@@ -2889,6 +3229,55 @@ html[data-theme='dark'] {
           color: @dark-green-alt;
         }
       }
+    }
+  }
+
+  // ==========================================================================
+  // 117. APP STATS BADGES (Search Indexing, etc.)
+  // ==========================================================================
+  .entity-stats {
+    &.total {
+      background-color: fade(@dark-primary-color, 15%);
+      border-color: @dark-primary-color;
+      .ant-typography {
+        color: @dark-blue-bright;
+      }
+    }
+    &.success {
+      background-color: fade(@dark-green-base, 15%);
+      border-color: @dark-green-base;
+      .ant-typography {
+        color: @dark-green-bright;
+      }
+    }
+    &.failure {
+      background-color: fade(@dark-red-base, 15%);
+      border-color: @dark-red-base;
+      .ant-typography {
+        color: @dark-red-bright;
+      }
+    }
+  }
+
+  // ==========================================================================
+  // 118. REQUEST BADGES (App run stats)
+  // ==========================================================================
+  .request-badge {
+    &.success .ant-badge-count {
+      background-color: fade(@dark-green-base, 20%);
+      color: @dark-green-bright;
+    }
+    &.failed .ant-badge-count {
+      background-color: fade(@dark-red-base, 20%);
+      color: @dark-red-bright;
+    }
+    &.warning .ant-badge-count {
+      background-color: fade(@dark-amber-base, 20%);
+      color: @dark-amber-bright;
+    }
+    &.running .ant-badge-count {
+      background-color: fade(@dark-primary-color, 20%);
+      color: @dark-blue-bright;
     }
   }
 }

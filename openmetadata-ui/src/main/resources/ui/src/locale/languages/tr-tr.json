@@ -1824,6 +1824,8 @@
     "supported-service-plural": "Desteklenen Hizmetler",
     "supports-yaml-format": "YAML formatını destekler (.yaml, .yml)",
     "switch-persona": "Persona Değiştir",
+    "switch-to-dark-mode": "Switch to Dark Mode",
+    "switch-to-light-mode": "Switch to Light Mode",
     "sync-alert-offset": "Senkronizasyon Uyarısı Ofseti",
     "synonym-lowercase-plural": "eş anlamlılar",
     "synonym-plural": "Eş Anlamlılar",

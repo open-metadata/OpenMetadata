@@ -120,3 +120,57 @@
   height: 20px;
   display: flex;
 }
+
+html[data-theme='dark'] .user-team-select-popover {
+  background: #21262d !important;
+  border-color: #30363d !important;
+
+  .ant-popover-inner,
+  .ant-popover-inner-content,
+  .ant-tabs-nav,
+  .ant-tabs-tabpane,
+  .ant-list,
+  .ant-list-split,
+  .ant-list-header,
+  .ant-list-footer,
+  .selectable-list-virtual-list {
+    background-color: #21262d !important;
+    color: #e6edf3 !important;
+  }
+
+  .user-team-popover-header {
+    background-color: #30363d !important;
+  }
+
+  .ant-list-vertical .selectable-list-item {
+    color: #e6edf3 !important;
+
+    &:hover {
+      background-color: #30363d !important;
+    }
+
+    &.active {
+      background-color: rgba(21, 112, 239, 0.2) !important;
+    }
+  }
+
+  .selectable-list-item-checkmark.anticon {
+    opacity: 0 !important;
+    &.active {
+      opacity: 1 !important;
+      color: #58a6ff !important;
+    }
+  }
+
+  .ant-input-wrapper,
+  .ant-input-affix-wrapper,
+  .ant-input {
+    background-color: #161b22 !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
+  }
+
+  .ant-btn {
+    color: #e6edf3;
+  }
+}

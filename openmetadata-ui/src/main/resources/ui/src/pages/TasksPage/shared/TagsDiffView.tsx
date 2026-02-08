@@ -34,12 +34,7 @@ export const TagsDiffView = ({
           data-testid="diff-added"
           key={uniqueId()}>
           {diff.value.map((tag) => (
-            <Tag
-              key={uniqueId()}
-              style={{
-                background: 'rgba(0, 131, 118, 0.2)',
-                color: '#008376',
-              }}>
+            <Tag className="diff-tag-added" key={uniqueId()}>
               {tag.tagFQN}
             </Tag>
           ))}
@@ -53,9 +48,7 @@ export const TagsDiffView = ({
           data-testid="diff-removed"
           key={uniqueId()}>
           {diff.value.map((tag) => (
-            <Tag
-              key={uniqueId()}
-              style={{ color: 'grey', textDecoration: 'line-through' }}>
+            <Tag className="diff-tag-removed" key={uniqueId()}>
               {tag.tagFQN}
             </Tag>
           ))}
