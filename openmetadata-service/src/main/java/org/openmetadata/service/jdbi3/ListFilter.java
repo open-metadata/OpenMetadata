@@ -4,11 +4,14 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -138,11 +141,39 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     }
 
-    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      return "json->>'$.entityStatus' = :entityStatus";
-    } else {
-      return "json->>'entityStatus' = :entityStatus";
+    List<String> validatedStatuses = parseEntityStatusValues(entityStatus);
+    if (validatedStatuses.isEmpty()) {
+      return "";
     }
+
+    List<String> bindParams = new ArrayList<>();
+    for (int i = 0; i < validatedStatuses.size(); i++) {
+      String key = "entityStatus_" + i;
+      queryParams.put(key, validatedStatuses.get(i));
+      bindParams.add(":" + key);
+    }
+    String inCondition = String.join(",", bindParams);
+
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return String.format(
+          "JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) IN (%s)", inCondition);
+    } else {
+      return String.format("json->>'entityStatus' IN (%s)", inCondition);
+    }
+  }
+
+  private List<String> parseEntityStatusValues(String entityStatus) {
+    if (entityStatus == null || entityStatus.trim().isEmpty()) {
+      return Collections.emptyList();
+    }
+    Set<String> validStatuses =
+        Arrays.stream(EntityStatus.values()).map(EntityStatus::value).collect(Collectors.toSet());
+
+    return Arrays.stream(entityStatus.split(","))
+        .map(String::trim)
+        .filter(s -> !s.isEmpty())
+        .filter(validStatuses::contains) // Only allow valid enum values
+        .collect(Collectors.toList());
   }
 
   private String getAgentTypeCondition() {
