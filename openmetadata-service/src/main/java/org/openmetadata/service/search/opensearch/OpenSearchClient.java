@@ -85,6 +85,7 @@ public class OpenSearchClient implements SearchClient {
   @Getter protected final os.org.opensearch.client.opensearch.OpenSearchClient newClient;
   private final boolean isNewClientAvailable;
   private final OpenSearchTransport transport;
+  private final SdkHttpClient awsHttpClient; // Stored for cleanup on close()
 
   private volatile OSLineageGraphBuilder lineageGraphBuilder;
   private final OSEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
@@ -108,8 +109,10 @@ public class OpenSearchClient implements SearchClient {
     boolean useIamAuth = isAwsIamAuthEnabled(awsConfig);
 
     if (useIamAuth) {
-      this.transport = createAwsSdk2Transport(config, awsConfig);
+      this.awsHttpClient = AwsCrtHttpClient.builder().build();
+      this.transport = createAwsSdk2Transport(config, awsConfig, this.awsHttpClient);
     } else {
+      this.awsHttpClient = null;
       this.transport = createApacheHttpClient5Transport(config);
     }
 
@@ -611,7 +614,18 @@ public class OpenSearchClient implements SearchClient {
 
   /** */
   @Override
-  public void close() {}
+  public void close() {
+    if (transport != null) {
+      try {
+        transport.close();
+      } catch (IOException e) {
+        LOG.warn("Error closing OpenSearch transport", e);
+      }
+    }
+    if (awsHttpClient != null) {
+      awsHttpClient.close();
+    }
+  }
 
   @Override
   public BulkResponse bulkOpenSearch(List<BulkOperation> operations) throws IOException {
@@ -649,38 +663,56 @@ public class OpenSearchClient implements SearchClient {
     return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
   }
 
+  /**
+   * Parses the host string for AwsSdk2Transport. Strips protocol prefix, trailing slash, handles
+   * comma-separated hosts (uses first), and removes port. AwsSdk2Transport expects a bare hostname.
+   */
+  @com.google.common.annotations.VisibleForTesting
+  static String parseHostForAwsSdk2Transport(String host) {
+    if (host == null) {
+      return null;
+    }
+    if (host.startsWith("https://")) {
+      host = host.substring("https://".length());
+    } else if (host.startsWith("http://")) {
+      host = host.substring("http://".length());
+    }
+    if (host.endsWith("/")) {
+      host = host.substring(0, host.length() - 1);
+    }
+    // Handle comma-separated hosts (use first host)
+    if (host.contains(",")) {
+      host = host.split(",")[0].trim();
+    }
+    // Strip port if present (AwsSdk2Transport expects bare hostname)
+    if (host.contains(":")) {
+      host = host.split(":")[0];
+    }
+    return host;
+  }
+
   private AwsSdk2Transport createAwsSdk2Transport(
-      ElasticSearchConfiguration esConfig, AwsConfiguration awsConfig) {
-    if (esConfig == null || awsConfig == null) {
-      LOG.error("Failed to create AwsSdk2Transport: esConfig or awsConfig is null");
+      ElasticSearchConfiguration esConfig, AwsConfiguration awsConfig, SdkHttpClient httpClient) {
+    if (esConfig == null || awsConfig == null || httpClient == null) {
+      LOG.error("Failed to create AwsSdk2Transport: esConfig, awsConfig, or httpClient is null");
       return null;
     }
 
     try {
-      String host = esConfig.getHost();
-      if (host.startsWith("https://")) {
-        host = host.substring("https://".length());
-      } else if (host.startsWith("http://")) {
-        host = host.substring("http://".length());
+      String host = parseHostForAwsSdk2Transport(esConfig.getHost());
+      if (host == null || host.isEmpty()) {
+        LOG.error("Failed to create AwsSdk2Transport: host is null or empty");
+        return null;
       }
-      if (host.endsWith("/")) {
-        host = host.substring(0, host.length() - 1);
-      }
-      // Handle comma-separated hosts (use first host for AwsSdk2Transport)
-      if (host.contains(",")) {
-        host = host.split(",")[0].trim();
+
+      // Log warning for multi-host config
+      if (esConfig.getHost() != null && esConfig.getHost().contains(",")) {
         LOG.warn("Multiple hosts configured, using first host for AWS IAM auth: {}", host);
-      }
-      // Strip port if present (AwsSdk2Transport expects bare hostname)
-      if (host.contains(":")) {
-        host = host.split(":")[0];
       }
 
       Region region = Region.of(awsConfig.getRegion());
       String serviceName =
           StringUtils.isNotEmpty(awsConfig.getServiceName()) ? awsConfig.getServiceName() : "es";
-
-      SdkHttpClient httpClient = AwsCrtHttpClient.builder().build();
 
       AwsSdk2TransportOptions options =
           AwsSdk2TransportOptions.builder()

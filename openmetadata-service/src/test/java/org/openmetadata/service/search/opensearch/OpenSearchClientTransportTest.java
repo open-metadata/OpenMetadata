@@ -73,7 +73,7 @@ class OpenSearchClientTransportTest {
   void testHostUrlParsingHttps() {
     String host = "https://vpc-test.us-east-2.es.amazonaws.com";
 
-    String parsedHost = parseHostForAwsSdk2Transport(host);
+    String parsedHost = OpenSearchClient.parseHostForAwsSdk2Transport(host);
 
     assertEquals(
         "vpc-test.us-east-2.es.amazonaws.com",
@@ -85,7 +85,7 @@ class OpenSearchClientTransportTest {
   void testHostUrlParsingWithTrailingSlash() {
     String host = "https://vpc-test.us-east-2.es.amazonaws.com/";
 
-    String parsedHost = parseHostForAwsSdk2Transport(host);
+    String parsedHost = OpenSearchClient.parseHostForAwsSdk2Transport(host);
 
     assertEquals(
         "vpc-test.us-east-2.es.amazonaws.com",
@@ -97,7 +97,7 @@ class OpenSearchClientTransportTest {
   void testHostUrlParsingHttp() {
     String host = "http://localhost:9200";
 
-    String parsedHost = parseHostForAwsSdk2Transport(host);
+    String parsedHost = OpenSearchClient.parseHostForAwsSdk2Transport(host);
 
     assertEquals("localhost", parsedHost, "Host should be stripped of http:// prefix and port");
   }
@@ -106,12 +106,19 @@ class OpenSearchClientTransportTest {
   void testHostUrlParsingNoProtocol() {
     String host = "vpc-test.us-east-2.es.amazonaws.com";
 
-    String parsedHost = parseHostForAwsSdk2Transport(host);
+    String parsedHost = OpenSearchClient.parseHostForAwsSdk2Transport(host);
 
     assertEquals(
         "vpc-test.us-east-2.es.amazonaws.com",
         parsedHost,
         "Host without protocol should be unchanged");
+  }
+
+  @Test
+  void testHostUrlParsingNull() {
+    String parsedHost = OpenSearchClient.parseHostForAwsSdk2Transport(null);
+
+    assertNull(parsedHost, "Null host should return null");
   }
 
   @Test
@@ -171,7 +178,7 @@ class OpenSearchClientTransportTest {
   void testHostUrlParsingWithPort() {
     String host = "https://vpc-test.us-east-2.es.amazonaws.com:443";
 
-    String parsedHost = parseHostForAwsSdk2Transport(host);
+    String parsedHost = OpenSearchClient.parseHostForAwsSdk2Transport(host);
 
     assertEquals(
         "vpc-test.us-east-2.es.amazonaws.com",
@@ -183,7 +190,7 @@ class OpenSearchClientTransportTest {
   void testHostUrlParsingWithPortNoProtocol() {
     String host = "vpc-test.us-east-2.es.amazonaws.com:443";
 
-    String parsedHost = parseHostForAwsSdk2Transport(host);
+    String parsedHost = OpenSearchClient.parseHostForAwsSdk2Transport(host);
 
     assertEquals(
         "vpc-test.us-east-2.es.amazonaws.com", parsedHost, "Host should be stripped of port");
@@ -193,7 +200,7 @@ class OpenSearchClientTransportTest {
   void testHostUrlParsingCommaSeparatedHosts() {
     String host = "https://host1.es.amazonaws.com,https://host2.es.amazonaws.com";
 
-    String parsedHost = parseHostForAwsSdk2Transport(host);
+    String parsedHost = OpenSearchClient.parseHostForAwsSdk2Transport(host);
 
     assertEquals(
         "host1.es.amazonaws.com", parsedHost, "Should use first host from comma-separated list");
@@ -203,35 +210,11 @@ class OpenSearchClientTransportTest {
   void testHostUrlParsingCommaSeparatedHostsWithPorts() {
     String host = "host1.es.amazonaws.com:443,host2.es.amazonaws.com:443";
 
-    String parsedHost = parseHostForAwsSdk2Transport(host);
+    String parsedHost = OpenSearchClient.parseHostForAwsSdk2Transport(host);
 
     assertEquals(
         "host1.es.amazonaws.com",
         parsedHost,
         "Should use first host and strip port from comma-separated list");
-  }
-
-  /**
-   * Simulates the host parsing logic used in OpenSearchClient.createAwsSdk2Transport(). The
-   * AwsSdk2Transport expects the host without the protocol prefix, port, or multiple hosts.
-   */
-  private String parseHostForAwsSdk2Transport(String host) {
-    if (host.startsWith("https://")) {
-      host = host.substring("https://".length());
-    } else if (host.startsWith("http://")) {
-      host = host.substring("http://".length());
-    }
-    if (host.endsWith("/")) {
-      host = host.substring(0, host.length() - 1);
-    }
-    // Handle comma-separated hosts (use first host)
-    if (host.contains(",")) {
-      host = host.split(",")[0].trim();
-    }
-    // Strip port if present
-    if (host.contains(":")) {
-      host = host.split(":")[0];
-    }
-    return host;
   }
 }
