@@ -301,7 +301,9 @@ export const verifyEntitiesAreSorted = async (page: Page) => {
 
 export const navigateToExploreAndSelectEntity = async (
   page: Page,
-  entityName: string
+  entityName: string,
+  endpoint?: string,
+  fullyQualifiedName?: string
 ) => {
   await redirectToExplorePage(page);
 
@@ -310,5 +312,10 @@ export const navigateToExploreAndSelectEntity = async (
     timeout: 15000,
   });
 
-  await openEntitySummaryPanel(page, entityName);
+  await openEntitySummaryPanel(
+    page,
+    entityName,
+    endpoint,
+    fullyQualifiedName
+  );
 };
