@@ -81,6 +81,9 @@ public class RdfRepository {
   }
 
   public static void reset() {
+    if (INSTANCE != null) {
+      INSTANCE.close();
+    }
     INSTANCE = null;
   }
 
