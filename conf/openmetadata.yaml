@@ -225,12 +225,12 @@ database:
   # These work across both PostgreSQL and MySQL drivers
   properties:
     # HikariCP connection pool settings
-    connectionTimeout: ${DB_CONNECTION_TIMEOUT:-300000}  # 300 seconds
-    idleTimeout: ${DB_IDLE_TIMEOUT:-600000}  # 10 minutes
-    maxLifetime: ${DB_MAX_LIFETIME:-1800000}  # 30 minutes
-    leakDetectionThreshold: ${DB_LEAK_DETECTION_THRESHOLD:-600000}  # 10 minute
+    connectionTimeout: ${DB_CONNECTION_TIMEOUT:-30000}  # 30 seconds - fail fast if pool exhausted
+    idleTimeout: ${DB_IDLE_TIMEOUT:-120000}  # 2 minutes - reclaim idle connections faster
+    maxLifetime: ${DB_MAX_LIFETIME:-600000}  # 10 minutes - rotate connections (cloud DB friendly)
+    leakDetectionThreshold: ${DB_LEAK_DETECTION_THRESHOLD:-60000}  # 1 minute - detect leaks early
     keepaliveTime: ${DB_KEEPALIVE_TIME:-0}  # 0 = disabled (set to 30000 for Aurora)
-    validationTimeout: ${DB_VALIDATION_TIMEOUT:-300000}  # 300 seconds
+    validationTimeout: ${DB_VALIDATION_TIMEOUT:-5000}  # 5 seconds - HikariCP default
     # PostgreSQL specific - these are ignored by MySQL driver
     prepareThreshold: ${DB_PG_PREPARE_THRESHOLD:-1}  # Use prepared statements immediately
     preparedStatementCacheQueries: ${DB_PG_PREP_STMT_CACHE_QUERIES:-500}  # Cache more statements
@@ -580,10 +580,9 @@ limits:
   limitsConfigFile: ${LIMITS_CONFIG_FILE:-""}
 
 # Bulk Operation Configuration
-# Controls parallelism and resource usage for bulk API operations (e.g., bulk import/export)
-# Uses a bounded thread pool to prevent connection pool exhaustion
+# Controls parallelism and admission control for bulk API operations.
 bulkOperation:
-  # Max threads for bulk operations (recommendations: 2 vCore=5-8, 4 vCore=8-15, 8 vCore=15-25)
+  # Max threads for processing
   maxThreads: ${BULK_OPERATION_MAX_THREADS:-10}
   # Max queued operations before rejection (returns 503)
   queueSize: ${BULK_OPERATION_QUEUE_SIZE:-1000}

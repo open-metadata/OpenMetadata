@@ -29,6 +29,8 @@ interface ColumnGridTableRowProps {
   isPendingRefetch?: boolean;
   /** When true, row shows highlighted (theme warning) background for recently bulk-updated columns */
   isRecentlyUpdated?: boolean;
+  /** When true, parent/child row colors are shown (only when group/struct is expanded) */
+  showParentChildColors?: boolean;
   onSelect: (id: string, checked: boolean) => void;
   onGroupSelect?: (groupId: string, checked: boolean) => void;
   renderColumnNameCell: (entity: ColumnGridRowData) => React.ReactNode;
@@ -46,6 +48,7 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
   isIndeterminate,
   isPendingRefetch = false,
   isRecentlyUpdated,
+  showParentChildColors = false,
   onSelect,
   onGroupSelect,
   renderColumnNameCell,
@@ -57,7 +60,7 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
   const theme = useTheme();
 
   const { rowSx, cellSx, rowType } = useMemo(() => {
-    const isChildRow = Boolean(entity.parentId);
+    const isChildRow = Boolean(entity.parentId || entity.isStructChild);
     const type = isChildRow ? 'child' : 'parent';
 
     const yellowHighlightBg =
@@ -81,9 +84,10 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
       };
     }
 
-    if (!isSelected) {
+    if (!showParentChildColors) {
       return { rowType: type, rowSx: undefined, cellSx: undefined };
     }
+
     const parentBg =
       theme.palette.allShades?.gray?.[100] ?? theme.palette.grey?.[100];
     const childBg =
@@ -100,7 +104,13 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
       },
       cellSx: { backgroundColor: bg, transition: ROW_BG_TRANSITION },
     };
-  }, [isSelected, isRecentlyUpdated, entity.parentId, theme]);
+  }, [
+    isRecentlyUpdated,
+    showParentChildColors,
+    entity.parentId,
+    entity.isStructChild,
+    theme,
+  ]);
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.target.checked;

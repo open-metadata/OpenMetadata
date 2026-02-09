@@ -130,26 +130,8 @@
           }
         }
       },
-      "testCaseResultSummary": {
-        "type": "nested",
-        "properties": {
-          "status": {
-            "type": "keyword"
-          },
-          "testCaseName": {
-            "type": "text",
-            "analyzer": "om_analyzer_jp",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "timestamp": {
-            "type": "long"
-          }
-        }
+      "lastResultTimestamp": {
+        "type": "long"
       },
       "owners": {
         "properties": {
@@ -509,7 +491,16 @@
         "null_value": 0
       },
       "votes": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "upVotes": {
+            "type": "integer"
+          },
+          "downVotes": {
+            "type": "integer"
+          }
+        }
       },
       "descriptionStatus": {
         "type": "keyword"

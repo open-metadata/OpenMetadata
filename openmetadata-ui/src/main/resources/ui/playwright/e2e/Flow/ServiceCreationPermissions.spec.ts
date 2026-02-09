@@ -30,6 +30,7 @@ import {
 import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { settingClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 
 const serviceOwnerPolicy = new PolicyClass();
 const serviceOwnerRole = new RolesClass();
@@ -59,7 +60,7 @@ const test = base.extend<{
   },
 });
 
-test.describe('Service Creation with isOwner() Permissions', () => {
+test.describe('Service Creation with isOwner() Permissions', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.slow();
 
   test.beforeAll('Setup prerequisites', async ({ browser }) => {

@@ -23,7 +23,7 @@ from metadata.generated.schema.type.classificationLanguages import (
 )
 from metadata.generated.schema.type.contextRecognizer import ContextRecognizer
 from metadata.generated.schema.type.customRecognizer import CustomRecognizer
-from metadata.generated.schema.type.denyListRecognizer import DenyListRecognizer
+from metadata.generated.schema.type.exactTermsRecognizer import ExactTermsRecognizer
 from metadata.generated.schema.type.patternRecognizer import (
     PatternRecognizer as PatternRecognizerConfig,
 )
@@ -98,18 +98,18 @@ class TestPresidioRecognizerFactory:
         assert result.patterns[0].score == 0.9
         assert result.global_regex_flags == re.IGNORECASE | re.DOTALL | re.MULTILINE
 
-    def test_create_deny_list_recognizer(self):
-        """Test creating a deny list recognizer"""
-        deny_list = ["secret123", "api-key-456", "token789"]
+    def test_create_exact_terms_recognizer(self):
+        """Test creating an exact terms recognizer"""
+        exact_terms = ["secret123", "api-key-456", "token789"]
 
         recognizer_config = Recognizer(
-            name="deny_list_recognizer",
+            name="exact_terms_recognizer",
             enabled=True,
             recognizerConfig=RecognizerConfig(
-                root=DenyListRecognizer(
-                    type="deny_list",
+                root=ExactTermsRecognizer(
+                    type="exact_terms",
                     supportedEntity=PIIEntity.US_SSN,
-                    denyList=deny_list,
+                    exactTerms=exact_terms,
                     supportedLanguage=ClassificationLanguage.en,
                     regexFlags=RegexFlags(),
                 )
@@ -122,8 +122,8 @@ class TestPresidioRecognizerFactory:
         assert result.supported_entities == ["US_SSN"]
         assert len(result.patterns) == 3
 
-        for value, pattern in zip(deny_list, result.patterns):
-            assert pattern.name == f"deny_{value}"
+        for value, pattern in zip(exact_terms, result.patterns):
+            assert pattern.name == f"exact_term_{value}"
             assert pattern.regex == re.escape(value)
             assert pattern.score == 0.9
 
@@ -339,10 +339,10 @@ class TestPresidioRecognizerFactory:
             name="recognizer2",
             enabled=True,
             recognizerConfig=RecognizerConfig(
-                root=DenyListRecognizer(
-                    type="deny_list",
+                root=ExactTermsRecognizer(
+                    type="exact_terms",
                     supportedEntity=PIIEntity.US_SSN,
-                    denyList=["secret"],
+                    exactTerms=["secret"],
                     supportedLanguage=ClassificationLanguage.en,
                     regexFlags=RegexFlags(),
                 )

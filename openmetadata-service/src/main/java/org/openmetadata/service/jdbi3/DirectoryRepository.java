@@ -25,6 +25,7 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FILE;
 import static org.openmetadata.service.Entity.SPREADSHEET;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.services.DriveService;
@@ -106,6 +108,20 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   public void storeEntity(Directory directory, boolean update) {
     // Store the entity
     store(directory, update);
+  }
+
+  @Override
+  public void storeEntities(List<Directory> directories) {
+    List<Directory> directoriesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Directory directory : directories) {
+      // Clone for storage
+      String jsonCopy = gson.toJson(directory);
+      directoriesToStore.add(gson.fromJson(jsonCopy, Directory.class));
+    }
+
+    storeMany(directoriesToStore);
   }
 
   @Override
@@ -290,8 +306,15 @@ public class DirectoryRepository extends EntityRepository<Directory> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     Directory directory = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
-    return new DirectoryCsv(directory, user, recursive).exportCsv(List.of(directory));
+    return new DirectoryCsv(directory, user, recursive).exportCsv(List.of(directory), callback);
   }
 
   @Override
@@ -363,7 +386,16 @@ public class DirectoryRepository extends EntityRepository<Directory> {
                 .withFullyQualifiedName(directoryFqn);
 
         if (!nullOrEmpty(parentFqn)) {
-          EntityReference parentRef = getEntityReference(printer, csvRecord, 3, DIRECTORY);
+          // Use dependency resolution for parent directory lookup
+          EntityReference parentRef = null;
+          try {
+            Directory parentDirectory =
+                getEntityWithDependencyResolution(DIRECTORY, parentFqn, "*", Include.NON_DELETED);
+            parentRef = parentDirectory.getEntityReference();
+          } catch (EntityNotFoundException parentEx) {
+            // Fall back to regular lookup
+            parentRef = getEntityReference(printer, csvRecord, 3, DIRECTORY);
+          }
           newDirectory.withParent(parentRef);
         }
       }

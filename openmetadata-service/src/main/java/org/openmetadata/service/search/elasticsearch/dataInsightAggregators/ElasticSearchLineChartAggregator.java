@@ -200,9 +200,15 @@ public class ElasticSearchLineChartAggregator
               q ->
                   q.range(
                       r ->
-                          r.field(DataInsightSystemChartRepository.TIMESTAMP_FIELD)
-                              .gte(JsonData.of(finalStartTime))
-                              .lte(JsonData.of(end))));
+                          r.untyped(
+                              u ->
+                                  u.field(DataInsightSystemChartRepository.TIMESTAMP_FIELD)
+                                      .gte(
+                                          es.co.elastic.clients.json.JsonData.of(
+                                              String.valueOf(finalStartTime)))
+                                      .lte(
+                                          es.co.elastic.clients.json.JsonData.of(
+                                              String.valueOf(end))))));
       searchRequestBuilder.query(rangeQuery);
       searchRequestBuilder.index(DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     } else {

@@ -39,6 +39,7 @@ import {
   verifyTaskFilters,
   verifyTotalDataAssetsFilters,
 } from '../../utils/widgetFilters';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 const adminUser = new UserClass();
 const persona = new PersonaClass();
@@ -157,7 +158,7 @@ test.beforeEach(async ({ page }) => {
   await waitForAllLoadersToDisappear(page);
 });
 
-test('Activity Feed Widget', async ({ page }) => {
+test('Activity Feed Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.ActivityFeed';
@@ -201,7 +202,7 @@ test('Activity Feed Widget', async ({ page }) => {
   });
 });
 
-test('Data Assets Widget', async ({ page }) => {
+test('Data Assets Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.DataAssets';
@@ -255,7 +256,7 @@ test('Data Assets Widget', async ({ page }) => {
   });
 });
 
-test('My Data Widget', async ({ page }) => {
+test('My Data Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.MyData';
@@ -312,7 +313,7 @@ test('My Data Widget', async ({ page }) => {
   });
 });
 
-test('KPI Widget', async ({ page }) => {
+test('KPI Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   test.slow(true);
 
   await test.step('Add KPI', async () => {
@@ -418,7 +419,7 @@ test('KPI Widget', async ({ page }) => {
   });
 });
 
-test('Total Data Assets Widget', async ({ page }) => {
+test('Total Data Assets Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.TotalAssets';
@@ -463,7 +464,7 @@ test('Total Data Assets Widget', async ({ page }) => {
   });
 });
 
-test('Following Assets Widget', async ({ page }) => {
+test('Following Assets Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   test.slow(true);
 
   await testDomain.visitEntityPage(page);
@@ -532,7 +533,7 @@ test('Following Assets Widget', async ({ page }) => {
   });
 });
 
-test('Domains Widget', async ({ page }) => {
+test('Domains Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.Domains';
@@ -585,7 +586,7 @@ test('Domains Widget', async ({ page }) => {
   });
 });
 
-test('My Tasks Widget', async ({ page }) => {
+test('My Tasks Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   test.slow(true);
 
   await test.step('Create a task', async () => {
@@ -664,7 +665,7 @@ test('My Tasks Widget', async ({ page }) => {
   });
 });
 
-test('Data Products Widget', async ({ page }) => {
+test('Data Products Widget', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.DataProducts';

@@ -50,6 +50,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
@@ -96,6 +98,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.ValidatorUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -726,9 +729,17 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     executorService.submit(
         () -> {
           try {
+            CsvExportProgressCallback progressCallback =
+                (exported, total, message) ->
+                    WebsocketNotificationHandler.sendCsvExportProgressNotification(
+                        jobId, securityContext, exported, total, message);
+
             String csvData =
                 repository.exportToCsv(
-                    name, securityContext.getUserPrincipal().getName(), recursive);
+                    name,
+                    securityContext.getUserPrincipal().getName(),
+                    recursive,
+                    progressCallback);
             WebsocketNotificationHandler.sendCsvExportCompleteNotification(
                 jobId, securityContext, csvData);
           } catch (Exception e) {
@@ -874,9 +885,22 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         () -> {
           try {
             WebsocketNotificationHandler.sendCsvImportStartedNotification(jobId, securityContext);
+
+            CsvImportProgressCallback progressCallback =
+                (rowsProcessed, totalRows, batchNumber, message) ->
+                    WebsocketNotificationHandler.sendCsvImportProgressNotification(
+                        jobId, securityContext, rowsProcessed, totalRows, message);
+
             CsvImportResult result =
                 importCsvInternal(
-                    uriInfo, securityContext, name, csv, dryRun, recursive, versioningEntityType);
+                    uriInfo,
+                    securityContext,
+                    name,
+                    csv,
+                    dryRun,
+                    recursive,
+                    versioningEntityType,
+                    progressCallback);
             WebsocketNotificationHandler.sendCsvImportCompleteNotification(
                 jobId, securityContext, result);
           } catch (Exception e) {
@@ -917,20 +941,40 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       boolean recursive,
       String versioningEntityType)
       throws IOException {
+    return importCsvInternal(
+        uriInfo, securityContext, name, csv, dryRun, recursive, versioningEntityType, null);
+  }
+
+  protected CsvImportResult importCsvInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      String csv,
+      boolean dryRun,
+      boolean recursive,
+      String versioningEntityType,
+      CsvImportProgressCallback progressCallback)
+      throws IOException {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     CsvImportResult result =
         nullOrEmpty(versioningEntityType)
             ? repository.importFromCsv(
-                name, csv, dryRun, securityContext.getUserPrincipal().getName(), recursive)
+                name,
+                csv,
+                dryRun,
+                securityContext.getUserPrincipal().getName(),
+                recursive,
+                progressCallback)
             : repository.importFromCsv(
                 name,
                 csv,
                 dryRun,
                 securityContext.getUserPrincipal().getName(),
                 recursive,
-                versioningEntityType);
+                versioningEntityType,
+                progressCallback);
 
     // Create version history for bulk import (same logic as async import)
     String effectiveVersioningEntityType =
@@ -1009,30 +1053,43 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return EntityUtil.getEntityReferences(entityType, fqns);
   }
 
-  protected Response bulkCreateOrUpdateAsync(UriInfo uriInfo, List<T> entities, String userName) {
+  protected Response bulkCreateOrUpdateAsync(
+      UriInfo uriInfo,
+      List<T> entities,
+      String userName,
+      Map<String, T> existingByFqn,
+      List<BulkResponse> authFailedResponses,
+      int totalRequests) {
     repository
-        .submitAsyncBulkOperation(uriInfo, entities, userName)
+        .submitAsyncBulkOperation(
+            uriInfo, entities, userName, existingByFqn, authFailedResponses, totalRequests)
         .thenAccept(
-            result -> {
-              LOG.info(
-                  "Async bulk operation completed for {} {}: {} succeeded, {} failed",
-                  entities.size(),
-                  entityType,
-                  result.getNumberOfRowsPassed(),
-                  result.getNumberOfRowsFailed());
-            });
+            result ->
+                LOG.info(
+                    "Async bulk operation completed for {} {}: {} succeeded, {} failed",
+                    entities.size(),
+                    entityType,
+                    result.getNumberOfRowsPassed(),
+                    result.getNumberOfRowsFailed()));
 
     BulkOperationResult result = new BulkOperationResult();
-    result.setStatus(ApiStatus.SUCCESS);
-    result.setNumberOfRowsProcessed(entities.size());
+    result.setNumberOfRowsProcessed(totalRequests);
     result.setNumberOfRowsPassed(0);
-    result.setNumberOfRowsFailed(0);
+    result.setNumberOfRowsFailed(authFailedResponses.size());
+    if (!authFailedResponses.isEmpty()) {
+      result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+      result.setFailedRequest(authFailedResponses);
+    } else {
+      result.setStatus(ApiStatus.SUCCESS);
+    }
 
     return Response.accepted().entity(result).build();
   }
 
-  protected Response bulkCreateOrUpdateSync(UriInfo uriInfo, List<T> entities, String userName) {
-    BulkOperationResult result = repository.bulkCreateOrUpdateEntities(uriInfo, entities, userName);
+  protected Response bulkCreateOrUpdateSync(
+      UriInfo uriInfo, List<T> entities, String userName, Map<String, T> existingByFqn) {
+    BulkOperationResult result =
+        repository.bulkCreateOrUpdateEntities(uriInfo, entities, userName, existingByFqn);
     return Response.ok(result).build();
   }
 
@@ -1046,16 +1103,74 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     List<T> validEntities = new ArrayList<>();
     List<BulkResponse> failedResponses = new ArrayList<>();
 
+    // Phase 1: Validate and prepare all entities (in-memory, no DB)
+    List<T> preparedEntities = new ArrayList<>();
+    Map<String, C> entityToRequest = new HashMap<>();
     for (C createRequest : createRequests) {
       try {
+        String violations = ValidatorUtil.validate(createRequest);
+        if (violations != null) {
+          throw new IllegalArgumentException(violations);
+        }
         T entity =
             mapper.createToEntity(createRequest, securityContext.getUserPrincipal().getName());
         repository.prepareInternal(entity, false);
         repository.setFullyQualifiedName(entity);
-        validEntities.add(entity);
+        preparedEntities.add(entity);
+        entityToRequest.put(entity.getFullyQualifiedName(), createRequest);
       } catch (Exception e) {
         BulkResponse failedResponse = new BulkResponse();
         failedResponse.setRequest(createRequest);
+        failedResponse.setMessage(e.getMessage());
+        failedResponse.setStatus(400);
+        failedResponses.add(failedResponse);
+      }
+    }
+
+    // Phase 2: Batch fetch existing entities (1 DB query instead of N)
+    Map<String, T> existingByFqn = new HashMap<>();
+    if (!preparedEntities.isEmpty()) {
+      List<String> allFqns =
+          preparedEntities.stream().map(T::getFullyQualifiedName).collect(Collectors.toList());
+      List<T> existingEntities = repository.getDao().findEntityByNames(allFqns, Include.ALL);
+      for (T existing : existingEntities) {
+        existingByFqn.put(existing.getFullyQualifiedName(), existing);
+      }
+      if (!existingEntities.isEmpty()) {
+        repository.enrichEntitiesForAuth(existingEntities);
+      }
+    }
+
+    // Phase 3: Auth check using batch results
+    for (T entity : preparedEntities) {
+      try {
+        boolean entityExists = existingByFqn.containsKey(entity.getFullyQualifiedName());
+
+        if (!entityExists) {
+          OperationContext operationContext = new OperationContext(entityType, CREATE);
+          CreateResourceContext<T> createResourceContext =
+              new CreateResourceContext<>(entityType, entity);
+          limits.enforceLimits(securityContext, createResourceContext, operationContext);
+          authorizer.authorize(securityContext, operationContext, createResourceContext);
+        } else {
+          MetadataOperation operation = MetadataOperation.EDIT_ALL;
+          OperationContext operationContext = new OperationContext(entityType, operation);
+          T existingEntity = existingByFqn.get(entity.getFullyQualifiedName());
+          ResourceContext<T> resourceContext =
+              new ResourceContext<>(entityType, existingEntity, repository);
+          authorizer.authorize(securityContext, operationContext, resourceContext);
+        }
+
+        validEntities.add(entity);
+      } catch (AuthorizationException e) {
+        BulkResponse failedResponse = new BulkResponse();
+        failedResponse.setRequest(entityToRequest.get(entity.getFullyQualifiedName()));
+        failedResponse.setMessage("Permission denied: " + e.getMessage());
+        failedResponse.setStatus(403);
+        failedResponses.add(failedResponse);
+      } catch (Exception e) {
+        BulkResponse failedResponse = new BulkResponse();
+        failedResponse.setRequest(entityToRequest.get(entity.getFullyQualifiedName()));
         failedResponse.setMessage(e.getMessage());
         failedResponse.setStatus(400);
         failedResponses.add(failedResponse);
@@ -1075,10 +1190,17 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     String userName = securityContext.getUserPrincipal().getName();
     Response response;
     if (async) {
-      response = bulkCreateOrUpdateAsync(uriInfo, validEntities, userName);
+      response =
+          bulkCreateOrUpdateAsync(
+              uriInfo,
+              validEntities,
+              userName,
+              existingByFqn,
+              failedResponses,
+              createRequests.size());
     } else {
       BulkOperationResult result =
-          repository.bulkCreateOrUpdateEntities(uriInfo, validEntities, userName);
+          repository.bulkCreateOrUpdateEntities(uriInfo, validEntities, userName, existingByFqn);
 
       if (!failedResponses.isEmpty()) {
         result.setStatus(ApiStatus.PARTIAL_SUCCESS);

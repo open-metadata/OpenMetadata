@@ -1,15 +1,15 @@
 {
-  "$id": "https://open-metadata.org/schema/type/denyListRecognizer.json",
+  "$id": "https://open-metadata.org/schema/type/exactTermsRecognizer.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "DenyListRecognizer",
-  "description": "Deny list recognizer that matches against a list of specific values",
+  "title": "ExactTermsRecognizer",
+  "description": "Exact terms recognizer that matches against a list of specific values",
   "type": "object",
-  "javaType": "org.openmetadata.schema.type.DenyListRecognizer",
+  "javaType": "org.openmetadata.schema.type.ExactTermsRecognizer",
   "properties": {
     "type": {
-      "const": "deny_list"
+      "const": "exact_terms"
     },
-    "denyList": {
+    "exactTerms": {
       "description": "List of values to match against",
       "type": "array",
       "items": {
@@ -30,6 +30,6 @@
       "$ref": "recognizers/regexFlags.json"
     }
   },
-  "required": ["type", "denyList", "supportedEntity", "supportedLanguage", "regexFlags"],
+  "required": ["type", "exactTerms", "supportedEntity", "supportedLanguage", "regexFlags"],
   "additionalProperties": false
 }

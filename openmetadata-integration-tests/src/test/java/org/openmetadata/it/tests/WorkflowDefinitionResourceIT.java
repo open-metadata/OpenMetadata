@@ -1732,6 +1732,19 @@ public class WorkflowDefinitionResourceIT {
     // Step 5: Wait for workflow to process and verify results
     verifyTableCertifications_SDK();
 
+    // Step 6: Delete the workflow to prevent it from running during other tests
+    try {
+      SdkClients.adminClient()
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.DELETE,
+              BASE_PATH + "/name/DataCompletenessWorkflow?hardDelete=true&recursive=true",
+              null,
+              RequestOptions.builder().build());
+    } catch (Exception e) {
+      LOG.warn("Failed to delete DataCompletenessWorkflow: {}", e.getMessage());
+    }
+
     LOG.info("test_DataCompletenessWorkflow_SDK completed successfully");
   }
 

@@ -22,6 +22,7 @@ import {
   DataContract,
   EntityStatus,
 } from '../generated/entity/data/dataContract';
+import { ContractValidation } from '../generated/entity/datacontract/contractValidation';
 import { DataContractResult } from '../generated/entity/datacontract/dataContractResult';
 import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
@@ -432,7 +433,8 @@ export const createOrUpdateContractFromODCS = async (
 };
 
 /**
- * Schema validation result from ODCS validation
+ * Schema validation result - used within ContractValidation.schemaValidation
+ * @deprecated Use ContractValidation type instead for comprehensive validation results
  */
 export interface SchemaValidation {
   passed?: number;
@@ -443,7 +445,8 @@ export interface SchemaValidation {
 
 /**
  * Validate ODCS YAML against an entity without importing
- * Returns schema validation results including any field mismatches
+ * Returns comprehensive validation results including entity errors, constraint errors,
+ * and schema field mismatches
  * @param objectName Schema object name to validate (for multi-object ODCS contracts)
  */
 export const validateODCSYaml = async (
@@ -451,12 +454,47 @@ export const validateODCSYaml = async (
   entityId: string,
   entityType: string,
   objectName?: string
-): Promise<SchemaValidation> => {
-  const response = await APIClient.post<SchemaValidation>(
+): Promise<ContractValidation> => {
+  const response = await APIClient.post<ContractValidation>(
     `${BASE_URL}/odcs/validate/yaml`,
     yamlContent,
     {
       params: { entityId, entityType, objectName },
+      headers: { 'Content-Type': 'application/yaml' },
+    }
+  );
+
+  return response.data;
+};
+
+/**
+ * Validate OM format data contract request without creating the contract
+ * Returns comprehensive validation results including entity errors, constraint errors,
+ * and schema field mismatches
+ */
+export const validateContract = async (
+  createRequest: CreateDataContract
+): Promise<ContractValidation> => {
+  const response = await APIClient.post<ContractValidation>(
+    `${BASE_URL}/validate`,
+    createRequest
+  );
+
+  return response.data;
+};
+
+/**
+ * Validate OM format data contract YAML request without creating the contract
+ * Returns comprehensive validation results including entity errors, constraint errors,
+ * and schema field mismatches
+ */
+export const validateContractYaml = async (
+  yamlContent: string
+): Promise<ContractValidation> => {
+  const response = await APIClient.post<ContractValidation>(
+    `${BASE_URL}/validate/yaml`,
+    yamlContent,
+    {
       headers: { 'Content-Type': 'application/yaml' },
     }
   );

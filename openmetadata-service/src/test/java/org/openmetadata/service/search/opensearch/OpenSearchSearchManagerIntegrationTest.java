@@ -17,19 +17,19 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpHost;
+import org.apache.hc.core5.http.HttpHost;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.mockito.Mockito;
 import org.openmetadata.service.OpenMetadataApplicationTest;
-import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch.indices.CreateIndexRequest;
-import os.org.opensearch.client.transport.rest_client.RestClientTransport;
+import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport;
+import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -62,14 +62,13 @@ class OpenSearchSearchManagerIntegrationTest extends OpenMetadataApplicationTest
         "test_search_mgr_"
             + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS"));
 
-    es.org.elasticsearch.client.RestClient esRestClient = getSearchClient();
-    HttpHost httpHost = esRestClient.getNodes().getFirst().getHost();
-    RestClient osRestClient =
-        RestClient.builder(
-                new HttpHost(httpHost.getHostName(), httpHost.getPort(), httpHost.getSchemeName()))
-            .build();
+    org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration
+        searchConfig = getSearchConfig();
+    HttpHost host =
+        new HttpHost(searchConfig.getScheme(), searchConfig.getHost(), searchConfig.getPort());
 
-    RestClientTransport transport = new RestClientTransport(osRestClient, new JacksonJsonpMapper());
+    ApacheHttpClient5Transport transport =
+        ApacheHttpClient5TransportBuilder.builder(host).setMapper(new JacksonJsonpMapper()).build();
     client = new OpenSearchClient(transport);
 
     searchManager = new OpenSearchSearchManager(client, null, "", null);

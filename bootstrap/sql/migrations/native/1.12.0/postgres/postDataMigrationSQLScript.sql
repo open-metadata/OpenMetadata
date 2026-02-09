@@ -103,3 +103,9 @@ WHERE json->>'validatorClass' IS NULL
 UPDATE data_product_entity
 SET json = json - 'inputPorts' - 'outputPorts'
 WHERE json ?? 'inputPorts' OR json ?? 'outputPorts';
+
+-- Remove orphaned inputPorts and outputPorts fields from entity_extension (version history)
+UPDATE entity_extension
+SET json = json::jsonb - 'inputPorts' - 'outputPorts'
+WHERE jsonSchema = 'dataProduct'
+  AND (json::jsonb ?? 'inputPorts' OR json::jsonb ?? 'outputPorts');

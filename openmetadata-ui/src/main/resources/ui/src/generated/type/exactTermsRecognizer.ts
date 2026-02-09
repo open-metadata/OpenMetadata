@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 /**
- * Deny list recognizer that matches against a list of specific values
+ * Exact terms recognizer that matches against a list of specific values
  */
-export interface DenyListRecognizer {
+export interface ExactTermsRecognizer {
     /**
      * List of values to match against
      */
-    denyList:   string[];
+    exactTerms: string[];
     regexFlags: RegexFlags;
     /**
      * The entity type this recognizer detects
