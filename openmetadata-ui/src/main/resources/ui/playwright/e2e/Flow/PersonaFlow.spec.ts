@@ -193,7 +193,7 @@ test.describe.serial('Persona operations', () => {
       .click();
 
     // Verify redirect
-    await expect(page).toHaveURL(/.* customize-ui/);
+    await expect(page).toHaveURL(/.*#customize-ui/);
     await expect(page).not.toHaveURL(/.*.governance/);
 
     // Test from Users tab
