@@ -186,7 +186,7 @@
                     <databaseType>mysql</databaseType>
                     <databaseImage>mysql:8.3.0</databaseImage>
                     <searchType>elasticsearch</searchType>
-                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</searchImage>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
@@ -217,7 +217,7 @@
                     <databaseType>mysql</databaseType>
                     <databaseImage>mysql:8.3.0</databaseImage>
                     <searchType>elasticsearch</searchType>
-                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</searchImage>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
@@ -266,7 +266,7 @@
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>opensearch</searchType>
-                    <searchImage>opensearchproject/opensearch:2.6.0</searchImage>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
 
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
@@ -297,7 +297,7 @@
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>opensearch</searchType>
-                    <searchImage>opensearchproject/opensearch:2.6.0</searchImage>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
                     
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
@@ -346,7 +346,7 @@
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
-                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</searchImage>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
@@ -377,7 +377,7 @@
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
-                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</searchImage>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
@@ -426,7 +426,7 @@
                     <databaseType>mysql</databaseType>
                     <databaseImage>mysql:8.3.0</databaseImage>
                     <searchType>opensearch</searchType>
-                    <searchImage>opensearchproject/opensearch:2.6.0</searchImage>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
                     
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
@@ -457,7 +457,7 @@
                     <databaseType>mysql</databaseType>
                     <databaseImage>mysql:8.3.0</databaseImage>
                     <searchType>opensearch</searchType>
-                    <searchImage>opensearchproject/opensearch:2.6.0</searchImage>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
                     
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
@@ -508,7 +508,7 @@
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
-                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</searchImage>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
@@ -541,7 +541,7 @@
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
-                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</searchImage>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
