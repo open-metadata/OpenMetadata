@@ -49,6 +49,7 @@ import {
   getHighlightedRowClassName,
   getTableExpandableConfig,
   pruneEmptyChildren,
+  updateColumnInNestedStructure,
 } from '../../../../../utils/TableUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -203,7 +204,7 @@ const ModelTab = () => {
   const updateColumnDetails = async (
     columnFqn: string,
     column: Partial<Column>,
-    field?: keyof Column
+    field: keyof Column
   ) => {
     const response = await updateDataModelColumn(columnFqn, column);
     const cleanResponse = isEmpty(response.children)
@@ -211,12 +212,7 @@ const ModelTab = () => {
       : response;
 
     setPaginatedColumns((prev) =>
-      prev.map((col) =>
-        col.fullyQualifiedName === columnFqn
-          ? // Have to omit the field which is being updated to avoid persisted old value
-            { ...omit(col, field ?? ''), ...cleanResponse }
-          : col
-      )
+      updateColumnInNestedStructure(prev, columnFqn, cleanResponse, field)
     );
 
     return response;
