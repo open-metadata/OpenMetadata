@@ -40,6 +40,7 @@ export interface Config {
 }
 
 export interface InputNamespaceMap {
+    recognizerFeedback: string;
     relatedEntity:      string;
     triggeringObjectId: string;
     updatedBy:          string;
