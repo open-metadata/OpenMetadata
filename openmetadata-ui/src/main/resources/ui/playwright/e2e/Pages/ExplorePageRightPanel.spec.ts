@@ -37,6 +37,7 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { Domain } from '../../support/domain/Domain';
 import { UserClass } from '../../support/user/UserClass';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // Test data setup
 const tableEntity = new TableClass();
@@ -517,6 +518,7 @@ test.describe('Right Panel Test Suite', () => {
           }
         });
       });
+
     });
   });
 });

@@ -168,7 +168,7 @@ describe('LearningIcon', () => {
     expect(badge).toHaveClass('custom-class');
   });
 
-  it('should display resource count in badge', async () => {
+  it('should render learning icon badge when resources exist', async () => {
     render(<LearningIcon pageId="glossary" />);
 
     await waitFor(() => {

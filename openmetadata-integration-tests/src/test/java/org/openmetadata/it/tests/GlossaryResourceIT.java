@@ -962,16 +962,14 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
 
     // Step 9: Verify glossary terms were actually created
     try {
-      // Get all glossary terms and filter by glossary
-      List<org.openmetadata.schema.entity.data.GlossaryTerm> allTerms =
-          client.glossaryTerms().list().getData();
-
-      // Filter terms belonging to this glossary
       List<org.openmetadata.schema.entity.data.GlossaryTerm> terms =
-          allTerms.stream()
-              .filter(
-                  t -> t.getGlossary() != null && glossary.getId().equals(t.getGlossary().getId()))
-              .toList();
+          client
+              .glossaryTerms()
+              .list(
+                  new org.openmetadata.sdk.models.ListParams()
+                      .addFilter("glossary", glossary.getId().toString())
+                      .setLimit(100))
+              .getData();
 
       assertNotNull(terms, "Glossary terms should be returned");
       assertEquals(3, terms.size(), "Should have imported 3 glossary terms");

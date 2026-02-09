@@ -16,8 +16,8 @@ package org.openmetadata.service;
 import static java.lang.String.format;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import es.org.elasticsearch.client.RestClient;
-import es.org.elasticsearch.client.RestClientBuilder;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5ClientBuilder;
 import io.dropwizard.configuration.ConfigurationException;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
@@ -42,11 +42,10 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
+import org.apache.hc.core5.http.HttpHost;
 import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
@@ -128,7 +127,7 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
       "org.testcontainers.containers.MySQLContainer";
   private static final String JDBC_CONTAINER_IMAGE = "mysql:8";
   private static final String ELASTIC_SEARCH_CONTAINER_IMAGE =
-      "docker.elastic.co/elasticsearch/elasticsearch:8.11.4";
+      "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
 
   private static String HOST;
   private static String PORT;
@@ -409,13 +408,18 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
     searchRepository.createIndexes();
   }
 
-  public static RestClient getSearchClient() {
-    CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+  public static Rest5Client getSearchClient() {
+    BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
     credentialsProvider.setCredentials(
-        AuthScope.ANY, new UsernamePasswordCredentials(ELASTIC_USER, "password"));
+        new AuthScope(null, -1),
+        new UsernamePasswordCredentials(ELASTIC_USER, "password".toCharArray()));
 
-    RestClientBuilder builder =
-        RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress()))
+    String hostAddress = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress();
+    String[] parts = hostAddress.split(":");
+    HttpHost httpHost = new HttpHost("http", parts[0], Integer.parseInt(parts[1]));
+
+    Rest5ClientBuilder builder =
+        Rest5Client.builder(httpHost)
             .setHttpClientConfigCallback(
                 httpClientBuilder ->
                     httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));

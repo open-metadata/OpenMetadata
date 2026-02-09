@@ -17,6 +17,7 @@ import { LearningResourceClass } from '../../support/learning/LearningResourceCl
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -90,7 +91,7 @@ async function selectSearchDropdownFilter(
   await updateBtn.click();
 }
 
-test.describe('Learning Resources Admin Page', () => {
+test.describe('Learning Resources Admin Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
@@ -310,7 +311,7 @@ test.describe('Learning Resources Admin Page', () => {
   });
 });
 
-test.describe('Learning Resources Admin Page - Additional Tests', () => {
+test.describe('Learning Resources Admin Page - Additional Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
@@ -430,7 +431,7 @@ test.describe('Learning Resources Admin Page - Additional Tests', () => {
   });
 });
 
-test.describe('Learning Icon on Pages', () => {
+test.describe('Learning Icon on Pages', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test('should display learning icon on glossary page when resources exist', async ({
     page,
   }) => {
@@ -623,7 +624,7 @@ test.describe('Learning Icon on Pages', () => {
   });
 });
 
-test.describe.serial('Learning Resources E2E Flow', () => {
+test.describe.serial('Learning Resources E2E Flow', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test('should create resource via UI and verify learning icon appears on target page', async ({
     page,
   }) => {

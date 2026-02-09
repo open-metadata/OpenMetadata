@@ -802,9 +802,16 @@ export const fillRowDetails = async (
   await page.click(`[data-testid="update-tier-card"]`);
 
   await page.keyboard.press('ArrowRight', { delay: 100 });
-  await page.keyboard.press('Enter', { delay: 100 });
 
-  await page.click(`[data-testid="radio-btn-${row.certification}"]`);
+  const certificationResponse = page.waitForResponse(
+    '/api/v1/tags?parent=Certification*'
+  );
+  await page.keyboard.press('Enter', { delay: 100 });
+  await certificationResponse;
+
+  const certRadioBtn = page.getByTestId(`radio-btn-${row.certification}`);
+  await certRadioBtn.waitFor({ state: 'visible' });
+  await certRadioBtn.click();
   await page.getByTestId('update-certification').click();
 
   await page.keyboard.press('ArrowRight');

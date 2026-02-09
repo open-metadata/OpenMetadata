@@ -14,6 +14,7 @@ import { expect, Page } from '@playwright/test';
 import { redirectToExplorePage } from './common';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const openEntitySummaryPanel = async (
   page: Page,
@@ -53,9 +54,7 @@ export const openEntitySummaryPanel = async (
   expect(searchResponse.status()).toBe(200);
 
   await page.getByTestId('searchBox').press('Enter');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   if (fullyQualifiedName) {
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
@@ -84,9 +83,7 @@ export async function navigateToExploreAndSelectTable(
 ) {
   await redirectToExplorePage(page);
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   const permissionsResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/permissions')

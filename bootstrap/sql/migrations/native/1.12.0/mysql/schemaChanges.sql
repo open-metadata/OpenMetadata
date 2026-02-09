@@ -246,6 +246,11 @@ CREATE TABLE IF NOT EXISTS learning_resource_entity (
   UNIQUE KEY fqnHash (fqnHash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Widen entityLink generated column from VARCHAR(255) to TEXT
+-- The entity link from workflow variables can exceed 255 characters for deeply nested entities
+ALTER TABLE workflow_instance_time_series
+MODIFY COLUMN entityLink TEXT GENERATED ALWAYS AS (json ->> '$.variables.global_relatedEntity');
+
 -- Add process and vector stage columns to search_index_server_stats table
 -- These columns support the 4-stage pipeline model (Reader, Process, Sink, Vector) for search indexing stats
 
