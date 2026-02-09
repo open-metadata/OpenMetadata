@@ -377,18 +377,12 @@ public class AppsResourceIT {
     Awaitility.await("Trigger " + appName)
         .atMost(Duration.ofMinutes(2))
         .pollInterval(Duration.ofSeconds(3))
-        .ignoreExceptions()
+        .ignoreExceptionsMatching(
+            e -> e.getMessage() != null && e.getMessage().contains("already running"))
         .until(
             () -> {
-              try {
-                Apps.trigger(appName).run();
-                return true;
-              } catch (Exception e) {
-                if (e.getMessage() != null && e.getMessage().contains("already running")) {
-                  return false;
-                }
-                throw e;
-              }
+              Apps.trigger(appName).run();
+              return true;
             });
 
     Thread.sleep(2000);

@@ -113,9 +113,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
         return;
       } catch (org.apache.jena.atlas.web.HttpException e) {
-        if (e.getMessage() != null
-            && e.getMessage().contains("500")
-            && retryCount < maxRetries - 1) {
+        if (e.getStatusCode() == 500 && retryCount < maxRetries - 1) {
           lastException = e;
           retryCount++;
           try {
@@ -192,13 +190,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         LOG.debug("Stored relationship (idempotent): {} -{}- {}", fromId, relationshipType, toId);
         return; // Success
       } catch (org.apache.jena.atlas.web.HttpException e) {
-        if (e.getMessage() != null
-            && e.getMessage().contains("500")
-            && retryCount < maxRetries - 1) {
+        if (e.getStatusCode() == 500 && retryCount < maxRetries - 1) {
           lastException = e;
           retryCount++;
           try {
-            long waitTime = (long) (100 * Math.pow(2, retryCount - 1)); // 100ms, 200ms, 400ms
+            long waitTime = (long) (100 * Math.pow(2, retryCount - 1));
             LOG.debug(
                 "Retrying relationship storage after {} ms (attempt {}/{})",
                 waitTime,
@@ -415,8 +411,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       try {
         connection.delete(graphUri);
       } catch (org.apache.jena.atlas.web.HttpException e) {
-        // Ignore 404 errors - graph doesn't exist yet
-        if (!e.getMessage().contains("404")) {
+        if (e.getStatusCode() != 404) {
           throw e;
         }
       }
