@@ -371,6 +371,8 @@ const EdgeInfoDrawer = ({
                 <div className="summary-panel-card">
                   <DescriptionSection
                     description={edgeEntity?.description ?? ''}
+                    entityFqn={edgeEntity?.fullyQualifiedName}
+                    entityType={edgeEntity?.type}
                     hasPermission={hasEditAccess}
                     showEditButton={hasEditAccess}
                     onDescriptionUpdate={onDescriptionUpdate}

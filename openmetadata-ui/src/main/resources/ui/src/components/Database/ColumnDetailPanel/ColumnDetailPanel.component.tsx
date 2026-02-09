@@ -565,6 +565,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         ) : (
           <DescriptionSection
             description={activeColumn?.description}
+            entityFqn={activeColumn?.fullyQualifiedName}
+            entityType={entityType}
             hasPermission={hasEditPermission?.description ?? false}
             onDescriptionUpdate={handleDescriptionUpdate}
           />

@@ -1,3 +1,5 @@
+import { EntityType } from '../../../enums/entity.enum';
+
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,5 +16,7 @@ export interface DescriptionSectionProps {
   description?: string;
   onDescriptionUpdate?: (description: string) => Promise<void>;
   showEditButton?: boolean;
+  entityFqn?: string;
+  entityType: EntityType;
   hasPermission?: boolean;
 }
