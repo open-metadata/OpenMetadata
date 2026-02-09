@@ -43,7 +43,7 @@ services:
       retries: 10
 
   opensearch:
-    image: opensearchproject/opensearch:latest
+    image: opensearchproject/opensearch:3.4.0
     container_name: openmetadata_opensearch
     environment:
       - discovery.type=single-node

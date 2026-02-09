@@ -50,11 +50,11 @@ jobs:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
-          tool-cache: false
+          tool-cache: true
           android: true
           dotnet: true
           haskell: true
-          large-packages: false
+          large-packages: true
           docker-images: false
           swap-storage: true
 
@@ -109,6 +109,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
+
+      - name: Free build artifacts
+        run: |
+          rm -rf openmetadata-service/target/lib openmetadata-service/target/classes
+          rm -rf openmetadata-spec/target openmetadata-sdk/target common/target
+          rm -rf openmetadata-shaded-deps/*/target
+          df -h /
 
       - name: Run Integration Tests (MySQL + Elasticsearch)
         env:
