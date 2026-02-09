@@ -12,19 +12,24 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Box, Paper, TableContainer, useTheme } from '@mui/material';
+import {
+  Box,
+  Paper,
+  TableContainer,
+  Typography,
+  useTheme,
+} from '@mui/material';
 import { Trash01 } from '@untitledui/icons';
-import { Button, Modal, Space, Table, Tag, Tooltip } from 'antd';
+import { Button, Space, Table, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { DateTime } from 'luxon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArticalIcon } from '../../assets/svg/artical.svg';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as StoryLaneIcon } from '../../assets/svg/story-lane.svg';
-import { ReactComponent as VideoIcon } from '../../assets/svg/video.svg';
+import { ReactComponent as ArticleIcon } from '../../assets/svg/ic_article.svg';
+import { ReactComponent as StoryLaneIcon } from '../../assets/svg/ic_storylane.svg';
+import { ReactComponent as VideoIcon } from '../../assets/svg/ic_video.svg';
 import { useSearch } from '../../components/common/atoms/navigation/useSearch';
 import { useViewToggle } from '../../components/common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../../components/common/atoms/pagination/usePaginationControls';
@@ -41,37 +46,44 @@ import {
   MAX_VISIBLE_TAGS,
   PAGE_IDS,
 } from '../../constants/Learning.constants';
-import {
-  deleteLearningResource,
-  getLearningResourcesList,
-  LearningResource,
-} from '../../rest/learningResourceAPI';
+import { LearningResource } from '../../rest/learningResourceAPI';
 import { getSettingPath } from '../../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { useLearningResourceFilters } from './hooks/useLearningResourceFilters';
+import { useLearningResourceActions } from './hooks/useLearningResourceActions';
+import {
+  LearningResourceFilterState,
+  useLearningResourceFilters,
+} from './hooks/useLearningResourceFilters';
+import { useLearningResources } from './hooks/useLearningResources';
 import { LearningResourceForm } from './LearningResourceForm.component';
 import './LearningResourcesPage.less';
 
 export const LearningResourcesPage: React.FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const [resources, setResources] = useState<LearningResource[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
-  const [selectedResource, setSelectedResource] =
-    useState<LearningResource | null>(null);
-  const [editingResource, setEditingResource] =
-    useState<LearningResource | null>(null);
   const [searchText, setSearchText] = useState('');
-  const [filterState, setFilterState] = useState<{
-    type?: string;
-    category?: string;
-    context?: string;
-    status?: string;
-  }>({});
+  const [filterState, setFilterState] = useState<LearningResourceFilterState>(
+    {}
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(DEFAULT_PAGE_SIZE);
+
+  const { filteredResources, isLoading, refetch } = useLearningResources({
+    searchText,
+    filterState,
+  });
+
+  const {
+    isFormOpen,
+    isPlayerOpen,
+    selectedResource,
+    editingResource,
+    handleCreate,
+    handleEdit,
+    handleDelete,
+    handlePreview,
+    handleFormClose,
+    handlePlayerClose,
+  } = useLearningResourceActions({ onRefetch: refetch });
 
   const { view, viewToggle } = useViewToggle({ defaultView: 'table' });
   const { search } = useSearch({
@@ -86,73 +98,205 @@ export const LearningResourcesPage: React.FC = () => {
     onFilterChange: setFilterState,
   });
 
-  const fetchResources = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await getLearningResourcesList({
-        limit: 100,
-        fields: 'categories,contexts,difficulty,estimatedDuration,owners',
-      });
-      setResources(response.data || []);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.learning-resources-fetch-error')
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
+  const getResourceTypeIcon = useCallback((type: string) => {
+    const icons: Record<
+      string,
+      React.ComponentType<React.SVGProps<SVGSVGElement>>
+    > = {
+      Video: VideoIcon,
+      Storylane: StoryLaneIcon,
+      Article: ArticleIcon,
+    };
+    const Icon = icons[type] ?? ArticleIcon;
 
-  useEffect(() => {
-    fetchResources();
-  }, [fetchResources]);
+    return (
+      <div className={`type-icon-wrapper ${type.toLowerCase()}-icon`}>
+        <Icon height={24} width={24} />
+      </div>
+    );
+  }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    searchText,
-    filterState.type,
-    filterState.category,
-    filterState.context,
-    filterState.status,
-  ]);
+  const getCategoryColors = useCallback((category: string) => {
+    const info =
+      LEARNING_CATEGORIES[category as keyof typeof LEARNING_CATEGORIES];
 
-  const filteredResources = useMemo(() => {
-    return resources.filter((resource) => {
-      const matchesSearch =
-        !searchText ||
-        resource.name.toLowerCase().includes(searchText.toLowerCase()) ||
-        resource.displayName?.toLowerCase().includes(searchText.toLowerCase());
+    return {
+      bgColor: info?.bgColor ?? '#f8f9fc',
+      borderColor: info?.borderColor ?? '#d5d9eb',
+      color: info?.color ?? '#363f72',
+    };
+  }, []);
 
-      const matchesType =
-        !filterState.type || resource.resourceType === filterState.type;
-      const matchesCategory =
-        !filterState.category ||
-        resource.categories?.includes(
-          filterState.category as
-            | 'Discovery'
-            | 'Administration'
-            | 'DataGovernance'
-            | 'DataQuality'
-            | 'Observability'
-        );
-      const matchesContent =
-        !filterState.context ||
-        resource.contexts?.some((ctx) => ctx.pageId === filterState.context);
-      const matchesStatus =
-        !filterState.status ||
-        (resource.status || 'Active') === filterState.status;
+  const columns: ColumnsType<LearningResource> = useMemo(
+    () => [
+      {
+        dataIndex: 'displayName',
+        key: 'displayName',
+        render: (_, record) => (
+          <div
+            className="content-name-cell"
+            role="button"
+            tabIndex={0}
+            onClick={() => handlePreview(record)}
+            onKeyDown={(e) => e.key === 'Enter' && handlePreview(record)}>
+            {getResourceTypeIcon(record.resourceType)}
+            <span className="content-name">
+              {record.displayName || record.name}
+            </span>
+          </div>
+        ),
+        title: t('label.content-name'),
+        width: 300,
+      },
+      {
+        dataIndex: 'categories',
+        key: 'categories',
+        render: (categories: string[], record: LearningResource) => {
+          if (!categories?.length) {
+            return null;
+          }
+          const visible = categories.slice(0, MAX_VISIBLE_TAGS);
+          const remaining = categories.length - MAX_VISIBLE_TAGS;
 
-      return (
-        matchesSearch &&
-        matchesType &&
-        matchesCategory &&
-        matchesContent &&
-        matchesStatus
-      );
-    });
-  }, [resources, searchText, filterState]);
+          return (
+            <div className="category-tags">
+              {visible.map((cat) => {
+                const colors = getCategoryColors(cat);
+
+                return (
+                  <Tag
+                    className="category-tag"
+                    key={cat}
+                    style={{
+                      backgroundColor: colors.bgColor,
+                      borderColor: colors.borderColor,
+                      color: colors.color,
+                    }}>
+                    {LEARNING_CATEGORIES[
+                      cat as keyof typeof LEARNING_CATEGORIES
+                    ]?.label ?? cat}
+                  </Tag>
+                );
+              })}
+              {remaining > 0 && (
+                <Tag
+                  className="category-tag more-tag"
+                  role="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePreview(record);
+                  }}>
+                  +{remaining}
+                </Tag>
+              )}
+            </div>
+          );
+        },
+        title: t('label.category-plural'),
+        width: 250,
+      },
+      {
+        dataIndex: 'contexts',
+        key: 'contexts',
+        render: (
+          contexts: Array<{ pageId: string; componentId?: string }>,
+          record: LearningResource
+        ) => {
+          if (!contexts?.length) {
+            return null;
+          }
+          const visible = contexts.slice(0, MAX_VISIBLE_CONTEXTS);
+          const remaining = contexts.length - MAX_VISIBLE_CONTEXTS;
+          const getContextLabel = (pageId: string) =>
+            PAGE_IDS.find((c) => c.value === pageId)?.label ?? pageId;
+
+          return (
+            <div className="context-tags">
+              {visible.map((ctx, idx) => (
+                <Tag className="context-tag" key={`${ctx.pageId}-${idx}`}>
+                  {getContextLabel(ctx.pageId)}
+                </Tag>
+              ))}
+              {remaining > 0 && (
+                <Tag
+                  className="context-tag more-tag"
+                  role="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePreview(record);
+                  }}>
+                  +{remaining}
+                </Tag>
+              )}
+            </div>
+          );
+        },
+        title: t('label.context'),
+        width: 200,
+      },
+      {
+        dataIndex: 'updatedAt',
+        key: 'updatedAt',
+        render: (updatedAt: number) => (
+          <Typography
+            component="span"
+            sx={{
+              color: theme.palette.allShades?.gray?.[600],
+              fontSize: 14,
+            }}>
+            {updatedAt
+              ? DateTime.fromMillis(updatedAt).toFormat('LLL d, yyyy')
+              : '-'}
+          </Typography>
+        ),
+        title: t('label.updated-at'),
+        width: 120,
+      },
+      {
+        fixed: 'right',
+        key: 'actions',
+        render: (_, record) => (
+          <Space align="center" size={8}>
+            <Tooltip placement="topRight" title={t('label.edit')}>
+              <Button
+                className="learning-resource-action-btn"
+                data-testid={`edit-${record.name}`}
+                type="text"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEdit(record);
+                }}>
+                <IconEdit height={14} name={t('label.edit')} width={14} />
+              </Button>
+            </Tooltip>
+            <Tooltip placement="topRight" title={t('label.delete')}>
+              <Button
+                className="learning-resource-action-btn"
+                data-testid={`delete-${record.name}`}
+                type="text"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(record);
+                }}>
+                <Trash01 size={14} />
+              </Button>
+            </Tooltip>
+          </Space>
+        ),
+        title: t('label.action-plural'),
+        width: 80,
+      },
+    ],
+    [
+      t,
+      theme,
+      getResourceTypeIcon,
+      getCategoryColors,
+      handlePreview,
+      handleEdit,
+      handleDelete,
+    ]
+  );
 
   const totalFiltered = filteredResources.length;
   const totalPages = Math.ceil(totalFiltered / pageSize) || 1;
@@ -172,257 +316,146 @@ export const LearningResourcesPage: React.FC = () => {
     loading: isLoading,
   });
 
-  const handleCreate = useCallback(() => {
-    setEditingResource(null);
-    setIsFormOpen(true);
-  }, []);
-
-  const handleEdit = useCallback((resource: LearningResource) => {
-    setEditingResource(resource);
-    setIsFormOpen(true);
-  }, []);
-
-  const handleDelete = useCallback(
-    async (resource: LearningResource) => {
-      Modal.confirm({
-        centered: true,
-        content: t('message.are-you-sure-delete-entity', {
-          entity: resource.displayName || resource.name,
-        }),
-        okText: t('label.delete'),
-        okType: 'danger',
-        title: t('label.delete-entity', {
-          entity: t('label.learning-resource'),
-        }),
-        onOk: async () => {
-          try {
-            await deleteLearningResource(resource.id);
-            showSuccessToast(
-              t('server.entity-deleted-successfully', {
-                entity: t('label.learning-resource'),
-              })
-            );
-            fetchResources();
-          } catch (error) {
-            showErrorToast(error as AxiosError);
-          }
-        },
-      });
-    },
-    [t, fetchResources]
-  );
-
-  const handlePreview = useCallback((resource: LearningResource) => {
-    setSelectedResource(resource);
-    setIsPlayerOpen(true);
-  }, []);
-
-  const handleFormClose = useCallback(() => {
-    setIsFormOpen(false);
-    setEditingResource(null);
-    fetchResources();
-  }, [fetchResources]);
-
-  const handlePlayerClose = useCallback(() => {
-    setIsPlayerOpen(false);
-    setSelectedResource(null);
-  }, []);
-
-  const getResourceTypeIcon = useCallback((type: string) => {
-    switch (type) {
-      case 'Video':
-        return (
-          <div className="type-icon-wrapper video-icon">
-            <VideoIcon />
-          </div>
-        );
-      case 'Storylane':
-        return (
-          <div className="type-icon-wrapper storylane-icon">
-            <StoryLaneIcon />
-          </div>
-        );
-      case 'Article':
-        return (
-          <div className="type-icon-wrapper article-icon">
-            <ArticalIcon />
-          </div>
-        );
-      default:
-        return (
-          <div className="type-icon-wrapper article-icon">
-            <ArticalIcon />
-          </div>
-        );
-    }
-  }, []);
-
-  const getCategoryColors = useCallback((category: string) => {
-    const categoryInfo =
-      LEARNING_CATEGORIES[category as keyof typeof LEARNING_CATEGORIES];
-
-    return {
-      bgColor: categoryInfo?.bgColor ?? '#f8f9fc',
-      borderColor: categoryInfo?.borderColor ?? '#d5d9eb',
-      color: categoryInfo?.color ?? '#363f72',
-    };
-  }, []);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchText, filterState]);
 
   const breadcrumbs = useMemo(
     () => [
-      {
-        name: t('label.setting-plural'),
-        url: getSettingPath(),
-      },
+      { name: t('label.setting-plural'), url: getSettingPath() },
       {
         name: t('label.preference-plural'),
         url: getSettingPath(GlobalSettingsMenuCategory.PREFERENCES),
       },
-      {
-        name: t('label.learning-resource'),
-        url: '',
-      },
+      { name: t('label.learning-resource'), url: '' },
     ],
     [t]
   );
 
-  const columns: ColumnsType<LearningResource> = [
-    {
-      dataIndex: 'displayName',
-      key: 'displayName',
-      render: (_, record) => (
-        <div
-          className="content-name-cell"
-          onClick={() => handlePreview(record)}>
-          {getResourceTypeIcon(record.resourceType)}
-          <span className="content-name">
-            {record.displayName || record.name}
-          </span>
-        </div>
-      ),
-      title: t('label.content-name'),
-      width: 300,
-    },
-    {
-      dataIndex: 'categories',
-      key: 'categories',
-      render: (categories: string[]) => {
-        if (!categories || categories.length === 0) {
-          return null;
-        }
-        const visibleCategories = categories.slice(0, MAX_VISIBLE_TAGS);
-        const remaining = categories.length - MAX_VISIBLE_TAGS;
+  const tableContainerSx = useMemo(
+    () => ({
+      mb: 5,
+      backgroundColor: 'background.paper',
+      borderRadius: '12px',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      height: 'calc(100vh - 220px)',
+      minHeight: 400,
+    }),
+    []
+  );
 
-        return (
-          <div className="category-tags">
-            {visibleCategories.map((cat) => {
-              const colors = getCategoryColors(cat);
+  const headerBoxSx = useMemo(
+    () => ({
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: 4,
+      px: 6,
+      py: 4,
+      borderBottom: '1px solid',
+      borderColor: theme.palette.allShades?.gray?.[200],
+      flexShrink: 0,
+    }),
+    [theme]
+  );
 
-              return (
-                <Tag
-                  className="category-tag"
-                  key={cat}
-                  style={{
-                    backgroundColor: colors.bgColor,
-                    borderColor: colors.borderColor,
-                    color: colors.color,
-                  }}>
-                  {LEARNING_CATEGORIES[cat as keyof typeof LEARNING_CATEGORIES]
-                    ?.label ?? cat}
-                </Tag>
-              );
-            })}
-            {remaining > 0 && (
-              <Tag className="category-tag more-tag">+{remaining}</Tag>
-            )}
-          </div>
-        );
-      },
-      title: t('label.category-plural'),
-      width: 250,
-    },
-    {
-      dataIndex: 'contexts',
-      key: 'contexts',
-      render: (contexts: Array<{ pageId: string; componentId?: string }>) => {
-        if (!contexts || contexts.length === 0) {
-          return null;
-        }
-        const visibleContexts = contexts.slice(0, MAX_VISIBLE_CONTEXTS);
-        const remaining = contexts.length - MAX_VISIBLE_CONTEXTS;
+  const paginationBoxSx = useMemo(
+    () => ({
+      flexShrink: 0,
+      backgroundColor: 'background.paper',
+      borderTop: `1px solid ${theme.palette.allShades?.gray?.[200]}`,
+      boxShadow:
+        '0px -13px 16px -4px rgba(10, 13, 18, 0.04), 0px -4px 6px -2px rgba(10, 13, 18, 0.04)',
+      zIndex: 1,
+    }),
+    [theme]
+  );
 
-        const getContextLabel = (pageId: string) => {
-          const context = PAGE_IDS.find((c) => c.value === pageId);
-
-          return context?.label ?? pageId;
-        };
-
-        return (
-          <div className="context-tags">
-            {visibleContexts.map((ctx, idx) => (
-              <Tag className="context-tag" key={idx}>
-                {getContextLabel(ctx.pageId)}
-              </Tag>
-            ))}
-            {remaining > 0 && (
-              <Tag className="context-tag more-tag">+{remaining}</Tag>
-            )}
-          </div>
-        );
-      },
-      title: t('label.context'),
-      width: 200,
-    },
-    {
-      dataIndex: 'updatedAt',
-      key: 'updatedAt',
-      render: (updatedAt: number) => {
-        if (!updatedAt) {
-          return '-';
-        }
-
-        return DateTime.fromMillis(updatedAt).toFormat('LLL d, yyyy');
-      },
-      title: t('label.updated-at'),
-      width: 120,
-    },
-    {
-      fixed: 'right',
-      key: 'actions',
-      render: (_, record) => (
-        <Space align="center" size={8}>
-          <Tooltip placement="topRight" title={t('label.edit')}>
-            <Button
-              className="p-0 flex-center"
-              data-testid={`edit-${record.name}`}
-              size="small"
-              type="text"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEdit(record);
+  const renderCardView = useCallback(
+    () => (
+      <>
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflow: 'auto',
+            px: 6,
+            py: 4,
+          }}>
+          {isLoading ? (
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                py: 8,
               }}>
-              <IconEdit height={14} name={t('label.edit')} width={14} />
-            </Button>
-          </Tooltip>
-          <Tooltip placement="topRight" title={t('label.delete')}>
-            <Button
-              className="p-0 flex-center"
-              data-testid={`delete-${record.name}`}
-              size="small"
-              type="text"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDelete(record);
+              <Loader />
+            </Box>
+          ) : isEmpty(paginatedResources) ? (
+            <Box
+              sx={{
+                textAlign: 'center',
+                margin: '16px 24px',
+                padding: '9px 0',
               }}>
-              <Trash01 size={14} />
-            </Button>
-          </Tooltip>
-        </Space>
-      ),
-      title: t('label.action-plural'),
-      width: 80,
-    },
-  ];
+              {t('server.no-records-found')}
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: '20px',
+              }}>
+              {paginatedResources.map((resource) => (
+                <LearningResourceCard
+                  key={resource.id}
+                  resource={resource}
+                  onClick={handlePreview}
+                />
+              ))}
+            </Box>
+          )}
+        </Box>
+        <Box sx={paginationBoxSx}>{paginationControls}</Box>
+      </>
+    ),
+    [
+      isLoading,
+      paginatedResources,
+      handlePreview,
+      paginationControls,
+      paginationBoxSx,
+      t,
+    ]
+  );
+
+  const renderTableView = useCallback(
+    () => (
+      <>
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <Table
+            columns={columns}
+            dataSource={paginatedResources}
+            loading={isLoading}
+            pagination={false}
+            rowKey="id"
+            scroll={{ x: 1000, y: 'calc(100vh - 420px)' }}
+          />
+        </Box>
+        <Box sx={paginationBoxSx}>{paginationControls}</Box>
+      </>
+    ),
+    [
+      columns,
+      paginatedResources,
+      isLoading,
+      paginationControls,
+      paginationBoxSx,
+    ]
+  );
 
   return (
     <PageLayoutV1 pageTitle={t('label.learning-resource')}>
@@ -449,24 +482,8 @@ export const LearningResourcesPage: React.FC = () => {
           </Button>
         </div>
 
-        <TableContainer
-          component={Paper}
-          sx={{
-            mb: 5,
-            backgroundColor: 'background.paper',
-            borderRadius: '12px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          }}>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-              px: 6,
-              py: 4,
-              borderBottom: `1px solid`,
-              borderColor: theme.palette.allShades?.gray?.[200],
-            }}>
+        <TableContainer component={Paper} sx={tableContainerSx}>
+          <Box sx={headerBoxSx}>
             <Box
               sx={{
                 display: 'flex',
@@ -482,56 +499,26 @@ export const LearningResourcesPage: React.FC = () => {
             {filterSelectionDisplay}
           </Box>
           {view === 'table' ? (
-            <Box data-testid="table-view-container">
-              <Table
-                columns={columns}
-                dataSource={paginatedResources}
-                loading={isLoading}
-                pagination={false}
-                rowKey="id"
-                scroll={{ x: 1000, y: 'calc(100vh - 320px)' }}
-              />
-              {paginationControls}
+            <Box
+              data-testid="table-view-container"
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                flex: 1,
+                minHeight: 0,
+              }}>
+              {renderTableView()}
             </Box>
           ) : (
-            <Box data-testid="card-view-container" sx={{ minHeight: 200 }}>
-              {isLoading ? (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    py: 8,
-                  }}>
-                  <Loader />
-                </Box>
-              ) : isEmpty(paginatedResources) ? (
-                <Box
-                  sx={{
-                    textAlign: 'center',
-                    margin: '16px 24px',
-                    padding: '9px 0',
-                  }}>
-                  {t('server.no-records-found')}
-                </Box>
-              ) : (
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 4,
-                    m: 6,
-                  }}>
-                  {paginatedResources.map((resource) => (
-                    <LearningResourceCard
-                      key={resource.id}
-                      resource={resource}
-                      onClick={handlePreview}
-                    />
-                  ))}
-                </Box>
-              )}
-              {paginationControls}
+            <Box
+              data-testid="card-view-container"
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                flex: 1,
+                minHeight: 0,
+              }}>
+              {renderCardView()}
             </Box>
           )}
         </TableContainer>

@@ -26,6 +26,7 @@ from requests.utils import quote
 from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.driveService import DriveService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
@@ -78,6 +79,7 @@ logger = workflow_logger()
 ENTITY_CLASS_MAP = {
     "apiService": ApiService,
     "databaseService": DatabaseService,
+    "driveService": DriveService,
     "pipelineService": PipelineService,
     "dashboardService": DashboardService,
     "messagingService": MessagingService,

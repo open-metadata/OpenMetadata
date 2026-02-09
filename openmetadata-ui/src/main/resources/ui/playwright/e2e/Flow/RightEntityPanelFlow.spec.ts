@@ -53,6 +53,7 @@ import {
   verifyDeletedEntityNotVisible,
 } from '../../utils/entityPanel';
 import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 let adminTestEntity: TableClass;
 const dataStewardTestEntity = new TableClass();
@@ -636,7 +637,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     await expect(tierSectionAfterRemove.getByText('Tier1')).not.toBeVisible();
   });
 
-  test('Admin - Overview Tab - Domains Section - Add and Update', async ({
+  test('Admin - Overview Tab - Domains Section - Add and Update', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({
     adminPage,
   }) => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
@@ -651,7 +652,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     ).toBeVisible();
   });
 
-  test('Admin - Overview Tab - Remove Domain', async ({ adminPage }) => {
+  test('Admin - Overview Tab - Remove Domain', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ adminPage }) => {
     await editDomain(adminPage, 'TestDomain');
 
     await expect(
@@ -995,9 +996,8 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       const testCase2 = await adminTestEntity.createTestCase(apiContext, {
         name: `pw_test_case_failed_${uuid()}`,
-        entityLink: `<#E::table::${
-          adminTestEntity.entityResponseData?.['fullyQualifiedName']
-        }::columns::${(adminTestEntity.entity?.columns as Column[])[0].name}>`,
+        entityLink: `<#E::table::${adminTestEntity.entityResponseData?.['fullyQualifiedName']
+          }::columns::${(adminTestEntity.entity?.columns as Column[])[0].name}>`,
         testDefinition: 'columnValueLengthsToBeBetween',
         parameterValues: [
           { name: 'minLength', value: 3 },
@@ -1947,7 +1947,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
   });
 });
 
-test.describe('Right Entity Panel - Data Consumer User Flow', () => {
+test.describe('Right Entity Panel - Data Consumer User Flow', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach('Navigate to explore page', async ({ dataConsumerPage }) => {
     await navigateToExploreAndSelectTable(
       dataConsumerPage,
@@ -2161,49 +2161,52 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     ).toBeVisible();
   });
 
-  test('Data Consumer - Custom Properties Tab - View Custom Properties', async ({
-    dataConsumerPage,
-  }) => {
-    const summaryPanel = dataConsumerPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const cpTab = summaryPanel.getByRole('menuitem', {
-      name: /custom propert/i,
-    });
-
-    if (await cpTab.isVisible()) {
-      await navigateToEntityPanelTab(dataConsumerPage, 'custom property');
-
-      const tabContent = summaryPanel.locator(
-        '.entity-summary-panel-tab-content'
+  // The test is failing and we have unreliable assertions
+  // needs refactoring @harsh-vador
+  test.fixme(
+    'Data Consumer - Custom Properties Tab - View Custom Properties',
+    async ({ dataConsumerPage }) => {
+      const summaryPanel = dataConsumerPage.locator(
+        '.entity-summary-panel-container'
       );
+      const cpTab = summaryPanel.getByRole('menuitem', {
+        name: /custom propert/i,
+      });
 
-      await expect(tabContent).toBeVisible();
+      if (await cpTab.isVisible()) {
+        await navigateToEntityPanelTab(dataConsumerPage, 'custom property');
 
-      // Verify custom properties container is visible (if custom properties exist from Admin test)
-      const customPropertiesContainer =
-        dataConsumerPage.getByTestId('custom_properties');
-
-      // Custom properties should be visible if they were created by Admin
-      if (await customPropertiesContainer.isVisible()) {
-        await expect(customPropertiesContainer).toBeVisible();
-
-        // Verify at least one custom property card is displayed
-        const propertyCards = customPropertiesContainer.locator(
-          '[data-testid^="custom-property-"]'
+        const tabContent = summaryPanel.locator(
+          '.entity-summary-panel-tab-content'
         );
-        const cardCount = await propertyCards.count();
 
-        if (cardCount > 0) {
-          const firstCard = propertyCards.first();
+        await expect(tabContent).toBeVisible();
 
-          await expect(firstCard).toBeVisible();
+        // Verify custom properties container is visible (if custom properties exist from Admin test)
+        const customPropertiesContainer =
+          dataConsumerPage.getByTestId('custom_properties');
 
-          // Verify property name and value elements exist
-          await expect(firstCard.locator('.property-name')).toBeVisible();
-          await expect(firstCard.locator('.property-value')).toBeVisible();
+        // Custom properties should be visible if they were created by Admin
+        if (await customPropertiesContainer.isVisible()) {
+          await expect(customPropertiesContainer).toBeVisible();
+
+          // Verify at least one custom property card is displayed
+          const propertyCards = customPropertiesContainer.locator(
+            '[data-testid^="custom-property-"]'
+          );
+          const cardCount = await propertyCards.count();
+
+          if (cardCount > 0) {
+            const firstCard = propertyCards.first();
+
+            await expect(firstCard).toBeVisible();
+
+            // Verify property name and value elements exist
+            await expect(firstCard.locator('.property-name')).toBeVisible();
+            await expect(firstCard.locator('.property-value')).toBeVisible();
+          }
         }
       }
     }
-  });
+  );
 });

@@ -777,3 +777,4 @@ table_metric_computer_factory.register(Dialects.Cockroach, CockroachTableMetricC
 table_metric_computer_factory.register(Dialects.Db2, DB2TableMetricComputer)
 table_metric_computer_factory.register(Dialects.Vertica, VerticaTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Hana, SAPHanaTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Postgres, PostgresTableMetricComputer)

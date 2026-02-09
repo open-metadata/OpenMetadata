@@ -87,4 +87,13 @@ public class RdfUpdater {
   public static boolean isEnabled() {
     return rdfRepository != null && rdfRepository.isEnabled();
   }
+
+  /**
+   * Disable RDF updater. Used by tests to limit RDF operations to specific test classes.
+   */
+  public static void disable() {
+    rdfRepository = null;
+    RdfRepository.reset();
+    LOG.info("RDF updater disabled");
+  }
 }

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page, Response } from '@playwright/test';
-import { DOMAIN_TAGS } from '../../../constant/config';
+import { DOMAIN_TAGS, PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -22,7 +22,7 @@ import { test } from '../../fixtures/pages';
  * Data Quality: Add Test Case (New Flow)
  * @description E2E coverage for creating table/column test cases via the new flow, validating scheduler/pipeline behavior, bulk adding from entity page, and enforcing permissions for non-owner roles.
  */
-test.describe('Add TestCase New Flow', { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` }, () => {
+test.describe('Add TestCase New Flow', { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, PLAYWRIGHT_INGESTION_TAG_OBJ.tag] }, () => {
   // Helper function to select table
   const selectTable = async (page: Page, table: TableClass) => {
     await page.click('[id="root\\/table"]');

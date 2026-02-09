@@ -52,6 +52,7 @@ import {
   verifyDatabaseAndSchemaInExploreTree,
 } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // use the admin user to login
 test.use({
@@ -66,7 +67,7 @@ test.beforeEach(async ({ page }) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
 });
 
-test.describe('Explore Tree scenarios', () => {
+test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test('Explore Tree', async ({ page }) => {
     await test.step('Check the explore tree', async () => {
       await page.waitForLoadState('networkidle');
@@ -286,7 +287,7 @@ test.describe('Explore Tree scenarios', () => {
   });
 });
 
-test.describe('Explore page', () => {
+test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   const table = new TableClass();
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
