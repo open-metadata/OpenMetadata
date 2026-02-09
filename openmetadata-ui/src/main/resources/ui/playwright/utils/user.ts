@@ -625,7 +625,8 @@ export const checkStewardPermissions = async (page: Page) => {
 
   await expect(
     page
-      .getByRole('cell', { name: 'user_id' })
+      .getByRole('cell', { name: /user_id/i })
+      .first()
       .getByTestId('edit-displayName-button')
   ).toBeVisible();
 
