@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import React, { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createScrollToErrorHandler } from '../../../../utils/formUtils';
@@ -109,10 +110,10 @@ export const useFormDrawer = <T,>(config: FormDrawerConfig<T>) => {
       ...header,
     },
     body: {
+      ...body,
       children: form,
       loading: loading || isSubmitting,
-      className: 'drawer-form-content',
-      ...body,
+      className: classNames('drawer-form-content', body?.className),
     },
     footer: {
       align: footerAlign,
@@ -189,15 +190,18 @@ export const useFormDrawerWithRef = <T,>(
 
   const handleSubmit = useCallback(async () => {
     if (formRef?.validateFields) {
+      let values: T;
       try {
-        const values = await formRef.validateFields();
-        if (formRef?.submit) {
-          formRef.submit();
-        } else {
-          await onSubmit(values);
-        }
+        values = await formRef.validateFields();
       } catch {
         scrollToError();
+
+        return;
+      }
+      if (formRef?.submit) {
+        formRef.submit();
+      } else {
+        await onSubmit(values);
       }
     } else if (formRef?.submit) {
       formRef.submit();
