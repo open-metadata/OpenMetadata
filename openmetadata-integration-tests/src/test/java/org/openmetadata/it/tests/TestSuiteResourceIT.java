@@ -1,20 +1,29 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -26,11 +35,14 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
@@ -39,6 +51,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 
 /**
@@ -757,6 +770,50 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   // ===================================================================
+  // PIPELINE COMPLETION AND SEARCH INDEX TESTS
+  // ===================================================================
+
+  @Test
+  void test_pipelineCompletionUpdatesSearchIndex(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Table table = createTableForBasicTestSuite(ns, "pipeline_es");
+    TestSuite testSuite = createBasicTestSuiteForTable(table);
+    List<TestCase> testCases = createTestCases(client, ns, table, 4);
+    recordTestCaseResults(client, testCases, 2, 2);
+
+    Double versionBefore = getEntity(testSuite.getId().toString()).getVersion();
+
+    IngestionPipeline pipeline = createTestSuitePipeline(client, ns, testSuite);
+    putPipelineStatus(client, pipeline, PipelineStatusType.SUCCESS);
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("pipeline completion updates test suite and search index")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                TestSuite updated = getEntityWithFields(testSuite.getId().toString(), "summary");
+
+                assertTrue(updated.getVersion() > versionBefore);
+
+                TestSummary summary = updated.getSummary();
+                assertNotNull(summary);
+                assertAll(
+                    () -> assertEquals(4, summary.getTotal()),
+                    () -> assertEquals(2, summary.getSuccess()),
+                    () -> assertEquals(2, summary.getFailed()));
+
+                assertEquals(4, updated.getTestCaseResultSummary().size());
+
+                String esBody = queryTestSuiteSearchIndex(searchClient, testSuite.getId());
+                assertTrue(esBody.contains(testSuite.getId().toString()));
+                assertTrue(esBody.contains("lastResultTimestamp"));
+              });
+    }
+  }
+
+  // ===================================================================
   // TEST SUITE FILTERING AND LISTING TESTS
   // ===================================================================
 
@@ -1004,5 +1061,104 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     } catch (Exception e) {
       throw new RuntimeException("Failed to list test suites", e);
     }
+  }
+
+  private TestSuite createBasicTestSuiteForTable(Table table) {
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(table.getFullyQualifiedName());
+    request.setBasicEntityReference(table.getFullyQualifiedName());
+    return createBasicTestSuite(request);
+  }
+
+  private List<TestCase> createTestCases(
+      OpenMetadataClient client, TestNamespace ns, Table table, int count) {
+    return IntStream.range(0, count)
+        .mapToObj(
+            i ->
+                TestCaseBuilder.create(client)
+                    .name(ns.prefix("tc_pipeline_es_" + i))
+                    .forTable(table)
+                    .testDefinition("tableRowCountToEqual")
+                    .parameter("value", "100")
+                    .create())
+        .toList();
+  }
+
+  private void recordTestCaseResults(
+      OpenMetadataClient client, List<TestCase> testCases, int passCount, int failCount)
+      throws Exception {
+    for (int i = 0; i < passCount; i++) {
+      client
+          .testCaseResults()
+          .forTestCase(testCases.get(i).getFullyQualifiedName())
+          .passed()
+          .create();
+    }
+    for (int i = passCount; i < passCount + failCount; i++) {
+      client
+          .testCaseResults()
+          .forTestCase(testCases.get(i).getFullyQualifiedName())
+          .failed()
+          .create();
+    }
+  }
+
+  private IngestionPipeline createTestSuitePipeline(
+      OpenMetadataClient client, TestNamespace ns, TestSuite testSuite) {
+    CreateIngestionPipeline request = new CreateIngestionPipeline();
+    request.setName(ns.prefix("pipeline_es_run"));
+    request.setService(testSuite.getEntityReference());
+    request.setPipelineType(PipelineType.TEST_SUITE);
+    request.setSourceConfig(new SourceConfig().withConfig(new TestSuitePipeline()));
+    request.setAirflowConfig(new AirflowConfig().withStartDate(new java.util.Date()));
+    return client.ingestionPipelines().create(request);
+  }
+
+  private void putPipelineStatus(
+      OpenMetadataClient client, IngestionPipeline pipeline, PipelineStatusType statusType) {
+    PipelineStatus status =
+        new PipelineStatus()
+            .withPipelineState(statusType)
+            .withRunId(UUID.randomUUID().toString())
+            .withTimestamp(System.currentTimeMillis());
+    String path =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+    client.getHttpClient().execute(HttpMethod.PUT, path, status, PipelineStatus.class);
+  }
+
+  private String getTestSuiteSearchIndexName() {
+    return "openmetadata_test_suite_search_index";
+  }
+
+  private void refreshTestSuiteSearchIndex(Rest5Client searchClient) throws Exception {
+    Request request = new Request("POST", "/" + getTestSuiteSearchIndexName() + "/_refresh");
+    searchClient.performRequest(request);
+  }
+
+  private String queryTestSuiteSearchIndex(Rest5Client searchClient, UUID testSuiteId)
+      throws Exception {
+    refreshTestSuiteSearchIndex(searchClient);
+
+    String query =
+        """
+        {
+          "size": 1,
+          "query": {
+            "bool": {
+              "must": [
+                { "term": { "_id": "%s" } }
+              ]
+            }
+          }
+        }
+        """
+            .formatted(testSuiteId);
+
+    Request request = new Request("POST", "/" + getTestSuiteSearchIndexName() + "/_search");
+    request.setJsonEntity(query);
+    Response response = searchClient.performRequest(request);
+
+    assertEquals(200, response.getStatusCode());
+    return new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
   }
 }

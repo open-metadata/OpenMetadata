@@ -149,6 +149,8 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
@@ -214,7 +216,6 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
-import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
@@ -547,7 +548,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void storeEntities(List<T> entities) {
-    // Nothing to do here. This method is overridden in the child class if required
+    // Default: store entities directly. Override if fields need nullification before storage.
+    storeMany(entities);
   }
 
   /**
@@ -557,6 +559,84 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * @see TableRepository#storeRelationships(Table) for an example implementation
    */
   protected abstract void storeRelationships(T entity);
+
+  /**
+   * Helper method to batch delete relationships where entities are the "to" side.
+   * Wraps the DAO method for convenience.
+   */
+  protected void deleteToMany(
+      List<UUID> toIds, String toEntity, Relationship relationship, String fromEntity) {
+    if (toIds.isEmpty()) return;
+    List<String> idStrings = toIds.stream().map(UUID::toString).toList();
+    if (fromEntity != null) {
+      daoCollection
+          .relationshipDAO()
+          .deleteToMany(idStrings, toEntity, relationship.ordinal(), fromEntity);
+    } else {
+      daoCollection.relationshipDAO().deleteToMany(idStrings, toEntity, relationship.ordinal());
+    }
+  }
+
+  /**
+   * Helper method to batch delete relationships where entities are the "from" side.
+   * Wraps the DAO method for convenience.
+   */
+  protected void deleteFromMany(
+      List<UUID> fromIds, String fromEntity, Relationship relationship, String toEntity) {
+    if (fromIds.isEmpty()) return;
+    List<String> idStrings = fromIds.stream().map(UUID::toString).toList();
+    if (toEntity != null) {
+      daoCollection
+          .relationshipDAO()
+          .deleteFromMany(idStrings, fromEntity, relationship.ordinal(), toEntity);
+    } else {
+      daoCollection.relationshipDAO().deleteFromMany(idStrings, fromEntity, relationship.ordinal());
+    }
+  }
+
+  /**
+   * Batch version of clearCommonRelationships. Clears tags, owners, domains, reviewers, and
+   * dataProducts for multiple entities in a single query per relationship type.
+   */
+  protected void clearCommonRelationshipsForMany(List<T> entities) {
+    if (entities.isEmpty()) return;
+
+    List<UUID> ids = entities.stream().map(EntityInterface::getId).toList();
+
+    if (supportsTags) {
+      List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+      daoCollection.tagUsageDAO().deleteTagsByTargets(fqns);
+    }
+    if (supportsOwners) {
+      deleteToMany(ids, entityType, Relationship.OWNS, null);
+    }
+    if (supportsDomains) {
+      deleteToMany(ids, entityType, Relationship.HAS, DOMAIN);
+    }
+    if (supportsReviewers) {
+      deleteToMany(ids, entityType, Relationship.REVIEWS, null);
+    }
+    if (supportsDataProducts) {
+      deleteToMany(ids, entityType, Relationship.HAS, DATA_PRODUCT);
+    }
+  }
+
+  /**
+   * Batch version of clearEntitySpecificRelationships. Override in subclasses to clear
+   * entity-specific relationships for multiple entities in batch.
+   */
+  protected void clearEntitySpecificRelationshipsForMany(List<T> entities) {
+    // Default: no-op. Subclasses override if they have entity-specific relationships to clear.
+  }
+
+  /**
+   * Batch version of clearRelationshipsForUpdate. Clears all relationships for multiple entities
+   * before update. Used during import to ensure old relationships are removed before new ones are stored.
+   */
+  protected void clearRelationshipsForUpdateMany(List<T> entities) {
+    clearCommonRelationshipsForMany(entities);
+    clearEntitySpecificRelationshipsForMany(entities);
+  }
 
   /**
    * This method is called to set inherited fields that an entity inherits from its parent.
@@ -1005,7 +1085,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
       Map<String, String> cursorMap =
-          parseCursorMap(after == null ? "" : RestUtil.decodeCursor(after));
+          parseCursorMap(after == null || after.isEmpty() ? "" : RestUtil.decodeCursor(after));
       String afterName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
       String afterId = cursorMap.get("id");
       List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
@@ -1019,7 +1099,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String beforeCursor;
       String afterCursor = null;
-      beforeCursor = after == null ? null : getCursorValue(entities.get(0));
+      beforeCursor = after == null || after.isEmpty() ? null : getCursorValue(entities.get(0));
       if (entities.size()
           > limitParam) { // If extra result exists, then next page exists - return after cursor
         entities.remove(limitParam);
@@ -1354,8 +1434,146 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeRelationships(entity);
   }
 
-  public final void storeRelationshipsInternal(List<T> entity) {
-    entity.forEach(this::storeRelationshipsInternal);
+  public final void storeRelationshipsInternal(List<T> entities) {
+    if (entities.isEmpty()) {
+      return;
+    }
+
+    // Batched operations - reduces DB calls from N*5 to ~5 per relationship type
+    storeOwners(entities);
+    storeDomains(entities);
+    storeReviewers(entities);
+    storeDataProducts(entities);
+    applyTagsToEntities(entities);
+
+    // Entity-specific relationships - must be per-entity (abstract method)
+    entities.forEach(this::storeRelationships);
+  }
+
+  @Transaction
+  protected void storeOwners(List<T> entities) {
+    if (!supportsOwners) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getOwners())) {
+        for (EntityReference owner : entity.getOwners()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(owner.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(owner.getType())
+                  .toEntity(entityType)
+                  .relation(Relationship.OWNS.ordinal())
+                  .build());
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void storeDomains(List<T> entities) {
+    if (!supportsDomains) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getDomains())) {
+        validateDomainsByRef(entity.getDomains());
+        for (EntityReference domain : entity.getDomains()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(domain.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(DOMAIN)
+                  .toEntity(entityType)
+                  .relation(Relationship.HAS.ordinal())
+                  .build());
+          addDomainLineage(domain.getId(), entityType, domain);
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void storeReviewers(List<T> entities) {
+    if (!supportsReviewers) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getReviewers())) {
+        for (EntityReference reviewer : entity.getReviewers()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(reviewer.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(reviewer.getType())
+                  .toEntity(entityType)
+                  .relation(Relationship.REVIEWS.ordinal())
+                  .build());
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void storeDataProducts(List<T> entities) {
+    if (!supportsDataProducts) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> allRelationships = new ArrayList<>();
+    for (T entity : entities) {
+      if (!nullOrEmpty(entity.getDataProducts())) {
+        for (EntityReference dataProduct : entity.getDataProducts()) {
+          allRelationships.add(
+              CollectionDAO.EntityRelationshipObject.builder()
+                  .fromId(dataProduct.getId().toString())
+                  .toId(entity.getId().toString())
+                  .fromEntity(DATA_PRODUCT)
+                  .toEntity(entityType)
+                  .relation(Relationship.HAS.ordinal())
+                  .build());
+        }
+      }
+    }
+    if (!allRelationships.isEmpty()) {
+      daoCollection.relationshipDAO().bulkInsertTo(allRelationships);
+    }
+  }
+
+  @Transaction
+  protected void applyTagsToEntities(List<T> entities) {
+    if (!supportsTags) {
+      return;
+    }
+    for (T entity : entities) {
+      List<TagLabel> nonDerivedTags =
+          listOrEmpty(entity.getTags()).stream()
+              .filter(t -> !t.getLabelType().equals(TagLabel.LabelType.DERIVED))
+              .toList();
+      if (!nonDerivedTags.isEmpty()) {
+        daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, entity.getFullyQualifiedName());
+        for (TagLabel tagLabel : nonDerivedTags) {
+          org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
+              tagLabel, entity.getFullyQualifiedName());
+        }
+      }
+    }
   }
 
   public final T setFieldsInternal(T entity, Fields fields) {
@@ -1521,6 +1739,133 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return updateForImport(uriInfo, original, updated, updatedBy, impersonatedBy);
   }
 
+  /**
+   * Batch create or update entities for CSV import. Separates entities into creates and updates,
+   * then performs batch DB operations for performance.
+   *
+   * @param entities List of entities to create or update
+   * @param updatedBy User performing the import
+   * @return List of PutResponse with status (CREATED or OK) for each entity
+   */
+  @Transaction
+  public List<PutResponse<T>> createOrUpdateBatchForImport(List<T> entities, String updatedBy) {
+    List<T> toCreate = new ArrayList<>();
+    List<T> toUpdate = new ArrayList<>();
+    List<T> originals = new ArrayList<>();
+    List<PutResponse<T>> responses = new ArrayList<>();
+
+    // Separate entities into creates vs updates
+    for (T entity : entities) {
+      T original = findByNameOrNull(entity.getFullyQualifiedName(), ALL);
+      if (original == null) {
+        toCreate.add(entity);
+      } else {
+        toUpdate.add(entity);
+        originals.add(original);
+      }
+    }
+
+    // Batch create new entities
+    if (!toCreate.isEmpty()) {
+      List<T> created = createManyEntitiesForImport(toCreate);
+      for (T entity : created) {
+        responses.add(new PutResponse<>(Status.CREATED, entity, ENTITY_CREATED));
+      }
+    }
+
+    // Batch update existing entities
+    if (!toUpdate.isEmpty()) {
+      List<T> updated = updateManyEntitiesForImport(originals, toUpdate, updatedBy);
+      for (T entity : updated) {
+        responses.add(new PutResponse<>(Status.OK, entity, ENTITY_UPDATED));
+      }
+    }
+
+    return responses;
+  }
+
+  @Transaction
+  public List<T> createManyEntitiesForImport(List<T> entities) {
+    return createManyEntitiesForImport(entities, null);
+  }
+
+  @Transaction
+  public List<T> createManyEntitiesForImport(List<T> entities, String impersonatedBy) {
+    if (entities == null || entities.isEmpty()) {
+      return entities;
+    }
+
+    // 1. Batch lock manager check
+    if (lockManager != null) {
+      lockManager.checkModificationsAllowed(entities);
+    }
+
+    // 2. Set impersonatedBy for each entity
+    for (T entity : entities) {
+      entity.setImpersonatedBy(impersonatedBy);
+    }
+
+    // 3. Store entities and relationships
+    storeEntities(entities);
+    storeExtensions(entities);
+    storeRelationshipsInternal(entities);
+    setInheritedFields(entities, new Fields(allowedFields));
+    postCreate(entities);
+
+    // 4. Batch cache writes
+    writeThroughCacheMany(entities, false);
+
+    return entities;
+  }
+
+  @Transaction
+  public List<T> updateManyEntitiesForImport(List<T> originals, List<T> updates, String updatedBy) {
+    return updateManyEntitiesForImport(originals, updates, updatedBy, null);
+  }
+
+  @Transaction
+  public List<T> updateManyEntitiesForImport(
+      List<T> originals, List<T> updates, String updatedBy, String impersonatedBy) {
+    if (updates == null || updates.isEmpty()) {
+      return updates;
+    }
+
+    // 1. Batch lock manager check
+    if (lockManager != null) {
+      lockManager.checkModificationsAllowed(updates);
+    }
+
+    List<T> updatedEntities = new ArrayList<>();
+    for (int i = 0; i < originals.size(); i++) {
+      T original = originals.get(i);
+      T updated = updates.get(i);
+      // Copy ID and version from original
+      updated.setId(original.getId());
+      updated.setVersion(nextVersion(original.getVersion()));
+      updated.setUpdatedBy(updatedBy);
+      updated.setUpdatedAt(System.currentTimeMillis());
+      // 2. Set impersonatedBy
+      updated.setImpersonatedBy(impersonatedBy);
+      updatedEntities.add(updated);
+    }
+
+    // Batch update in DB
+    updateMany(updatedEntities);
+
+    // Clear and update extensions
+    removeExtensions(originals);
+    storeExtensions(updatedEntities);
+
+    // Update relationships - batch clear existing and store new
+    clearRelationshipsForUpdateMany(updatedEntities);
+    storeRelationshipsInternal(updatedEntities);
+
+    // 3. Batch cache writes
+    writeThroughCacheMany(updatedEntities, true);
+
+    return updatedEntities;
+  }
+
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
     EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
@@ -1563,6 +1908,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Only write to Redis if configured
     writeToRedisCache(entity, update);
+  }
+
+  /**
+   * Write multiple entities to Redis cache after batch DB operations
+   * More efficient than calling writeThroughCache for each entity
+   */
+  protected void writeThroughCacheMany(List<T> entities, boolean update) {
+    var cachedEntityDao = CacheBundle.getCachedEntityDao();
+    if (cachedEntityDao == null || entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    // Skip user entities
+    if ("user".equals(entityType)) {
+      return;
+    }
+
+    for (T entity : entities) {
+      try {
+        if (!isValidEntityForCache(entity)) {
+          continue;
+        }
+
+        String entityJson = dao.findById(dao.getTableName(), entity.getId(), "");
+        if (entityJson != null && !entityJson.isEmpty()) {
+          cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
+          if (entity.getFullyQualifiedName() != null) {
+            cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
+          }
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to write to Redis cache: {} {}", entityType, entity.getId(), e);
+      }
+    }
+    LOG.debug("Batch populated Redis cache for {} {} entities", entities.size(), entityType);
   }
 
   /**
@@ -2554,6 +2934,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
     dao.insertMany(nullifiedEntities);
   }
 
+  protected void updateMany(List<T> entities) {
+    List<EntityInterface> nullifiedEntities = new ArrayList<>();
+    Gson gson = new Gson();
+    for (T entity : entities) {
+      List<EntityReference> owners = entity.getOwners();
+      List<EntityReference> children = entity.getChildren();
+      List<TagLabel> tags = entity.getTags();
+      List<EntityReference> domains = entity.getDomains();
+      List<EntityReference> dataProducts = entity.getDataProducts();
+      List<EntityReference> followers = entity.getFollowers();
+      List<EntityReference> experts = entity.getExperts();
+      nullifyEntityFields(entity);
+
+      String jsonCopy = gson.toJson(entity);
+      nullifiedEntities.add(gson.fromJson(jsonCopy, entityClass));
+
+      // Restore the relationships
+      entity.setOwners(owners);
+      entity.setChildren(children);
+      entity.setTags(tags);
+      entity.setDomains(domains);
+      entity.setDataProducts(dataProducts);
+      entity.setFollowers(followers);
+      entity.setExperts(experts);
+    }
+
+    dao.updateMany(nullifiedEntities);
+  }
+
   @Transaction
   protected void storeTimeSeries(
       String fqn, String extension, String jsonSchema, String entityJson) {
@@ -2685,6 +3094,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   .collect(Collectors.toList());
           jsonNode.set(fieldName, JsonUtils.valueToTree(enumValues));
         }
+        case "hyperlink-cp" -> validateHyperlinkUrl(fieldValue, fieldName);
         default -> {}
       }
     }
@@ -2700,6 +3110,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     Object transformedExtension = validateAndTransformExtension(entity.getExtension(), entityType);
     entity.setExtension(transformedExtension);
+  }
+
+  private static void validateHyperlinkUrl(JsonNode fieldValue, String fieldName) {
+    if (fieldValue == null || fieldValue.isNull()) {
+      return;
+    }
+    JsonNode urlNode = fieldValue.get("url");
+    if (urlNode == null || urlNode.isNull() || urlNode.asText().isEmpty()) {
+      return;
+    }
+    String url = urlNode.asText();
+    try {
+      java.net.URI uri = new java.net.URI(url);
+      String scheme = uri.getScheme();
+      if (scheme == null
+          || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid URL protocol for field '%s': URL must use http or https protocol",
+                fieldName));
+      }
+    } catch (java.net.URISyntaxException e) {
+      throw new IllegalArgumentException(
+          String.format("Invalid URL format for field '%s': %s", fieldName, e.getMessage()));
+    }
   }
 
   private static String getFormattedDateTimeField(
@@ -2844,6 +3279,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
     while (customFields.hasNext()) {
       Entry<String, JsonNode> entry = customFields.next();
       removeCustomProperty(entity, entry.getKey());
+    }
+  }
+
+  public final void removeExtensions(List<T> entities) {
+    if (entities.isEmpty()) {
+      return;
+    }
+
+    List<String> entityIds =
+        entities.stream()
+            .filter(entity -> entity.getExtension() != null)
+            .map(entity -> entity.getId().toString())
+            .toList();
+
+    if (!entityIds.isEmpty()) {
+      daoCollection.entityExtensionDAO().deleteAllBatch(entityIds);
     }
   }
 
@@ -4025,6 +4476,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return owners.stream()
         .map(
             owner -> {
+              if (owner.getType() == null) {
+                throw new IllegalArgumentException(
+                    String.format(
+                        "Owner type must be specified for owner with id [%s]", owner.getId()));
+              }
               if (owner.getType().equals(TEAM)) {
                 // Use NON_DELETED to throw EntityNotFoundException if team is deleted
                 Team team = Entity.getEntity(TEAM, owner.getId(), "", NON_DELETED);
@@ -4124,6 +4580,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Override this method to support downloading CSV functionality
    */
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
 
@@ -4132,6 +4594,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   public CsvImportResult importFromCsv(
       String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    return importFromCsv(name, csv, dryRun, user, recursive, (CsvImportProgressCallback) null);
+  }
+
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
 
@@ -4142,6 +4615,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String user,
       boolean recursive,
       String targetEntityType)
+      throws IOException {
+    return importFromCsv(name, csv, dryRun, user, recursive, targetEntityType, null);
+  }
+
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      String targetEntityType,
+      CsvImportProgressCallback callback)
       throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
@@ -4267,6 +4752,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected boolean majorVersionChange = false;
     protected final User updatingUser;
     private boolean entityChanged = false;
+    private boolean versionChanged = false;
     @Getter protected ChangeDescription incrementalChangeDescription = null;
     private ChangeSource changeSource;
     private final boolean useOptimisticLocking;
@@ -4357,6 +4843,47 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updateInternalForImport();
       storeUpdate();
       postUpdate(original, updated);
+    }
+
+    /**
+     * Run update logic (relationships + change description) but defer entity row writes. Used by
+     * bulk update path to batch DB writes across multiple entities.
+     *
+     * <p>Skips consolidateChanges/revert — those are for interactive user sessions where the same
+     * user edits the same entity multiple times within a session window. Bulk API is used by
+     * ingestion connectors where each run is a distinct update.
+     */
+    @Transaction
+    public final void updateWithDeferredStore() {
+      changeDescription = new ChangeDescription();
+      updateInternal();
+
+      versionChanged = updateVersion(original.getVersion());
+      if (!versionChanged && entityChanged) {
+        if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
+          updated.setChangeDescription(original.getChangeDescription());
+        }
+      } else if (!versionChanged) {
+        updated.setChangeDescription(original.getChangeDescription());
+        updated.setUpdatedBy(original.getUpdatedBy());
+        updated.setUpdatedAt(original.getUpdatedAt());
+      }
+    }
+
+    public boolean isVersionChanged() {
+      return versionChanged;
+    }
+
+    public boolean isEntityChanged() {
+      return entityChanged;
+    }
+
+    public T getOriginal() {
+      return original;
+    }
+
+    public T getUpdated() {
+      return updated;
     }
 
     private void incrementalChange() {
@@ -6252,6 +6779,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  public void enrichEntitiesForAuth(List<T> entities) {
+    if (entities == null || entities.isEmpty()) return;
+    Map<UUID, List<EntityReference>> ownersMap = batchFetchOwners(entities);
+    Map<UUID, List<EntityReference>> domainsMap = batchFetchDomains(entities);
+    for (T entity : entities) {
+      entity.setOwners(ownersMap.getOrDefault(entity.getId(), entity.getOwners()));
+      entity.setDomains(domainsMap.getOrDefault(entity.getId(), entity.getDomains()));
+    }
+  }
+
   private void fetchAndSetDataProducts(List<T> entities, Fields fields) {
     if (!fields.contains(FIELD_DATA_PRODUCTS) || !supportsDataProducts || nullOrEmpty(entities)) {
       return;
@@ -6997,14 +7534,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
         || message.contains("entitynotfoundexception");
   }
 
+  public T findMatchForImport(T entity) {
+    return findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL);
+  }
+
   public boolean isUpdateForImport(T entity) {
-    return findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null;
+    T original = findMatchForImport(entity);
+    if (original != null) {
+      entity.setId(original.getId());
+      return true;
+    }
+    return false;
   }
 
   @Transaction
   public void createChangeEventForBulkOperation(
       T original, CsvImportResult result, String updatedBy) {
     // Get a complete view of the entity for history
+    original = find(original.getId(), NON_DELETED, false);
     setFieldsInternal(original, getPutFields());
     setInheritedFields(original, getPutFields());
 
@@ -7098,18 +7645,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
       new ConcurrentHashMap<>();
 
   public CompletableFuture<BulkOperationResult> submitAsyncBulkOperation(
-      UriInfo uriInfo, List<T> entities, String userName) {
+      UriInfo uriInfo,
+      List<T> entities,
+      String userName,
+      Map<String, T> existingByFqn,
+      List<BulkResponse> authFailedResponses,
+      int totalRequests) {
 
     String jobId = UUID.randomUUID().toString();
     LOG.info(
         "Submitting async bulk operation with jobId: {} for {} entities", jobId, entities.size());
 
-    // Use BulkExecutor for async operations too
     CompletableFuture<BulkOperationResult> job =
         CompletableFuture.supplyAsync(
             () -> {
               try {
-                return bulkCreateOrUpdateEntitiesSequential(uriInfo, entities, userName);
+                return bulkCreateOrUpdateEntitiesSequential(
+                    uriInfo, entities, userName, existingByFqn);
               } catch (Exception e) {
                 LOG.error("Async bulk operation failed for jobId: {}", jobId, e);
                 BulkOperationResult errorResult = new BulkOperationResult();
@@ -7121,19 +7673,180 @@ public abstract class EntityRepository<T extends EntityInterface> {
             },
             BulkExecutor.getInstance().getExecutor());
 
-    BULK_JOBS.put(jobId, job);
+    // Merge auth failures into the final result so polling clients see the complete picture
+    CompletableFuture<BulkOperationResult> mergedJob =
+        job.thenApply(
+            result -> {
+              if (!authFailedResponses.isEmpty()) {
+                result.setNumberOfRowsFailed(
+                    result.getNumberOfRowsFailed() + authFailedResponses.size());
+                result.setNumberOfRowsProcessed(totalRequests);
+                if (result.getFailedRequest() == null) {
+                  result.setFailedRequest(new ArrayList<>(authFailedResponses));
+                } else {
+                  result.getFailedRequest().addAll(authFailedResponses);
+                }
+                if (result.getNumberOfRowsPassed() > 0) {
+                  result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+                } else {
+                  result.setStatus(ApiStatus.FAILURE);
+                }
+              }
+              return result;
+            });
 
-    job.whenComplete(
+    BULK_JOBS.put(jobId, mergedJob);
+
+    mergedJob.whenComplete(
         (result, throwable) -> {
           CompletableFuture.delayedExecutor(1, TimeUnit.HOURS)
               .execute(() -> BULK_JOBS.remove(jobId));
         });
 
-    return job;
+    return mergedJob;
+  }
+
+  private void bulkUpdateEntities(
+      UriInfo uriInfo,
+      List<T> updateEntities,
+      Map<String, T> existingByFqn,
+      String userName,
+      List<BulkResponse> successRequests,
+      List<BulkResponse> failedRequests,
+      List<Long> entityLatenciesNanos) {
+
+    if (updateEntities.isEmpty()) return;
+
+    long batchStartTime = System.nanoTime();
+
+    // Batch load fields for originals (replaces N×11 individual queries)
+    List<T> originals =
+        updateEntities.stream()
+            .map(e -> existingByFqn.get(e.getFullyQualifiedName()))
+            .collect(Collectors.toList());
+    try {
+      setFieldsInBulk(putFields, originals);
+    } catch (Exception e) {
+      LOG.error("setFieldsInBulk failed, marking all updates as failed", e);
+      for (T entity : updateEntities) {
+        failedRequests.add(
+            new BulkResponse()
+                .withRequest(entity.getFullyQualifiedName())
+                .withStatus(Status.BAD_REQUEST.getStatusCode())
+                .withMessage("Batch field loading failed: " + e.getMessage()));
+      }
+      return;
+    }
+
+    // Per-entity updater (relationships + change description)
+    List<EntityUpdater> updaters = new ArrayList<>();
+    List<T> updatedEntities = new ArrayList<>();
+
+    for (T entity : updateEntities) {
+      try {
+        T original = existingByFqn.get(entity.getFullyQualifiedName());
+        entity.setUpdatedBy(userName);
+        entity.setUpdatedAt(System.currentTimeMillis());
+
+        if (Boolean.TRUE.equals(original.getDeleted())) {
+          restoreEntity(entity.getUpdatedBy(), original.getId());
+        }
+
+        EntityUpdater updater = getUpdater(original, entity, Operation.PUT, null);
+        updater.updateWithDeferredStore();
+        updaters.add(updater);
+        updatedEntities.add(entity);
+      } catch (Exception e) {
+        failedRequests.add(
+            new BulkResponse()
+                .withRequest(entity.getFullyQualifiedName())
+                .withStatus(Status.BAD_REQUEST.getStatusCode())
+                .withMessage(e.getMessage()));
+      }
+    }
+
+    if (updaters.isEmpty()) return;
+
+    // Batch DB writes
+    try {
+      // Batch version history inserts
+      List<UUID> historyIds = new ArrayList<>();
+      List<String> historyExtensions = new ArrayList<>();
+      List<String> historyJsons = new ArrayList<>();
+      for (EntityUpdater updater : updaters) {
+        if (updater.isVersionChanged()) {
+          historyIds.add(updater.getOriginal().getId());
+          historyExtensions.add(
+              EntityUtil.getVersionExtension(entityType, updater.getOriginal().getVersion()));
+          historyJsons.add(JsonUtils.pojoToJson(updater.getOriginal()));
+        }
+      }
+      if (!historyIds.isEmpty()) {
+        daoCollection
+            .entityExtensionDAO()
+            .insertMany(historyIds, historyExtensions, entityType, historyJsons);
+      }
+
+      // Batch entity row updates
+      List<T> entitiesToStore = new ArrayList<>();
+      for (EntityUpdater updater : updaters) {
+        if (updater.isVersionChanged() || updater.isEntityChanged()) {
+          entitiesToStore.add(updater.getUpdated());
+        }
+      }
+      if (!entitiesToStore.isEmpty()) {
+        updateMany(entitiesToStore);
+      }
+
+      // Per-entity: cache write-through + events + metrics
+      long batchDuration = System.nanoTime() - batchStartTime;
+      long perEntityDuration = batchDuration / updaters.size();
+      for (EntityUpdater updater : updaters) {
+        if (updater.isVersionChanged() || updater.isEntityChanged()) {
+          writeThroughCache(updater.getUpdated(), true);
+        }
+        setInheritedFields(updater.getUpdated(), new Fields(allowedFields));
+        postUpdate(updater.getOriginal(), updater.getUpdated());
+        EventType changeType =
+            updater.incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
+        createChangeEventForBulkOperation(updater.getUpdated(), changeType, userName);
+        entityLatenciesNanos.add(perEntityDuration);
+        recordEntityMetrics(entityType, perEntityDuration, 0, true);
+        successRequests.add(
+            new BulkResponse()
+                .withRequest(updater.getUpdated().getFullyQualifiedName())
+                .withStatus(Status.OK.getStatusCode()));
+      }
+    } catch (Exception batchError) {
+      LOG.warn("Batch update store failed, falling back to per-entity updates", batchError);
+      for (EntityUpdater updater : updaters) {
+        try {
+          updater.storeUpdate();
+          if (updater.isVersionChanged() || updater.isEntityChanged()) {
+            writeThroughCache(updater.getUpdated(), true);
+          }
+          setInheritedFields(updater.getUpdated(), new Fields(allowedFields));
+          postUpdate(updater.getOriginal(), updater.getUpdated());
+          EventType changeType =
+              updater.incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
+          createChangeEventForBulkOperation(updater.getUpdated(), changeType, userName);
+          successRequests.add(
+              new BulkResponse()
+                  .withRequest(updater.getUpdated().getFullyQualifiedName())
+                  .withStatus(Status.OK.getStatusCode()));
+        } catch (Exception e) {
+          failedRequests.add(
+              new BulkResponse()
+                  .withRequest(updater.getUpdated().getFullyQualifiedName())
+                  .withStatus(Status.BAD_REQUEST.getStatusCode())
+                  .withMessage(e.getMessage()));
+        }
+      }
+    }
   }
 
   private BulkOperationResult bulkCreateOrUpdateEntitiesSequential(
-      UriInfo uriInfo, List<T> entities, String userName) {
+      UriInfo uriInfo, List<T> entities, String userName, Map<String, T> existingByFqn) {
 
     BulkOperationResult result = new BulkOperationResult();
     result.setStatus(ApiStatus.SUCCESS);
@@ -7144,29 +7857,109 @@ public abstract class EntityRepository<T extends EntityInterface> {
     long bulkStartTime = System.nanoTime();
     List<Long> entityLatenciesNanos = new ArrayList<>();
 
+    // Separate into creates and updates using the pre-fetched map
+    // For duplicate FQNs within the batch, first occurrence goes to creates,
+    // subsequent occurrences go to updates (processed after creates)
+    List<T> newEntities = new ArrayList<>();
+    List<T> updateEntities = new ArrayList<>();
+    Set<String> seenNewFqns = new HashSet<>();
     for (T entity : entities) {
-      long entityStartTime = System.nanoTime();
-      try {
-        createOrUpdate(uriInfo, entity, userName);
-        long entityDuration = System.nanoTime() - entityStartTime;
-        entityLatenciesNanos.add(entityDuration);
-        recordEntityMetrics(entityType, entityDuration, 0, true);
-        successRequests.add(
-            new BulkResponse()
-                .withRequest(entity.getFullyQualifiedName())
-                .withStatus(Status.OK.getStatusCode()));
-      } catch (Exception e) {
-        long entityDuration = System.nanoTime() - entityStartTime;
-        entityLatenciesNanos.add(entityDuration);
-        recordEntityMetrics(entityType, entityDuration, 0, false);
-        LOG.warn("Failed to process entity in bulk operation", e);
-        failedRequests.add(
-            new BulkResponse()
-                .withRequest(entity.getFullyQualifiedName())
-                .withStatus(Status.BAD_REQUEST.getStatusCode())
-                .withMessage(e.getMessage()));
+      String fqn = entity.getFullyQualifiedName();
+      if (existingByFqn.containsKey(fqn)) {
+        updateEntities.add(entity);
+      } else if (seenNewFqns.contains(fqn)) {
+        updateEntities.add(entity);
+      } else {
+        seenNewFqns.add(fqn);
+        newEntities.add(entity);
       }
     }
+
+    // Batch create new entities
+    if (!newEntities.isEmpty()) {
+      long batchStartTime = System.nanoTime();
+      try {
+        createManyEntities(newEntities);
+        long batchDuration = System.nanoTime() - batchStartTime;
+        long perEntityDuration = batchDuration / newEntities.size();
+        for (T entity : newEntities) {
+          entityLatenciesNanos.add(perEntityDuration);
+          recordEntityMetrics(entityType, perEntityDuration, 0, true);
+          successRequests.add(
+              new BulkResponse()
+                  .withRequest(entity.getFullyQualifiedName())
+                  .withStatus(Status.OK.getStatusCode()));
+          createChangeEventForBulkOperation(entity, ENTITY_CREATED, userName);
+        }
+      } catch (Exception batchError) {
+        LOG.warn("Batch create failed, falling back to per-entity creates", batchError);
+        for (T entity : newEntities) {
+          long entityStartTime = System.nanoTime();
+          try {
+            PutResponse<T> putResponse = createOrUpdate(uriInfo, entity, userName);
+            long entityDuration = System.nanoTime() - entityStartTime;
+            entityLatenciesNanos.add(entityDuration);
+            recordEntityMetrics(entityType, entityDuration, 0, true);
+            successRequests.add(
+                new BulkResponse()
+                    .withRequest(entity.getFullyQualifiedName())
+                    .withStatus(Status.OK.getStatusCode()));
+            createChangeEventForBulkOperation(
+                putResponse.getEntity(), putResponse.getChangeType(), userName);
+          } catch (Exception e) {
+            long entityDuration = System.nanoTime() - entityStartTime;
+            entityLatenciesNanos.add(entityDuration);
+            recordEntityMetrics(entityType, entityDuration, 0, false);
+            failedRequests.add(
+                new BulkResponse()
+                    .withRequest(entity.getFullyQualifiedName())
+                    .withStatus(Status.BAD_REQUEST.getStatusCode())
+                    .withMessage(e.getMessage()));
+          }
+        }
+      }
+    }
+
+    // For duplicate FQNs within the batch, refresh existingByFqn with newly created entities
+    if (!updateEntities.isEmpty()) {
+      List<String> updateFqns =
+          updateEntities.stream()
+              .map(T::getFullyQualifiedName)
+              .filter(fqn -> !existingByFqn.containsKey(fqn))
+              .distinct()
+              .collect(Collectors.toList());
+      if (!updateFqns.isEmpty()) {
+        List<T> newlyCreated = dao.findEntityByNames(updateFqns, Include.ALL);
+        for (T created : newlyCreated) {
+          existingByFqn.put(created.getFullyQualifiedName(), created);
+        }
+      }
+
+      // Filter out entities whose original doesn't exist (e.g., duplicate FQN whose
+      // first occurrence failed to create). These can't be updated — report as failed.
+      Iterator<T> it = updateEntities.iterator();
+      while (it.hasNext()) {
+        T entity = it.next();
+        if (!existingByFqn.containsKey(entity.getFullyQualifiedName())) {
+          it.remove();
+          failedRequests.add(
+              new BulkResponse()
+                  .withRequest(entity.getFullyQualifiedName())
+                  .withStatus(Status.BAD_REQUEST.getStatusCode())
+                  .withMessage("Entity does not exist and could not be created"));
+        }
+      }
+    }
+
+    // Batch update existing entities
+    bulkUpdateEntities(
+        uriInfo,
+        updateEntities,
+        existingByFqn,
+        userName,
+        successRequests,
+        failedRequests,
+        entityLatenciesNanos);
 
     long totalDurationNanos = System.nanoTime() - bulkStartTime;
 
@@ -7201,7 +7994,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         maxEntityLatencyMs);
 
     LOG.info(
-        "Async bulk operation completed: {} succeeded, {} failed out of {} total, took {}ms",
+        "Bulk operation completed: {} succeeded, {} failed out of {} total, took {}ms",
         successRequests.size(),
         failedRequests.size(),
         entities.size(),
@@ -7232,13 +8025,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  private PutResponse<T> bulkCreateOrUpdateEntity(UriInfo uriInfo, T updated, String userName) {
-    T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
+  private PutResponse<T> createOrUpdateWithOriginal(
+      UriInfo uriInfo, T updated, T original, String updatedBy) {
+    if (lockManager != null) {
+      lockManager.checkModificationAllowed(updated);
+    }
     if (original == null) {
       return new PutResponse<>(
           Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
     }
-    return update(uriInfo, original, updated, userName, null);
+    return update(uriInfo, original, updated, updatedBy, null);
   }
 
   private void createChangeEventForBulkOperation(T entity, EventType eventType, String userName) {
@@ -7285,198 +8081,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public BulkOperationResult bulkCreateOrUpdateEntities(
-      UriInfo uriInfo, List<T> entities, String userName) {
-
-    BulkOperationResult result = new BulkOperationResult();
-    result.setStatus(ApiStatus.SUCCESS);
-
-    List<BulkResponse> successRequests = Collections.synchronizedList(new ArrayList<>());
-    List<BulkResponse> failedRequests = Collections.synchronizedList(new ArrayList<>());
-
-    BulkExecutor bulkExecutor = BulkExecutor.getInstance();
-
-    // Track overall wall-clock time
-    long bulkStartTime = System.nanoTime();
-
-    // Check if system can accept more work
-    if (!bulkExecutor.hasCapacity()) {
-      LOG.warn(
-          "Bulk operation rejected: queue full (depth={}, max={})",
-          bulkExecutor.getQueueDepth(),
-          bulkExecutor.getQueueSize());
-      result.setStatus(ApiStatus.FAILURE);
-      result.setNumberOfRowsProcessed(0);
-      result.setNumberOfRowsFailed(entities.size());
-      for (T entity : entities) {
-        failedRequests.add(
-            new BulkResponse()
-                .withRequest(entity.getFullyQualifiedName())
-                .withStatus(Status.SERVICE_UNAVAILABLE.getStatusCode())
-                .withMessage("System overloaded, please retry later"));
-      }
-      result.setFailedRequest(failedRequests);
-      recordBulkMetrics(entityType, entities.size(), 0, System.nanoTime() - bulkStartTime, 0, 0);
-      return result;
-    }
-
-    LOG.info(
-        "Starting bulk operation for {} {} entities (active={}, queued={})",
-        entities.size(),
-        entityType,
-        bulkExecutor.getActiveCount(),
-        bulkExecutor.getQueueDepth());
-
-    List<CompletableFuture<Void>> futures = new ArrayList<>();
-
-    // Track per-entity latencies for accurate metrics
-    List<Long> entityLatenciesNanos = Collections.synchronizedList(new ArrayList<>());
-
-    // Capture parent thread's latency context for propagation to worker threads
-    final RequestLatencyContext.RequestContext parentLatencyContext =
-        RequestLatencyContext.getContext();
-
-    for (T entity : entities) {
-      CompletableFuture<Void> future = new CompletableFuture<>();
-      futures.add(future);
-
-      final long submitTime = System.nanoTime();
-
-      try {
-        bulkExecutor.submit(
-            () -> {
-              // Propagate latency context to worker thread for accurate DB/Search tracking
-              if (parentLatencyContext != null) {
-                RequestLatencyContext.setContext(parentLatencyContext);
-              }
-              try {
-                long entityStartTime = System.nanoTime();
-                long queueWaitTime = entityStartTime - submitTime;
-                try {
-                  PutResponse<T> putResponse = bulkCreateOrUpdateEntity(uriInfo, entity, userName);
-                  long entityDuration = System.nanoTime() - entityStartTime;
-                  entityLatenciesNanos.add(entityDuration);
-
-                  successRequests.add(
-                      new BulkResponse()
-                          .withRequest(entity.getFullyQualifiedName())
-                          .withStatus(Status.OK.getStatusCode()));
-                  createChangeEventForBulkOperation(
-                      putResponse.getEntity(), putResponse.getChangeType(), userName);
-
-                  // Record per-entity metrics
-                  recordEntityMetrics(entityType, entityDuration, queueWaitTime, true);
-                  future.complete(null);
-                } catch (Exception e) {
-                  long entityDuration = System.nanoTime() - entityStartTime;
-                  entityLatenciesNanos.add(entityDuration);
-                  recordEntityMetrics(entityType, entityDuration, queueWaitTime, false);
-                  handleBulkOperationError(entity, e, failedRequests);
-                  future.complete(null); // Complete even on error so we don't hang
-                }
-              } finally {
-                // Clear context from worker thread to prevent memory leaks in pooled threads
-                if (parentLatencyContext != null) {
-                  RequestLatencyContext.clearContext();
-                }
-              }
-            });
-      } catch (java.util.concurrent.RejectedExecutionException e) {
-        // Queue became full between check and submit
-        LOG.warn("Task rejected for entity: {}", entity.getFullyQualifiedName());
-        failedRequests.add(
-            new BulkResponse()
-                .withRequest(entity.getFullyQualifiedName())
-                .withStatus(Status.SERVICE_UNAVAILABLE.getStatusCode())
-                .withMessage("System overloaded, please retry later"));
-        future.complete(null);
-      }
-    }
-
-    // Wait with timeout
-    boolean timedOut = false;
-    try {
-      CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-          .get(bulkExecutor.getTimeoutSeconds(), TimeUnit.SECONDS);
-    } catch (java.util.concurrent.TimeoutException e) {
-      timedOut = true;
-      LOG.error(
-          "Bulk operation timed out after {}s. Completed: {}, Failed: {}, Total: {}",
-          bulkExecutor.getTimeoutSeconds(),
-          successRequests.size(),
-          failedRequests.size(),
-          entities.size());
-
-      // Check each future to find which entities actually timed out
-      // futures[i] corresponds to entities[i]
-      for (int i = 0; i < futures.size(); i++) {
-        CompletableFuture<Void> future = futures.get(i);
-        if (!future.isDone()) {
-          T entity = entities.get(i);
-          failedRequests.add(
-              new BulkResponse()
-                  .withRequest(entity.getFullyQualifiedName())
-                  .withStatus(Status.REQUEST_TIMEOUT.getStatusCode())
-                  .withMessage("Operation timed out"));
-          // Cancel the future to signal we're no longer interested
-          future.cancel(false);
-        }
-      }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOG.warn("Bulk operation interrupted");
-    } catch (ExecutionException e) {
-      LOG.error("Unexpected error in bulk operation", e.getCause());
-    }
-
-    long totalDurationNanos = System.nanoTime() - bulkStartTime;
-
-    result.setNumberOfRowsProcessed(entities.size());
-    result.setNumberOfRowsPassed(successRequests.size());
-    result.setNumberOfRowsFailed(failedRequests.size());
-    result.setSuccessRequest(successRequests);
-    result.setFailedRequest(failedRequests);
-
-    if (!failedRequests.isEmpty()) {
-      result.setStatus(successRequests.isEmpty() ? ApiStatus.FAILURE : ApiStatus.PARTIAL_SUCCESS);
-    }
-
-    // Calculate and log detailed metrics
-    long avgEntityLatencyMs = 0;
-    long maxEntityLatencyMs = 0;
-    if (!entityLatenciesNanos.isEmpty()) {
-      avgEntityLatencyMs =
-          entityLatenciesNanos.stream().mapToLong(Long::longValue).sum()
-              / entityLatenciesNanos.size()
-              / 1_000_000;
-      maxEntityLatencyMs =
-          entityLatenciesNanos.stream().mapToLong(Long::longValue).max().orElse(0) / 1_000_000;
-    }
-
-    long totalDurationMs = totalDurationNanos / 1_000_000;
-    double throughput = entities.size() * 1000.0 / Math.max(1, totalDurationMs);
-
-    // Record bulk operation metrics
-    recordBulkMetrics(
-        entityType,
-        entities.size(),
-        successRequests.size(),
-        totalDurationNanos,
-        avgEntityLatencyMs,
-        maxEntityLatencyMs);
-
-    LOG.info(
-        "Bulk operation completed: entity={}, total={}, succeeded={}, failed={}, "
-            + "wallClockMs={}, avgEntityMs={}, maxEntityMs={}, throughput={}/s",
-        entityType,
-        entities.size(),
-        successRequests.size(),
-        failedRequests.size(),
-        totalDurationMs,
-        avgEntityLatencyMs,
-        maxEntityLatencyMs,
-        String.format("%.1f", throughput));
-
-    return result;
+      UriInfo uriInfo, List<T> entities, String userName, Map<String, T> existingByFqn) {
+    return bulkCreateOrUpdateEntitiesSequential(uriInfo, entities, userName, existingByFqn);
   }
 
   private void recordEntityMetrics(

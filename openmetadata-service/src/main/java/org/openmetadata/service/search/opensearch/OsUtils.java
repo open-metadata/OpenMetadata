@@ -516,4 +516,83 @@ public class OsUtils {
 
     return rootNode.toString();
   }
+
+  /**
+   * Transforms Elasticsearch field types to OpenSearch equivalents in mappings.
+   * Currently handles: "flattened" -> "flat_object"
+   *
+   * @param mappingsNode The mappings JSON node
+   * @return Transformed mappings node with OpenSearch-compatible types
+   */
+  public static JsonNode transformFieldTypesForOpenSearch(JsonNode mappingsNode) {
+    try {
+      ObjectNode transformedNode = (ObjectNode) JsonUtils.readTree(mappingsNode.toString());
+      JsonNode propertiesNode = transformedNode.path("properties");
+      if (!propertiesNode.isMissingNode() && propertiesNode.isObject()) {
+        transformFieldTypesRecursive((ObjectNode) propertiesNode);
+      }
+      return transformedNode;
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to transform field types for OpenSearch, using original mappings: {}",
+          e.getMessage());
+      return mappingsNode;
+    }
+  }
+
+  private static void transformFieldTypesRecursive(ObjectNode propertiesNode) {
+    propertiesNode
+        .fields()
+        .forEachRemaining(
+            entry -> {
+              JsonNode fieldDef = entry.getValue();
+              if (fieldDef.isObject()) {
+                ObjectNode fieldObj = (ObjectNode) fieldDef;
+
+                // Transform "flattened" to "flat_object" for OpenSearch
+                JsonNode typeNode = fieldObj.get("type");
+                if (typeNode != null && "flattened".equals(typeNode.asText())) {
+                  fieldObj.put("type", "flat_object");
+                  LOG.debug(
+                      "Transformed field '{}' from 'flattened' to 'flat_object'", entry.getKey());
+                }
+
+                // Recurse into nested properties
+                JsonNode nestedProps = fieldObj.get("properties");
+                if (nestedProps != null && nestedProps.isObject()) {
+                  transformFieldTypesRecursive((ObjectNode) nestedProps);
+                }
+              }
+            });
+  }
+
+  /**
+   * Enriches index mapping content with OpenSearch-compatible transformations.
+   * Applies both stemmer and field type transformations.
+   *
+   * @param indexMappingContent The original index mapping JSON content
+   * @return Transformed index mapping content for OpenSearch
+   */
+  public static String enrichIndexMappingForOpenSearch(String indexMappingContent) {
+    if (nullOrEmpty(indexMappingContent)) {
+      throw new IllegalArgumentException("Empty Index Mapping Content.");
+    }
+    JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
+
+    // Transform settings (stemmer configuration)
+    JsonNode settingsNode = rootNode.get("settings");
+    if (settingsNode != null && !settingsNode.isNull()) {
+      JsonNode transformedSettings = transformStemmerForOpenSearch(settingsNode);
+      ((ObjectNode) rootNode).set("settings", transformedSettings);
+    }
+
+    // Transform mappings (field types like flattened -> flat_object)
+    JsonNode mappingsNode = rootNode.get("mappings");
+    if (mappingsNode != null && !mappingsNode.isNull()) {
+      JsonNode transformedMappings = transformFieldTypesForOpenSearch(mappingsNode);
+      ((ObjectNode) rootNode).set("mappings", transformedMappings);
+    }
+
+    return rootNode.toString();
+  }
 }

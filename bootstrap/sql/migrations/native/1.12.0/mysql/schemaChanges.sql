@@ -111,6 +111,11 @@ CREATE INDEX idx_api_endpoint_entity_updated_at_id ON api_endpoint_entity(update
 -- Add metadata column to tag_usage table
 ALTER TABLE tag_usage ADD metadata JSON NULL;
 
+-- Upgrade appliedAt to microsecond precision to match PostgreSQL behavior.
+-- Without this, MySQL returns second-precision timestamps which cause spurious
+-- diffs in JSON patch operations, leading to deserialization failures.
+ALTER TABLE tag_usage MODIFY appliedAt TIMESTAMP(6) NULL DEFAULT CURRENT_TIMESTAMP(6);
+
 -- Distributed Search Indexing Tables
 
 -- Table to track reindex jobs across distributed servers
@@ -240,3 +245,127 @@ CREATE TABLE IF NOT EXISTS learning_resource_entity (
   PRIMARY KEY (id),
   UNIQUE KEY fqnHash (fqnHash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Widen entityLink generated column from VARCHAR(255) to TEXT
+-- The entity link from workflow variables can exceed 255 characters for deeply nested entities
+ALTER TABLE workflow_instance_time_series
+MODIFY COLUMN entityLink TEXT GENERATED ALWAYS AS (json ->> '$.variables.global_relatedEntity');
+
+-- Add process and vector stage columns to search_index_server_stats table
+-- These columns support the 4-stage pipeline model (Reader, Process, Sink, Vector) for search indexing stats
+
+ALTER TABLE search_index_server_stats ADD COLUMN processSuccess BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN processFailed BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN vectorSuccess BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN vectorFailed BIGINT DEFAULT 0;
+ALTER TABLE search_index_server_stats ADD COLUMN vectorWarnings BIGINT DEFAULT 0;
+
+-- Add entityType column to support per-entity stats tracking
+-- Stats are now tracked per (jobId, serverId, entityType) instead of (jobId, serverId)
+ALTER TABLE search_index_server_stats ADD COLUMN entityType VARCHAR(128) NOT NULL DEFAULT 'unknown';
+
+-- Drop old unique index and create new one with entityType
+ALTER TABLE search_index_server_stats DROP INDEX idx_search_index_server_stats_job_server;
+CREATE UNIQUE INDEX idx_search_index_server_stats_job_server_entity
+    ON search_index_server_stats (jobId, serverId, entityType);
+
+-- Remove deprecated columns (entityBuildFailures is redundant - failures are tracked as processFailed)
+-- sinkTotal and sinkWarnings are not needed
+ALTER TABLE search_index_server_stats DROP COLUMN entityBuildFailures;
+ALTER TABLE search_index_server_stats DROP COLUMN sinkTotal;
+ALTER TABLE search_index_server_stats DROP COLUMN sinkWarnings;
+
+-- Create ai_application_entity table
+CREATE TABLE IF NOT EXISTS ai_application_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name (fqnHash),
+    INDEX name_index (name),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Application entities';
+
+-- Create llm_model_entity table
+CREATE TABLE IF NOT EXISTS llm_model_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name (fqnHash),
+    INDEX name_index (name),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='LLM Model entities';
+
+-- Create prompt_template_entity table
+CREATE TABLE IF NOT EXISTS prompt_template_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name (fqnHash),
+    INDEX name_index (name),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Prompt Template entities';
+
+-- Create agent_execution_entity table
+CREATE TABLE IF NOT EXISTS agent_execution_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    agentId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.agentId') STORED NOT NULL,
+    json JSON NOT NULL,
+    timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
+    PRIMARY KEY (id),
+    INDEX agent_index (agentId),
+    INDEX timestamp_index (timestamp)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Agent Execution logs';
+
+-- Create ai_governance_policy_entity table
+CREATE TABLE IF NOT EXISTS ai_governance_policy_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name (fqnHash),
+    INDEX name_index (name),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Governance Policy entities';
+
+-- Create llm_service_entity table
+CREATE TABLE IF NOT EXISTS llm_service_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.id'))) STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.name'))) VIRTUAL NOT NULL,
+    serviceType VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.serviceType'))) VIRTUAL NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.updatedAt'))) VIRTUAL NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.updatedBy'))) VIRTUAL NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted TINYINT(1) GENERATED ALWAYS AS (json_extract(`json`, '$.deleted')) VIRTUAL,
+    nameHash VARCHAR(256) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY nameHash (nameHash),
+    INDEX name_index (name),
+    INDEX service_type_index (serviceType),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='LLM Service entities';
+
+

@@ -63,6 +63,7 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 const entities = {
   'Api Endpoint': ApiEndpointClass,
@@ -179,7 +180,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           page,
           EntityDataClass.domain1.responseData,
           entity.entityResponseData?.['fullyQualifiedName'] ??
-            entity.entityResponseData?.['name']
+          entity.entityResponseData?.['name']
         );
 
         await visitServiceDetailsPage(
@@ -390,10 +391,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         // Glossary Selector
         await page
           .locator(
-            `[${rowSelector}="${
-              isMlModel
-                ? entity.childrenSelectorId2
-                : entity.childrenSelectorId ?? ''
+            `[${rowSelector}="${isMlModel
+              ? entity.childrenSelectorId2
+              : entity.childrenSelectorId ?? ''
             }"]`
           )
           .getByTestId('glossary-container')
@@ -898,9 +898,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             ).toBeVisible();
 
             // Verify non-nested columns don't have expand icons
-            const simpleColumnFQN = `${tableFQN}.${
-              (entity as TableClass).columnsName[0]
-            }`;
+            const simpleColumnFQN = `${tableFQN}.${(entity as TableClass).columnsName[0]
+              }`;
 
             await expect(
               page
@@ -914,9 +913,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           'Open column detail panel for nested column',
           async () => {
             // Click on the parent nested column name to open detail panel
-            const nestedParentFQN = `${
-              entity.entityResponseData?.['fullyQualifiedName']
-            }.${(entity as TableClass).columnsName[2]}`;
+            const nestedParentFQN = `${entity.entityResponseData?.['fullyQualifiedName']
+              }.${(entity as TableClass).columnsName[2]}`;
 
             await openColumnDetailPanel({
               page,
@@ -1213,8 +1211,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
             if (!nestedParent) {
               throw new Error(
-                `Nested parent column not found: ${
-                  (entity as TableClass).columnsName[2]
+                `Nested parent column not found: ${(entity as TableClass).columnsName[2]
                 }`
               );
             }
@@ -1227,8 +1224,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
             if (!arrayColumn) {
               throw new Error(
-                `Array column not found: ${
-                  (entity as TableClass).columnsName[4]
+                `Array column not found: ${(entity as TableClass).columnsName[4]
                 }`
               );
             }
@@ -1293,9 +1289,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           'Verify mixed siblings have consistent indentation',
           async () => {
             // columnsName[2] has mixed children: columnsName[3] (STRUCT) and columnsName[4] (ARRAY with nested children)
-            const nestedParentFQN = `${
-              entity.entityResponseData?.['fullyQualifiedName']
-            }.${(entity as TableClass).columnsName[2]}`;
+            const nestedParentFQN = `${entity.entityResponseData?.['fullyQualifiedName']
+              }.${(entity as TableClass).columnsName[2]}`;
 
             const nestedColumnRow = page.locator(
               `[data-row-key="${nestedParentFQN}"]`
@@ -2043,14 +2038,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         await cleanupAfterAction();
       });
     }
-
-    test.afterAll('Cleanup', async ({ browser }) => {
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await entity.delete(apiContext);
-      await afterAction();
-    });
   });
 
   /**
@@ -2058,7 +2045,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
    * @description Tests soft deleting an entity and then hard deleting it to completely remove it from the system
 
    */
-  test(`Delete ${key}`, async ({ page }) => {
+  test(`Delete ${key}`, PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
     // increase timeout as it using single test for multiple steps
     test.slow(true);
 
@@ -2088,13 +2075,4 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       );
     });
   });
-});
-
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await dataConsumerUser.delete(apiContext);
-  await user.delete(apiContext);
-  await tableEntity.delete(apiContext);
-  await afterAction();
 });

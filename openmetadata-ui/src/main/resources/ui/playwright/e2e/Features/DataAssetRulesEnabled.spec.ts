@@ -201,8 +201,18 @@ test.describe(
 
         if (entityName === 'Table') {
           // Only glossaryTerm2.responseData data will be available due to single select type is enabled
-          await assignGlossaryTerm(page, glossaryTerm.responseData);
-          await assignGlossaryTerm(page, glossaryTerm2.responseData, 'Edit');
+          await assignGlossaryTerm(
+            page,
+            glossaryTerm.responseData,
+            'Add',
+            entity.endpoint
+          );
+          await assignGlossaryTerm(
+            page,
+            glossaryTerm2.responseData,
+            'Edit',
+            entity.endpoint
+          );
 
           await expect(
             page

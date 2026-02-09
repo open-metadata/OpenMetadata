@@ -55,8 +55,6 @@ test.describe('Pagination tests for Users page', () => {
   });
 
   test('should test pagination on Users page', async ({ page }) => {
-    test.slow(true);
-
     await page.goto('/settings/members/users');
     await testPaginationNavigation(page, '/api/v1/users', 'table');
   });
@@ -110,8 +108,6 @@ test.describe('Database Schema Tables page pagination', () => {
   test('should test Database Schema Tables normal pagination', async ({
     page,
   }) => {
-    test.slow(true);
-
     await page.goto(`/databaseSchema/${schemaFqn}?pageSize=15`);
     await testPaginationNavigation(page, '/api/v1/tables', 'table');
   });
@@ -164,8 +160,6 @@ test.describe('Table columns page pagination', () => {
   });
 
   test('should test pagination on Table columns', async ({ page }) => {
-    test.slow(true);
-
     await page.goto(`/table/${tableFqn}?pageSize=15`);
     await testPaginationNavigation(page, '/columns', 'table', false);
   });
@@ -209,8 +203,6 @@ test.describe('Service Databases page pagination', () => {
   });
 
   test('should test pagination on Service Databases page', async ({ page }) => {
-    test.slow(true);
-
     await page.goto(`/service/databaseServices/${databaseFqn}/databases`);
     await testPaginationNavigation(page, '/api/v1/databases', 'table');
 
@@ -283,8 +275,6 @@ test.describe('Pagination tests for Classification Tags page', () => {
   test('should test pagination on Classification Tags page', async ({
     page,
   }) => {
-    test.slow(true);
-
     await page.goto(`/tags/${classification.responseData.name}`);
     await testPaginationNavigation(page, '/api/v1/tags', 'table');
   });
@@ -303,8 +293,6 @@ test.describe('Pagination tests for Metrics page', () => {
   });
 
   test('should test pagination on Metrics page', async ({ page }) => {
-    test.slow(true);
-
     await page.goto('/metrics');
     await testPaginationNavigation(page, '/api/v1/metrics', 'table');
   });
@@ -341,8 +329,6 @@ test.describe('Pagination tests for Notification Alerts page', () => {
   test('should test pagination on Notification Alerts page', async ({
     page,
   }) => {
-    test.slow(true);
-
     await page.goto('/settings/notifications/alerts');
     await testPaginationNavigation(
       page,
@@ -383,9 +369,7 @@ test.describe('Pagination tests for Observability Alerts page', () => {
   test('should test pagination on Observability Alerts page', async ({
     page,
   }) => {
-    test.slow(true);
-
-    await page.goto('/observability/alerts');
+    await page.goto('/observability/alerts?pageSize=15');
     await testPaginationNavigation(
       page,
       '/api/v1/events/subscriptions',
@@ -420,8 +404,6 @@ test.describe('Pagination tests for API Collection Endpoints page', () => {
   });
 
   test('should test API Collection normal pagination', async ({ page }) => {
-    test.slow(true);
-
     await page.goto(`/apiCollection/${apiCollectionFqn}?pageSize=15`);
     await testPaginationNavigation(page, '/api/v1/apiEndpoints', 'table');
   });
@@ -469,8 +451,6 @@ test.describe('Pagination tests for Stored Procedures page', () => {
   });
 
   test('should test Stored Procedures normal pagination', async ({ page }) => {
-    test.slow(true);
-
     await page.goto(
       `/databaseSchema/${schemaFqn}/stored_procedure?pageSize=15`
     );
@@ -533,8 +513,6 @@ test.describe('Pagination tests for Database Schemas page', () => {
   });
 
   test('should test Database Schemas normal pagination', async ({ page }) => {
-    test.slow(true);
-
     await page.goto(`/database/${databaseFqn}?pageSize=15`);
     await testPaginationNavigation(page, '/api/v1/databaseSchemas', 'table');
   });
@@ -590,8 +568,6 @@ test.describe('Pagination tests for Dashboard Data Models page', () => {
   });
 
   test('should test Data Models normal pagination', async ({ page }) => {
-    test.slow(true);
-
     await page.goto(
       `/service/dashboardServices/${serviceFqn}/data-model?pageSize=15`
     );
@@ -657,8 +633,6 @@ test.describe('Pagination tests for Drive Service Directories page', () => {
   });
 
   test('should test Directories normal pagination', async ({ page }) => {
-    test.slow(true);
-
     await page.goto(
       `/service/driveServices/${serviceFqn}/directories?pageSize=15`
     );
@@ -714,8 +688,6 @@ test.describe('Pagination tests for Drive Service Files page', () => {
   });
 
   test('should test Files normal pagination', async ({ page }) => {
-    test.slow(true);
-
     await page.goto(`/service/driveServices/${serviceFqn}/files?pageSize=15`);
     await testPaginationNavigation(page, '/api/v1/drives/files', 'table');
   });
@@ -855,8 +827,6 @@ test.describe('Pagination tests for Drive Service Spreadsheets page', () => {
   });
 
   test('should test Spreadsheets normal pagination', async ({ page }) => {
-    test.slow(true);
-
     await page.goto(
       `/service/driveServices/${serviceFqn}/spreadsheets?pageSize=15`
     );
@@ -910,7 +880,6 @@ test.describe('Pagination tests for Roles page', () => {
   });
 
   test('should test pagination on Roles page', async ({ page }) => {
-    test.slow(true);
     await page.goto('/settings/access/roles?pageSize=15');
     await testPaginationNavigation(page, '/api/v1/roles', 'table');
   });
@@ -937,7 +906,6 @@ test.describe('Pagination tests for Policies page', () => {
   });
 
   test('should test pagination on Policies page', async ({ page }) => {
-    test.slow(true);
     await page.goto('/settings/access/policies?pageSize=15');
     await testPaginationNavigation(page, '/api/v1/policies', 'table');
   });
@@ -957,7 +925,6 @@ test.describe('Pagination tests for Bots page', () => {
   });
 
   test('should test pagination on Bots page', async ({ page }) => {
-    test.slow(true);
     await page.goto('/settings/bots?pageSize=15');
     await testPaginationNavigation(page, '/api/v1/bots', 'table');
   });
@@ -986,7 +953,6 @@ test.describe('Pagination tests for Service version page', () => {
   });
 
   test('should test pagination on Service version page', async ({ page }) => {
-    test.slow(true);
     // Go to version 0.1 of the dashboard service
     await page.goto(
       `/service/dashboardServices/${serviceFqn}/versions/0.1?pageSize=15`

@@ -34,6 +34,7 @@ import io.kubernetes.client.openapi.models.V1Job;
 import io.kubernetes.client.openapi.models.V1JobList;
 import io.kubernetes.client.openapi.models.V1JobSpec;
 import io.kubernetes.client.openapi.models.V1JobTemplateSpec;
+import io.kubernetes.client.openapi.models.V1ObjectFieldSelector;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
@@ -1362,8 +1363,22 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     envVars.add(
         new V1EnvVar().name(ENV_PIPELINE_TYPE).value(pipeline.getPipelineType().toString()));
-    // Use placeholder that will be replaced by CronOMJobReconciler at runtime with unique UUID
-    envVars.add(new V1EnvVar().name(ENV_PIPELINE_RUN_ID).value(CRONOMJOB_DYNAMIC_RUN_ID));
+
+    // Handle pipelineRunId differently for standard CronJobs vs CronOMJobs
+    if (useOMJobOperator) {
+      // For CronOMJobs: Use placeholder that CronOMJobReconciler will replace at runtime
+      envVars.add(new V1EnvVar().name(ENV_PIPELINE_RUN_ID).value(CRONOMJOB_DYNAMIC_RUN_ID));
+    } else {
+      // For standard K8s CronJobs: Use Downward API to inject pod's UID as runId
+      // Pod UIDs are valid UUIDs and unique per pod execution
+      envVars.add(
+          new V1EnvVar()
+              .name(ENV_PIPELINE_RUN_ID)
+              .valueFrom(
+                  new V1EnvVarSource()
+                      .fieldRef(new V1ObjectFieldSelector().fieldPath("metadata.uid"))));
+    }
+
     envVars.add(
         new V1EnvVar().name(ENV_INGESTION_PIPELINE_FQN).value(pipeline.getFullyQualifiedName()));
     envVars.add(
@@ -2190,7 +2205,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
     };
   }
 
-  private String sanitizeName(String name) {
+  String sanitizeName(String name) {
     // K8s names must be lowercase, alphanumeric, or '-'
     // Must start with alphanumeric, max 63 chars
     String sanitized =
@@ -2200,7 +2215,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
             .replaceAll("^-+|-+$", "");
 
     if (sanitized.length() > 53) { // Leave room for prefixes
-      sanitized = sanitized.substring(0, 53);
+      sanitized = sanitized.substring(0, 53).replaceAll("-+$", "");
     }
 
     if (!sanitized.matches("^[a-z0-9].*")) {

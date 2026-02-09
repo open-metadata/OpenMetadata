@@ -13,7 +13,7 @@
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
   addCustomPropertiesForEntity,
   deleteCreatedProperty,
@@ -33,6 +33,7 @@ const propertiesList = [
   'Sql Query',
   'Time Interval',
   'Timestamp',
+  'Hyperlink',
 ];
 
 const TABLE_COLUMN_ENTITY_NAME = 'tableColumn';
@@ -56,7 +57,9 @@ test.describe('Custom properties without custom property config', () => {
   propertiesList.forEach((property) => {
     test.describe(`Add update and delete ${property} custom properties`, () => {
       Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
-        const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
+        // Using Date.now() to generate property names in a way that new property will always be
+        // added after existing properties to avoid conflicts due to parallel test executions
+        const propertyName = `pwcp${Date.now()}test${entity.name}`;
 
         test(`Add ${property} custom property for ${entity.name}`, async ({
           page,

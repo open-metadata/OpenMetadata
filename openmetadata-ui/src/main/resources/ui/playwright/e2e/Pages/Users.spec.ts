@@ -218,7 +218,7 @@ test.describe('User with Admin Roles', () => {
       '/api/v1/users?**include=non-deleted'
     );
     await adminPage.fill('[data-testid="searchbar"]', '');
-    await fetchUsers
+    await fetchUsers;
 
     await restoreUser(
       adminPage,
@@ -318,17 +318,23 @@ test.describe('User with Admin Roles', () => {
     await tableEntity.visitEntityPage(adminPage);
     await adminPage.waitForLoadState('networkidle');
 
+    // Check if the user details are visible in the right panel
+    const userElement = adminPage.getByTestId(upperCasedName);
+    const isUserVisible = await userElement.isVisible();
+
+    // If not visible, click on Custom Properties tab to see all custom properties
+    if (!isUserVisible) {
+      await adminPage.getByTestId('custom_properties').click();
+    }
+
     // Verify Custom Property in Right Panel
     const rightPanelSection = adminPage.getByTestId(customPropertyName);
+    await expect(rightPanelSection).toBeVisible();
 
     // Verify User Link
-    const userLink = rightPanelSection
-      .getByRole('button')
-      .locator('.ant-typography');
+    const userLink = adminPage.getByTestId(upperCasedName).getByRole('link');
 
-    await expect(
-      adminPage.getByTestId(upperCasedName).getByRole('button')
-    ).toContainText(upperCasedName);
+    await expect(userLink).toContainText(upperCasedName);
 
     // Click User Link and Verify Navigation
     const userDetailsResponse = adminPage.waitForResponse(
@@ -992,7 +998,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     await adminPage.waitForSelector(
       '[data-testid="default-persona-select-list"]'
     );
-    
+
     await adminPage.waitForSelector('.ant-select-dropdown', {
       state: 'visible',
     });
@@ -1356,7 +1362,6 @@ base.describe(
     const user = new UserClass();
 
     base.beforeAll('Setup pre-requests', async ({ browser }) => {
-
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       await user.create(apiContext);

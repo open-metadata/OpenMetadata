@@ -252,11 +252,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
 
-    // Initialize bulk operation executor for bounded concurrent processing
+    // Initialize bulk operation executor
     BulkExecutor.initialize(catalogConfig.getBulkOperationConfiguration());
 
-    initializeSearchRepository(catalogConfig);
-    // as first step register all the repositories
+    // Phase 1: Core search infrastructure (needed by repositories)
+    initializeCoreSearchInfrastructure(catalogConfig);
+
+    // as first step register all the repositories (now they can access SearchRepository)
     Entity.initializeRepositories(catalogConfig, jdbi);
     auditLogRepository = new AuditLogRepository(Entity.getCollectionDAO());
     Entity.setAuditLogRepository(auditLogRepository);
@@ -269,8 +271,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Initialize Workflow Handler
     WorkflowHandler.initialize(catalogConfig);
 
-    // Init Settings Cache after repositories
+    // Init Settings Cache after repositories and Fernet (needed for database access and encryption)
     SettingsCache.initialize(catalogConfig);
+
+    // Phase 2: Advanced search features (after settings are available)
+    initializeAdvancedSearchFeatures();
 
     SecurityConfigurationManager.getInstance().initialize(this, catalogConfig, environment);
 
@@ -533,23 +538,46 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  protected void initializeSearchRepository(OpenMetadataApplicationConfig config) {
-    // initialize Search Repository, all repositories use SearchRepository this line should always
-    // before initializing repository
+  /**
+   * Phase 1: Initialize core search infrastructure without advanced features.
+   * This creates the basic SearchRepository and SearchClient but defers
+   * lineage builders that depend on settings.
+   */
+  protected void initializeCoreSearchInfrastructure(OpenMetadataApplicationConfig config) {
     Integer databaseMaxSize = config.getDataSourceFactory().getMaxSize();
     LOG.info(
-        "AUTO-TUNE INIT: Initializing SearchRepository with database max pool size: {}",
+        "Phase 1: Initializing core search infrastructure with database max pool size: {}",
         databaseMaxSize);
+
     SearchRepository searchRepository =
         new SearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
     Entity.setSearchRepository(searchRepository);
 
-    // Initialize RDF if enabled
+    // Initialize RDF if enabled (core infrastructure)
     RdfConfiguration rdfConfig = config.getRdfConfiguration();
     if (rdfConfig != null && rdfConfig.getEnabled() != null && rdfConfig.getEnabled()) {
       RdfUpdater.initialize(rdfConfig);
       LOG.info("RDF knowledge graph support initialized");
+    }
+
+    LOG.info("Core search infrastructure initialization completed");
+  }
+
+  /**
+   * Phase 2: Initialize advanced search features that depend on settings.
+   * This includes lineage builders and other components that require
+   * database settings to be available.
+   */
+  protected void initializeAdvancedSearchFeatures() {
+    LOG.info("Phase 2: Initializing advanced search features");
+
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    if (searchRepository != null) {
+      searchRepository.initializeLineageComponents();
+      LOG.info("Advanced search features initialization completed");
+    } else {
+      LOG.warn("SearchRepository not found during advanced features initialization");
     }
   }
 

@@ -307,7 +307,7 @@ export default function EntitySummaryPanel({
           fullyQualifiedName: entityDetails.details.fullyQualifiedName,
           id: entityDetails.details.id,
           description: data.description ?? entityDetails.details.description,
-          displayName: entityDetails.details.displayName,
+          displayName: data.displayName,
           name: entityDetails.details.name,
           deleted: entityDetails.details.deleted,
           serviceType: (entityDetails.details as any).serviceType,
@@ -468,6 +468,13 @@ export default function EntitySummaryPanel({
       updateEntityData({ description: updatedDescription });
     },
     [updateEntityData]
+  );
+
+  const handleDisplayNameUpdate = useCallback(
+    (updatedDisplayName: string) => {
+      updateEntityData({ displayName: updatedDisplayName });
+    },
+    [entityData, updateEntityData]
   );
 
   const handleExtensionUpdate = useCallback(
@@ -698,7 +705,14 @@ export default function EntitySummaryPanel({
               <EntityTitleSection
                 className="title-section"
                 entityDetails={entityDetails.details}
+                entityDisplayName={entityData?.displayName}
                 entityLink={entityLink}
+                entityType={entityType}
+                hasEditPermission={getPrioritizedEditPermission(
+                  entityPermissions,
+                  Operation.EditDisplayName
+                )}
+                onDisplayNameUpdate={handleDisplayNameUpdate}
               />
             )}
             <div className="overview-tab-content">{summaryComponentV1}</div>
@@ -732,6 +746,12 @@ export default function EntitySummaryPanel({
                 className="title-section"
                 entityDetails={entityDetails.details}
                 entityLink={entityLink}
+                entityType={entityType}
+                hasEditPermission={getPrioritizedEditPermission(
+                  entityPermissions,
+                  Operation.EditDisplayName
+                )}
+                onDisplayNameUpdate={handleDisplayNameUpdate}
               />
             )}
             <div className="entity-summary-panel-tab-content">
@@ -802,9 +822,16 @@ export default function EntitySummaryPanel({
           <EntityTitleSection
             className="drawer-title-section"
             entityDetails={entityDetails.details}
+            entityDisplayName={entityData?.displayName}
             entityLink={entityLink}
+            entityType={entityType}
+            hasEditPermission={getPrioritizedEditPermission(
+              entityPermissions,
+              Operation.EditDisplayName
+            )}
             testId="entity-header-title"
             tooltipPlacement="bottomLeft"
+            onDisplayNameUpdate={handleDisplayNameUpdate}
           />
           <Button
             aria-label={t('label.close')}

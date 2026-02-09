@@ -271,6 +271,19 @@ test.describe(
   'Test Definition Permissions - Data Steward',
   { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` },
   () => {
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await apiContext.post('/api/v1/dataQuality/testDefinitions', {
+        data: {
+          name: `aaaColumnTestDefinition-${uuid()}`,
+          description: `A Column test definition`,
+          entityType: 'COLUMN',
+          testPlatforms: ['OpenMetadata'],
+        },
+      });
+      await afterAction();
+    });
+
     test('should allow viewing and editing but not creating or deleting test definitions', async ({
       dataStewardPage,
     }) => {

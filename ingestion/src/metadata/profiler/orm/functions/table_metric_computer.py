@@ -18,7 +18,16 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Callable, List, Optional, Tuple, Type
 
-from sqlalchemy import Column, MetaData, Table, func, inspect, literal, select
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    MetaData,
+    Table,
+    func,
+    inspect,
+    literal,
+    select,
+)
 from sqlalchemy.sql.expression import ColumnOperators, and_, cte
 from sqlalchemy.types import String
 
@@ -397,11 +406,46 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
         ):
             # if we don't have any row count, fallback to the base logic
             return super().compute()
-        res = res._asdict()
-        # innodb row count is an estimate we need to patch the row count with COUNT(*)
-        # https://dev.mysql.com/doc/refman/8.3/en/information-schema-innodb-tablestats-table.html
-        row_count = self.runner.select_first_from_table(metrics.ROW_COUNT().fn())
-        res.update({ROW_COUNT: row_count.rowCount})
+        return res
+
+
+class PostgresTableMetricComputer(BaseTableMetricComputer):
+    """PostgreSQL Table Metric Computer"""
+
+    def compute(self):
+        """compute table metrics for postgresql using pg_catalog"""
+        nsp_subquery = (
+            select(Column("oid"))
+            .select_from(Table("pg_namespace", MetaData(), schema="pg_catalog"))
+            .where(Column("nspname") == self.schema_name)
+            .correlate(None)
+            .scalar_subquery()
+        )
+
+        columns = [
+            Column("reltuples").cast(BigInteger).label(ROW_COUNT),
+            func.pg_total_relation_size(Column("oid")).label(SIZE_IN_BYTES),
+            *self._get_col_names_and_count(),
+        ]
+
+        where_clause = [
+            Column("relname") == self.table_name,
+            Column("relnamespace") == nsp_subquery,
+        ]
+
+        query = self._build_query(
+            columns,
+            self._build_table("pg_class", "pg_catalog"),
+            where_clause,
+        )
+
+        res = self.runner._session.execute(query).first()
+        if not res:
+            return None
+        if res.rowCount is None or (
+            res.rowCount == 0 and self._entity.tableType == TableType.View
+        ):
+            return super().compute()
         return res
 
 
@@ -509,3 +553,4 @@ table_metric_computer_factory.register(
 )
 table_metric_computer_factory.register(Dialects.Oracle, OracleTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Snowflake, SnowflakeTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Postgres, PostgresTableMetricComputer)

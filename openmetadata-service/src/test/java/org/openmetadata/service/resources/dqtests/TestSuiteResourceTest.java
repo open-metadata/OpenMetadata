@@ -17,8 +17,8 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -33,7 +33,6 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.http.client.HttpResponseException;
-import org.apache.http.util.EntityUtils;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -520,13 +519,11 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
             .allMatch(
                 ts -> ts.getFullyQualifiedName().equals(logicalTestSuite.getFullyQualifiedName())));
 
-    // 6. List test suites with a nested sort
+    // 6. List test suites sorted by lastResultTimestamp
     queryParams.clear();
     queryParams.put("fields", "tests");
-    queryParams.put("sortField", "testCaseResultSummary.timestamp");
+    queryParams.put("sortField", "lastResultTimestamp");
     queryParams.put("sortOrder", "asc");
-    queryParams.put("sortNestedPath", "testCaseResultSummary");
-    queryParams.put("sortNestedMode", "max");
     ResultList<TestSuite> sortedTestSuites =
         listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
     assertNotNull(sortedTestSuites.getData());
@@ -934,9 +931,9 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createTestSuite = createRequest(table.getFullyQualifiedName());
     TestSuite testSuite = createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
-    RestClient searchClient = getSearchClient();
+    Rest5Client searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(Entity.TABLE);
-    es.org.elasticsearch.client.Response response;
+    es.co.elastic.clients.transport.rest5_client.low_level.Response esResponse;
     Request request =
         new Request(
             "GET",
@@ -946,13 +943,18 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         String.format(
             "{\"size\": 10,\"query\":{\"bool\":{\"must\":[{\"term\":{\"_id\":\"%s\"}}]}}}",
             table.getId().toString());
-    request.setJsonEntity(query);
+    request.setEntity(
+        new org.apache.hc.core5.http.io.entity.StringEntity(
+            query, org.apache.hc.core5.http.ContentType.APPLICATION_JSON));
     try {
-      response = searchClient.performRequest(request);
+      esResponse = searchClient.performRequest(request);
     } finally {
       searchClient.close();
     }
-    String jsonString = EntityUtils.toString(response.getEntity());
+    String jsonString =
+        new String(
+            esResponse.getEntity().getContent().readAllBytes(),
+            java.nio.charset.StandardCharsets.UTF_8);
     HashMap<String, Object> map =
         (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
     LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
@@ -1397,7 +1399,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // 4. Fetch the test suite linked to the table using the search endpoint (before reindex)
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("fullyQualifiedName", testSuite.getFullyQualifiedName());
-    queryParams.put("fields", "tests,testCaseResultSummary");
+    queryParams.put("fields", "tests,summary");
     ResultList<TestSuite> testSuitesBeforeReindex =
         listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
     assertNotNull(testSuitesBeforeReindex);
@@ -1464,10 +1466,22 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       verifyTestCases(testSuiteBeforeReindex.getTests(), testSuiteAfterReindex.getTests());
     }
 
-    // Compare test case result summaries
+    // testCaseResultSummary is computed during reindex from DB (not stored per-result).
+    // Before reindex, the ES document has no summary because updateTestSuiteSummary()
+    // no longer runs on each result POST. After reindex, the summary is populated from DB.
+    assertFalse(
+        testSuiteAfterReindex.getTestCaseResultSummary().isEmpty(),
+        "After reindex, testCaseResultSummary should be populated from DB");
     assertEquals(
-        testSuiteBeforeReindex.getTestCaseResultSummary(),
-        testSuiteAfterReindex.getTestCaseResultSummary());
+        1,
+        testSuiteAfterReindex.getTestCaseResultSummary().size(),
+        "Should have exactly one test case result summary entry");
+    assertEquals(
+        testCase.getFullyQualifiedName(),
+        testSuiteAfterReindex.getTestCaseResultSummary().get(0).getTestCaseName());
+    assertEquals(
+        TestCaseStatus.Success,
+        testSuiteAfterReindex.getTestCaseResultSummary().get(0).getStatus());
   }
 
   private void postTriggerSearchIndexingApp(Map<String, String> authHeaders) throws IOException {

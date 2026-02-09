@@ -12,9 +12,9 @@
  */
 import { expect, Page } from '@playwright/test';
 import { redirectToExplorePage } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const openEntitySummaryPanel = async (
   page: Page,
@@ -53,9 +53,7 @@ export const openEntitySummaryPanel = async (
   expect(searchResponse.status()).toBe(200);
 
   await page.getByTestId('searchBox').press('Enter');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   const entityCard = page
     .locator('[data-testid="table-data-card"]')
@@ -77,9 +75,7 @@ export async function navigateToExploreAndSelectTable(
 ) {
   await redirectToExplorePage(page);
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   const permissionsResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/permissions')
@@ -90,7 +86,13 @@ export async function navigateToExploreAndSelectTable(
   const permissionsResponse = await permissionsResponsePromise;
   expect(permissionsResponse.status()).toBe(200);
 
-  await waitForAllLoadersToDisappear(page);
+  // Ensure all the component for right panel are rendered
+  const loaders = page.locator(
+    '[data-testid="entity-summary-panel-container"] [data-testid="loader"]'
+  );
+
+  // Wait for the loader elements count to become 0
+  await expect(loaders).toHaveCount(0, { timeout: 30000 });
 }
 
 export const waitForPatchResponse = async (page: Page) => {
@@ -517,4 +519,58 @@ export const removeTierFromPanel = async (page: Page) => {
   const patchPromise = waitForPatchResponse(page);
   await clearButton.click();
   await patchPromise;
+};
+
+/**
+ * Maps entity types to their corresponding left panel asset type titles
+ */
+function getAssetTypeFromEntityType(entityType: string): string {
+  const entityTypeToAssetType: Record<string, string> = {
+    Table: 'Databases',
+    Database: 'Databases',
+    'Database Schema': 'Databases',
+    'Store Procedure': 'Databases',
+    Dashboard: 'Dashboards',
+    DashboardDataModel: 'Dashboards',
+    Chart: 'Dashboards',
+    Pipeline: 'Pipelines',
+    Topic: 'Topics',
+    MlModel: 'ML Models',
+    Container: 'Containers',
+    SearchIndex: 'Search Indexes',
+    ApiEndpoint: 'APIs',
+    'Api Collection': 'APIs',
+    File: 'Drives',
+    Directory: 'Drives',
+    Spreadsheet: 'Drives',
+    Worksheet: 'Drives',
+    Metric: 'Metrics',
+  };
+
+  return entityTypeToAssetType[entityType] || 'Databases';
+}
+
+export const editDisplayNameFromPanel = async (
+  page: Page,
+  newDisplayName: string
+) => {
+  const summaryPanel = page.locator('.entity-summary-panel-container');
+  const editButton = summaryPanel.getByTestId('edit-displayName-button');
+
+  await editButton.waitFor({ state: 'visible' });
+  await editButton.click();
+
+  const modal = page.locator('.ant-modal');
+  await modal.waitFor({ state: 'visible' });
+
+  const displayNameInput = modal.locator('#displayName');
+  await displayNameInput.waitFor({ state: 'visible' });
+  await displayNameInput.clear();
+  await displayNameInput.fill(newDisplayName);
+
+  const patchPromise = waitForPatchResponse(page);
+  await modal.getByTestId('save-button').click();
+  await patchPromise;
+
+  await modal.waitFor({ state: 'hidden' });
 };

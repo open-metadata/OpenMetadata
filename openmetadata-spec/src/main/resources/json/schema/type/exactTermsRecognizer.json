@@ -1,0 +1,35 @@
+{
+  "$id": "https://open-metadata.org/schema/type/exactTermsRecognizer.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExactTermsRecognizer",
+  "description": "Exact terms recognizer that matches against a list of specific values",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.ExactTermsRecognizer",
+  "properties": {
+    "type": {
+      "const": "exact_terms"
+    },
+    "exactTerms": {
+      "description": "List of values to match against",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "supportedEntity": {
+      "description": "The entity type this recognizer detects",
+      "$ref": "piiEntity.json"
+    },
+    "supportedLanguage": {
+      "description": "Language supported by this recognizer",
+      "$ref": "classificationLanguages.json",
+      "default": "en"
+    },
+    "regexFlags": {
+      "$ref": "recognizers/regexFlags.json"
+    }
+  },
+  "required": ["type", "exactTerms", "supportedEntity", "supportedLanguage", "regexFlags"],
+  "additionalProperties": false
+}

@@ -1,6 +1,6 @@
 package org.openmetadata.service.search.opensearch;
 
-import static org.openmetadata.service.search.SearchUtils.buildHttpHosts;
+import static org.openmetadata.service.search.SearchUtils.buildHttpHostsForHc5;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 import static org.openmetadata.service.util.AwsCredentialsUtil.buildCredentialsProvider;
@@ -20,11 +20,13 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
+import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.ClientTlsStrategyBuilder;
+import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.util.Timeout;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
@@ -52,24 +54,21 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.search.SigV4RequestSigningInterceptor;
+import org.openmetadata.service.search.SigV4Hc5RequestSigningInterceptor;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
-import os.org.opensearch.client.RequestOptions;
-import os.org.opensearch.client.RestClient;
-import os.org.opensearch.client.RestClientBuilder;
-import os.org.opensearch.client.WarningsHandler;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
 import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
-import os.org.opensearch.client.transport.rest_client.RestClientTransport;
+import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport;
+import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 
@@ -79,12 +78,12 @@ public class OpenSearchClient implements SearchClient {
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
 
-  // New OpenSearch Java API client
+  // New OpenSearch Java API client with HC5 transport
   @Getter protected final os.org.opensearch.client.opensearch.OpenSearchClient newClient;
   private final boolean isNewClientAvailable;
-  private final os.org.opensearch.client.RestClient lowLevelClient;
+  private final ApacheHttpClient5Transport transport;
 
-  private final OSLineageGraphBuilder lineageGraphBuilder;
+  private volatile OSLineageGraphBuilder lineageGraphBuilder;
   private final OSEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
 
   private final String clusterAlias;
@@ -95,13 +94,6 @@ public class OpenSearchClient implements SearchClient {
   private final OpenSearchDataInsightAggregatorManager dataInsightAggregatorManager;
   private final OpenSearchSearchManager searchManager;
 
-  static {
-    RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
-    builder.addHeader("Content-Type", "application/json");
-    builder.addHeader("Accept", "application/json");
-    builder.setWarningsHandler(WarningsHandler.PERMISSIVE);
-  }
-
   private NLQService nlqService;
 
   public OpenSearchClient(ElasticSearchConfiguration config) {
@@ -109,20 +101,18 @@ public class OpenSearchClient implements SearchClient {
   }
 
   public OpenSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
-    RestClientBuilder restClientBuilder = getLowLevelRestClient(config);
-    this.lowLevelClient = restClientBuilder != null ? restClientBuilder.build() : null;
-    this.newClient = createOpenSearchNewClient(lowLevelClient);
+    this.transport = createApacheHttpClient5Transport(config);
+    this.newClient = createOpenSearchNewClient(transport);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = newClient != null;
     isNewClientAvailable = newClient != null;
     QueryBuilderFactory queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
-    lineageGraphBuilder = new OSLineageGraphBuilder(newClient);
     entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(newClient);
     this.nlqService = nlqService;
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
     entityManager = new OpenSearchEntityManager(newClient);
-    genericManager = new OpenSearchGenericManager(newClient, lowLevelClient);
+    genericManager = new OpenSearchGenericManager(newClient, transport);
     aggregationManager = new OpenSearchAggregationManager(newClient, rbacConditionEvaluator);
     dataInsightAggregatorManager = new OpenSearchDataInsightAggregatorManager(newClient);
     searchManager =
@@ -130,18 +120,16 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private os.org.opensearch.client.opensearch.OpenSearchClient createOpenSearchNewClient(
-      os.org.opensearch.client.RestClient restClient) {
+      ApacheHttpClient5Transport transport) {
     try {
-      if (restClient == null) {
-        LOG.error("Cannot create OpenSearch client with null RestClient");
+      if (transport == null) {
+        LOG.error("Cannot create OpenSearch client with null transport");
         return null;
       }
-      // Create transport and new client
-      RestClientTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
       os.org.opensearch.client.opensearch.OpenSearchClient newClient =
           new os.org.opensearch.client.opensearch.OpenSearchClient(transport);
 
-      LOG.info("Successfully initialized new OpenSearch Java API client");
+      LOG.info("Successfully initialized new OpenSearch Java API client with HC5 transport");
       return newClient;
     } catch (Exception e) {
       LOG.error("Failed to initialize new Opensearch client", e);
@@ -167,7 +155,7 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public Object getLowLevelClient() {
-    return lowLevelClient;
+    return transport;
   }
 
   @Override
@@ -218,6 +206,11 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void removeAliases(String indexName, Set<String> aliases) {
     indexManager.removeAliases(indexName, aliases);
+  }
+
+  @Override
+  public boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases) {
+    return indexManager.swapAliases(oldIndices, newIndex, aliases);
   }
 
   @Override
@@ -323,11 +316,19 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
     return lineageGraphBuilder.searchLineage(lineageRequest);
   }
 
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
     return lineageGraphBuilder.searchLineageWithDirection(lineageRequest);
   }
 
@@ -340,6 +341,10 @@ public class OpenSearchClient implements SearchClient {
       boolean includeDeleted,
       String entityType)
       throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
     return lineageGraphBuilder.getLineagePaginationInfo(
         fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
   }
@@ -347,12 +352,20 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
     return lineageGraphBuilder.searchLineageByEntityCount(request);
   }
 
   @Override
   public SearchLineageResult searchPlatformLineage(
       String index, String queryFilter, boolean deleted) throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
     return lineageGraphBuilder.getPlatformLineage(index, queryFilter, deleted);
   }
 
@@ -623,82 +636,93 @@ public class OpenSearchClient implements SearchClient {
     return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
   }
 
-  private RestClientBuilder getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
-    if (esConfig != null) {
-      try {
-        HttpHost[] httpHosts = buildHttpHosts(esConfig, "OpenSearch");
-        RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
+  private ApacheHttpClient5Transport createApacheHttpClient5Transport(
+      ElasticSearchConfiguration esConfig) {
+    if (esConfig == null) {
+      LOG.error("Failed to create HC5 transport as esConfig is null");
+      return null;
+    }
 
-        AwsConfiguration awsConfig = esConfig.getAws();
-        // Enable IAM auth only if explicitly enabled and region is configured
-        boolean useIamAuth = isAwsIamAuthEnabled(awsConfig);
+    try {
+      HttpHost[] httpHosts = buildHttpHostsForHc5(esConfig, "OpenSearch");
 
-        restClientBuilder.setHttpClientConfigCallback(
-            httpAsyncClientBuilder -> {
-              if (esConfig.getMaxConnTotal() != null && esConfig.getMaxConnTotal() > 0) {
-                httpAsyncClientBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
-              }
-              if (esConfig.getMaxConnPerRoute() != null && esConfig.getMaxConnPerRoute() > 0) {
-                httpAsyncClientBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
-              }
+      ApacheHttpClient5TransportBuilder builder =
+          ApacheHttpClient5TransportBuilder.builder(httpHosts);
 
-              if (useIamAuth) {
-                AwsCredentialsProvider credentialsProvider = buildCredentialsProvider(awsConfig);
-                Region region = Region.of(awsConfig.getRegion());
-                String serviceName =
-                    StringUtils.isNotEmpty(awsConfig.getServiceName())
-                        ? awsConfig.getServiceName()
-                        : "es";
+      AwsConfiguration awsConfig = esConfig.getAws();
+      boolean useIamAuth = isAwsIamAuthEnabled(awsConfig);
 
-                httpAsyncClientBuilder.addInterceptorLast(
-                    new SigV4RequestSigningInterceptor(credentialsProvider, region, serviceName));
-                LOG.info(
-                    "AWS IAM authentication enabled for OpenSearch in region: {}",
-                    awsConfig.getRegion());
-              } else if (StringUtils.isNotEmpty(esConfig.getUsername())
-                  && StringUtils.isNotEmpty(esConfig.getPassword())) {
-                CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-                credentialsProvider.setCredentials(
-                    AuthScope.ANY,
-                    new UsernamePasswordCredentials(
-                        esConfig.getUsername(), esConfig.getPassword()));
-                httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-              }
+      builder.setMapper(new JacksonJsonpMapper());
 
-              SSLContext sslContext = null;
-              try {
-                sslContext = createElasticSearchSSLContext(esConfig);
-              } catch (KeyStoreException e) {
-                throw new RuntimeException(e);
-              }
-              if (sslContext != null) {
-                httpAsyncClientBuilder.setSSLContext(sslContext);
-              }
+      builder.setHttpClientConfigCallback(
+          httpClientBuilder -> {
+            var connectionManagerBuilder = PoolingAsyncClientConnectionManagerBuilder.create();
 
-              if (esConfig.getKeepAliveTimeoutSecs() != null
-                  && esConfig.getKeepAliveTimeoutSecs() > 0) {
-                httpAsyncClientBuilder.setKeepAliveStrategy(
-                    (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
-              }
+            if (esConfig.getMaxConnTotal() != null && esConfig.getMaxConnTotal() > 0) {
+              connectionManagerBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
+            }
+            if (esConfig.getMaxConnPerRoute() != null && esConfig.getMaxConnPerRoute() > 0) {
+              connectionManagerBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
+            }
 
-              return httpAsyncClientBuilder;
-            });
+            SSLContext sslContext = null;
+            try {
+              sslContext = createElasticSearchSSLContext(esConfig);
+            } catch (KeyStoreException e) {
+              throw new RuntimeException(e);
+            }
+            if (sslContext != null) {
+              connectionManagerBuilder.setTlsStrategy(
+                  ClientTlsStrategyBuilder.create().setSslContext(sslContext).build());
+            }
 
-        restClientBuilder.setRequestConfigCallback(
-            requestConfigBuilder ->
-                requestConfigBuilder
-                    .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
-                    .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
+            httpClientBuilder.setConnectionManager(connectionManagerBuilder.build());
 
-        restClientBuilder.setCompressionEnabled(true);
-        restClientBuilder.setChunkedEnabled(true);
-        return restClientBuilder;
-      } catch (Exception e) {
-        LOG.error("Failed to create low level rest client ", e);
-        return null;
-      }
-    } else {
-      LOG.error("Failed to create low level rest client as esConfig is null");
+            if (useIamAuth) {
+              AwsCredentialsProvider credentialsProvider = buildCredentialsProvider(awsConfig);
+              Region region = Region.of(awsConfig.getRegion());
+              String serviceName =
+                  StringUtils.isNotEmpty(awsConfig.getServiceName())
+                      ? awsConfig.getServiceName()
+                      : "es";
+
+              httpClientBuilder.addRequestInterceptorLast(
+                  new SigV4Hc5RequestSigningInterceptor(credentialsProvider, region, serviceName));
+              LOG.info(
+                  "AWS IAM authentication enabled for OpenSearch in region: {}",
+                  awsConfig.getRegion());
+            } else if (StringUtils.isNotEmpty(esConfig.getUsername())
+                && StringUtils.isNotEmpty(esConfig.getPassword())) {
+              BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+              credentialsProvider.setCredentials(
+                  new AuthScope(null, -1),
+                  new UsernamePasswordCredentials(
+                      esConfig.getUsername(), esConfig.getPassword().toCharArray()));
+              httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+            }
+
+            if (esConfig.getKeepAliveTimeoutSecs() != null
+                && esConfig.getKeepAliveTimeoutSecs() > 0) {
+              httpClientBuilder.setKeepAliveStrategy(
+                  (response, context) ->
+                      org.apache.hc.core5.util.TimeValue.ofSeconds(
+                          esConfig.getKeepAliveTimeoutSecs()));
+            }
+
+            return httpClientBuilder;
+          });
+
+      builder.setRequestConfigCallback(
+          requestConfigBuilder ->
+              requestConfigBuilder
+                  .setConnectTimeout(Timeout.ofSeconds(esConfig.getConnectionTimeoutSecs()))
+                  .setResponseTimeout(Timeout.ofSeconds(esConfig.getSocketTimeoutSecs())));
+
+      builder.setCompressionEnabled(true);
+      builder.setChunkedEnabled(true);
+      return builder.build();
+    } catch (Exception e) {
+      LOG.error("Failed to create HC5 transport for OpenSearch", e);
       return null;
     }
   }
@@ -919,5 +943,20 @@ public class OpenSearchClient implements SearchClient {
       throws IOException {
     return entityManager.getSchemaEntityRelationship(
         schemaFqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
+  }
+
+  @Override
+  public void initializeLineageBuilders() {
+    if (lineageGraphBuilder == null && newClient != null) {
+      synchronized (this) {
+        if (lineageGraphBuilder == null) {
+          LOG.info("Initializing OSLineageGraphBuilder with settings now available");
+          lineageGraphBuilder = new OSLineageGraphBuilder(newClient);
+          LOG.info("OSLineageGraphBuilder initialization completed");
+        }
+      }
+    } else {
+      LOG.debug("OSLineageGraphBuilder already initialized or newClient is null");
+    }
   }
 }

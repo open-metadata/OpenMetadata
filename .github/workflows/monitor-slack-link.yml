@@ -44,16 +44,20 @@ jobs:
       run: |
         python -m venv env
         source env/bin/activate
-        pip install --upgrade pip requests types-requests slack_sdk==3.35.0
+        pip install --upgrade pip playwright slack_sdk==3.35.0
 
-    # Step 4: Run the monitoring script
+    # Step 4: Install Playwright browsers
+    - name: Install Playwright Browsers
+      run: |
+        source env/bin/activate
+        playwright install chromium --with-deps
+
+    # Step 5: Run the monitoring script
     - name: Monitor Slack Link
       id: monitor
-      continue-on-error: true # Allow subsequent steps (notification) even if this fails
       env:
-        PYTHONUNBUFFERED: "1" # Recommended for immediate log output
+        PYTHONUNBUFFERED: "1"
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_MONITOR_SLACK_WEBHOOK }}
-        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
         GITHUB_SERVER_URL: ${{ github.server_url }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_RUN_ID: ${{ github.run_id }}

@@ -27,6 +27,7 @@ public interface ColumnAggregator {
     private String columnNamePattern;
     private List<String> entityTypes;
     private String serviceName;
+    private List<String> serviceTypes;
     private String databaseName;
     private String schemaName;
     private String domainId;
@@ -74,6 +75,14 @@ public interface ColumnAggregator {
 
     public void setServiceName(String serviceName) {
       this.serviceName = serviceName;
+    }
+
+    public List<String> getServiceTypes() {
+      return serviceTypes;
+    }
+
+    public void setServiceTypes(List<String> serviceTypes) {
+      this.serviceTypes = serviceTypes;
     }
 
     public String getDatabaseName() {

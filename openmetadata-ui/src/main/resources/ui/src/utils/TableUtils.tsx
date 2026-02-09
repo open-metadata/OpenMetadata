@@ -794,6 +794,24 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
   });
 };
 
+export const updateFieldDisplayName = <T extends TableFieldsInfoCommonEntities>(
+  changedFieldFQN: string,
+  displayName: string,
+  searchIndexFields?: Array<T>
+) => {
+  searchIndexFields?.forEach((field) => {
+    if (field.fullyQualifiedName === changedFieldFQN) {
+      field.displayName = displayName;
+    } else {
+      updateFieldDisplayName(
+        changedFieldFQN,
+        displayName,
+        field?.children as Array<T>
+      );
+    }
+  });
+};
+
 export const updateFieldExtension = <T extends TableFieldsInfoCommonEntities>(
   changedFieldFQN: string,
   extension: Record<string, unknown>,
@@ -1005,7 +1023,10 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       isHidden: !(
-        tableDetails?.dataModel?.sql || tableDetails?.dataModel?.rawSql
+        tableDetails?.dataModel?.sql ||
+        tableDetails?.dataModel?.rawSql ||
+        tableDetails?.dataModel?.path ||
+        tableDetails?.dataModel?.dbtSourceProject
       ),
       key: EntityTabs.DBT,
       children: (
@@ -1363,12 +1384,15 @@ export const findColumnByEntityLink = (
 export const updateColumnInNestedStructure = (
   columns: Column[],
   targetFqn: string,
-  update: Partial<Column>
+  update: Partial<Column>,
+  field?: string
 ): Column[] => {
   return columns.map((column: Column) => {
     if (column.fullyQualifiedName === targetFqn) {
+      const newCol = omit(column, field ?? '');
+
       return {
-        ...column,
+        ...(newCol as Column),
         ...update,
       };
     }
@@ -1379,7 +1403,8 @@ export const updateColumnInNestedStructure = (
         children: updateColumnInNestedStructure(
           column.children,
           targetFqn,
-          update
+          update,
+          field
         ),
       };
     } else {

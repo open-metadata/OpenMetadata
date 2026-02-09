@@ -46,6 +46,29 @@ const mockInitialValues: TestDefinition = {
   sqlExpression: 'SELECT * FROM {table} WHERE {column} IS NOT NULL',
 };
 
+const mockExternalTestDefinition: TestDefinition = {
+  id: 'test-def-ext-1',
+  name: 'dbtSchemaTest',
+  displayName: 'DBT Schema Test',
+  description: 'External test managed by DBT',
+  entityType: EntityType.Table,
+  testPlatforms: [TestPlatform.Dbt],
+  dataQualityDimension: DataQualityDimensions.Accuracy,
+  supportedDataTypes: [DataType.String],
+  supportedServices: ['BigQuery', 'Snowflake'],
+  enabled: true,
+  sqlExpression: 'SELECT COUNT(*) FROM {{ref("model")}}',
+  parameterDefinition: [
+    {
+      name: 'threshold',
+      displayName: 'Threshold',
+      dataType: 'INT' as any,
+      description: 'Minimum count threshold',
+      required: true,
+    },
+  ],
+};
+
 jest.mock('../../../rest/testAPI', () => ({
   createTestDefinition: jest.fn(),
   patchTestDefinition: jest.fn(),
@@ -382,6 +405,230 @@ describe('TestDefinitionForm Component', () => {
       const drawer = screen.getByRole('dialog');
 
       expect(drawer).toBeInTheDocument();
+    });
+  });
+
+  describe('External Test Definition Handling', () => {
+    it('should render SQL expression field as disabled textarea for external tests', () => {
+      render(
+        <TestDefinitionForm
+          initialValues={mockExternalTestDefinition}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const sqlField = screen.getByLabelText('label.sql-query');
+
+      expect(sqlField).toBeInTheDocument();
+      expect(sqlField).toBeDisabled();
+      expect(sqlField.tagName).toBe('TEXTAREA');
+    });
+
+    it('should render entity type as disabled input for external tests', () => {
+      render(
+        <TestDefinitionForm
+          initialValues={mockExternalTestDefinition}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const entityTypeField = screen.getByLabelText('label.entity-type');
+
+      expect(entityTypeField).toBeDisabled();
+      expect(entityTypeField.tagName).toBe('INPUT');
+    });
+
+    it('should render test platforms as disabled input for external tests', () => {
+      render(
+        <TestDefinitionForm
+          initialValues={mockExternalTestDefinition}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const testPlatformsField = screen.getByLabelText(
+        'label.test-platform-plural'
+      );
+
+      expect(testPlatformsField).toBeDisabled();
+      expect(testPlatformsField.tagName).toBe('INPUT');
+    });
+
+    it('should allow editing display name for external tests', () => {
+      render(
+        <TestDefinitionForm
+          initialValues={mockExternalTestDefinition}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const displayNameFields = screen.getAllByLabelText('label.display-name');
+      const testDefinitionDisplayNameField = displayNameFields[0];
+
+      expect(testDefinitionDisplayNameField).not.toBeDisabled();
+    });
+
+    it('should allow editing description for external tests', () => {
+      render(
+        <TestDefinitionForm
+          initialValues={mockExternalTestDefinition}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const descriptionFields = screen.getAllByLabelText('label.description');
+      const testDefinitionDescriptionField = descriptionFields[0];
+
+      expect(testDefinitionDescriptionField).not.toBeDisabled();
+    });
+
+    it('should allow editing data quality dimension for external tests', () => {
+      render(
+        <TestDefinitionForm
+          initialValues={mockExternalTestDefinition}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const dimensionField = screen.getByLabelText(
+        'label.data-quality-dimension'
+      );
+
+      expect(dimensionField).not.toBeDisabled();
+    });
+
+    it('should disable supported services field for external tests in edit mode', () => {
+      render(
+        <TestDefinitionForm
+          initialValues={mockExternalTestDefinition}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const supportedServicesField = screen.getByLabelText(
+        'label.supported-service-plural'
+      );
+
+      expect(supportedServicesField).toBeDisabled();
+    });
+
+    it('should disable supported data types field for external tests in edit mode', () => {
+      render(
+        <TestDefinitionForm
+          initialValues={mockExternalTestDefinition}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const supportedDataTypesField = screen.getByLabelText(
+        'label.supported-data-type-plural'
+      );
+
+      expect(supportedDataTypesField).toBeDisabled();
+    });
+
+    it('should disable all parameter fields for external tests', () => {
+      render(
+        <TestDefinitionForm
+          initialValues={mockExternalTestDefinition}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const parameterNameField = screen.getByPlaceholderText(
+        'label.parameter-name'
+      );
+      const parameterDescriptionField = screen.getByPlaceholderText(
+        'label.parameter-description'
+      );
+
+      expect(parameterNameField).toBeDisabled();
+      expect(parameterDescriptionField).toBeDisabled();
+    });
+
+    it('should hide add parameter button for external tests', () => {
+      render(
+        <TestDefinitionForm
+          initialValues={mockExternalTestDefinition}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const addButtons = screen.queryAllByText('label.add-entity');
+      const parameterAddButton = addButtons.find((btn) =>
+        btn.textContent?.includes('label.parameter')
+      );
+
+      expect(parameterAddButton).toBeUndefined();
+    });
+
+    it('should hide remove parameter button for external tests', () => {
+      render(
+        <TestDefinitionForm
+          initialValues={mockExternalTestDefinition}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const removeButton = screen.queryByLabelText('minus-circle');
+
+      expect(removeButton).not.toBeInTheDocument();
+    });
+
+    it('should render supported services field for all tests', () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
+
+      const supportedServicesField = screen.getByLabelText(
+        'label.supported-service-plural'
+      );
+
+      expect(supportedServicesField).toBeInTheDocument();
+      expect(supportedServicesField).not.toBeDisabled();
+    });
+
+    it('should render supported services field in edit mode for OpenMetadata tests', () => {
+      render(
+        <TestDefinitionForm
+          initialValues={mockInitialValues}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const supportedServicesField = screen.getByLabelText(
+        'label.supported-service-plural'
+      );
+
+      expect(supportedServicesField).toBeInTheDocument();
+      expect(supportedServicesField).not.toBeDisabled();
+    });
+
+    it('should show all fields in create mode regardless of platform', () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
+
+      expect(screen.getByTestId('code-editor')).toBeInTheDocument();
+      expect(screen.getByLabelText('label.entity-type')).not.toBeDisabled();
+      expect(
+        screen.getByLabelText('label.test-platform-plural')
+      ).not.toBeDisabled();
+      expect(
+        screen.getByLabelText('label.supported-data-type-plural')
+      ).not.toBeDisabled();
     });
   });
 });

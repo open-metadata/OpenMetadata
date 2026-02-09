@@ -2,7 +2,7 @@
 
 # Discovery
 
-> **7 Components** | **27 Files** | **369 Tests** | **384 Scenarios** 🚀
+> **7 Components** | **27 Files** | **367 Tests** | **384 Scenarios** 🚀
 
 ## Table of Contents
 - [Feed](#feed)
@@ -20,7 +20,7 @@
 ## Feed
 
 <details open>
-<summary>📄 <b>ActivityFeed.spec.ts</b> (11 tests, 13 scenarios)</summary>
+<summary>📄 <b>ActivityFeed.spec.ts</b> (11 tests, 14 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/ActivityFeed.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ActivityFeed.spec.ts)
 
@@ -45,6 +45,7 @@
 | | ↳ *Admin user creates a conversation on an entity* | |
 | | ↳ *User1 mentions admin user in a reply* | |
 | | ↳ *Admin user checks notification for correct user and timestamp* | |
+| | ↳ *Update user display name and verify reaction tooltip* | |
 
 ### Mentions: Chinese character encoding in activity feed
 
@@ -303,8 +304,11 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Data Asset Rules Disabled Bulk Edit Actions** - Database service | Database service |
+| | ↳ *Perform bulk edit action* | |
 | 2 | **Data Asset Rules Disabled Bulk Edit Actions** - Database | Database |
+| | ↳ *Perform bulk edit action* | |
 | 3 | **Data Asset Rules Disabled Bulk Edit Actions** - Database Schema | Database Schema |
+| | ↳ *Perform bulk edit action* | |
 
 ### GlossaryTerm Domain Entity Rules Disabled
 
@@ -361,7 +365,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>Table.spec.ts</b> (13 tests, 13 scenarios)</summary>
+<summary>📄 <b>Table.spec.ts</b> (11 tests, 11 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Table.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Table.spec.ts)
 
@@ -380,10 +384,8 @@
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Table & Data Model columns table pagination** - pagination for table column should work | Pagination for table column should work |
-| 2 | **Table & Data Model columns table pagination** - pagination for dashboard data model columns should work | Pagination for dashboard data model columns should work |
-| 3 | **Table & Data Model columns table pagination** - expand collapse should only visible for nested columns | Expand collapse should only visible for nested columns |
-| 4 | **Table & Data Model columns table pagination** - expand / collapse should not appear after updating nested fields table | Expand / collapse should not appear after updating nested fields table |
+| 1 | **Table & Data Model columns table pagination** - expand collapse should only visible for nested columns | Expand collapse should only visible for nested columns |
+| 2 | **Table & Data Model columns table pagination** - expand / collapse should not appear after updating nested fields table | Expand / collapse should not appear after updating nested fields table |
 
 ### Tags and glossary terms should be consistent for search 
 
@@ -490,7 +492,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>SchemaTable.spec.ts</b> (5 tests, 5 scenarios)</summary>
+<summary>📄 <b>SchemaTable.spec.ts</b> (5 tests, 6 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/SchemaTable.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/SchemaTable.spec.ts)
 
@@ -499,6 +501,8 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | schema table test | Schema table test |
+| | ↳ *set owner* | |
+| | ↳ *set the description* | |
 | 2 | Schema Table Pagination should work Properly | Schema Table Pagination should work Properly |
 | 3 | Copy column link button should copy the column URL to clipboard | Copy column link button should copy the column URL to clipboard |
 | 4 | Copy column link should have valid URL format | Copy column link should have valid URL format |

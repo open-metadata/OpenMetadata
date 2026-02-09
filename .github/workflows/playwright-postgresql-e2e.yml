@@ -28,8 +28,8 @@ on:
       - "docker/**"
       - "!docker/development/docker-compose.yml"
       - "!docker/development/docker-compose-postgres.yml"
-      - "OpenMetadata/openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
-      - "OpenMetadata/openmetadata-ui/src/main/resources/ui/playwright/docs/**"
+      - "openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
+      - "openmetadata-ui/src/main/resources/ui/playwright/docs/**"
 
 permissions:
   contents: read
@@ -95,7 +95,10 @@ jobs:
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: "3.10"
-          args: "-d postgresql"
+          # Pass different args depending on the shardIndex:
+          # - shard 2: run with ingestion setup
+          # - other shards: skip ingestion setup
+          args: ${{ matrix.shardIndex == 2 && '-d postgresql' || '-d postgresql -i false' }}
           ingestion_dependency: "all"
 
       - name: Setup Node.js
@@ -118,27 +121,24 @@ jobs:
             npx playwright test \
               --project=setup \
               --project=DataAssetRulesEnabled \
-              --project=DataAssetRulesDisabled
+              --project=DataAssetRulesDisabled \
+              --project=Basic \
+          
+          elif [ "${{ matrix.shardIndex }}" -eq "2" ]; then
+            echo "🔹 Running ingestion tests on shard 2"
+            
+            # run ingestion framework tests
+            npx playwright test \
+              --project=ingestion \
 
           else
-            # Shards 2-6 handle chromium tests (5 workers total)
-            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 1 ))
-            if [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
-              echo "🔹 Running ingestion tests on chromium shard ${CHROMIUM_SHARD}/5"
-              npx playwright test \
-                --project=chromium \
-                --grep @ingestion \
-                --grep-invert @dataAssetRules \
-                --shard=${CHROMIUM_SHARD}/5
-                --workers=50%
-
-            else
-              echo "🔹 Running all other tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/5"
-              npx playwright test \
-                --project=chromium \
-                --grep-invert @dataAssetRules \
-                --shard=${CHROMIUM_SHARD}/5
-            fi
+            # Shards 3-6 handle chromium tests (4 workers total)
+            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 2 ))
+            echo "🔹 Running all other tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/4"
+            npx playwright test \
+              --project=chromium \
+              --grep-invert @dataAssetRules \
+              --shard=${CHROMIUM_SHARD}/4
           fi
 
         env:
@@ -151,7 +151,7 @@ jobs:
           PLAYWRIGHT_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
           PLAYWRIGHT_PROJECT_ID: ${{ steps.cypress-project-id.outputs.CYPRESS_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
-          PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
+          PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.PLAYWRIGHT_BQ_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
           PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
           PLAYWRIGHT_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}

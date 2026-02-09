@@ -7,6 +7,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.SearchResult;
@@ -34,6 +35,7 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
@@ -47,6 +49,7 @@ import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -84,6 +87,7 @@ import org.openmetadata.service.security.auth.validator.AzureAuthValidator;
 import org.openmetadata.service.security.auth.validator.CognitoAuthValidator;
 import org.openmetadata.service.security.auth.validator.CustomOidcValidator;
 import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
+import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
 import org.openmetadata.service.util.EntityUtil;
@@ -158,6 +162,17 @@ public class SystemRepository {
           emailConfig.setPassword(PasswordEntityMasker.PASSWORD_MASK);
         }
         fetchedSettings.setConfigValue(emailConfig);
+      }
+
+      // Apply LDAP default values to prevent JSON PATCH errors when updating fields that were
+      // previously null
+      if (fetchedSettings.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
+        AuthenticationConfiguration authConfig =
+            (AuthenticationConfiguration) fetchedSettings.getConfigValue();
+        if (authConfig != null && authConfig.getLdapConfiguration() != null) {
+          ensureLdapConfigDefaultValues(authConfig.getLdapConfiguration());
+          fetchedSettings.setConfigValue(authConfig);
+        }
       }
 
       return fetchedSettings;
@@ -766,7 +781,9 @@ public class SystemRepository {
   }
 
   public SecurityValidationResponse validateSecurityConfiguration(
-      SecurityConfiguration securityConfig, OpenMetadataApplicationConfig applicationConfig) {
+      SecurityConfiguration securityConfig,
+      OpenMetadataApplicationConfig applicationConfig,
+      String currentUsername) {
     List<FieldError> errors = new ArrayList<>();
 
     try {
@@ -818,7 +835,8 @@ public class SystemRepository {
       // Validate Authorizer configuration
       if (securityConfig.getAuthorizerConfiguration() != null) {
         FieldError authzError =
-            validateAuthorizerConfiguration(securityConfig.getAuthorizerConfiguration());
+            validateAuthorizerConfiguration(
+                securityConfig.getAuthorizerConfiguration(), currentUsername);
         if (authzError != null) {
           errors.add(authzError);
         }
@@ -846,10 +864,6 @@ public class SystemRepository {
   private FieldError validateAuthenticationConfigurationBaseFields(
       AuthenticationConfiguration authConfig) {
     try {
-      // Validate all required fields from AuthenticationConfiguration schema
-      // Required: ["provider", "providerName", "publicKeyUrls", "authority", "callbackUrl",
-      // "clientId", "jwtPrincipalClaims"]
-
       if (authConfig.getProvider() == null) {
         return ValidationErrorBuilder.createFieldError(
             FieldPaths.AUTH_PROVIDER, "Provider is required");
@@ -860,30 +874,40 @@ public class SystemRepository {
             "authenticationConfiguration.providerName", "Provider name is required");
       }
 
-      if (authConfig.getPublicKeyUrls() == null || authConfig.getPublicKeyUrls().isEmpty()) {
-        return ValidationErrorBuilder.createFieldError(
-            FieldPaths.AUTH_PUBLIC_KEY_URLS, "Public key URLs are required");
-      }
-
-      if (nullOrEmpty(authConfig.getAuthority())) {
-        return ValidationErrorBuilder.createFieldError(
-            FieldPaths.AUTH_AUTHORITY, "Authority is required");
-      }
-
-      if (nullOrEmpty(authConfig.getCallbackUrl())) {
-        return ValidationErrorBuilder.createFieldError(
-            FieldPaths.AUTH_CALLBACK_URL, "Callback URL is required");
-      }
-
-      if (nullOrEmpty(authConfig.getClientId())) {
-        return ValidationErrorBuilder.createFieldError(
-            FieldPaths.AUTH_CLIENT_ID, "Client ID is required");
-      }
-
       if (authConfig.getJwtPrincipalClaims() == null
           || authConfig.getJwtPrincipalClaims().isEmpty()) {
         return ValidationErrorBuilder.createFieldError(
             FieldPaths.AUTH_JWT_PRINCIPAL_CLAIMS, "JWT principal claims are required");
+      }
+
+      boolean isLdapOrSaml =
+          authConfig.getProvider() == AuthProvider.LDAP
+              || authConfig.getProvider() == AuthProvider.SAML;
+
+      if (!isLdapOrSaml) {
+        // For confidential clients, publicKeyUrls is auto-populated from discovery document
+        // Only require it for public clients
+        boolean isConfidentialClient = authConfig.getClientType() == ClientType.CONFIDENTIAL;
+        if (!isConfidentialClient
+            && (authConfig.getPublicKeyUrls() == null || authConfig.getPublicKeyUrls().isEmpty())) {
+          return ValidationErrorBuilder.createFieldError(
+              FieldPaths.AUTH_PUBLIC_KEY_URLS, "Public key URLs are required");
+        }
+
+        if (nullOrEmpty(authConfig.getAuthority())) {
+          return ValidationErrorBuilder.createFieldError(
+              FieldPaths.AUTH_AUTHORITY, "Authority is required");
+        }
+
+        if (nullOrEmpty(authConfig.getCallbackUrl())) {
+          return ValidationErrorBuilder.createFieldError(
+              FieldPaths.AUTH_CALLBACK_URL, "Callback URL is required");
+        }
+
+        if (nullOrEmpty(authConfig.getClientId())) {
+          return ValidationErrorBuilder.createFieldError(
+              FieldPaths.AUTH_CLIENT_ID, "Client ID is required");
+        }
       }
 
       if (authConfig.getJwtPrincipalClaimsMapping() != null
@@ -1029,6 +1053,54 @@ public class SystemRepository {
     }
   }
 
+  /**
+   * Auto-populates publicKeyUrls from OIDC discovery document for confidential clients
+   * This is called during save operation to ensure publicKeyUrls is populated before persisting
+   */
+  public void autoPopulatePublicKeyUrlsIfNeeded(AuthenticationConfiguration authConfig) {
+    if (authConfig == null) {
+      return;
+    }
+
+    // Only auto-populate for OIDC providers with confidential client type
+    boolean isOidcProvider =
+        authConfig.getProvider() == AuthProvider.CUSTOM_OIDC
+            || authConfig.getProvider() == AuthProvider.GOOGLE
+            || authConfig.getProvider() == AuthProvider.AZURE
+            || authConfig.getProvider() == AuthProvider.OKTA
+            || authConfig.getProvider() == AuthProvider.AUTH_0
+            || authConfig.getProvider() == AuthProvider.AWS_COGNITO;
+
+    boolean isConfidentialClient = authConfig.getClientType() == ClientType.CONFIDENTIAL;
+
+    if (!isOidcProvider || !isConfidentialClient) {
+      LOG.debug("Skipping publicKeyUrls auto-population - not OIDC confidential client");
+      return;
+    }
+
+    // Skip if already populated
+    if (authConfig.getPublicKeyUrls() != null && !authConfig.getPublicKeyUrls().isEmpty()) {
+      LOG.debug("publicKeyUrls already populated, skipping auto-population");
+      return;
+    }
+
+    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+    if (oidcConfig == null || nullOrEmpty(oidcConfig.getDiscoveryUri())) {
+      LOG.warn("Cannot auto-populate publicKeyUrls - missing oidcConfiguration or discoveryUri");
+      return;
+    }
+
+    try {
+      OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
+      discoveryValidator.autoPopulatePublicKeyUrls(oidcConfig.getDiscoveryUri(), authConfig);
+      LOG.info(
+          "Auto-populated publicKeyUrls from discovery document for provider: {}",
+          authConfig.getProvider());
+    } catch (Exception e) {
+      LOG.error("Failed to auto-populate publicKeyUrls: {}", e.getMessage(), e);
+    }
+  }
+
   private FieldError validateLdapConfiguration(LdapConfiguration ldapConfig) {
     try {
       // Validate required fields from JSON schema
@@ -1056,6 +1128,45 @@ public class SystemRepository {
       if (nullOrEmpty(ldapConfig.getMailAttributeName())) {
         return ValidationErrorBuilder.createFieldError(
             FieldPaths.LDAP_MAIL_ATTRIBUTE, "Mail attribute name is required");
+      }
+
+      // Validate authRolesMapping JSON if provided - but only if we have group configuration
+      // Note: We validate this before LDAP connection to fail fast on JSON issues
+      Map<String, List<String>> roleMapping = null;
+      if (!nullOrEmpty(ldapConfig.getAuthRolesMapping())) {
+        try {
+          roleMapping =
+              JsonUtils.readValue(ldapConfig.getAuthRolesMapping(), new TypeReference<>() {});
+
+          // Validate that mapped roles exist in OpenMetadata
+          RoleRepository roleRepo = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
+          List<String> invalidRoles = new ArrayList<>();
+
+          for (Map.Entry<String, List<String>> entry : roleMapping.entrySet()) {
+            for (String roleName : entry.getValue()) {
+              // Skip admin role name check as it's a special marker
+              if (!roleName.equals(ldapConfig.getRoleAdminName())) {
+                try {
+                  roleRepo.getByName(null, roleName, roleRepo.getFields("id,name"));
+                } catch (EntityNotFoundException e) {
+                  invalidRoles.add(roleName);
+                }
+              }
+            }
+          }
+
+          if (!invalidRoles.isEmpty()) {
+            return ValidationErrorBuilder.createFieldError(
+                FieldPaths.LDAP_AUTH_ROLES_MAPPING,
+                "The following roles do not exist in OpenMetadata: "
+                    + String.join(", ", invalidRoles)
+                    + ". Please create these roles first or use existing role names.");
+          }
+        } catch (Exception e) {
+          return ValidationErrorBuilder.createFieldError(
+              FieldPaths.LDAP_AUTH_ROLES_MAPPING,
+              "Invalid JSON format in role mapping: " + e.getMessage());
+        }
       }
 
       // Test LDAP connection
@@ -1095,16 +1206,173 @@ public class SystemRepository {
               FieldPaths.LDAP_USER_BASE_DN, "User base DN does not exist");
         }
 
-        // Test group base DN if provided
-        if (!nullOrEmpty(ldapConfig.getGroupBaseDN())) {
+        // Validate mail attribute by searching for a test user
+        if (!nullOrEmpty(ldapConfig.getMailAttributeName())) {
           try {
-            SearchResult groupResult =
-                connection.search(ldapConfig.getGroupBaseDN(), SearchScope.BASE, "(objectClass=*)");
-            if (groupResult.getEntryCount() == 0) {
-              LOG.warn("Group base DN does not exist: " + ldapConfig.getGroupBaseDN());
+            SearchResult userSearchResult =
+                connection.search(
+                    ldapConfig.getUserBaseDN(),
+                    SearchScope.SUB,
+                    "(objectClass=*)",
+                    ldapConfig.getMailAttributeName());
+
+            if (userSearchResult.getEntryCount() > 0) {
+              // Check if at least one user has the mail attribute
+              boolean mailAttributeFound = false;
+              for (int i = 0; i < Math.min(userSearchResult.getEntryCount(), 10); i++) {
+                if (userSearchResult
+                        .getSearchEntries()
+                        .get(i)
+                        .hasAttribute(ldapConfig.getMailAttributeName())
+                    && !nullOrEmpty(
+                        userSearchResult
+                            .getSearchEntries()
+                            .get(i)
+                            .getAttributeValue(ldapConfig.getMailAttributeName()))) {
+                  mailAttributeFound = true;
+                  break;
+                }
+              }
+
+              if (!mailAttributeFound) {
+                return ValidationErrorBuilder.createFieldError(
+                    FieldPaths.LDAP_MAIL_ATTRIBUTE,
+                    "Mail attribute '"
+                        + ldapConfig.getMailAttributeName()
+                        + "' not found on any users in user base DN. "
+                        + "Please verify the attribute name is correct. "
+                        + "Common values: 'mail', 'email', 'userPrincipalName'");
+              }
             }
           } catch (Exception e) {
-            LOG.warn("Failed to validate group base DN: " + e.getMessage());
+            LOG.warn("Failed to validate mail attribute: " + e.getMessage());
+          }
+        }
+
+        // Validate group-related configuration if group base DN is provided
+        if (!nullOrEmpty(ldapConfig.getGroupBaseDN())) {
+          // 1. Validate group base DN exists
+          try {
+            SearchResult groupBaseDnResult =
+                connection.search(ldapConfig.getGroupBaseDN(), SearchScope.BASE, "(objectClass=*)");
+            if (groupBaseDnResult.getEntryCount() == 0) {
+              return ValidationErrorBuilder.createFieldError(
+                  FieldPaths.LDAP_GROUP_BASE_DN, "Group base DN does not exist in LDAP directory");
+            }
+          } catch (Exception e) {
+            return ValidationErrorBuilder.createFieldError(
+                FieldPaths.LDAP_GROUP_BASE_DN,
+                "Failed to validate group base DN: " + e.getMessage());
+          }
+
+          // 2. Validate group attribute name and value together
+          if (!nullOrEmpty(ldapConfig.getGroupAttributeName())
+              && !nullOrEmpty(ldapConfig.getGroupAttributeValue())) {
+            try {
+              String groupFilter =
+                  "("
+                      + ldapConfig.getGroupAttributeName()
+                      + "="
+                      + ldapConfig.getGroupAttributeValue()
+                      + ")";
+              SearchResult groupFilterResult =
+                  connection.search(ldapConfig.getGroupBaseDN(), SearchScope.SUB, groupFilter, "*");
+
+              if (groupFilterResult.getEntryCount() == 0) {
+                return ValidationErrorBuilder.createFieldError(
+                    FieldPaths.LDAP_GROUP_ATTRIBUTE_NAME,
+                    "No groups found with "
+                        + ldapConfig.getGroupAttributeName()
+                        + "="
+                        + ldapConfig.getGroupAttributeValue()
+                        + ". "
+                        + "Common values: groupAttributeName='objectClass' with "
+                        + "groupAttributeValue='groupOfNames' or 'groupOfUniqueNames'");
+              }
+
+              // 3. Validate group member attribute exists on group objects
+              if (!nullOrEmpty(ldapConfig.getGroupMemberAttributeName())) {
+                boolean memberAttributeFound = false;
+                for (int i = 0;
+                    i < Math.min(groupFilterResult.getEntryCount(), 5);
+                    i++) { // Check first 5 groups
+                  if (groupFilterResult
+                      .getSearchEntries()
+                      .get(i)
+                      .hasAttribute(ldapConfig.getGroupMemberAttributeName())) {
+                    memberAttributeFound = true;
+                    break;
+                  }
+                }
+
+                if (!memberAttributeFound) {
+                  return ValidationErrorBuilder.createFieldError(
+                      FieldPaths.LDAP_GROUP_MEMBER_ATTRIBUTE_NAME,
+                      "Group member attribute '"
+                          + ldapConfig.getGroupMemberAttributeName()
+                          + "' not found on any groups. "
+                          + "Common values: 'member' (for groupOfNames), 'uniqueMember' (for "
+                          + "groupOfUniqueNames), 'memberUid' (for posixGroup)");
+                }
+              } else {
+                return ValidationErrorBuilder.createFieldError(
+                    FieldPaths.LDAP_GROUP_MEMBER_ATTRIBUTE_NAME,
+                    "Group member attribute name is required when group base DN is configured. "
+                        + "This attribute identifies users in group objects. "
+                        + "Common values: 'member', 'uniqueMember', 'memberUid'");
+              }
+
+            } catch (Exception e) {
+              return ValidationErrorBuilder.createFieldError(
+                  FieldPaths.LDAP_GROUP_ATTRIBUTE_NAME,
+                  "Failed to validate group filter: " + e.getMessage());
+            }
+          } else {
+            // Group attribute name/value are required if group base DN is provided
+            if (nullOrEmpty(ldapConfig.getGroupAttributeName())) {
+              return ValidationErrorBuilder.createFieldError(
+                  FieldPaths.LDAP_GROUP_ATTRIBUTE_NAME,
+                  "Group attribute name is required when group base DN is configured. "
+                      + "This identifies group objects in LDAP. "
+                      + "Common value: 'objectClass'");
+            }
+            if (nullOrEmpty(ldapConfig.getGroupAttributeValue())) {
+              return ValidationErrorBuilder.createFieldError(
+                  FieldPaths.LDAP_GROUP_ATTRIBUTE_VALUE,
+                  "Group attribute value is required when group base DN is configured. "
+                      + "This specifies the type of group objects. "
+                      + "Common values: 'groupOfNames', 'groupOfUniqueNames', 'posixGroup'");
+            }
+          }
+        }
+
+        // Validate that LDAP group DNs in role mapping actually exist in LDAP
+        if (roleMapping != null
+            && !roleMapping.isEmpty()
+            && !nullOrEmpty(ldapConfig.getGroupBaseDN())) {
+          List<String> invalidGroupDns = new ArrayList<>();
+
+          for (String groupDn : roleMapping.keySet()) {
+            try {
+              // Try to retrieve the group by its DN
+              SearchResult groupCheck =
+                  connection.search(groupDn, SearchScope.BASE, "(objectClass=*)");
+              if (groupCheck.getEntryCount() == 0) {
+                invalidGroupDns.add(groupDn);
+              }
+            } catch (Exception e) {
+              // Group DN doesn't exist or is invalid
+              invalidGroupDns.add(groupDn + " (error: " + e.getMessage() + ")");
+            }
+          }
+
+          if (!invalidGroupDns.isEmpty()) {
+            return ValidationErrorBuilder.createFieldError(
+                FieldPaths.LDAP_AUTH_ROLES_MAPPING,
+                "The following LDAP group DNs do not exist in your LDAP directory: "
+                    + String.join(", ", invalidGroupDns)
+                    + ". Please verify the group DNs are correct. "
+                    + "You can find correct group DNs in phpLDAPadmin by browsing to your groups.");
           }
         }
 
@@ -1116,6 +1384,44 @@ public class SystemRepository {
       }
     } catch (Exception e) {
       return mapLdapExceptionToFieldError(e);
+    }
+  }
+
+  /**
+   * Ensures LDAP configuration fields have default values to prevent JSON PATCH errors. When
+   * fields are null in the database and the UI tries to update them with "replace" operation, JSON
+   * PATCH fails because "replace" requires the field to exist. By providing empty string defaults,
+   * we make "replace" operations work correctly while keeping validation and authentication logic
+   * safe (since nullOrEmpty() treats both null and "" as empty).
+   */
+  public void ensureLdapConfigDefaultValues(LdapConfiguration ldapConfig) {
+    if (ldapConfig == null) {
+      return;
+    }
+
+    // Ensure group-related fields have defaults to prevent JSON PATCH errors
+    if (ldapConfig.getGroupAttributeName() == null) {
+      ldapConfig.setGroupAttributeName("");
+    }
+    if (ldapConfig.getGroupAttributeValue() == null) {
+      ldapConfig.setGroupAttributeValue("");
+    }
+    if (ldapConfig.getGroupMemberAttributeName() == null) {
+      ldapConfig.setGroupMemberAttributeName("");
+    }
+    if (ldapConfig.getGroupBaseDN() == null) {
+      ldapConfig.setGroupBaseDN("");
+    }
+
+    // Ensure other optional fields have defaults
+    if (ldapConfig.getRoleAdminName() == null) {
+      ldapConfig.setRoleAdminName("");
+    }
+    if (ldapConfig.getAllAttributeName() == null) {
+      ldapConfig.setAllAttributeName("");
+    }
+    if (ldapConfig.getAuthRolesMapping() == null) {
+      ldapConfig.setAuthRolesMapping("");
     }
   }
 
@@ -1187,7 +1493,8 @@ public class SystemRepository {
     }
   }
 
-  private FieldError validateAuthorizerConfiguration(AuthorizerConfiguration authzConfig) {
+  private FieldError validateAuthorizerConfiguration(
+      AuthorizerConfiguration authzConfig, String currentUsername) {
     try {
       // Validate required fields
       if (nullOrEmpty(authzConfig.getClassName())) {

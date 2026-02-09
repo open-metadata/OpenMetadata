@@ -63,7 +63,7 @@ export const redirectToHomePage = async (
   await page.goto('/');
   await page.waitForURL('**/my-data');
   if (waitForNetworkIdle) {
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('networkidle');
   }
 };
 
@@ -94,7 +94,6 @@ export const removeLandingBanner = async (page: Page) => {
     return;
   }
 };
-
 
 export const createNewPage = async (browser: Browser) => {
   // create a new page
@@ -795,6 +794,42 @@ export const testPaginationNavigation = async (
     expect(reloadedSearchParams.get('cursorType')).toBe('after');
     expect(reloadedSearchParams.get('cursorValue')).toBe(afterValue);
   }
+  await page.waitForLoadState('domcontentloaded');
+  const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
+  if (await pageSizeDropdown.isVisible()) {
+    await expect(pageSizeDropdown).toHaveText('15 / Page');
+
+    // Explicitly using selector, as in some cases table cell contains markdown
+    // and markdown can further have tables
+    const initialRowCount = await page
+      .locator('tbody > tr[data-row-key]:visible')
+      .count();
+    expect(initialRowCount).toBeLessThanOrEqual(15);
+    const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
+    await pageSizeDropdown.hover();
+    const isMenuVisibleAfterHover = await menuItem
+      .isVisible()
+      .catch(() => false);
+    if (!isMenuVisibleAfterHover) {
+      await pageSizeDropdown.click();
+    }
+    await menuItem.waitFor({ state: 'visible' });
+
+    const pageSizeChangePromise = page.waitForResponse((response) =>
+      response.url().includes(apiEndpointPattern)
+    );
+    await menuItem.click();
+    await pageSizeChangePromise;
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await expect(pageSizeDropdown).toHaveText('25 / Page');
+
+    const newRowCount = await page
+      .locator('tbody > tr[data-row-key]:visible')
+      .count();
+    expect(newRowCount).toBeLessThanOrEqual(25);
+    expect(newRowCount).not.toBe(initialRowCount);
+  }
 };
 
 export interface PaginationTestConfig {
@@ -828,7 +863,6 @@ export const testCompletePaginationWithSearch = async (
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
-
 
   const nextButton = page.locator('[data-testid="next"]');
   const isNextEnabled = await nextButton.isEnabled();

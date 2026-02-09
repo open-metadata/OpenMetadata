@@ -16,13 +16,19 @@
 .entity-reference-list-item:last-child {
   border-bottom: none;
 }
-.entity-reference-list-item {
-  .entity-button-icon {
+.entity-ref-link {
+  display: flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 4px;
+
+  .entity-icon {
     height: 24px;
     width: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
+    color: @text-color;
     svg {
       height: 24px;
       width: 24px;
@@ -111,4 +117,16 @@
   .ant-space-item:first-child {
     width: inherit;
   }
+}
+
+.entity-list-body {
+  min-width: 0px;
+}
+
+.value-container {
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: @size-md;
 }

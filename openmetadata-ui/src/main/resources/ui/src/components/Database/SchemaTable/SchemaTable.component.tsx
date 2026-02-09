@@ -430,7 +430,7 @@ const SchemaTable = () => {
   const updateColumnDetails = async (
     columnFqn: string,
     column: Partial<Column>,
-    field?: keyof Column
+    field: keyof Column
   ) => {
     const response = await updateTableColumn(columnFqn, column);
     const cleanResponse = isEmpty(response.children)
@@ -438,11 +438,8 @@ const SchemaTable = () => {
       : response;
 
     setTableColumns((prev) =>
-      prev.map((col) =>
-        col.fullyQualifiedName === columnFqn
-          ? // Have to omit the field which is being updated to avoid persisted old value
-            { ...omit(col, field ?? ''), ...cleanResponse }
-          : col
+      pruneEmptyChildren(
+        updateColumnInNestedStructure(prev, columnFqn, cleanResponse, field)
       )
     );
 
@@ -704,10 +701,7 @@ const SchemaTable = () => {
                   })}
                   <Typography.Text
                     className={classNames(
-                      'm-b-0 d-block break-word cursor-pointer text-link-color',
-                      {
-                        'text-grey-600': !isEmpty(displayName),
-                      }
+                      'm-b-0 d-block break-word cursor-pointer text-link-color'
                     )}
                     data-testid="column-name">
                     {stringToHTML(highlightSearchText(name, searchText))}

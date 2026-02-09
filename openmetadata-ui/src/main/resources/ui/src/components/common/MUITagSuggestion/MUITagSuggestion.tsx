@@ -15,16 +15,17 @@ import { Autocomplete, Box, TextField } from '@mui/material';
 import { debounce, isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
-  FC,
-  HtmlHTMLAttributes,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    FC,
+    HtmlHTMLAttributes,
+    ReactNode,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { asyncFilterOptions } from '../../../constants/MUI.constants';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -172,6 +173,7 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
       disableCloseOnSelect
       freeSolo
       multiple
+      data-testid="tag-suggestion"
       // Force listbox to remount when options change to fix async search not updating dropdown
       ListboxProps={
         {
@@ -179,6 +181,8 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
         } as HtmlHTMLAttributes<HTMLUListElement>
       }
       autoFocus={autoFocus}
+      data-testid="tag-suggestion"
+      filterOptions={asyncFilterOptions}
       getOptionLabel={(option) =>
         typeof option === 'string' ? option : option.label
       }
@@ -195,6 +199,7 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
         <TextField
           {...params}
           fullWidth
+          data-testid="tag-suggestion-input"
           label={label}
           placeholder={
             placeholder ??
@@ -221,7 +226,10 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
         }
 
         return (
-          <Box component="li" {...props}>
+          <Box
+            component="li"
+            {...props}
+            data-testid={`tag-option-${option.value}`}>
             <Box display="flex" flexDirection="column">
               <Box
                 fontWeight="medium"
@@ -255,6 +263,7 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
             );
           })
       }
+      filterOptions={asyncFilterOptions}
       size="small"
       value={selectedOptions}
       onChange={handleChange}

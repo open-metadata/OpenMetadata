@@ -180,7 +180,7 @@ test('Roles page should work properly', async ({ page }) => {
     // Wait for roles list to load
     await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
 
-    const roleLocator = page.getByRole('cell', { name: roleName, exact: true });
+    const roleLocator = page.getByRole('link', { name: roleName });
     await getElementWithPagination(page, roleLocator, false);
 
     // Wait for plus-more-count button to be visible before clicking
@@ -190,14 +190,19 @@ test('Roles page should work properly', async ({ page }) => {
     await expect(plusMoreButton).toBeVisible();
     await plusMoreButton.click();
 
-    // Wait for popover to be visible and verify policies
+    // Wait for popover to be visible
+    await expect(page.locator('.ant-popover-content')).toBeVisible();
+
+    // Both policies should be visible - one in the table row and one in the popover
+    // The order is non-deterministic, so check both are visible within the row + popover scope
+    const rowAndPopover = page.locator(
+      `[data-row-key="${roleName}"], .ant-popover-content`
+    );
     await expect(
-      page
-        .locator(`[data-row-key="${roleName}"]`)
-        .getByText(policies.dataConsumerPolicy)
+      rowAndPopover.getByRole('link', { name: policies.dataConsumerPolicy })
     ).toBeVisible();
     await expect(
-      page.getByRole('link', { name: policies.dataStewardPolicy })
+      rowAndPopover.getByRole('link', { name: policies.dataStewardPolicy })
     ).toBeVisible();
   });
 

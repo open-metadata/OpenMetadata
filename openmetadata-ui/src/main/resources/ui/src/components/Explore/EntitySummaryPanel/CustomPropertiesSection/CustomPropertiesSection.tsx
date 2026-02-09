@@ -19,13 +19,13 @@ import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { CustomProperty } from '../../../../generated/entity/type';
 import { Transi18next } from '../../../../utils/CommonUtils';
+import { PropertyValue } from '../../../common/CustomPropertyTable/PropertyValue';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { ExtensionDataProps } from '../../../Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
 import { CustomPropertiesSectionProps } from './CustomPropertiesSection.interface';
 import './CustomPropertiesSection.less';
-import CustomPropertyItem from './CustomPropertyItem';
 
 const CustomPropertiesSection = ({
   entityData,
@@ -143,12 +143,12 @@ const CustomPropertiesSection = ({
       <div className="custom-properties-list p-x-md">
         {filteredProperties.length > 0
           ? filteredProperties.map((property: CustomProperty) => (
-              <CustomPropertyItem
-                extensionData={extensionData}
+              <PropertyValue
+                isRenderedInRightPanel
+                extension={extensionData}
                 hasEditPermissions={hasEditPermissions}
                 key={property.name}
                 property={property}
-                value={extensionData[property.name]}
                 onExtensionUpdate={onExtensionUpdate}
               />
             ))

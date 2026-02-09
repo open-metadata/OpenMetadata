@@ -16,7 +16,18 @@ public class OpenSearchAggregationBuilder {
         a ->
             a.terms(
                 t ->
-                    t.script(Script.of(s -> s.inline(i -> i.source(script).lang("painless"))))
+                    t.script(
+                            Script.of(
+                                s ->
+                                    s.inline(
+                                        i ->
+                                            i.source(script)
+                                                .lang(
+                                                    l ->
+                                                        l.builtin(
+                                                            os.org.opensearch.client.opensearch
+                                                                ._types.BuiltinScriptLanguage
+                                                                .Painless)))))
                         .size(size)));
   }
 

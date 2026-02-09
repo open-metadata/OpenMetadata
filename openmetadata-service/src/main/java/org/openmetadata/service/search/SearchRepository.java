@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -646,6 +647,67 @@ public class SearchRepository {
         entityRepository.get(null, entityReference.getId(), entityRepository.getFields("*"));
     // Update Entity
     updateEntityIndex(entity);
+  }
+
+  /**
+   * Bulk update multiple entities in the search index. This is much more efficient than calling
+   * updateEntity() for each entity individually.
+   *
+   * <p>This method groups entities by type before indexing to ensure each entity goes to the
+   * correct index. This is critical during multi-level imports where entities of different types
+   * may be batched together.
+   *
+   * @param entities List of entities to update in the search index
+   */
+  public void updateEntitiesBulk(List<EntityInterface> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    // Group entities by their actual type to ensure each goes to the correct index
+    Map<String, List<EntityInterface>> entitiesByType = new HashMap<>();
+    for (EntityInterface entity : entities) {
+      String actualType = entity.getEntityReference().getType();
+      entitiesByType.computeIfAbsent(actualType, k -> new ArrayList<>()).add(entity);
+    }
+
+    int batchSize = 100;
+    int maxConcurrentRequests = 5;
+    long maxPayloadSizeBytes = 10 * 1024 * 1024; // 10MB
+
+    // Process each entity type separately to ensure correct index routing
+    for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
+      String entityType = entry.getKey();
+      List<EntityInterface> typeEntities = entry.getValue();
+
+      BulkSink bulkSink = null;
+      try {
+        bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+        Map<String, Object> contextData = new HashMap<>();
+        contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
+        bulkSink.write(typeEntities, contextData);
+        bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
+      } catch (Exception e) {
+        LOG.error("Error during bulk entity update in search index for type {}", entityType, e);
+        // Fall back to individual updates for this type
+        for (EntityInterface entity : typeEntities) {
+          try {
+            updateEntityIndex(entity);
+          } catch (Exception ex) {
+            LOG.error(
+                "Error updating entity {} in search index", entity.getFullyQualifiedName(), ex);
+          }
+        }
+      } finally {
+        if (bulkSink != null) {
+          try {
+            bulkSink.close();
+          } catch (Exception e) {
+            LOG.warn("Error closing bulk sink", e);
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -1425,6 +1487,19 @@ public class SearchRepository {
         fieldAddParams.put(fieldChange.getName(), newFollowers);
         scriptTxt.append("ctx._source.followers.addAll(params.followers);");
       }
+      if (fieldChange.getName().equalsIgnoreCase("extension")) {
+        String entityType = entity.getEntityReference().getType();
+        List<Map<String, Object>> customPropertiesTyped =
+            SearchIndexUtils.buildTypedCustomProperties(entity.getExtension(), entityType);
+        fieldAddParams.put("customPropertiesTyped", customPropertiesTyped);
+        fieldAddParams.put("extension", entity.getExtension());
+        scriptTxt.append("ctx._source.customPropertiesTyped = params.customPropertiesTyped;");
+        scriptTxt.append("ctx._source.extension = params.extension;");
+      }
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
+        fieldAddParams.put(FIELD_DESCRIPTION, entity.getDescription());
+        scriptTxt.append("ctx._source.description = params.description;");
+      }
     }
 
     for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
@@ -1437,9 +1512,16 @@ public class SearchRepository {
         scriptTxt.append(
             "ctx._source.followers.removeAll(Collections.singleton(params.followers));");
       }
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
+        scriptTxt.append("ctx._source.description = null;");
+      }
     }
 
     for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
+        fieldAddParams.put(FIELD_DESCRIPTION, entity.getDescription());
+        scriptTxt.append("ctx._source.description = params.description;");
+      }
       if (fieldChange.getName().equalsIgnoreCase(FIELD_USAGE_SUMMARY)) {
         UsageDetails usageSummary = (UsageDetails) fieldChange.getNewValue();
         fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
@@ -1469,6 +1551,15 @@ public class SearchRepository {
         scriptTxt.append("ctx._source.testSuites = params.testSuites;");
         Map<String, Object> doc = JsonUtils.getMap(entity);
         fieldAddParams.put(TEST_SUITES, doc.get(TEST_SUITES));
+      }
+      if (fieldChange.getName().equalsIgnoreCase("extension")) {
+        String entityType = entity.getEntityReference().getType();
+        List<Map<String, Object>> customPropertiesTyped =
+            SearchIndexUtils.buildTypedCustomProperties(entity.getExtension(), entityType);
+        fieldAddParams.put("customPropertiesTyped", customPropertiesTyped);
+        fieldAddParams.put("extension", entity.getExtension());
+        scriptTxt.append("ctx._source.customPropertiesTyped = params.customPropertiesTyped;");
+        scriptTxt.append("ctx._source.extension = params.extension;");
       }
     }
     return scriptTxt.toString();
@@ -1844,5 +1935,27 @@ public class SearchRepository {
         JsonUtils.deepCopyList(references, EntityReference.class);
     inheritedReferences.forEach(ref -> ref.setInherited(true));
     return inheritedReferences;
+  }
+
+  /**
+   * Initialize advanced search features that depend on application settings.
+   * This method is called during Phase 2 of application startup after
+   * settings cache has been initialized and database settings are available.
+   *
+   * Currently initializes lineage builders that require LINEAGE_SETTINGS.
+   */
+  public void initializeLineageComponents() {
+    LOG.info("Initializing lineage components for SearchRepository");
+
+    if (searchClient != null) {
+      try {
+        searchClient.initializeLineageBuilders();
+        LOG.info("Lineage components initialized successfully");
+      } catch (Exception e) {
+        LOG.error("Failed to initialize lineage components", e);
+      }
+    } else {
+      LOG.warn("Cannot initialize lineage components - SearchClient is null");
+    }
   }
 }

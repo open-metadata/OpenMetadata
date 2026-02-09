@@ -42,11 +42,14 @@ import org.openmetadata.service.apps.bundles.searchIndex.listeners.QuartzProgres
 import org.openmetadata.service.apps.bundles.searchIndex.listeners.SlackProgressListener;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.quartz.JobExecutionContext;
 
 /**
@@ -431,13 +434,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     if (serverStatsAggr != null && serverStatsAggr.sinkSuccess() > 0) {
       // Use server stats table (most accurate)
-      // Include entityBuildFailures in failed count - these are records that read successfully
-      // but failed during Entity.buildSearchIndex() conversion
+      // processFailed = records that read successfully but failed during doc building
       successRecords = serverStatsAggr.sinkSuccess();
       failedRecords =
           serverStatsAggr.readerFailed()
               + serverStatsAggr.sinkFailed()
-              + serverStatsAggr.entityBuildFailures();
+              + serverStatsAggr.processFailed();
       statsSource = "serverStatsTable";
     } else if (actualSinkStats != null) {
       // Use local sink stats (single server scenario)
@@ -465,42 +467,38 @@ public class SearchIndexApp extends AbstractNativeApplication {
       readerStats.setTotalRecords((int) distributedJob.getTotalRecords());
       long readerFailed = serverStatsAggr != null ? serverStatsAggr.readerFailed() : 0;
       long readerWarnings = serverStatsAggr != null ? serverStatsAggr.readerWarnings() : 0;
-      // readerSuccess = total - readerFailed (entities that were successfully read)
-      long readerSuccess = distributedJob.getTotalRecords() - readerFailed;
+      long readerSuccess =
+          serverStatsAggr != null
+              ? serverStatsAggr.readerSuccess()
+              : distributedJob.getTotalRecords() - readerFailed - readerWarnings;
       readerStats.setSuccessRecords((int) readerSuccess);
       readerStats.setFailedRecords((int) readerFailed);
       readerStats.setWarningRecords((int) readerWarnings);
+    }
+
+    // Process stats - document building stage
+    StepStats processStats = stats.getProcessStats();
+    if (processStats != null && serverStatsAggr != null) {
+      long processSuccess = serverStatsAggr.processSuccess();
+      long processFailed = serverStatsAggr.processFailed();
+      processStats.setTotalRecords((int) (processSuccess + processFailed));
+      processStats.setSuccessRecords((int) processSuccess);
+      processStats.setFailedRecords((int) processFailed);
     }
 
     StepStats sinkStats = stats.getSinkStats();
     if (sinkStats != null) {
       if (serverStatsAggr != null) {
         // Use actual sink stats from the database
-        // sinkTotal = entities actually submitted to bulk processor (totalSubmitted)
-        // Note: sinkTotal might be less than readerSuccess if there were entity build failures
-        long actualSinkTotal = serverStatsAggr.sinkTotal();
         long sinkSuccess = serverStatsAggr.sinkSuccess();
         long sinkFailed = serverStatsAggr.sinkFailed();
-        long sinkWarnings = serverStatsAggr.sinkWarnings();
-        long entityBuildFailures = serverStatsAggr.entityBuildFailures();
 
-        // Log for debugging - entity build failures explain the gap between reader and sink
-        long expectedSinkTotal = distributedJob.getTotalRecords() - serverStatsAggr.readerFailed();
-        if (actualSinkTotal != expectedSinkTotal) {
-          LOG.info(
-              "Sink stats: actualSinkTotal={}, expectedSinkTotal={}, gap={} (entityBuildFailures={})",
-              actualSinkTotal,
-              expectedSinkTotal,
-              expectedSinkTotal - actualSinkTotal,
-              entityBuildFailures);
-        }
+        // sinkTotal = docs submitted to ES = sinkSuccess + sinkFailed
+        long actualSinkTotal = sinkSuccess + sinkFailed;
 
         sinkStats.setTotalRecords((int) actualSinkTotal);
         sinkStats.setSuccessRecords((int) sinkSuccess);
-        // Include entityBuildFailures in sinkFailed - they occur during sink processing
-        // when Entity.buildSearchIndex() fails before sending to bulk processor
-        sinkStats.setFailedRecords((int) (sinkFailed + entityBuildFailures));
-        sinkStats.setWarningRecords((int) sinkWarnings);
+        sinkStats.setFailedRecords((int) sinkFailed);
       } else {
         // Fallback: derive from reader stats (less accurate)
         long readerFailed = 0;
@@ -509,6 +507,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
         sinkStats.setSuccessRecords((int) successRecords);
         sinkStats.setFailedRecords((int) failedRecords);
       }
+    }
+
+    // Vector stats - embedding generation stage
+    StepStats vectorStats = stats.getVectorStats();
+    if (vectorStats != null && serverStatsAggr != null) {
+      long vectorSuccess = serverStatsAggr.vectorSuccess();
+      long vectorFailed = serverStatsAggr.vectorFailed();
+      vectorStats.setTotalRecords((int) (vectorSuccess + vectorFailed));
+      vectorStats.setSuccessRecords((int) vectorSuccess);
+      vectorStats.setFailedRecords((int) vectorFailed);
     }
 
     if (distributedJob.getEntityStats() != null && stats.getEntityStats() != null) {
@@ -602,7 +610,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
     stats.setEntityStats(new org.openmetadata.schema.system.EntityStats());
     stats.setJobStats(new StepStats());
     stats.setReaderStats(new StepStats());
+    stats.setProcessStats(new StepStats());
     stats.setSinkStats(new StepStats());
+    stats.setVectorStats(new StepStats());
 
     int total = 0;
     for (String entityType : entities) {
@@ -624,9 +634,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
     stats.getReaderStats().setSuccessRecords(0);
     stats.getReaderStats().setFailedRecords(0);
 
+    stats.getProcessStats().setTotalRecords(0);
+    stats.getProcessStats().setSuccessRecords(0);
+    stats.getProcessStats().setFailedRecords(0);
+
     stats.getSinkStats().setTotalRecords(0);
     stats.getSinkStats().setSuccessRecords(0);
     stats.getSinkStats().setFailedRecords(0);
+
+    stats.getVectorStats().setTotalRecords(0);
+    stats.getVectorStats().setSuccessRecords(0);
+    stats.getVectorStats().setFailedRecords(0);
 
     return stats;
   }
@@ -638,14 +656,26 @@ public class SearchIndexApp extends AbstractNativeApplication {
       if (!TIME_SERIES_ENTITIES.contains(correctedType)) {
         return Entity.getEntityRepository(correctedType).getDao().listTotalCount();
       } else {
-        return Entity.getEntityTimeSeriesRepository(correctedType)
-            .getTimeSeriesDao()
-            .listCount(new org.openmetadata.service.jdbi3.ListFilter(null));
+        ListFilter listFilter = new ListFilter(null);
+        EntityTimeSeriesRepository<?> repository;
+
+        if (isDataInsightIndex(correctedType)) {
+          listFilter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(correctedType));
+          repository = Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA);
+        } else {
+          repository = Entity.getEntityTimeSeriesRepository(correctedType);
+        }
+
+        return repository.getTimeSeriesDao().listCount(listFilter);
       }
     } catch (Exception e) {
       LOG.debug("Error getting total for '{}'", entityType, e);
       return 0;
     }
+  }
+
+  private boolean isDataInsightIndex(String entityType) {
+    return entityType.endsWith("ReportData");
   }
 
   private void updateJobStatus(EventPublisherJob.Status newStatus) {
