@@ -1539,8 +1539,16 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               await expect(saveButton).toBeEnabled();
               await saveButton.click();
               await saveResponse;
+              await expect(
+                page
+                  .locator('.column-detail-panel')
+                  .getByTestId('alert-bar')
+                  .getByTestId('alert-message')
+              ).toContainText('Description updated successfully');
 
-              await toastNotification(page, /Description updated successfully/);
+              await page.waitForSelector('[data-testid="loader"]', {
+                state: 'detached',
+              });
 
               await expect(
                 panelContainer
