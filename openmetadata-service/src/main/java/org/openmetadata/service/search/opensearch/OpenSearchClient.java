@@ -666,6 +666,15 @@ public class OpenSearchClient implements SearchClient {
       if (host.endsWith("/")) {
         host = host.substring(0, host.length() - 1);
       }
+      // Handle comma-separated hosts (use first host for AwsSdk2Transport)
+      if (host.contains(",")) {
+        host = host.split(",")[0].trim();
+        LOG.warn("Multiple hosts configured, using first host for AWS IAM auth: {}", host);
+      }
+      // Strip port if present (AwsSdk2Transport expects bare hostname)
+      if (host.contains(":")) {
+        host = host.split(":")[0];
+      }
 
       Region region = Region.of(awsConfig.getRegion());
       String serviceName =
