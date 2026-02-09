@@ -48,6 +48,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
@@ -232,9 +233,9 @@ public class FileRepository extends EntityRepository<File> {
   }
 
   @Override
-  public EntityRepository<File>.EntityUpdater getUpdater(
-      File original, File updated, Operation operation) {
-    return new FileUpdater(original, updated, operation);
+  public EntityUpdater getUpdater(
+      File original, File updated, Operation operation, ChangeSource changeSource) {
+    return new FileUpdater(original, updated, operation, changeSource);
   }
 
   private EntityReference getDirectory(File file) {
@@ -474,8 +475,9 @@ public class FileRepository extends EntityRepository<File> {
   }
 
   public class FileUpdater extends ColumnEntityUpdater {
-    public FileUpdater(File original, File updated, Operation operation) {
-      super(original, updated, operation);
+    public FileUpdater(
+        File original, File updated, Operation operation, ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Transaction

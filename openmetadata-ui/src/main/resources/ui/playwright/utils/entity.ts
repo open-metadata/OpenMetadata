@@ -1630,8 +1630,10 @@ export const updateDisplayNameForEntityChildren = async (
 
   await page.locator('#displayName').fill(displayName.newDisplayName);
 
-  const updateRequest = page.waitForResponse((req) =>
-    ['PUT', 'PATCH'].includes(req.request().method())
+  const updateRequest = page.waitForResponse(
+    (req) =>
+      ['PUT', 'PATCH'].includes(req.request().method()) &&
+      !req.url().includes('api/v1/analytics/web/events/collect')
   );
 
   await page.click('[data-testid="save-button"]');

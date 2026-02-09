@@ -67,7 +67,16 @@ public class ElasticSearchSummaryCardAggregator
           Query.of(
               q ->
                   q.range(
-                      r -> r.field("@timestamp").gte(JsonData.of(start)).lte(JsonData.of(end))));
+                      r ->
+                          r.untyped(
+                              u ->
+                                  u.field("@timestamp")
+                                      .gte(
+                                          es.co.elastic.clients.json.JsonData.of(
+                                              String.valueOf(start)))
+                                      .lte(
+                                          es.co.elastic.clients.json.JsonData.of(
+                                              String.valueOf(end))))));
       searchRequestBuilder.query(rangeQuery);
       searchRequestBuilder.index(DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     } else {
