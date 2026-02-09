@@ -12,17 +12,43 @@
  */
 
 import { Locator, Page, expect } from '@playwright/test';
-import { RightPanelPageObject } from './RightPanelPageObject';
+import type { RightPanelPageObject } from './RightPanelPageObject';
+
+/**
+ * Base class for right-panel tab Page Objects only.
+ * Holds shared Playwright logic: page reference, getSummaryPanel, waitForLoadersToDisappear, waitForVisible.
+ * Defined in this file to avoid circular dependency; other tab POs import RightPanelBase from here.
+ */
+export abstract class RightPanelBase {
+  protected readonly rightPanel: RightPanelPageObject;
+
+  constructor(rightPanel: RightPanelPageObject) {
+    this.rightPanel = rightPanel;
+  }
+
+  protected get page(): Page {
+    return this.rightPanel.page;
+  }
+
+  protected getSummaryPanel(): Locator {
+    return this.rightPanel.getSummaryPanel();
+  }
+
+  protected async waitForLoadersToDisappear(): Promise<void> {
+    await this.rightPanel.waitForLoadersToDisappear();
+  }
+
+  protected async waitForVisible(locator: Locator): Promise<void> {
+    await locator.waitFor({ state: 'visible' });
+  }
+}
 
 /**
  * PROPER PAGE OBJECT PATTERN FOR OVERVIEW TAB
  *
  * Handles overview section interactions: description, tags, tiers, domains, etc.
  */
-export class OverviewPageObject {
-  private readonly rightPanel: RightPanelPageObject;
-  private readonly page: Page;
-
+export class OverviewPageObject extends RightPanelBase {
   // ============ PRIVATE LOCATORS (scoped to right panel) ============
   private readonly container: Locator;
   private readonly editDescriptionIcon: Locator;
@@ -55,11 +81,9 @@ export class OverviewPageObject {
   private readonly updateOwnersButton: Locator;
 
 
-  constructor(rightPanel: RightPanelPageObject, page: Page) {
-    this.rightPanel = rightPanel;
-    this.page = page;
-    // Container scoped to right panel summary panel
-    this.container = this.rightPanel.getSummaryPanel();
+  constructor(rightPanel: RightPanelPageObject) {
+    super(rightPanel);
+    this.container = this.getSummaryPanel();
 
     // Scoped locators for action elements
     this.editDescriptionIcon = this.page.locator('[data-testid="edit-description"]');
@@ -101,10 +125,18 @@ export class OverviewPageObject {
    */
   async navigateToOverviewTab(): Promise<OverviewPageObject> {
     await this.rightPanel.navigateToTab('overview');
-    await this.rightPanel.waitForLoadersToDisappear();
+    await this.waitForLoadersToDisappear();
     return this;
   }
 
+  /**
+   * Reusable assertion: navigate to Overview tab and assert tab + description section visible.
+   */
+  async assertContent(): Promise<void> {
+    await this.navigateToOverviewTab();
+    await this.shouldBeVisible();
+    await this.shouldShowDescriptionSection();
+  }
 
   // ============ ACTION METHODS (Fluent Interface) ============
 
@@ -426,5 +458,24 @@ export class OverviewPageObject {
    */
   async shouldShowDescriptionWithText(expectedText: string): Promise<void> {
     await this.descriptionSection.getByText(expectedText).waitFor({ state: 'visible' });
+  }
+
+  /**
+   * Assert internal fields of the Overview tab for the given asset type.
+   * Call after navigating to Overview tab (e.g. from assertTabInternalFieldsByAssetType).
+   */
+  async assertInternalFieldsForAssetType(assetType: string): Promise<void> {
+    const tabLabel = 'Overview';
+    await expect(
+      this.descriptionSection,
+      `[Asset: ${assetType}] [Tab: ${tabLabel}] Missing: description section`
+    ).toBeVisible();
+    if (assetType === 'Table') {
+      const tableSummary = this.page.getByTestId('TableSummary');
+      await expect(
+        tableSummary,
+        `[Asset: ${assetType}] [Tab: ${tabLabel}] Missing: table summary (row/column context)`
+      ).toBeVisible();
+    }
   }
 }

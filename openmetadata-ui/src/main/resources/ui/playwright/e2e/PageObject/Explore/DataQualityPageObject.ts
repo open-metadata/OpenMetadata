@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Locator } from '@playwright/test';
+import { expect, Locator } from '@playwright/test';
+import { RightPanelBase } from './OverviewPageObject';
 import { RightPanelPageObject } from './RightPanelPageObject';
 
 /**
@@ -24,10 +25,7 @@ import { RightPanelPageObject } from './RightPanelPageObject';
  * 4. Private locators, public methods only
  * 5. Descriptive method names following BDD style
  */
-export class DataQualityPageObject {
-
-  private readonly rightPanel: RightPanelPageObject;
-
+export class DataQualityPageObject extends RightPanelBase {
   // ============ PRIVATE LOCATORS (scoped to container) ============
   private readonly container: Locator;
   private readonly incidentsTab: Locator;
@@ -39,11 +37,8 @@ export class DataQualityPageObject {
   private readonly nameLink: Locator;
 
   constructor(rightPanel: RightPanelPageObject) {
-
-    this.rightPanel = rightPanel;
-
-    // Base container - scoped to right panel summary panel
-    this.container = this.rightPanel.getSummaryPanel().locator('.data-quality-tab-container');
+    super(rightPanel);
+    this.container = this.getSummaryPanel().locator('.data-quality-tab-container');
 
     // All other locators are scoped to the container
     this.incidentsTab = this.container.locator('.ant-tabs-tab').filter({ hasText: /incident/i });
@@ -63,8 +58,17 @@ export class DataQualityPageObject {
    */
   async navigateToDataQualityTab(): Promise<DataQualityPageObject> {
     await this.rightPanel.navigateToTab('data quality');
-    await this.rightPanel.waitForLoadersToDisappear();
+    await this.waitForLoadersToDisappear();
     return this;
+  }
+
+  /**
+   * Reusable assertion: navigate to Data Quality tab and assert tab + stat cards visible.
+   */
+  async assertContent(): Promise<void> {
+    await this.navigateToDataQualityTab();
+    await this.shouldBeVisible();
+    await this.shouldShowAllStatCards();
   }
 
   /**
@@ -73,7 +77,7 @@ export class DataQualityPageObject {
    */
   async navigateToIncidentsTab(): Promise<DataQualityPageObject> {
     await this.incidentsTab.click();
-    await this.rightPanel.waitForLoadersToDisappear();
+    await this.waitForLoadersToDisappear();
     return this;
   }
 
@@ -87,7 +91,7 @@ export class DataQualityPageObject {
   async clickStatCard(statType: 'success' | 'failed' | 'aborted'): Promise<DataQualityPageObject> {
     const statCard = this.getStatCardLocator(statType);
     await statCard.click();
-    await this.rightPanel.waitForLoadersToDisappear();
+    await this.waitForLoadersToDisappear();
     return this;
   }
 
@@ -235,5 +239,18 @@ export class DataQualityPageObject {
    */
   async shouldNotShowIncidentsTab(): Promise<void> {
     await this.incidentsTab.waitFor({ state: 'hidden' });
+  }
+
+  /**
+   * Assert internal fields of the Data Quality tab for Table (stat cards, incidents tab).
+   * Use only when Data Quality tab is available (e.g. Table). Call after navigating to Data Quality tab.
+   */
+  async assertInternalFieldsForTable(assetType?: string): Promise<void> {
+    const tabLabel = 'Data Quality';
+    const prefix = assetType ? `[Asset: ${assetType}] [Tab: ${tabLabel}] ` : '';
+    await expect(this.successStatCard, `${prefix}Missing: success stat card`).toBeVisible();
+    await expect(this.failedStatCard, `${prefix}Missing: failed stat card`).toBeVisible();
+    await expect(this.abortedStatCard, `${prefix}Missing: aborted stat card`).toBeVisible();
+    await expect(this.incidentsTab, `${prefix}Missing: incidents tab`).toBeVisible();
   }
 }

@@ -11,13 +11,22 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { OverviewPageObject } from './OverviewPageObject';
 import { SchemaPageObject } from './SchemaPageObject';
 import { LineagePageObject } from './LineagePageObject';
 import { DataQualityPageObject } from './DataQualityPageObject';
 import { CustomPropertiesPageObject } from './CustomPropertiesPageObject';
 import { EntityClass } from '../../../support/entity/EntityClass';
+
+/** Tab names for data-driven visibility and content assertions (case-insensitive in UI). */
+export const RIGHT_PANEL_TAB = {
+  OVERVIEW: 'overview',
+  SCHEMA: 'schema',
+  LINEAGE: 'lineage',
+  DATA_QUALITY: 'data quality',
+  CUSTOM_PROPERTIES: 'custom properties',
+} as const;
 
 // Interface for entities that have children
 interface EntityWithChildren extends EntityClass {
@@ -57,9 +66,8 @@ export class RightPanelPageObject {
   selectableList: '[data-testid="selectable-list"]',
  };
 
- // Data asset configurations for different entity types
+ // Data asset configurations aligned with EntityRightPanelVerticalNav (hasSchemaTab, hasLineageTab, data quality for Table only, hasCustomPropertiesTab)
  private static readonly DATA_ASSET_CONFIGS: Record<string, DataAssetConfig> = {
-  // Database Assets
   Table: {
    entityType: 'Table',
    childrenTabId: 'schema',
@@ -70,31 +78,32 @@ export class RightPanelPageObject {
   },
   Database: {
    entityType: 'Database',
-   availableTabs: ['overview', 'lineage', 'custom properties'],
+   availableTabs: ['overview', 'schema', 'custom properties'],
+   hasSchemaTab: true,
    supportsCustomProperties: true,
   },
   'Database Schema': {
    entityType: 'Database Schema',
-   availableTabs: ['overview', 'lineage', 'custom properties'],
+   availableTabs: ['overview', 'schema', 'custom properties'],
+   hasSchemaTab: true,
    supportsCustomProperties: true,
   },
   'Store Procedure': {
    entityType: 'Store Procedure',
-   availableTabs: ['overview', 'lineage', 'custom properties'],
+   availableTabs: ['overview', 'custom properties'],
    supportsCustomProperties: true,
   },
-  // Dashboard Assets
   Dashboard: {
    entityType: 'Dashboard',
-   availableTabs: ['overview', 'charts', 'lineage', 'custom properties'],
-   hasChartsTab: true,
+   availableTabs: ['overview', 'schema', 'lineage', 'custom properties'],
+   hasSchemaTab: true,
    supportsCustomProperties: true,
   },
   DashboardDataModel: {
    entityType: 'DashboardDataModel',
-   childrenTabId: 'model',
-   availableTabs: ['overview', 'model', 'lineage', 'custom properties'],
-   hasModelTab: true,
+   childrenTabId: 'schema',
+   availableTabs: ['overview', 'schema', 'lineage', 'custom properties'],
+   hasSchemaTab: true,
    supportsCustomProperties: true,
   },
   Chart: {
@@ -102,15 +111,13 @@ export class RightPanelPageObject {
    availableTabs: ['overview', 'lineage', 'custom properties'],
    supportsCustomProperties: true,
   },
-  // Pipeline Assets
   Pipeline: {
    entityType: 'Pipeline',
-   childrenTabId: 'tasks',
-   availableTabs: ['overview', 'tasks', 'lineage', 'custom properties'],
-   hasTasksTab: true,
+   childrenTabId: 'schema',
+   availableTabs: ['overview', 'schema', 'lineage', 'custom properties'],
+   hasSchemaTab: true,
    supportsCustomProperties: true,
   },
-  // Messaging Assets
   Topic: {
    entityType: 'Topic',
    childrenTabId: 'schema',
@@ -118,29 +125,24 @@ export class RightPanelPageObject {
    hasSchemaTab: true,
    supportsCustomProperties: true,
   },
-  // ML Model Assets
   MlModel: {
    entityType: 'MlModel',
-   childrenTabId: 'features',
-   availableTabs: ['overview', 'features', 'lineage', 'custom properties'],
-   hasFeaturesTab: true,
+   availableTabs: ['overview', 'lineage', 'custom properties'],
    supportsCustomProperties: true,
   },
-  // Container Assets
   Container: {
    entityType: 'Container',
-   availableTabs: ['overview', 'data profiler', 'lineage', 'custom properties'],
+   availableTabs: ['overview', 'schema', 'lineage', 'custom properties'],
+   hasSchemaTab: true,
    supportsCustomProperties: true,
   },
-  // Search Index Assets
   SearchIndex: {
    entityType: 'SearchIndex',
-   childrenTabId: 'fields',
-   availableTabs: ['overview', 'fields', 'lineage', 'custom properties'],
-   hasFieldsTab: true,
+   childrenTabId: 'schema',
+   availableTabs: ['overview', 'schema', 'lineage', 'custom properties'],
+   hasSchemaTab: true,
    supportsCustomProperties: true,
   },
-  // API Assets
   ApiEndpoint: {
    entityType: 'ApiEndpoint',
    childrenTabId: 'schema',
@@ -150,13 +152,13 @@ export class RightPanelPageObject {
   },
   'Api Collection': {
    entityType: 'Api Collection',
-   availableTabs: ['overview', 'lineage', 'custom properties'],
+   availableTabs: ['overview', 'schema', 'custom properties'],
+   hasSchemaTab: true,
    supportsCustomProperties: true,
   },
-  // Drive Assets (Files, Directories, Spreadsheets, Worksheets)
   File: {
    entityType: 'File',
-   availableTabs: ['overview', 'lineage', 'custom properties'],
+   availableTabs: ['overview', 'custom properties'],
    supportsCustomProperties: true,
   },
   Directory: {
@@ -166,18 +168,17 @@ export class RightPanelPageObject {
   },
   Spreadsheet: {
    entityType: 'Spreadsheet',
-   availableTabs: ['overview', 'lineage', 'custom properties'],
+   availableTabs: ['overview', 'custom properties'],
    supportsCustomProperties: true,
   },
   Worksheet: {
    entityType: 'Worksheet',
-   availableTabs: ['overview', 'lineage', 'custom properties'],
+   availableTabs: ['overview', 'custom properties'],
    supportsCustomProperties: true,
   },
-  // Metric Assets
   Metric: {
    entityType: 'Metric',
-   availableTabs: ['overview', 'lineage', 'custom properties'],
+   availableTabs: ['overview', 'custom properties'],
    supportsCustomProperties: true,
   },
  };
@@ -185,9 +186,9 @@ export class RightPanelPageObject {
  constructor(page: Page, entity?: EntityClass) {
   this.page = page;
 
-  // Initialize section page objects
-  this.overview = new OverviewPageObject(this, page);
-  this.schema = new SchemaPageObject(this, page);
+  // Initialize section page objects (tab POs extend RightPanelBase and take rightPanel only)
+  this.overview = new OverviewPageObject(this);
+  this.schema = new SchemaPageObject(this);
   this.lineage = new LineagePageObject(this);
   this.dataQuality = new DataQualityPageObject(this);
   this.customProperties = new CustomPropertiesPageObject(this);
@@ -213,6 +214,71 @@ export class RightPanelPageObject {
     availableTabs: ['overview', 'lineage', 'custom properties'],
     supportsCustomProperties: true,
    };
+  }
+ }
+
+ /**
+  * Set entity configuration by asset type string (e.g. 'Table', 'Database').
+  * Use when orchestrating tab assertions without an EntityClass instance.
+  */
+ public setEntityConfigByType(assetType: string): void {
+  this.entityConfig = RightPanelPageObject.DATA_ASSET_CONFIGS[assetType];
+  if (!this.entityConfig) {
+   this.entityConfig = {
+    entityType: assetType,
+    availableTabs: [RIGHT_PANEL_TAB.OVERVIEW, RIGHT_PANEL_TAB.LINEAGE, RIGHT_PANEL_TAB.CUSTOM_PROPERTIES],
+    supportsCustomProperties: true,
+   };
+  }
+ }
+
+ /**
+  * Orchestration: run internal-field assertions for each visible tab based on asset type.
+  * Sets config by asset type, then for each available tab runs that tab's field-level assertions.
+  * Data Quality assertions run only when the tab is available (e.g. Table).
+  * Call after the right panel is open and loaded.
+  */
+ public async assertTabInternalFieldsByAssetType(assetType: string): Promise<void> {
+  this.setEntityConfigByType(assetType);
+  const tabs = this.getExpectedTabsForEntityType(assetType);
+
+  for (const tabName of tabs) {
+   const n = tabName.toLowerCase();
+   if (n === RIGHT_PANEL_TAB.OVERVIEW) {
+    await this.navigateToTab(RIGHT_PANEL_TAB.OVERVIEW);
+    await this.waitForLoadersToDisappear();
+    await this.overview.assertInternalFieldsForAssetType(assetType);
+    continue;
+   }
+   if (n === RIGHT_PANEL_TAB.SCHEMA && this.isTabAvailable(RIGHT_PANEL_TAB.SCHEMA)) {
+    await this.navigateToTab(RIGHT_PANEL_TAB.SCHEMA);
+    await this.waitForLoadersToDisappear();
+    await this.schema.assertInternalFields(assetType);
+    continue;
+   }
+   if (n === RIGHT_PANEL_TAB.LINEAGE && this.isTabAvailable(RIGHT_PANEL_TAB.LINEAGE)) {
+    await this.navigateToTab(RIGHT_PANEL_TAB.LINEAGE);
+    await this.waitForLoadersToDisappear();
+    await this.lineage.assertInternalFields(assetType);
+    continue;
+   }
+   if (
+    (n === RIGHT_PANEL_TAB.DATA_QUALITY || n === 'data quality') &&
+    this.isTabAvailable(RIGHT_PANEL_TAB.DATA_QUALITY)
+   ) {
+    await this.navigateToTab(RIGHT_PANEL_TAB.DATA_QUALITY);
+    await this.waitForLoadersToDisappear();
+    await this.dataQuality.assertInternalFieldsForTable(assetType);
+    continue;
+   }
+   if (
+    (n === RIGHT_PANEL_TAB.CUSTOM_PROPERTIES || n === 'custom property') &&
+    this.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES)
+   ) {
+    await this.navigateToTab(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES);
+    await this.waitForLoadersToDisappear();
+    await this.customProperties.assertInternalFields(assetType);
+   }
   }
  }
 
@@ -385,6 +451,95 @@ export class RightPanelPageObject {
  }
 
  /**
+  * Get the locator for a tab by name (case-insensitive).
+  * Matches Ant Design Menu items (li.ant-menu-item) by visible label text.
+  */
+ getTabLocator(tabName: string): Locator {
+   const normalized = tabName.toLowerCase().trim();
+   const pattern =
+     normalized === 'custom properties' || normalized === 'custom property'
+       ? /custom\s*property/i
+       : new RegExp(normalized.replace(/\s+/g, '\\s*'), 'i');
+   return this.getSummaryPanel()
+     .locator('li.ant-menu-item')
+     .filter({ hasText: pattern })
+     .first();
+ }
+
+ /**
+  * Assert that all expected tabs are visible in the right panel.
+  * Call after panel is loaded and entity config is set.
+  * @param expectedTabs - Tab names to verify (e.g. from getExpectedTabsForEntity)
+  */
+ async assertExpectedTabsVisible(
+   expectedTabs: readonly string[]
+ ): Promise<void> {
+   for (const tabName of expectedTabs) {
+     const tabLocator = this.getTabLocator(tabName);
+     await expect(tabLocator).toBeVisible();
+   }
+ }
+
+ /**
+  * Get expected tab names for an entity type from DATA_ASSET_CONFIGS.
+  * Falls back to overview, lineage, custom properties for unknown types.
+  */
+ getExpectedTabsForEntityType(entityType: string): readonly string[] {
+  const config = RightPanelPageObject.DATA_ASSET_CONFIGS[entityType];
+  if (config?.availableTabs?.length) {
+   return config.availableTabs;
+  }
+  return [
+   RIGHT_PANEL_TAB.OVERVIEW,
+   RIGHT_PANEL_TAB.LINEAGE,
+   RIGHT_PANEL_TAB.CUSTOM_PROPERTIES,
+  ];
+ }
+
+ /**
+  * Whether this tab has a dedicated Page Object and assertContent() for content assertions.
+  */
+ isTabWithContentAssertion(tabName: string): boolean {
+  const n = tabName.toLowerCase();
+  return (
+   n === RIGHT_PANEL_TAB.OVERVIEW ||
+   n === RIGHT_PANEL_TAB.SCHEMA ||
+   n === RIGHT_PANEL_TAB.LINEAGE ||
+   n === RIGHT_PANEL_TAB.DATA_QUALITY ||
+   n === RIGHT_PANEL_TAB.CUSTOM_PROPERTIES ||
+   n === 'custom property'
+  );
+ }
+
+ /**
+  * Navigate to the tab and run its Page Object assertContent() (visibility + key fields).
+  * No-op for tabs without a content assertion (e.g. charts, tasks).
+  */
+ async assertTabContent(tabName: string): Promise<void> {
+  const n = tabName.toLowerCase();
+  if (n === RIGHT_PANEL_TAB.OVERVIEW) {
+   await this.overview.assertContent();
+   return;
+  }
+  if (n === RIGHT_PANEL_TAB.SCHEMA) {
+   await this.schema.assertContent();
+   return;
+  }
+  if (n === RIGHT_PANEL_TAB.LINEAGE) {
+   await this.lineage.assertContent();
+   return;
+  }
+  if (n === RIGHT_PANEL_TAB.DATA_QUALITY) {
+   await this.dataQuality.assertContent();
+   return;
+  }
+  if (n === RIGHT_PANEL_TAB.CUSTOM_PROPERTIES || n === 'custom property') {
+   await this.customProperties.assertContent();
+   return;
+  }
+ }
+
+ /**
   * Wait for the right panel to be visible
   */
  async waitForPanelVisible() {
@@ -498,11 +653,6 @@ export class RightPanelPageObject {
  async verifySuccessMessage(message: string) {
    await expect(this.page.getByText(new RegExp(message, 'i'))).toBeVisible();
  }
-
-
-
-
-
 
  /**
   * Generic Helper Methods

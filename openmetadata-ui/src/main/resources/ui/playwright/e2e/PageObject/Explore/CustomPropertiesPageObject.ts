@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Locator } from '@playwright/test';
+import { expect, Locator } from '@playwright/test';
+import { RightPanelBase } from './OverviewPageObject';
 import { RightPanelPageObject } from './RightPanelPageObject';
 
 /**
@@ -19,24 +20,29 @@ import { RightPanelPageObject } from './RightPanelPageObject';
  *
  * Handles custom properties display, search, and verification
  */
-export class CustomPropertiesPageObject {
-  private readonly rightPanel: RightPanelPageObject;
+export class CustomPropertiesPageObject extends RightPanelBase {
   // ============ PRIVATE LOCATORS (scoped to container) ============
   private readonly container: Locator;
   private readonly searchBar: Locator;
   private readonly propertyCard: Locator;
   private readonly emptyCustomPropertiesContainer: Locator;
   private readonly customPropertiesContainer: Locator;
-  constructor(rightPanel: RightPanelPageObject) {
-    this.rightPanel = rightPanel;
-    // Base container - scoped to right panel summary panel
-    this.container = this.rightPanel.getSummaryPanel().locator('.custom-properties-container');
-    this.customPropertiesContainer = this.rightPanel.page.locator('.custom-properties-section-container');
 
-    // Sub-components within the container
-    this.searchBar = this.rightPanel.page.getByTestId('searchbar');
-    this.propertyCard = this.rightPanel.page.getByTestId('custom-property-right-panel-card');
-    this.emptyCustomPropertiesContainer = this.rightPanel.page.getByTestId('no-data-placeholder');
+  constructor(rightPanel: RightPanelPageObject) {
+    super(rightPanel);
+    this.container = this.getSummaryPanel().locator(
+      '.custom-properties-container'
+    );
+    this.customPropertiesContainer = this.page.locator(
+      '.custom-properties-section-container'
+    );
+    this.searchBar = this.page.getByTestId('searchbar');
+    this.propertyCard = this.page.getByTestId(
+      'custom-property-right-panel-card'
+    );
+    this.emptyCustomPropertiesContainer = this.page.getByTestId(
+      'no-data-placeholder'
+    );
   }
 
   // ============ NAVIGATION METHODS (Fluent Interface) ============
@@ -47,8 +53,17 @@ export class CustomPropertiesPageObject {
    */
   async navigateToCustomPropertiesTab(): Promise<CustomPropertiesPageObject> {
     await this.rightPanel.navigateToTab('Custom Property');
-    await this.rightPanel.waitForLoadersToDisappear();
+    await this.waitForLoadersToDisappear();
     return this;
+  }
+
+  /**
+   * Reusable assertion: navigate to Custom Properties tab and assert tab + container visible.
+   */
+  async assertContent(): Promise<void> {
+    await this.navigateToCustomPropertiesTab();
+    await this.shouldBeVisible();
+    await this.shouldShowCustomPropertiesContainer();
   }
 
   // ============ ACTION METHODS (Fluent Interface) ============
@@ -58,10 +73,12 @@ export class CustomPropertiesPageObject {
    * @param searchTerm - Term to search for
    * @returns CustomPropertiesPageObject for method chaining
    */
-  async searchCustomProperties(searchTerm: string): Promise<CustomPropertiesPageObject> {
+  async searchCustomProperties(
+    searchTerm: string
+  ): Promise<CustomPropertiesPageObject> {
     await this.searchBar.fill(searchTerm);
     await this.searchBar.press('Enter');
-    await this.rightPanel.waitForLoadersToDisappear();
+    await this.waitForLoadersToDisappear();
     return this;
   }
 
@@ -79,12 +96,9 @@ export class CustomPropertiesPageObject {
    */
   async clearSearch(): Promise<CustomPropertiesPageObject> {
     await this.searchBar.clear();
-    await this.rightPanel.waitForLoadersToDisappear();
+    await this.waitForLoadersToDisappear();
     return this;
   }
-
-
-  // ============ VERIFICATION METHODS (BDD Style) ============
 
   /**
    * Verify that the Custom Properties tab is currently visible
@@ -123,25 +137,22 @@ export class CustomPropertiesPageObject {
    * @param propertyName - Name of the custom property
    * @param expectedValue - Expected value
    */
-  async shouldShowCustomPropertyWithValue(propertyName: string, expectedValue: string): Promise<void> {
-    // Use semantic selectors - find property card and then its value
-    // const propertyCard = this.propertyCard.filter({ hasText: propertyName });
-    // await propertyCard.waitFor({ state: 'visible' });
-
-    // await this.valueElement.waitFor({ state: 'visible' });
-    // const actualValue = await this.valueElement.textContent();
-    // if (!actualValue?.includes(expectedValue)) {
-    //   throw new Error(`Custom property "${propertyName}" should show value "${expectedValue}" but shows "${actualValue}"`);
-    // }
-
+  async shouldShowCustomPropertyWithValue(
+    propertyName: string,
+    expectedValue: string
+  ): Promise<void> {
     const propertyCard = this.propertyCard.filter({ hasText: propertyName });
     await propertyCard.waitFor({ state: 'visible' });
 
-    const valueElement = propertyCard.locator('.value, [class*="value"], [data-testid="value"]');
+    const valueElement = propertyCard.locator(
+      '.value, [class*="value"], [data-testid="value"]'
+    );
     await valueElement.waitFor({ state: 'visible' });
     const actualValue = await valueElement.textContent();
-     if (!actualValue?.includes(expectedValue)) {
-      throw new Error(`Custom property "${propertyName}" should show value "${expectedValue}" but shows "${actualValue}"`);
+    if (!actualValue?.includes(expectedValue)) {
+      throw new Error(
+        `Custom property "${propertyName}" should show value "${expectedValue}" but shows "${actualValue}"`
+      );
     }
   }
 
@@ -154,7 +165,9 @@ export class CustomPropertiesPageObject {
     const cards = this.propertyCard;
     const actualCount = await cards.count();
     if (actualCount !== expectedCount) {
-      throw new Error(`Should show ${expectedCount} custom properties, but shows ${actualCount}`);
+      throw new Error(
+        `Should show ${expectedCount} custom properties, but shows ${actualCount}`
+      );
     }
   }
 
@@ -173,7 +186,22 @@ export class CustomPropertiesPageObject {
     await this.searchBar.waitFor({ state: 'visible' });
     const actualText = await this.searchBar.inputValue();
     if (actualText !== expectedText) {
-      throw new Error(`Search bar should show "${expectedText}" but shows "${actualText}"`);
+      throw new Error(
+        `Search bar should show "${expectedText}" but shows "${actualText}"`
+      );
     }
+  }
+
+  /**
+   * Assert internal fields of the Custom Properties tab (container visible).
+   * Call after navigating to Custom Properties tab (e.g. from assertTabInternalFieldsByAssetType).
+   */
+  async assertInternalFields(assetType?: string): Promise<void> {
+    const tabLabel = 'Custom Properties';
+    const prefix = assetType ? `[Asset: ${assetType}] [Tab: ${tabLabel}] ` : '';
+    await expect(
+      this.customPropertiesContainer,
+      `${prefix}Missing: custom properties container`
+    ).toBeVisible();
   }
 }

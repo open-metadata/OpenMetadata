@@ -18,7 +18,8 @@ import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
 export const openEntitySummaryPanel = async (
   page: Page,
   entityName: string,
-  endpoint?: string
+  endpoint?: string,
+  fullyQualifiedName?: string
 ) => {
   if (
     endpoint &&
@@ -56,12 +57,19 @@ export const openEntitySummaryPanel = async (
     state: 'detached',
   });
 
+  if (fullyQualifiedName) {
+    const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
+    await cardByFqn.waitFor({ state: 'visible' });
+    // await cardByFqn.click();
+    // await page.waitForLoadState('networkidle');
+    return;
+  }
+
   const entityCard = page
     .locator('[data-testid="table-data-card"]')
     .filter({ hasText: entityName })
     .first();
 
-  // Only click if the card is visible (search results may be on explore page)
   const isCardVisible = await entityCard.isVisible().catch(() => false);
   if (isCardVisible) {
     await entityCard.click();

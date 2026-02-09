@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, Locator, Page } from '@playwright/test';
+import { expect, Locator } from '@playwright/test';
+import { RightPanelBase } from './OverviewPageObject';
 import { RightPanelPageObject } from './RightPanelPageObject';
 
 /**
@@ -19,22 +20,16 @@ import { RightPanelPageObject } from './RightPanelPageObject';
  *
  * Handles schema field display, data types, and verification
  */
-export class SchemaPageObject {
-  private readonly rightPanel: RightPanelPageObject;
-  private readonly page: Page;
-
+export class SchemaPageObject extends RightPanelBase {
   // ============ PRIVATE LOCATORS (scoped to container) ============
   private readonly container: Locator;
   private readonly schemaSearchBar: Locator;
   private readonly schemaFieldsContainer: Locator;
   private readonly schemaFields: Locator;
 
-
-  constructor(rightPanel: RightPanelPageObject, page: Page) {
-    this.rightPanel = rightPanel;
-    this.page = page;
-    // Base container - scoped to right panel summary panel
-    this.container = this.rightPanel.getSummaryPanel();
+  constructor(rightPanel: RightPanelPageObject) {
+    super(rightPanel);
+    this.container = this.getSummaryPanel();
     this.schemaSearchBar = this.page.getByTestId('searchbar');
     this.schemaFieldsContainer = this.page.locator('.schema-field-cards-container');
     this.schemaFields = this.schemaFieldsContainer.locator('.field-card ');
@@ -48,10 +43,18 @@ export class SchemaPageObject {
    */
   async navigateToSchemaTab(): Promise<SchemaPageObject> {
     await this.rightPanel.navigateToTab('schema');
-    await this.rightPanel.waitForLoadersToDisappear();
+    await this.waitForLoadersToDisappear();
     return this;
   }
 
+  /**
+   * Reusable assertion: navigate to Schema tab and assert tab + schema fields visible.
+   */
+  async assertContent(): Promise<void> {
+    await this.navigateToSchemaTab();
+    await this.shouldBeVisible();
+    await this.shouldShowSchemaField();
+  }
 
   // ============ VERIFICATION METHODS (BDD Style) ============
 
@@ -63,13 +66,13 @@ export class SchemaPageObject {
   }
 
   /**
-   * Verify schema field is visible
-   * @param fieldName - Name of the field to verify
+   * Verify schema tab has search bar, container, and at least one schema field visible.
+   * Uses .first() because multiple .field-card elements exist (strict mode).
    */
   async shouldShowSchemaField(): Promise<void> {
     await expect(this.schemaSearchBar).toBeVisible();
     await expect(this.schemaFieldsContainer).toBeVisible();
-    await expect(this.schemaFields).toBeVisible();
+    await expect(this.schemaFields.first()).toBeVisible();
   }
 
 async schemaFieldsCount(): Promise<number> {
@@ -81,4 +84,16 @@ async shouldShowSchemaFieldsCount(expectedCount: number): Promise<void> {
   const count = await this.schemaFieldsCount();
   expect(count).toBe(expectedCount);
 }
+
+  /**
+   * Assert internal fields of the Schema tab (search bar, container, at least one field).
+   * Call after navigating to Schema tab (e.g. from assertTabInternalFieldsByAssetType).
+   */
+  async assertInternalFields(assetType?: string): Promise<void> {
+    const tabLabel = 'Schema';
+    const prefix = assetType ? `[Asset: ${assetType}] [Tab: ${tabLabel}] ` : '';
+    await expect(this.schemaSearchBar, `${prefix}Missing: schema search bar`).toBeVisible();
+    await expect(this.schemaFieldsContainer, `${prefix}Missing: schema fields container`).toBeVisible();
+    await expect(this.schemaFields.first(), `${prefix}Missing: at least one schema field`).toBeVisible();
+  }
 }
