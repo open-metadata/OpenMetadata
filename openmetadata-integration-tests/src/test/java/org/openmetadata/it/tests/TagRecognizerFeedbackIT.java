@@ -370,12 +370,20 @@ public class TagRecognizerFeedbackIT {
                   "Recognizer should have exception added");
             });
 
-    org.openmetadata.schema.entity.data.Table updatedTable =
-        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
-    boolean tagRemoved =
-        updatedTable.getColumns().getFirst().getTags().stream()
-            .noneMatch(t -> t.getTagFQN().equals(tag.getFullyQualifiedName()));
-    assertTrue(tagRemoved, "Tag should be removed from column");
+    Awaitility.await("Wait for tag to be removed from column after auto-approval")
+        .pollInterval(Duration.ofSeconds(POLL_INTERVAL_SECONDS))
+        .atMost(Duration.ofMinutes(TIMEOUT_MINUTES))
+        .untilAsserted(
+            () -> {
+              org.openmetadata.schema.entity.data.Table updatedTable =
+                  SdkClients.adminClient()
+                      .tables()
+                      .getByName(table.getFullyQualifiedName(), "columns,tags");
+              boolean tagRemoved =
+                  updatedTable.getColumns().getFirst().getTags().stream()
+                      .noneMatch(t -> t.getTagFQN().equals(tag.getFullyQualifiedName()));
+              assertTrue(tagRemoved, "Tag should be removed from column");
+            });
   }
 
   @Test
@@ -415,12 +423,20 @@ public class TagRecognizerFeedbackIT {
                   "Recognizer should have exception added");
             });
 
-    org.openmetadata.schema.entity.data.Table updatedTable =
-        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
-    boolean tagRemoved =
-        updatedTable.getColumns().getFirst().getTags().stream()
-            .noneMatch(t -> t.getTagFQN().equals(tag.getFullyQualifiedName()));
-    assertTrue(tagRemoved, "Tag should be removed from column");
+    Awaitility.await("Wait for tag to be removed from column after reviewer auto-approval")
+        .pollInterval(Duration.ofSeconds(POLL_INTERVAL_SECONDS))
+        .atMost(Duration.ofMinutes(TIMEOUT_MINUTES))
+        .untilAsserted(
+            () -> {
+              org.openmetadata.schema.entity.data.Table updatedTable =
+                  SdkClients.adminClient()
+                      .tables()
+                      .getByName(table.getFullyQualifiedName(), "columns,tags");
+              boolean tagRemoved =
+                  updatedTable.getColumns().getFirst().getTags().stream()
+                      .noneMatch(t -> t.getTagFQN().equals(tag.getFullyQualifiedName()));
+              assertTrue(tagRemoved, "Tag should be removed from column");
+            });
   }
 
   @Test

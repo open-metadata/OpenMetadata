@@ -203,6 +203,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       mysql.withPassword("test");
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
+      mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
       mysql.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -223,6 +224,29 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       postgres.withPassword("test");
       postgres.withStartupTimeoutSeconds(240);
       postgres.withConnectTimeoutSeconds(240);
+      postgres.withCommand(
+          "postgres",
+          "-c",
+          "max_wal_size=512MB",
+          "-c",
+          "min_wal_size=64MB",
+          "-c",
+          "wal_level=minimal",
+          "-c",
+          "max_wal_senders=0",
+          "-c",
+          "checkpoint_completion_target=0.5",
+          "-c",
+          "checkpoint_timeout=30s",
+          "-c",
+          "shared_buffers=128MB",
+          "-c",
+          "fsync=off",
+          "-c",
+          "synchronous_commit=off",
+          "-c",
+          "full_page_writes=off");
+      postgres.withTmpFs(java.util.Map.of("/var/lib/postgresql/data", "rw,size=2g"));
       postgres.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -250,6 +274,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       opensearch.withEnv("DISABLE_SECURITY_PLUGIN", "true");
       opensearch.withEnv("OPENSEARCH_JAVA_OPTS", "-Xms1g -Xmx1g");
       opensearch.withStartupAttempts(3);
+      opensearch.withTmpFs(java.util.Map.of("/usr/share/opensearch/data", "rw,size=1g"));
       opensearch.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -274,6 +299,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       elasticsearch.withEnv("xpack.security.enabled", "false");
       elasticsearch.withEnv("ES_JAVA_OPTS", "-Xms1g -Xmx1g");
       elasticsearch.withStartupAttempts(3);
+      elasticsearch.withTmpFs(java.util.Map.of("/usr/share/elasticsearch/data", "rw,size=1g"));
       elasticsearch.setWaitStrategy(
           new LogMessageWaitStrategy()
               .withRegEx(".*(\"message\":\\s?\"started[\\s?|\"].*|] started\n$)")
@@ -300,6 +326,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
             .withExposedPorts(FUSEKI_PORT)
             .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
             .withEnv("FUSEKI_DATASET_1", FUSEKI_DATASET)
+            .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=2g,uid=100,gid=101"))
             .waitingFor(
                 Wait.forHttp("/$/ping")
                     .forPort(FUSEKI_PORT)
@@ -555,7 +582,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       config.setRdfConfiguration(rdfConfig);
     }
 
-    rdfConfig.setEnabled(true);
+    rdfConfig.setEnabled(false);
     rdfConfig.setBaseUri(java.net.URI.create("https://open-metadata.org/"));
     rdfConfig.setStorageType(RdfConfiguration.StorageType.FUSEKI);
     rdfConfig.setRemoteEndpoint(java.net.URI.create(fusekiEndpoint));

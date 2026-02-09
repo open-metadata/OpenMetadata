@@ -4476,6 +4476,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return owners.stream()
         .map(
             owner -> {
+              if (owner.getType() == null) {
+                throw new IllegalArgumentException(
+                    String.format(
+                        "Owner type must be specified for owner with id [%s]", owner.getId()));
+              }
               if (owner.getType().equals(TEAM)) {
                 // Use NON_DELETED to throw EntityNotFoundException if team is deleted
                 Team team = Entity.getEntity(TEAM, owner.getId(), "", NON_DELETED);

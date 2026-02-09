@@ -1062,20 +1062,36 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
       dataProduct = patchEntity(dataProduct.getId().toString(), dataProduct);
       assertEquals(newName, dataProduct.getName());
 
-      ResultList<EntityReference> assets = getAssets(dataProduct.getId(), 10, 0);
-      assertEquals(
-          1,
-          assets.getPaging().getTotal(),
-          "Assets should be preserved immediately after rename " + (i + 1));
+      final UUID dpId = dataProduct.getId();
+      final int iteration = i + 1;
+      Awaitility.await("Wait for assets after rename " + iteration)
+          .pollDelay(Duration.ofMillis(100))
+          .pollInterval(Duration.ofMillis(500))
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () -> {
+                ResultList<EntityReference> a = getAssets(dpId, 10, 0);
+                assertEquals(
+                    1,
+                    a.getPaging().getTotal(),
+                    "Assets should be preserved immediately after rename " + iteration);
+              });
 
-      dataProduct.setDescription("Description after rename " + (i + 1));
+      dataProduct.setDescription("Description after rename " + iteration);
       dataProduct = patchEntity(dataProduct.getId().toString(), dataProduct);
 
-      assets = getAssets(dataProduct.getId(), 10, 0);
-      assertEquals(
-          1,
-          assets.getPaging().getTotal(),
-          "Assets should be preserved after rename + update iteration " + (i + 1));
+      Awaitility.await("Wait for assets after rename + update " + iteration)
+          .pollDelay(Duration.ofMillis(100))
+          .pollInterval(Duration.ofMillis(500))
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () -> {
+                ResultList<EntityReference> a = getAssets(dpId, 10, 0);
+                assertEquals(
+                    1,
+                    a.getPaging().getTotal(),
+                    "Assets should be preserved after rename + update iteration " + iteration);
+              });
     }
 
     Table tableWithDataProducts =

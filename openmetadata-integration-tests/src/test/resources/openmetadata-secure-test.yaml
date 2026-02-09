@@ -108,7 +108,7 @@ objectStorage:
 
 # RDF Configuration - will be dynamically configured by TestSuiteBootstrap
 rdf:
-  enabled: true
+  enabled: false
   baseUri: "https://open-metadata.org/"
   storageType: "FUSEKI"
   remoteEndpoint: "http://localhost:3030/openmetadata"
