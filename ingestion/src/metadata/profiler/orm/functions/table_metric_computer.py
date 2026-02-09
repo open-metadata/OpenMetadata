@@ -503,7 +503,7 @@ class MSSQLTableMetricComputer(BaseTableMetricComputer):
             self._build_query(
                 [
                     Column("object_id"),
-                    func.sum(Column("rows")).cast(BigInteger).label("row_count"),
+                    func.sum(Column("row_count")).cast(BigInteger).label("row_count"),
                 ],
                 self._build_table("dm_db_partition_stats", "sys"),
                 [Column("index_id").in_([0, 1])],
@@ -560,28 +560,34 @@ class CockroachTableMetricComputer(BaseTableMetricComputer):
     """CockroachDB Table Metric Computer"""
 
     def compute(self):
-        """compute table metrics for CockroachDB using pg_catalog (without pg_total_relation_size)"""
+        """compute table metrics for CockroachDB using crdb_internal.table_row_statistics"""
         nsp_subquery = (
-            select(Column("oid"))
-            .select_from(Table("pg_namespace", MetaData(), schema="pg_catalog"))
-            .where(Column("nspname") == self.schema_name)
+            select(Column("table_id"))
+            .select_from(Table("tables", MetaData(), schema="crdb_internal"))
+            .where(
+                Column("name") == self.table_name,
+                Column("schema_name") == self.schema_name,
+                Column("database_name") == self.database,
+            )
             .correlate(None)
             .scalar_subquery()
         )
 
         columns = [
-            Column("reltuples").cast(BigInteger).label(ROW_COUNT),
+            func.max(Column("rowCount")).cast(BigInteger).label(ROW_COUNT),
+            func.sum(Column("avgSize")).label(SIZE_IN_BYTES),
             *self._get_col_names_and_count(),
         ]
 
         where_clause = [
-            Column("relname") == self.table_name,
-            Column("relnamespace") == nsp_subquery,
+            Column("tableID") == nsp_subquery,
         ]
+
+        stats = self._build_table("table_statistics", "system")
 
         query = self._build_query(
             columns,
-            self._build_table("pg_class", "pg_catalog"),
+            stats,
             where_clause,
         )
 

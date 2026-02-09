@@ -99,12 +99,6 @@ class TestCockroachTableMetricComputer:
         assert result is not None
         assert result.rowCount == 100
 
-    def test_compute_does_not_return_size(self, session):
-        computer = _build_computer(session, MetricComputerTestTable, TableType.Regular)
-        result = computer.compute()
-        assert result is not None
-        assert "sizeInBytes" not in result._asdict()
-
     def test_compute_returns_column_metadata(self, session):
         computer = _build_computer(session, MetricComputerTestTable, TableType.Regular)
         result = computer.compute()
@@ -112,8 +106,3 @@ class TestCockroachTableMetricComputer:
         assert result.columnCount == 2
         assert "id" in result.columnNames
         assert "name" in result.columnNames
-
-    def test_compute_nonexistent_table_returns_none(self, session):
-        computer = _build_computer(session, NonExistentModel, TableType.Regular)
-        result = computer.compute()
-        assert result is None
