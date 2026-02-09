@@ -586,14 +586,15 @@ export const updateDescription = async (
   validationContainerTestId = 'asset-description-container',
   endpoint?: EntityTypeEndpoint
 ) => {
-  const editButton = page.locator('[data-testid="edit-description"]');
-  if (await editButton.isVisible()) {
+  const editDescriptionButton = page.getByTestId('edit-description');
+  const editButton = page.getByTestId('edit-button');
+
+  try {
+    await expect(editDescriptionButton).toBeVisible();
+    await editDescriptionButton.click();
+  } catch {
+    await expect(editButton).toBeVisible();
     await editButton.click();
-  } else {
-    // Fallback for ML Model which uses 'edit-button'
-    const fallbackButton = page.getByTestId('edit-button');
-    await expect(fallbackButton).toBeVisible();
-    await fallbackButton.click();
   }
 
   // Wait for description box to be visible and ready
