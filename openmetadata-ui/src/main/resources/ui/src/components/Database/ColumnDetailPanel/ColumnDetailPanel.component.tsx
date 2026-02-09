@@ -330,7 +330,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         ? await onColumnFieldUpdate(
             activeColumn.fullyQualifiedName,
             update,
-            'fieldUpdateFromColumnDetailPanel'
+            true
           )
         : // Fallback to direct API call for Table entities when used outside GenericProvider
           ((await updateTableColumn(
@@ -958,14 +958,42 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       width="40%"
       onClose={onClose}>
       {localToast.open && (
-        <div className="floating-error-alert">
+        <Box
+          sx={{
+            position: 'sticky',
+            top: -20,
+            zIndex: 1,
+            margin: '0px 16px 16px 8px',
+            '& .ant-alert': {
+              minHeight: 48,
+              padding: '8px 12px',
+              display: 'flex',
+              alignItems: 'center',
+
+              '& .ant-alert-icon': {
+                display: 'flex',
+                alignItems: 'center',
+                marginRight: 1,
+              },
+
+              '& #alert-icon': {
+                padding: 0.5,
+                borderWidth: 3,
+                fontSize: 16,
+              },
+
+              '& .ant-alert-description': {
+                flex: 1,
+                wordBreak: 'break-word',
+              },
+            },
+          }}>
           <AlertBar
             defaultExpand
-            className="column-detail-panel-alert"
             message={localToast.message}
             type={localToast.type}
           />
-        </div>
+        </Box>
       )}
       <div className="column-detail-panel-container">
         <div className="d-flex gap-2">

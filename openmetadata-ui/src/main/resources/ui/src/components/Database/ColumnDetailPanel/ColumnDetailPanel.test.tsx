@@ -711,10 +711,7 @@ describe('ColumnDetailPanel', () => {
         () => {
           expect(onColumnFieldUpdate).toHaveBeenCalled();
           expect(getByTestId('alert-bar')).toBeInTheDocument();
-          expect(getByTestId('alert-bar')).toHaveAttribute(
-            'data-type',
-            'error'
-          );
+          expect(getByTestId('alert-bar')).toHaveTextContent('Update failed');
           expect(getByTestId('description-section')).toBeInTheDocument();
         },
         { timeout: 300 }
@@ -824,10 +821,7 @@ describe('ColumnDetailPanel', () => {
         () => {
           expect(onColumnFieldUpdate).toHaveBeenCalled();
           expect(getByTestId('alert-bar')).toBeInTheDocument();
-          expect(getByTestId('alert-bar')).toHaveAttribute(
-            'data-type',
-            'error'
-          );
+          expect(getByTestId('alert-bar')).toHaveTextContent('Network error');
           expect(getByTestId('description-section')).toBeInTheDocument();
         },
         { timeout: 300 }
@@ -859,7 +853,9 @@ describe('ColumnDetailPanel', () => {
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
         expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveAttribute('data-type', 'error');
+        expect(getByTestId('alert-bar')).toHaveTextContent(
+          'Tags update failed'
+        );
       });
     });
 
@@ -888,7 +884,9 @@ describe('ColumnDetailPanel', () => {
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
         expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveAttribute('data-type', 'error');
+        expect(getByTestId('alert-bar')).toHaveTextContent(
+          'Glossary terms update failed'
+        );
       });
     });
   });
@@ -917,9 +915,8 @@ describe('ColumnDetailPanel', () => {
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
         expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveAttribute(
-          'data-type',
-          'success'
+        expect(getByTestId('alert-bar')).toHaveTextContent(
+          'server.update-entity-success - {"entity":"label.description"}'
         );
       });
     });
@@ -947,9 +944,8 @@ describe('ColumnDetailPanel', () => {
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
         expect(getByTestId('alert-bar')).toBeInTheDocument();
-        expect(getByTestId('alert-bar')).toHaveAttribute(
-          'data-type',
-          'success'
+        expect(getByTestId('alert-bar')).toHaveTextContent(
+          'server.update-entity-success - {"entity":"label.tag-plural"}'
         );
       });
     });

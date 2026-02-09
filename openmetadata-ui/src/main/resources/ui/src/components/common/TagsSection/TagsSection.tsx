@@ -112,9 +112,9 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
         t,
       });
 
-      if (result.success && result.data === displayTags) {
+      if (result.success) {
         completeEditing();
-      } else if (!result.success) {
+      } else {
         setIsLoading(false);
       }
     },

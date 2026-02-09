@@ -39,7 +39,7 @@ export interface ColumnDetailPanelProps<T extends ColumnOrTask = Column> {
   onColumnFieldUpdate?: (
     fqn: string,
     update: ColumnFieldUpdate,
-    source?: string
+    skipGlobalError?: boolean
   ) => Promise<T | undefined>;
   deleted?: boolean;
   allColumns?: T[];

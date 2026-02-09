@@ -21,7 +21,9 @@ jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
     .mockImplementation(({ children, ...props }) => (
-      <span {...props}>{children}</span>
+      <a href="#" {...props}>
+        {children}
+      </a>
     )),
 }));
 
@@ -111,7 +113,7 @@ describe('Test DisplayName Component', () => {
     const linkElements = screen.getAllByTestId('Sample Entity');
 
     expect(linkElements.length).toBeGreaterThanOrEqual(1);
-    expect(linkElements[0].tagName).toBe('SPAN');
+    expect(linkElements[0].tagName).toBe('A');
   });
 
   it('Should render plain text when link prop is not provided', async () => {

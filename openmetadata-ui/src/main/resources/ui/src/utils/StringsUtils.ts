@@ -339,6 +339,10 @@ export const jsonToCSV = <T extends JSONRecord>(
  * @returns A cleaned HTML string with invalid file-attachment divs removed
  */
 export function removeAttachmentsWithoutUrl(htmlString: string): string {
+  if (!htmlString.includes('data-type="file-attachment"')) {
+    return htmlString;
+  }
+
   const parser = new DOMParser();
   const doc: Document = parser.parseFromString(htmlString, 'text/html');
 

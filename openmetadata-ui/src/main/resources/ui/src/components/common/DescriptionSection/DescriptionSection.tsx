@@ -14,7 +14,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { removeAttachmentsWithoutUrl } from '../../../utils/StringsUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
@@ -73,9 +72,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   const handleDescriptionChange = useCallback(
     async (updatedDescription: string) => {
       if (onDescriptionUpdate) {
-        await onDescriptionUpdate(
-          removeAttachmentsWithoutUrl(updatedDescription)
-        );
+        await onDescriptionUpdate(updatedDescription);
       }
       setIsEditDescription(false);
     },
