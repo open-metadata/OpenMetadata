@@ -724,17 +724,16 @@ export const assignTag = async (
   parentId = 'KnowledgePanel.Tags',
   tagFqn?: string
 ) => {
-  await page
+  const tagButton = page
     .getByTestId(parentId)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .first()
-    .click();
+    .first();
 
-  // Wait for the form to be visible and stable
-  await page.locator('#tagsForm_tags').waitFor({
-    state: 'visible',
-  });
+  await expect(tagButton).toBeVisible();
+  await tagButton.click();
+
+  await expect(page.locator('#tagsForm_tags')).toBeVisible();
 
   const searchTags = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
