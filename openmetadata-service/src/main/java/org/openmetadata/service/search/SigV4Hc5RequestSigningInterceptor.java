@@ -24,8 +24,13 @@ import software.amazon.awssdk.regions.Region;
 
 /**
  * HTTP request interceptor for Apache HttpClient 5.x (HC5) that signs requests using AWS Signature
- * Version 4 (SigV4). This is required for authenticating requests to AWS-managed OpenSearch or
- * Elasticsearch services using IAM credentials.
+ * Version 4 (SigV4). This is required for authenticating requests to AWS-managed OpenSearch.
+ *
+ * <p>IMPORTANT: This interceptor requires HTTP/1.1 to work correctly. HTTP/2 streams the body
+ * separately, making it unavailable for hash computation. The caller must set
+ * HttpVersionPolicy.FORCE_HTTP_1 on the HttpAsyncClientBuilder.
+ *
+ * @see <a href="https://github.com/opensearch-project/OpenSearch/issues/3640">OpenSearch #3640</a>
  */
 @Slf4j
 public class SigV4Hc5RequestSigningInterceptor implements HttpRequestInterceptor {
@@ -43,9 +48,6 @@ public class SigV4Hc5RequestSigningInterceptor implements HttpRequestInterceptor
     this.signer = Aws4Signer.create();
   }
 
-  private static final String UNSIGNED_PAYLOAD = "UNSIGNED-PAYLOAD";
-  private static final String X_AMZ_CONTENT_SHA256 = "x-amz-content-sha256";
-
   @Override
   public void process(HttpRequest request, EntityDetails entity, HttpContext context)
       throws HttpException, IOException {
@@ -61,9 +63,8 @@ public class SigV4Hc5RequestSigningInterceptor implements HttpRequestInterceptor
           "No target host found in HTTP context, cannot perform SigV4 signing for AWS OpenSearch");
     }
 
-    BodyExtractionResult bodyResult = extractRequestBody(request, entity);
-    SdkHttpFullRequest sdkRequest =
-        buildSdkRequest(request, targetHost, bodyResult.body, bodyResult.useUnsignedPayload);
+    byte[] body = extractRequestBody(request);
+    SdkHttpFullRequest sdkRequest = buildSdkRequest(request, targetHost, body);
     SdkHttpFullRequest signedRequest = signRequest(sdkRequest);
 
     applySignedHeaders(request, signedRequest);
@@ -71,30 +72,22 @@ public class SigV4Hc5RequestSigningInterceptor implements HttpRequestInterceptor
     LOG.debug("Successfully signed request with AWS SigV4 for service: {}", serviceName);
   }
 
-  private record BodyExtractionResult(byte[] body, boolean useUnsignedPayload) {}
-
-  private BodyExtractionResult extractRequestBody(HttpRequest request, EntityDetails entity)
-      throws IOException {
-    if (entity != null
-        && request instanceof org.apache.hc.core5.http.ClassicHttpRequest classicHttpRequest) {
+  private byte[] extractRequestBody(HttpRequest request) throws IOException {
+    // With HTTP/1.1 forced, we can extract body from ClassicHttpRequest
+    if (request instanceof org.apache.hc.core5.http.ClassicHttpRequest classicHttpRequest) {
       var httpEntity = classicHttpRequest.getEntity();
       if (httpEntity != null) {
         byte[] content = EntityUtils.toByteArray(httpEntity);
+        // Replace with buffered entity so it can be read again when sending
         classicHttpRequest.setEntity(new ByteArrayEntity(content, ContentType.APPLICATION_JSON));
-        return new BodyExtractionResult(content, false);
+        return content;
       }
     }
-    // For async requests or requests without accessible body, use UNSIGNED-PAYLOAD
-    // This tells AWS to skip body verification (safe over HTTPS)
-    boolean hasBody = entity != null && entity.getContentLength() != 0;
-    if (hasBody) {
-      LOG.debug("Cannot extract body from async request, using UNSIGNED-PAYLOAD for SigV4 signing");
-    }
-    return new BodyExtractionResult(null, hasBody);
+    // For requests without body, return empty array (AWS SDK will compute empty hash)
+    return new byte[0];
   }
 
-  private SdkHttpFullRequest buildSdkRequest(
-      HttpRequest request, HttpHost host, byte[] body, boolean useUnsignedPayload) {
+  private SdkHttpFullRequest buildSdkRequest(HttpRequest request, HttpHost host, byte[] body) {
     String uri = request.getRequestUri();
     String path = uri.split("\\?")[0];
 
@@ -114,26 +107,11 @@ public class SigV4Hc5RequestSigningInterceptor implements HttpRequestInterceptor
       }
     }
 
-    for (Header header : request.getHeaders()) {
-      String headerName = header.getName().toLowerCase();
-      if (!headerName.equals("host")
-          && !headerName.equals("content-length")
-          && !headerName.equals("content-type")
-          && !headerName.equals("transfer-encoding")
-          && !headerName.equals(X_AMZ_CONTENT_SHA256)) {
-        builder.appendHeader(header.getName(), header.getValue());
-      }
-    }
-
-    if (useUnsignedPayload) {
-      // For async requests where body can't be extracted, use UNSIGNED-PAYLOAD
-      // AWS will skip body verification (safe over HTTPS to AWS-managed services)
-      builder.appendHeader(X_AMZ_CONTENT_SHA256, UNSIGNED_PAYLOAD);
-      builder.appendHeader("Content-Type", "application/json");
-    } else if (body != null && body.length > 0) {
+    // Pass body to AWS SDK so it computes the SHA-256 hash
+    // AWS OpenSearch does NOT support UNSIGNED-PAYLOAD (only S3 does)
+    if (body != null && body.length > 0) {
       final byte[] finalBody = body;
       builder.contentStreamProvider(() -> new ByteArrayInputStream(finalBody));
-      builder.appendHeader("Content-Type", "application/json");
     }
 
     return builder.build();
