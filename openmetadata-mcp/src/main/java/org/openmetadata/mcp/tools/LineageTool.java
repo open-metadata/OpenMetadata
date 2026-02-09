@@ -2,6 +2,7 @@ package org.openmetadata.mcp.tools;
 
 import java.io.IOException;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityReference;
@@ -15,6 +16,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
+@Slf4j
 public class LineageTool implements McpTool {
   @Override
   public Map<String, Object> execute(
@@ -33,6 +35,13 @@ public class LineageTool implements McpTool {
         catalogSecurityContext,
         new OperationContext(toEntity.getType(), MetadataOperation.EDIT_LINEAGE),
         new ResourceContext<>(toEntity.getType(), toEntity.getId(), toEntity.getName()));
+
+    LOG.info(
+        "Creating lineage edge from {}.{} to {}.{}",
+        fromEntity.getType(),
+        fromEntity.getName(),
+        toEntity.getType(),
+        toEntity.getName());
 
     AddLineage lineage =
         new AddLineage()

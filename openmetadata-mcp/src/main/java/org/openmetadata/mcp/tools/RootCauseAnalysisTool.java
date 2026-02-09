@@ -14,6 +14,7 @@ import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -22,6 +23,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Slf4j
 public class RootCauseAnalysisTool implements McpTool {
@@ -43,6 +46,11 @@ public class RootCauseAnalysisTool implements McpTool {
       errorResponse.put("error", "Parameter 'fqn' is required and cannot be empty");
       return errorResponse;
     }
+
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(entityType));
 
     try {
       Map<String, Object> result = new HashMap<>();

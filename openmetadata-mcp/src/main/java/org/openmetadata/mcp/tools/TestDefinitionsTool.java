@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.tools;
 
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -14,6 +15,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
+@Slf4j
 public class TestDefinitionsTool implements McpTool {
   @Override
   public Map<String, Object> execute(
@@ -46,6 +48,11 @@ public class TestDefinitionsTool implements McpTool {
         catalogSecurityContext,
         listOperationContext,
         new ResourceContext<>(Entity.TEST_DEFINITION));
+    LOG.info(
+        "Listing test definitions for entityType: {}, testPlatform: {}, limit: {}",
+        entityType,
+        testPlatformParam,
+        limit);
     ListFilter filter = new ListFilter(Include.NON_DELETED);
     if (entityType != null) {
       filter.addQueryParam("entityType", entityType);
