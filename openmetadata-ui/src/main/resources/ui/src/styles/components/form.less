@@ -25,6 +25,7 @@
 .form-item-horizontal {
   .ant-form-item-row {
     flex-direction: row;
+
     .ant-form-item-label {
       display: block;
       flex: 0 0 40%;
@@ -32,6 +33,7 @@
       padding: 0px;
       align-self: center;
     }
+
     .ant-form-item-control {
       display: block;
       flex: 0 0 60%;
@@ -39,6 +41,7 @@
     }
   }
 }
+
 .form-item-vertical {
   .ant-form-item-row {
     flex-direction: column;
@@ -82,12 +85,14 @@
       border-color: @primary-5;
     }
   }
+
   .block-editor-wrapper.block-editor-wrapper--bar-menu {
     .bar-menu-wrapper {
       border-top-left-radius: @border-rad-xs;
       border-top-right-radius: @border-rad-xs;
       border-color: @grey-300;
     }
+
     .om-block-editor {
       border-bottom-left-radius: @border-rad-xs;
       border-bottom-right-radius: @border-rad-xs;
@@ -103,10 +108,12 @@
   .ant-switch-checked {
     background-color: @primary-6;
   }
+
   .ant-switch-checked .ant-switch-handle::before,
   .ant-switch-handle::before {
     background-color: @white;
   }
+
   .form-switch-container .ant-typography,
   .ant-form-item-label > label,
   .form-label-title {
@@ -119,6 +126,7 @@
   .ant-form-item-label > label.ant-form-item-required::before {
     display: none;
   }
+
   .ant-form-item-label > label.ant-form-item-required::after {
     display: inline-block;
     margin-left: 4px;
@@ -127,5 +135,26 @@
     font-family: SimSun, sans-serif;
     line-height: 1;
     content: '*';
+  }
+
+  .block-editor-wrapper {
+    .om-block-editor {
+      background-color: @white;
+      max-height: 120px;
+      padding: @size-sm;
+
+      p:last-child {
+        padding-bottom: 75px;
+      }
+    }
+
+    .bar-menu-wrapper {
+      padding: @size-xxs;
+
+      .bar-menu-wrapper--format--button--icon {
+        width: @size-mlg;
+        height: @size-mlg;
+      }
+    }
   }
 }

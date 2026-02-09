@@ -125,6 +125,7 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
   return (
     <TableRow
       hover
+      data-row-id={entity.id}
       data-row-type={rowType}
       data-testid={`column-row-${entity.columnName}`}
       key={entity.id}
