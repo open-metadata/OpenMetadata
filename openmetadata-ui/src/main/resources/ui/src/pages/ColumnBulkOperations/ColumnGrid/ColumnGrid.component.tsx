@@ -88,7 +88,11 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
 import './ColumnGrid.less';
 import { ColumnGridTableRow } from './components/ColumnGridTableRow';
-import { RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS } from './constants/ColumnGrid.constants';
+import {
+  RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS,
+  SCROLL_TO_ROW_MAX_RETRIES,
+  SCROLL_TO_ROW_RETRY_DELAY_MS,
+} from './constants/ColumnGrid.constants';
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';
 // Removed React Data Grid - using MUI Table instead
@@ -1260,12 +1264,22 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       return;
     }
     scrollToRowIdRef.current = null;
-    requestAnimationFrame(() => {
-      const row = scrollContainerRef.current?.querySelector(
-        `[data-row-id="${rowId}"]`
-      );
-      row?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    });
+    const selector = `[data-row-id="${CSS.escape(rowId)}"]`;
+
+    const tryScroll = (attempt = 0) => {
+      requestAnimationFrame(() => {
+        const row = scrollContainerRef.current?.querySelector(selector);
+        if (row) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else if (attempt < SCROLL_TO_ROW_MAX_RETRIES) {
+          setTimeout(
+            () => tryScroll(attempt + 1),
+            SCROLL_TO_ROW_RETRY_DELAY_MS
+          );
+        }
+      });
+    };
+    tryScroll();
   }, [columnGridListing.expandedRows, columnGridListing.expandedStructRows]);
 
   // Clear highlighted rows after 1s and collapse their expanded state
