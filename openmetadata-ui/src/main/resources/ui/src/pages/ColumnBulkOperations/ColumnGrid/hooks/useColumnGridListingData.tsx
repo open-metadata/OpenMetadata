@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { useSelectionState } from '../../../../components/common/atoms/data/useSelectionState';
 import { usePaginationState } from '../../../../components/common/atoms/pagination/usePaginationState';
@@ -26,12 +27,14 @@ import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import { ColumnGridItem } from '../../../../generated/api/data/columnGridResponse';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getColumnGrid } from '../../../../rest/columnAPI';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { ColumnGridFilters, ColumnGridRowData } from '../ColumnGrid.interface';
 import {
   COLUMN_GLOSSARY_FIELD,
   COLUMN_GRID_FILTERS,
   COLUMN_TAG_FIELD,
   convertFilterValuesToOptions,
+  MAX_REFETCH_CHAIN_PAGES,
 } from '../constants/ColumnGrid.constants';
 
 const PAGE_SIZE = PAGE_SIZE_MEDIUM;
@@ -62,6 +65,7 @@ export const useColumnGridListingData = (
   setGridItems: React.Dispatch<React.SetStateAction<ColumnGridItem[]>>;
   clearEditedValues: () => void;
 } => {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [serverFilters] = useState<ColumnGridFilters>(
     props.externalFilters || {}
@@ -86,7 +90,8 @@ export const useColumnGridListingData = (
   // Store the total from first page - this is the overall total for pagination
   const totalUniqueColumnsRef = useRef<number>(0);
   const totalOccurrencesRef = useRef<number>(0);
-  // Removed accumulation logic - we'll just filter current page data
+  const refetchInProgressRef = useRef(false);
+  const needsRefetchAgainRef = useRef(false);
 
   // Local pagination state (cursor-based, not in URL)
   const [currentPage, setCurrentPage] = useState(1);
@@ -168,7 +173,13 @@ export const useColumnGridListingData = (
       page: number,
       searchQuery: string,
       filters: ColumnGridFilters,
-      pageSize: number
+      pageSize: number,
+      options?: {
+        /** When true, fetch and store cursor/totals but do not update grid - used when chaining to reach page N */
+        skipGridItemsUpdate?: boolean;
+        /** When true, rethrow on error so caller can handle (e.g. fallback when cached cursor is invalid) */
+        rethrowOnError?: boolean;
+      }
     ) => {
       setLoading(true);
       try {
@@ -195,9 +206,9 @@ export const useColumnGridListingData = (
           cursorsByPageRef.current.set(page, response.cursor);
         }
 
-        // Set grid items - when client-side filters are active, this will trigger accumulation
-        // When not using client-side filters, this is the current page's items
-        setGridItems(response.columns);
+        if (!options?.skipGridItemsUpdate) {
+          setGridItems(response.columns);
+        }
 
         // Backend behavior:
         // - Page 1 (no cursor): Returns overall totals (e.g., totalUniqueColumns: 489)
@@ -219,24 +230,25 @@ export const useColumnGridListingData = (
         setCursor(response.cursor);
         setHasMore(!!response.cursor);
       } catch (error) {
-        // Clear data on error - will show no data placeholder
-        setGridItems([]);
-        setEntities([]);
-        setAllRows([]);
-        setTotalUniqueColumns(0);
-        setTotalOccurrences(0);
-
-        // Error handling - can be logged to error tracking service
-        // In production, this should be sent to an error tracking service
+        if (!options?.rethrowOnError) {
+          setGridItems([]);
+          setEntities([]);
+          setAllRows([]);
+          setTotalUniqueColumns(0);
+          setTotalOccurrences(0);
+        }
         if (process.env.NODE_ENV === 'development') {
           // eslint-disable-next-line no-console
           console.error('Error loading column grid:', error);
+        }
+        if (options?.rethrowOnError) {
+          throw error;
         }
       } finally {
         setLoading(false);
       }
     },
-    [] // No dependencies - all values passed as parameters
+    []
   );
 
   const applyClientSideFilters = useCallback(
@@ -246,7 +258,6 @@ export const useColumnGridListingData = (
     []
   );
 
-  // Ref to track edited values across row regenerations
   const editedValuesRef = useRef<
     Map<
       string,
@@ -258,8 +269,6 @@ export const useColumnGridListingData = (
     >
   >(new Map());
 
-  // Transform grid items to rows and apply filtering
-  // IMPORTANT: Preserve edited values when rows are regenerated (e.g., on expand/collapse)
   useEffect(() => {
     if (gridItems.length > 0) {
       const transformedRows = props.transformGridItemsToRows(
@@ -268,7 +277,6 @@ export const useColumnGridListingData = (
         expandedStructRows
       );
 
-      // Merge edited values from ref into transformed rows
       const rowsWithEdits =
         editedValuesRef.current.size > 0
           ? transformedRows.map((row) => {
@@ -298,8 +306,6 @@ export const useColumnGridListingData = (
     setEntities(applyClientSideFilters(allRows));
   }, [allRows, applyClientSideFilters]);
 
-  // Track edited values in ref when allRows changes
-  // This ensures edits persist across row regenerations
   useEffect(() => {
     allRows.forEach((row) => {
       if (
@@ -313,27 +319,25 @@ export const useColumnGridListingData = (
           editedTags: row.editedTags,
         });
       } else {
-        // Remove from ref if no edited values
         editedValuesRef.current.delete(row.id);
       }
     });
   }, [allRows]);
 
   useEffect(() => {
-    const currentFiltersString = JSON.stringify({
-      ...columnGridFilters,
-      searchQuery: urlState.searchQuery,
-    });
+    const currentFiltersString = JSON.stringify(
+      urlState.searchQuery + JSON.stringify(urlState.filters)
+    );
     const filtersChanged = previousFiltersRef.current !== currentFiltersString;
+    previousFiltersRef.current = currentFiltersString;
 
-    // Reset cursors, items, and edited values when filters change
     if (filtersChanged) {
       cursorsByPageRef.current = new Map();
       itemsByPageRef.current = new Map();
       totalUniqueColumnsRef.current = 0;
       totalOccurrencesRef.current = 0;
-      editedValuesRef.current = new Map(); // Clear edited values
-      setGridItems([]); // Clear current items
+      editedValuesRef.current = new Map();
+      setGridItems([]);
       setTotalUniqueColumns(0);
       setTotalOccurrences(0);
       previousFiltersRef.current = currentFiltersString;
@@ -358,7 +362,6 @@ export const useColumnGridListingData = (
     loadData,
   ]);
 
-  // Clear selection when filters/search change
   useEffect(() => {
     selectionState.clearSelection();
   }, [urlState.currentPage, urlState.searchQuery, urlState.filters]);
@@ -416,27 +419,130 @@ export const useColumnGridListingData = (
     totalOccurrencesRef.current = 0;
   }, []);
 
-  const refetch = useCallback((): Promise<void> => {
-    // Clear ALL caches to ensure fresh data is fetched from the server
-    // This is especially important after bulk updates when the search index
-    // has been refreshed with new data
-    cursorsByPageRef.current = new Map();
-    itemsByPageRef.current = new Map();
-    totalUniqueColumnsRef.current = 0;
-    totalOccurrencesRef.current = 0;
+  /**
+   * Refetch after bulk update (WebSocket job complete).
+   * 1) Load page 1 (totals + cursor). 2) If target page > 1: try cached cursor, else chain pages 2..N.
+   * 3) On any error: toast + fallback to page 1. 4) If target > MAX_REFETCH_CHAIN_PAGES: show page 1 + toast.
+   * 5) Concurrent calls are queued via needsRefetchAgainRef.
+   */
+  const refetch = useCallback(async (): Promise<void> => {
+    if (refetchInProgressRef.current) {
+      needsRefetchAgainRef.current = true;
 
-    return loadData(
-      urlState.currentPage,
-      urlState.searchQuery,
-      columnGridFilters,
-      urlState.pageSize
-    );
+      return;
+    }
+    refetchInProgressRef.current = true;
+
+    const clearCaches = () => {
+      cursorsByPageRef.current = new Map();
+      itemsByPageRef.current = new Map();
+      totalUniqueColumnsRef.current = 0;
+      totalOccurrencesRef.current = 0;
+    };
+
+    const loadPage1 = (skipGrid = false) =>
+      loadData(1, urlState.searchQuery, columnGridFilters, urlState.pageSize, {
+        skipGridItemsUpdate: skipGrid,
+        rethrowOnError: true,
+      });
+
+    const recoverToPage1 = () => {
+      showErrorToast(t('server.unexpected-response'));
+      setCurrentPage(1);
+
+      return loadData(
+        1,
+        urlState.searchQuery,
+        columnGridFilters,
+        urlState.pageSize
+      );
+    };
+
+    try {
+      const pageToRestore = urlState.currentPage;
+      const savedCursors = new Map(cursorsByPageRef.current);
+      clearCaches();
+
+      const skipGrid = { skipGridItemsUpdate: true };
+
+      try {
+        await loadPage1(pageToRestore > 1);
+
+        const total = totalUniqueColumnsRef.current;
+        const newTotalPages = Math.max(1, Math.ceil(total / urlState.pageSize));
+        const effectivePage = Math.min(pageToRestore, newTotalPages);
+
+        if (effectivePage !== pageToRestore) {
+          setCurrentPage(effectivePage);
+        }
+
+        if (effectivePage > MAX_REFETCH_CHAIN_PAGES) {
+          setCurrentPage(1);
+          const page1Items = itemsByPageRef.current.get(1);
+          if (page1Items) {
+            setGridItems(page1Items);
+          }
+          showErrorToast(t('message.please-refresh-the-page'));
+        } else if (effectivePage > 1) {
+          const cachedCursor = savedCursors.get(effectivePage - 1);
+          let usedCachedCursor = false;
+
+          if (cachedCursor) {
+            try {
+              cursorsByPageRef.current.set(effectivePage - 1, cachedCursor);
+              await loadData(
+                effectivePage,
+                urlState.searchQuery,
+                columnGridFilters,
+                urlState.pageSize,
+                { rethrowOnError: true }
+              );
+              usedCachedCursor = true;
+            } catch {
+              cursorsByPageRef.current.delete(effectivePage - 1);
+            }
+          }
+
+          if (!usedCachedCursor) {
+            for (let page = 2; page < effectivePage; page++) {
+              await loadData(
+                page,
+                urlState.searchQuery,
+                columnGridFilters,
+                urlState.pageSize,
+                { ...skipGrid, rethrowOnError: true }
+              );
+            }
+            await loadData(
+              effectivePage,
+              urlState.searchQuery,
+              columnGridFilters,
+              urlState.pageSize
+            );
+          }
+        } else if (pageToRestore > 1) {
+          const page1Items = itemsByPageRef.current.get(1);
+          if (page1Items) {
+            setGridItems(page1Items);
+          }
+        }
+      } catch {
+        await recoverToPage1();
+      }
+    } finally {
+      refetchInProgressRef.current = false;
+      if (needsRefetchAgainRef.current) {
+        needsRefetchAgainRef.current = false;
+        setTimeout(() => refetch(), 0);
+      }
+    }
   }, [
     urlState.currentPage,
     urlState.searchQuery,
     urlState.pageSize,
     columnGridFilters,
     loadData,
+    t,
   ]);
 
   // Clear all edited values (call after successful bulk update)
