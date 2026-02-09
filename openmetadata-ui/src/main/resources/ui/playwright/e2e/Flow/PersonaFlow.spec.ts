@@ -91,7 +91,9 @@ test.describe.serial('Persona operations', () => {
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   });
 
-  test('Persona creation should work properly', async ({ page }) => {
+  test('Persona creation should work properly with breadcrumb navigation', async ({
+    page,
+  }) => {
     await page.getByTestId('add-persona-button').click();
 
     await validateFormNameFieldInput({
@@ -147,39 +149,10 @@ test.describe.serial('Persona operations', () => {
 
     await personaResponse;
 
-    await page.getByRole('tab', { name: 'Users' }).click();
-
-    await page.waitForSelector('[data-testid="entity-header-name"]', {
-      state: 'visible',
-    });
-
-    await expect(page.getByTestId('entity-header-name')).toContainText(
-      PERSONA_DETAILS.name
-    );
-
-    await expect(page.getByTestId('entity-header-display-name')).toContainText(
-      PERSONA_DETAILS.displayName
-    );
-
-    await expect(
-      page.locator(
-        '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
-      )
-    ).toContainText(PERSONA_DETAILS.description);
-
-    await expect(page.getByTestId(user.responseData.name)).toContainText(
-      user.responseData.name
-    );
-  });
-
-  test('Breadcrumb navigation should work correctly', async ({ page }) => {
-    await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, true);
-
-    // Check default hash, wait for URL to stabilize
     await expect(page).toHaveURL(/.*#customize-ui/);
 
     // Click on Governance category
-    await page.locator('.setting-card-item').getByTestId('governance').click();
+    await page.locator('.setting-card-item[data-testid="governance"]').click();
 
     // Check URL hash
     await expect(page).toHaveURL(/.*#customize-ui.governance/);
@@ -208,6 +181,30 @@ test.describe.serial('Persona operations', () => {
       })
       .click();
     await expect(page).toHaveURL(/.*#customize-ui/);
+
+    await page.getByRole('tab', { name: 'Users' }).click();
+
+    await page.waitForSelector('[data-testid="entity-header-name"]', {
+      state: 'visible',
+    });
+
+    await expect(page.getByTestId('entity-header-name')).toContainText(
+      PERSONA_DETAILS.name
+    );
+
+    await expect(page.getByTestId('entity-header-display-name')).toContainText(
+      PERSONA_DETAILS.displayName
+    );
+
+    await expect(
+      page.locator(
+        '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
+      )
+    ).toContainText(PERSONA_DETAILS.description);
+
+    await expect(page.getByTestId(user.responseData.name)).toContainText(
+      user.responseData.name
+    );
   });
 
   test('Persona update description flow should work properly', async ({
