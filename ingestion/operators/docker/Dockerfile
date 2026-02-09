@@ -81,11 +81,14 @@ ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
 
-RUN pip install --upgrade pip
+# Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
+# cx-Oracle's setup.py still uses pkg_resources
+RUN pip install --upgrade pip "setuptools<81"
+# Pre-install cx-Oracle without build isolation to use the pinned setuptools
+RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 
 ARG INGESTION_DEPENDENCY="all"
 ARG RI_VERSION="1.12.0.0.dev0"
-RUN pip install --upgrade pip
 RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 

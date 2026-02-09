@@ -169,7 +169,7 @@ base_requirements = {
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
-    "setuptools~=78.1.1",
+    "setuptools>=78.1.1,<81",  # <81 required: pkg_resources removed in setuptools 81+
     "shapely",
     "collate-data-diff>=0.11.9",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build

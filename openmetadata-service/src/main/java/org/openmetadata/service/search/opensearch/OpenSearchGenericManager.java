@@ -13,10 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.search.GenericClient;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchHealthStatus;
-import os.org.opensearch.client.Request;
-import os.org.opensearch.client.Response;
-import os.org.opensearch.client.ResponseException;
-import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.HealthStatus;
@@ -24,23 +20,26 @@ import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
 import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import os.org.opensearch.client.opensearch.cluster.HealthResponse;
-import os.org.opensearch.client.opensearch.indices.DataStreamInfo;
+import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
+import os.org.opensearch.client.opensearch.generic.Requests;
+import os.org.opensearch.client.opensearch.indices.DataStream;
 import os.org.opensearch.client.opensearch.indices.GetDataStreamResponse;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
-import os.org.opensearch.client.opensearch.nodes.Stats;
+import os.org.opensearch.client.opensearch.nodes.stats.Stats;
+import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport;
 
 @Slf4j
 public class OpenSearchGenericManager implements GenericClient {
   private final OpenSearchClient client;
-  private final RestClient restClient;
+  private final ApacheHttpClient5Transport transport;
   private final boolean isClientAvailable;
-  private final boolean isRestClientAvailable;
+  private final boolean isTransportAvailable;
 
-  public OpenSearchGenericManager(OpenSearchClient client, RestClient restClient) {
+  public OpenSearchGenericManager(OpenSearchClient client, ApacheHttpClient5Transport transport) {
     this.client = client;
     this.isClientAvailable = client != null;
-    this.restClient = restClient;
-    this.isRestClientAvailable = restClient != null;
+    this.transport = transport;
+    this.isTransportAvailable = transport != null;
   }
 
   @Override
@@ -51,7 +50,7 @@ public class OpenSearchGenericManager implements GenericClient {
     }
     try {
       GetDataStreamResponse response = client.indices().getDataStream(g -> g.name(prefix + "*"));
-      return response.dataStreams().stream().map(DataStreamInfo::name).collect(Collectors.toList());
+      return response.dataStreams().stream().map(DataStream::name).collect(Collectors.toList());
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
         LOG.warn("No DataStreams exist with prefix '{}'. Skipping.", prefix);
@@ -90,31 +89,33 @@ public class OpenSearchGenericManager implements GenericClient {
 
   @Override
   public void deleteILMPolicy(String policyName) throws IOException {
-    if (!isRestClientAvailable) {
-      LOG.error("OpenSearch rest client is not available. Cannot delete ISM policy.");
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot delete ISM policy.");
       return;
     }
     try {
-      // strongly typed API support not exist so need to use restClient for OS
-      Request request = new Request("DELETE", "/_plugins/_ism/policies/" + policyName);
-      Response response = restClient.performRequest(request);
+      OpenSearchGenericClient genericClient = client.generic();
+      var response =
+          genericClient.execute(
+              Requests.builder()
+                  .method("DELETE")
+                  .endpoint("/_plugins/_ism/policies/" + policyName)
+                  .build());
 
-      int statusCode = response.getStatusLine().getStatusCode();
+      int statusCode = response.getStatus();
       if (statusCode == 200) {
         LOG.info("Successfully deleted ISM policy: {}", policyName);
       } else if (statusCode == 404) {
         LOG.warn("ISM policy {} does not exist. Skipping deletion.", policyName);
       } else {
         LOG.error("Failed to delete ILM policy: {}", policyName);
-        throw new IOException(
-            "Failed to delete ISM policy: " + response.getStatusLine().getReasonPhrase());
+        throw new IOException("Failed to delete ISM policy: HTTP " + statusCode);
       }
-    } catch (ResponseException e) {
-      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+    } catch (OpenSearchException e) {
+      if (e.status() == 404) {
         LOG.warn("ISM Policy {} does not exist. Skipping deletion.", policyName);
       } else {
-        throw new IOException(
-            "Failed to delete ISM policy: " + e.getResponse().getStatusLine().getReasonPhrase());
+        throw new IOException("Failed to delete ISM policy: " + e.getMessage());
       }
     } catch (Exception e) {
       LOG.error("Failed to delete ISM policy {}", policyName, e);
@@ -168,13 +169,11 @@ public class OpenSearchGenericManager implements GenericClient {
 
   @Override
   public void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
-    if (!isClientAvailable || !isRestClientAvailable) {
-      LOG.error(
-          "OpenSearch client or rest client is not available. Cannot detach ISM policy from indexes.");
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot detach ISM policy from indexes.");
       return;
     }
     try {
-      // Use strongly typed API to get indices
       var getIndexResponse = client.indices().get(g -> g.index(indexPattern));
 
       if (getIndexResponse.result().isEmpty()) {
@@ -182,24 +181,28 @@ public class OpenSearchGenericManager implements GenericClient {
         return;
       }
 
-      // Use REST client to update ISM settings since strongly typed API doesn't support ISM plugin
-      // settings for OpenSearch
+      OpenSearchGenericClient genericClient = client.generic();
+
       for (String indexName : getIndexResponse.result().keySet()) {
         try {
-          Request putSettings = new Request("PUT", "/" + indexName + "/_settings");
-          putSettings.setJsonEntity("{\"index.plugins.index_state_management.policy_id\": null}");
-          Response putResponse = restClient.performRequest(putSettings);
+          var response =
+              genericClient.execute(
+                  Requests.builder()
+                      .method("PUT")
+                      .endpoint("/" + indexName + "/_settings")
+                      .json("{\"index.plugins.index_state_management.policy_id\": null}")
+                      .build());
 
-          if (putResponse.getStatusLine().getStatusCode() == 200) {
+          if (response.getStatus() == 200) {
             LOG.info("Detached ISM policy from index: {}", indexName);
           } else {
             LOG.warn(
                 "Failed to detach ISM policy from index: {}. Status: {}",
                 indexName,
-                putResponse.getStatusLine().getStatusCode());
+                response.getStatus());
           }
-        } catch (ResponseException e) {
-          if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        } catch (OpenSearchException e) {
+          if (e.status() == 404) {
             LOG.warn("Index {} does not exist. Skipping.", indexName);
           } else {
             LOG.error("Failed to detach ISM policy from index: {}", indexName, e);
@@ -300,8 +303,8 @@ public class OpenSearchGenericManager implements GenericClient {
           // Note: OpenSearch Java client may return null for these fields in certain scenarios
           // (AWS-managed OpenSearch, older versions, etc.), causing NPE during unboxing.
           // See: https://github.com/opensearch-project/opensearch-java/issues/1040
-          heapUsedBytes = firstNodeStats.jvm().mem().usedInBytes();
-          heapMaxBytes = firstNodeStats.jvm().mem().totalInBytes();
+          heapUsedBytes = firstNodeStats.jvm().mem().heapUsedInBytes();
+          heapMaxBytes = firstNodeStats.jvm().mem().heapMaxInBytes();
         } catch (NullPointerException e) {
           LOG.warn(
               "OpenSearch returned null JVM memory stats (likely AWS-managed cluster or missing stats). "
