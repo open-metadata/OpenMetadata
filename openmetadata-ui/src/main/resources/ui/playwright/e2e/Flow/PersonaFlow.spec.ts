@@ -179,10 +179,11 @@ test.describe.serial('Persona operations', () => {
     await expect(page).toHaveURL(/.*#customize-ui/);
 
     // Click on Governance category
-    await page.getByTestId('governance').click();
+    await page.locator('.setting-card-item').getByTestId('governance').click();
 
     // Check URL hash
     await expect(page).toHaveURL(/.*#customize-ui.governance/);
+    await expect(page.getByTestId('inactive-link')).toHaveText('Governance');
 
     // Click Persona Name (2nd item)
     await page
