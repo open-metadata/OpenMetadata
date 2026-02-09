@@ -99,7 +99,7 @@ public class ElasticSearchBulkSink implements BulkSink {
         bulkActions,
         maxPayloadSizeBytes,
         concurrentRequests,
-        5000, // 5 seconds flush interval
+        1000, // 1 second flush interval
         100, // 100ms initial backoff
         3, // 3 retries
         totalSubmitted,
@@ -194,6 +194,8 @@ public class ElasticSearchBulkSink implements BulkSink {
     return null;
   }
 
+  private static final int BULK_OPERATION_METADATA_OVERHEAD = 50;
+
   private void addEntity(
       EntityInterface entity, String indexName, boolean recreateIndex, StageStatsTracker tracker) {
     try {
@@ -201,6 +203,8 @@ public class ElasticSearchBulkSink implements BulkSink {
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
       String json = JsonUtils.pojoToJson(searchIndexDoc);
       String docId = entity.getId().toString();
+      long estimatedSize =
+          (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
 
       BulkOperation operation;
       if (recreateIndex) {
@@ -222,7 +226,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       if (tracker != null) {
         tracker.incrementPendingSink();
       }
-      bulkProcessor.add(operation, docId, entityType, tracker);
+      bulkProcessor.add(operation, docId, entityType, tracker, estimatedSize);
       if (tracker != null) {
         tracker.recordProcess(StatsResult.SUCCESS);
       }
@@ -269,6 +273,8 @@ public class ElasticSearchBulkSink implements BulkSink {
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
       String json = JsonUtils.pojoToJson(searchIndexDoc);
       String docId = entity.getId().toString();
+      long estimatedSize =
+          (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
 
       BulkOperation operation =
           BulkOperation.of(
@@ -279,7 +285,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       if (tracker != null) {
         tracker.incrementPendingSink();
       }
-      bulkProcessor.add(operation, docId, entityType, tracker);
+      bulkProcessor.add(operation, docId, entityType, tracker, estimatedSize);
       if (tracker != null) {
         tracker.recordProcess(StatsResult.SUCCESS);
       }
@@ -517,13 +523,21 @@ public class ElasticSearchBulkSink implements BulkSink {
     }
 
     void add(BulkOperation operation, String docId, String entityType, StageStatsTracker tracker) {
+      add(operation, docId, entityType, tracker, -1);
+    }
+
+    void add(
+        BulkOperation operation,
+        String docId,
+        String entityType,
+        StageStatsTracker tracker,
+        long estimatedSizeBytes) {
       lock.lock();
       try {
         if (closed) {
           throw new IllegalStateException("Bulk processor is closed");
         }
 
-        // Track entityType and tracker for stats reporting
         if (docId != null) {
           if (entityType != null) {
             docIdToEntityType.put(docId, entityType);
@@ -533,7 +547,8 @@ public class ElasticSearchBulkSink implements BulkSink {
           }
         }
 
-        long operationSize = estimateOperationSize(operation);
+        long operationSize =
+            estimatedSizeBytes > 0 ? estimatedSizeBytes : estimateOperationSize(operation);
         buffer.add(operation);
         currentBufferSize += operationSize;
 
