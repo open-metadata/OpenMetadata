@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { useSelectionState } from '../../../../components/common/atoms/data/useSelectionState';
 import { usePaginationState } from '../../../../components/common/atoms/pagination/usePaginationState';
@@ -26,6 +27,7 @@ import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import { ColumnGridItem } from '../../../../generated/api/data/columnGridResponse';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getColumnGrid } from '../../../../rest/columnAPI';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { ColumnGridFilters, ColumnGridRowData } from '../ColumnGrid.interface';
 import {
   COLUMN_GLOSSARY_FIELD,
@@ -62,6 +64,7 @@ export const useColumnGridListingData = (
   setGridItems: React.Dispatch<React.SetStateAction<ColumnGridItem[]>>;
   clearEditedValues: () => void;
 } => {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [serverFilters] = useState<ColumnGridFilters>(
     props.externalFilters || {}
@@ -481,21 +484,32 @@ export const useColumnGridListingData = (
       }
       // Fallback: chain load pages 2..N-1 (skip grid update), then load target page
       if (!cachedCursorWorked) {
-        for (let page = 2; page < effectivePage; page++) {
+        try {
+          for (let page = 2; page < effectivePage; page++) {
+            await loadData(
+              page,
+              urlState.searchQuery,
+              columnGridFilters,
+              urlState.pageSize,
+              { ...skipGridUpdate, rethrowOnError: true }
+            );
+          }
           await loadData(
-            page,
+            effectivePage,
             urlState.searchQuery,
             columnGridFilters,
-            urlState.pageSize,
-            skipGridUpdate
+            urlState.pageSize
+          );
+        } catch {
+          showErrorToast(t('server.unexpected-response'));
+          setCurrentPage(1);
+          await loadData(
+            1,
+            urlState.searchQuery,
+            columnGridFilters,
+            urlState.pageSize
           );
         }
-        await loadData(
-          effectivePage,
-          urlState.searchQuery,
-          columnGridFilters,
-          urlState.pageSize
-        );
       }
     } else if (pageToRestore > 1) {
       // effectivePage is 1, but we loaded page 1 with skipGridUpdate - show it now
@@ -511,6 +525,7 @@ export const useColumnGridListingData = (
     urlState.pageSize,
     columnGridFilters,
     loadData,
+    t,
   ]);
 
   // Clear all edited values (call after successful bulk update)
