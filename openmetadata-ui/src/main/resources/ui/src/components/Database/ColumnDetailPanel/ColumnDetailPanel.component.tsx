@@ -203,7 +203,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return undefined;
-  }, [localToast.open]);
+  }, [localToast]);
 
   const [activeColumn, setActiveColumn] = useState<T | null>(column);
 

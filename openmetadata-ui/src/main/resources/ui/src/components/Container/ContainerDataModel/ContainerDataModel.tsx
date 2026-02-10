@@ -85,7 +85,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     useState<Column>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
-  const schema = pruneEmptyChildren(dataModel?.columns ?? []);
+  const schema = useMemo(() => pruneEmptyChildren(dataModel?.columns ?? []), [
+    dataModel?.columns,
+  ]);
 
   // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
   useEffect(() => {
