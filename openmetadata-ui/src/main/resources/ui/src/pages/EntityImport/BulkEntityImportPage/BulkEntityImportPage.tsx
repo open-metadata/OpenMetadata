@@ -220,7 +220,7 @@ const BulkEntityImportPage = () => {
         showErrorToast(error as AxiosError);
       }
     },
-    [entityType, fqn, isBulkEdit, effectiveSourceEntityType]
+    [entityType, fqn, isBulkEdit]
   );
 
   const handleBack = () => {
