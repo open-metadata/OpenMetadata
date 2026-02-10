@@ -1835,6 +1835,7 @@
     "syntax": "Syntax",
     "tab": "タブ",
     "table": "テーブル",
+    "table-column": "テーブル列",
     "table-constraint-plural": "テーブル制約",
     "table-constraints": "テーブル制約",
     "table-details": "テーブルの詳細",
