@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-.add-domain-form-description .block-editor-wrapper {
-  border-radius: 8px;
-}
+package org.openmetadata.csv;
 
-.add-domain-form-description .bar-menu-wrapper {
-  background-color: #ffffff;
-  border-radius: 7px 7px 0 0;
+@FunctionalInterface
+public interface CsvImportProgressCallback {
+  void onProgress(int rowsProcessed, int totalRows, int batchNumber, String message);
 }

@@ -218,7 +218,7 @@ public class SearchClusterMetrics {
     int recommendedBatchSize = (int) Math.min(1000, maxPayloadSize / (avgEntitySizeKB * 1024L));
 
     if (maxPayloadSize <= 10 * 1024 * 1024) {
-      recommendedBatchSize = Math.min(300, recommendedBatchSize); // Cap at 300 for AWS
+      recommendedBatchSize = Math.min(500, recommendedBatchSize); // Cap at 500 for AWS
     }
     recommendedBatchSize = Math.max(50, recommendedBatchSize); // Lower minimum for safety
 
@@ -370,17 +370,17 @@ public class SearchClusterMetrics {
       SearchRepository searchRepository, long totalEntities, int maxDbConnections) {
     int conservativeBatchSize;
     if (totalEntities > 1000000) {
-      conservativeBatchSize = 200;
+      conservativeBatchSize = 300;
     } else if (totalEntities > 500000) {
-      conservativeBatchSize = 150;
+      conservativeBatchSize = 225;
     } else if (totalEntities > 250000) {
-      conservativeBatchSize = 125;
+      conservativeBatchSize = 200;
     } else if (totalEntities > 100000) {
-      conservativeBatchSize = 100;
+      conservativeBatchSize = 150;
     } else if (totalEntities > 50000) {
-      conservativeBatchSize = 75;
+      conservativeBatchSize = 125;
     } else {
-      conservativeBatchSize = 50;
+      conservativeBatchSize = 100;
     }
 
     int conservativeThreads = (maxDbConnections * 3) / 4;

@@ -18,6 +18,7 @@ import { redirectToHomePage } from '../../utils/common';
 import { selectDomain } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -28,7 +29,7 @@ const testDomainData: Domain['data'] = {
   domainType: 'Aggregate',
 };
 
-test.describe('Sample Data Domain and Data Product Validation', () => {
+test.describe('Sample Data Domain and Data Product Validation', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });

@@ -14,9 +14,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -114,6 +116,29 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
             .listLastTestCaseResultsForTestSuite(testSuiteId);
     List<TestCaseResult> testCaseResults = JsonUtils.readObjects(json, TestCaseResult.class);
     return new ResultList<>(testCaseResults, null, null, testCaseResults.size());
+  }
+
+  public Map<UUID, List<ResultSummary>> listResultSummariesForTestSuites(List<UUID> testSuiteIds) {
+    if (testSuiteIds == null || testSuiteIds.isEmpty()) {
+      return Map.of();
+    }
+    List<String> idStrings = testSuiteIds.stream().map(UUID::toString).toList();
+    List<CollectionDAO.TestCaseResultTimeSeriesDAO.ResultSummaryRow> rows =
+        ((CollectionDAO.TestCaseResultTimeSeriesDAO) timeSeriesDao)
+            .listResultSummariesForTestSuites(idStrings);
+
+    return rows.stream()
+        .map(
+            row ->
+                Map.entry(
+                    UUID.fromString(row.testSuiteId()),
+                    new ResultSummary()
+                        .withTestCaseName(row.testCaseFQN())
+                        .withStatus(TestCaseStatus.fromValue(row.testCaseStatus()))
+                        .withTimestamp(row.timestamp())))
+        .collect(
+            Collectors.groupingBy(
+                Map.Entry::getKey, Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
   }
 
   public TestCaseResult listLastTestCaseResult(String testCaseFQN) {

@@ -24,6 +24,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.SearchIndexDataType;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
@@ -46,6 +47,7 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     supportsDomains = false;
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
   }
 
   // ===================================================================
@@ -743,5 +745,26 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     // After restore, deleted should be false (not null)
     assertNotNull(restored.getDeleted());
     assertFalse(restored.getDeleted());
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateSearchIndex> createRequests) {
+    return SdkClients.adminClient().searchIndexes().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateSearchIndex> createRequests) {
+    return SdkClients.adminClient().searchIndexes().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateSearchIndex createInvalidRequestForBulk(TestNamespace ns) {
+    CreateSearchIndex request = new CreateSearchIndex();
+    request.setName(ns.prefix("invalid_search_index"));
+    return request;
   }
 }

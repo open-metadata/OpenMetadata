@@ -53,6 +53,7 @@ import {
 } from './SearchDropdown.interface';
 
 const SearchDropdown: FC<SearchDropdownProps> = ({
+  dropdownClassName,
   isSuggestionsLoading,
   label,
   options,
@@ -241,7 +242,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     (menuNode: ReactNode) => (
       <Card
         bodyStyle={{ padding: 0 }}
-        className="custom-dropdown-render"
+        className={classNames('custom-dropdown-render', dropdownClassName)}
         data-testid="drop-down-menu">
         <Space className="w-full" direction="vertical" size={0}>
           {!hideSearchBar && (
@@ -318,6 +319,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     [
       label,
       debouncedOnSearch,
+      dropdownClassName,
       hasNullOption,
       showClearAllBtn,
       nullOptionSelected,

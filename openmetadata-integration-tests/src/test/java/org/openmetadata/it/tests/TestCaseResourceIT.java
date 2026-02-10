@@ -28,6 +28,8 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
@@ -52,12 +54,28 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     supportsDataProducts = false; // TestCase doesn't support dataProducts
     supportsNameLengthValidation = false; // TestCase FQN includes table FQN, no strict name length
     supportsImportExport = true;
+    supportsBatchImport = true;
+    supportsRecursiveImport = false; // TestCase doesn't support recursive import
     supportsListHistoryByTimestamp = true;
   }
 
   @Override
   protected String getResourcePath() {
     return TestCaseResource.COLLECTION_PATH;
+  }
+
+  @Override
+  protected CsvImportResult performImportCsv(TestNamespace ns, String csvData, boolean dryRun) {
+    try {
+      String containerName = getImportExportContainerName(ns);
+      String result =
+          SdkClients.adminClient()
+              .testCases()
+              .importCsv(containerName, csvData, dryRun, "testSuite");
+      return JsonUtils.readValue(result, CsvImportResult.class);
+    } catch (Exception e) {
+      throw new RuntimeException("CSV import failed: " + e.getMessage(), e);
+    }
   }
 
   private TestSuite lastCreatedTestSuite;
@@ -2766,5 +2784,126 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         Exception.class,
         () -> getEntityIncludeDeleted(created.getId().toString()),
         "Hard deleted entity should not be retrievable");
+  }
+
+  // ===================================================================
+  // CSV IMPORT/EXPORT SUPPORT
+  // ===================================================================
+
+  protected String generateValidCsvData(TestNamespace ns, List<TestCase> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return null;
+    }
+
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "name,displayName,description,testDefinition,entityFQN,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms\n");
+
+    for (TestCase testCase : entities) {
+      csv.append(escapeCSVValue(testCase.getName())).append(",");
+      csv.append(escapeCSVValue(testCase.getDisplayName())).append(",");
+      csv.append(escapeCSVValue(testCase.getDescription())).append(",");
+      csv.append(
+              escapeCSVValue(
+                  testCase.getTestDefinition() != null
+                      ? testCase.getTestDefinition().getName()
+                      : ""))
+          .append(",");
+      csv.append(escapeCSVValue(testCase.getEntityFQN())).append(",");
+      csv.append(
+              escapeCSVValue(
+                  testCase.getTestSuite() != null
+                      ? testCase.getTestSuite().getFullyQualifiedName()
+                      : ""))
+          .append(",");
+      csv.append(escapeCSVValue(formatParameterValuesForCsv(testCase.getParameterValues())))
+          .append(",");
+      csv.append(
+              escapeCSVValue(
+                  testCase.getComputePassedFailedRowCount() != null
+                      ? testCase.getComputePassedFailedRowCount().toString()
+                      : ""))
+          .append(",");
+      csv.append(
+              escapeCSVValue(
+                  testCase.getUseDynamicAssertion() != null
+                      ? testCase.getUseDynamicAssertion().toString()
+                      : ""))
+          .append(",");
+      csv.append(escapeCSVValue(testCase.getInspectionQuery())).append(",");
+      csv.append(escapeCSVValue(formatTagsForCsv(testCase.getTags()))).append(",");
+      csv.append(escapeCSVValue("")); // glossaryTerms - not available on TestCase
+      csv.append("\n");
+    }
+
+    return csv.toString();
+  }
+
+  protected String generateInvalidCsvData(TestNamespace ns) {
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms\n");
+    // Missing required name field
+    csv.append(",Test Case,Description,,entity.fqn,,,,,,,\n");
+    // Missing required testDefinition and entityFQN
+    csv.append("invalid_test_case,,,,,,,,,,,\n");
+    return csv.toString();
+  }
+
+  protected List<String> getRequiredCsvHeaders() {
+    return List.of("name*", "testDefinition*", "entityFQN*");
+  }
+
+  protected List<String> getAllCsvHeaders() {
+    return List.of(
+        "name*",
+        "displayName",
+        "description",
+        "testDefinition*",
+        "entityFQN*",
+        "testSuite",
+        "parameterValues",
+        "computePassedFailedRowCount",
+        "useDynamicAssertion",
+        "inspectionQuery",
+        "tags",
+        "glossaryTerms");
+  }
+
+  private String formatParameterValuesForCsv(List<TestCaseParameterValue> parameterValues) {
+    if (parameterValues == null || parameterValues.isEmpty()) {
+      return "";
+    }
+
+    return parameterValues.stream()
+        .map(
+            param ->
+                "{\"name\":\""
+                    + param.getName()
+                    + "\",\"value\":"
+                    + (param.getValue() != null ? "\"" + param.getValue() + "\"" : param.getValue())
+                    + "}")
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatTagsForCsv(List<org.openmetadata.schema.type.TagLabel> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return "";
+    }
+    return tags.stream()
+        .map(org.openmetadata.schema.type.TagLabel::getTagFQN)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String escapeCSVValue(String value) {
+    if (value == null) {
+      return "";
+    }
+    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+      return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+    return value;
   }
 }

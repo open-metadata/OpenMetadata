@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { ArrowRightOutlined } from '@ant-design/icons';
-import { Badge, Button, Popover } from 'antd';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { Button, useTheme } from '@mui/material';
+import { Popover } from 'antd';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +29,7 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
   className = '',
 }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [resourceCount, setResourceCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,11 +76,21 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
       </span>
       <Button
         className="learning-tooltip-button"
+        endIcon={<ArrowForwardIcon sx={{ fontSize: 14 }} />}
         size="small"
-        type="default"
+        sx={{
+          borderRadius: '10px',
+          border: `0.5px solid ${theme.palette.grey[300]}`,
+          background: theme.palette.background.paper,
+          boxShadow: theme.shadows[1],
+          color: theme.palette.text.secondary,
+          fontSize: 14,
+          fontWeight: 500,
+          padding: '4px 10px',
+        }}
+        variant="text"
         onClick={handleClick}>
-        {resourceCount} {t('label.resource-plural').toLowerCase()}{' '}
-        <ArrowRightOutlined />
+        {resourceCount} {t('label.resource-plural').toLowerCase()}
       </Button>
     </div>
   );
@@ -88,20 +100,17 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
       <Popover
         content={popoverContent}
         overlayClassName="learning-tooltip-popover"
-        placement="bottom"
+        placement="bottomLeft"
+        showArrow={false}
         trigger="hover">
-        <Badge
+        <div
           className={classNames('learning-icon-badge', className)}
-          count={resourceCount}
-          offset={[8, -4]}
-          size="small">
-          <div
-            className="learning-icon-container"
-            data-testid="learning-icon"
-            onClick={handleClick}>
+          data-testid="learning-icon"
+          onClick={handleClick}>
+          <div className="learning-icon-container">
             <LearningIconSvg height={16} width={16} />
           </div>
-        </Badge>
+        </div>
       </Popover>
 
       <LearningDrawer

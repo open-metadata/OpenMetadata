@@ -49,6 +49,8 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.jetbrains.annotations.NotNull;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -707,6 +709,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           .withTestCaseResult(testCaseResult);
     }
     storeMany(testCasesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<TestCase> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(TestCase::getId).toList();
+    deleteToMany(ids, Entity.TEST_CASE, Relationship.CONTAINS, Entity.TEST_SUITE);
+    deleteToMany(ids, Entity.TEST_CASE, Relationship.CONTAINS, Entity.TEST_DEFINITION);
   }
 
   @Override
@@ -1434,8 +1444,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     List<TestCase> testCases = getTestCasesForExport(name, recursive);
-    return new TestCaseCsv(user, null).exportCsv(testCases);
+    return new TestCaseCsv(user, null).exportCsv(testCases, callback);
   }
 
   @Override
@@ -1453,7 +1470,38 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       boolean dryRun,
       String user,
       boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
+    throw new IllegalArgumentException(
+        "TestCase CSV import requires 'targetEntityType' parameter. "
+            + "Specify 'table' when importing from a table context, or 'testSuite' when importing from a Bundle Suite Context.");
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
       String targetEntityType)
+      throws IOException {
+    TestSuite targetBundleSuite =
+        TEST_SUITE.equals(targetEntityType)
+            ? Entity.getEntityByName(TEST_SUITE, name, "", Include.ALL)
+            : null;
+    return new TestCaseCsv(user, targetBundleSuite).importCsv(csv, dryRun);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      String targetEntityType,
+      CsvImportProgressCallback callback)
       throws IOException {
     TestSuite targetBundleSuite =
         TEST_SUITE.equals(targetEntityType)

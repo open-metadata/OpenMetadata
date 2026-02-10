@@ -14,8 +14,8 @@
 package org.openmetadata.it.bootstrap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import es.org.elasticsearch.client.RestClient;
-import es.org.elasticsearch.client.RestClientBuilder;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5ClientBuilder;
 import io.dropwizard.configuration.ConfigurationException;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
@@ -29,11 +29,10 @@ import jakarta.validation.Validator;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
+import org.apache.hc.core5.http.HttpHost;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
@@ -108,8 +107,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static final String DEFAULT_POSTGRES_IMAGE = "postgres:15";
   private static final String DEFAULT_MYSQL_IMAGE = "mysql:8.3.0";
   private static final String DEFAULT_ELASTICSEARCH_IMAGE =
-      "docker.elastic.co/elasticsearch/elasticsearch:8.11.4";
-  private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:2.19.0";
+      "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
+  private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
 
   private static final String FUSEKI_IMAGE = "stain/jena-fuseki:latest";
   private static final int FUSEKI_PORT = 3030;
@@ -204,6 +203,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       mysql.withPassword("test");
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
+      mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
       mysql.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -224,6 +224,29 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       postgres.withPassword("test");
       postgres.withStartupTimeoutSeconds(240);
       postgres.withConnectTimeoutSeconds(240);
+      postgres.withCommand(
+          "postgres",
+          "-c",
+          "max_wal_size=512MB",
+          "-c",
+          "min_wal_size=64MB",
+          "-c",
+          "wal_level=minimal",
+          "-c",
+          "max_wal_senders=0",
+          "-c",
+          "checkpoint_completion_target=0.5",
+          "-c",
+          "checkpoint_timeout=30s",
+          "-c",
+          "shared_buffers=128MB",
+          "-c",
+          "fsync=off",
+          "-c",
+          "synchronous_commit=off",
+          "-c",
+          "full_page_writes=off");
+      postgres.withTmpFs(java.util.Map.of("/var/lib/postgresql/data", "rw,size=2g"));
       postgres.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -249,8 +272,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           new org.opensearch.testcontainers.OpensearchContainer<>(image);
       opensearch.withEnv("discovery.type", "single-node");
       opensearch.withEnv("DISABLE_SECURITY_PLUGIN", "true");
+      opensearch.withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true");
       opensearch.withEnv("OPENSEARCH_JAVA_OPTS", "-Xms1g -Xmx1g");
       opensearch.withStartupAttempts(3);
+      opensearch.withTmpFs(
+          java.util.Map.of("/usr/share/opensearch/data", "rw,size=1g,uid=1000,gid=1000"));
       opensearch.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -275,6 +301,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       elasticsearch.withEnv("xpack.security.enabled", "false");
       elasticsearch.withEnv("ES_JAVA_OPTS", "-Xms1g -Xmx1g");
       elasticsearch.withStartupAttempts(3);
+      elasticsearch.withTmpFs(java.util.Map.of("/usr/share/elasticsearch/data", "rw,size=1g"));
       elasticsearch.setWaitStrategy(
           new LogMessageWaitStrategy()
               .withRegEx(".*(\"message\":\\s?\"started[\\s?|\"].*|] started\n$)")
@@ -301,6 +328,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
             .withExposedPorts(FUSEKI_PORT)
             .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
             .withEnv("FUSEKI_DATASET_1", FUSEKI_DATASET)
+            .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m,uid=100,gid=101"))
             .waitingFor(
                 Wait.forHttp("/$/ping")
                     .forPort(FUSEKI_PORT)
@@ -556,7 +584,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       config.setRdfConfiguration(rdfConfig);
     }
 
-    rdfConfig.setEnabled(true);
+    rdfConfig.setEnabled(false);
     rdfConfig.setBaseUri(java.net.URI.create("https://open-metadata.org/"));
     rdfConfig.setStorageType(RdfConfiguration.StorageType.FUSEKI);
     rdfConfig.setRemoteEndpoint(java.net.URI.create(fusekiEndpoint));
@@ -574,6 +602,16 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       }
     } catch (Exception e) {
       LOG.warn("Error cleaning up shared entities", e);
+    }
+
+    try {
+      if (WorkflowHandler.isInitialized()) {
+        LOG.info("Shutting down Flowable ProcessEngine...");
+        org.flowable.engine.ProcessEngines.destroy();
+        LOG.info("Flowable ProcessEngine shut down successfully");
+      }
+    } catch (Exception e) {
+      LOG.warn("Error shutting down Flowable ProcessEngine", e);
     }
 
     try {
@@ -711,22 +749,23 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   /**
-   * Creates a RestClient for direct search operations in tests. Works with both Elasticsearch and
+   * Creates a Rest5Client for direct search operations in tests. Works with both Elasticsearch and
    * OpenSearch.
    */
-  public static RestClient createSearchClient() {
+  public static Rest5Client createSearchClient() {
     if (SEARCH_CONTAINER == null || !SEARCH_CONTAINER.isRunning()) {
       throw new IllegalStateException(
           "Search container is not running. Ensure TestSuiteBootstrap has initialized.");
     }
 
-    CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+    BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
     credentialsProvider.setCredentials(
-        AuthScope.ANY, new UsernamePasswordCredentials(ELASTIC_USER, ELASTIC_PASSWORD));
+        new AuthScope(null, -1),
+        new UsernamePasswordCredentials(ELASTIC_USER, ELASTIC_PASSWORD.toCharArray()));
 
-    String hostAddress = searchHost + ":" + searchPort;
-    RestClientBuilder builder =
-        RestClient.builder(HttpHost.create(hostAddress))
+    HttpHost httpHost = new HttpHost("http", searchHost, searchPort);
+    Rest5ClientBuilder builder =
+        Rest5Client.builder(httpHost)
             .setHttpClientConfigCallback(
                 httpClientBuilder ->
                     httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));

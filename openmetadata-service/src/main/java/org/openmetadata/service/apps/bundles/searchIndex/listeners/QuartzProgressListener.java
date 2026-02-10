@@ -5,6 +5,7 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET
 import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL;
 
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -29,11 +30,13 @@ import org.quartz.JobExecutionContext;
 public class QuartzProgressListener implements ReindexingProgressListener {
 
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000;
+  private static final int ERROR_THRESHOLD = 3;
 
   private final JobExecutionContext jobExecutionContext;
   private final EventPublisherJob jobData;
   private final App app;
   private volatile long lastWebSocketUpdate = 0;
+  private final AtomicInteger pendingErrors = new AtomicInteger(0);
 
   public QuartzProgressListener(
       JobExecutionContext jobExecutionContext, EventPublisherJob jobData, App app) {
@@ -79,6 +82,11 @@ public class QuartzProgressListener implements ReindexingProgressListener {
     }
     lastWebSocketUpdate = currentTime;
 
+    if (pendingErrors.get() > 0) {
+      pendingErrors.set(0);
+      jobData.setStatus(EventPublisherJob.Status.RUNNING);
+    }
+
     jobData.setStats(stats);
     sendUpdates(false);
   }
@@ -90,9 +98,12 @@ public class QuartzProgressListener implements ReindexingProgressListener {
 
   @Override
   public void onError(String entityType, IndexingError error, Stats currentStats) {
-    jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
+    int errorCount = pendingErrors.incrementAndGet();
     jobData.setFailure(error);
     jobData.setStats(currentStats);
+    if (errorCount >= ERROR_THRESHOLD) {
+      jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
+    }
     sendUpdates(true);
   }
 

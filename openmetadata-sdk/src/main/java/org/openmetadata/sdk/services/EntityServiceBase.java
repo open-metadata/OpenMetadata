@@ -13,6 +13,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import okhttp3.HttpUrl;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.AllModels;
 import org.openmetadata.sdk.models.ListParams;
@@ -42,6 +43,19 @@ public abstract class EntityServiceBase<T> {
   public T upsert(T entity) throws OpenMetadataException {
     // PUT without ID for create-or-update operations
     return httpClient.execute(HttpMethod.PUT, basePath, entity, getEntityClass());
+  }
+
+  public BulkOperationResult bulkCreateOrUpdate(List<?> createRequests)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.PUT, basePath + "/bulk", createRequests, BulkOperationResult.class);
+  }
+
+  public BulkOperationResult bulkCreateOrUpdateAsync(List<?> createRequests)
+      throws OpenMetadataException {
+    RequestOptions options = RequestOptions.builder().queryParam("async", "true").build();
+    return httpClient.execute(
+        HttpMethod.PUT, basePath + "/bulk", createRequests, BulkOperationResult.class, options);
   }
 
   public T get(UUID id) throws OpenMetadataException {

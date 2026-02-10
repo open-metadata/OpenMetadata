@@ -27,6 +27,8 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.entity.services.SecurityService;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -130,15 +132,35 @@ public class SecurityServiceRepository
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     SecurityService securityService = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
-    return new SecurityServiceCsv(securityService, user).exportCsv(List.of(securityService));
+    return new SecurityServiceCsv(securityService, user)
+        .exportCsv(List.of(securityService), callback);
   }
 
   @Override
   public CsvImportResult importFromCsv(
       String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    return importFromCsv(name, csv, dryRun, user, recursive, (CsvImportProgressCallback) null);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
     SecurityService securityService = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
-    return new SecurityServiceCsv(securityService, user).importCsv(csv, dryRun);
+    return new SecurityServiceCsv(securityService, user).importCsv(csv, dryRun, callback);
   }
 
   public static class SecurityServiceCsv extends EntityCsv<SecurityService> {

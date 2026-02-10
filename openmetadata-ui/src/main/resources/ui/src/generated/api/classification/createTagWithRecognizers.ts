@@ -201,7 +201,7 @@ export interface RecognizerException {
  *
  * Pattern-based recognizer using regular expressions
  *
- * Deny list recognizer that matches against a list of specific values
+ * Exact terms recognizer that matches against a list of specific values
  *
  * Context-aware recognizer using surrounding text
  *
@@ -221,10 +221,6 @@ export interface RecognizerConfig {
     patterns?:   Pattern[];
     regexFlags?: RegexFlags;
     /**
-     * The entity type this recognizer detects
-     */
-    supportedEntity?: PIIEntity;
-    /**
      * Language supported by this recognizer
      */
     supportedLanguage?: ClassificationLanguage;
@@ -232,7 +228,7 @@ export interface RecognizerConfig {
     /**
      * List of values to match against
      */
-    denyList?: string[];
+    exactTerms?: string[];
     /**
      * Words that indicate the presence of the entity
      */
@@ -353,8 +349,6 @@ export interface RegexFlags {
 }
 
 /**
- * The entity type this recognizer detects
- *
  * Enum of PII (Personally Identifiable Information) tags for classification and detection
  * of sensitive data. Based on Presidio supported entities
  * (https://microsoft.github.io/presidio/supported_entities/).
