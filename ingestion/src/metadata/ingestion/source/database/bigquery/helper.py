@@ -69,20 +69,22 @@ def get_inspector_details(
     # TODO support OAuth 2.0 scopes
     new_service_connection = deepcopy(service_connection)
     kwargs = {}
+
+    if new_service_connection.usageLocation:
+        kwargs["location"] = new_service_connection.usageLocation
+
     if isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues):
         new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(
             database_name
         )
         if new_service_connection.credentials.gcpImpersonateServiceAccount:
-            kwargs[
-                "impersonate_service_account"
-            ] = (
+            kwargs["impersonate_service_account"] = (
                 new_service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
             )
 
-            kwargs[
-                "lifetime"
-            ] = new_service_connection.credentials.gcpImpersonateServiceAccount.lifetime
+            kwargs["lifetime"] = (
+                new_service_connection.credentials.gcpImpersonateServiceAccount.lifetime
+            )
 
     client = get_bigquery_client(
         project_id=new_service_connection.billingProjectId or database_name, **kwargs
