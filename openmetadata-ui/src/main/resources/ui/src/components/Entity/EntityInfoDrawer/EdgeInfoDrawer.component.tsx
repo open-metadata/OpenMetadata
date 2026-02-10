@@ -23,6 +23,7 @@ import SectionWithEdit from '../../../components/common/SectionWithEdit/SectionW
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { LINEAGE_SOURCE } from '../../../constants/Lineage.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { Source } from '../../../generated/type/entityLineage';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
@@ -39,7 +40,6 @@ import { ModalWithFunctionEditor } from '../../Modals/ModalWithFunctionEditor/Mo
 import { ModalWithQueryEditor } from '../../Modals/ModalWithQueryEditor/ModalWithQueryEditor';
 import './entity-info-drawer.less';
 import { EdgeInfoDrawerInfo } from './EntityInfoDrawer.interface';
-import { EntityType } from '../../../enums/entity.enum';
 
 const EdgeInfoDrawer = ({
   edge,
