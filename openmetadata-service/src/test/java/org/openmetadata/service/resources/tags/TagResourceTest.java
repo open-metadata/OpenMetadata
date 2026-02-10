@@ -762,7 +762,6 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     PatternRecognizer patternConfig =
         new PatternRecognizer()
             .withType("pattern")
-            .withSupportedEntity(PIIEntity.EMAIL_ADDRESS)
             .withSupportedLanguage(ClassificationLanguage.EN)
             .withPatterns(
                 List.of(
@@ -813,7 +812,6 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     PatternRecognizer ssnConfig =
         new PatternRecognizer()
             .withType("pattern")
-            .withSupportedEntity(PIIEntity.US_SSN)
             .withSupportedLanguage(ClassificationLanguage.EN)
             .withPatterns(
                 List.of(
@@ -918,7 +916,6 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     ExactTermsRecognizer exactTermsConfig =
         new ExactTermsRecognizer()
             .withType("exact_terms")
-            .withSupportedEntity(PIIEntity.CREDIT_CARD)
             .withSupportedLanguage(ClassificationLanguage.EN)
             .withExactTerms(List.of("password", "secret", "token", "key"))
             .withRegexFlags(
@@ -936,7 +933,6 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     ContextRecognizer contextConfig =
         new ContextRecognizer()
             .withType("context")
-            .withSupportedEntity(PIIEntity.PERSON)
             .withSupportedLanguage(ClassificationLanguage.EN)
             .withContextWords(List.of("name", "person", "user", "customer"))
             .withMinScore(0.4)
@@ -1030,7 +1026,6 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     PatternRecognizer config =
         new PatternRecognizer()
             .withType("pattern")
-            .withSupportedEntity(PIIEntity.ES_NIE)
             .withSupportedLanguage(ClassificationLanguage.EN)
             .withPatterns(List.of());
 
