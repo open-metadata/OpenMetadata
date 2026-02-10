@@ -1473,6 +1473,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       boolean recursive,
       CsvImportProgressCallback callback)
       throws IOException {
+    // if we end up here it means we are importing test cases from the obs page
     return new TestCaseCsv(user, null).importCsv(csv, dryRun);
   }
 
