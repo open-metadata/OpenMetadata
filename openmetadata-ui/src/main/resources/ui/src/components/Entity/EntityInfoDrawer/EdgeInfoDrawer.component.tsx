@@ -39,6 +39,7 @@ import { ModalWithFunctionEditor } from '../../Modals/ModalWithFunctionEditor/Mo
 import { ModalWithQueryEditor } from '../../Modals/ModalWithQueryEditor/ModalWithQueryEditor';
 import './entity-info-drawer.less';
 import { EdgeInfoDrawerInfo } from './EntityInfoDrawer.interface';
+import { EntityType } from '../../../enums/entity.enum';
 
 const EdgeInfoDrawer = ({
   edge,
@@ -371,8 +372,8 @@ const EdgeInfoDrawer = ({
                 <div className="summary-panel-card">
                   <DescriptionSection
                     description={edgeEntity?.description ?? ''}
-                    entityFqn={edgeEntity?.fullyQualifiedName}
-                    entityType={edgeEntity?.type}
+                    entityFqn={edgeEntity.fromEntity.fullyQualifiedName}
+                    entityType={EntityType.LINEAGE_EDGE}
                     hasPermission={hasEditAccess}
                     showEditButton={hasEditAccess}
                     onDescriptionUpdate={onDescriptionUpdate}

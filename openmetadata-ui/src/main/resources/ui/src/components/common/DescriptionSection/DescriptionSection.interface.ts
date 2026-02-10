@@ -1,5 +1,3 @@
-import { EntityType } from '../../../enums/entity.enum';
-
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +10,8 @@ import { EntityType } from '../../../enums/entity.enum';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from '../../../enums/entity.enum';
+
 export interface DescriptionSectionProps {
   description?: string;
   onDescriptionUpdate?: (description: string) => Promise<void>;
