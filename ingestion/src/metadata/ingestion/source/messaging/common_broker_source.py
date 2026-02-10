@@ -298,7 +298,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     messages = []
                     n_poll = 10
                     total_timeout = 10
-                      # Total timeout for polling messages is 10 seconds from now.
+                    # Total timeout for polling messages is 10 seconds from now.
                     deadline = time.monotonic() + total_timeout
                     for _ in range(n_poll):
                         try:
