@@ -51,7 +51,6 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
-
 import {
   clickOutside,
   getApiContext,
@@ -84,6 +83,7 @@ import {
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // Define entities that support Data Contracts
 const entitiesWithDataContracts = [
@@ -119,7 +119,7 @@ const entitySupportsQuality = (entityType: string): boolean => {
   return entityType === 'Table';
 };
 
-test.describe('Data Contracts', () => {
+test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   const user = new UserClass();
   test.slow(true);
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -1907,8 +1907,7 @@ test.describe('Data Contracts', () => {
         await expect(
           page.getByTestId(`contract-security-rowFilter-0-${filter.index}`)
         ).toContainText(
-          `${table.columnsName[filter.index]} = ${filter.values[0]},${
-            filter.values[1]
+          `${table.columnsName[filter.index]} = ${filter.values[0]},${filter.values[1]
           }`
         );
       }
@@ -1986,8 +1985,7 @@ test.describe('Data Contracts', () => {
           await expect(
             page.getByTestId(`contract-security-rowFilter-0-${filter.index}`)
           ).toContainText(
-            `${table.columnsName[filter.index]} = ${filter.values[0]},${
-              filter.values[1]
+            `${table.columnsName[filter.index]} = ${filter.values[0]},${filter.values[1]
             },${filter.values[2]},${filter.values[3]}`
           );
         }

@@ -35,10 +35,13 @@ import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -161,6 +164,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<DataProduct> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(DataProduct::getId).toList();
+    deleteToMany(ids, Entity.DATA_PRODUCT, Relationship.CONTAINS, Entity.DOMAIN);
+    deleteFromMany(ids, Entity.DATA_PRODUCT, Relationship.EXPERT, Entity.USER);
+  }
+
+  @Override
   public void storeRelationships(DataProduct entity) {
     for (EntityReference domain : listOrEmpty(entity.getDomains())) {
       addRelationship(
@@ -279,16 +290,68 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
+    List<BulkResponse> failed = new ArrayList<>();
 
     List<EntityReference> assets = new ArrayList<>(listOrEmpty(request.getAssets()));
     EntityUtil.populateEntityReferences(assets);
 
     String fieldName = relationship == Relationship.INPUT_PORT ? "inputPorts" : "outputPorts";
 
+    Relationship oppositeRelationship =
+        relationship == Relationship.INPUT_PORT
+            ? Relationship.OUTPUT_PORT
+            : Relationship.INPUT_PORT;
+
+    Set<UUID> oppositePortIds = Set.of();
+    Set<UUID> dataProductAssetIds = Set.of();
+    if (isAdd) {
+      oppositePortIds =
+          daoCollection
+              .relationshipDAO()
+              .findTo(dataProduct.getId(), DATA_PRODUCT, oppositeRelationship.ordinal())
+              .stream()
+              .map(CollectionDAO.EntityRelationshipRecord::getId)
+              .collect(Collectors.toCollection(HashSet::new));
+      if (relationship == Relationship.OUTPUT_PORT) {
+        dataProductAssetIds =
+            daoCollection
+                .relationshipDAO()
+                .findTo(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS.ordinal())
+                .stream()
+                .map(CollectionDAO.EntityRelationshipRecord::getId)
+                .collect(Collectors.toCollection(HashSet::new));
+      }
+    }
+
     for (EntityReference ref : assets) {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
       if (isAdd) {
+        if (oppositePortIds.contains(ref.getId())) {
+          String oppositePortType =
+              oppositeRelationship == Relationship.INPUT_PORT ? "input" : "output";
+          String msg =
+              String.format(
+                  "Asset '%s' is already part of %s ports and cannot be added to %s",
+                  ref.getFullyQualifiedName(), oppositePortType, fieldName);
+          failed.add(new BulkResponse().withRequest(ref).withMessage(msg));
+          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+          result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+          continue;
+        }
+
+        if (relationship == Relationship.OUTPUT_PORT
+            && !dataProductAssetIds.contains(ref.getId())) {
+          String msg =
+              String.format(
+                  "Asset '%s' must belong to the data product before it can be added as an output port",
+                  ref.getFullyQualifiedName());
+          failed.add(new BulkResponse().withRequest(ref).withMessage(msg));
+          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+          result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+          continue;
+        }
+
         addRelationship(
             dataProduct.getId(), ref.getId(), DATA_PRODUCT, ref.getType(), relationship);
       } else {
@@ -303,11 +366,17 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           .onEntityUpdated(dataProduct.getEntityReference(), null);
     }
 
-    result.withSuccessRequest(success);
+    result.withSuccessRequest(success).withFailedRequest(failed);
 
-    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+    if (success.isEmpty() && !failed.isEmpty()) {
+      result.setStatus(ApiStatus.FAILURE);
+    }
+
+    if (!success.isEmpty()) {
+      List<EntityReference> successAssets =
+          success.stream().map(r -> (EntityReference) r.getRequest()).collect(Collectors.toList());
       ChangeDescription change =
-          addBulkAddRemoveChangeDescription(dataProduct.getVersion(), isAdd, assets, null);
+          addBulkAddRemoveChangeDescription(dataProduct.getVersion(), isAdd, successAssets, null);
       if (!change.getFieldsAdded().isEmpty()) {
         change.getFieldsAdded().get(0).setName(fieldName);
       }

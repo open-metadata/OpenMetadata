@@ -34,7 +34,6 @@ from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
-from metadata.generated.schema.type.piiEntity import PIIEntity
 from metadata.generated.schema.type.recognizer import RecognizerException, Target
 from metadata.pii.algorithms.tag_scoring import TagScorer
 from metadata.pii.models import ScoredTag
@@ -79,7 +78,6 @@ class TestTagScorer:
         )
         email_pattern_recognizer = PatternRecognizerFactory.create(
             patterns=[email_pattern],
-            supportedEntity=PIIEntity.EMAIL_ADDRESS,
             context=[],
             supportedLanguage=ClassificationLanguage.en,
         )
@@ -104,7 +102,6 @@ class TestTagScorer:
         )
         column_name_pattern_recognizer = PatternRecognizerFactory.create(
             patterns=[column_name_pattern],
-            supportedEntity=PIIEntity.EMAIL_ADDRESS,
             context=[],
             supportedLanguage=ClassificationLanguage.en,
         )
@@ -135,7 +132,6 @@ class TestTagScorer:
         )
         phone_pattern_recognizer = PatternRecognizerFactory.create(
             patterns=[phone_pattern],
-            supportedEntity=PIIEntity.PHONE_NUMBER,
             context=[],
             supportedLanguage=ClassificationLanguage.en,
         )
@@ -304,7 +300,6 @@ class TestTagAnalyzer:
         )
         email_pattern_recognizer = PatternRecognizerFactory.create(
             patterns=[email_pattern],
-            supportedEntity=PIIEntity.EMAIL_ADDRESS,
             context=[],
             supportedLanguage=ClassificationLanguage.en,
         )
@@ -371,7 +366,6 @@ class TestTagAnalyzer:
         )
         column_name_pattern_recognizer = PatternRecognizerFactory.create(
             patterns=[column_name_pattern],
-            supportedEntity=PIIEntity.EMAIL_ADDRESS,
             regexFlags__ignoreCase=True,
             context=[],
             supportedLanguage=ClassificationLanguage.en,
@@ -413,7 +407,6 @@ class TestTagAnalyzer:
         test_pattern = PatternFactory.create(name="test", regex=".*", score=1.0)
         test_pattern_recognizer = PatternRecognizerFactory.create(
             patterns=[test_pattern],
-            supportedEntity=PIIEntity.EMAIL_ADDRESS,
             context=[],
             supportedLanguage=ClassificationLanguage.en,
         )

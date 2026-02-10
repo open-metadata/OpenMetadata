@@ -97,19 +97,49 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   @Override
   public void storeEntity(String entityType, UUID entityId, Model entityModel) {
-    try {
-      String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
-      String deleteQuery =
-          String.format("DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }", KNOWLEDGE_GRAPH, entityUri);
+    String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
+    String deleteQuery =
+        String.format("DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }", KNOWLEDGE_GRAPH, entityUri);
 
-      UpdateRequest deleteRequest = UpdateFactory.create(deleteQuery);
-      connection.update(deleteRequest);
-      connection.load(KNOWLEDGE_GRAPH, entityModel);
-      LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
-    } catch (Exception e) {
-      LOG.error("Failed to store entity in Fuseki", e);
-      throw new RuntimeException("Failed to store entity in RDF", e);
+    int maxRetries = 3;
+    int retryCount = 0;
+    Exception lastException = null;
+
+    while (retryCount < maxRetries) {
+      try {
+        UpdateRequest deleteRequest = UpdateFactory.create(deleteQuery);
+        connection.update(deleteRequest);
+        connection.load(KNOWLEDGE_GRAPH, entityModel);
+        LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
+        return;
+      } catch (org.apache.jena.atlas.web.HttpException e) {
+        if (e.getStatusCode() == 500 && retryCount < maxRetries - 1) {
+          lastException = e;
+          retryCount++;
+          try {
+            long waitTime = (long) (100 * Math.pow(2, retryCount - 1));
+            LOG.debug(
+                "Retrying entity storage after {} ms (attempt {}/{})",
+                waitTime,
+                retryCount + 1,
+                maxRetries);
+            Thread.sleep(waitTime);
+          } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while retrying", ie);
+          }
+        } else {
+          LOG.error("Failed to store entity in Fuseki", e);
+          throw new RuntimeException("Failed to store entity in RDF", e);
+        }
+      } catch (Exception e) {
+        LOG.error("Failed to store entity in Fuseki", e);
+        throw new RuntimeException("Failed to store entity in RDF", e);
+      }
     }
+
+    LOG.error("Failed to store entity after {} retries", maxRetries);
+    throw new RuntimeException("Failed to store entity in RDF after retries", lastException);
   }
 
   @Override
@@ -160,13 +190,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         LOG.debug("Stored relationship (idempotent): {} -{}- {}", fromId, relationshipType, toId);
         return; // Success
       } catch (org.apache.jena.atlas.web.HttpException e) {
-        if (e.getMessage() != null
-            && e.getMessage().contains("500")
-            && retryCount < maxRetries - 1) {
+        if (e.getStatusCode() == 500 && retryCount < maxRetries - 1) {
           lastException = e;
           retryCount++;
           try {
-            long waitTime = (long) (100 * Math.pow(2, retryCount - 1)); // 100ms, 200ms, 400ms
+            long waitTime = (long) (100 * Math.pow(2, retryCount - 1));
             LOG.debug(
                 "Retrying relationship storage after {} ms (attempt {}/{})",
                 waitTime,
@@ -383,8 +411,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       try {
         connection.delete(graphUri);
       } catch (org.apache.jena.atlas.web.HttpException e) {
-        // Ignore 404 errors - graph doesn't exist yet
-        if (!e.getMessage().contains("404")) {
+        if (e.getStatusCode() != 404) {
           throw e;
         }
       }

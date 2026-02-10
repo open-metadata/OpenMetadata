@@ -17,14 +17,26 @@ import { LearningResourceCard } from './LearningResourceCard.component';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, options?: { entity?: string }) => {
       const translations: Record<string, string> = {
         'label.min-read': 'min read',
+        'label.min-watch': 'min watch',
         'label.view-more': 'View More',
         'label.view-less': 'View Less',
+        'label.no-entity-added': 'No {{entity}} added',
+        'label.description-lowercase': 'description',
+        'label.category-lowercase': 'category',
       };
+      const value = translations[key] ?? key;
+      if (
+        options?.entity &&
+        typeof value === 'string' &&
+        value.includes('{{entity}}')
+      ) {
+        return value.replace('{{entity}}', options.entity);
+      }
 
-      return translations[key] ?? key;
+      return value;
     },
   }),
 }));
@@ -99,12 +111,14 @@ describe('LearningResourceCard', () => {
   it('should render description with ellipsis configuration', () => {
     render(<LearningResourceCard resource={mockVideoResource} />);
 
-    const descriptionElement = screen.getByLabelText(
-      /A test video learning resource/i
+    const descriptionElement = screen.getByTestId(
+      'learning-resource-description'
     );
 
     expect(descriptionElement).toBeInTheDocument();
-    expect(descriptionElement).toHaveClass('learning-resource-description');
+    expect(descriptionElement).toHaveTextContent(
+      'A test video learning resource'
+    );
   });
 
   it('should render category tag', () => {
@@ -113,8 +127,14 @@ describe('LearningResourceCard', () => {
     expect(screen.getByText('Discovery')).toBeInTheDocument();
   });
 
-  it('should render formatted duration', () => {
+  it('should render formatted duration with min watch for Video', () => {
     render(<LearningResourceCard resource={mockVideoResource} />);
+
+    expect(screen.getByText('5 min watch')).toBeInTheDocument();
+  });
+
+  it('should render formatted duration with min read for Article', () => {
+    render(<LearningResourceCard resource={mockArticleResource} />);
 
     expect(screen.getByText('5 min read')).toBeInTheDocument();
   });
@@ -126,7 +146,7 @@ describe('LearningResourceCard', () => {
     };
     render(<LearningResourceCard resource={resourceWithoutDuration} />);
 
-    expect(screen.queryByText(/min read/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/min (read|watch)/)).not.toBeInTheDocument();
   });
 
   it('should render play icon for Video resource type', () => {
@@ -201,22 +221,20 @@ describe('LearningResourceCard', () => {
       `learning-resource-card-${mockVideoResource.name}`
     );
 
-    expect(card).toHaveClass('learning-resource-card-clickable');
+    expect(card).toHaveAttribute('data-clickable', 'true');
   });
 
-  it('should show only first 3 categories and +N for remaining', () => {
+  it('should show only first 2 categories and +N for remaining in card view', () => {
     render(
       <LearningResourceCard resource={mockResourceWithMultipleCategories} />
     );
 
-    // Categories are mapped to labels: Administration -> Admin, DataGovernance -> Governance
     expect(screen.getByText('Discovery')).toBeInTheDocument();
     expect(screen.getByText('Admin')).toBeInTheDocument();
-    expect(screen.getByText('Governance')).toBeInTheDocument();
-    expect(screen.getByText('+1')).toBeInTheDocument();
+    expect(screen.getByText('+2')).toBeInTheDocument();
   });
 
-  it('should not render description section when description is not provided', () => {
+  it('should show no description placeholder when description is not provided', () => {
     const resourceWithoutDescription = {
       ...mockVideoResource,
       description: undefined,
@@ -224,7 +242,8 @@ describe('LearningResourceCard', () => {
     render(<LearningResourceCard resource={resourceWithoutDescription} />);
 
     expect(
-      screen.queryByLabelText(/learning resource/i)
-    ).not.toBeInTheDocument();
+      screen.getByTestId('learning-resource-description')
+    ).toBeInTheDocument();
+    expect(screen.getByText('No description added')).toBeInTheDocument();
   });
 });

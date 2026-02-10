@@ -1202,16 +1202,17 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(retrievedAfterFinalUpdate.getTestSuite());
 
     // Now update with schema changes (add and remove columns)
+    // Use types that match the table created by createUniqueTable (INT for id, STRING for name)
     List<org.openmetadata.schema.type.Column> initialSchema =
         List.of(
             new org.openmetadata.schema.type.Column()
                 .withName("id")
-                .withDataType(ColumnDataType.BIGINT)
+                .withDataType(ColumnDataType.INT)
                 .withDisplayName("ID")
                 .withDescription("Primary key"),
             new org.openmetadata.schema.type.Column()
                 .withName("name")
-                .withDataType(ColumnDataType.VARCHAR)
+                .withDataType(ColumnDataType.STRING)
                 .withDisplayName("Name")
                 .withDescription("Entity name"));
 
@@ -1231,21 +1232,21 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(retrievedWithSchema.getSchema());
     assertEquals(2, retrievedWithSchema.getSchema().size());
     assertEquals("id", retrievedWithSchema.getSchema().get(0).getName());
-    assertEquals(ColumnDataType.BIGINT, retrievedWithSchema.getSchema().get(0).getDataType());
+    assertEquals(ColumnDataType.INT, retrievedWithSchema.getSchema().get(0).getDataType());
     assertEquals("name", retrievedWithSchema.getSchema().get(1).getName());
-    assertEquals(ColumnDataType.VARCHAR, retrievedWithSchema.getSchema().get(1).getDataType());
+    assertEquals(ColumnDataType.STRING, retrievedWithSchema.getSchema().get(1).getDataType());
 
     // Now update schema: remove 'name' column and add 'email' column
     List<org.openmetadata.schema.type.Column> updatedSchema =
         List.of(
             new org.openmetadata.schema.type.Column()
                 .withName("id")
-                .withDataType(ColumnDataType.BIGINT)
+                .withDataType(ColumnDataType.INT)
                 .withDisplayName("ID")
                 .withDescription("Primary key"),
             new org.openmetadata.schema.type.Column()
                 .withName("email")
-                .withDataType(ColumnDataType.VARCHAR)
+                .withDataType(ColumnDataType.STRING)
                 .withDisplayName("Email")
                 .withDescription("User email address"));
 
@@ -1265,10 +1266,10 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(finalRetrieved.getSchema());
     assertEquals(2, finalRetrieved.getSchema().size());
     assertEquals("id", finalRetrieved.getSchema().get(0).getName());
-    assertEquals(ColumnDataType.BIGINT, finalRetrieved.getSchema().get(0).getDataType());
+    assertEquals(ColumnDataType.INT, finalRetrieved.getSchema().get(0).getDataType());
     assertEquals("Primary key", finalRetrieved.getSchema().get(0).getDescription());
     assertEquals("email", finalRetrieved.getSchema().get(1).getName());
-    assertEquals(ColumnDataType.VARCHAR, finalRetrieved.getSchema().get(1).getDataType());
+    assertEquals(ColumnDataType.STRING, finalRetrieved.getSchema().get(1).getDataType());
     assertEquals("User email address", finalRetrieved.getSchema().get(1).getDescription());
 
     // Verify the other fields are still intact after schema changes

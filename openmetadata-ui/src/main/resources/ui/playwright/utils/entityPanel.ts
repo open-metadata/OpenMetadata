@@ -14,6 +14,7 @@ import { expect, Page } from '@playwright/test';
 import { redirectToExplorePage } from './common';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const openEntitySummaryPanel = async (
   page: Page,
@@ -52,9 +53,7 @@ export const openEntitySummaryPanel = async (
   expect(searchResponse.status()).toBe(200);
 
   await page.getByTestId('searchBox').press('Enter');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   const entityCard = page
     .locator('[data-testid="table-data-card"]')
@@ -76,9 +75,7 @@ export async function navigateToExploreAndSelectTable(
 ) {
   await redirectToExplorePage(page);
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   const permissionsResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/permissions')
@@ -523,6 +520,35 @@ export const removeTierFromPanel = async (page: Page) => {
   await clearButton.click();
   await patchPromise;
 };
+
+/**
+ * Maps entity types to their corresponding left panel asset type titles
+ */
+function getAssetTypeFromEntityType(entityType: string): string {
+  const entityTypeToAssetType: Record<string, string> = {
+    Table: 'Databases',
+    Database: 'Databases',
+    'Database Schema': 'Databases',
+    'Store Procedure': 'Databases',
+    Dashboard: 'Dashboards',
+    DashboardDataModel: 'Dashboards',
+    Chart: 'Dashboards',
+    Pipeline: 'Pipelines',
+    Topic: 'Topics',
+    MlModel: 'ML Models',
+    Container: 'Containers',
+    SearchIndex: 'Search Indexes',
+    ApiEndpoint: 'APIs',
+    'Api Collection': 'APIs',
+    File: 'Drives',
+    Directory: 'Drives',
+    Spreadsheet: 'Drives',
+    Worksheet: 'Drives',
+    Metric: 'Metrics',
+  };
+
+  return entityTypeToAssetType[entityType] || 'Databases';
+}
 
 export const editDisplayNameFromPanel = async (
   page: Page,

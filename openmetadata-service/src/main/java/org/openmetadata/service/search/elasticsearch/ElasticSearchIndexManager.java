@@ -401,7 +401,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       GetAliasResponse response = client.indices().getAlias(request);
 
       response
-          .result()
+          .aliases()
           .forEach(
               (index, aliasDetails) -> {
                 aliases.addAll(aliasDetails.aliases().keySet());
@@ -432,7 +432,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       GetAliasRequest request = GetAliasRequest.of(g -> g.name(aliasName));
       GetAliasResponse response = client.indices().getAlias(request);
 
-      indices.addAll(response.result().keySet());
+      indices.addAll(response.aliases().keySet());
 
       LOG.info("Retrieved indices for alias {}: {}", aliasName, indices);
     } catch (ElasticsearchException esEx) {
@@ -465,7 +465,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       GetAliasRequest request = GetAliasRequest.of(g -> g.index(pattern));
       GetAliasResponse response = client.indices().getAlias(request);
 
-      indices.addAll(response.result().keySet());
+      indices.addAll(response.aliases().keySet());
 
       LOG.info("Retrieved {} indices matching prefix '{}': {}", indices.size(), prefix, indices);
     } catch (Exception e) {
