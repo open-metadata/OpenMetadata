@@ -30,6 +30,7 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
 from metadata.generated.schema.api.data.createDataContract import (
     CreateDataContractRequest,
 )
+from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.domains.createDataProduct import (
     CreateDataProductRequest,
@@ -221,6 +222,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     CreateTestCaseRequest,
                     CreateTestSuiteRequest,
                     CreateTestDefinitionRequest,
+                    CreateGlossaryRequest,
                 ),
             )
         ):

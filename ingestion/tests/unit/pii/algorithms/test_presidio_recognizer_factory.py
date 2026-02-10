@@ -27,7 +27,6 @@ from metadata.generated.schema.type.exactTermsRecognizer import ExactTermsRecogn
 from metadata.generated.schema.type.patternRecognizer import (
     PatternRecognizer as PatternRecognizerConfig,
 )
-from metadata.generated.schema.type.piiEntity import PIIEntity
 from metadata.generated.schema.type.predefinedRecognizer import (
     Name as PredefinedRecognizerName,
 )
@@ -50,7 +49,6 @@ class TestPresidioRecognizerFactory:
             recognizerConfig=RecognizerConfig(
                 root=PatternRecognizerConfig(
                     type="pattern",
-                    supportedEntity=PIIEntity.EMAIL_ADDRESS,
                     patterns=[],
                     regexFlags=RegexFlags(),
                     context=[],
@@ -59,7 +57,9 @@ class TestPresidioRecognizerFactory:
             ),
         )
 
-        result = PresidioRecognizerFactory.create_recognizer(recognizer_config)
+        result = PresidioRecognizerFactory.create_recognizer(
+            recognizer_config, "PII.Test"
+        )
         assert result is None
 
     def test_create_pattern_recognizer(self):
@@ -78,7 +78,6 @@ class TestPresidioRecognizerFactory:
             recognizerConfig=RecognizerConfig(
                 root=PatternRecognizerConfig(
                     type="pattern",
-                    supportedEntity=PIIEntity.EMAIL_ADDRESS,
                     patterns=patterns,
                     supportedLanguage=ClassificationLanguage.en,
                     regexFlags=RegexFlags(),
@@ -87,10 +86,11 @@ class TestPresidioRecognizerFactory:
             ),
         )
 
-        result = PresidioRecognizerFactory.create_recognizer(recognizer_config)
+        tag_fqn = "PII.EmailAddress"
+        result = PresidioRecognizerFactory.create_recognizer(recognizer_config, tag_fqn)
 
         assert isinstance(result, PatternRecognizer)
-        assert result.supported_entities == ["EMAIL_ADDRESS"]
+        assert result.supported_entities == [tag_fqn]
         assert result.supported_language == ClassificationLanguage.en.value
         assert result.name == "email_recognizer"
         assert len(result.patterns) == 1
@@ -108,7 +108,6 @@ class TestPresidioRecognizerFactory:
             recognizerConfig=RecognizerConfig(
                 root=ExactTermsRecognizer(
                     type="exact_terms",
-                    supportedEntity=PIIEntity.US_SSN,
                     exactTerms=exact_terms,
                     supportedLanguage=ClassificationLanguage.en,
                     regexFlags=RegexFlags(),
@@ -116,10 +115,11 @@ class TestPresidioRecognizerFactory:
             ),
         )
 
-        result = PresidioRecognizerFactory.create_recognizer(recognizer_config)
+        tag_fqn = "PII.Sensitive"
+        result = PresidioRecognizerFactory.create_recognizer(recognizer_config, tag_fqn)
 
         assert isinstance(result, PatternRecognizer)
-        assert result.supported_entities == ["US_SSN"]
+        assert result.supported_entities == [tag_fqn]
         assert len(result.patterns) == 3
 
         for value, pattern in zip(exact_terms, result.patterns):
@@ -137,7 +137,6 @@ class TestPresidioRecognizerFactory:
             recognizerConfig=RecognizerConfig(
                 root=ContextRecognizer(
                     type="context",
-                    supportedEntity=PIIEntity.US_SSN,
                     contextWords=context_words,
                     supportedLanguage=ClassificationLanguage.en,
                     minScore=0.4,
@@ -146,10 +145,11 @@ class TestPresidioRecognizerFactory:
             ),
         )
 
-        result = PresidioRecognizerFactory.create_recognizer(recognizer_config)
+        tag_fqn = "PII.Sensitive"
+        result = PresidioRecognizerFactory.create_recognizer(recognizer_config, tag_fqn)
 
         assert isinstance(result, PatternRecognizer)
-        assert result.supported_entities == ["US_SSN"]
+        assert result.supported_entities == [tag_fqn]
         assert len(result.patterns) == 3
 
         for word, pattern in zip(context_words, result.patterns):
@@ -165,13 +165,14 @@ class TestPresidioRecognizerFactory:
                 root=CustomRecognizer(
                     type="custom",
                     validatorFunction="def validate(text): return True",
-                    supportedEntity=PIIEntity.PERSON,
                     supportedLanguage=ClassificationLanguage.en,
                 )
             ),
         )
 
-        result = PresidioRecognizerFactory.create_recognizer(recognizer_config)
+        result = PresidioRecognizerFactory.create_recognizer(
+            recognizer_config, "PII.Person"
+        )
         assert result is None
 
     def test_create_predefined_recognizer(self):
@@ -189,10 +190,11 @@ class TestPresidioRecognizerFactory:
             ),
         )
 
-        result = PresidioRecognizerFactory.create_recognizer(recognizer_config)
+        result = PresidioRecognizerFactory.create_recognizer(
+            recognizer_config, "Some.Tag"
+        )
 
         assert isinstance(result, EntityRecognizer)
-        assert "EMAIL_ADDRESS" in result.supported_entities
 
     def test_create_predefined_recognizer_invalid_name(self):
         """Test that invalid predefined recognizer names return None"""
@@ -207,10 +209,11 @@ class TestPresidioRecognizerFactory:
             ),
         )
 
-        original_name = recognizer_config.recognizerConfig.root.name
         recognizer_config.recognizerConfig.root.name = "InvalidRecognizer"
 
-        result = PresidioRecognizerFactory.create_recognizer(recognizer_config)
+        result = PresidioRecognizerFactory.create_recognizer(
+            recognizer_config, "Some.Tag"
+        )
         assert result is None
 
     @pytest.mark.parametrize(
@@ -324,7 +327,6 @@ class TestPresidioRecognizerFactory:
             recognizerConfig=RecognizerConfig(
                 root=PatternRecognizerConfig(
                     type="pattern",
-                    supportedEntity=PIIEntity.EMAIL_ADDRESS,
                     patterns=[
                         Pattern(name="test", regex=r"test@example\.com", score=0.8)
                     ],
@@ -341,7 +343,6 @@ class TestPresidioRecognizerFactory:
             recognizerConfig=RecognizerConfig(
                 root=ExactTermsRecognizer(
                     type="exact_terms",
-                    supportedEntity=PIIEntity.US_SSN,
                     exactTerms=["secret"],
                     supportedLanguage=ClassificationLanguage.en,
                     regexFlags=RegexFlags(),
@@ -355,7 +356,6 @@ class TestPresidioRecognizerFactory:
             recognizerConfig=RecognizerConfig(
                 root=PatternRecognizerConfig(
                     type="pattern",
-                    supportedEntity=PIIEntity.PHONE_NUMBER,
                     patterns=[],
                     regexFlags=RegexFlags(),
                     context=[],
@@ -368,6 +368,7 @@ class TestPresidioRecognizerFactory:
             id=str(uuid4()),
             name="test_tag",
             description="Test tag",
+            fullyQualifiedName="test_tag",
             autoClassificationEnabled=True,
             recognizers=[recognizer1, recognizer2, recognizer3],
         )
@@ -408,7 +409,6 @@ class TestRecognizerRegistry:
             recognizerConfig=RecognizerConfig(
                 root=PatternRecognizerConfig(
                     type="pattern",
-                    supportedEntity=PIIEntity.EMAIL_ADDRESS,
                     patterns=[
                         Pattern(name="email", regex=r"[\w\.]+@example\.com", score=0.9)
                     ],
@@ -446,7 +446,6 @@ class TestRecognizerRegistry:
             recognizerConfig=RecognizerConfig(
                 root=PatternRecognizerConfig(
                     type="pattern",
-                    supportedEntity=PIIEntity.EMAIL_ADDRESS,
                     patterns=[Pattern(name="test", regex=r"test", score=0.8)],
                     regexFlags=RegexFlags(),
                     context=[],
@@ -490,7 +489,6 @@ class TestRecognizerRegistry:
                     recognizerConfig=RecognizerConfig(
                         root=PatternRecognizerConfig(
                             type="pattern",
-                            supportedEntity=PIIEntity.EMAIL_ADDRESS,
                             patterns=[Pattern(name="test1", regex=r"test1", score=0.8)],
                             regexFlags=RegexFlags(),
                             context=[],
@@ -514,7 +512,6 @@ class TestRecognizerRegistry:
                     recognizerConfig=RecognizerConfig(
                         root=PatternRecognizerConfig(
                             type="pattern",
-                            supportedEntity=PIIEntity.PHONE_NUMBER,
                             patterns=[Pattern(name="test2", regex=r"test2", score=0.8)],
                             regexFlags=RegexFlags(),
                             context=[],
@@ -565,7 +562,6 @@ class TestRecognizerRegistry:
             recognizerConfig=RecognizerConfig(
                 root=PatternRecognizerConfig(
                     type="pattern",
-                    supportedEntity=PIIEntity.EMAIL_ADDRESS,
                     patterns=[Pattern(name="test", regex=r"test", score=0.8)],
                     regexFlags=RegexFlags(),
                     context=[],
@@ -581,7 +577,6 @@ class TestRecognizerRegistry:
             recognizerConfig=RecognizerConfig(
                 root=PatternRecognizerConfig(
                     type="pattern",
-                    supportedEntity=PIIEntity.PHONE_NUMBER,
                     patterns=[Pattern(name="test", regex=r"test", score=0.8)],
                     regexFlags=RegexFlags(),
                     context=[],
