@@ -212,7 +212,7 @@
                     <systemPropertyVariables>
                         <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
                         <jdbcContainerImage>mysql:8</jdbcContainerImage>
-                        <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
+                        <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</elasticSearchContainerClassName>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

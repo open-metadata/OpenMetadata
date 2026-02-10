@@ -100,35 +100,40 @@ public class ColumnGridResourceIT {
 
     waitForSearchIndexRefresh();
 
-    // Query both entity types - columns should be aggregated
-    // Use just "shared_across" as pattern (not ns.prefix) to find the column name
-    ColumnGridResponse response =
-        getColumnGrid(
-            client, "entityTypes=table,dashboardDataModel&columnNamePattern=shared_across");
+    // Poll until both entities are indexed and the column grid shows 2 occurrences
+    await("Wait for column grid to show both occurrences")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              ColumnGridResponse response =
+                  getColumnGrid(
+                      client,
+                      "entityTypes=table,dashboardDataModel&columnNamePattern=shared_across");
 
-    assertNotNull(response, "Response should not be null");
-    assertNotNull(response.getColumns(), "Columns should not be null");
-    assertFalse(response.getColumns().isEmpty(), "Should find the shared column");
+              assertNotNull(response, "Response should not be null");
+              assertNotNull(response.getColumns(), "Columns should not be null");
+              assertFalse(response.getColumns().isEmpty(), "Should find the shared column");
 
-    // Find the shared column
-    ColumnGridItem sharedItem = null;
-    for (ColumnGridItem item : response.getColumns()) {
-      if (item.getColumnName().equals(sharedColName)) {
-        sharedItem = item;
-        break;
-      }
-    }
+              ColumnGridItem sharedItem = null;
+              for (ColumnGridItem item : response.getColumns()) {
+                if (item.getColumnName().equals(sharedColName)) {
+                  sharedItem = item;
+                  break;
+                }
+              }
 
-    assertNotNull(sharedItem, "Column '" + sharedColName + "' should be in aggregated results");
-    assertEquals(
-        2,
-        sharedItem.getTotalOccurrences(),
-        "Column should have 2 occurrences (one from table, one from dashboardDataModel)");
+              assertNotNull(
+                  sharedItem, "Column '" + sharedColName + "' should be in aggregated results");
+              assertEquals(
+                  2,
+                  sharedItem.getTotalOccurrences(),
+                  "Column should have 2 occurrences (one from table, one from dashboardDataModel)");
 
-    // Since descriptions are different, it should have variations
-    assertTrue(
-        sharedItem.getHasVariations(),
-        "Column should have variations since descriptions differ across entity types");
+              assertTrue(
+                  sharedItem.getHasVariations(),
+                  "Column should have variations since descriptions differ across entity types");
+            });
   }
 
   @Test

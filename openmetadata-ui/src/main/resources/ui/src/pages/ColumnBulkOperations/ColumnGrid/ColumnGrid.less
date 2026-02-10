@@ -44,6 +44,9 @@
     }
 
     // Scrollable table area wrapper - this is where vertical scrolling happens
+    // Note: Do not add scroll-behavior: smooth here - it causes animated scroll when restoring
+    // position after bulk update (scrollTop assignment). Use scrollIntoView({ behavior: 'smooth' })
+    // only where smooth scroll is explicitly desired (e.g. collapse-scroll-into-view).
     .table-scroll-container {
       flex: 1;
       overflow-y: auto;
@@ -495,10 +498,24 @@
     min-width: @size-mlg;
     color: @grey-400;
     font-size: 10px;
+    transition: color 0.2s ease, background-color 0.2s ease;
 
     &:hover {
       color: @grey-700;
       background: @grey-36;
+    }
+  }
+
+  .column-grid-expand-icon {
+    .expand-icon-chevron {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s ease;
+    }
+
+    .expand-icon-chevron.expand-icon-expanded {
+      transform: rotate(90deg);
     }
   }
 

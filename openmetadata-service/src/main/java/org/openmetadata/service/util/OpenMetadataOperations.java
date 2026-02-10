@@ -1990,27 +1990,45 @@ public class OpenMetadataOperations implements Callable<Integer> {
       SearchClient searchClient = searchRepository.getSearchClient();
 
       if (searchClient instanceof ElasticSearchClient) {
-        es.org.elasticsearch.client.Request request =
-            new es.org.elasticsearch.client.Request("GET", "/_cat/indices?format=json");
-        es.org.elasticsearch.client.RestClient lowLevelClient =
-            (es.org.elasticsearch.client.RestClient) searchClient.getLowLevelClient();
-        es.org.elasticsearch.client.Response response = lowLevelClient.performRequest(request);
-        String responseBody =
-            org.apache.http.util.EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+        var request =
+            new es.co.elastic.clients.transport.rest5_client.low_level.Request(
+                "GET", "/_cat/indices?format=json");
+        es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client lowLevelClient =
+            (es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client)
+                searchClient.getLowLevelClient();
+        var response = lowLevelClient.performRequest(request);
+        String responseBody;
+        try (var is = response.getEntity().getContent()) {
+          responseBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        }
 
         com.fasterxml.jackson.databind.JsonNode root = JsonUtils.readTree(responseBody);
         for (com.fasterxml.jackson.databind.JsonNode node : root) {
           String indexName = node.get("index").asText();
           indices.add(indexName);
         }
-      } else if (searchClient instanceof OpenSearchClient) {
-        os.org.opensearch.client.Request request =
-            new os.org.opensearch.client.Request("GET", "/_cat/indices?format=json");
-        os.org.opensearch.client.RestClient lowLevelClient =
-            (os.org.opensearch.client.RestClient) searchClient.getLowLevelClient();
-        os.org.opensearch.client.Response response = lowLevelClient.performRequest(request);
+      } else if (searchClient instanceof OpenSearchClient openSearchClient) {
+        os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient genericClient =
+            openSearchClient.getNewClient().generic();
+        var response =
+            genericClient.execute(
+                os.org.opensearch.client.opensearch.generic.Requests.builder()
+                    .method("GET")
+                    .endpoint("/_cat/indices?format=json")
+                    .build());
         String responseBody =
-            org.apache.http.util.EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+            response
+                .getBody()
+                .map(
+                    b -> {
+                      try {
+                        return new String(b.bodyAsBytes(), StandardCharsets.UTF_8);
+                      } catch (Exception e) {
+                        LOG.warn("Failed to read response body for indices", e);
+                        return "[]";
+                      }
+                    })
+                .orElse("[]");
 
         com.fasterxml.jackson.databind.JsonNode root = JsonUtils.readTree(responseBody);
         for (com.fasterxml.jackson.databind.JsonNode node : root) {

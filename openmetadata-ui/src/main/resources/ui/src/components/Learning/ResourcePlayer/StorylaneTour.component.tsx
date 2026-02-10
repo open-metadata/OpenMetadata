@@ -36,8 +36,6 @@ export const StorylaneTour: React.FC<StorylaneTourProps> = ({ resource }) => {
           </div>
         )}
         <iframe
-          allowFullScreen
-          allow="fullscreen"
           className="storylane-tour-iframe"
           frameBorder="0"
           sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-forms"

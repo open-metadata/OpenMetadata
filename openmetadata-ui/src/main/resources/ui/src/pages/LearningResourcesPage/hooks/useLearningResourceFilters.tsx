@@ -27,10 +27,10 @@ import {
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 
 export interface LearningResourceFilterState {
-  type?: string;
-  category?: string;
-  context?: string;
-  status?: string;
+  type?: string[];
+  category?: string[];
+  context?: string[];
+  status?: string[];
 }
 
 interface UseLearningResourceFiltersConfig {
@@ -82,7 +82,7 @@ export const useLearningResourceFilters = (
   >({});
 
   const handleFilterChange = useCallback(
-    (key: keyof LearningResourceFilterState, value: string | undefined) => {
+    (key: keyof LearningResourceFilterState, value: string[] | undefined) => {
       onFilterChange({ ...filterState, [key]: value });
     },
     [filterState, onFilterChange]
@@ -106,14 +106,19 @@ export const useLearningResourceFilters = (
 
   const getSelectedKeys = useCallback(
     (key: keyof LearningResourceFilterState): SearchDropdownOption[] => {
-      const value = filterState[key];
-      if (!value) {
+      const values = filterState[key];
+      if (!values || values.length === 0) {
         return [];
       }
       const field = FILTER_FIELDS.find((f) => f.key === key);
-      const option = field?.options.find((o) => o.key === value);
 
-      return option ? [option] : [{ key: value, label: value }];
+      return values
+        .map((val) => {
+          const option = field?.options.find((o) => o.key === val);
+
+          return option ?? { key: val, label: val };
+        })
+        .filter(Boolean);
     },
     [filterState]
   );
@@ -121,9 +126,10 @@ export const useLearningResourceFilters = (
   const handleDropdownChange = useCallback(
     (values: SearchDropdownOption[], searchKey: string) => {
       const key = searchKey as keyof LearningResourceFilterState;
-      const value = values.length > 0 ? values[0].key : undefined;
+      const selectedValues =
+        values.length > 0 ? values.map((v) => v.key) : undefined;
 
-      handleFilterChange(key, value);
+      handleFilterChange(key, selectedValues);
     },
     [handleFilterChange]
   );
@@ -188,38 +194,46 @@ export const useLearningResourceFilters = (
       label: string;
       value: string;
     }[] = [];
-    if (filterState.type) {
-      const field = FILTER_FIELDS.find((f) => f.key === 'type');
+    if (filterState.type?.length) {
+      const labels = filterState.type
+        .map((v) => TYPE_OPTIONS.find((o) => o.key === v)?.label ?? v)
+        .join(', ');
 
       filters.push({
         key: 'type',
-        label: t(field?.labelKey ?? 'label.type'),
-        value: filterState.type,
+        label: t('label.type'),
+        value: labels,
       });
     }
-    if (filterState.category) {
-      const cat = CATEGORIES.find((c) => c.value === filterState.category);
+    if (filterState.category?.length) {
+      const labels = filterState.category
+        .map((v) => CATEGORIES.find((c) => c.value === v)?.label ?? v)
+        .join(', ');
 
       filters.push({
         key: 'category',
         label: t('label.category-plural'),
-        value: cat?.label ?? filterState.category,
+        value: labels,
       });
     }
-    if (filterState.context) {
-      const ctx = PAGE_IDS.find((p) => p.value === filterState.context);
+    if (filterState.context?.length) {
+      const labels = filterState.context
+        .map((v) => PAGE_IDS.find((p) => p.value === v)?.label ?? v)
+        .join(', ');
 
       filters.push({
         key: 'context',
         label: t('label.context'),
-        value: ctx?.label ?? filterState.context,
+        value: labels,
       });
     }
-    if (filterState.status) {
+    if (filterState.status?.length) {
+      const labels = filterState.status.join(', ');
+
       filters.push({
         key: 'status',
         label: t('label.status'),
-        value: filterState.status,
+        value: labels,
       });
     }
 
