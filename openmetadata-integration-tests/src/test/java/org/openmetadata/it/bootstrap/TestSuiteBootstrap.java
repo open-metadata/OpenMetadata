@@ -272,9 +272,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           new org.opensearch.testcontainers.OpensearchContainer<>(image);
       opensearch.withEnv("discovery.type", "single-node");
       opensearch.withEnv("DISABLE_SECURITY_PLUGIN", "true");
+      opensearch.withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true");
       opensearch.withEnv("OPENSEARCH_JAVA_OPTS", "-Xms1g -Xmx1g");
       opensearch.withStartupAttempts(3);
-      opensearch.withTmpFs(java.util.Map.of("/usr/share/opensearch/data", "rw,size=1g"));
+      opensearch.withTmpFs(
+          java.util.Map.of("/usr/share/opensearch/data", "rw,size=1g,uid=1000,gid=1000"));
       opensearch.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -600,6 +602,16 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       }
     } catch (Exception e) {
       LOG.warn("Error cleaning up shared entities", e);
+    }
+
+    try {
+      if (WorkflowHandler.isInitialized()) {
+        LOG.info("Shutting down Flowable ProcessEngine...");
+        org.flowable.engine.ProcessEngines.destroy();
+        LOG.info("Flowable ProcessEngine shut down successfully");
+      }
+    } catch (Exception e) {
+      LOG.warn("Error shutting down Flowable ProcessEngine", e);
     }
 
     try {
