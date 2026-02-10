@@ -429,18 +429,18 @@ class BigqueryUnitTest(TestCase):
         ] = MOCK_DATABASE_SERVICE.name.root
         self.thread_id = self.bq_source.context.get_current_thread_id()
         self.bq_source._inspector_map[self.thread_id] = types.SimpleNamespace()
-        self.bq_source._inspector_map[self.thread_id].get_pk_constraint = (
-            lambda table_name, schema: []
-        )
-        self.bq_source._inspector_map[self.thread_id].get_unique_constraints = (
-            lambda table_name, schema_name: []
-        )
-        self.bq_source._inspector_map[self.thread_id].get_foreign_keys = (
-            lambda table_name, schema: []
-        )
-        self.bq_source._inspector_map[self.thread_id].get_columns = (
-            lambda table_name, schema, db_name: []
-        )
+        self.bq_source._inspector_map[
+            self.thread_id
+        ].get_pk_constraint = lambda table_name, schema: []
+        self.bq_source._inspector_map[
+            self.thread_id
+        ].get_unique_constraints = lambda table_name, schema_name: []
+        self.bq_source._inspector_map[
+            self.thread_id
+        ].get_foreign_keys = lambda table_name, schema: []
+        self.bq_source._inspector_map[
+            self.thread_id
+        ].get_columns = lambda table_name, schema, db_name: []
         self.bq_source.client = Mock()
 
     def test_source_url(self):
@@ -558,39 +558,16 @@ class BigqueryUnitTest(TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
 
-    @patch("metadata.utils.bigquery_utils.get_bigquery_client")
-    @patch("metadata.ingestion.connections.builders.create_generic_db_connection")
-    @patch("metadata.utils.credentials.set_google_credentials")
-    @patch("sqlalchemy.inspect")
-    def test_usage_location_passed_to_client_and_engine(
-        self,
-        mock_inspect,
-        mock_set_credentials,
-        mock_create_connection,
-        mock_get_bq_client,
-    ):
+    def test_usage_location_passed_to_client_and_engine(self):
         """
         Test usageLocation is correctly passed to BigQuery client and added to engine URL
         """
         from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
             BigQueryConnection,
         )
-        from metadata.ingestion.source.database.bigquery.connection import (
-            get_connection,
-            get_connection_url,
-        )
         from metadata.ingestion.source.database.bigquery.helper import (
             get_inspector_details,
         )
-
-        mock_engine = Mock()
-        mock_engine.url = "bigquery://test-project"
-        mock_inspector = Mock()
-        mock_client = Mock()
-
-        mock_create_connection.return_value = mock_engine
-        mock_inspect.return_value = mock_inspector
-        mock_get_bq_client.return_value = mock_client
 
         config_with_location = deepcopy(
             mock_bq_config["source"]["serviceConnection"]["config"]
@@ -604,9 +581,6 @@ class BigqueryUnitTest(TestCase):
         )
         assert "location=eu" in str(result.engine.url)
         assert result.client._location == "eu"
-
-        mock_get_bq_client.reset_mock()
-        mock_create_connection.reset_mock()
 
         config_without_location = deepcopy(
             mock_bq_config["source"]["serviceConnection"]["config"]
