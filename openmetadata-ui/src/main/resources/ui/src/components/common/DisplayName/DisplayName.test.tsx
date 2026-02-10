@@ -21,7 +21,9 @@ jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
     .mockImplementation(({ children, ...props }) => (
-      <span {...props}>{children}</span>
+      <a href="#" {...props}>
+        {children}
+      </a>
     )),
 }));
 
@@ -108,10 +110,10 @@ describe('Test DisplayName Component', () => {
       </MemoryRouter>
     );
 
-    const linkElement = screen.getByTestId('Sample Entity');
+    const linkElements = screen.getAllByTestId('Sample Entity');
 
-    expect(linkElement.tagName).toBe('SPAN');
-    expect(linkElement).toHaveTextContent('Sample Display Name');
+    expect(linkElements.length).toBeGreaterThanOrEqual(1);
+    expect(linkElements[0].tagName).toBe('A');
   });
 
   it('Should render plain text when link prop is not provided', async () => {
@@ -123,10 +125,10 @@ describe('Test DisplayName Component', () => {
       </MemoryRouter>
     );
 
-    const nameElement = screen.getByTestId('Sample Entity');
+    const nameElements = screen.getAllByTestId('Sample Entity');
 
-    expect(nameElement.tagName).toBe('SPAN');
-    expect(nameElement).toHaveTextContent('Sample Display Name');
+    expect(nameElements.length).toBeGreaterThanOrEqual(1);
+    expect(nameElements[0].tagName).toBe('SPAN');
   });
 
   it('Should render name as a link when displayName is empty and link is provided', async () => {

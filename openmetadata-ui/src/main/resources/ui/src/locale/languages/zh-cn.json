@@ -1835,6 +1835,7 @@
     "syntax": "Syntax",
     "tab": "标签页",
     "table": "数据表",
+    "table-column": "表列",
     "table-constraint-plural": "数据表约束",
     "table-constraints": "数据表约束",
     "table-details": "表格详情",
