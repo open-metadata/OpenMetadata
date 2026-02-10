@@ -987,13 +987,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
               Entity.getEntityRepository(effectiveVersioningEntityType);
 
       if (versioningRepo.supportsBulkImportVersioning()) {
-        ProcessChangeEventForBulkImport(versioningRepo, uriInfo, securityContext, name, result);
+        processChangeEventForBulkImport(versioningRepo, uriInfo, securityContext, name, result);
       }
     }
     return result;
   }
 
-  protected void ProcessChangeEventForBulkImport(
+  protected void processChangeEventForBulkImport(
       EntityRepository<EntityInterface> versioningRepo,
       UriInfo uriInfo,
       SecurityContext securityContext,

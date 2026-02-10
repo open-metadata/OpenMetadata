@@ -1501,7 +1501,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   @Override
-  protected void ProcessChangeEventForBulkImport(
+  protected void processChangeEventForBulkImport(
       EntityRepository<EntityInterface> versioningRepo,
       UriInfo uriInfo,
       SecurityContext securityContext,

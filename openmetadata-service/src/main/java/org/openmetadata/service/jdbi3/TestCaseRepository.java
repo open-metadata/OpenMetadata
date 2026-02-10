@@ -1562,7 +1562,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     private final TestSuite targetBundleSuite;
     private final List<UUID> importedTestCaseIds = new ArrayList<>();
     private final Map<String, UUID> importedTestSuiteIds = new HashMap<>();
-    private EntityRepository<EntityInterface> versioningRepo =
+    private final EntityRepository<EntityInterface> versioningRepo =
         (EntityRepository<EntityInterface>) Entity.getEntityRepository(TEST_SUITE);
 
     TestCaseCsv(String user, TestSuite targetBundleSuite) {
@@ -1655,6 +1655,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             // No test suite provided - get or create the default basic test suite
             EntityReference testSuite = repository.getOrCreateTestSuite(testCase);
             testCase.withTestSuite(testSuite);
+            importedTestSuiteIds.putIfAbsent(testSuite.getFullyQualifiedName(), testSuite.getId());
           }
 
           // Compute and set FQN manually (same logic as setFullyQualifiedName)
@@ -1728,23 +1729,21 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
       if (!importResult.getDryRun()) {
         List<UUID> affectedTestSuiteIds = new ArrayList<>(importedTestSuiteIds.values());
-        for (UUID testSuiteId : affectedTestSuiteIds) {
+        for (UUID affectedTestSuiteId : affectedTestSuiteIds) {
           try {
-            for (UUID affectedTestSuiteId : affectedTestSuiteIds) {
-              versioningRepo.createChangeEventForBulkOperation(
-                  versioningRepo.get(
-                      null,
-                      affectedTestSuiteId,
-                      new Fields(versioningRepo.getAllowedFields(), ""),
-                      NON_DELETED,
-                      false),
-                  importResult,
-                  importedBy);
-            }
+            versioningRepo.createChangeEventForBulkOperation(
+                versioningRepo.get(
+                    null,
+                    affectedTestSuiteId,
+                    new Fields(versioningRepo.getAllowedFields(), ""),
+                    NON_DELETED,
+                    false),
+                importResult,
+                importedBy);
           } catch (Exception e) {
             LOG.error(
                 "Failed to update version for Test Suite with id '{}': {}",
-                testSuiteId,
+                affectedTestSuiteId,
                 e.getMessage());
           }
         }
