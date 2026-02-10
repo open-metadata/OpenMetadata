@@ -249,10 +249,6 @@ export interface RecognizerConfig {
     patterns?:   Pattern[];
     regexFlags?: RegexFlags;
     /**
-     * The entity type this recognizer detects
-     */
-    supportedEntity?: PIIEntity;
-    /**
      * Language supported by this recognizer
      */
     supportedLanguage?: ClassificationLanguage;
@@ -381,8 +377,6 @@ export interface RegexFlags {
 }
 
 /**
- * The entity type this recognizer detects
- *
  * Enum of PII (Personally Identifiable Information) tags for classification and detection
  * of sensitive data. Based on Presidio supported entities
  * (https://microsoft.github.io/presidio/supported_entities/).

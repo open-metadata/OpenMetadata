@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
@@ -80,6 +81,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
@@ -362,7 +364,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       // Don't fail the entire operation if ES indexing fails
     }
 
-    // Update ES Indexes and usage of this pipeline index
+    // Update the pipeline's own ES index with latest status
     searchRepository.updateEntityIndex(pipeline);
     searchRepository
         .getSearchClient()
@@ -375,6 +377,57 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         ENTITY_UPDATED);
   }
 
+  public RestUtil.PutResponse<?> addBulkPipelineStatus(
+      String fqn, List<PipelineStatus> pipelineStatuses) {
+    Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
+    pipeline.setService(getContainer(pipeline.getId()));
+
+    if (pipelineStatuses == null || pipelineStatuses.isEmpty()) {
+      return new RestUtil.PutResponse<>(Response.Status.OK, pipeline, ENTITY_NO_CHANGE);
+    }
+
+    Set<String> validatedTasks = new HashSet<>();
+    for (PipelineStatus pipelineStatus : pipelineStatuses) {
+      for (Status taskStatus : listOrEmpty(pipelineStatus.getTaskStatus())) {
+        if (validatedTasks.add(taskStatus.getName())) {
+          validateTask(pipeline, taskStatus.getName());
+        }
+      }
+    }
+
+    PipelineStatus latestStatus = null;
+    for (PipelineStatus pipelineStatus : pipelineStatuses) {
+      if (latestStatus == null || pipelineStatus.getTimestamp() > latestStatus.getTimestamp()) {
+        latestStatus = pipelineStatus;
+      }
+    }
+
+    bulkUpsertPipelineStatuses(pipeline.getFullyQualifiedName(), pipelineStatuses);
+
+    searchRepository.bulkIndexPipelineExecutions(pipeline, pipelineStatuses);
+
+    if (RdfUpdater.isEnabled() && latestStatus != null) {
+      storePipelineExecutionInRdf(pipeline, latestStatus);
+    }
+
+    pipeline.setPipelineStatus(latestStatus);
+    ChangeDescription change =
+        addPipelineStatusChangeDescription(pipeline.getVersion(), latestStatus, null);
+    pipeline.setChangeDescription(change);
+    pipeline.setIncrementalChangeDescription(change);
+
+    try {
+      searchRepository.updateEntityIndex(pipeline);
+    } catch (Exception e) {
+      LOG.error("Failed to update pipeline entity index in Elasticsearch", e);
+    }
+
+    return new RestUtil.PutResponse<>(
+        Response.Status.OK,
+        pipeline.withPipelineStatus(latestStatus).withUpdatedAt(System.currentTimeMillis()),
+        ENTITY_UPDATED);
+  }
+
   private ChangeDescription addPipelineStatusChangeDescription(
       Double version, Object newValue, Object oldValue) {
     FieldChange fieldChange =
@@ -382,6 +435,36 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
     change.getFieldsUpdated().add(fieldChange);
     return change;
+  }
+
+  private void bulkUpsertPipelineStatuses(String fqn, List<PipelineStatus> pipelineStatuses) {
+    String entityFQNHash = FullyQualifiedName.buildHash(fqn);
+    String sql;
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      sql =
+          "INSERT INTO entity_extension_time_series(entityFQNHash, extension, jsonSchema, json) "
+              + "VALUES (:entityFQNHash, :extension, :jsonSchema, :json) "
+              + "ON DUPLICATE KEY UPDATE json = VALUES(json)";
+    } else {
+      sql =
+          "INSERT INTO entity_extension_time_series(entityFQNHash, extension, jsonSchema, json) "
+              + "VALUES (:entityFQNHash, :extension, :jsonSchema, cast(:json as jsonb)) "
+              + "ON CONFLICT (entityFQNHash, extension, timestamp) DO UPDATE SET json = EXCLUDED.json";
+    }
+    Entity.getJdbi()
+        .useHandle(
+            handle -> {
+              var batch = handle.prepareBatch(sql);
+              for (PipelineStatus pipelineStatus : pipelineStatuses) {
+                batch
+                    .bind("entityFQNHash", entityFQNHash)
+                    .bind("extension", PIPELINE_STATUS_EXTENSION)
+                    .bind("jsonSchema", "pipelineStatus")
+                    .bind("json", JsonUtils.pojoToJson(pipelineStatus))
+                    .add();
+              }
+              batch.execute();
+            });
   }
 
   /**
