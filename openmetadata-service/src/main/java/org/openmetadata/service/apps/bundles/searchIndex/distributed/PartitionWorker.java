@@ -275,6 +275,13 @@ public class PartitionWorker {
    * Wait for pending async sink operations to complete, then flush stats.
    * This ensures that stats from async bulk callbacks are captured before the tracker is abandoned.
    *
+   * <p>When vector indexing is enabled, the sink may have long-running vector embedding tasks.
+   * We wait for both:
+   * <ul>
+   *   <li>The StageStatsTracker's pending operations (for stats accuracy)</li>
+   *   <li>The BulkSink's pending vector tasks (for vector completion)</li>
+   * </ul>
+   *
    * @param statsTracker The stats tracker to flush after waiting
    */
   private void waitForSinkOperations(StageStatsTracker statsTracker) {
@@ -282,15 +289,37 @@ public class PartitionWorker {
     // Without this, documents wait for the periodic flush interval (5 seconds)
     searchIndexSink.flushAndAwait(30);
 
-    // Wait for all pending sink operations to complete (with 30 second timeout)
-    // This ensures the async bulk callbacks have run and updated the tracker
-    boolean completed = statsTracker.awaitSinkCompletion(30000);
-    if (!completed) {
+    // Check if there are pending vector tasks - if so, we need a longer timeout
+    int pendingVectorTasks = searchIndexSink.getPendingVectorTaskCount();
+    boolean hasVectorTasks = pendingVectorTasks > 0;
+
+    if (hasVectorTasks) {
+      LOG.debug(
+          "Waiting for {} pending vector tasks before completing partition for entity {}",
+          pendingVectorTasks,
+          statsTracker.getEntityType());
+
+      // Wait for vector operations to complete first (up to 120 seconds for vectors)
+      boolean vectorComplete = searchIndexSink.awaitVectorCompletion(120);
+      if (!vectorComplete) {
+        LOG.warn(
+            "Timed out waiting for vector completion, {} tasks still pending for entity {}",
+            searchIndexSink.getPendingVectorTaskCount(),
+            statsTracker.getEntityType());
+      }
+    }
+
+    // Now wait for the stats tracker to have all callbacks accounted for
+    // Use a longer timeout if we had vector tasks since callbacks may be delayed
+    long statsTimeout = hasVectorTasks ? 60000 : 30000;
+    boolean statsComplete = statsTracker.awaitSinkCompletion(statsTimeout);
+    if (!statsComplete) {
       LOG.warn(
-          "Timed out waiting for sink completion, {} operations still pending for entity {}",
+          "Timed out waiting for sink stats completion, {} operations still pending for entity {}",
           statsTracker.getPendingSinkOps(),
           statsTracker.getEntityType());
     }
+
     statsTracker.flush();
   }
 
@@ -439,44 +468,22 @@ public class PartitionWorker {
     LOG.info("Stop requested for partition worker");
   }
 
-  /**
-   * Check if this worker has been requested to stop.
-   *
-   * @return true if stop has been requested
-   */
   public boolean isStopped() {
     return stopped.get();
   }
 
-  /**
-   * Result of processing a single batch.
-   *
-   * @param successCount Number of successfully indexed entities
-   * @param failedCount Number of failed entities
-   */
   public record BatchResult(int successCount, int failedCount, int warningsCount) {}
 
-  /**
-   * Result of processing a partition.
-   *
-   * @param successCount Total successfully indexed entities
-   * @param failedCount Total failed entities (for backward compatibility, = readerFailed + sinkFailed)
-   * @param wasStopped Whether processing was stopped before completion
-   * @param readerFailed Number of entities that failed during reading
-   * @param readerWarnings Number of warnings from reading (e.g., stale references)
-   */
   public record PartitionResult(
       long successCount,
       long failedCount,
       boolean wasStopped,
       long readerFailed,
       long readerWarnings) {
-    /** Backward-compatible constructor for existing code */
     public PartitionResult(long successCount, long failedCount, boolean wasStopped) {
       this(successCount, failedCount, wasStopped, 0, 0);
     }
 
-    /** Constructor with readerFailed but no warnings (backward-compatible) */
     public PartitionResult(
         long successCount, long failedCount, boolean wasStopped, long readerFailed) {
       this(successCount, failedCount, wasStopped, readerFailed, 0);

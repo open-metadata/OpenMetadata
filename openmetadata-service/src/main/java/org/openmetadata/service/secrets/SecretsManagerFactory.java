@@ -48,7 +48,7 @@ public class SecretsManagerFactory {
       to connect to AWS SSM as specified in the docs:
       https://docs.open-metadata.org/deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
       */
-      secretsManager = DBSecretsManager.getInstance(secretsConfig);
+      secretsManager = DBSecretsManager.getInstance(secretsManagerProvider, secretsConfig);
       case MANAGED_AWS -> secretsManager = AWSSecretsManager.getInstance(secretsConfig);
       case MANAGED_AWS_SSM -> secretsManager = AWSSSMSecretsManager.getInstance(secretsConfig);
       case IN_MEMORY -> secretsManager = InMemorySecretsManager.getInstance(secretsConfig);

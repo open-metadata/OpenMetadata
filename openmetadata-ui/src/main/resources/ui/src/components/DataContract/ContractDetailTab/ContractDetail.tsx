@@ -747,7 +747,7 @@ const ContractDetail: React.FC<{
             {showContractStatusAlert && (
               <Col className="contract-card-items" span={24}>
                 <AlertBar
-                  defafultExpand
+                  defaultExpand
                   className="h-full"
                   message={latestContractResults?.result ?? ''}
                   type="error"

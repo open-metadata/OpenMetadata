@@ -47,6 +47,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   private final List<String> readerErrors = new ArrayList<>();
   private final StepStats stats = new StepStats();
   private final ListFilter filter;
+  private final int cachedTotalCount;
   private String lastFailedCursor = null;
   private final AtomicReference<String> cursor = new AtomicReference<>(RestUtil.encodeCursor("0"));
   private final AtomicReference<Boolean> isDone = new AtomicReference<>(false);
@@ -56,8 +57,23 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     this.batchSize = batchSize;
     this.fields = fields;
     this.filter = new ListFilter(Include.ALL);
+    this.cachedTotalCount = Entity.getEntityRepository(entityType).getDao().listCount(this.filter);
     this.stats
-        .withTotalRecords(Entity.getEntityRepository(entityType).getDao().listTotalCount())
+        .withTotalRecords(cachedTotalCount)
+        .withSuccessRecords(0)
+        .withFailedRecords(0)
+        .withWarningRecords(0);
+  }
+
+  public PaginatedEntitiesSource(
+      String entityType, int batchSize, List<String> fields, int knownTotal) {
+    this.entityType = entityType;
+    this.batchSize = batchSize;
+    this.fields = fields;
+    this.filter = new ListFilter(Include.ALL);
+    this.cachedTotalCount = knownTotal;
+    this.stats
+        .withTotalRecords(cachedTotalCount)
         .withSuccessRecords(0)
         .withFailedRecords(0)
         .withWarningRecords(0);
@@ -69,8 +85,9 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     this.batchSize = batchSize;
     this.fields = fields;
     this.filter = filter;
+    this.cachedTotalCount = Entity.getEntityRepository(entityType).getDao().listCount(filter);
     this.stats
-        .withTotalRecords(Entity.getEntityRepository(entityType).getDao().listCount(filter))
+        .withTotalRecords(cachedTotalCount)
         .withSuccessRecords(0)
         .withFailedRecords(0)
         .withWarningRecords(0);
@@ -104,7 +121,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       result =
           entityRepository.listWithOffset(
               entityDAO::listAfter,
-              entityDAO::listCount,
+              f -> cachedTotalCount,
               filter,
               batchSize,
               cursor,
@@ -204,7 +221,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       result =
           entityRepository.listWithOffset(
               entityDAO::listAfter,
-              entityDAO::listCount,
+              f -> cachedTotalCount,
               filter,
               batchSize,
               currentCursor,

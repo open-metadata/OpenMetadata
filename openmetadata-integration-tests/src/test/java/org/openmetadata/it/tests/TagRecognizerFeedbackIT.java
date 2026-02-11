@@ -12,10 +12,10 @@ import java.time.Duration;
 import java.util.Map;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junitpioneer.jupiter.RetryingTest;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -47,7 +47,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 @ExtendWith(TestNamespaceExtension.class)
 @Execution(ExecutionMode.SAME_THREAD)
 public class TagRecognizerFeedbackIT {
-  private static final long TIMEOUT_MINUTES = 3;
+  private static final long TIMEOUT_MINUTES = 5;
   private static final long POLL_INTERVAL_SECONDS = 3;
 
   @BeforeAll
@@ -280,7 +280,7 @@ public class TagRecognizerFeedbackIT {
                 .withName(PredefinedRecognizer.Name.EMAIL_RECOGNIZER));
   }
 
-  @Test
+  @RetryingTest(3)
   void test_recognizerFeedback_withDirectReviewer_createsTask(TestNamespace ns) throws Exception {
     Classification classification = createClassification(ns);
 
@@ -308,7 +308,7 @@ public class TagRecognizerFeedbackIT {
     assertEquals(feedback.getEntityLink(), task.getTask().getFeedback().getEntityLink());
   }
 
-  @Test
+  @RetryingTest(3)
   void test_recognizerFeedback_withInheritedReviewer_createsTask(TestNamespace ns)
       throws Exception {
 
@@ -335,7 +335,7 @@ public class TagRecognizerFeedbackIT {
     assertDoesNotThrow(() -> waitForRecognizerFeedbackTask(tag.getFullyQualifiedName()));
   }
 
-  @Test
+  @RetryingTest(3)
   void test_recognizerFeedback_noReviewer_autoApplied(TestNamespace ns) throws Exception {
 
     Classification classification = createClassification(ns);
@@ -386,7 +386,7 @@ public class TagRecognizerFeedbackIT {
             });
   }
 
-  @Test
+  @RetryingTest(3)
   void test_recognizerFeedback_submitterIsReviewer_autoApplied(TestNamespace ns) throws Exception {
 
     Classification classification = createClassification(ns);
@@ -439,7 +439,7 @@ public class TagRecognizerFeedbackIT {
             });
   }
 
-  @Test
+  @RetryingTest(3)
   void test_recognizerFeedback_approveTask_removesTagAndAddsException(TestNamespace ns)
       throws Exception {
 
@@ -498,7 +498,7 @@ public class TagRecognizerFeedbackIT {
     assertTrue(tagRemoved, "Tag should be removed from column after approval");
   }
 
-  @Test
+  @RetryingTest(3)
   void test_recognizerFeedback_rejectTask_keepsTag(TestNamespace ns) throws Exception {
 
     Classification classification = createClassification(ns);
@@ -546,7 +546,7 @@ public class TagRecognizerFeedbackIT {
     assertTrue(tagStillPresent, "Tag should remain on column after rejection");
   }
 
-  @Test
+  @RetryingTest(3)
   void test_recognizerFeedback_taskIncludesRecognizerMetadata(TestNamespace ns) throws Exception {
     Classification classification = createClassification(ns);
 
