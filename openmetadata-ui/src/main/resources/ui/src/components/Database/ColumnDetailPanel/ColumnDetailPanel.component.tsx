@@ -17,7 +17,7 @@ import {
   ChevronUp,
   XClose,
 } from '@untitledui/icons';
-import { Button, Card, Drawer, Space, Tooltip, Typography } from 'antd';
+import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -28,7 +28,6 @@ import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
 import {
   DE_ACTIVE_COLOR,
   ENTITY_PATH,
-  ICON_DIMENSION,
   PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -79,6 +78,7 @@ import {
 import './ColumnDetailPanel.less';
 import { KeyProfileMetrics } from './KeyProfileMetrics';
 import { NestedColumnsSection } from './NestedColumnsSection';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 
 const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;
@@ -539,7 +539,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             (prev) =>
             ({
               ...prev,
-              displayName: response.displayName,
+              displayName: (response as { displayName?: string }).displayName,
             } as T)
           );
         }
@@ -563,14 +563,14 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const previousFqnRef = useRef<string | undefined>();
 
   useEffect(() => {
-    // Only reset if FQN effectively changed or panel was just opened
     if (isOpen && activeColumn) {
       if (activeColumn.fullyQualifiedName !== previousFqnRef.current) {
-        setActiveTab(EntityRightPanelTab.OVERVIEW);
+        if (previousFqnRef.current === undefined) {
+          setActiveTab(EntityRightPanelTab.OVERVIEW);
+        }
         previousFqnRef.current = activeColumn.fullyQualifiedName;
       }
     } else if (!isOpen) {
-      // Reset ref when panel closes so next open resets tab
       previousFqnRef.current = undefined;
     }
   }, [isOpen, activeColumn?.fullyQualifiedName]);
@@ -815,13 +815,26 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           );
         })}
       </Box>
-      <div className="title-container items-start">
+      <div className="title-container items-start gap-4">
         <div className="d-flex items-center justify-between w-full">
 
-          <div className="d-flex items-center w-full gap-2">
-            <span className="entity-icon margin-right-xs">
-              <ColumnIcon />
-            </span>
+          <div className="d-flex items-center w-full">
+            <Box sx={{
+              marginRight: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 40,
+              height: 40,
+              borderRadius: '4px',
+              boxShadow: '0 1px 2px -1px rgba(10, 13, 18, 0.1), 0 1px 3px 0 rgba(10, 13, 18, 0.1)',
+            }}>
+              <ColumnIcon style={{
+                width: 20,
+                height: 20,
+                color: theme.palette.allShades?.gray?.[700],
+              }} />
+            </Box>
             <div className="d-flex flex-column w-full overflow-hidden">
               <div className="d-flex items-center gap-2 w-full">
                 <Tooltip
@@ -834,7 +847,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                     data-testid="entity-link"
                     ellipsis={{ tooltip: true }}>
                     {stringToHTML(
-                      (activeColumn as any).displayName || activeColumn.name
+                      (activeColumn as { displayName?: string }).displayName ||
+                      activeColumn.name ||
+                      ''
                     )}
                   </Typography.Text>
                 </Tooltip>
@@ -842,25 +857,18 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 {hasEditPermission.displayName &&
                   (entityType === EntityType.TABLE ||
                     entityType === EntityType.DASHBOARD_DATA_MODEL) && (
-                    <Tooltip placement="top" title={t('label.edit')}>
-                      <Button
-                        ghost
-                        className="hover-cell-icon flex-center"
-                        data-testid="edit-displayName-button"
-                        icon={
-                          <IconEdit
-                            color={DE_ACTIVE_COLOR}
-                            {...ICON_DIMENSION}
-                          />
-                        }
-                        style={{
-                          width: '24px',
-                          height: '24px',
-                        }}
-                        type="text"
-                        onClick={() => setIsDisplayNameEditing(true)}
-                      />
-                    </Tooltip>
+                    <EditIconButton
+                      newLook
+                      data-testid="edit-displayName-button"
+                      disabled={false}
+                      icon={<IconEdit color={DE_ACTIVE_COLOR} height={18} width={18} />}
+                      size="small"
+                      style={{ marginLeft: 8 }}
+                      title={t('label.edit-entity', {
+                        entity: t('label.display-name'),
+                      })}
+                      onClick={() => setIsDisplayNameEditing(true)}
+                    />
                   )}
               </div>
               {(activeColumn as any).displayName &&
