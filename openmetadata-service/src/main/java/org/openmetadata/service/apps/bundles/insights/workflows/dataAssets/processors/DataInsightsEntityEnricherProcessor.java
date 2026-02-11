@@ -82,6 +82,15 @@ public class DataInsightsEntityEnricherProcessor
     return enrichedMaps;
   }
 
+  public List<Map<String, Object>> enrichSingle(
+      EntityInterface entity, Map<String, Object> contextData) {
+    return getEntityVersions(entity, contextData).stream()
+        .flatMap(
+            entityVersionMap ->
+                generateDailyEntitySnapshots(enrichEntity(entityVersionMap, contextData)).stream())
+        .toList();
+  }
+
   private List<Map<String, Object>> getEntityVersions(
       EntityInterface entity, Map<String, Object> contextData) {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
@@ -293,7 +302,7 @@ public class DataInsightsEntityEnricherProcessor
   }
 
   @Override
-  public void updateStats(int currentSuccess, int currentFailed) {
+  public synchronized void updateStats(int currentSuccess, int currentFailed) {
     getUpdatedStats(stats, currentSuccess, currentFailed);
   }
 
