@@ -26,16 +26,16 @@ import os.org.opensearch.client.opensearch.indices.DataStream;
 import os.org.opensearch.client.opensearch.indices.GetDataStreamResponse;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
 import os.org.opensearch.client.opensearch.nodes.stats.Stats;
-import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport;
+import os.org.opensearch.client.transport.OpenSearchTransport;
 
 @Slf4j
 public class OpenSearchGenericManager implements GenericClient {
   private final OpenSearchClient client;
-  private final ApacheHttpClient5Transport transport;
+  private final OpenSearchTransport transport;
   private final boolean isClientAvailable;
   private final boolean isTransportAvailable;
 
-  public OpenSearchGenericManager(OpenSearchClient client, ApacheHttpClient5Transport transport) {
+  public OpenSearchGenericManager(OpenSearchClient client, OpenSearchTransport transport) {
     this.client = client;
     this.isClientAvailable = client != null;
     this.transport = transport;

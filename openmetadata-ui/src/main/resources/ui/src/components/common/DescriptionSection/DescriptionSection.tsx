@@ -19,12 +19,15 @@ import { EditIconButton } from '../IconButtons/EditIconButton';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { DescriptionSectionProps } from './DescriptionSection.interface';
 import './DescriptionSection.less';
+import { EntityAttachmentProvider } from '../EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 
 const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   description,
   onDescriptionUpdate,
   showEditButton = true,
   hasPermission = false,
+  entityFqn,
+  entityType,
 }) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -133,6 +136,50 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
 
   if (!description?.trim()) {
     return (
+      <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
+        <div className="description-section">
+          <div className="description-header">
+            <span className="description-title">{t('label.description')}</span>
+            {canShowEditButton && (
+              <EditIconButton
+                newLook
+                data-testid="edit-description"
+                disabled={false}
+                icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+                size="small"
+                title={t('label.edit-entity', {
+                  entity: t('label.description'),
+                })}
+                onClick={handleEditDescription}
+              />
+            )}
+          </div>
+          <div className="description-content">
+            <span className="no-data-placeholder">
+              {t('label.no-entity-added', {
+                entity: t('label.description-lowercase'),
+              })}
+            </span>
+            <ModalWithMarkdownEditor
+              header={t('label.edit-entity', {
+                entity: t('label.description'),
+              })}
+              placeholder={t('label.enter-entity', {
+                entity: t('label.description'),
+              })}
+              value={description || ''}
+              visible={Boolean(isEditDescription)}
+              onCancel={handleCancelEditDescription}
+              onSave={handleDescriptionChange}
+            />
+          </div>
+        </div>
+      </EntityAttachmentProvider>
+    );
+  }
+
+  return (
+    <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
       <div className="description-section">
         <div className="description-header">
           <span className="description-title">{t('label.description')}</span>
@@ -151,78 +198,42 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
           )}
         </div>
         <div className="description-content">
-          <span className="no-data-placeholder">
-            {t('label.no-entity-added', {
-              entity: t('label.description-lowercase'),
-            })}
-          </span>
-          <ModalWithMarkdownEditor
-            header={t('label.edit-entity', { entity: t('label.description') })}
-            placeholder={t('label.enter-entity', {
-              entity: t('label.description'),
-            })}
-            value={description || ''}
-            visible={Boolean(isEditDescription)}
-            onCancel={handleCancelEditDescription}
-            onSave={handleDescriptionChange}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="description-section">
-      <div className="description-header">
-        <span className="description-title">{t('label.description')}</span>
-        {canShowEditButton && (
-          <EditIconButton
-            newLook
-            data-testid="edit-description"
-            disabled={false}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-            size="small"
-            title={t('label.edit-entity', {
-              entity: t('label.description'),
-            })}
-            onClick={handleEditDescription}
-          />
-        )}
-      </div>
-      <div className="description-content">
-        <div className="description-display">
-          <div
-            className={`description-text ${
-              isExpanded ? 'expanded' : 'collapsed'
-            }`}
-            ref={containerRef}>
-            <RichTextEditorPreviewerV1
-              enableSeeMoreVariant={false}
-              isDescriptionExpanded={isExpanded}
-              markdown={description}
+          <div className="description-display">
+            <div
+              className={`description-text ${
+                isExpanded ? 'expanded' : 'collapsed'
+              }`}
+              ref={containerRef}>
+              <RichTextEditorPreviewerV1
+                enableSeeMoreVariant={false}
+                isDescriptionExpanded={isExpanded}
+                markdown={description}
+              />
+            </div>
+            {(shouldShowButton || isExpanded) && (
+              <button
+                className="show-more-button"
+                type="button"
+                onClick={toggleExpanded}>
+                {isExpanded ? t('label.show-less') : t('label.show-more')}
+              </button>
+            )}
+            <ModalWithMarkdownEditor
+              header={t('label.edit-entity', {
+                entity: t('label.description'),
+              })}
+              placeholder={t('label.enter-entity', {
+                entity: t('label.description'),
+              })}
+              value={description || ''}
+              visible={Boolean(isEditDescription)}
+              onCancel={handleCancelEditDescription}
+              onSave={handleDescriptionChange}
             />
           </div>
-          {(shouldShowButton || isExpanded) && (
-            <button
-              className="show-more-button"
-              type="button"
-              onClick={toggleExpanded}>
-              {isExpanded ? t('label.show-less') : t('label.show-more')}
-            </button>
-          )}
-          <ModalWithMarkdownEditor
-            header={t('label.edit-entity', { entity: t('label.description') })}
-            placeholder={t('label.enter-entity', {
-              entity: t('label.description'),
-            })}
-            value={description || ''}
-            visible={Boolean(isEditDescription)}
-            onCancel={handleCancelEditDescription}
-            onSave={handleDescriptionChange}
-          />
         </div>
       </div>
-    </div>
+    </EntityAttachmentProvider>
   );
 };
 

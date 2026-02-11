@@ -94,6 +94,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     onUpdate: onApiEndpointUpdate,
     openColumnDetailPanel,
     selectedColumn,
+    setDisplayedColumns,
   } = useGenericContext<APIEndpoint>();
 
   const { columnFqn: columnPart, fqn } = useFqn({
@@ -224,6 +225,11 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     openColumnDetailPanel,
     selectedColumn: selectedColumn as Field | null,
   });
+
+  // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
+  useEffect(() => {
+    setDisplayedColumns(activeSchemaFields);
+  }, [activeSchemaFields, setDisplayedColumns]);
 
   useScrollToElement(
     HIGHLIGHTED_ROW_SELECTOR,

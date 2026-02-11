@@ -1835,6 +1835,7 @@
     "syntax": "Syntax",
     "tab": "علامة تبويب",
     "table": "جدول",
+    "table-column": "عمود الجدول",
     "table-constraint-plural": "قيود الجدول",
     "table-constraints": "قيود الجدول",
     "table-details": "تفاصيل الجدول",

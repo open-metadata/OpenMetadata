@@ -1835,6 +1835,7 @@
     "syntax": "Syntax",
     "tab": "分頁",
     "table": "資料表",
+    "table-column": "表格欄位",
     "table-constraint-plural": "資料表約束",
     "table-constraints": "資料表約束",
     "table-details": "資料表詳情",
