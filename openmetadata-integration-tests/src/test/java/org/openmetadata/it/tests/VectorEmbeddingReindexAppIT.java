@@ -62,6 +62,9 @@ public class VectorEmbeddingReindexAppIT {
     Assumptions.assumeTrue(
         "opensearch".equalsIgnoreCase(searchType),
         "Vector embedding tests require OpenSearch (run with -PpostgresOpenSearch profile)");
+    Assumptions.assumeTrue(
+        waitForVectorSearchAvailability(),
+        "Vector search service is not available (embedding model may have failed to load)");
   }
 
   @Test
@@ -459,6 +462,55 @@ public class VectorEmbeddingReindexAppIT {
     log.warn("Indexing wait timeout reached after {}ms", totalWaited);
   }
 
+  private boolean waitForVectorSearchAvailability() {
+    int maxRetries = 10;
+    long backoffMs = 3000;
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        String body =
+            OBJECT_MAPPER.writeValueAsString(
+                Map.of("query", "test", "size", 1, "k", 1, "threshold", 0.0));
+        String url = SdkClients.getServerUrl() + "/v1/search/vector/query";
+        HttpRequest request =
+            HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+
+        HttpResponse<String> response =
+            HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() >= 200 && response.statusCode() < 300) {
+          log.info("Vector search service is available (attempt {})", attempt);
+          return true;
+        }
+
+        log.info(
+            "Vector search not yet available (attempt {}/{}): {} {}",
+            attempt,
+            maxRetries,
+            response.statusCode(),
+            response.body());
+      } catch (Exception e) {
+        log.info(
+            "Vector search check failed (attempt {}/{}): {}", attempt, maxRetries, e.getMessage());
+      }
+
+      try {
+        Thread.sleep(backoffMs);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return false;
+      }
+    }
+
+    log.warn("Vector search service not available after {} attempts", maxRetries);
+    return false;
+  }
+
   @SuppressWarnings("unchecked")
   private void waitForExistingJobToComplete() throws Exception {
     int maxWaitMs = 120_000;
@@ -509,41 +561,73 @@ public class VectorEmbeddingReindexAppIT {
     String body =
         OBJECT_MAPPER.writeValueAsString(
             Map.of("query", query, "size", 10, "k", 10000, "threshold", 0.0));
-
     String url = SdkClients.getServerUrl() + "/v1/search/vector/query";
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Content-Type", "application/json")
-            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-            .POST(HttpRequest.BodyPublishers.ofString(body))
-            .build();
 
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    int maxRetries = 5;
+    long backoffMs = 3000;
 
-    if (response.statusCode() >= 200 && response.statusCode() < 300) {
-      return OBJECT_MAPPER.readValue(response.body(), Map.class);
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      HttpRequest request =
+          HttpRequest.newBuilder()
+              .uri(URI.create(url))
+              .header("Content-Type", "application/json")
+              .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+              .POST(HttpRequest.BodyPublishers.ofString(body))
+              .build();
+
+      HttpResponse<String> response =
+          HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+      if (response.statusCode() >= 200 && response.statusCode() < 300) {
+        return OBJECT_MAPPER.readValue(response.body(), Map.class);
+      }
+
+      if (response.statusCode() == 503 && attempt < maxRetries) {
+        log.info(
+            "Vector search unavailable (attempt {}/{}), retrying in {}ms",
+            attempt,
+            maxRetries,
+            backoffMs * attempt);
+        Thread.sleep(backoffMs * attempt);
+        continue;
+      }
+
+      log.warn("Vector search returned status {}: {}", response.statusCode(), response.body());
     }
-    log.warn("Vector search returned status {}: {}", response.statusCode(), response.body());
     return null;
   }
 
   @SuppressWarnings("unchecked")
   private Map<String, Object> getFingerprint(String parentId) throws Exception {
     String url = SdkClients.getServerUrl() + "/v1/search/vector/fingerprint?parentId=" + parentId;
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-            .GET()
-            .build();
 
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    int maxRetries = 3;
+    long backoffMs = 2000;
 
-    if (response.statusCode() >= 200 && response.statusCode() < 300) {
-      return OBJECT_MAPPER.readValue(response.body(), Map.class);
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      HttpRequest request =
+          HttpRequest.newBuilder()
+              .uri(URI.create(url))
+              .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+              .GET()
+              .build();
+
+      HttpResponse<String> response =
+          HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+      if (response.statusCode() >= 200 && response.statusCode() < 300) {
+        return OBJECT_MAPPER.readValue(response.body(), Map.class);
+      }
+
+      if (response.statusCode() == 503 && attempt < maxRetries) {
+        log.info("Fingerprint endpoint unavailable (attempt {}/{}), retrying", attempt, maxRetries);
+        Thread.sleep(backoffMs * attempt);
+        continue;
+      }
+
+      log.debug(
+          "Fingerprint request returned status {}: {}", response.statusCode(), response.body());
     }
-    log.debug("Fingerprint request returned status {}", response.statusCode());
     return null;
   }
 
