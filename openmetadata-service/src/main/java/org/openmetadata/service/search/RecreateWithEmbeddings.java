@@ -41,7 +41,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
         && OpenSearchVectorService.getInstance() == null) {
       return;
     }
-    super.promoteEntityIndex(context, true);
+    super.promoteEntityIndex(context, reindexSuccess);
   }
 
   @Override
