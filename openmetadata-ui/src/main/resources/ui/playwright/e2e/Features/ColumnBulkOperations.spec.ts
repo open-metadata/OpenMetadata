@@ -14,10 +14,6 @@ import { expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { ClassificationClass } from '../../support/tag/ClassificationClass';
-import { TagClass } from '../../support/tag/TagClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
@@ -316,8 +312,6 @@ test.describe(
     test('should select column, open drawer, and verify form fields', async ({
       page,
     }) => {
-      test.slow();
-
       await test.step('Search for shared column', async () => {
         await searchColumn(page, SHARED_COLUMN_NAME);
       });
@@ -362,8 +356,6 @@ test.describe(
     test('should show column count for multiple column selection', async ({
       page,
     }) => {
-      test.slow();
-
       await test.step(
         'Select two columns via header checkbox then individual',
         async () => {
@@ -422,8 +414,6 @@ test.describe(
     test('should discard changes when closing drawer without saving', async ({
       page,
     }) => {
-      test.slow();
-
       await test.step('Search and select a column', async () => {
         await searchColumn(page, SHARED_COLUMN_NAME);
         const checkbox = page.getByTestId(
@@ -507,34 +497,9 @@ test.describe(
   'Column Bulk Operations - Bulk Update Flow',
   PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
-    const glossary = new Glossary();
-    const glossaryTerm = new GlossaryTerm(glossary);
-    const classification = new ClassificationClass();
-    const tag = new TagClass({ classification: classification.data.name });
-
-    test.beforeAll('Setup test data', async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-      await glossary.create(apiContext);
-      await glossaryTerm.create(apiContext);
-      await classification.create(apiContext);
-      await tag.create(apiContext);
-      await afterAction();
-    });
-
-    test.afterAll('Cleanup test data', async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-      await tag.delete(apiContext);
-      await classification.delete(apiContext);
-      await glossaryTerm.delete(apiContext);
-      await glossary.delete(apiContext);
-      await afterAction();
-    });
-
     test('should update display name and propagate to all occurrences', async ({
       page,
     }) => {
-      test.slow();
-
       await visitColumnBulkOperationsPage(page);
 
       await test.step('Search for shared column', async () => {
@@ -616,8 +581,6 @@ test.describe(
     test('should show success notification after bulk update', async ({
       page,
     }) => {
-      test.slow();
-
       await visitColumnBulkOperationsPage(page);
 
       await test.step('Search and select column', async () => {
@@ -680,8 +643,6 @@ test.describe(
     test('should expand STRUCT column to show nested fields', async ({
       page,
     }) => {
-      test.slow();
-
       await visitColumnBulkOperationsPage(page);
 
       await test.step('Search for STRUCT column', async () => {
@@ -709,8 +670,6 @@ test.describe(
     });
 
     test('should select and edit nested STRUCT field', async ({ page }) => {
-      test.slow();
-
       await visitColumnBulkOperationsPage(page);
 
       await test.step('Search for STRUCT column', async () => {
