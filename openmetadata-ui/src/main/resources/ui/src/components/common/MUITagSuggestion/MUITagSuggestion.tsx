@@ -15,14 +15,13 @@ import { Autocomplete, Box, TextField } from '@mui/material';
 import { debounce, isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
-    FC,
-    HtmlHTMLAttributes,
-    ReactNode,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { asyncFilterOptions } from '../../../constants/MUI.constants';
@@ -173,13 +172,6 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
       disableCloseOnSelect
       freeSolo
       multiple
-      data-testid="tag-suggestion"
-      // Force listbox to remount when options change to fix async search not updating dropdown
-      ListboxProps={
-        {
-          key: `listbox-${memoizedOptions.length}`,
-        } as HtmlHTMLAttributes<HTMLUListElement>
-      }
       autoFocus={autoFocus}
       data-testid="tag-suggestion"
       filterOptions={asyncFilterOptions}
@@ -245,7 +237,7 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
           </Box>
         );
       }}
-      renderTags={(value: (string | TagOption)[], getTagProps) =>
+      renderValue={(value: (string | TagOption)[], getTagProps) =>
         value
           .filter((v): v is TagOption => typeof v !== 'string')
           .map((option: TagOption, index: number) => {
@@ -263,7 +255,6 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
             );
           })
       }
-      filterOptions={asyncFilterOptions}
       size="small"
       value={selectedOptions}
       onChange={handleChange}

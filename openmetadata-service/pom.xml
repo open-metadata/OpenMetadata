@@ -62,7 +62,7 @@
       <dependency>
         <groupId>software.amazon.awssdk</groupId>
         <artifactId>bom</artifactId>
-        <version>2.22.12</version>
+        <version>2.25.70</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -1005,6 +1005,11 @@
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>regions</artifactId>
+    </dependency>
+    <!-- AWS CRT HTTP Client for AwsSdk2Transport with OpenSearch IAM auth -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>aws-crt-client</artifactId>
     </dependency>
     <dependency>
       <groupId>jakarta.ws.rs</groupId>
