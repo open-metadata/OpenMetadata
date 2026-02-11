@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.lenient;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -83,21 +84,13 @@ class OpenSearchBulkSinkSimpleTest {
 
   @Test
   void testIsVectorEmbeddingEnabledForEntity() {
-    // Test default implementation returns false
-    boolean result = openSearchBulkSink.isVectorEmbeddingEnabledForEntity("table");
-    assertEquals(false, result);
-
-    result = openSearchBulkSink.isVectorEmbeddingEnabledForEntity("user");
-    assertEquals(false, result);
-
-    result = openSearchBulkSink.isVectorEmbeddingEnabledForEntity("dashboard");
-    assertEquals(false, result);
+    assertEquals(false, openSearchBulkSink.isVectorEmbeddingEnabledForEntity("table"));
+    assertEquals(false, openSearchBulkSink.isVectorEmbeddingEnabledForEntity("user"));
+    assertEquals(false, openSearchBulkSink.isVectorEmbeddingEnabledForEntity("dashboard"));
   }
 
   @Test
-  void testAddEntityToVectorIndex() {
-    // Test default implementation does nothing (no exception thrown)
-    // This should not throw any exception as the default implementation is empty
-    openSearchBulkSink.addEntityToVectorIndex(null, null, true, null);
+  void testAddEntitiesToVectorIndexBatch() {
+    openSearchBulkSink.addEntitiesToVectorIndexBatch(null, Collections.emptyList(), true, null);
   }
 }

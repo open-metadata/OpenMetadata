@@ -489,13 +489,13 @@ public class OpenSearchBulkSink implements BulkSink {
     LOG.info("Concurrent requests updated to: {}", concurrentRequests);
   }
 
-  private boolean isVectorEmbeddingEnabledForEntity(String entityType) {
+  boolean isVectorEmbeddingEnabledForEntity(String entityType) {
     return searchRepository.isVectorEmbeddingEnabled()
         && OpenSearchVectorService.getInstance() != null
         && AvailableEntityTypes.isVectorIndexable(entityType);
   }
 
-  private void addEntitiesToVectorIndexBatch(
+  void addEntitiesToVectorIndexBatch(
       CustomBulkProcessor bulkProcessor,
       List<EntityInterface> entities,
       boolean recreateIndex,
