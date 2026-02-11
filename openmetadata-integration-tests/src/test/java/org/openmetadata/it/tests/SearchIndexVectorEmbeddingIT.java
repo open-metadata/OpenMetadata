@@ -62,10 +62,6 @@ public class SearchIndexVectorEmbeddingIT {
     Assumptions.assumeTrue(
         "opensearch".equalsIgnoreCase(searchType),
         "Vector embedding tests require OpenSearch (run with -PpostgresOpenSearch profile)");
-    Assumptions.assumeTrue(
-        org.openmetadata.service.Entity.getSearchRepository() != null
-            && org.openmetadata.service.Entity.getSearchRepository().isVectorEmbeddingEnabled(),
-        "Vector embedding tests require vector embeddings to be configured");
   }
 
   @Test

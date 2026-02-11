@@ -42,7 +42,9 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.Djl;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
@@ -544,6 +546,16 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         .withSearchIndexMappingLanguage(ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE)
         .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)
         .withSearchType(type);
+
+    if (type == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
+      NaturalLanguageSearchConfiguration nlSearch = new NaturalLanguageSearchConfiguration();
+      nlSearch.setEnabled(true);
+      nlSearch.setSemanticSearchEnabled(true);
+      nlSearch.setEmbeddingProvider("djl");
+      nlSearch.setDjl(new Djl());
+      config.setNaturalLanguageSearch(nlSearch);
+    }
+
     return config;
   }
 

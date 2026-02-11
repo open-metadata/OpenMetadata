@@ -61,10 +61,6 @@ public class ReembedOperationsIT {
     Assumptions.assumeTrue(
         "opensearch".equalsIgnoreCase(searchType),
         "Reembed tests require OpenSearch (run with -PpostgresOpenSearch profile)");
-    Assumptions.assumeTrue(
-        org.openmetadata.service.Entity.getSearchRepository() != null
-            && org.openmetadata.service.Entity.getSearchRepository().isVectorEmbeddingEnabled(),
-        "Reembed tests require vector embeddings to be configured");
   }
 
   @Test
