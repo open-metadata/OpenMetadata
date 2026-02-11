@@ -547,12 +547,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)
         .withSearchType(type);
 
+    // For OpenSearch tests, enable DJL model for Vector Search
     if (type == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
       NaturalLanguageSearchConfiguration nlSearch = new NaturalLanguageSearchConfiguration();
-      nlSearch.setEnabled(true);
       nlSearch.setSemanticSearchEnabled(true);
       nlSearch.setEmbeddingProvider("djl");
-      nlSearch.setDjl(new Djl());
+      nlSearch.setDjl(new Djl().withEmbeddingModel("ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2"));
       config.setNaturalLanguageSearch(nlSearch);
     }
 
