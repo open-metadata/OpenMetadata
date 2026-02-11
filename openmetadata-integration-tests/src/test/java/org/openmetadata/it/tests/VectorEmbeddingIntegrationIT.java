@@ -1,4 +1,4 @@
-package org.openmetadata.service.search.vector;
+package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -24,6 +24,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.client.DjlEmbeddingClient;
 import org.openmetadata.service.search.vector.client.DjlEmbeddingClient.EmbeddingInitializationException;
 import org.opensearch.testcontainers.OpensearchContainer;
@@ -37,7 +39,7 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
 
 @Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class VectorEmbeddingIntegrationTest {
+class VectorEmbeddingIntegrationIT {
 
   @Container
   static OpensearchContainer<?> opensearch =

@@ -6,9 +6,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import lombok.experimental.UtilityClass;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @UtilityClass
 public class VectorSearchQueryBuilder {
+  private static final Logger LOG = LoggerFactory.getLogger(VectorSearchQueryBuilder.class);
   private static final String ANY = "__ANY__";
   private static final String NONE = "__NONE__";
 
@@ -37,23 +40,41 @@ public class VectorSearchQueryBuilder {
       List<String> values = e.getValue();
       if (values == null || values.isEmpty()) continue;
 
-      sb.append(','); // Add comma before each filter
-
       // Handle custom properties that will come with "customProperties.<name>"
       if (field.startsWith("customProperties.")) {
+        sb.append(',');
         appendCustomPropertiesFilter(sb, field, values);
       } else {
-
         switch (field) {
-          case "owners" -> appendOwnersFilter(sb, values);
-          case "tags" -> appendNested(sb, "tags", "tags.tagFQN", values);
-          case "domains" -> appendFlat(sb, "domains.name", values);
-          case "tier" -> appendFlat(sb, "tier.tagFQN", values);
-          case "certification" -> appendFlat(sb, "certification.tagFQN", values);
-          case "entityType" -> appendFlat(sb, "entityType", values);
-          case "serviceType" -> appendFlat(sb, "serviceType", values);
-
-          default -> {}
+          case "owners" -> {
+            sb.append(',');
+            appendOwnersFilter(sb, values);
+          }
+          case "tags" -> {
+            sb.append(',');
+            appendNested(sb, "tags", "tags.tagFQN", values);
+          }
+          case "domains" -> {
+            sb.append(',');
+            appendFlat(sb, "domains.name", values);
+          }
+          case "tier" -> {
+            sb.append(',');
+            appendFlat(sb, "tier.tagFQN", values);
+          }
+          case "certification" -> {
+            sb.append(',');
+            appendFlat(sb, "certification.tagFQN", values);
+          }
+          case "entityType" -> {
+            sb.append(',');
+            appendFlat(sb, "entityType", values);
+          }
+          case "serviceType" -> {
+            sb.append(',');
+            appendFlat(sb, "serviceType", values);
+          }
+          default -> LOG.debug("Ignoring unrecognized filter key: {}", field);
         }
       }
     }

@@ -577,4 +577,46 @@ class VectorSearchQueryBuilderTest {
     assertTrue(filtersJson.contains("fuzziness"));
     assertTrue(filtersJson.contains("AUTO"));
   }
+
+  @Test
+  void testIgnoresUnrecognizedFilterKeys() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+    int size = 10;
+    int k = 100;
+    Map<String, List<String>> filters =
+        Map.of(
+            "unknownKey", List.of("value"),
+            "entityType", List.of("table"));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    // Should have 2 filters: deleted=false + entityType (unknownKey ignored)
+    assertEquals(2, mustFilters.size());
+
+    String filtersJson = mustFilters.toString();
+    assertTrue(filtersJson.contains("entityType"));
+    assertTrue(filtersJson.contains("table"));
+  }
+
+  @Test
+  void testIgnoresOnlyUnrecognizedFilterKeys() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+    int size = 10;
+    int k = 100;
+    Map<String, List<String>> filters = Map.of("unknownKey", List.of("value"));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, k, filters);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    // Should have only 1 filter: deleted=false
+    assertEquals(1, mustFilters.size());
+    assertEquals(false, mustFilters.get(0).get("term").get("deleted").asBoolean());
+  }
 }
