@@ -212,7 +212,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   }, [column]);
 
   const fetchColumnDetails = useCallback(async () => {
-    if (!column?.fullyQualifiedName || !isOpen || !tableFqn) {
+    const targetFqn = column?.fullyQualifiedName;
+    if (!targetFqn || !isOpen || !tableFqn) {
       return;
     }
 
@@ -226,11 +227,18 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         });
 
         const latestColumn = response.data.find(
-          (c) => c.fullyQualifiedName === column.fullyQualifiedName
+          (c) => c.fullyQualifiedName === targetFqn
         );
 
         if (latestColumn) {
-          setActiveColumn((prev) => ({ ...prev, ...latestColumn } as T));
+          setActiveColumn((prev) => {
+            // Discard stale response if column changed during fetch
+            if (prev?.fullyQualifiedName !== targetFqn) {
+              return prev;
+            }
+
+            return { ...prev, ...latestColumn } as T;
+          });
         }
 
         if (onColumnsUpdate) {
