@@ -46,7 +46,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       OpenSearchClient client, EmbeddingClient embeddingClient, String language) {
     this.client = client;
     this.embeddingClient = embeddingClient;
-    this.language = language != null ? language : "en";
+    this.language = language != null ? language.toLowerCase() : "en";
   }
 
   public OpenSearchVectorService(OpenSearchClient client, EmbeddingClient embeddingClient) {
