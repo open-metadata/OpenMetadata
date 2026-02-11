@@ -21,7 +21,7 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { asyncFilterOptions } from '../../../constants/MUI.constants';
