@@ -37,7 +37,7 @@ public class VectorSearchResource {
   private final Authorizer authorizer;
 
   private static final int MAX_SIZE = 100;
-  private static final int MAX_K = 1_000;
+  private static final int MAX_K = 10_000;
 
   public VectorSearchResource(Authorizer authorizer) {
     this.authorizer = authorizer;

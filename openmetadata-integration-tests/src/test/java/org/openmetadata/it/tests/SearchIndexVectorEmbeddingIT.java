@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -55,9 +56,8 @@ public class SearchIndexVectorEmbeddingIT {
   private Table sampleTable1;
   private Table sampleTable2;
 
-  @Test
-  @Order(0)
-  public void checkOpenSearchAvailable() {
+  @BeforeAll
+  void checkOpenSearchAvailable() {
     String searchType = System.getProperty("searchType", "elasticsearch");
     Assumptions.assumeTrue(
         "opensearch".equalsIgnoreCase(searchType),
@@ -284,6 +284,8 @@ public class SearchIndexVectorEmbeddingIT {
   }
 
   private void triggerSearchIndexApplication(boolean recreateIndex) throws Exception {
+    waitForExistingJobToComplete();
+
     EventPublisherJob jobConfig =
         new EventPublisherJob()
             .withEntities(Set.of("table"))
@@ -294,24 +296,48 @@ public class SearchIndexVectorEmbeddingIT {
     String body = JsonUtils.pojoToJson(jobConfig);
     String url = SdkClients.getServerUrl() + "/v1/apps/trigger/SearchIndexingApplication";
 
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Content-Type", "application/json")
-            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-            .POST(HttpRequest.BodyPublishers.ofString(body))
-            .build();
+    int maxRetries = 5;
+    long retryBackoffMs = 5000;
 
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-    assertTrue(
-        response.statusCode() >= 200 && response.statusCode() < 300,
-        "Failed to trigger SearchIndexingApplication: " + response.body());
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      HttpRequest request =
+          HttpRequest.newBuilder()
+              .uri(URI.create(url))
+              .header("Content-Type", "application/json")
+              .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+              .POST(HttpRequest.BodyPublishers.ofString(body))
+              .build();
+
+      HttpResponse<String> response =
+          HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+      if (response.statusCode() >= 200 && response.statusCode() < 300) {
+        return;
+      }
+
+      if (response.body() != null
+          && response.body().contains("Job is already running")
+          && attempt < maxRetries) {
+        log.info(
+            "Job is still running, waiting {}ms before retry {}/{}",
+            retryBackoffMs,
+            attempt,
+            maxRetries);
+        Thread.sleep(retryBackoffMs);
+        waitForExistingJobToComplete();
+        continue;
+      }
+
+      assertTrue(
+          response.statusCode() >= 200 && response.statusCode() < 300,
+          "Failed to trigger SearchIndexingApplication: " + response.body());
+    }
   }
 
   private void waitForIndexingCompletion() throws Exception {
-    int waitIntervalMs = 2000;
+    int waitIntervalMs = 3000;
     int totalWaited = 0;
-    int maxWaitMs = 60000;
+    int maxWaitMs = 120_000;
 
     while (totalWaited < maxWaitMs) {
       Thread.sleep(waitIntervalMs);
@@ -333,12 +359,14 @@ public class SearchIndexVectorEmbeddingIT {
         if (response.statusCode() == 200 && response.body() != null) {
           Map<String, Object> logJson = JsonUtils.readValue(response.body(), Map.class);
           String status = (String) logJson.get("status");
-          if ("success".equalsIgnoreCase(status)) {
+          if ("success".equalsIgnoreCase(status) || "completed".equalsIgnoreCase(status)) {
             log.info("Indexing completed successfully after {}ms", totalWaited);
             return;
           }
-          if ("failed".equalsIgnoreCase(status) || "error".equalsIgnoreCase(status)) {
-            log.warn("Indexing failed with status: {}", status);
+          if ("failed".equalsIgnoreCase(status)
+              || "stopped".equalsIgnoreCase(status)
+              || "activeError".equalsIgnoreCase(status)) {
+            log.warn("Indexing ended with status: {}", status);
             return;
           }
         }
@@ -348,6 +376,51 @@ public class SearchIndexVectorEmbeddingIT {
     }
 
     log.warn("Indexing wait timeout reached after {}ms", totalWaited);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void waitForExistingJobToComplete() throws Exception {
+    int maxWaitMs = 120_000;
+    int pollIntervalMs = 3000;
+    int totalWaited = 0;
+
+    while (totalWaited < maxWaitMs) {
+      try {
+        String url = SdkClients.getServerUrl() + "/v1/apps/name/SearchIndexingApplication/logs";
+        HttpRequest request =
+            HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+                .GET()
+                .build();
+
+        HttpResponse<String> response =
+            HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200 && response.body() != null) {
+          Map<String, Object> logJson = JsonUtils.readValue(response.body(), Map.class);
+          String status = (String) logJson.get("status");
+          if (status == null
+              || (!"running".equalsIgnoreCase(status)
+                  && !"started".equalsIgnoreCase(status)
+                  && !"active".equalsIgnoreCase(status))) {
+            log.info("SearchIndexingApplication is idle (status={}), proceeding", status);
+            return;
+          }
+          log.info("SearchIndexingApplication is {} - waiting...", status);
+        } else {
+          return;
+        }
+      } catch (Exception e) {
+        log.debug("Could not check job status: {}", e.getMessage());
+        return;
+      }
+
+      Thread.sleep(pollIntervalMs);
+      totalWaited += pollIntervalMs;
+    }
+
+    log.warn("Timeout waiting for existing job to complete after {}ms", maxWaitMs);
   }
 
   @SuppressWarnings("unchecked")

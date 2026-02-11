@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.service.util.OpenMetadataOperations;
 import picocli.CommandLine;
@@ -54,9 +56,8 @@ public class VectorEmbeddingReembedOperationsIT {
   private DatabaseSchema sampleSchema;
   private Table sampleTable;
 
-  @Test
-  @Order(0)
-  public void checkOpenSearchAvailable() {
+  @BeforeAll
+  void checkOpenSearchAvailable() {
     String searchType = System.getProperty("searchType", "elasticsearch");
     Assumptions.assumeTrue(
         "opensearch".equalsIgnoreCase(searchType),
@@ -130,7 +131,9 @@ public class VectorEmbeddingReembedOperationsIT {
 
   @Test
   @Order(2)
-  public void runReembedCli() {
+  public void runReembedCli() throws Exception {
+    waitForExistingJobToComplete();
+
     int exitCode =
         new CommandLine(new OpenMetadataOperations())
             .execute(
@@ -152,8 +155,8 @@ public class VectorEmbeddingReembedOperationsIT {
   @Test
   @Order(3)
   public void validateVectorSearchAfterReembed() throws Exception {
-    int maxRetries = 3;
-    long backoffMs = 1000;
+    int maxRetries = 5;
+    long backoffMs = 2000;
     List<Map<String, Object>> hits = List.of();
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
@@ -194,6 +197,51 @@ public class VectorEmbeddingReembedOperationsIT {
     safeDelete("databaseSchemas", sampleSchema);
     safeDelete("databases", sampleDatabase);
     safeDelete("services/databaseServices", sampleDatabaseService);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void waitForExistingJobToComplete() throws Exception {
+    int maxWaitMs = 120_000;
+    int pollIntervalMs = 3000;
+    int totalWaited = 0;
+
+    while (totalWaited < maxWaitMs) {
+      try {
+        String url = SdkClients.getServerUrl() + "/v1/apps/name/SearchIndexingApplication/logs";
+        HttpRequest request =
+            HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+                .GET()
+                .build();
+
+        HttpResponse<String> response =
+            HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200 && response.body() != null) {
+          Map<String, Object> logJson = JsonUtils.readValue(response.body(), Map.class);
+          String status = (String) logJson.get("status");
+          if (status == null
+              || (!"running".equalsIgnoreCase(status)
+                  && !"started".equalsIgnoreCase(status)
+                  && !"active".equalsIgnoreCase(status))) {
+            log.info("SearchIndexingApplication is idle (status={}), proceeding", status);
+            return;
+          }
+          log.info("SearchIndexingApplication is {} - waiting...", status);
+        } else {
+          return;
+        }
+      } catch (Exception e) {
+        log.debug("Could not check job status: {}", e.getMessage());
+        return;
+      }
+
+      Thread.sleep(pollIntervalMs);
+      totalWaited += pollIntervalMs;
+    }
+
+    log.warn("Timeout waiting for existing job to complete after {}ms", maxWaitMs);
   }
 
   @SuppressWarnings("unchecked")
