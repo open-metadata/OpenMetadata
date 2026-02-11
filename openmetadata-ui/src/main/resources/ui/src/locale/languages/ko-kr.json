@@ -1835,6 +1835,7 @@
     "syntax": "Syntax",
     "tab": "탭",
     "table": "테이블",
+    "table-column": "테이블 열",
     "table-constraint-plural": "테이블 제약 조건들",
     "table-constraints": "테이블 제약 조건",
     "table-details": "테이블 세부정보",

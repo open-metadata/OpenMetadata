@@ -101,6 +101,8 @@ import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.search.AggregationRequest;
@@ -127,6 +129,7 @@ import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
+import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
@@ -638,6 +641,29 @@ public class SearchRepository {
       if (searchSample != null) {
         RequestLatencyContext.endSearchOperation(searchSample);
       }
+    }
+  }
+
+  public void bulkIndexPipelineExecutions(
+      Pipeline pipeline, List<PipelineStatus> pipelineStatuses) {
+    try {
+      String indexName = getIndexOrAliasName("pipeline_status_search_index");
+      List<Map<String, String>> docsAndIds = new ArrayList<>();
+      for (PipelineStatus pipelineStatus : pipelineStatuses) {
+        PipelineExecutionIndex pipelineExecutionIndex =
+            new PipelineExecutionIndex(pipeline, pipelineStatus);
+        Map<String, Object> doc = pipelineExecutionIndex.buildSearchIndexDoc();
+        String docId = PipelineExecutionIndex.getDocumentId(pipeline, pipelineStatus);
+        String docJson = JsonUtils.pojoToJson(doc);
+        docsAndIds.add(Map.of(docId, docJson));
+      }
+      searchClient.createEntities(indexName, docsAndIds);
+      LOG.debug(
+          "Bulk indexed {} pipeline executions for {}",
+          pipelineStatuses.size(),
+          pipeline.getFullyQualifiedName());
+    } catch (Exception e) {
+      LOG.error("Failed to bulk index pipeline executions in Elasticsearch", e);
     }
   }
 

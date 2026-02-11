@@ -155,9 +155,7 @@ function FileColumnsTable() {
                   columnConstraint: record.constraint,
                 })}
                 <Typography.Text
-                  className={classNames('m-b-0 d-block break-word', {
-                    'text-grey-600': !isEmpty(displayName),
-                  })}
+                  className={classNames('m-b-0 d-block break-word')}
                   data-testid="column-name">
                   {name}
                 </Typography.Text>

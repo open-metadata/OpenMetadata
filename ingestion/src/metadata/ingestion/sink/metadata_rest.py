@@ -90,7 +90,10 @@ from metadata.ingestion.models.patch_request import (
     PatchedEntity,
     PatchRequest,
 )
-from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.models.pipeline_status import (
+    OMetaBulkPipelineStatus,
+    OMetaPipelineStatus,
+)
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
 from metadata.ingestion.models.tests_data import (
@@ -646,6 +649,15 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         pipeline = self.metadata.add_pipeline_status(
             fqn=record.pipeline_fqn, status=record.pipeline_status
+        )
+        return Either(right=pipeline)
+
+    @_run_dispatch.register
+    def write_bulk_pipeline_status(
+        self, record: OMetaBulkPipelineStatus
+    ) -> Either[Pipeline]:
+        pipeline = self.metadata.add_bulk_pipeline_status(
+            fqn=record.pipeline_fqn, statuses=record.pipeline_statuses
         )
         return Either(right=pipeline)
 

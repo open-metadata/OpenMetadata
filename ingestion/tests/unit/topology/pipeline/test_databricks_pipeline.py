@@ -42,7 +42,7 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.models.pipeline_status import OMetaBulkPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
     DatabrickspipelineSource,
@@ -82,7 +82,9 @@ mock_databricks_config = {
                 },
             }
         },
-        "sourceConfig": {"config": {"type": "PipelineMetadata"}},
+        "sourceConfig": {
+            "config": {"type": "PipelineMetadata", "statusLookbackDays": 99999}
+        },
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -174,35 +176,37 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
 )
 
 EXPECTED_PIPELINE_STATUS = [
-    OMetaPipelineStatus(
+    OMetaBulkPipelineStatus(
         pipeline_fqn="databricks_pipeline_test.11223344",
-        pipeline_status=PipelineStatus(
-            timestamp=1625060460483,
-            executionStatus="Successful",
-            taskStatus=[
-                TaskStatus(
-                    name="Orders_Ingest",
-                    executionStatus="Successful",
-                    startTime=1625060460483,
-                    endTime=1625060863413,
-                    logLink="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
-                ),
-                TaskStatus(
-                    name="Match",
-                    executionStatus="Successful",
-                    startTime=1625060460483,
-                    endTime=1625060863413,
-                    logLink="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
-                ),
-                TaskStatus(
-                    name="Sessionize",
-                    executionStatus="Successful",
-                    startTime=1625060460483,
-                    endTime=1625060863413,
-                    logLink="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
-                ),
-            ],
-        ),
+        pipeline_statuses=[
+            PipelineStatus(
+                timestamp=1625060460483,
+                executionStatus="Successful",
+                taskStatus=[
+                    TaskStatus(
+                        name="Orders_Ingest",
+                        executionStatus="Successful",
+                        startTime=1625060460483,
+                        endTime=1625060863413,
+                        logLink="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
+                    ),
+                    TaskStatus(
+                        name="Match",
+                        executionStatus="Successful",
+                        startTime=1625060460483,
+                        endTime=1625060863413,
+                        logLink="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
+                    ),
+                    TaskStatus(
+                        name="Sessionize",
+                        executionStatus="Successful",
+                        startTime=1625060460483,
+                        endTime=1625060863413,
+                        logLink="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
+                    ),
+                ],
+            ),
+        ],
     ),
 ]
 
