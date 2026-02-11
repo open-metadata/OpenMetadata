@@ -1445,7 +1445,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeDomains(entities);
     storeReviewers(entities);
     storeDataProducts(entities);
-    entities.forEach(this::applyTags);
+    applyTagsToEntities(entities);
 
     // Entity-specific relationships - must be per-entity (abstract method)
     entities.forEach(this::storeRelationships);
@@ -3364,7 +3364,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void collectColumnTags(List<Column> columns, Map<String, List<TagLabel>> tagsByTarget) {
+  protected void collectColumnTags(List<Column> columns, Map<String, List<TagLabel>> tagsByTarget) {
     for (Column column : columns) {
       List<TagLabel> tags = column.getTags();
       if (tags != null && !tags.isEmpty()) {

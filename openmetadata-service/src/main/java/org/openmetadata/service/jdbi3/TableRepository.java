@@ -49,6 +49,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -1186,6 +1187,32 @@ public class TableRepository extends EntityRepository<Table> {
     // Add table level tags by adding tag to table relationship
     super.applyTags(table);
     applyColumnTags(table.getColumns());
+  }
+
+  @Override
+  @Transaction
+  protected void applyTagsToEntities(List<Table> entities) {
+    super.applyTagsToEntities(entities);
+
+    if (entities.isEmpty()) {
+      return;
+    }
+
+    Map<String, List<TagLabel>> columnTagsByTarget = new LinkedHashMap<>();
+    for (Table table : entities) {
+      collectColumnTags(table.getColumns(), columnTagsByTarget);
+    }
+
+    if (!columnTagsByTarget.isEmpty()) {
+      daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(columnTagsByTarget);
+
+      for (Map.Entry<String, List<TagLabel>> entry : columnTagsByTarget.entrySet()) {
+        String targetFQN = entry.getKey();
+        for (TagLabel tagLabel : entry.getValue()) {
+          org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
+        }
+      }
+    }
   }
 
   @Override
