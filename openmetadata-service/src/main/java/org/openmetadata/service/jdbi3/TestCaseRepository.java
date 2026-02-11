@@ -1728,7 +1728,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         }
       }
 
-      if (!importResult.getDryRun()) {
+      if (!importResult.getDryRun()
+          && importResult.getStatus() != ApiStatus.ABORTED
+          && importResult.getNumberOfRowsProcessed() > 1) {
         List<UUID> affectedTestSuiteIds = new ArrayList<>(importedTestSuiteIds.values());
         for (UUID affectedTestSuiteId : affectedTestSuiteIds) {
           try {
