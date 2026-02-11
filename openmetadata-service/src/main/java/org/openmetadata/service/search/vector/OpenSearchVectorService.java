@@ -42,11 +42,17 @@ public class OpenSearchVectorService implements VectorIndexService {
   @Getter private final EmbeddingClient embeddingClient;
   private final String language;
 
-  private OpenSearchVectorService(
+  public OpenSearchVectorService(
       OpenSearchClient client, EmbeddingClient embeddingClient, String language) {
     this.client = client;
     this.embeddingClient = embeddingClient;
     this.language = language != null ? language : "en";
+  }
+
+  public OpenSearchVectorService(OpenSearchClient client, EmbeddingClient embeddingClient) {
+    this.client = client;
+    this.embeddingClient = embeddingClient;
+    this.language = "en";
   }
 
   public static synchronized void init(
