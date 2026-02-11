@@ -1729,9 +1729,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
     int totalBatches = 0;
     for (String entityType :
         org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
-      int totalRecords = Entity.getEntityRepository(entityType).getDao().listTotalCount();
-      entityTotals.put(entityType, totalRecords);
-      totalBatches += calculateReembedNumberOfBatches(totalRecords, batchSize);
+      try {
+        int totalRecords = Entity.getEntityRepository(entityType).getDao().listTotalCount();
+        entityTotals.put(entityType, totalRecords);
+        totalBatches += calculateReembedNumberOfBatches(totalRecords, batchSize);
+      } catch (EntityNotFoundException e) {
+        LOG.warn(
+            "Skipping re-embedding for entity type '{}': repository not registered", entityType);
+      }
     }
     return totalBatches;
   }
