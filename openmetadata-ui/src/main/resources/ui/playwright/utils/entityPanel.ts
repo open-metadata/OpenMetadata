@@ -15,6 +15,15 @@ import { redirectToExplorePage } from './common';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
 import { waitForAllLoadersToDisappear } from './entity';
+import { EntityClass } from '../support/entity/EntityClass';
+
+export const getEntityFqn = (
+  entityInstance: EntityClass
+): string | undefined => {
+  return (
+    entityInstance as { entityResponseData?: { fullyQualifiedName?: string } }
+  ).entityResponseData?.fullyQualifiedName;
+};
 
 export const openEntitySummaryPanel = async (
   page: Page,
@@ -59,8 +68,6 @@ export const openEntitySummaryPanel = async (
   if (fullyQualifiedName) {
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
     await cardByFqn.waitFor({ state: 'visible' });
-    // await cardByFqn.click();
-    // await page.waitForLoadState('networkidle');
     return;
   }
 

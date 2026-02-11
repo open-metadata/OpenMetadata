@@ -40,6 +40,7 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { Domain } from '../../support/domain/Domain';
 import { UserClass } from '../../support/user/UserClass';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
+import { getEntityFqn } from '../../utils/entityPanel';
 
 // Test data setup
 const tableEntity = new TableClass();
@@ -160,12 +161,13 @@ test.describe('Right Panel Test Suite', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {
-      await tableEntity.delete(apiContext);
-      await dashboardEntity.delete(apiContext);
+      Object.values(entityMap).forEach((entityInstance) => {
+        entityInstance.delete(apiContext);
+      });
       await testTag.delete(apiContext);
       await testClassification.delete(apiContext);
       await testGlossaryTerm.delete(apiContext);
-
+      await user1.delete(apiContext);
       await domainEntity.delete(apiContext);
     } finally {
       await afterAction();
@@ -178,11 +180,7 @@ test.describe('Right Panel Test Suite', () => {
         test(`Should update description for ${entityType}`, async ({
           adminPage,
         }) => {
-          const fqn = (
-            entityInstance as {
-              entityResponseData?: { fullyQualifiedName?: string };
-            }
-          ).entityResponseData?.fullyQualifiedName;
+          const fqn = getEntityFqn(entityInstance);
           await navigateToExploreAndSelectEntity(
             adminPage,
             entityInstance.entity.name,
@@ -204,11 +202,7 @@ test.describe('Right Panel Test Suite', () => {
         test(`Should update/edit tags for ${entityType}`, async ({
           adminPage,
         }) => {
-          const fqn = (
-            entityInstance as {
-              entityResponseData?: { fullyQualifiedName?: string };
-            }
-          ).entityResponseData?.fullyQualifiedName;
+          const fqn = getEntityFqn(entityInstance);
           await navigateToExploreAndSelectEntity(
             adminPage,
             entityInstance.entity.name,
@@ -226,11 +220,7 @@ test.describe('Right Panel Test Suite', () => {
         test(`Should update/edit tier for ${entityType}`, async ({
           adminPage,
         }) => {
-          const fqn = (
-            entityInstance as {
-              entityResponseData?: { fullyQualifiedName?: string };
-            }
-          ).entityResponseData?.fullyQualifiedName;
+          const fqn = getEntityFqn(entityInstance);
           await navigateToExploreAndSelectEntity(
             adminPage,
             entityInstance.entity.name,
@@ -248,11 +238,7 @@ test.describe('Right Panel Test Suite', () => {
         test(`Should update/edit glossary terms for ${entityType}`, async ({
           adminPage,
         }) => {
-          const fqn = (
-            entityInstance as {
-              entityResponseData?: { fullyQualifiedName?: string };
-            }
-          ).entityResponseData?.fullyQualifiedName;
+          const fqn = getEntityFqn(entityInstance);
           await navigateToExploreAndSelectEntity(
             adminPage,
             entityInstance.entity.name,
@@ -269,11 +255,7 @@ test.describe('Right Panel Test Suite', () => {
         test(`Should update owners for ${entityType}`, async ({
           adminPage,
         }) => {
-          const fqn = (
-            entityInstance as {
-              entityResponseData?: { fullyQualifiedName?: string };
-            }
-          ).entityResponseData?.fullyQualifiedName;
+          const fqn = getEntityFqn(entityInstance);
           await navigateToExploreAndSelectEntity(
             adminPage,
             entityInstance.entity.name,
@@ -291,11 +273,7 @@ test.describe('Right Panel Test Suite', () => {
         test(`Should update domain for ${entityType}`, async ({
           adminPage,
         }) => {
-          const fqn = (
-            entityInstance as {
-              entityResponseData?: { fullyQualifiedName?: string };
-            }
-          ).entityResponseData?.fullyQualifiedName;
+          const fqn = getEntityFqn(entityInstance);
           await navigateToExploreAndSelectEntity(
             adminPage,
             entityInstance.entity.name,
@@ -317,11 +295,7 @@ test.describe('Right Panel Test Suite', () => {
         test(`Should display and verify schema fields for ${entityType}`, async ({
           adminPage,
         }) => {
-          const fqn = (
-            entityInstance as {
-              entityResponseData?: { fullyQualifiedName?: string };
-            }
-          ).entityResponseData?.fullyQualifiedName;
+          const fqn = getEntityFqn(entityInstance);
           await navigateToExploreAndSelectEntity(
             adminPage,
             entityInstance.entity.name,
@@ -342,11 +316,7 @@ test.describe('Right Panel Test Suite', () => {
     test.describe('Right panel validation by asset type', () => {
       Object.entries(entityMap).forEach(([, entityInstance]) => {
         const assetType = entityInstance.getType();
-        const fqn = (
-          entityInstance as {
-            entityResponseData?: { fullyQualifiedName?: string };
-          }
-        ).entityResponseData?.fullyQualifiedName;
+        const fqn = getEntityFqn(entityInstance);
         test(`validates visible/hidden tabs and tab content for ${assetType}`, async ({
           adminPage,
         }) => {
@@ -367,11 +337,7 @@ test.describe('Right Panel Test Suite', () => {
         test(`Should navigate to lineage and test controls for ${entityType}`, async ({
           adminPage,
         }) => {
-          const fqn = (
-            entityInstance as {
-              entityResponseData?: { fullyQualifiedName?: string };
-            }
-          ).entityResponseData?.fullyQualifiedName;
+          const fqn = getEntityFqn(entityInstance);
           await navigateToExploreAndSelectEntity(
             adminPage,
             entityInstance.entity.name,
@@ -391,11 +357,7 @@ test.describe('Right Panel Test Suite', () => {
         test(`Should handle lineage expansion buttons for ${entityType}`, async ({
           adminPage,
         }) => {
-          const fqn = (
-            entityInstance as {
-              entityResponseData?: { fullyQualifiedName?: string };
-            }
-          ).entityResponseData?.fullyQualifiedName;
+          const fqn = getEntityFqn(entityInstance);
           await navigateToExploreAndSelectEntity(
             adminPage,
             entityInstance.entity.name,
@@ -427,11 +389,7 @@ test.describe('Right Panel Test Suite', () => {
         test(`Should navigate to data quality and show stat cards for ${entityType}`, async ({
           adminPage,
         }) => {
-          const fqn = (
-            entityInstance as {
-              entityResponseData?: { fullyQualifiedName?: string };
-            }
-          ).entityResponseData?.fullyQualifiedName;
+          const fqn = getEntityFqn(entityInstance);
           await navigateToExploreAndSelectEntity(
             adminPage,
             entityInstance.entity.name,
@@ -454,11 +412,7 @@ test.describe('Right Panel Test Suite', () => {
         test.skip(`Should handle stat card interactions for ${entityType}`, async ({
           adminPage,
         }) => {
-          const fqn = (
-            entityInstance as {
-              entityResponseData?: { fullyQualifiedName?: string };
-            }
-          ).entityResponseData?.fullyQualifiedName;
+          const fqn = getEntityFqn(entityInstance);
           await navigateToExploreAndSelectEntity(
             adminPage,
             entityInstance.entity.name,
@@ -485,11 +439,7 @@ test.describe('Right Panel Test Suite', () => {
         test(`Should navigate to custom properties and show interface for ${entityType}`, async ({
           adminPage,
         }) => {
-          const fqn = (
-            entityInstance as {
-              entityResponseData?: { fullyQualifiedName?: string };
-            }
-          ).entityResponseData?.fullyQualifiedName;
+          const fqn = getEntityFqn(entityInstance);
           await navigateToExploreAndSelectEntity(
             adminPage,
             entityInstance.entity.name,
@@ -499,7 +449,7 @@ test.describe('Right Panel Test Suite', () => {
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfig(entityInstance);
 
-          if (rightPanel.isTabAvailable('custom properties')) {
+          if (rightPanel.isTabAvailable('custom property')) {
             await customProperties.navigateToCustomPropertiesTab();
             await customProperties.shouldShowCustomPropertiesContainer();
           }
@@ -509,11 +459,7 @@ test.describe('Right Panel Test Suite', () => {
         test(`Should handle search functionality for ${entityType}`, async ({
           adminPage,
         }) => {
-          const fqn = (
-            entityInstance as {
-              entityResponseData?: { fullyQualifiedName?: string };
-            }
-          ).entityResponseData?.fullyQualifiedName;
+          const fqn = getEntityFqn(entityInstance);
           await navigateToExploreAndSelectEntity(
             adminPage,
             entityInstance.entity.name,
@@ -523,7 +469,7 @@ test.describe('Right Panel Test Suite', () => {
           await rightPanel.waitForPanelVisible();
           rightPanel.setEntityConfig(entityInstance);
 
-          if (rightPanel.isTabAvailable('custom properties')) {
+          if (rightPanel.isTabAvailable('custom property')) {
             await customProperties.navigateToCustomPropertiesTab();
             await customProperties.shouldShowCustomPropertiesContainer();
 
