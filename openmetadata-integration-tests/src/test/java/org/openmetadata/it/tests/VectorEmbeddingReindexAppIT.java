@@ -62,6 +62,10 @@ public class VectorEmbeddingReindexAppIT {
     Assumptions.assumeTrue(
         "opensearch".equalsIgnoreCase(searchType),
         "Vector embedding tests require OpenSearch (run with -PpostgresOpenSearch profile)");
+    Assumptions.assumeTrue(
+        org.openmetadata.service.Entity.getSearchRepository() != null
+            && org.openmetadata.service.Entity.getSearchRepository().isVectorEmbeddingEnabled(),
+        "Vector embedding tests require vector embeddings to be configured");
   }
 
   @Test
@@ -373,7 +377,7 @@ public class VectorEmbeddingReindexAppIT {
             .withAutoTune(false);
 
     String body = JsonUtils.pojoToJson(jobConfig);
-    String url = SdkClients.getServerUrl() + "/api/v1/apps/trigger/SearchIndexingApplication";
+    String url = SdkClients.getServerUrl() + "/v1/apps/trigger/SearchIndexingApplication";
 
     HttpRequest request =
         HttpRequest.newBuilder()
@@ -403,7 +407,7 @@ public class VectorEmbeddingReindexAppIT {
         OBJECT_MAPPER.writeValueAsString(
             Map.of("query", query, "size", 10, "k", 10000, "threshold", 0.0));
 
-    String url = SdkClients.getServerUrl() + "/api/v1/search/vector/query";
+    String url = SdkClients.getServerUrl() + "/v1/search/vector/query";
     HttpRequest request =
         HttpRequest.newBuilder()
             .uri(URI.create(url))
@@ -424,7 +428,7 @@ public class VectorEmbeddingReindexAppIT {
   @SuppressWarnings("unchecked")
   private Map<String, Object> getFingerprint(String parentId) throws Exception {
     String url =
-        SdkClients.getServerUrl() + "/api/v1/search/vector/fingerprint?parentId=" + parentId;
+        SdkClients.getServerUrl() + "/v1/search/vector/fingerprint?parentId=" + parentId;
     HttpRequest request =
         HttpRequest.newBuilder()
             .uri(URI.create(url))

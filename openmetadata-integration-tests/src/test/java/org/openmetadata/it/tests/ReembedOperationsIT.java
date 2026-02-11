@@ -61,6 +61,10 @@ public class ReembedOperationsIT {
     Assumptions.assumeTrue(
         "opensearch".equalsIgnoreCase(searchType),
         "Reembed tests require OpenSearch (run with -PpostgresOpenSearch profile)");
+    Assumptions.assumeTrue(
+        org.openmetadata.service.Entity.getSearchRepository() != null
+            && org.openmetadata.service.Entity.getSearchRepository().isVectorEmbeddingEnabled(),
+        "Reembed tests require vector embeddings to be configured");
   }
 
   @Test
@@ -202,7 +206,7 @@ public class ReembedOperationsIT {
         OBJECT_MAPPER.writeValueAsString(
             Map.of("query", query, "size", 10, "k", 10000, "threshold", 0.0));
 
-    String url = SdkClients.getServerUrl() + "/api/v1/search/vector/query";
+    String url = SdkClients.getServerUrl() + "/v1/search/vector/query";
     HttpRequest request =
         HttpRequest.newBuilder()
             .uri(URI.create(url))
