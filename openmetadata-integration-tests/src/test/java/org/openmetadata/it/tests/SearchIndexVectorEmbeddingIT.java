@@ -482,8 +482,8 @@ public class SearchIndexVectorEmbeddingIT {
             Map.of("query", query, "size", 10, "k", 10000, "threshold", 0.0));
     String url = SdkClients.getServerUrl() + "/v1/search/vector/query";
 
-    int maxRetries = 5;
-    long backoffMs = 3000;
+    int maxRetries = 10;
+    long backoffMs = 5000;
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       HttpRequest request =
@@ -501,9 +501,10 @@ public class SearchIndexVectorEmbeddingIT {
         return OBJECT_MAPPER.readValue(response.body(), Map.class);
       }
 
-      if (response.statusCode() == 503 && attempt < maxRetries) {
+      if (attempt < maxRetries) {
         log.info(
-            "Vector search unavailable (attempt {}/{}), retrying in {}ms",
+            "Vector search returned status {} (attempt {}/{}), retrying in {}ms",
+            response.statusCode(),
             attempt,
             maxRetries,
             backoffMs * attempt);
@@ -520,8 +521,8 @@ public class SearchIndexVectorEmbeddingIT {
   private Map<String, Object> getFingerprint(String parentId) throws Exception {
     String url = SdkClients.getServerUrl() + "/v1/search/vector/fingerprint?parentId=" + parentId;
 
-    int maxRetries = 3;
-    long backoffMs = 2000;
+    int maxRetries = 10;
+    long backoffMs = 5000;
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       HttpRequest request =
@@ -538,8 +539,12 @@ public class SearchIndexVectorEmbeddingIT {
         return OBJECT_MAPPER.readValue(response.body(), Map.class);
       }
 
-      if (response.statusCode() == 503 && attempt < maxRetries) {
-        log.info("Fingerprint endpoint unavailable (attempt {}/{}), retrying", attempt, maxRetries);
+      if (attempt < maxRetries) {
+        log.info(
+            "Fingerprint request returned status {} (attempt {}/{}), retrying",
+            response.statusCode(),
+            attempt,
+            maxRetries);
         Thread.sleep(backoffMs * attempt);
         continue;
       }

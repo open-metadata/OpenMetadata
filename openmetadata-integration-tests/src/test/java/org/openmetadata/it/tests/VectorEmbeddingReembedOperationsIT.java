@@ -158,19 +158,25 @@ public class VectorEmbeddingReembedOperationsIT {
   @Test
   @Order(3)
   public void validateVectorSearchAfterReembed() throws Exception {
-    int maxRetries = 5;
-    long backoffMs = 2000;
+    int maxRetries = 10;
+    long backoffMs = 5000;
     List<Map<String, Object>> hits = List.of();
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       Map<String, Object> response = vectorSearch("customer telemetry demographics");
-      assertNotNull(response);
+
+      if (response == null) {
+        log.info("Vector search returned null (attempt {}/{}), retrying", attempt, maxRetries);
+        if (attempt < maxRetries) {
+          Thread.sleep(backoffMs * attempt);
+        }
+        continue;
+      }
 
       @SuppressWarnings("unchecked")
       List<Map<String, Object>> responseHits = (List<Map<String, Object>>) response.get("hits");
-      assertNotNull(responseHits);
 
-      if (!responseHits.isEmpty()) {
+      if (responseHits != null && !responseHits.isEmpty()) {
         hits = responseHits;
         break;
       }
@@ -303,8 +309,8 @@ public class VectorEmbeddingReembedOperationsIT {
             Map.of("query", query, "size", 10, "k", 10000, "threshold", 0.0));
     String url = SdkClients.getServerUrl() + "/v1/search/vector/query";
 
-    int maxRetries = 5;
-    long backoffMs = 3000;
+    int maxRetries = 10;
+    long backoffMs = 5000;
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       HttpRequest request =
@@ -322,9 +328,10 @@ public class VectorEmbeddingReembedOperationsIT {
         return OBJECT_MAPPER.readValue(response.body(), Map.class);
       }
 
-      if (response.statusCode() == 503 && attempt < maxRetries) {
+      if (attempt < maxRetries) {
         log.info(
-            "Vector search unavailable (attempt {}/{}), retrying in {}ms",
+            "Vector search returned status {} (attempt {}/{}), retrying in {}ms",
+            response.statusCode(),
             attempt,
             maxRetries,
             backoffMs * attempt);

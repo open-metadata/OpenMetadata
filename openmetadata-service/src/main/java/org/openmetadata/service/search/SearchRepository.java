@@ -122,17 +122,17 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
-import org.openmetadata.service.search.elasticsearch.ElasticSearchBulkSinkExt;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
-import org.openmetadata.service.search.opensearch.OpenSearchBulkSinkExt;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
@@ -1949,10 +1949,9 @@ public class SearchRepository {
       int batchSize, int maxConcurrentRequests, long maxPayloadSizeBytes) {
     ElasticSearchConfiguration.SearchType searchType = getSearchType();
     if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
-      return new OpenSearchBulkSinkExt(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+      return new OpenSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
     } else {
-      return new ElasticSearchBulkSinkExt(
-          this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+      return new ElasticSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
     }
   }
 
