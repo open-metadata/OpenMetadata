@@ -212,7 +212,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   }, [column]);
 
   const fetchColumnDetails = useCallback(async () => {
-    if (!column?.fullyQualifiedName || !isOpen || !tableFqn) {
+    const targetFqn = column?.fullyQualifiedName;
+    if (!targetFqn || !isOpen || !tableFqn) {
       return;
     }
 
@@ -226,11 +227,18 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         });
 
         const latestColumn = response.data.find(
-          (c) => c.fullyQualifiedName === column.fullyQualifiedName
+          (c) => c.fullyQualifiedName === targetFqn
         );
 
         if (latestColumn) {
-          setActiveColumn((prev) => ({ ...prev, ...latestColumn } as T));
+          setActiveColumn((prev) => {
+            // Discard stale response if column changed during fetch
+            if (prev?.fullyQualifiedName !== targetFqn) {
+              return prev;
+            }
+
+            return { ...prev, ...latestColumn } as T;
+          });
         }
 
         if (onColumnsUpdate) {
@@ -333,10 +341,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             true
           )
         : // Fallback to direct API call for Table entities when used outside GenericProvider
-          ((await updateTableColumn(
-            activeColumn.fullyQualifiedName,
-            update
-          )) as T);
+        ((await updateTableColumn(
+          activeColumn.fullyQualifiedName,
+          update
+        )) as T);
 
       // Only show success toast if we got a valid response
       if (response) {
@@ -506,10 +514,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         if (response) {
           setActiveColumn(
             (prev) =>
-              ({
-                ...prev,
-                displayName: response.displayName,
-              } as T)
+            ({
+              ...prev,
+              displayName: response.displayName,
+            } as T)
           );
         }
       } catch (error) {
