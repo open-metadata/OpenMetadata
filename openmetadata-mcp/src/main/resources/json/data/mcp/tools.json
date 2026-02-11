@@ -22,7 +22,7 @@
           "from": {
             "type": "integer",
             "description": "In case the request more than 'size' results, this is the offset from the first result you want to fetch. Default is 0.",
-            "default": 10
+            "default": 0
           },
           "size": {
             "type": "integer",

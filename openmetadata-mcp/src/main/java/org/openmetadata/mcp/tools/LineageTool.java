@@ -27,6 +27,16 @@ public class LineageTool implements McpTool {
         JsonUtils.convertValue(params.get("fromEntity"), EntityReference.class);
     EntityReference toEntity =
         JsonUtils.convertValue(params.get("toEntity"), EntityReference.class);
+
+    if (fromEntity == null || fromEntity.getType() == null || fromEntity.getId() == null) {
+      throw new IllegalArgumentException(
+          "Parameter 'fromEntity' is required and must include 'type' and 'id'");
+    }
+    if (toEntity == null || toEntity.getType() == null || toEntity.getId() == null) {
+      throw new IllegalArgumentException(
+          "Parameter 'toEntity' is required and must include 'type' and 'id'");
+    }
+
     authorizer.authorize(
         catalogSecurityContext,
         new OperationContext(fromEntity.getType(), MetadataOperation.EDIT_LINEAGE),

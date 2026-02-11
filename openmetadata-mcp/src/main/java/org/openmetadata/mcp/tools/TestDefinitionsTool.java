@@ -27,8 +27,12 @@ public class TestDefinitionsTool implements McpTool {
       Object limitObj = params.get("limit");
       if (limitObj instanceof Number) {
         limit = ((Number) limitObj).intValue();
-      } else if (limitObj instanceof String) {
-        limit = Integer.parseInt((String) limitObj);
+      } else if (limitObj instanceof String string) {
+        try {
+          limit = Integer.parseInt(string);
+        } catch (NumberFormatException e) {
+          limit = 10;
+        }
       }
     }
     String entityType =

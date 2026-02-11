@@ -5,6 +5,7 @@ import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,15 +37,13 @@ public class RootCauseAnalysisTool implements McpTool {
       Map<String, Object> parameters) {
     String fqn = (String) parameters.get("fqn");
     String entityType = (String) parameters.getOrDefault("entityType", "table");
-    Integer upstreamDepth = (Integer) parameters.getOrDefault("upstreamDepth", 3);
-    Integer downstreamDepth = (Integer) parameters.getOrDefault("downstreamDepth", 3);
+    int upstreamDepth = parseIntParam(parameters.get("upstreamDepth"), 3);
+    int downstreamDepth = parseIntParam(parameters.get("downstreamDepth"), 3);
     String queryFilter = (String) parameters.get("queryFilter");
-    Boolean includeDeleted = (Boolean) parameters.getOrDefault("includeDeleted", false);
+    boolean includeDeleted = parseBooleanParam(parameters.get("includeDeleted"), false);
 
     if (fqn == null || fqn.trim().isEmpty()) {
-      Map<String, Object> errorResponse = new HashMap<>();
-      errorResponse.put("error", "Parameter 'fqn' is required and cannot be empty");
-      return errorResponse;
+      throw new IllegalArgumentException("Parameter 'fqn' is required and cannot be empty");
     }
 
     authorizer.authorize(
@@ -65,19 +64,23 @@ public class RootCauseAnalysisTool implements McpTool {
       Object upstreamEntity = upstreamResponse.getEntity();
       Map<String, Object> upstreamAnalysis = new HashMap<>();
       boolean hasFailures = false;
+      int failureCount = 0;
 
       if (upstreamEntity instanceof Map) {
         @SuppressWarnings("unchecked")
         Map<String, Object> upstreamLineageData = (Map<String, Object>) upstreamEntity;
 
-        Set<?> upstreamEdgesList = (Set<?>) upstreamLineageData.get("edges");
-        Set<?> upstreamNodesList = (Set<?>) upstreamLineageData.get("nodes");
+        Set<?> upstreamEdgesList =
+            upstreamLineageData.get("edges") instanceof Set<?> s ? s : Collections.emptySet();
+        Set<?> upstreamNodesList =
+            upstreamLineageData.get("nodes") instanceof Set<?> s ? s : Collections.emptySet();
         List<Map<String, Object>> upstreamNodes =
             upstreamNodesList.stream()
                 .map(node -> cleanSearchResponseObject((Map<String, Object>) node))
                 .toList();
 
-        upstreamAnalysis.put("failingUpstreamNodesCount", upstreamNodes.size());
+        failureCount = upstreamNodes.size();
+        upstreamAnalysis.put("failingUpstreamNodesCount", failureCount);
         hasFailures = !upstreamNodes.isEmpty();
         if (!upstreamNodes.isEmpty()) {
           upstreamAnalysis.put("failingUpstreamNodes", upstreamNodes);
@@ -144,11 +147,12 @@ public class RootCauseAnalysisTool implements McpTool {
 
       result.put("downstreamAnalysis", downstreamAnalysis);
 
+      result.put("status", hasFailures ? "failed" : "success");
       result.put(
           "summary",
           String.format(
-              "Analyzed upstream causes and downstream impacts for '%s'. Found %s upstream failures.",
-              fqn, hasFailures ? "" : "no"));
+              "Analyzed upstream causes and downstream impacts for '%s'. Found %d upstream failure(s).",
+              fqn, failureCount));
 
       LOG.info(
           "Comprehensive root cause analysis completed for entity: {} - Upstream failures: {}",
@@ -159,25 +163,22 @@ public class RootCauseAnalysisTool implements McpTool {
 
     } catch (IOException e) {
       LOG.error("IOException during root cause analysis for entity: {}", fqn, e);
-      Map<String, Object> errorResponse = new HashMap<>();
-      errorResponse.put("error", "Failed to perform root cause analysis");
-      errorResponse.put("message", e.getMessage());
-      errorResponse.put("fqn", fqn);
-      return errorResponse;
+      throw new RuntimeException("Failed to perform root cause analysis: " + e.getMessage(), e);
 
     } catch (Exception e) {
       LOG.error("Unexpected error during root cause analysis for entity: {}", fqn, e);
-      Map<String, Object> errorResponse = new HashMap<>();
-      errorResponse.put("error", "Unexpected error during root cause analysis");
-      errorResponse.put("message", e.getMessage());
-      errorResponse.put("fqn", fqn);
-      return errorResponse;
+      throw new RuntimeException(
+          "Unexpected error during root cause analysis: " + e.getMessage(), e);
     }
   }
 
   private Map<String, Object> addTestCaseResultForTestSuite(Map<String, Object> node) {
     Map<String, Object> testCaseResult = new HashMap<>();
-    String testSuiteId = (String) JsonUtils.getMap(node.get("testSuite")).get("id");
+    Map<String, Object> testSuiteMap = JsonUtils.getMap(node.get("testSuite"));
+    if (testSuiteMap == null || testSuiteMap.get("id") == null) {
+      return testCaseResult;
+    }
+    String testSuiteId = (String) testSuiteMap.get("id");
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam("testCaseStatus", "Failed");
     searchListFilter.addQueryParam("testSuiteId", testSuiteId);
@@ -200,6 +201,36 @@ public class RootCauseAnalysisTool implements McpTool {
       LOG.error("Failed to fetch test case results for test suite: {}", testSuiteId, e);
     }
     return testCaseResult;
+  }
+
+  private static int parseIntParam(Object value, int defaultValue) {
+    if (value == null) {
+      return defaultValue;
+    }
+    if (value instanceof Number number) {
+      return number.intValue();
+    }
+    if (value instanceof String string) {
+      try {
+        return Integer.parseInt(string);
+      } catch (NumberFormatException e) {
+        return defaultValue;
+      }
+    }
+    return defaultValue;
+  }
+
+  private static boolean parseBooleanParam(Object value, boolean defaultValue) {
+    if (value == null) {
+      return defaultValue;
+    }
+    if (value instanceof Boolean b) {
+      return b;
+    }
+    if (value instanceof String s) {
+      return "true".equalsIgnoreCase(s);
+    }
+    return defaultValue;
   }
 
   @Override
