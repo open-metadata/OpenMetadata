@@ -44,7 +44,7 @@ import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
 import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
+import { getErrorText, stringToHTML } from '../../../utils/StringsUtils';
 import {
   buildColumnBreadcrumbPath,
   findOriginalColumnIndex,
@@ -54,7 +54,8 @@ import {
   mergeTagsWithGlossary,
   normalizeTags,
 } from '../../../utils/TableUtils';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import AlertBar from '../../AlertBar/AlertBar';
 import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
 import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
 import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
@@ -102,6 +103,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const [isDescriptionLoading, setIsDescriptionLoading] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
+  const [localToast, setLocalToast] = useState<{
+    open: boolean;
+    message: string;
+    type: 'success' | 'error';
+  }>({ open: false, message: '', type: 'success' });
 
   const hasEditPermission = useMemo(
     () => ({
@@ -175,13 +181,29 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       const res = await getTypeByFQN(ENTITY_PATH.column);
       setEntityTypeDetail(res);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      setLocalToast({
+        open: true,
+        message: getErrorText(error as AxiosError, t('message.error')),
+        type: 'error',
+      });
     }
   };
 
   useEffect(() => {
     fetchEntityTypeDetail();
   }, []);
+
+  useEffect(() => {
+    if (localToast.open) {
+      const timer = setTimeout(() => {
+        setLocalToast((prev) => ({ ...prev, open: false }));
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+
+    return undefined;
+  }, [localToast]);
 
   const [activeColumn, setActiveColumn] = useState<T | null>(column);
 
@@ -236,15 +258,23 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     [allColumns]
   );
 
-  // Find the actual index in the flattened array
-  const actualColumnIndex = useMemo(() => {
+  // Find the actual index in the flattened array and track if column was found
+  const { actualColumnIndex, isColumnInList } = useMemo(() => {
     if (!activeColumn?.fullyQualifiedName) {
-      return 0;
+      return {
+        actualColumnIndex: 0,
+        isColumnInList: flattenedColumns.length > 0,
+      };
     }
 
-    return flattenedColumns.findIndex(
+    const index = flattenedColumns.findIndex(
       (col) => col.fullyQualifiedName === activeColumn.fullyQualifiedName
     );
+
+    return {
+      actualColumnIndex: index === -1 ? 0 : index,
+      isColumnInList: index !== -1,
+    };
   }, [activeColumn, flattenedColumns]);
 
   const breadcrumbPath = useMemo(() => {
@@ -297,18 +327,27 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       }
 
       const response = onColumnFieldUpdate
-        ? await onColumnFieldUpdate(activeColumn.fullyQualifiedName, update)
+        ? await onColumnFieldUpdate(
+            activeColumn.fullyQualifiedName,
+            update,
+            true
+          )
         : // Fallback to direct API call for Table entities when used outside GenericProvider
           ((await updateTableColumn(
             activeColumn.fullyQualifiedName,
             update
           )) as T);
 
-      showSuccessToast(
-        t('server.update-entity-success', {
-          entity: t(successMessageKey),
-        })
-      );
+      // Only show success toast if we got a valid response
+      if (response) {
+        setLocalToast({
+          open: true,
+          message: t('server.update-entity-success', {
+            entity: t(successMessageKey),
+          }),
+          type: 'success',
+        });
+      }
 
       return response;
     },
@@ -324,12 +363,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           'label.description'
         );
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.description'),
-          })
-        );
+        setLocalToast({
+          open: true,
+          message:
+            getErrorText(error as AxiosError, t('message.error')) ||
+            t('server.entity-updating-error', {
+              entity: t('label.description'),
+            }),
+          type: 'error',
+        });
       } finally {
         setIsDescriptionLoading(false);
       }
@@ -375,12 +417,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
         return response?.tags;
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.tag-plural'),
-          })
-        );
+        setLocalToast({
+          open: true,
+          message:
+            getErrorText(error as AxiosError, t('message.error')) ||
+            t('server.entity-updating-error', {
+              entity: t('label.tag-plural'),
+            }),
+          type: 'error',
+        });
 
         throw error;
       }
@@ -413,12 +458,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
         return response?.tags;
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.glossary-term-plural'),
-          })
-        );
+        setLocalToast({
+          open: true,
+          message:
+            getErrorText(error as AxiosError, t('message.error')) ||
+            t('server.entity-updating-error', {
+              entity: t('label.glossary-term-plural'),
+            }),
+          type: 'error',
+        });
 
         throw error;
       }
@@ -434,12 +482,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           'label.custom-property-plural'
         );
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.custom-property-plural'),
-          })
-        );
+        setLocalToast({
+          open: true,
+          message:
+            getErrorText(error as AxiosError, t('message.error')) ||
+            t('server.entity-updating-error', {
+              entity: t('label.custom-property-plural'),
+            }),
+          type: 'error',
+        });
       }
     },
     [performColumnFieldUpdate, t]
@@ -462,12 +513,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           );
         }
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.display-name'),
-          })
-        );
+        setLocalToast({
+          open: true,
+          message:
+            getErrorText(error as AxiosError, t('message.error')) ||
+            t('server.entity-updating-error', {
+              entity: t('label.display-name'),
+            }),
+          type: 'error',
+        });
       } finally {
         setIsDisplayNameEditing(false);
       }
@@ -536,8 +590,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     [handleColumnNavigation]
   );
 
-  const isPreviousDisabled = actualColumnIndex === 0;
-  const isNextDisabled = actualColumnIndex === flattenedColumns.length - 1;
+  const isPreviousDisabled = !isColumnInList || actualColumnIndex === 0;
+  const isNextDisabled =
+    !isColumnInList || actualColumnIndex === flattenedColumns.length - 1;
 
   const dataQualityTests = useMemo(
     () => [
@@ -887,10 +942,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 width={16}
               />
             </IconButton>
-            <Typography.Text className="pagination-header-text text-medium">
-              {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
-              {flattenedColumns.length} {t('label.column-plural').toLowerCase()}
-            </Typography.Text>
+            {isColumnInList && flattenedColumns.length > 0 && (
+              <Typography.Text className="pagination-header-text text-medium">
+                {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
+                {flattenedColumns.length}{' '}
+                {t('label.column-plural').toLowerCase()}
+              </Typography.Text>
+            )}
           </div>
         </div>
       }
@@ -899,6 +957,44 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       title={columnTitle}
       width="40%"
       onClose={onClose}>
+      {localToast.open && (
+        <Box
+          sx={{
+            position: 'sticky',
+            top: -20,
+            zIndex: 1,
+            margin: '0px 16px 16px 8px',
+            '& .ant-alert': {
+              minHeight: 48,
+              padding: '8px 12px',
+              display: 'flex',
+              alignItems: 'center',
+
+              '& .ant-alert-icon': {
+                display: 'flex',
+                alignItems: 'center',
+                marginRight: 1,
+              },
+
+              '& #alert-icon': {
+                padding: 0.5,
+                borderWidth: 3,
+                fontSize: 16,
+              },
+
+              '& .ant-alert-description': {
+                flex: 1,
+                wordBreak: 'break-word',
+              },
+            },
+          }}>
+          <AlertBar
+            defaultExpand
+            message={localToast.message}
+            type={localToast.type}
+          />
+        </Box>
+      )}
       <div className="column-detail-panel-container">
         <div className="d-flex gap-2">
           <Card bordered={false} className="summary-panel-container">

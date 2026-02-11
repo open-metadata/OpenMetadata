@@ -72,7 +72,7 @@ const ModelTab = () => {
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
   const [_expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
-  const { openColumnDetailPanel, selectedColumn } =
+  const { openColumnDetailPanel, selectedColumn, setDisplayedColumns } =
     useGenericContext<DashboardDataModel>();
 
   const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
@@ -200,6 +200,11 @@ const ModelTab = () => {
       fetchPaginatedColumns(1, searchText || undefined);
     }
   }, [entityFqn, searchText, fetchPaginatedColumns, pageSize, dataModel]);
+
+  // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
+  useEffect(() => {
+    setDisplayedColumns(paginatedColumns);
+  }, [paginatedColumns, setDisplayedColumns]);
 
   const updateColumnDetails = async (
     columnFqn: string,

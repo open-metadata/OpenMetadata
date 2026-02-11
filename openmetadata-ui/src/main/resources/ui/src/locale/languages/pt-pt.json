@@ -1835,6 +1835,7 @@
     "syntax": "Sintaxe",
     "tab": "Separador",
     "table": "Tabela",
+    "table-column": "Coluna da tabela",
     "table-constraint-plural": "Restrições de tabela",
     "table-constraints": "Restrições de Tabela",
     "table-details": "Detalhes da tabela",

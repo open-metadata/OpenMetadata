@@ -80,6 +80,25 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
         ...tagsToSave,
       ];
 
+      // When onTagsUpdate is provided, use it directly as the update mechanism
+      // This avoids updateEntityField's fallback behavior for non-standard entity types
+      if (onTagsUpdate) {
+        try {
+          const resultTags = await onTagsUpdate(updatedTags);
+          if (resultTags) {
+            setDisplayTags(resultTags);
+          }
+          completeEditing();
+        } catch {
+          // Revert editing state so the UI doesn't show the failed selection
+          setEditingTags(nonTierTags);
+          cancelEditing();
+          setIsLoading(false);
+        }
+
+        return;
+      }
+
       const result = await updateEntityField({
         entityId,
         entityType,
@@ -89,15 +108,13 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
         entityLabel: t('label.tag-plural'),
         onSuccess: (tags) => {
           setDisplayTags(tags);
-          onTagsUpdate?.(tags);
-          completeEditing();
         },
         t,
       });
 
-      if (result.success && result.data === displayTags) {
+      if (result.success) {
         completeEditing();
-      } else if (!result.success) {
+      } else {
         setIsLoading(false);
       }
     },

@@ -180,7 +180,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           page,
           EntityDataClass.domain1.responseData,
           entity.entityResponseData?.['fullyQualifiedName'] ??
-          entity.entityResponseData?.['name']
+            entity.entityResponseData?.['name']
         );
 
         await visitServiceDetailsPage(
@@ -391,9 +391,10 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         // Glossary Selector
         await page
           .locator(
-            `[${rowSelector}="${isMlModel
-              ? entity.childrenSelectorId2
-              : entity.childrenSelectorId ?? ''
+            `[${rowSelector}="${
+              isMlModel
+                ? entity.childrenSelectorId2
+                : entity.childrenSelectorId ?? ''
             }"]`
           )
           .getByTestId('glossary-container')
@@ -898,8 +899,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             ).toBeVisible();
 
             // Verify non-nested columns don't have expand icons
-            const simpleColumnFQN = `${tableFQN}.${(entity as TableClass).columnsName[0]
-              }`;
+            const simpleColumnFQN = `${tableFQN}.${
+              (entity as TableClass).columnsName[0]
+            }`;
 
             await expect(
               page
@@ -913,8 +915,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           'Open column detail panel for nested column',
           async () => {
             // Click on the parent nested column name to open detail panel
-            const nestedParentFQN = `${entity.entityResponseData?.['fullyQualifiedName']
-              }.${(entity as TableClass).columnsName[2]}`;
+            const nestedParentFQN = `${
+              entity.entityResponseData?.['fullyQualifiedName']
+            }.${(entity as TableClass).columnsName[2]}`;
 
             await openColumnDetailPanel({
               page,
@@ -1211,7 +1214,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
             if (!nestedParent) {
               throw new Error(
-                `Nested parent column not found: ${(entity as TableClass).columnsName[2]
+                `Nested parent column not found: ${
+                  (entity as TableClass).columnsName[2]
                 }`
               );
             }
@@ -1224,7 +1228,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
             if (!arrayColumn) {
               throw new Error(
-                `Array column not found: ${(entity as TableClass).columnsName[4]
+                `Array column not found: ${
+                  (entity as TableClass).columnsName[4]
                 }`
               );
             }
@@ -1289,8 +1294,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           'Verify mixed siblings have consistent indentation',
           async () => {
             // columnsName[2] has mixed children: columnsName[3] (STRUCT) and columnsName[4] (ARRAY with nested children)
-            const nestedParentFQN = `${entity.entityResponseData?.['fullyQualifiedName']
-              }.${(entity as TableClass).columnsName[2]}`;
+            const nestedParentFQN = `${
+              entity.entityResponseData?.['fullyQualifiedName']
+            }.${(entity as TableClass).columnsName[2]}`;
 
             const nestedColumnRow = page.locator(
               `[data-row-key="${nestedParentFQN}"]`
@@ -1533,8 +1539,16 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               await expect(saveButton).toBeEnabled();
               await saveButton.click();
               await saveResponse;
+              await expect(
+                page
+                  .locator('.column-detail-panel')
+                  .getByTestId('alert-bar')
+                  .getByTestId('alert-message')
+              ).toContainText('Description updated successfully');
 
-              await toastNotification(page, /Description updated successfully/);
+              await page.waitForSelector('[data-testid="loader"]', {
+                state: 'detached',
+              });
 
               await expect(
                 panelContainer
@@ -1807,63 +1821,58 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * Tests access control for description editing with deny policy
      * @description Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions
      */
-    test('User should be denied access to edit description when deny policy rule is applied on an entity', async ({
-      page,
-      dataConsumerPage,
-    }) => {
-      await redirectToHomePage(page);
+    test.describe(
+      'User should be denied access to edit description when deny policy rule is applied on an entity',
+      () => {
+        const customPolicy = new PolicyClass();
+        const customRole = new RolesClass();
 
-      await entity.visitEntityPage(page);
+        test.beforeAll(async ({ browser }) => {
+          const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      const { apiContext } = await getApiContext(page);
+          await customPolicy.create(apiContext, [
+            ...DATA_CONSUMER_RULES,
+            {
+              name: 'DenyEditDescription-Rule',
+              resources: ['All'],
+              operations: ['EditDescription'],
+              effect: 'deny',
+            },
+          ]);
 
-      // Create policy with deny rule for edit description
-      const customPolicy = new PolicyClass();
-      await customPolicy.create(apiContext, [
-        ...DATA_CONSUMER_RULES,
-        {
-          name: 'DenyEditDescription-Rule',
-          resources: ['All'],
-          operations: ['EditDescription'],
-          effect: 'deny',
-        },
-      ]);
+          await customRole.create(apiContext, [customPolicy.responseData.name]);
 
-      // Create role with the custom policy
-      const customRole = new RolesClass();
-      await customRole.create(apiContext, [customPolicy.responseData.name]);
-
-      // Assign the custom role to the data consumer user
-      await dataConsumerUser.patch({
-        apiContext,
-        patchData: [
-          {
-            op: 'replace',
-            path: '/roles',
-            value: [
+          await dataConsumerUser.patch({
+            apiContext,
+            patchData: [
               {
-                id: customRole.responseData.id,
-                type: 'role',
-                name: customRole.responseData.name,
+                op: 'replace',
+                path: '/roles',
+                value: [
+                  {
+                    id: customRole.responseData.id,
+                    type: 'role',
+                    name: customRole.responseData.name,
+                  },
+                ],
               },
             ],
-          },
-        ],
-      });
+          });
 
-      await entity.visitEntityPage(dataConsumerPage);
+          await afterAction();
+        });
 
-      // Check if edit description button is not visible
-      await expect(
-        dataConsumerPage.locator('[data-testid="edit-description"]')
-      ).not.toBeVisible();
+        test('User should be denied access to edit description when deny policy rule is applied on an entity', async ({
+          dataConsumerPage,
+        }) => {
+          await entity.visitEntityPage(dataConsumerPage);
 
-      const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
-        await getApiContext(page);
-      await customRole.delete(cleanupContext);
-      await customPolicy.delete(cleanupContext);
-      await cleanupAfterAction();
-    });
+          await expect(
+            dataConsumerPage.locator('[data-testid="edit-description"]')
+          ).not.toBeVisible();
+        });
+      }
+    );
 
     /**
      * Tests tab switching between Data Observability and Activity Feed
@@ -1963,80 +1972,167 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
        * @description Tests that a data consumer assigned a role with deny rules for ViewQueries and ViewSampleData
        * cannot access those tabs on table entities
        */
-      test('Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level', async ({
-        page,
-        dataConsumerPage,
-      }) => {
-        await redirectToHomePage(page);
+      test.describe(
+        'Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level',
+        () => {
+          const customPolicy = new PolicyClass();
+          const customRole = new RolesClass();
 
-        await tableEntity.visitEntityPage(page);
+          test.beforeAll(async ({ browser }) => {
+            const { apiContext, afterAction } = await performAdminLogin(
+              browser
+            );
 
-        const { apiContext } = await getApiContext(page);
+            await customPolicy.create(apiContext, [
+              ...DATA_CONSUMER_RULES,
+              {
+                name: 'DataConsumerPolicy-DenyRule',
+                resources: ['All'],
+                operations: ['ViewQueries', 'ViewSampleData'],
+                effect: 'deny',
+              },
+            ]);
 
-        // Create policy with both allow and deny rules
-        const customPolicy = new PolicyClass();
-        await customPolicy.create(apiContext, [
-          ...DATA_CONSUMER_RULES,
-          {
-            name: 'DataConsumerPolicy-DenyRule',
-            resources: ['All'],
-            operations: ['ViewQueries', 'ViewSampleData'],
-            effect: 'deny',
-          },
-        ]);
+            await customRole.create(apiContext, [
+              customPolicy.responseData.name,
+            ]);
 
-        // Create role with the custom policy
-        const customRole = new RolesClass();
-        await customRole.create(apiContext, [customPolicy.responseData.name]);
-
-        // Assign the custom role to the data consumer user
-        await dataConsumerUser.patch({
-          apiContext,
-          patchData: [
-            {
-              op: 'replace',
-              path: '/roles',
-              value: [
+            await dataConsumerUser.patch({
+              apiContext,
+              patchData: [
                 {
-                  id: customRole.responseData.id,
-                  type: 'role',
-                  name: customRole.responseData.name,
+                  op: 'replace',
+                  path: '/roles',
+                  value: [
+                    {
+                      id: customRole.responseData.id,
+                      type: 'role',
+                      name: customRole.responseData.name,
+                    },
+                  ],
                 },
               ],
-            },
-          ],
-        });
+            });
 
-        await tableEntity.visitEntityPage(dataConsumerPage);
+            await afterAction();
+          });
 
-        // check if queries tab is visible
-        await dataConsumerPage.locator('[data-testid="table_queries"]').click();
+          test('Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level', async ({
+            dataConsumerPage,
+          }) => {
+            await tableEntity.visitEntityPage(dataConsumerPage);
 
-        await expect(
-          dataConsumerPage
-            .locator('[data-testid="permission-error-placeholder"]')
-            .getByText(
-              "You don't have necessary permissions. Please check with the admin to get the View Queries permission."
-            )
-        ).toBeVisible();
+            await dataConsumerPage
+              .locator('[data-testid="table_queries"]')
+              .click();
 
-        // check is sample data tab visible
-        await dataConsumerPage.locator('[data-testid="sample_data"]').click();
+            await expect(
+              dataConsumerPage
+                .locator('[data-testid="permission-error-placeholder"]')
+                .getByText(
+                  "You don't have necessary permissions. Please check with the admin to get the View Queries permission."
+                )
+            ).toBeVisible();
 
-        await expect(
-          dataConsumerPage
-            .locator('[data-testid="permission-error-placeholder"]')
-            .getByText(
-              "You don't have necessary permissions. Please check with the admin to get the View Sample Data permission."
-            )
-        ).toBeVisible();
+            await dataConsumerPage
+              .locator('[data-testid="sample_data"]')
+              .click();
 
-        const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
-          await getApiContext(page);
-        await customRole.delete(cleanupContext);
-        await customPolicy.delete(cleanupContext);
-        await cleanupAfterAction();
-      });
+            await expect(
+              dataConsumerPage
+                .locator('[data-testid="permission-error-placeholder"]')
+                .getByText(
+                  "You don't have necessary permissions. Please check with the admin to get the View Sample Data permission."
+                )
+            ).toBeVisible();
+          });
+        }
+      );
+
+      /**
+       * Tests access control for column side panel with deny policy
+       * @description Tests that a data consumer assigned a role with deny rules for EditTags and EditGlossaryTerms
+       * cannot edit tags or glossary terms in the column detail panel
+       */
+      test.describe(
+        'Data Consumer should be denied edit access in column detail panel when deny policy rule is applied',
+        () => {
+          const customPolicy = new PolicyClass();
+          const customRole = new RolesClass();
+
+          test.beforeAll(async ({ browser }) => {
+            const { apiContext, afterAction } = await performAdminLogin(
+              browser
+            );
+
+            await customPolicy.create(apiContext, [
+              ...DATA_CONSUMER_RULES,
+              {
+                name: 'DenyEditTagsAndGlossary-Rule',
+                resources: ['All'],
+                operations: [
+                  'EditTags',
+                  'EditGlossaryTerms',
+                  'EditDescription',
+                ],
+                effect: 'deny',
+              },
+            ]);
+
+            await customRole.create(apiContext, [
+              customPolicy.responseData.name,
+            ]);
+
+            await dataConsumerUser.patch({
+              apiContext,
+              patchData: [
+                {
+                  op: 'replace',
+                  path: '/roles',
+                  value: [
+                    {
+                      id: customRole.responseData.id,
+                      type: 'role',
+                      name: customRole.responseData.name,
+                    },
+                  ],
+                },
+              ],
+            });
+
+            await afterAction();
+          });
+
+          test('Data Consumer should be denied edit access in column detail panel when deny policy rule is applied', async ({
+            dataConsumerPage,
+          }) => {
+            test.slow(true);
+
+            await tableEntity.visitEntityPage(dataConsumerPage);
+
+            const columnNameTestId = 'column-name';
+            const panelContainer = await openColumnDetailPanel({
+              page: dataConsumerPage,
+              rowSelector: 'data-row-key',
+              columnId: tableEntity.childrenSelectorId ?? '',
+              columnNameTestId,
+              entityType: 'table',
+            });
+
+            await expect(
+              panelContainer.getByTestId('edit-icon-tags')
+            ).not.toBeVisible();
+            await expect(
+              panelContainer.getByTestId('edit-glossary-terms')
+            ).not.toBeVisible();
+            await expect(
+              panelContainer.getByTestId('edit-description')
+            ).not.toBeVisible();
+
+            await panelContainer.getByTestId('close-button').click();
+          });
+        }
+      );
     }
   });
 

@@ -1835,6 +1835,7 @@
     "syntax": "Syntax",
     "tab": "Aba",
     "table": "Tabela",
+    "table-column": "Coluna da tabela",
     "table-constraint-plural": "Restrições de Tabela",
     "table-constraints": "Restrições de Tabela",
     "table-details": "Detalhes da tabela",
