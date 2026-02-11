@@ -154,7 +154,9 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
 
   const drawerFooter = (
     <div className="drawer-footer">
-      <Button onClick={onClose}>{t('label.cancel')}</Button>
+      <Button data-testid="cancel-resource" onClick={onClose}>
+        {t('label.cancel')}
+      </Button>
       <Button
         data-testid="save-resource"
         loading={isSubmitting}
@@ -170,6 +172,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       destroyOnClose
       className="learning-resource-form-drawer"
       closable={false}
+      data-testid="learning-resource-form-drawer"
       footer={drawerFooter}
       open={open}
       placement="right"
@@ -198,6 +201,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
             },
           ]}>
           <Input
+            data-testid="name-input"
             disabled={Boolean(resource)}
             placeholder={t('label.enter-entity', { entity: t('label.name') })}
           />
@@ -215,7 +219,11 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
               required: true,
             },
           ]}>
-          <TextArea placeholder={t('message.enter-description')} rows={6} />
+          <TextArea
+            data-testid="description-input"
+            placeholder={t('message.enter-description')}
+            rows={6}
+          />
         </Form.Item>
 
         <Form.Item
@@ -313,7 +321,10 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
             },
             { message: t('label.invalid-url'), type: 'url' },
           ]}>
-          <Input placeholder="https://www.youtube.com/watch?v=..." />
+          <Input
+            data-testid="source-url-input"
+            placeholder="https://www.youtube.com/watch?v=..."
+          />
         </Form.Item>
 
         <Form.Item label={t('label.source-provider')} name="sourceProvider">
@@ -331,8 +342,12 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           />
         </Form.Item>
 
-        <Form.Item label={t('label.status')} name="status">
+        <Form.Item
+          data-testid="status-form-item"
+          label={t('label.status')}
+          name="status">
           <Select
+            data-testid="status-select"
             options={LEARNING_RESOURCE_STATUSES.map((status) => ({
               label: status,
               value: status,

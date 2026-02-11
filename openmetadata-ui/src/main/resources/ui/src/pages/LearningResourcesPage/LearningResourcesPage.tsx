@@ -11,11 +11,6 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Trash01 } from '@untitledui/icons';
-import { isEmpty } from 'lodash';
-import { DateTime } from 'luxon';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-
 import {
   Box,
   Button,
@@ -33,6 +28,11 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
+import { defaultColors } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@untitledui/icons';
+import { isEmpty } from 'lodash';
+import { DateTime } from 'luxon';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as StoryLaneIcon } from '../../assets/svg/ic_storylane.svg';
@@ -488,6 +488,7 @@ export const LearningResourcesPage: React.FC = () => {
             bgcolor: 'background.paper',
             boxShadow: 1,
             borderRadius: 1,
+            border: `1px solid ${defaultColors.blueGray[100]}`,
           }}>
           <Box
             sx={{
@@ -539,6 +540,7 @@ export const LearningResourcesPage: React.FC = () => {
             overflow: 'hidden',
             marginTop: theme.spacing(2.5),
             borderRadius: '12px',
+            border: `1px solid ${defaultColors.blueGray[100]}`,
           }}>
           {/* Filters */}
           <Box

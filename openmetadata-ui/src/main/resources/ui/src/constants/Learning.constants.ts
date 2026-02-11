@@ -130,7 +130,7 @@ export const LEARNING_PAGE_IDS = {
   DATABASE_SCHEMA: 'databaseSchema',
   HOME_PAGE: 'homePage',
   MY_DATA: 'myData',
-  WORKFLOWS: 'workflows',
+  WORKFLOWS: 'governanceWorkflows',
   AUTOMATIONS: 'automations',
   KNOWLEDGE_CENTER: 'knowledgeCenter',
   SQL_STUDIO: 'sqlStudio',
