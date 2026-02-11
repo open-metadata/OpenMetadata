@@ -74,7 +74,6 @@ def run_classifier(
     sampling_only_classifier_config,
     create_test_data,
     request,
-    caplog,
 ):
     _run_classifier_with_retry(
         run_workflow,
@@ -85,7 +84,6 @@ def run_classifier(
     return ingestion_config
 
 
-@pytest.mark.flaky(reruns=3, reruns_delay=30)
 @pytest.mark.parametrize(
     "table_name",
     (
