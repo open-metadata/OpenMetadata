@@ -42,9 +42,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.Djl;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
@@ -546,18 +544,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         .withSearchIndexMappingLanguage(ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE)
         .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)
         .withSearchType(type);
-
-    // For OpenSearch tests, enable DJL model for Vector Search
-    if (type == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
-      NaturalLanguageSearchConfiguration nlSearch = new NaturalLanguageSearchConfiguration();
-      nlSearch.setSemanticSearchEnabled(true);
-      nlSearch.setEmbeddingProvider("djl");
-      nlSearch.setDjl(
-          new Djl()
-              .withEmbeddingModel(
-                  "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2"));
-      config.setNaturalLanguageSearch(nlSearch);
-    }
 
     return config;
   }

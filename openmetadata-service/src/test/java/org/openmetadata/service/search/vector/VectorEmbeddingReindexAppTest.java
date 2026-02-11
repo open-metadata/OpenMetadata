@@ -1,15 +1,15 @@
-package org.openmetadata.it.tests;
+package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,10 +19,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -34,21 +31,18 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.util.TestUtils;
 
-/**
- * Integration test that validates vector embeddings with SearchIndexApp reindexing. Tests the
- * complete flow: create sample tables -> execute SearchIndexApp with reindexing -> validate
- * embeddings in OpenSearch -> update metadata -> reindex -> validate updated embeddings.
- */
 @TestMethodOrder(OrderAnnotation.class)
-@TestInstance(Lifecycle.PER_CLASS)
 @Slf4j
-public class VectorEmbeddingReindexAppIT {
+public class VectorEmbeddingReindexAppTest extends OpenMetadataApplicationTest {
 
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-  private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+  static {
+    runWithOpensearch = true;
+    runWithVectorEmbeddings = true;
+  }
 
   private DatabaseService sampleDatabaseService;
   private Database sampleDatabase;
@@ -57,11 +51,8 @@ public class VectorEmbeddingReindexAppIT {
   private Table sampleTable2;
 
   @BeforeAll
-  void checkOpenSearchAvailable() {
-    String searchType = System.getProperty("searchType", "elasticsearch");
-    Assumptions.assumeTrue(
-        "opensearch".equalsIgnoreCase(searchType),
-        "Vector embedding tests require OpenSearch (run with -PpostgresOpenSearch profile)");
+  public void checkVectorSearchAvailable() throws Exception {
+    super.createApplication();
     Assumptions.assumeTrue(
         waitForVectorSearchAvailability(),
         "Vector search service is not available (embedding model may have failed to load)");
@@ -69,56 +60,50 @@ public class VectorEmbeddingReindexAppIT {
 
   @Test
   @Order(1)
-  public void testCreateSampleTablesForEmbedding() {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    org.openmetadata.schema.services.connections.database.PostgresConnection conn =
-        org.openmetadata.sdk.fluent.DatabaseServices.postgresConnection()
-            .hostPort("localhost:5432")
-            .username("test")
-            .build();
-
+  public void testCreateSampleTablesForEmbedding() throws Exception {
     sampleDatabaseService =
-        org.openmetadata.sdk.fluent.DatabaseServices.builder()
-            .name("vec_reindex_svc_" + System.currentTimeMillis())
-            .connection(conn)
-            .description("Test service for vector embedding reindex")
-            .create();
+        TestUtils.post(
+            getResource("services/databaseServices"),
+            createDatabaseService("vec_reindex_svc_" + System.currentTimeMillis()),
+            DatabaseService.class,
+            ADMIN_AUTH_HEADERS);
 
     assertNotNull(sampleDatabaseService);
     assertNotNull(sampleDatabaseService.getId());
 
-    CreateDatabase createDatabase =
-        new CreateDatabase()
-            .withName("vector_test_db")
-            .withDisplayName("Vector Embedding Test Database")
-            .withDescription(
-                "Database containing customer and product data for testing semantic search and vector embeddings functionality")
-            .withService(sampleDatabaseService.getFullyQualifiedName());
-
-    sampleDatabase = client.databases().create(createDatabase);
+    sampleDatabase =
+        TestUtils.post(
+            getResource("databases"),
+            new CreateDatabase()
+                .withName("vector_test_db")
+                .withDisplayName("Vector Embedding Test Database")
+                .withDescription(
+                    "Database containing customer and product data for testing semantic search and vector embeddings functionality")
+                .withService(sampleDatabaseService.getFullyQualifiedName()),
+            Database.class,
+            ADMIN_AUTH_HEADERS);
     assertNotNull(sampleDatabase);
 
-    CreateDatabaseSchema createSchema =
-        new CreateDatabaseSchema()
-            .withName("analytics_schema")
-            .withDisplayName("Analytics and Reporting Schema")
-            .withDescription(
-                "Schema containing analytical tables for business intelligence and customer analytics")
-            .withDatabase(sampleDatabase.getFullyQualifiedName());
-
-    sampleSchema = client.databaseSchemas().create(createSchema);
+    sampleSchema =
+        TestUtils.post(
+            getResource("databaseSchemas"),
+            new CreateDatabaseSchema()
+                .withName("analytics_schema")
+                .withDisplayName("Analytics and Reporting Schema")
+                .withDescription(
+                    "Schema containing analytical tables for business intelligence and customer analytics")
+                .withDatabase(sampleDatabase.getFullyQualifiedName()),
+            DatabaseSchema.class,
+            ADMIN_AUTH_HEADERS);
     assertNotNull(sampleSchema);
 
     sampleTable1 =
         createEmbeddingTestTable(
-            client,
             "customer_analytics",
             "Comprehensive customer analytics table containing demographic data, purchase history, behavioral patterns, and segmentation information for marketing and business intelligence");
 
     sampleTable2 =
         createEmbeddingTestTable(
-            client,
             "product_catalog_metrics",
             "Product catalog with detailed metrics including sales performance, inventory levels, customer ratings, and category classification for recommendation systems");
 
@@ -182,8 +167,6 @@ public class VectorEmbeddingReindexAppIT {
   @Test
   @Order(4)
   public void testReindexingWithUpdatedMetadata() throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-
     assertDoesNotThrow(
         () -> {
           CreateTable updateCustomerRequest =
@@ -196,9 +179,8 @@ public class VectorEmbeddingReindexAppIT {
                   .withDatabaseSchema(sampleTable1.getDatabaseSchema().getFullyQualifiedName())
                   .withColumns(sampleTable1.getColumns());
 
-          client
-              .getHttpClient()
-              .execute(HttpMethod.PUT, "/v1/tables", updateCustomerRequest, Table.class);
+          TestUtils.put(
+              getResource("tables"), updateCustomerRequest, Response.Status.OK, ADMIN_AUTH_HEADERS);
 
           CreateTable updateProductRequest =
               new CreateTable()
@@ -210,9 +192,8 @@ public class VectorEmbeddingReindexAppIT {
                   .withDatabaseSchema(sampleTable2.getDatabaseSchema().getFullyQualifiedName())
                   .withColumns(sampleTable2.getColumns());
 
-          client
-              .getHttpClient()
-              .execute(HttpMethod.PUT, "/v1/tables", updateProductRequest, Table.class);
+          TestUtils.put(
+              getResource("tables"), updateProductRequest, Response.Status.OK, ADMIN_AUTH_HEADERS);
         },
         "Should update table descriptions for reindexing test");
 
@@ -288,8 +269,6 @@ public class VectorEmbeddingReindexAppIT {
   @Test
   @Order(7)
   public void testCleanupEmbeddingTestData() {
-    OpenMetadataClient client = SdkClients.adminClient();
-
     safeDelete("tables", sampleTable1);
     safeDelete("tables", sampleTable2);
     safeDelete("databaseSchemas", sampleSchema);
@@ -297,8 +276,7 @@ public class VectorEmbeddingReindexAppIT {
     safeDelete("services/databaseServices", sampleDatabaseService);
   }
 
-  private Table createEmbeddingTestTable(
-      OpenMetadataClient client, String name, String description) {
+  private Table createEmbeddingTestTable(String name, String description) throws Exception {
     List<Column> columns =
         List.of(
             new Column()
@@ -350,7 +328,25 @@ public class VectorEmbeddingReindexAppIT {
             .withDatabaseSchema(sampleSchema.getFullyQualifiedName())
             .withColumns(columns);
 
-    return client.tables().create(createTable);
+    return TestUtils.post(getResource("tables"), createTable, Table.class, ADMIN_AUTH_HEADERS);
+  }
+
+  private Object createDatabaseService(String name) {
+    return Map.of(
+        "name",
+        name,
+        "serviceType",
+        "Postgres",
+        "description",
+        "Test service for vector embedding reindex",
+        "connection",
+        Map.of(
+            "config",
+            Map.of(
+                "type", "Postgres",
+                "hostPort", "localhost:5432",
+                "username", "test",
+                "authType", Map.of("password", "test"))));
   }
 
   private String formatDisplayName(String name) {
@@ -377,32 +373,23 @@ public class VectorEmbeddingReindexAppIT {
             .withRecreateIndex(recreateIndex)
             .withAutoTune(false);
 
-    String body = JsonUtils.pojoToJson(jobConfig);
-    String url = SdkClients.getServerUrl() + "/v1/apps/trigger/SearchIndexingApplication";
+    WebTarget target = getResource("apps/trigger/SearchIndexingApplication");
 
     int maxRetries = 5;
     long retryBackoffMs = 5000;
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
-      HttpRequest request =
-          HttpRequest.newBuilder()
-              .uri(URI.create(url))
-              .header("Content-Type", "application/json")
-              .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-              .POST(HttpRequest.BodyPublishers.ofString(body))
-              .build();
+      Response response =
+          SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+              .post(Entity.entity(jobConfig, MediaType.APPLICATION_JSON));
 
-      HttpResponse<String> response =
-          HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-      if (response.statusCode() >= 200 && response.statusCode() < 300) {
+      if (response.getStatus() >= 200 && response.getStatus() < 300) {
         return;
       }
 
-      if (response.body() != null
-          && response.body().contains("Job is already running")
-          && attempt < maxRetries) {
-        log.info(
+      String body = response.readEntity(String.class);
+      if (body != null && body.contains("Job is already running") && attempt < maxRetries) {
+        LOG.info(
             "Job is still running, waiting {}ms before retry {}/{}",
             retryBackoffMs,
             attempt,
@@ -413,8 +400,8 @@ public class VectorEmbeddingReindexAppIT {
       }
 
       assertTrue(
-          response.statusCode() >= 200 && response.statusCode() < 300,
-          "Failed to trigger SearchIndexingApplication: " + response.body());
+          response.getStatus() >= 200 && response.getStatus() < 300,
+          "Failed to trigger SearchIndexingApplication: " + body);
     }
   }
 
@@ -429,37 +416,32 @@ public class VectorEmbeddingReindexAppIT {
       totalWaited += waitIntervalMs;
 
       try {
-        String url = SdkClients.getServerUrl() + "/v1/apps/name/SearchIndexingApplication/logs";
-        HttpRequest request =
-            HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-                .GET()
-                .build();
+        WebTarget target = getResource("apps/name/SearchIndexingApplication/logs");
+        Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
 
-        HttpResponse<String> response =
-            HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() == 200 && response.body() != null) {
-          Map<String, Object> logJson = JsonUtils.readValue(response.body(), Map.class);
-          String status = (String) logJson.get("status");
-          if ("success".equalsIgnoreCase(status) || "completed".equalsIgnoreCase(status)) {
-            log.info("Indexing completed successfully after {}ms", totalWaited);
-            return;
-          }
-          if ("failed".equalsIgnoreCase(status)
-              || "stopped".equalsIgnoreCase(status)
-              || "activeError".equalsIgnoreCase(status)) {
-            log.warn("Indexing ended with status: {}", status);
-            return;
+        if (response.getStatus() == 200) {
+          String body = response.readEntity(String.class);
+          if (body != null) {
+            Map<String, Object> logJson = JsonUtils.readValue(body, Map.class);
+            String status = (String) logJson.get("status");
+            if ("success".equalsIgnoreCase(status) || "completed".equalsIgnoreCase(status)) {
+              LOG.info("Indexing completed successfully after {}ms", totalWaited);
+              return;
+            }
+            if ("failed".equalsIgnoreCase(status)
+                || "stopped".equalsIgnoreCase(status)
+                || "activeError".equalsIgnoreCase(status)) {
+              LOG.warn("Indexing ended with status: {}", status);
+              return;
+            }
           }
         }
       } catch (Exception e) {
-        log.debug("Could not retrieve logs: {}", e.getMessage());
+        LOG.debug("Could not retrieve logs: {}", e.getMessage());
       }
     }
 
-    log.warn("Indexing wait timeout reached after {}ms", totalWaited);
+    LOG.warn("Indexing wait timeout reached after {}ms", totalWaited);
   }
 
   private boolean waitForVectorSearchAvailability() {
@@ -468,34 +450,26 @@ public class VectorEmbeddingReindexAppIT {
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        String body =
-            OBJECT_MAPPER.writeValueAsString(
-                Map.of("query", "test", "size", 1, "k", 1, "threshold", 0.0));
-        String url = SdkClients.getServerUrl() + "/v1/search/vector/query";
-        HttpRequest request =
-            HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .build();
+        WebTarget target = getResource("search/vector/query");
+        Map<String, Object> requestBody =
+            Map.of("query", "test", "size", 1, "k", 1, "threshold", 0.0);
 
-        HttpResponse<String> response =
-            HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+        Response response =
+            SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+                .post(Entity.entity(requestBody, MediaType.APPLICATION_JSON));
 
-        if (response.statusCode() >= 200 && response.statusCode() < 300) {
-          log.info("Vector search service is available (attempt {})", attempt);
+        if (response.getStatus() >= 200 && response.getStatus() < 300) {
+          LOG.info("Vector search service is available (attempt {})", attempt);
           return true;
         }
 
-        log.info(
-            "Vector search not yet available (attempt {}/{}): {} {}",
+        LOG.info(
+            "Vector search not yet available (attempt {}/{}): {}",
             attempt,
             maxRetries,
-            response.statusCode(),
-            response.body());
+            response.getStatus());
       } catch (Exception e) {
-        log.info(
+        LOG.info(
             "Vector search check failed (attempt {}/{}): {}", attempt, maxRetries, e.getMessage());
       }
 
@@ -507,7 +481,7 @@ public class VectorEmbeddingReindexAppIT {
       }
     }
 
-    log.warn("Vector search service not available after {} attempts", maxRetries);
+    LOG.warn("Vector search service not available after {} attempts", maxRetries);
     return false;
   }
 
@@ -519,33 +493,28 @@ public class VectorEmbeddingReindexAppIT {
 
     while (totalWaited < maxWaitMs) {
       try {
-        String url = SdkClients.getServerUrl() + "/v1/apps/name/SearchIndexingApplication/logs";
-        HttpRequest request =
-            HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-                .GET()
-                .build();
+        WebTarget target = getResource("apps/name/SearchIndexingApplication/logs");
+        Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
 
-        HttpResponse<String> response =
-            HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() == 200 && response.body() != null) {
-          Map<String, Object> logJson = JsonUtils.readValue(response.body(), Map.class);
-          String status = (String) logJson.get("status");
-          if (status == null
-              || (!"running".equalsIgnoreCase(status)
-                  && !"started".equalsIgnoreCase(status)
-                  && !"active".equalsIgnoreCase(status))) {
-            log.info("SearchIndexingApplication is idle (status={}), proceeding", status);
-            return;
+        if (response.getStatus() == 200) {
+          String body = response.readEntity(String.class);
+          if (body != null) {
+            Map<String, Object> logJson = JsonUtils.readValue(body, Map.class);
+            String status = (String) logJson.get("status");
+            if (status == null
+                || (!"running".equalsIgnoreCase(status)
+                    && !"started".equalsIgnoreCase(status)
+                    && !"active".equalsIgnoreCase(status))) {
+              LOG.info("SearchIndexingApplication is idle (status={}), proceeding", status);
+              return;
+            }
+            LOG.info("SearchIndexingApplication is {} - waiting...", status);
           }
-          log.info("SearchIndexingApplication is {} - waiting...", status);
         } else {
           return;
         }
       } catch (Exception e) {
-        log.debug("Could not check job status: {}", e.getMessage());
+        LOG.debug("Could not check job status: {}", e.getMessage());
         return;
       }
 
@@ -553,37 +522,29 @@ public class VectorEmbeddingReindexAppIT {
       totalWaited += pollIntervalMs;
     }
 
-    log.warn("Timeout waiting for existing job to complete after {}ms", maxWaitMs);
+    LOG.warn("Timeout waiting for existing job to complete after {}ms", maxWaitMs);
   }
 
   @SuppressWarnings("unchecked")
   private Map<String, Object> vectorSearch(String query) throws Exception {
-    String body =
-        OBJECT_MAPPER.writeValueAsString(
-            Map.of("query", query, "size", 10, "k", 10000, "threshold", 0.0));
-    String url = SdkClients.getServerUrl() + "/v1/search/vector/query";
+    WebTarget target = getResource("search/vector/query");
+    Map<String, Object> requestBody =
+        Map.of("query", query, "size", 10, "k", 10000, "threshold", 0.0);
 
     int maxRetries = 5;
     long backoffMs = 3000;
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
-      HttpRequest request =
-          HttpRequest.newBuilder()
-              .uri(URI.create(url))
-              .header("Content-Type", "application/json")
-              .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-              .POST(HttpRequest.BodyPublishers.ofString(body))
-              .build();
+      Response response =
+          SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+              .post(Entity.entity(requestBody, MediaType.APPLICATION_JSON));
 
-      HttpResponse<String> response =
-          HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-      if (response.statusCode() >= 200 && response.statusCode() < 300) {
-        return OBJECT_MAPPER.readValue(response.body(), Map.class);
+      if (response.getStatus() >= 200 && response.getStatus() < 300) {
+        return JsonUtils.readValue(response.readEntity(String.class), Map.class);
       }
 
-      if (response.statusCode() == 503 && attempt < maxRetries) {
-        log.info(
+      if (response.getStatus() == 503 && attempt < maxRetries) {
+        LOG.info(
             "Vector search unavailable (attempt {}/{}), retrying in {}ms",
             attempt,
             maxRetries,
@@ -592,41 +553,38 @@ public class VectorEmbeddingReindexAppIT {
         continue;
       }
 
-      log.warn("Vector search returned status {}: {}", response.statusCode(), response.body());
+      LOG.warn(
+          "Vector search returned status {}: {}",
+          response.getStatus(),
+          response.readEntity(String.class));
     }
     return null;
   }
 
   @SuppressWarnings("unchecked")
   private Map<String, Object> getFingerprint(String parentId) throws Exception {
-    String url = SdkClients.getServerUrl() + "/v1/search/vector/fingerprint?parentId=" + parentId;
+    WebTarget target = getResource("search/vector/fingerprint").queryParam("parentId", parentId);
 
     int maxRetries = 3;
     long backoffMs = 2000;
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
-      HttpRequest request =
-          HttpRequest.newBuilder()
-              .uri(URI.create(url))
-              .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-              .GET()
-              .build();
+      Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
 
-      HttpResponse<String> response =
-          HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-      if (response.statusCode() >= 200 && response.statusCode() < 300) {
-        return OBJECT_MAPPER.readValue(response.body(), Map.class);
+      if (response.getStatus() >= 200 && response.getStatus() < 300) {
+        return JsonUtils.readValue(response.readEntity(String.class), Map.class);
       }
 
-      if (response.statusCode() == 503 && attempt < maxRetries) {
-        log.info("Fingerprint endpoint unavailable (attempt {}/{}), retrying", attempt, maxRetries);
+      if (response.getStatus() == 503 && attempt < maxRetries) {
+        LOG.info("Fingerprint endpoint unavailable (attempt {}/{}), retrying", attempt, maxRetries);
         Thread.sleep(backoffMs * attempt);
         continue;
       }
 
-      log.debug(
-          "Fingerprint request returned status {}: {}", response.statusCode(), response.body());
+      LOG.debug(
+          "Fingerprint request returned status {}: {}",
+          response.getStatus(),
+          response.readEntity(String.class));
     }
     return null;
   }
@@ -636,22 +594,13 @@ public class VectorEmbeddingReindexAppIT {
       return;
     }
     try {
-      String url =
-          SdkClients.getServerUrl()
-              + "/api/v1/"
-              + resource
-              + "/"
-              + entity.getId()
-              + "?hardDelete=true&recursive=true";
-      HttpRequest request =
-          HttpRequest.newBuilder()
-              .uri(URI.create(url))
-              .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-              .DELETE()
-              .build();
-      HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+      WebTarget target =
+          getResource(resource + "/" + entity.getId())
+              .queryParam("hardDelete", true)
+              .queryParam("recursive", true);
+      SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).delete();
     } catch (Exception e) {
-      log.warn("Failed to delete {}: {}", resource, e.getMessage());
+      LOG.warn("Failed to delete {}: {}", resource, e.getMessage());
     }
   }
 }

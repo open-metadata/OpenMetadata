@@ -90,6 +90,7 @@ import org.testcontainers.utility.DockerImageName;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class OpenMetadataApplicationTest {
   protected static Boolean runWithOpensearch = false;
+  protected static Boolean runWithVectorEmbeddings = false;
   protected static Boolean runWithRdf = false;
 
   protected static final String CONFIG_PATH =
@@ -218,6 +219,18 @@ public abstract class OpenMetadataApplicationTest {
       HOST = OPENSEARCH_CONTAINER.getHost();
       PORT = OPENSEARCH_CONTAINER.getMappedPort(9200).toString();
       overrideSearchConfig(true);
+
+      if (Boolean.TRUE.equals(runWithVectorEmbeddings)) {
+        configOverrides.add(
+            ConfigOverride.config(
+                "elasticsearch.naturalLanguageSearch.semanticSearchEnabled", "true"));
+        configOverrides.add(
+            ConfigOverride.config("elasticsearch.naturalLanguageSearch.embeddingProvider", "djl"));
+        configOverrides.add(
+            ConfigOverride.config(
+                "elasticsearch.naturalLanguageSearch.djl.embeddingModel",
+                "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2"));
+      }
     } else {
       LOG.info("Using Elasticsearch container with image: {}", elasticSearchContainerImage);
 
