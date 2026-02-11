@@ -182,6 +182,9 @@ public class VectorSearchQueryBuilder {
   }
 
   private static String buildCustomPropertyFilter(String key, List<String> values) {
+    if (!key.matches("[a-zA-Z0-9_.]+")) {
+      return null;
+    }
     if (key.endsWith(".name")) {
       String field = "customProperties." + key;
       if (values.size() == 1) {

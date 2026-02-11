@@ -26,6 +26,7 @@ import org.openmetadata.service.search.vector.utils.DTOs.FingerprintResponse;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchRequest;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 
 @Slf4j
 @Path("/v1/search/vector")
@@ -57,6 +58,8 @@ public class VectorSearchResource {
       })
   public Response vectorSearchPost(
       @Context SecurityContext securityContext, VectorSearchRequest request) {
+    DefaultAuthorizer.getSubjectContext(securityContext);
+
     if (request.query == null || request.query.isBlank()) {
       return Response.status(Response.Status.BAD_REQUEST)
           .entity("{\"error\":\"query is required\"}")
@@ -77,12 +80,14 @@ public class VectorSearchResource {
     }
 
     try {
+      int effectiveSize = Math.min(Math.max(request.size, 1), 100);
+      int effectiveK = Math.min(Math.max(request.k, 1), 10_000);
       VectorSearchResponse response =
           vectorService.search(
               request.query,
               request.filters != null ? request.filters : Collections.emptyMap(),
-              request.size,
-              request.k,
+              effectiveSize,
+              effectiveK,
               request.threshold);
       return Response.ok(response).build();
     } catch (Exception e) {
@@ -103,6 +108,8 @@ public class VectorSearchResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "Parent entity ID", required = true) @QueryParam("parentId")
           String parentId) {
+    DefaultAuthorizer.getSubjectContext(securityContext);
+
     if (!Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
       return Response.status(Response.Status.SERVICE_UNAVAILABLE)
           .entity("{\"error\":\"Vector search is not enabled\"}")
@@ -116,6 +123,11 @@ public class VectorSearchResource {
           .build();
     }
 
+    if (parentId == null || parentId.isBlank()) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity("{\"error\":\"parentId is required\"}")
+          .build();
+    }
     try {
       UUID.fromString(parentId);
     } catch (IllegalArgumentException e) {

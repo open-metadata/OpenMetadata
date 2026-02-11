@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -23,7 +24,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
 @Slf4j
-public final class BedrockEmbeddingClient implements EmbeddingClient {
+public final class BedrockEmbeddingClient implements EmbeddingClient, AutoCloseable {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final int PARALLEL_THREADS = 8;
 
@@ -124,6 +125,22 @@ public final class BedrockEmbeddingClient implements EmbeddingClient {
   @Override
   public String getModelId() {
     return modelId;
+  }
+
+  @Override
+  public void close() {
+    executor.shutdown();
+    try {
+      if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
+        executor.shutdownNow();
+      }
+    } catch (InterruptedException e) {
+      executor.shutdownNow();
+      Thread.currentThread().interrupt();
+    }
+    if (bedrockClient != null) {
+      bedrockClient.close();
+    }
   }
 
   private float[] parseEmbeddingResponse(String responseBody) {

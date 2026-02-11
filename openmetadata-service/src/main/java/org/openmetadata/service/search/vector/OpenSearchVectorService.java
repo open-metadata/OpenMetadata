@@ -515,7 +515,12 @@ public class OpenSearchVectorService implements VectorIndexService {
         throw new IllegalStateException("Could not find " + resourcePath + " in classpath");
       }
       String template = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-      return template.replace("\"dimension\": 512", "\"dimension\": " + dimension);
+      String result = template.replace("\"dimension\": 512", "\"dimension\": " + dimension);
+      if (result.equals(template) && dimension != 512) {
+        throw new IllegalStateException(
+            "Failed to replace dimension placeholder in vector index mapping template");
+      }
+      return result;
     } catch (Exception e) {
       throw new RuntimeException("Failed to load vector search index mapping", e);
     }
