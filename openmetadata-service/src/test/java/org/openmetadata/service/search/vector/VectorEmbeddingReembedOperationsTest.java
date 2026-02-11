@@ -54,8 +54,7 @@ public class VectorEmbeddingReembedOperationsTest extends OpenMetadataApplicatio
   private Table sampleTable;
 
   @BeforeAll
-  public void checkVectorSearchAvailable() throws Exception {
-    super.createApplication();
+  public void checkVectorSearchAvailable() {
     Assumptions.assumeTrue(
         waitForVectorSearchAvailability(), "Reembed tests require vector search to be available");
   }

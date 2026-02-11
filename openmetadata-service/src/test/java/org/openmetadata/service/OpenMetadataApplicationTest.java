@@ -647,6 +647,21 @@ public abstract class OpenMetadataApplicationTest {
         .withSearchIndexMappingLanguage(ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE)
         .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)
         .withSearchType(searchType);
+
+    if (Boolean.TRUE.equals(runWithVectorEmbeddings) && Boolean.TRUE.equals(runWithOpensearch)) {
+      org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration
+          nlSearch =
+              new org.openmetadata.schema.service.configuration.elasticsearch
+                  .NaturalLanguageSearchConfiguration();
+      nlSearch.setSemanticSearchEnabled(true);
+      nlSearch.setEmbeddingProvider("djl");
+      nlSearch.setDjl(
+          new org.openmetadata.schema.service.configuration.elasticsearch.Djl()
+              .withEmbeddingModel(
+                  "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2"));
+      searchConfig.setNaturalLanguageSearch(nlSearch);
+    }
+
     return searchConfig;
   }
 

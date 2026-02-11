@@ -51,8 +51,7 @@ public class VectorEmbeddingReindexAppTest extends OpenMetadataApplicationTest {
   private Table sampleTable2;
 
   @BeforeAll
-  public void checkVectorSearchAvailable() throws Exception {
-    super.createApplication();
+  public void checkVectorSearchAvailable() {
     Assumptions.assumeTrue(
         waitForVectorSearchAvailability(),
         "Vector search service is not available (embedding model may have failed to load)");
