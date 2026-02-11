@@ -376,8 +376,7 @@ public class SearchIndexVectorEmbeddingIT {
 
   @SuppressWarnings("unchecked")
   private Map<String, Object> getFingerprint(String parentId) throws Exception {
-    String url =
-        SdkClients.getServerUrl() + "/v1/search/vector/fingerprint?parentId=" + parentId;
+    String url = SdkClients.getServerUrl() + "/v1/search/vector/fingerprint?parentId=" + parentId;
     HttpRequest request =
         HttpRequest.newBuilder()
             .uri(URI.create(url))
