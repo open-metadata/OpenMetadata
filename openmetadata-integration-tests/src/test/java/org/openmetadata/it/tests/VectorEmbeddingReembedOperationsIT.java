@@ -42,7 +42,7 @@ import picocli.CommandLine;
 @TestMethodOrder(OrderAnnotation.class)
 @TestInstance(Lifecycle.PER_CLASS)
 @Slf4j
-public class ReembedOperationsIT {
+public class VectorEmbeddingReembedOperationsIT {
 
   private static final String CONFIG_PATH =
       ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");

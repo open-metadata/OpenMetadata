@@ -36,6 +36,9 @@ import org.openmetadata.service.security.DefaultAuthorizer;
 public class VectorSearchResource {
   private final Authorizer authorizer;
 
+  private static final int MAX_SIZE = 100;
+  private static final int MAX_K = 1_000;
+
   public VectorSearchResource(Authorizer authorizer) {
     this.authorizer = authorizer;
   }
@@ -80,8 +83,8 @@ public class VectorSearchResource {
     }
 
     try {
-      int effectiveSize = Math.min(Math.max(request.size, 1), 100);
-      int effectiveK = Math.min(Math.max(request.k, 1), 10_000);
+      int effectiveSize = Math.min(Math.max(request.size, 1), MAX_SIZE);
+      int effectiveK = Math.min(Math.max(request.k, 1), MAX_K);
       VectorSearchResponse response =
           vectorService.search(
               request.query,

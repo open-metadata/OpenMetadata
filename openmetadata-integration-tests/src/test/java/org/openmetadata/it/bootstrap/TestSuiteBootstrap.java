@@ -552,7 +552,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       NaturalLanguageSearchConfiguration nlSearch = new NaturalLanguageSearchConfiguration();
       nlSearch.setSemanticSearchEnabled(true);
       nlSearch.setEmbeddingProvider("djl");
-      nlSearch.setDjl(new Djl().withEmbeddingModel("ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2"));
+      nlSearch.setDjl(
+          new Djl()
+              .withEmbeddingModel(
+                  "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2"));
       config.setNaturalLanguageSearch(nlSearch);
     }
 
