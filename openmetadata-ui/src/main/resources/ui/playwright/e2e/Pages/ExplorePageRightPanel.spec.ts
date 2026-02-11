@@ -12,7 +12,10 @@
  */
 
 import { test } from '../../support/fixtures/userPages';
-import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
+import {
+  AssetType,
+  RightPanelPageObject,
+} from '../PageObject/Explore/RightPanelPageObject';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import { SchemaPageObject } from '../PageObject/Explore/SchemaPageObject';
 import { LineagePageObject } from '../PageObject/Explore/LineagePageObject';
@@ -37,7 +40,6 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { Domain } from '../../support/domain/Domain';
 import { UserClass } from '../../support/user/UserClass';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // Test data setup
 const tableEntity = new TableClass();
@@ -310,8 +312,6 @@ test.describe('Right Panel Test Suite', () => {
       });
     });
 
-    // ============ SCHEMA PAGE ============
-
     test.describe('Schema panel tests', () => {
       Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
         test(`Should display and verify schema fields for ${entityType}`, async ({
@@ -339,7 +339,28 @@ test.describe('Right Panel Test Suite', () => {
       });
     });
 
-    // ============ LINEAGE PAGE OBJECT TESTS ============
+    test.describe('Right panel validation by asset type', () => {
+      Object.entries(entityMap).forEach(([, entityInstance]) => {
+        const assetType = entityInstance.getType();
+        const fqn = (
+          entityInstance as {
+            entityResponseData?: { fullyQualifiedName?: string };
+          }
+        ).entityResponseData?.fullyQualifiedName;
+        test(`validates visible/hidden tabs and tab content for ${assetType}`, async ({
+          adminPage,
+        }) => {
+          await navigateToExploreAndSelectEntity(
+            adminPage,
+            entityInstance.entity.name,
+            entityInstance.endpoint,
+            fqn
+          );
+          await rightPanel.waitForPanelLoaded();
+          await rightPanel.validateRightPanelForAsset(assetType as AssetType);
+        });
+      });
+    });
 
     test.describe('Lineage - Navigation and Expansion', () => {
       Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
@@ -401,8 +422,6 @@ test.describe('Right Panel Test Suite', () => {
       });
     });
 
-    // ============ DATA QUALITY PAGE OBJECT TESTS ============
-
     test.describe('DataQuality - Stat Cards and Filtering', () => {
       Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
         test(`Should navigate to data quality and show stat cards for ${entityType}`, async ({
@@ -461,8 +480,6 @@ test.describe('Right Panel Test Suite', () => {
       });
     });
 
-    // ============ CUSTOM PROPERTIES PAGE OBJECT TESTS ============
-
     test.describe('CustomProperties - Search and Management', () => {
       Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
         test(`Should navigate to custom properties and show interface for ${entityType}`, async ({
@@ -518,7 +535,6 @@ test.describe('Right Panel Test Suite', () => {
           }
         });
       });
-
     });
   });
 });

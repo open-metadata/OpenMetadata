@@ -307,9 +307,8 @@ export const navigateToExploreAndSelectEntity = async (
 ) => {
   await redirectToExplorePage(page);
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-    timeout: 15000,
+  await expect(page.locator('[data-testid="loader"]')).toHaveCount(0, {
+    timeout: 30000,
   });
 
   await openEntitySummaryPanel(

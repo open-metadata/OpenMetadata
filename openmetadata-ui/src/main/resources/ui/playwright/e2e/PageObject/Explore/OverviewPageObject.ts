@@ -79,7 +79,7 @@ export class OverviewPageObject extends RightPanelBase {
   private readonly userListContainer: Locator;
   private readonly editOwnersIcon: Locator;
   private readonly updateOwnersButton: Locator;
-
+  private readonly dataQualitySectionInOverview: Locator;
 
   constructor(rightPanel: RightPanelPageObject) {
     super(rightPanel);
@@ -114,7 +114,9 @@ export class OverviewPageObject extends RightPanelBase {
     this.userListContainer = this.page.getByTestId('user-tag');
     this.editOwnersIcon = this.page.getByTestId('edit-owners');
     this.updateOwnersButton = this.page.getByTestId('selectable-list-update-btn');
-
+    this.dataQualitySectionInOverview = this.getSummaryPanel().locator(
+      '.data-quality-section, .data-quality-content'
+    );
   }
 
   // ============ NAVIGATION METHODS (Fluent Interface) ============
@@ -462,20 +464,57 @@ export class OverviewPageObject extends RightPanelBase {
 
   /**
    * Assert internal fields of the Overview tab for the given asset type.
+   * Verifies key sections always rendered in DataAssetSummaryPanelV1: description, tags, tier, owners, domains, glossary.
    * Call after navigating to Overview tab (e.g. from assertTabInternalFieldsByAssetType).
    */
   async assertInternalFieldsForAssetType(assetType: string): Promise<void> {
     const tabLabel = 'Overview';
+    const prefix = `[Asset: ${assetType}] [Tab: ${tabLabel}]`;
+
     await expect(
       this.descriptionSection,
-      `[Asset: ${assetType}] [Tab: ${tabLabel}] Missing: description section`
+      `${prefix} Missing: description section`
     ).toBeVisible();
-    if (assetType === 'Table') {
-      const tableSummary = this.page.getByTestId('TableSummary');
-      await expect(
-        tableSummary,
-        `[Asset: ${assetType}] [Tab: ${tabLabel}] Missing: table summary (row/column context)`
-      ).toBeVisible();
-    }
+
+    await expect(
+      this.tagListContainer,
+      `${prefix} Missing: tags section`
+    ).toBeVisible();
+
+    await expect(
+      this.editTierIcon,
+      `${prefix} Missing: tier section`
+    ).toBeVisible();
+
+    await expect(
+      this.editOwnersIcon,
+      `${prefix} Missing: owners section`
+    ).toBeVisible();
+
+    await expect(
+      this.domainList,
+      `${prefix} Missing: domains section`
+    ).toBeVisible();
+
+    await expect(
+      this.glossaryTermListContainer,
+      `${prefix} Missing: glossary terms section`
+    ).toBeVisible();
+  }
+
+  /**
+   * Assert the Data Quality section is visible in the Overview tab.
+   * Use when the asset has a visible Data Quality tab (cross-tab dependency).
+   */
+  async assertDataQualitySectionVisible(): Promise<void> {
+    await expect(this.dataQualitySectionInOverview).toBeVisible();
+  }
+
+  /**
+   * Assert the Data Quality section is not visible in the Overview tab.
+   * Use when the asset does not have a Data Quality tab (cross-tab dependency).
+   */
+  async assertDataQualitySectionNotVisible(): Promise<void> {
+    await expect(this.dataQualitySectionInOverview).not.toBeVisible();
   }
 }

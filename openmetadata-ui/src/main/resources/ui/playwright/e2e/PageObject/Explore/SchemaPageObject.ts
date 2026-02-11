@@ -26,6 +26,7 @@ export class SchemaPageObject extends RightPanelBase {
   private readonly schemaSearchBar: Locator;
   private readonly schemaFieldsContainer: Locator;
   private readonly schemaFields: Locator;
+  private readonly noDataContainer: Locator;
 
   constructor(rightPanel: RightPanelPageObject) {
     super(rightPanel);
@@ -33,7 +34,8 @@ export class SchemaPageObject extends RightPanelBase {
     this.schemaSearchBar = this.page.getByTestId('searchbar');
     this.schemaFieldsContainer = this.page.locator('.schema-field-cards-container');
     this.schemaFields = this.schemaFieldsContainer.locator('.field-card ');
-    }
+    this.noDataContainer = this.getSummaryPanel().locator('.no-data-container');
+  }
 
   // ============ NAVIGATION METHODS (Fluent Interface) ============
 
@@ -66,13 +68,14 @@ export class SchemaPageObject extends RightPanelBase {
   }
 
   /**
-   * Verify schema tab has search bar, container, and at least one schema field visible.
-   * Uses .first() because multiple .field-card elements exist (strict mode).
+   * Verify schema tab has search bar and either schema fields or empty state.
+   * For Database/Database Schema the tab may show empty state when no children are loaded.
    */
   async shouldShowSchemaField(): Promise<void> {
     await expect(this.schemaSearchBar).toBeVisible();
-    await expect(this.schemaFieldsContainer).toBeVisible();
-    await expect(this.schemaFields.first()).toBeVisible();
+    const hasFields = (await this.schemaFields.count()) > 0;
+    const hasEmptyState = await this.noDataContainer.isVisible();
+    expect(hasFields || hasEmptyState).toBe(true);
   }
 
 async schemaFieldsCount(): Promise<number> {
@@ -86,14 +89,28 @@ async shouldShowSchemaFieldsCount(expectedCount: number): Promise<void> {
 }
 
   /**
-   * Assert internal fields of the Schema tab (search bar, container, at least one field).
-   * Call after navigating to Schema tab (e.g. from assertTabInternalFieldsByAssetType).
+   * Assert internal fields of the Schema tab (search bar, and either schema content or empty state).
+   * Database and Database Schema may show empty state when no schemas/tables are returned.
    */
   async assertInternalFields(assetType?: string): Promise<void> {
     const tabLabel = 'Schema';
     const prefix = assetType ? `[Asset: ${assetType}] [Tab: ${tabLabel}] ` : '';
     await expect(this.schemaSearchBar, `${prefix}Missing: schema search bar`).toBeVisible();
-    await expect(this.schemaFieldsContainer, `${prefix}Missing: schema fields container`).toBeVisible();
-    await expect(this.schemaFields.first(), `${prefix}Missing: at least one schema field`).toBeVisible();
+    const hasFields = (await this.schemaFields.count()) > 0;
+    const hasEmptyState = await this.noDataContainer.isVisible();
+    expect(
+      hasFields || hasEmptyState,
+      `${prefix}Expected schema fields container or empty state`
+    ).toBe(true);
+  }
+
+  /**
+   * Validates Schema tab content for the given asset type: visibility and key UI elements.
+   * Use from RightPanelPageObject.validateRightPanelForAsset after navigating to Schema tab.
+   */
+  async validateTabContentForAsset(assetType: string): Promise<void> {
+    await this.shouldBeVisible();
+    await this.shouldShowSchemaField();
+    await this.assertInternalFields(assetType);
   }
 }

@@ -13,7 +13,7 @@
 
 import { expect, Locator } from '@playwright/test';
 import { RightPanelBase } from './OverviewPageObject';
-import { RightPanelPageObject } from './RightPanelPageObject';
+import { RightPanelPageObject, RIGHT_PANEL_TAB } from './RightPanelPageObject';
 
 /**
  * PROPER PAGE OBJECT PATTERN FOR CUSTOM PROPERTIES TAB
@@ -52,7 +52,7 @@ export class CustomPropertiesPageObject extends RightPanelBase {
    * @returns CustomPropertiesPageObject for method chaining
    */
   async navigateToCustomPropertiesTab(): Promise<CustomPropertiesPageObject> {
-    await this.rightPanel.navigateToTab('Custom Property');
+    await this.rightPanel.navigateToTab(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES);
     await this.waitForLoadersToDisappear();
     return this;
   }
@@ -197,7 +197,7 @@ export class CustomPropertiesPageObject extends RightPanelBase {
    * Call after navigating to Custom Properties tab (e.g. from assertTabInternalFieldsByAssetType).
    */
   async assertInternalFields(assetType?: string): Promise<void> {
-    const tabLabel = 'Custom Properties';
+    const tabLabel = 'Custom Property';
     const prefix = assetType ? `[Asset: ${assetType}] [Tab: ${tabLabel}] ` : '';
     await expect(
       this.customPropertiesContainer,
