@@ -542,10 +542,6 @@ public class DatabaseServiceResourceIT
       } else if (line.contains("business_column") && line.contains("column")) {
         line = addColumnGlossaryTerms(line, shared.GLOSSARY1_TERM1_LABEL.getTagFQN());
       } else if (line.contains("address.street") && line.contains("column")) {
-        String combinedTags =
-            shared.PERSONAL_DATA_TAG_LABEL.getTagFQN()
-                + ";"
-                + shared.GLOSSARY1_TERM1_LABEL.getTagFQN();
         line = addColumnTags(line, shared.PERSONAL_DATA_TAG_LABEL.getTagFQN());
         line = addColumnGlossaryTerms(line, shared.GLOSSARY1_TERM1_LABEL.getTagFQN());
       }

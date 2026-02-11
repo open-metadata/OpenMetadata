@@ -3365,16 +3365,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void collectColumnTags(List<Column> columns, Map<String, List<TagLabel>> tagsByTarget) {
+    if (columns == null || columns.isEmpty()) {
+      return;
+    }
     for (Column column : columns) {
       List<TagLabel> tags = column.getTags();
       if (tags != null && !tags.isEmpty()) {
-        List<TagLabel> nonDerivedTags =
-            tags.stream()
-                .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
-                .collect(Collectors.toList());
-        if (!nonDerivedTags.isEmpty()) {
-          tagsByTarget.put(column.getFullyQualifiedName(), nonDerivedTags);
-        }
+        tagsByTarget.put(column.getFullyQualifiedName(), new ArrayList<>(tags));
       }
       if (column.getChildren() != null) {
         collectColumnTags(column.getChildren(), tagsByTarget);
