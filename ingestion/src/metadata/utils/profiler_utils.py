@@ -14,7 +14,7 @@
 import re
 from collections import defaultdict
 from datetime import datetime
-from functools import reduce
+from functools import lru_cache, reduce
 from typing import Optional, Tuple
 
 import sqlparse
@@ -107,6 +107,39 @@ def set_cache(cache: defaultdict, key: str, value):
         cache = cache[key_]
 
 
+@lru_cache(maxsize=1000)
+def _get_schema_cached(entity_id: str, metadata: OpenMetadata) -> DatabaseSchema:
+    """Cache schema lookups by FQN"""
+    result = metadata.get_by_id(
+        entity=DatabaseSchema,
+        entity_id=entity_id,
+        fields=["databaseSchemaProfilerConfig"],
+        nullable=False,
+    )
+    return result
+
+
+@lru_cache(maxsize=100)
+def _get_database_cached(entity_id: str, metadata: OpenMetadata) -> Database:
+    result = metadata.get_by_id(
+        entity=Database,
+        entity_id=entity_id,
+        fields=["databaseProfilerConfig"],
+        nullable=False,
+    )
+    return result
+
+
+@lru_cache(maxsize=10)
+def _get_service_cached(entity_id: str, metadata: OpenMetadata) -> DatabaseService:
+    result = metadata.get_by_id(
+        entity=DatabaseService,
+        entity_id=entity_id,
+        nullable=False,
+    )
+    return result
+
+
 def get_context_entities(
     entity: Table, metadata: OpenMetadata
 ) -> Tuple[DatabaseSchema, Database, DatabaseService]:
@@ -116,29 +149,12 @@ def get_context_entities(
     db_service = None
 
     if entity.databaseSchema:
-        schema_entity_list = metadata.es_search_from_fqn(
-            entity_type=DatabaseSchema,
-            fqn_search_string=entity.databaseSchema.fullyQualifiedName,
-            fields="databaseSchemaProfilerConfig",
-        )
-        if schema_entity_list:
-            schema_entity = schema_entity_list[0]
+        schema_entity = _get_schema_cached(str(entity.databaseSchema.id.root), metadata)
 
     if entity.database:
-        database_entity_list = metadata.es_search_from_fqn(
-            entity_type=Database,
-            fqn_search_string=entity.database.fullyQualifiedName,
-            fields="databaseProfilerConfig",
-        )
-        if database_entity_list:
-            database_entity = database_entity_list[0]
+        database_entity = _get_database_cached(str(entity.database.id.root), metadata)
 
     if entity.service:
-        db_service_list = metadata.es_search_from_fqn(
-            entity_type=DatabaseService,
-            fqn_search_string=entity.service.fullyQualifiedName,
-        )
-        if db_service_list:
-            db_service = db_service_list[0]
+        db_service = _get_service_cached(str(entity.service.id.root), metadata)
 
     return schema_entity, database_entity, db_service
