@@ -1202,19 +1202,7 @@ public class TableRepository extends EntityRepository<Table> {
     for (Table table : entities) {
       collectColumnTags(table.getColumns(), columnTagsByTarget);
     }
-
-    if (!columnTagsByTarget.isEmpty()) {
-      daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(columnTagsByTarget);
-
-      for (Map.Entry<String, List<TagLabel>> entry : columnTagsByTarget.entrySet()) {
-        String targetFQN = entry.getKey();
-        for (TagLabel tagLabel : entry.getValue()) {
-          if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
-            org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
-          }
-        }
-      }
-    }
+    applyTagsBatchWithRdf(columnTagsByTarget);
   }
 
   @Override

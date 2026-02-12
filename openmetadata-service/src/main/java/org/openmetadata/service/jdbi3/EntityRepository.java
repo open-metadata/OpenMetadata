@@ -3351,16 +3351,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     Map<String, List<TagLabel>> tagsByTarget = new LinkedHashMap<>();
     collectColumnTags(columns, tagsByTarget);
+    applyTagsBatchWithRdf(tagsByTarget);
+  }
 
-    if (!tagsByTarget.isEmpty()) {
-      daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(tagsByTarget);
+  protected void applyTagsBatchWithRdf(Map<String, List<TagLabel>> tagsByTarget) {
+    if (tagsByTarget == null || tagsByTarget.isEmpty()) {
+      return;
+    }
+    daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(tagsByTarget);
 
-      for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
-        String targetFQN = entry.getKey();
-        for (TagLabel tagLabel : entry.getValue()) {
-          if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
-            org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
-          }
+    for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
+      String targetFQN = entry.getKey();
+      for (TagLabel tagLabel : entry.getValue()) {
+        if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
+          org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
         }
       }
     }
