@@ -87,21 +87,24 @@ export interface CreateLearningResource {
 }
 
 export type ListLearningResourcesParams = ListParams & {
-  pageId?: string;
-  componentId?: string;
-  category?: string;
+  q?: string;
+  pageId?: string | string[];
+  componentId?: string | string[];
+  category?: string | string[];
+  type?: string | string[];
   difficulty?: string;
-  status?: string;
+  status?: string | string[];
 };
 
 const BASE_URL = '/learning/resources';
 
 export const getLearningResourcesList = async (
-  params?: ListLearningResourcesParams
+  params?: ListLearningResourcesParams,
+  config?: { signal?: AbortSignal }
 ) => {
   const response = await APIClient.get<PagingResponse<LearningResource[]>>(
     BASE_URL,
-    { params }
+    { params, signal: config?.signal }
   );
 
   return response.data;
