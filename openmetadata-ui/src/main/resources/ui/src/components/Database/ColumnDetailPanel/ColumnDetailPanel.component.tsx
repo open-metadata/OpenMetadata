@@ -773,9 +773,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           const isLastItem = index === breadcrumbPath.length - 1;
 
           return (
-            <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+            <Box key={breadcrumb.fullyQualifiedName} sx={{ display: 'inline-flex', alignItems: 'center' }}>
               <Box
-                key={breadcrumb.fullyQualifiedName}
                 sx={{
                   display: 'inline-flex',
                   alignItems: 'center',

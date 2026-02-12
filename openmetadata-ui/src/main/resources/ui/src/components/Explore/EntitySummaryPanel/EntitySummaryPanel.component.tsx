@@ -106,6 +106,7 @@ import {
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -910,7 +911,7 @@ export default function EntitySummaryPanel({
               />
             )}
             <CustomPropertiesSection
-              emptyStateMessage={entityType}
+              emptyStateMessage={entityUtilClassBase.getFormattedEntityType(entityType)}
               entityData={entityData}
               entityDetails={entityDetails}
               entityType={entityType}
