@@ -108,36 +108,36 @@ def set_cache(cache: defaultdict, key: str, value):
 
 
 @lru_cache(maxsize=1000)
-def _get_schema_cached(entity_id: str, metadata: OpenMetadata) -> DatabaseSchema:
-    """Cache schema lookups by FQN"""
-    result = metadata.get_by_id(
+def _get_schema_cached(
+    entity_id: str, metadata: OpenMetadata
+) -> Optional[DatabaseSchema]:
+    """Cache schema lookups by id"""
+    return metadata.get_by_id(
         entity=DatabaseSchema,
         entity_id=entity_id,
         fields=["databaseSchemaProfilerConfig"],
-        nullable=False,
     )
-    return result
 
 
 @lru_cache(maxsize=100)
-def _get_database_cached(entity_id: str, metadata: OpenMetadata) -> Database:
-    result = metadata.get_by_id(
+def _get_database_cached(entity_id: str, metadata: OpenMetadata) -> Optional[Database]:
+    """Cache database lookups by id"""
+    return metadata.get_by_id(
         entity=Database,
         entity_id=entity_id,
         fields=["databaseProfilerConfig"],
-        nullable=False,
     )
-    return result
 
 
 @lru_cache(maxsize=10)
-def _get_service_cached(entity_id: str, metadata: OpenMetadata) -> DatabaseService:
-    result = metadata.get_by_id(
+def _get_service_cached(
+    entity_id: str, metadata: OpenMetadata
+) -> Optional[DatabaseService]:
+    """Cache database service lookups by id"""
+    return metadata.get_by_id(
         entity=DatabaseService,
         entity_id=entity_id,
-        nullable=False,
     )
-    return result
 
 
 def get_context_entities(
