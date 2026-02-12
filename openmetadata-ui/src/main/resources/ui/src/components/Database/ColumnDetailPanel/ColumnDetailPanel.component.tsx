@@ -773,44 +773,46 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           const isLastItem = index === breadcrumbPath.length - 1;
 
           return (
-            <Box
-              key={breadcrumb.fullyQualifiedName}
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 0.5,
-              }}>
-              <Typography.Text
-                style={{
-                  fontSize: 12,
-                  color: isLastItem
-                    ? theme.palette.allShades?.gray?.[700]
-                    : theme.palette.allShades?.gray?.[500],
-                  fontWeight: isLastItem ? 500 : 400,
-                  cursor: isLastItem ? 'default' : 'pointer',
-                }}
-                onClick={
-                  isLastItem
-                    ? undefined
-                    : () => handleBreadcrumbClick(breadcrumb)
-                }
-                onMouseEnter={(e) => {
-                  if (!isLastItem) {
-                    e.currentTarget.style.textDecoration = 'underline';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.textDecoration = 'none';
+            <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+              <Box
+                key={breadcrumb.fullyQualifiedName}
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 0.5,
                 }}>
-                {getEntityName(breadcrumb)}
-              </Typography.Text>
-              {index < breadcrumbPath.length - 1 && (
-                <ChevronRight
-                  color={theme.palette.allShades?.gray?.[400]}
-                  height={16}
-                  width={16}
-                />
-              )}
+                <Typography.Text
+                  style={{
+                    fontSize: 12,
+                    color: isLastItem
+                      ? theme.palette.allShades?.gray?.[700]
+                      : theme.palette.allShades?.gray?.[500],
+                    fontWeight: isLastItem ? 500 : 400,
+                    cursor: isLastItem ? 'default' : 'pointer',
+                  }}
+                  onClick={
+                    isLastItem
+                      ? undefined
+                      : () => handleBreadcrumbClick(breadcrumb)
+                  }
+                  onMouseEnter={(e) => {
+                    if (!isLastItem) {
+                      e.currentTarget.style.textDecoration = 'underline';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.textDecoration = 'none';
+                  }}>
+                  {getEntityName(breadcrumb)}
+                </Typography.Text>
+                {index < breadcrumbPath.length - 1 && (
+                  <ChevronRight
+                    color={theme.palette.allShades?.gray?.[400]}
+                    height={16}
+                    width={16}
+                  />
+                )}
+              </Box>
             </Box>
           );
         })}
@@ -1029,6 +1031,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
               padding: '8px 12px',
               display: 'flex',
               alignItems: 'center',
+              borderRadius: '6px',
 
               '& .ant-alert-icon': {
                 display: 'flex',
@@ -1038,7 +1041,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
               '& #alert-icon': {
                 padding: 0.5,
-                borderWidth: 3,
+                borderWidth: 2,
                 fontSize: 16,
               },
 
