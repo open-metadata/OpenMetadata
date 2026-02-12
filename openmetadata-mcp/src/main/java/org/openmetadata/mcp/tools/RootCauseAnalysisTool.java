@@ -30,6 +30,8 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 @Slf4j
 public class RootCauseAnalysisTool implements McpTool {
 
+  private static final int MAX_DEPTH = 10;
+
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer,
@@ -37,8 +39,10 @@ public class RootCauseAnalysisTool implements McpTool {
       Map<String, Object> parameters) {
     String fqn = (String) parameters.get("fqn");
     String entityType = (String) parameters.getOrDefault("entityType", "table");
-    int upstreamDepth = parseIntParam(parameters.get("upstreamDepth"), 3);
-    int downstreamDepth = parseIntParam(parameters.get("downstreamDepth"), 3);
+    int upstreamDepth =
+        Math.min(Math.max(parseIntParam(parameters.get("upstreamDepth"), 3), 1), MAX_DEPTH);
+    int downstreamDepth =
+        Math.min(Math.max(parseIntParam(parameters.get("downstreamDepth"), 3), 1), MAX_DEPTH);
     String queryFilter = (String) parameters.get("queryFilter");
     boolean includeDeleted = parseBooleanParam(parameters.get("includeDeleted"), false);
 
@@ -76,6 +80,7 @@ public class RootCauseAnalysisTool implements McpTool {
             upstreamLineageData.get("nodes") instanceof Set<?> s ? s : Collections.emptySet();
         List<Map<String, Object>> upstreamNodes =
             upstreamNodesList.stream()
+                .filter(node -> node instanceof Map)
                 .map(node -> cleanSearchResponseObject((Map<String, Object>) node))
                 .toList();
 

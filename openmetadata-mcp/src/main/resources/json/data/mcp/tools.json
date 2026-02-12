@@ -276,7 +276,8 @@
                 "type": "string",
                 "description": "Id of the entity"
               }
-            }
+            },
+            "required": ["type", "id"]
           },
           "toEntity": {
             "description": "Destination Entity.",
@@ -290,7 +291,8 @@
                 "type": "string",
                 "description": "Id of the entity"
               }
-            }
+            },
+            "required": ["type", "id"]
           }
         },
         "required": [
