@@ -83,12 +83,32 @@ public class DataInsightsEntityEnricherProcessor
   }
 
   public List<Map<String, Object>> enrichSingle(
-      EntityInterface entity, Map<String, Object> contextData) {
-    return getEntityVersions(entity, contextData).stream()
-        .flatMap(
-            entityVersionMap ->
-                generateDailyEntitySnapshots(enrichEntity(entityVersionMap, contextData)).stream())
-        .toList();
+      EntityInterface entity, Map<String, Object> contextData) throws SearchIndexException {
+    try {
+      return getEntityVersions(entity, contextData).stream()
+          .flatMap(
+              entityVersionMap ->
+                  generateDailyEntitySnapshots(enrichEntity(entityVersionMap, contextData))
+                      .stream())
+          .toList();
+    } catch (Exception e) {
+      IndexingError error =
+          new IndexingError()
+              .withErrorSource(IndexingError.ErrorSource.PROCESSOR)
+              .withSubmittedCount(1)
+              .withFailedCount(1)
+              .withSuccessCount(0)
+              .withMessage(
+                  String.format(
+                      "Entity Enricher Encountered Failure for entity '%s': %s",
+                      entity.getFullyQualifiedName(), e.getMessage()))
+              .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
+      LOG.debug(
+          "[DataInsightsEntityEnricherProcessor] Single entity enrichment failed. Details: {}",
+          JsonUtils.pojoToJson(error));
+      updateStats(0, 1);
+      throw new SearchIndexException(error);
+    }
   }
 
   private List<Map<String, Object>> getEntityVersions(
