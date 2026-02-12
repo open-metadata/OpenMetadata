@@ -81,9 +81,7 @@ def get_columns_os390(
             coltype = self.ischema_names[coltype]
         else:
             if not coltype:
-                logger.warning(
-                    f"Empty type for column '{r[0]}' - ingesting as UNKNOWN"
-                )
+                logger.warning(f"Empty type for column '{r[0]}' - ingesting as UNKNOWN")
             else:
                 logger.warning(
                     f"Did not recognize type '{coltype}' of column '{r[0]}'"
