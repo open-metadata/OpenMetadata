@@ -2052,7 +2052,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               sx={{
                 display: 'flex',
                 alignItems: 'center',
-                flexWrap: 'nowrap',
+                flexWrap: 'wrap',
                 gap: 1,
               }}>
               {quickFilters}

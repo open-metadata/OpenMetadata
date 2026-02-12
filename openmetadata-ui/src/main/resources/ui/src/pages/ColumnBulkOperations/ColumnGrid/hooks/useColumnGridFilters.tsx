@@ -12,7 +12,7 @@
  */
 
 import { AddOutlined } from '@mui/icons-material';
-import { Button, Divider, Menu, MenuItem, useTheme } from '@mui/material';
+import { Button, Menu, MenuItem, useTheme } from '@mui/material';
 import { defaultColors } from '@openmetadata/ui-core-components';
 import {
   MouseEvent,
@@ -156,9 +156,6 @@ export const useColumnGridFilters = (
     return (
       <>
         <Button
-          disableFocusRipple
-          disableRipple
-          size="small"
           startIcon={<AddOutlined />}
           sx={{
             color: defaultColors.blue[600],
@@ -184,20 +181,20 @@ export const useColumnGridFilters = (
         <Menu
           anchorEl={menuAnchorEl}
           open={Boolean(menuAnchorEl)}
+          slotProps={{
+            paper: {
+              sx: { width: 'auto' },
+            },
+          }}
           onClose={handleMenuClose}>
-          {remainingFilters.map((filter, index) => [
-            index > 0 && (
-              <Divider
-                key={`divider-${filter.key}`}
-                sx={{ backgroundColor: defaultColors.blueGray[100], my: 0 }}
-              />
-            ),
+          {remainingFilters.map((filter) => [
             <MenuItem
               key={filter.key}
               sx={{
-                color: theme.palette.text.primary,
+                color: defaultColors.gray[700],
                 fontSize: theme.typography.body2.fontSize,
-                fontWeight: 400,
+                fontWeight: 500,
+                padding: theme.spacing(1),
               }}
               onClick={() => handleAddFilter(filter.key)}>
               {filter.label}
