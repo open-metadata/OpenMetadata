@@ -33,7 +33,9 @@ public class AuditLogRepository {
           EventType.ENTITY_FIELDS_CHANGED,
           EventType.ENTITY_SOFT_DELETED,
           EventType.ENTITY_DELETED,
-          EventType.ENTITY_RESTORED);
+          EventType.ENTITY_RESTORED,
+          EventType.USER_LOGIN,
+          EventType.USER_LOGOUT);
 
   private static final Set<String> AGENT_INDICATORS =
       Set.of("agent", "documentation", "classification", "automator");
@@ -111,40 +113,26 @@ public class AuditLogRepository {
     }
   }
 
-  /** Auth event type constants for login/logout - not part of ChangeEvent types */
-  public static final String AUTH_EVENT_LOGIN = "userLogin";
-
-  public static final String AUTH_EVENT_LOGOUT = "userLogout";
+  public static final EventType AUTH_EVENT_LOGIN = EventType.USER_LOGIN;
+  public static final EventType AUTH_EVENT_LOGOUT = EventType.USER_LOGOUT;
 
   /**
-   * Write an authentication event (login/logout) directly to the audit log. This method runs
-   * asynchronously using a virtual thread (Java 21) to ensure login/logout operations are never
-   * blocked or impacted by audit log writes. Virtual threads are ideal for I/O-bound operations
-   * like DB writes. Any write failures are logged but do not affect the caller.
+   * Write an authentication event (login/logout) to the audit log. Constructs a proper
+   * ChangeEvent and delegates to {@link #write(ChangeEvent)} so that event_json is always
+   * populated. Runs asynchronously using a virtual thread to avoid blocking the caller.
    */
-  public void writeAuthEvent(String eventType, String userName, UUID userId) {
-    // Use virtual thread for async I/O-bound DB write - lightweight and doesn't block platform
-    // threads
+  public void writeAuthEvent(EventType eventType, String userName, UUID userId) {
     Thread.startVirtualThread(
         () -> {
-          try {
-            long now = System.currentTimeMillis();
-            AuditLogRecord record =
-                AuditLogRecord.builder()
-                    .changeEventId(UUID.randomUUID().toString())
-                    .eventTs(now)
-                    .eventType(eventType)
-                    .userName(userName)
-                    .actorType(AuditLogRecord.ActorType.USER.name())
-                    .entityType(Entity.USER)
-                    .entityId(userId != null ? userId.toString() : null)
-                    .createdAt(now)
-                    .build();
-            auditLogDAO.insert(record);
-            LOG.debug("Recorded auth event {} for user {}", eventType, userName);
-          } catch (Exception ex) {
-            LOG.warn("Failed to persist auth audit log for user {}", userName, ex);
-          }
+          ChangeEvent changeEvent =
+              new ChangeEvent()
+                  .withId(UUID.randomUUID())
+                  .withEventType(eventType)
+                  .withEntityType(Entity.USER)
+                  .withEntityId(userId)
+                  .withUserName(userName)
+                  .withTimestamp(System.currentTimeMillis());
+          write(changeEvent);
         });
   }
 
@@ -501,6 +489,10 @@ public class AuditLogRepository {
       case ENTITY_UPDATED:
       case ENTITY_FIELDS_CHANGED:
         return formatChangeDescription(changeEvent.getChangeDescription());
+      case USER_LOGIN:
+        return "User logged in";
+      case USER_LOGOUT:
+        return "User logged out";
       default:
         return eventType.value();
     }
@@ -508,9 +500,9 @@ public class AuditLogRepository {
 
   private String formatAuthEventSummary(AuditLogRecord record) {
     String eventType = record.getEventType();
-    if (AUTH_EVENT_LOGIN.equals(eventType)) {
+    if (AUTH_EVENT_LOGIN.value().equals(eventType)) {
       return "User logged in";
-    } else if (AUTH_EVENT_LOGOUT.equals(eventType)) {
+    } else if (AUTH_EVENT_LOGOUT.value().equals(eventType)) {
       return "User logged out";
     }
     return eventType;
