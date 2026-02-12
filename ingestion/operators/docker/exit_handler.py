@@ -9,8 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Entrypoint to send exit handler information when a pipeline fails
+Exit handler safety net for Kubernetes ingestion pipeline jobs
 """
+
 import logging
 import os
 from datetime import datetime
@@ -75,6 +76,11 @@ class FailureDiagnostics(BaseModel):
 
 
 SUCCESS_STATES = {"Succeeded", "success"}
+TERMINAL_PIPELINE_STATES = {
+    PipelineState.success,
+    PipelineState.failed,
+    PipelineState.partialSuccess,
+}
 logger = ometa_logger()
 
 
@@ -585,6 +591,14 @@ def main():
 
         # Get or create pipeline status
         pipeline_status = get_or_create_pipeline_status(metadata, workflow_config)
+
+        # If the workflow already reported a terminal status, the exit handler has nothing to do.
+        if pipeline_status.pipelineState in TERMINAL_PIPELINE_STATES:
+            logger.info(
+                f"Pipeline already in terminal state '{pipeline_status.pipelineState.value}', "
+                f"skipping exit handler update"
+            )
+            return
 
         # Update pipeline status with final state
         pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
