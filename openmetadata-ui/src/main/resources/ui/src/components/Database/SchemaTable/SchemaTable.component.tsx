@@ -163,6 +163,7 @@ const SchemaTable = () => {
     data: table,
     onThreadLinkSelect,
     openColumnDetailPanel,
+    setDisplayedColumns,
   } = useGenericContext<TableType>();
 
   useFqnDeepLink({
@@ -888,6 +889,11 @@ const SchemaTable = () => {
       getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName')
     );
   }, [tableColumns]);
+
+  // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
+  useEffect(() => {
+    setDisplayedColumns(tableColumns);
+  }, [tableColumns, setDisplayedColumns]);
 
   const searchProps = useMemo(
     () => ({

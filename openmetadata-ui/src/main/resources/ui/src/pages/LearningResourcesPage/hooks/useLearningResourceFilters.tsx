@@ -163,7 +163,6 @@ export const useLearningResourceFilters = (
           <SearchDropdown
             hideCounts
             showSelectedCounts
-            hideSearchBar={field.options.length <= 10}
             isSuggestionsLoading={false}
             key={field.key}
             label={translateWithNestedKeys(field.labelKey)}

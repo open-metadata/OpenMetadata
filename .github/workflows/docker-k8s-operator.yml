@@ -20,9 +20,6 @@ on:
         description: "Do you want to update docker image latest tag as well ?"
         type: boolean
 
-permissions:
-  contents: read
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true

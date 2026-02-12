@@ -350,7 +350,7 @@ const BundleSuiteForm: React.FC<BundleSuiteFormProps> = ({
       {errorMessage && (
         <div className="floating-error-alert">
           <AlertBar
-            defafultExpand
+            defaultExpand
             className="h-full custom-alert-description"
             message={errorMessage}
             type="error"

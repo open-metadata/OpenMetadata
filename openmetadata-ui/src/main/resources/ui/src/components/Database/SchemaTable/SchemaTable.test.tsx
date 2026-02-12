@@ -130,6 +130,7 @@ const mockGenericContextProps = {
   } as Table,
   permissions: DEFAULT_ENTITY_PERMISSION,
   type: 'table',
+  setDisplayedColumns: jest.fn(),
 };
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({

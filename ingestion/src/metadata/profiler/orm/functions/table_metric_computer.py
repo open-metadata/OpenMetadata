@@ -482,6 +482,225 @@ class RedshiftTableMetricComputer(BaseTableMetricComputer):
         return res
 
 
+class MSSQLTableMetricComputer(BaseTableMetricComputer):
+    """MSSQL Table Metric Computer"""
+
+    def compute(self):
+        """compute table metrics for MSSQL using sys DMVs"""
+        table_meta = cte(
+            self._build_query(
+                [
+                    Column("object_id"),
+                    Column("name").label("table_name"),
+                    func.schema_name(Column("schema_id")).label("schema_name"),
+                    Column("create_date"),
+                ],
+                self._build_table("tables", "sys"),
+            )
+        )
+
+        row_count_cte = cte(
+            self._build_query(
+                [
+                    Column("object_id"),
+                    func.sum(Column("row_count")).cast(BigInteger).label("row_count"),
+                ],
+                self._build_table("dm_db_partition_stats", "sys"),
+                [Column("index_id").in_([0, 1])],
+            ).group_by(Column("object_id"))
+        )
+
+        size_cte = cte(
+            self._build_query(
+                [
+                    Column("object_id"),
+                    (func.sum(Column("reserved_page_count")) * 8192).label(
+                        "size_bytes"
+                    ),
+                ],
+                self._build_table("dm_db_partition_stats", "sys"),
+            ).group_by(Column("object_id"))
+        )
+
+        columns = [
+            row_count_cte.c.row_count.label(ROW_COUNT),
+            size_cte.c.size_bytes.label(SIZE_IN_BYTES),
+            table_meta.c.create_date.label(CREATE_DATETIME),
+            *self._get_col_names_and_count(),
+        ]
+
+        query = (
+            select(*columns)
+            .select_from(table_meta)
+            .join(
+                row_count_cte,
+                table_meta.c.object_id == row_count_cte.c.object_id,
+            )
+            .outerjoin(
+                size_cte,
+                table_meta.c.object_id == size_cte.c.object_id,
+            )
+            .where(
+                table_meta.c.schema_name == self.schema_name,
+                table_meta.c.table_name == self.table_name,
+            )
+        )
+
+        res = self.runner._session.execute(query).first()
+        if not res:
+            return None
+        if res.rowCount is None or (
+            res.rowCount == 0 and self._entity.tableType == TableType.View
+        ):
+            return super().compute()
+        return res
+
+
+class CockroachTableMetricComputer(BaseTableMetricComputer):
+    """CockroachDB Table Metric Computer"""
+
+    def compute(self):
+        """compute table metrics for CockroachDB using crdb_internal.table_row_statistics"""
+        nsp_subquery = (
+            select(Column("table_id"))
+            .select_from(Table("tables", MetaData(), schema="crdb_internal"))
+            .where(
+                Column("name") == self.table_name,
+                Column("schema_name") == self.schema_name,
+                Column("database_name") == self.database,
+            )
+            .correlate(None)
+            .scalar_subquery()
+        )
+
+        columns = [
+            func.max(Column("rowCount")).cast(BigInteger).label(ROW_COUNT),
+            func.sum(Column("avgSize")).label(SIZE_IN_BYTES),
+            *self._get_col_names_and_count(),
+        ]
+
+        where_clause = [
+            Column("tableID") == nsp_subquery,
+        ]
+
+        stats = self._build_table("table_statistics", "system")
+
+        query = self._build_query(
+            columns,
+            stats,
+            where_clause,
+        )
+
+        res = self.runner._session.execute(query).first()
+        if not res:
+            return None
+        if res.rowCount is None or (
+            res.rowCount == 0 and self._entity.tableType == TableType.View
+        ):
+            return super().compute()
+        return res
+
+
+class DB2TableMetricComputer(BaseTableMetricComputer):
+    """DB2 Table Metric Computer"""
+
+    def compute(self):
+        """compute table metrics for DB2 using SYSCAT.TABLES"""
+        columns = [
+            Column("CARD").cast(BigInteger).label(ROW_COUNT),
+            (Column("FPAGES") * 4096).label(SIZE_IN_BYTES),
+            Column("CREATE_TIME").label(CREATE_DATETIME),
+            *self._get_col_names_and_count(),
+        ]
+
+        where_clause = [
+            func.upper(Column("TABSCHEMA")) == self.schema_name.upper(),
+            func.upper(Column("TABNAME")) == self.table_name.upper(),
+        ]
+
+        query = self._build_query(
+            columns,
+            self._build_table("TABLES", "SYSCAT"),
+            where_clause,
+        )
+
+        res = self.runner._session.execute(query).first()
+        if not res:
+            return None
+        if (
+            res.rowCount is None
+            or res.rowCount < 0
+            or (res.rowCount == 0 and self._entity.tableType == TableType.View)
+        ):
+            return super().compute()
+        return res
+
+
+class VerticaTableMetricComputer(BaseTableMetricComputer):
+    """Vertica Table Metric Computer"""
+
+    def compute(self):
+        """compute table metrics for Vertica using v_monitor.projection_storage"""
+        columns = [
+            func.sum(Column("row_count")).label(ROW_COUNT),
+            func.sum(Column("used_bytes")).label(SIZE_IN_BYTES),
+            *self._get_col_names_and_count(),
+        ]
+
+        where_clause = [
+            Column("anchor_table_schema") == self.schema_name,
+            Column("anchor_table_name") == self.table_name,
+        ]
+
+        query = self._build_query(
+            columns,
+            self._build_table("projection_storage", "v_monitor"),
+            where_clause,
+        )
+
+        res = self.runner._session.execute(query).first()
+        if not res:
+            return None
+        if res.rowCount is None or (
+            res.rowCount == 0 and self._entity.tableType == TableType.View
+        ):
+            return super().compute()
+        return res
+
+
+class SAPHanaTableMetricComputer(BaseTableMetricComputer):
+    """SAP HANA Table Metric Computer"""
+
+    def compute(self):
+        """compute table metrics for SAP HANA using SYS.M_TABLES"""
+        columns = [
+            Column("RECORD_COUNT").label(ROW_COUNT),
+            Column("TABLE_SIZE").label(SIZE_IN_BYTES),
+            Column("CREATE_TIME").label(CREATE_DATETIME),
+            *self._get_col_names_and_count(),
+        ]
+
+        where_clause = [
+            Column("SCHEMA_NAME") == self.schema_name,
+            Column("TABLE_NAME") == self.table_name,
+        ]
+
+        query = self._build_query(
+            columns,
+            self._build_table("M_TABLES", "SYS"),
+            where_clause,
+        )
+
+        res = self.runner._session.execute(query).first()
+        if not res:
+            return None
+        if res.rowCount is None or (
+            res.rowCount == 0 and self._entity.tableType == TableType.View
+        ):
+            return super().compute()
+        return res
+
+
 class TableMetricComputer:
     """Table Metric Construct"""
 
@@ -554,3 +773,13 @@ table_metric_computer_factory.register(
 table_metric_computer_factory.register(Dialects.Oracle, OracleTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Snowflake, SnowflakeTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Postgres, PostgresTableMetricComputer)
+table_metric_computer_factory.register(Dialects.MariaDB, MySQLTableMetricComputer)
+table_metric_computer_factory.register(Dialects.SingleStore, MySQLTableMetricComputer)
+table_metric_computer_factory.register(Dialects.StarRocks, MySQLTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Doris, MySQLTableMetricComputer)
+table_metric_computer_factory.register(Dialects.MSSQL, MSSQLTableMetricComputer)
+table_metric_computer_factory.register(Dialects.AzureSQL, MSSQLTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Cockroach, CockroachTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Db2, DB2TableMetricComputer)
+table_metric_computer_factory.register(Dialects.Vertica, VerticaTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Hana, SAPHanaTableMetricComputer)

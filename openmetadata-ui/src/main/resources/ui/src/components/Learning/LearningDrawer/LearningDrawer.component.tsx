@@ -99,6 +99,7 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
         destroyOnClose
         className="learning-drawer"
         closable={false}
+        data-testid="learning-drawer"
         open={open}
         placement="right"
         title={

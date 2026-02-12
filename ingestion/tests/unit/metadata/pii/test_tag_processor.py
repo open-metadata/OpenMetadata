@@ -57,7 +57,6 @@ from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
-from metadata.generated.schema.type.piiEntity import PIIEntity
 from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import RecognizerException
 from metadata.generated.schema.type.tagLabel import (
@@ -135,7 +134,6 @@ class TestTagProcessor:
         )
         phone_pattern_recognizer = PatternRecognizerFactory.create(
             patterns=[phone_pattern],
-            supportedEntity=PIIEntity.PHONE_NUMBER,
             context=[],
             supportedLanguage=ClassificationLanguage.en,
         )
@@ -336,7 +334,6 @@ class TestTagProcessor:
         )
         mixed_pattern_recognizer = PatternRecognizerFactory.create(
             patterns=[email_pattern, name_pattern],
-            supportedEntity=PIIEntity.EMAIL_ADDRESS,
             context=[],
             supportedLanguage=ClassificationLanguage.en,
         )
@@ -431,7 +428,6 @@ class TestTagProcessor:
         )
         ssn_pattern_recognizer = PatternRecognizerFactory.create(
             patterns=[ssn_pattern],
-            supportedEntity=PIIEntity.US_SSN,
             context=[],
             supportedLanguage=ClassificationLanguage.en,
         )
