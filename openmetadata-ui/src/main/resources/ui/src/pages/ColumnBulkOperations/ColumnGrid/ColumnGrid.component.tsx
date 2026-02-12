@@ -15,6 +15,7 @@ import { RightOutlined } from '@ant-design/icons';
 import {
   Box,
   Button as MUIButton,
+  IconButton,
   Paper,
   Stack,
   Switch,
@@ -23,7 +24,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { ArrowRight, Tag01 as TagIcon } from '@untitledui/icons';
+import { ArrowRight, Tag01 as TagIcon, XClose } from '@untitledui/icons';
 import { Button, Tag, Typography as AntTypography } from 'antd';
 import { isEmpty, isUndefined, some } from 'lodash';
 import React, {
@@ -1325,6 +1326,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     searchPlaceholder: t('label.search-columns'),
     onSearchChange: columnGridListing.handleSearchChange,
     initialSearchQuery: columnGridListing.urlState.searchQuery,
+    customStyles: { searchBoxWidth: 260 },
   });
 
   // Helper function to compute child row IDs from gridItem data (before expansion)
@@ -2046,41 +2048,52 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             borderBottom: `1px solid`,
             borderColor: theme.palette.allShades?.gray?.[200],
           }}>
-          <Box sx={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-            {search}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+            }}>
+            {/* Search */}
+            <Box sx={{ flexShrink: 0 }}>{search}</Box>
+            {/* Filters + Add Filter */}
             <Box
               sx={{
                 display: 'flex',
                 alignItems: 'center',
                 flexWrap: 'wrap',
                 gap: 1,
+                flex: 1,
+                minWidth: 0,
               }}>
               {quickFilters}
               {addFilterButton}
             </Box>
-            <Box ml="auto" />
-            {/* View Selected Toggle */}
-            {hasSelection && (
-              <>
-                <Typography
-                  className="view-selected-label"
-                  color={theme.palette.grey[900]}
-                  fontSize="14px"
-                  fontWeight={400}
-                  whiteSpace="nowrap">
-                  {t('label.view-selected')} ({selectedCount})
-                </Typography>
-                <Switch
-                  checked={viewSelectedOnly}
-                  size="small"
-                  onChange={(event) => {
-                    setViewSelectedOnly(event.target.checked);
-                  }}
-                />
-              </>
-            )}
-            {/* Action Buttons */}
-            <Stack direction="row" spacing={1}>
+            {/* Actions */}
+            <Stack
+              alignItems="center"
+              direction="row"
+              spacing={1}
+              sx={{ flexShrink: 0 }}>
+              {hasSelection && (
+                <>
+                  <Typography
+                    className="view-selected-label"
+                    color={theme.palette.grey[900]}
+                    fontSize="14px"
+                    fontWeight={400}
+                    whiteSpace="nowrap">
+                    {t('label.view-selected')} ({selectedCount})
+                  </Typography>
+                  <Switch
+                    checked={viewSelectedOnly}
+                    size="small"
+                    onChange={(event) => {
+                      setViewSelectedOnly(event.target.checked);
+                    }}
+                  />
+                </>
+              )}
               {hasSelection ? (
                 <>
                   <MUIButton
@@ -2104,22 +2117,18 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                     onClick={openDrawer}>
                     {t('label.edit')}
                   </MUIButton>
-                  <MUIButton
-                    className="cancel-button"
+                  <IconButton
                     data-testid="cancel-selection-button"
+                    size="small"
                     sx={{
                       color: theme.palette.error.main,
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      lineHeight: '19px',
                     }}
-                    variant="text"
                     onClick={() => {
                       columnGridListing.clearSelection();
                       setViewSelectedOnly(false);
                     }}>
-                    {t('label.cancel')}
-                  </MUIButton>
+                    <XClose height={16} width={16} />
+                  </IconButton>
                 </>
               ) : (
                 <MUIButton
