@@ -41,9 +41,8 @@ interface UseColumnGridFiltersConfig {
 }
 
 interface UseColumnGridFiltersReturn {
-  quickFilters: ReactNode;
+  filterSection: ReactNode;
   defaultFilters: ExploreQuickFilterField[];
-  addFilterButton: ReactNode;
 }
 
 const COLUMN_SEARCH_INDEXES = [
@@ -122,15 +121,6 @@ export const useColumnGridFilters = (
     () => COLUMN_GRID_FILTERS.filter((f) => !visibleFilterKeys.has(f.key)),
     [visibleFilterKeys]
   );
-
-  const { quickFilters } = useQuickFiltersWithComponent({
-    defaultFilters: visibleFilters,
-    aggregations,
-    parsedFilters,
-    searchIndex: COLUMN_SEARCH_INDEXES,
-    assetType: AssetsOfEntity.COLUMN,
-    onFilterChange,
-  });
 
   const handleMenuOpen = useCallback((event: MouseEvent<HTMLElement>) => {
     setMenuAnchorEl(event.currentTarget);
@@ -213,9 +203,18 @@ export const useColumnGridFilters = (
     theme,
   ]);
 
-  return {
-    quickFilters,
+  const { quickFilters: filterSection } = useQuickFiltersWithComponent({
     defaultFilters: visibleFilters,
-    addFilterButton,
+    aggregations,
+    parsedFilters,
+    searchIndex: COLUMN_SEARCH_INDEXES,
+    assetType: AssetsOfEntity.COLUMN,
+    onFilterChange,
+    additionalActions: addFilterButton,
+  });
+
+  return {
+    filterSection,
+    defaultFilters: visibleFilters,
   };
 };

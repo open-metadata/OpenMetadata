@@ -24,6 +24,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
+import { defaultColors } from '@openmetadata/ui-core-components';
 import { ArrowRight, Tag01 as TagIcon, XClose } from '@untitledui/icons';
 import { Button, Tag, Typography as AntTypography } from 'antd';
 import { isEmpty, isUndefined, some } from 'lodash';
@@ -1306,12 +1307,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   }, [recentlyUpdatedRowIds, columnGridListing.setExpandedRows]);
 
   // Set up filters
-  const { quickFilters, defaultFilters, addFilterButton } =
-    useColumnGridFilters({
-      aggregations: columnGridListing.aggregations || undefined,
-      parsedFilters: columnGridListing.parsedFilters,
-      onFilterChange: columnGridListing.handleFilterChange,
-    });
+  const { filterSection, defaultFilters } = useColumnGridFilters({
+    aggregations: columnGridListing.aggregations || undefined,
+    parsedFilters: columnGridListing.parsedFilters,
+    onFilterChange: columnGridListing.handleFilterChange,
+  });
 
   // Set up filter selection display
   const { filterSelectionDisplay } = useFilterSelection({
@@ -2051,7 +2051,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           <Box
             sx={{
               display: 'flex',
-              alignItems: 'center',
+              alignItems: 'flex-start',
               gap: 2,
             }}>
             {/* Search */}
@@ -2066,8 +2066,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 flex: 1,
                 minWidth: 0,
               }}>
-              {quickFilters}
-              {addFilterButton}
+              {filterSection}
             </Box>
             {/* Actions */}
             <Stack
@@ -2119,9 +2118,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   </MUIButton>
                   <IconButton
                     data-testid="cancel-selection-button"
-                    size="small"
+                    size="medium"
                     sx={{
-                      color: theme.palette.error.main,
+                      color: defaultColors.gray[700],
                     }}
                     onClick={() => {
                       columnGridListing.clearSelection();
