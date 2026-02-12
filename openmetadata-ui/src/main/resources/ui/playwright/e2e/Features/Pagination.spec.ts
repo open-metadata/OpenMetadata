@@ -330,10 +330,13 @@ test.describe('Pagination tests for Notification Alerts page', () => {
     page,
   }) => {
     await page.goto('/settings/notifications/alerts');
+    // Skip row count validation because ActivityFeedAlert system alert is added on page 1
     await testPaginationNavigation(
       page,
       '/api/v1/events/subscriptions',
-      'table'
+      'table',
+      true,
+      false
     );
   });
 });
