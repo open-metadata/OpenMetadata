@@ -1209,7 +1209,9 @@ public class TableRepository extends EntityRepository<Table> {
       for (Map.Entry<String, List<TagLabel>> entry : columnTagsByTarget.entrySet()) {
         String targetFQN = entry.getKey();
         for (TagLabel tagLabel : entry.getValue()) {
-          org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
+          if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
+            org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
+          }
         }
       }
     }

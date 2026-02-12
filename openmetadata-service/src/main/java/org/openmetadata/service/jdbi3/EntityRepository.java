@@ -3358,7 +3358,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
         String targetFQN = entry.getKey();
         for (TagLabel tagLabel : entry.getValue()) {
-          org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
+          if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
+            org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
+          }
         }
       }
     }
