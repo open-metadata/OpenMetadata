@@ -538,7 +538,7 @@ public class SearchIndexExecutor implements AutoCloseable {
    *   <li>Reader: success/warnings/failed from ResultList
    *   <li>Process: success/failed during entity → search doc conversion (in BulkSink)
    *   <li>Sink: success/failed from ES/OS bulk response (in BulkSink)
-   *   <li>Vector: success/failed for vector embeddings (in OpenSearchBulkSinkExt)
+   *   <li>Vector: success/failed for vector embeddings (in OpenSearchBulkSink)
    * </ul>
    */
   private void processTask(IndexingTask<?> task) {

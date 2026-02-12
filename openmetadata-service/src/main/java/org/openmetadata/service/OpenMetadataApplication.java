@@ -130,6 +130,7 @@ import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.resources.filters.ETagResponseFilter;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthCallbackServlet;
@@ -276,6 +277,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Phase 2: Advanced search features (after settings are available)
     initializeAdvancedSearchFeatures();
+
+    // Phase 3: Vector search (embeddings + vector index)
+    Entity.getSearchRepository().initializeVectorSearchService();
 
     SecurityConfigurationManager.getInstance().initialize(this, catalogConfig, environment);
 
@@ -550,7 +554,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         databaseMaxSize);
 
     SearchRepository searchRepository =
-        new SearchRepository(
+        SearchRepositoryFactory.createSearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
     Entity.setSearchRepository(searchRepository);
 
