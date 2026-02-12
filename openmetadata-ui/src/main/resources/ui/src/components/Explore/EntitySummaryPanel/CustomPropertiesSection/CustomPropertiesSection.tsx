@@ -92,7 +92,7 @@ const CustomPropertiesSection = ({
                 />
               }
               values={{
-                entity: emptyStateMessage,
+                entity: emptyStateMessage ?? t('label.entity'),
                 docs: t('label.doc-plural-lowercase'),
               }}
             />
