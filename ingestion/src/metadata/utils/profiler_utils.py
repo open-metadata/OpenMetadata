@@ -14,7 +14,7 @@
 import re
 from collections import defaultdict
 from datetime import datetime
-from functools import lru_cache, reduce
+from functools import reduce
 from typing import Optional, Tuple
 
 import sqlparse
@@ -24,10 +24,13 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.type.basic import Uuid
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import profiler_logger
+from metadata.utils.lru_cache import SkipNoneLRUCache
 
 logger = profiler_logger()
+database_entities_cache = SkipNoneLRUCache(capacity=4096)
 
 PARSING_TIMEOUT = 10
 
@@ -107,9 +110,9 @@ def set_cache(cache: defaultdict, key: str, value):
         cache = cache[key_]
 
 
-@lru_cache(maxsize=1000)
+@database_entities_cache.wrap(lambda id_, metadata: f"DatabaseSchema(id={id_.root!r})")
 def _get_schema_cached(
-    entity_id: str, metadata: OpenMetadata
+    entity_id: Uuid, metadata: OpenMetadata
 ) -> Optional[DatabaseSchema]:
     """Cache schema lookups by id"""
     return metadata.get_by_id(
@@ -119,8 +122,8 @@ def _get_schema_cached(
     )
 
 
-@lru_cache(maxsize=100)
-def _get_database_cached(entity_id: str, metadata: OpenMetadata) -> Optional[Database]:
+@database_entities_cache.wrap(lambda id_, metadata: f"Database(id={id_.root!r})")
+def _get_database_cached(entity_id: Uuid, metadata: OpenMetadata) -> Optional[Database]:
     """Cache database lookups by id"""
     return metadata.get_by_id(
         entity=Database,
@@ -129,9 +132,9 @@ def _get_database_cached(entity_id: str, metadata: OpenMetadata) -> Optional[Dat
     )
 
 
-@lru_cache(maxsize=10)
+@database_entities_cache.wrap(lambda id_, metadata: f"DatabaseService(id={id_.root!r})")
 def _get_service_cached(
-    entity_id: str, metadata: OpenMetadata
+    entity_id: Uuid, metadata: OpenMetadata
 ) -> Optional[DatabaseService]:
     """Cache database service lookups by id"""
     return metadata.get_by_id(
@@ -149,12 +152,12 @@ def get_context_entities(
     db_service = None
 
     if entity.databaseSchema:
-        schema_entity = _get_schema_cached(str(entity.databaseSchema.id.root), metadata)
+        schema_entity = _get_schema_cached(entity.databaseSchema.id, metadata)
 
     if entity.database:
-        database_entity = _get_database_cached(str(entity.database.id.root), metadata)
+        database_entity = _get_database_cached(entity.database.id, metadata)
 
     if entity.service:
-        db_service = _get_service_cached(str(entity.service.id.root), metadata)
+        db_service = _get_service_cached(entity.service.id, metadata)
 
     return schema_entity, database_entity, db_service
