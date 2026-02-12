@@ -1305,11 +1305,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   }, [recentlyUpdatedRowIds, columnGridListing.setExpandedRows]);
 
   // Set up filters
-  const { quickFilters, defaultFilters } = useColumnGridFilters({
-    aggregations: columnGridListing.aggregations || undefined,
-    parsedFilters: columnGridListing.parsedFilters,
-    onFilterChange: columnGridListing.handleFilterChange,
-  });
+  const { quickFilters, defaultFilters, addFilterButton } =
+    useColumnGridFilters({
+      aggregations: columnGridListing.aggregations || undefined,
+      parsedFilters: columnGridListing.parsedFilters,
+      onFilterChange: columnGridListing.handleFilterChange,
+    });
 
   // Set up filter selection display
   const { filterSelectionDisplay } = useFilterSelection({
@@ -1967,7 +1968,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 <Typography
                   color={theme.palette.grey[700]}
                   fontSize="14px"
-                  fontWeight={400}>
+                  fontWeight={400}
+                  whiteSpace="nowrap">
                   {t('label.total-unique-columns')}
                 </Typography>
               </Box>
@@ -1993,7 +1995,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 <Typography
                   color={theme.palette.grey[700]}
                   fontSize="14px"
-                  fontWeight={400}>
+                  fontWeight={400}
+                  whiteSpace="nowrap">
                   {t('label.total-occurrences')}
                 </Typography>
               </Box>
@@ -2021,7 +2024,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 <Typography
                   color={theme.palette.grey[700]}
                   fontSize="14px"
-                  fontWeight={400}>
+                  fontWeight={400}
+                  whiteSpace="nowrap">
                   {t('label.pending-changes')}
                 </Typography>
               </Box>
@@ -2044,7 +2048,16 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           }}>
           <Box sx={{ display: 'flex', gap: 5, alignItems: 'center' }}>
             {search}
-            {quickFilters}
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'nowrap',
+                gap: 1,
+              }}>
+              {quickFilters}
+              {addFilterButton}
+            </Box>
             <Box ml="auto" />
             {/* View Selected Toggle */}
             {hasSelection && (
