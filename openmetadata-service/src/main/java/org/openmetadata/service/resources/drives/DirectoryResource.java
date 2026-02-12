@@ -458,7 +458,7 @@ public class DirectoryResource extends EntityResource<Directory, DirectoryReposi
   }
 
   @PUT
-  @Path("/{id}/restore")
+  @Path("/restore")
   @Operation(
       operationId = "restoreDirectory",
       summary = "Restore a soft deleted directory",

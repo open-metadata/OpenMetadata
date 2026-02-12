@@ -470,7 +470,7 @@ public class FileResource extends EntityResource<File, FileRepository> {
   }
 
   @PUT
-  @Path("/{id}/restore")
+  @Path("/restore")
   @Operation(
       operationId = "restoreFile",
       summary = "Restore a soft deleted file",
