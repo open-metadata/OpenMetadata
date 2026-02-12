@@ -95,7 +95,7 @@ def get_columns_os390(
                 "type": coltype,
                 "nullable": r[3] == "Y",
                 "default": r[2] or None,
-                "autoincrement": (r[2] == "J") and (r[2] != " "),
+                "autoincrement": r[6] not in (" ", None),
                 "comment": r[7] or None,
             }
         )

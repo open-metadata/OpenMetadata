@@ -166,7 +166,8 @@ EXPECTED_TABLE = [
                 name=ColumnName("col_varchar"),
                 dataType=DataType.VARCHAR.name,
                 dataLength=1,
-                dataTypeDisplay="VARCHAR",
+                dataTypeDisplay="VARCHAR(1)",
+                constraint="NULL",
             ),
             Column(
                 name=ColumnName("col_integer"),

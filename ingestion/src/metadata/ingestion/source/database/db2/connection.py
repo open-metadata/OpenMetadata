@@ -84,7 +84,12 @@ def _get_ibmi_connection_args(connection: Db2Connection) -> Dict[str, Any]:
     host_port = connection.hostPort
     if ":" in host_port:
         port_str = host_port.split(":")[1]
-        args["port"] = int(port_str)
+        try:
+            args["port"] = int(port_str)
+        except ValueError:
+            raise ValueError(
+                f"Invalid port in hostPort '{host_port}'. Expected format: 'hostname:port'"
+            )
     return args
 
 
