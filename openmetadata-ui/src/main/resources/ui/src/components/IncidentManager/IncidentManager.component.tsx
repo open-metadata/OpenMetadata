@@ -113,10 +113,10 @@ const IncidentManager = ({
     // Only use date params if they exist in the URL
     if (urlParams.startTs || urlParams.endTs) {
       if (urlParams.startTs && isString(urlParams.startTs)) {
-        params.startTs = parseInt(urlParams.startTs as string, 10);
+        params.startTs = parseInt(urlParams.startTs, 10);
       }
       if (urlParams.endTs && isString(urlParams.endTs)) {
-        params.endTs = parseInt(urlParams.endTs as string, 10);
+        params.endTs = parseInt(urlParams.endTs, 10);
       }
     }
 
@@ -149,14 +149,35 @@ const IncidentManager = ({
     options: [],
   });
 
+  const assigneeOptionsWithSelected = useMemo(() => {
+    const options = [...users.options];
+    if (filters.assignee) {
+      const exists = options.some(
+        (opt) => opt.name === filters.assignee || opt.value === filters.assignee
+      );
+      if (!exists) {
+        options.push({
+          label: filters.assignee,
+          value: filters.assignee,
+          name: filters.assignee,
+          type: 'user',
+        });
+      }
+    }
+
+    return options;
+  }, [filters.assignee, users.options]);
+
   const selectedAssignees = useMemo(() => {
     if (!filters.assignee) {
       return [];
     }
-    const option = users.options.find((opt) => opt.name === filters.assignee);
+    const option = assigneeOptionsWithSelected.find(
+      (opt) => opt.name === filters.assignee || opt.value === filters.assignee
+    );
 
     return option ? [option] : [];
-  }, [filters.assignee, users.options]);
+  }, [filters.assignee, assigneeOptionsWithSelected]);
 
   const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const { testCase: commonTestCasePermission } = permissions;
@@ -728,7 +749,7 @@ const IncidentManager = ({
                 isSingleSelect
                 showArrow
                 className="w-min-10"
-                options={users.options}
+                options={assigneeOptionsWithSelected}
                 placeholder={t('label.assignee')}
                 value={selectedAssignees}
                 onChange={handleAssigneeChange}
@@ -791,9 +812,7 @@ const IncidentManager = ({
         }}
         pagination={false}
         rowKey="id"
-        scroll={{
-          x: '100%',
-        }}
+        scroll={testCaseListData.data.length > 0 ? { x: '100%' } : undefined}
         size="small"
       />
     </Stack>

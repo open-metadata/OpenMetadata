@@ -57,6 +57,7 @@ import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.APICollection;
@@ -82,6 +83,8 @@ import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.APIRequestMethod;
@@ -5880,6 +5883,24 @@ public class WorkflowDefinitionResourceIT {
       }
     }
 
+    // Ensure Gold tag exists (bootstrapped at startup, but ensure defensively)
+    try {
+      Tag goldTag = SdkClients.adminClient().tags().getByName("Certification.Gold");
+      LOG.debug("Gold tag already exists: {}", goldTag.getFullyQualifiedName());
+    } catch (ApiException e) {
+      if (e.getStatusCode() == 404) {
+        CreateTag createGoldTag =
+            new CreateTag()
+                .withName("Gold")
+                .withDescription("Gold certified Data Asset.")
+                .withClassification("Certification");
+        Tag goldTag = SdkClients.adminClient().tags().create(createGoldTag);
+        LOG.debug("Gold tag created: {}", goldTag.getFullyQualifiedName());
+      } else {
+        throw e;
+      }
+    }
+
     // Check if Brass tag already exists
     try {
       Tag brassTag = SdkClients.adminClient().tags().getByName("Certification.Brass");
@@ -5897,6 +5918,31 @@ public class WorkflowDefinitionResourceIT {
       } else {
         throw e;
       }
+    }
+
+    // Defensively ensure AssetCertificationSettings has correct allowedClassification.
+    // This guards against cross-test pollution (e.g., SystemResourceIT changing it).
+    try {
+      OpenMetadataClient client = SdkClients.adminClient();
+      AssetCertificationSettings certSettings =
+          new AssetCertificationSettings()
+              .withAllowedClassification("Certification")
+              .withValidityPeriod("P30D");
+      Settings settings =
+          new Settings()
+              .withConfigType(SettingsType.ASSET_CERTIFICATION_SETTINGS)
+              .withConfigValue(certSettings);
+      String settingsJson = MAPPER.writeValueAsString(settings);
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PUT,
+              "/v1/system/settings",
+              settingsJson,
+              RequestOptions.builder().build());
+      LOG.debug("AssetCertificationSettings reset to allowedClassification=Certification");
+    } catch (Exception e) {
+      LOG.warn("Failed to reset AssetCertificationSettings: {}", e.getMessage());
     }
   }
 

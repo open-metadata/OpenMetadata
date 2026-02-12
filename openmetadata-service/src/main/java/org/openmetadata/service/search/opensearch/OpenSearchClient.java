@@ -54,7 +54,6 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.search.SigV4Hc5RequestSigningInterceptor;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
@@ -67,9 +66,13 @@ import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
+import os.org.opensearch.client.transport.OpenSearchTransport;
+import os.org.opensearch.client.transport.aws.AwsSdk2Transport;
+import os.org.opensearch.client.transport.aws.AwsSdk2TransportOptions;
 import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport;
 import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.http.SdkHttpClient;
+import software.amazon.awssdk.http.crt.AwsCrtHttpClient;
 import software.amazon.awssdk.regions.Region;
 
 @Slf4j
@@ -78,10 +81,11 @@ public class OpenSearchClient implements SearchClient {
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
 
-  // New OpenSearch Java API client with HC5 transport
+  // New OpenSearch Java API client
   @Getter protected final os.org.opensearch.client.opensearch.OpenSearchClient newClient;
   private final boolean isNewClientAvailable;
-  private final ApacheHttpClient5Transport transport;
+  private final OpenSearchTransport transport;
+  private final SdkHttpClient awsHttpClient; // Stored for cleanup on close()
 
   private volatile OSLineageGraphBuilder lineageGraphBuilder;
   private final OSEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
@@ -101,7 +105,17 @@ public class OpenSearchClient implements SearchClient {
   }
 
   public OpenSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
-    this.transport = createApacheHttpClient5Transport(config);
+    AwsConfiguration awsConfig = config != null ? config.getAws() : null;
+    boolean useIamAuth = isAwsIamAuthEnabled(awsConfig);
+
+    if (useIamAuth) {
+      this.awsHttpClient = AwsCrtHttpClient.builder().build();
+      this.transport = createAwsSdk2Transport(config, awsConfig, this.awsHttpClient);
+    } else {
+      this.awsHttpClient = null;
+      this.transport = createApacheHttpClient5Transport(config);
+    }
+
     this.newClient = createOpenSearchNewClient(transport);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = newClient != null;
@@ -120,7 +134,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private os.org.opensearch.client.opensearch.OpenSearchClient createOpenSearchNewClient(
-      ApacheHttpClient5Transport transport) {
+      OpenSearchTransport transport) {
     try {
       if (transport == null) {
         LOG.error("Cannot create OpenSearch client with null transport");
@@ -129,7 +143,9 @@ public class OpenSearchClient implements SearchClient {
       os.org.opensearch.client.opensearch.OpenSearchClient newClient =
           new os.org.opensearch.client.opensearch.OpenSearchClient(transport);
 
-      LOG.info("Successfully initialized new OpenSearch Java API client with HC5 transport");
+      LOG.info(
+          "Successfully initialized OpenSearch Java API client with transport: {}",
+          transport.getClass().getSimpleName());
       return newClient;
     } catch (Exception e) {
       LOG.error("Failed to initialize new Opensearch client", e);
@@ -598,7 +614,18 @@ public class OpenSearchClient implements SearchClient {
 
   /** */
   @Override
-  public void close() {}
+  public void close() {
+    if (transport != null) {
+      try {
+        transport.close();
+      } catch (IOException e) {
+        LOG.warn("Error closing OpenSearch transport", e);
+      }
+    }
+    if (awsHttpClient != null) {
+      awsHttpClient.close();
+    }
+  }
 
   @Override
   public BulkResponse bulkOpenSearch(List<BulkOperation> operations) throws IOException {
@@ -636,6 +663,76 @@ public class OpenSearchClient implements SearchClient {
     return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
   }
 
+  /**
+   * Parses the host string for AwsSdk2Transport. Strips protocol prefix, trailing slash, handles
+   * comma-separated hosts (uses first), and removes port. AwsSdk2Transport expects a bare hostname.
+   */
+  @com.google.common.annotations.VisibleForTesting
+  static String parseHostForAwsSdk2Transport(String host) {
+    if (host == null) {
+      return null;
+    }
+    if (host.startsWith("https://")) {
+      host = host.substring("https://".length());
+    } else if (host.startsWith("http://")) {
+      host = host.substring("http://".length());
+    }
+    if (host.endsWith("/")) {
+      host = host.substring(0, host.length() - 1);
+    }
+    // Handle comma-separated hosts (use first host)
+    if (host.contains(",")) {
+      host = host.split(",")[0].trim();
+    }
+    // Strip port if present (AwsSdk2Transport expects bare hostname)
+    if (host.contains(":")) {
+      host = host.split(":")[0];
+    }
+    return host;
+  }
+
+  private AwsSdk2Transport createAwsSdk2Transport(
+      ElasticSearchConfiguration esConfig, AwsConfiguration awsConfig, SdkHttpClient httpClient) {
+    if (esConfig == null || awsConfig == null || httpClient == null) {
+      LOG.error("Failed to create AwsSdk2Transport: esConfig, awsConfig, or httpClient is null");
+      return null;
+    }
+
+    try {
+      String host = parseHostForAwsSdk2Transport(esConfig.getHost());
+      if (host == null || host.isEmpty()) {
+        LOG.error("Failed to create AwsSdk2Transport: host is null or empty");
+        return null;
+      }
+
+      // Log warning for multi-host config
+      if (esConfig.getHost() != null && esConfig.getHost().contains(",")) {
+        LOG.warn("Multiple hosts configured, using first host for AWS IAM auth: {}", host);
+      }
+
+      Region region = Region.of(awsConfig.getRegion());
+      String serviceName =
+          StringUtils.isNotEmpty(awsConfig.getServiceName()) ? awsConfig.getServiceName() : "es";
+
+      AwsSdk2TransportOptions options =
+          AwsSdk2TransportOptions.builder()
+              .setCredentials(buildCredentialsProvider(awsConfig))
+              .setMapper(new JacksonJsonpMapper())
+              .build();
+
+      LOG.info(
+          "Creating AwsSdk2Transport for AWS OpenSearch IAM auth - host: {}, region: {}, service: {}",
+          host,
+          region,
+          serviceName);
+
+      return new AwsSdk2Transport(httpClient, host, serviceName, region, options);
+    } catch (Exception e) {
+      LOG.error("Failed to create AwsSdk2Transport for OpenSearch", e);
+      return null;
+    }
+  }
+
   private ApacheHttpClient5Transport createApacheHttpClient5Transport(
       ElasticSearchConfiguration esConfig) {
     if (esConfig == null) {
@@ -648,9 +745,6 @@ public class OpenSearchClient implements SearchClient {
 
       ApacheHttpClient5TransportBuilder builder =
           ApacheHttpClient5TransportBuilder.builder(httpHosts);
-
-      AwsConfiguration awsConfig = esConfig.getAws();
-      boolean useIamAuth = isAwsIamAuthEnabled(awsConfig);
 
       builder.setMapper(new JacksonJsonpMapper());
 
@@ -678,20 +772,7 @@ public class OpenSearchClient implements SearchClient {
 
             httpClientBuilder.setConnectionManager(connectionManagerBuilder.build());
 
-            if (useIamAuth) {
-              AwsCredentialsProvider credentialsProvider = buildCredentialsProvider(awsConfig);
-              Region region = Region.of(awsConfig.getRegion());
-              String serviceName =
-                  StringUtils.isNotEmpty(awsConfig.getServiceName())
-                      ? awsConfig.getServiceName()
-                      : "es";
-
-              httpClientBuilder.addRequestInterceptorLast(
-                  new SigV4Hc5RequestSigningInterceptor(credentialsProvider, region, serviceName));
-              LOG.info(
-                  "AWS IAM authentication enabled for OpenSearch in region: {}",
-                  awsConfig.getRegion());
-            } else if (StringUtils.isNotEmpty(esConfig.getUsername())
+            if (StringUtils.isNotEmpty(esConfig.getUsername())
                 && StringUtils.isNotEmpty(esConfig.getPassword())) {
               BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
               credentialsProvider.setCredentials(

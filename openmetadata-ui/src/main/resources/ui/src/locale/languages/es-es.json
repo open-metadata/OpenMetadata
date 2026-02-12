@@ -1835,6 +1835,7 @@
     "syntax": "Syntax",
     "tab": "Pestaña",
     "table": "Tabla",
+    "table-column": "Columna de tabla",
     "table-constraint-plural": "Restricciones de tabla",
     "table-constraints": "Restricciones de tabla",
     "table-details": "Detalles de la tabla",
