@@ -42,7 +42,7 @@ class HexByteString(TypeDecorator):
         """
         Make sure the data is of correct type
         """
-        if not isinstance(value, (bytes, bytearray)):
+        if not isinstance(value, (memoryview, bytes, bytearray)):
             raise TypeError(
                 f"HexByteString columns support only bytes values. Received {type(value).__name__}."
             )

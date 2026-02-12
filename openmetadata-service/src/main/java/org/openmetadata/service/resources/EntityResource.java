@@ -986,20 +986,28 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           (EntityRepository<EntityInterface>)
               Entity.getEntityRepository(effectiveVersioningEntityType);
 
-      // Only repositories that support versioning (indicated by flag) will execute this
       if (versioningRepo.supportsBulkImportVersioning()) {
-        versioningRepo.createChangeEventForBulkOperation(
-            versioningRepo.getByName(
-                uriInfo,
-                name,
-                new Fields(versioningRepo.getAllowedFields(), ""),
-                Include.NON_DELETED,
-                false),
-            result,
-            securityContext.getUserPrincipal().getName());
+        processChangeEventForBulkImport(versioningRepo, uriInfo, securityContext, name, result);
       }
     }
     return result;
+  }
+
+  protected void processChangeEventForBulkImport(
+      EntityRepository<EntityInterface> versioningRepo,
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      CsvImportResult result) {
+    versioningRepo.createChangeEventForBulkOperation(
+        versioningRepo.getByName(
+            uriInfo,
+            name,
+            new Fields(versioningRepo.getAllowedFields(), ""),
+            Include.NON_DELETED,
+            false),
+        result,
+        securityContext.getUserPrincipal().getName());
   }
 
   protected ResourceContext<T> getResourceContext() {

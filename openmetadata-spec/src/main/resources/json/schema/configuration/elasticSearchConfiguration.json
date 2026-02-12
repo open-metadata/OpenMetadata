@@ -133,6 +133,11 @@
           "type": "boolean",
           "default": false
         },
+        "semanticSearchEnabled": {
+          "description": "Enable or disable semantic search using vector embeddings",
+          "type": "boolean",
+          "default": false
+        },
         "embeddingProvider": {
           "description": "The provider to use for generating vector embeddings (e.g., bedrock, openai).",
           "type": "string",

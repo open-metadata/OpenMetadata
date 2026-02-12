@@ -7,6 +7,7 @@ import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
@@ -1472,9 +1473,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       boolean recursive,
       CsvImportProgressCallback callback)
       throws IOException {
-    throw new IllegalArgumentException(
-        "TestCase CSV import requires 'targetEntityType' parameter. "
-            + "Specify 'table' when importing from a table context, or 'testSuite' when importing from a Bundle Suite Context.");
+    // if we end up here it means we are importing test cases from the obs page
+    return new TestCaseCsv(user, null).importCsv(csv, dryRun);
   }
 
   @Override
@@ -1562,6 +1562,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     private final TestSuite targetBundleSuite;
     private final List<UUID> importedTestCaseIds = new ArrayList<>();
+    private final Map<String, UUID> importedTestSuiteIds = new HashMap<>();
+    private final EntityRepository<EntityInterface> versioningRepo =
+        (EntityRepository<EntityInterface>) Entity.getEntityRepository(TEST_SUITE);
 
     TestCaseCsv(String user, TestSuite targetBundleSuite) {
       super(TEST_CASE, HEADERS, user);
@@ -1641,6 +1644,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               TestSuite testSuite =
                   Entity.getEntityByName(TEST_SUITE, testSuiteFqn, "", Include.NON_DELETED);
               testCase.withTestSuite(testSuite.getEntityReference());
+              importedTestSuiteIds.putIfAbsent(
+                  testSuite.getFullyQualifiedName(), testSuite.getId());
             } catch (EntityNotFoundException e) {
               importFailure(
                   printer, String.format("Test suite '%s' not found", testSuiteFqn), csvRecord);
@@ -1651,6 +1656,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             // No test suite provided - get or create the default basic test suite
             EntityReference testSuite = repository.getOrCreateTestSuite(testCase);
             testCase.withTestSuite(testSuite);
+            importedTestSuiteIds.putIfAbsent(testSuite.getFullyQualifiedName(), testSuite.getId());
           }
 
           // Compute and set FQN manually (same logic as setFullyQualifiedName)
@@ -1719,6 +1725,30 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                       + "The test cases exist and can be manually added to the Bundle Suite.",
                   importedTestCaseIds.size(), targetBundleSuite.getName(), e.getMessage()),
               e);
+        }
+      }
+
+      if (!importResult.getDryRun()
+          && importResult.getStatus() != ApiStatus.ABORTED
+          && importResult.getNumberOfRowsProcessed() > 1) {
+        List<UUID> affectedTestSuiteIds = new ArrayList<>(importedTestSuiteIds.values());
+        for (UUID affectedTestSuiteId : affectedTestSuiteIds) {
+          try {
+            versioningRepo.createChangeEventForBulkOperation(
+                versioningRepo.get(
+                    null,
+                    affectedTestSuiteId,
+                    new Fields(versioningRepo.getAllowedFields(), ""),
+                    NON_DELETED,
+                    false),
+                importResult,
+                importedBy);
+          } catch (Exception e) {
+            LOG.error(
+                "Failed to update version for Test Suite with id '{}': {}",
+                affectedTestSuiteId,
+                e.getMessage());
+          }
         }
       }
     }
