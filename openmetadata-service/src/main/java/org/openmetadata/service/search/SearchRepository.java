@@ -134,6 +134,13 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
+import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.client.BedrockEmbeddingClient;
+import org.openmetadata.service.search.vector.client.DjlEmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -190,6 +197,11 @@ public class SearchRepository {
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
 
   protected NLQService nlqService;
+
+  @Getter private EmbeddingClient embeddingClient;
+  @Getter private VectorIndexService vectorIndexService;
+  @Getter private VectorEmbeddingHandler vectorEmbeddingHandler;
+  private volatile boolean vectorServiceInitialized = false;
 
   public SearchRepository(ElasticSearchConfiguration config, int maxDBConnections) {
     this.maxDBConnections = maxDBConnections;
@@ -299,13 +311,47 @@ public class SearchRepository {
     }
   }
 
-  /**
-   * Hook method called before reindexing starts, after ApplicationContext is initialized.
-   * Subclasses can override this to perform additional initialization that depends on ApplicationContext.
-   */
   public void prepareForReindex() {
-    // Default implementation does nothing
-    // Sub-classes like SearchRepositoryExt can override to initialize vector services
+    initializeVectorSearchService();
+  }
+
+  public synchronized void initializeVectorSearchService() {
+    if (vectorServiceInitialized) {
+      return;
+    }
+
+    ElasticSearchConfiguration cfg = getSearchConfiguration();
+    if (!isVectorEmbeddingEnabled()) {
+      LOG.info("Vector embedding is not enabled, skipping initialization");
+      return;
+    }
+
+    try {
+      this.embeddingClient = createEmbeddingClient(cfg);
+
+      if (cfg.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
+        os.org.opensearch.client.opensearch.OpenSearchClient osClient =
+            ((OpenSearchClient) getSearchClient()).getNewClient();
+        OpenSearchVectorService.init(osClient, embeddingClient, language);
+        this.vectorIndexService = OpenSearchVectorService.getInstance();
+      } else {
+        LOG.warn(
+            "Vector embedding is only supported with OpenSearch. Elasticsearch support is planned.");
+        return;
+      }
+
+      this.vectorEmbeddingHandler = new VectorEmbeddingHandler(vectorIndexService);
+
+      vectorServiceInitialized = true;
+      LOG.info(
+          "Vector search service initialized with provider={}, dimension={}",
+          cfg.getNaturalLanguageSearch().getEmbeddingProvider(),
+          embeddingClient.getDimension());
+
+      ensureVectorIndexDimension();
+    } catch (Exception e) {
+      LOG.error("Failed to initialize vector search service: {}", e.getMessage(), e);
+    }
   }
 
   public IndexMapping getIndexMapping(String entityType) {
@@ -339,6 +385,9 @@ public class SearchRepository {
   }
 
   public void createIndex(IndexMapping indexMapping) {
+    if (isVectorEmbeddingEnabled() && vectorIndexService != null) {
+      ensureVectorIndexDimension();
+    }
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
       if (!indexExists(indexMapping)) {
@@ -410,7 +459,11 @@ public class SearchRepository {
   }
 
   public String readIndexMapping(IndexMapping indexMapping) {
-    return getIndexMapping(indexMapping);
+    String mapping = getIndexMapping(indexMapping);
+    if (isVectorEmbeddingEnabled() && embeddingClient != null && mapping != null) {
+      mapping = reformatVectorIndexWithDimension(mapping, embeddingClient.getDimension());
+    }
+    return mapping;
   }
 
   /**
@@ -1892,10 +1945,6 @@ public class SearchRepository {
     }
   }
 
-  /**
-   * Creates a BulkSink instance with vector embedding configuration.
-   * This method can be overridden in subclasses to provide different implementations.
-   */
   public BulkSink createBulkSink(
       int batchSize, int maxConcurrentRequests, long maxPayloadSizeBytes) {
     ElasticSearchConfiguration.SearchType searchType = getSearchType();
@@ -1906,21 +1955,15 @@ public class SearchRepository {
     }
   }
 
-  /**
-   * Creates a ReindexHandler instance for recreate operations during reindexing.
-   * This method can be overridden in subclasses to provide different implementations.
-   */
   public RecreateIndexHandler createReindexHandler() {
-    return new DefaultRecreateHandler();
+    return new RecreateWithEmbeddings();
   }
 
-  /**
-   * Checks if vector embedding is enabled.
-   * This method can be overridden in subclasses to provide different configurations.
-   */
-  @SuppressWarnings("unused")
   public boolean isVectorEmbeddingEnabled() {
-    return false;
+    ElasticSearchConfiguration cfg = getSearchConfiguration();
+    return cfg != null
+        && cfg.getNaturalLanguageSearch() != null
+        && Boolean.TRUE.equals(cfg.getNaturalLanguageSearch().getSemanticSearchEnabled());
   }
 
   @SuppressWarnings("unused")
@@ -1961,6 +2004,85 @@ public class SearchRepository {
         JsonUtils.deepCopyList(references, EntityReference.class);
     inheritedReferences.forEach(ref -> ref.setInherited(true));
     return inheritedReferences;
+  }
+
+  public void ensureVectorIndexDimension() {
+    if (embeddingClient == null || vectorIndexService == null) {
+      return;
+    }
+    try {
+      vectorIndexService.createOrUpdateIndex(embeddingClient.getDimension());
+    } catch (Exception e) {
+      LOG.error("Failed to ensure vector index dimension: {}", e.getMessage(), e);
+    }
+  }
+
+  private String reformatVectorIndexWithDimension(String mapping, int dimension) {
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      JsonNode root = mapper.readTree(mapping);
+      if (root.has("mappings")) {
+        JsonNode mappings = root.get("mappings");
+        if (mappings.has("properties")) {
+          JsonNode properties = mappings.get("properties");
+          if (properties.has("embedding")) {
+            ((com.fasterxml.jackson.databind.node.ObjectNode) properties.get("embedding"))
+                .put("dimension", dimension);
+          }
+        }
+        JsonNode meta =
+            ((com.fasterxml.jackson.databind.node.ObjectNode) mappings).putObject("_meta");
+        ((com.fasterxml.jackson.databind.node.ObjectNode) meta)
+            .put(
+                "embedding_model",
+                embeddingClient != null ? embeddingClient.getModelId() : "unknown")
+            .put("embedding_dimension", dimension);
+      }
+      return mapper.writeValueAsString(root);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to parse mapping JSON for dimension patching, falling back to string replace");
+      return mapping
+          .replace("\"dimension\": 768", "\"dimension\": " + dimension)
+          .replace("\"dimension\":768", "\"dimension\":" + dimension)
+          .replace("\"dimension\": 512", "\"dimension\": " + dimension)
+          .replace("\"dimension\":512", "\"dimension\":" + dimension);
+    }
+  }
+
+  protected EmbeddingClient createEmbeddingClient(ElasticSearchConfiguration esConfig) {
+    NaturalLanguageSearchConfiguration config = esConfig.getNaturalLanguageSearch();
+    String provider =
+        config.getEmbeddingProvider() != null ? config.getEmbeddingProvider() : "bedrock";
+
+    return switch (provider.toLowerCase()) {
+      case "bedrock" -> {
+        if (config.getBedrock() == null) {
+          throw new IllegalStateException(
+              "Bedrock configuration is required when using bedrock provider");
+        }
+        yield new BedrockEmbeddingClient(esConfig);
+      }
+      case "openai" -> {
+        if (config.getOpenai() == null) {
+          throw new IllegalStateException(
+              "OpenAI configuration is required when using openai provider");
+        }
+        yield new OpenAIEmbeddingClient(esConfig);
+      }
+      case "djl" -> {
+        if (config.getDjl() == null) {
+          throw new IllegalStateException("DJL configuration is required when using djl provider");
+        }
+        yield new DjlEmbeddingClient(esConfig);
+      }
+      default -> throw new IllegalArgumentException("Unknown embedding provider: " + provider);
+    };
+  }
+
+  public String getModelIdentifier() {
+    return embeddingClient != null ? embeddingClient.getModelId() : null;
   }
 
   /**

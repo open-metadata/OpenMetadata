@@ -48,6 +48,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -74,6 +75,7 @@ import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
@@ -544,6 +546,11 @@ public class SystemRepository {
       validation.setLogStorage(logStorageValidation);
     }
 
+    if (Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
+      validation.setAdditionalProperty(
+          "Semantic Search", getEmbeddingsValidation(applicationConfig));
+    }
+
     addExtraValidations(applicationConfig, validation);
 
     return validation;
@@ -551,6 +558,133 @@ public class SystemRepository {
 
   public void addExtraValidations(
       OpenMetadataApplicationConfig applicationConfig, ValidationResponse validation) {}
+
+  private StepValidation getEmbeddingsValidation(OpenMetadataApplicationConfig applicationConfig) {
+    StepValidation embeddingsValidation = new StepValidation();
+    String description = "Embeddings are used to allow Semantic Search";
+    SearchRepository searchRepository = Entity.getSearchRepository();
+
+    String configMessage = getEmbeddingConfigurationMessage(applicationConfig);
+
+    if (searchRepository.getVectorIndexService() == null) {
+      return embeddingsValidation
+          .withDescription(description)
+          .withMessage("Embeddings are not configured properly. " + configMessage)
+          .withPassed(false);
+    }
+
+    try {
+      searchRepository.ensureVectorIndexDimension();
+    } catch (Exception e) {
+      LOG.error("Vector dimension mismatch detected", e);
+      return embeddingsValidation
+          .withDescription(description)
+          .withMessage("Vector dimension mismatch: " + e.getMessage())
+          .withPassed(false);
+    }
+
+    try {
+      return validateEmbeddingGeneration(
+          searchRepository.getEmbeddingClient(), embeddingsValidation, description, configMessage);
+    } catch (Exception e) {
+      LOG.error("Error during embedding generation validation", e);
+      return embeddingsValidation
+          .withDescription(description)
+          .withMessage("Embedding generation failed: " + e.getMessage() + ". " + configMessage)
+          .withPassed(false);
+    }
+  }
+
+  private StepValidation validateEmbeddingGeneration(
+      EmbeddingClient embeddingClient,
+      StepValidation embeddingsValidation,
+      String description,
+      String configMessage) {
+    String testText = "OpenMetadata embedding validation test";
+    float[] embedding = embeddingClient.embed(testText);
+
+    if (embedding == null) {
+      return embeddingsValidation
+          .withDescription(description)
+          .withMessage("Embedding generation returned null. " + configMessage)
+          .withPassed(false);
+    }
+
+    int expectedDimension = embeddingClient.getDimension();
+    if (embedding.length != expectedDimension) {
+      return embeddingsValidation
+          .withDescription(description)
+          .withMessage(
+              String.format(
+                  "Embedding dimension mismatch: expected %d, got %d. %s",
+                  expectedDimension, embedding.length, configMessage))
+          .withPassed(false);
+    }
+
+    boolean allZeros = true;
+    for (float value : embedding) {
+      if (value != 0.0f) {
+        allZeros = false;
+        break;
+      }
+    }
+    if (allZeros) {
+      return embeddingsValidation
+          .withDescription(description)
+          .withMessage("Embedding generation returned all zeros. " + configMessage)
+          .withPassed(false);
+    }
+
+    return embeddingsValidation
+        .withDescription(description)
+        .withMessage(String.format("Embeddings are working correctly. %s", configMessage))
+        .withPassed(true);
+  }
+
+  private String getEmbeddingConfigurationMessage(OpenMetadataApplicationConfig applicationConfig) {
+    try {
+      NaturalLanguageSearchConfiguration nlpConfig =
+          applicationConfig.getElasticSearchConfiguration().getNaturalLanguageSearch();
+      String provider = nlpConfig.getEmbeddingProvider();
+      if (nullOrEmpty(provider)) {
+        return "Required configuration: embeddingProvider";
+      }
+
+      return switch (provider.toLowerCase()) {
+        case "djl" -> String.format(
+            "DJL configuration: embeddingModel: %s", nlpConfig.getDjl().getEmbeddingModel());
+        case "bedrock" -> String.format(
+            "Bedrock configuration: region: %s, embeddingModelId: %s, embeddingDimension %s",
+            nlpConfig.getBedrock().getAwsConfig() != null
+                ? nlpConfig.getBedrock().getAwsConfig().getRegion()
+                : "not configured",
+            nlpConfig.getBedrock().getEmbeddingModelId(),
+            nlpConfig.getBedrock().getEmbeddingDimension());
+        case "openai" -> {
+          String openaiEndpoint =
+              nullOrEmpty(nlpConfig.getOpenai().getEndpoint())
+                  ? "api.openai.com"
+                  : nlpConfig.getOpenai().getEndpoint();
+          String deploymentInfo =
+              nullOrEmpty(nlpConfig.getOpenai().getDeploymentName())
+                  ? ""
+                  : String.format(
+                      ", deploymentName: %s", nlpConfig.getOpenai().getDeploymentName());
+          yield String.format(
+              "OpenAI configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s%s",
+              openaiEndpoint,
+              nlpConfig.getOpenai().getEmbeddingModelId(),
+              nlpConfig.getOpenai().getEmbeddingDimension(),
+              deploymentInfo);
+        }
+        default -> String.format(
+            "Unknown provider '%s'. Supported providers: djl, bedrock, openai", provider);
+      };
+    } catch (Exception e) {
+      LOG.error("Error getting embedding configuration", e);
+      return "Unable to determine embedding configuration";
+    }
+  }
 
   private StepValidation getDatabaseValidation(OpenMetadataApplicationConfig applicationConfig) {
     try {
