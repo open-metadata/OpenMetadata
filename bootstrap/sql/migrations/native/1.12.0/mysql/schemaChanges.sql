@@ -252,9 +252,9 @@ SET json = JSON_SET(json, '$.status', 'FINISHED')
 WHERE JSON_EXTRACT(json, '$.status') IS NULL 
   AND JSON_EXTRACT(json, '$.endedAt') IS NOT NULL;
 
--- Set FAILED for incomplete workflow instances where status is null
+-- Set FAILURE for incomplete workflow instances where status is null
 UPDATE workflow_instance_time_series 
-SET json = JSON_SET(json, '$.status', 'FAILED')
+SET json = JSON_SET(json, '$.status', 'FAILURE')
 WHERE JSON_EXTRACT(json, '$.status') IS NULL 
   AND JSON_EXTRACT(json, '$.endedAt') IS NULL;
 
@@ -264,9 +264,9 @@ SET json = JSON_SET(json, '$.status', 'FINISHED')
 WHERE JSON_EXTRACT(json, '$.status') IS NULL
   AND JSON_EXTRACT(json, '$.endedAt') IS NOT NULL;
 
--- Set FAILED for incomplete workflow instance states where status is null
+-- Set FAILURE for incomplete workflow instance states where status is null
 UPDATE workflow_instance_state_time_series
-SET json = JSON_SET(json, '$.status', 'FAILED')
+SET json = JSON_SET(json, '$.status', 'FAILURE')
 WHERE JSON_EXTRACT(json, '$.status') IS NULL
   AND JSON_EXTRACT(json, '$.endedAt') IS NULL;
 

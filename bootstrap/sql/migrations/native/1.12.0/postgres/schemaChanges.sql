@@ -268,9 +268,9 @@ SET json = jsonb_set(json, '{status}', '"FINISHED"'::jsonb, true)
 WHERE json->>'status' IS NULL 
   AND json->>'endedAt' IS NOT NULL;
 
--- Set FAILED for incomplete workflow instances where status is null
+-- Set FAILURE for incomplete workflow instances where status is null
 UPDATE workflow_instance_time_series 
-SET json = jsonb_set(json, '{status}', '"FAILED"'::jsonb, true)
+SET json = jsonb_set(json, '{status}', '"FAILURE"'::jsonb, true)
 WHERE json->>'status' IS NULL 
   AND json->>'endedAt' IS NULL;
 
@@ -280,9 +280,9 @@ SET json = jsonb_set(json, '{status}', '"FINISHED"'::jsonb, true)
 WHERE json->>'status' IS NULL
   AND json->>'endedAt' IS NOT NULL;
 
--- Set FAILED for incomplete workflow instance states where status is null
+-- Set FAILURE for incomplete workflow instance states where status is null
 UPDATE workflow_instance_state_time_series
-SET json = jsonb_set(json, '{status}', '"FAILED"'::jsonb, true)
+SET json = jsonb_set(json, '{status}', '"FAILURE"'::jsonb, true)
 WHERE json->>'status' IS NULL
   AND json->>'endedAt' IS NULL;
 
