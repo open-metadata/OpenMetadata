@@ -688,5 +688,12 @@
       "all"
     ],
     "childAliases": []
+  },
+  "vectorEmbedding": {
+    "indexName": "vector_search_index",
+    "indexMappingFile": "/elasticsearch/%s/vector_search_index.json",
+    "alias": "vectorEmbedding",
+    "parentAliases": [],
+    "childAliases": []
   }
 }

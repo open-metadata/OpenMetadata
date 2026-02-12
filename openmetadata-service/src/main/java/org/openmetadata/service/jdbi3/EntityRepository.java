@@ -119,6 +119,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -3345,11 +3346,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void applyColumnTags(List<Column> columns) {
-    // Add column level tags by adding tag to column relationship
+    if (columns == null || columns.isEmpty()) {
+      return;
+    }
+    Map<String, List<TagLabel>> tagsByTarget = new LinkedHashMap<>();
+    collectColumnTags(columns, tagsByTarget);
+    applyTagsBatchWithRdf(tagsByTarget);
+  }
+
+  protected void applyTagsBatchWithRdf(Map<String, List<TagLabel>> tagsByTarget) {
+    if (tagsByTarget == null || tagsByTarget.isEmpty()) {
+      return;
+    }
+    daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(tagsByTarget);
+
+    for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
+      String targetFQN = entry.getKey();
+      for (TagLabel tagLabel : entry.getValue()) {
+        if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
+          org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
+        }
+      }
+    }
+  }
+
+  protected void collectColumnTags(List<Column> columns, Map<String, List<TagLabel>> tagsByTarget) {
+    if (columns == null || columns.isEmpty()) {
+      return;
+    }
     for (Column column : columns) {
-      applyTags(column.getTags(), column.getFullyQualifiedName());
+      List<TagLabel> tags = column.getTags();
+      if (tags != null && !tags.isEmpty()) {
+        tagsByTarget.put(column.getFullyQualifiedName(), new ArrayList<>(tags));
+      }
       if (column.getChildren() != null) {
-        applyColumnTags(column.getChildren());
+        collectColumnTags(column.getChildren(), tagsByTarget);
       }
     }
   }

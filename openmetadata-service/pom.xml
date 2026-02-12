@@ -62,7 +62,7 @@
       <dependency>
         <groupId>software.amazon.awssdk</groupId>
         <artifactId>bom</artifactId>
-        <version>2.22.12</version>
+        <version>2.25.70</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -529,6 +529,30 @@
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>s3</artifactId>
+    </dependency>
+
+    <!-- Dependencies for vector embedding (Bedrock) -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>bedrockruntime</artifactId>
+      <version>${bedrock.runtime.version}</version>
+    </dependency>
+
+    <!-- Dependencies for vector embedding (DJL) -->
+    <dependency>
+      <groupId>ai.djl</groupId>
+      <artifactId>api</artifactId>
+      <version>0.34.0</version>
+    </dependency>
+    <dependency>
+      <groupId>ai.djl.pytorch</groupId>
+      <artifactId>pytorch-engine</artifactId>
+      <version>0.34.0</version>
+    </dependency>
+    <dependency>
+      <groupId>ai.djl.huggingface</groupId>
+      <artifactId>tokenizers</artifactId>
+      <version>0.34.0</version>
     </dependency>
 
     <!--test dependencies-->
@@ -1005,6 +1029,11 @@
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>regions</artifactId>
+    </dependency>
+    <!-- AWS CRT HTTP Client for AwsSdk2Transport with OpenSearch IAM auth -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>aws-crt-client</artifactId>
     </dependency>
     <dependency>
       <groupId>jakarta.ws.rs</groupId>

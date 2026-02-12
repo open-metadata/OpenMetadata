@@ -70,14 +70,6 @@ const mockStorylaneResource: LearningResource = {
   resourceType: 'Storylane',
 };
 
-const mockArticleResource: LearningResource = {
-  ...mockVideoResource,
-  id: 'article-resource-1',
-  name: 'TestArticleResource',
-  displayName: 'Test Article Resource',
-  resourceType: 'Article',
-};
-
 const mockResourceWithMultipleCategories: LearningResource = {
   ...mockVideoResource,
   categories: ['Discovery', 'Administration', 'DataGovernance', 'DataQuality'],
@@ -133,12 +125,6 @@ describe('LearningResourceCard', () => {
     expect(screen.getByText('5 min watch')).toBeInTheDocument();
   });
 
-  it('should render formatted duration with min read for Article', () => {
-    render(<LearningResourceCard resource={mockArticleResource} />);
-
-    expect(screen.getByText('5 min read')).toBeInTheDocument();
-  });
-
   it('should not render duration when estimatedDuration is not provided', () => {
     const resourceWithoutDuration = {
       ...mockVideoResource,
@@ -162,14 +148,6 @@ describe('LearningResourceCard', () => {
 
     expect(
       screen.getByTestId(`learning-resource-card-${mockStorylaneResource.name}`)
-    ).toBeInTheDocument();
-  });
-
-  it('should render file icon for Article resource type', () => {
-    render(<LearningResourceCard resource={mockArticleResource} />);
-
-    expect(
-      screen.getByTestId(`learning-resource-card-${mockArticleResource.name}`)
     ).toBeInTheDocument();
   });
 

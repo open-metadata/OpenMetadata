@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { removeAttachmentsWithoutUrl } from '../../../utils/StringsUtils';
 import { KeyDownStopPropagationWrapper } from '../../common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
@@ -42,7 +43,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
         try {
           const content =
             markdownRef.current?.getEditorContent?.()?.trim() ?? '';
-          await onSave?.(content);
+          await onSave?.(removeAttachmentsWithoutUrl(content));
         } catch (error) {
           showErrorToast(error as AxiosError);
         } finally {
