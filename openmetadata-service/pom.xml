@@ -531,6 +531,30 @@
       <artifactId>s3</artifactId>
     </dependency>
 
+    <!-- Dependencies for vector embedding (Bedrock) -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>bedrockruntime</artifactId>
+      <version>${bedrock.runtime.version}</version>
+    </dependency>
+
+    <!-- Dependencies for vector embedding (DJL) -->
+    <dependency>
+      <groupId>ai.djl</groupId>
+      <artifactId>api</artifactId>
+      <version>0.34.0</version>
+    </dependency>
+    <dependency>
+      <groupId>ai.djl.pytorch</groupId>
+      <artifactId>pytorch-engine</artifactId>
+      <version>0.34.0</version>
+    </dependency>
+    <dependency>
+      <groupId>ai.djl.huggingface</groupId>
+      <artifactId>tokenizers</artifactId>
+      <version>0.34.0</version>
+    </dependency>
+
     <!--test dependencies-->
     <dependency>
       <groupId>org.glassfish.jersey.core</groupId>
