@@ -12,9 +12,7 @@
  */
 
 import { test } from '../../support/fixtures/userPages';
-import {
-  RightPanelPageObject,
-} from '../PageObject/Explore/RightPanelPageObject';
+import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import { SchemaPageObject } from '../PageObject/Explore/SchemaPageObject';
 import { LineagePageObject } from '../PageObject/Explore/LineagePageObject';
@@ -97,7 +95,7 @@ const customPropertyData: Record<string, { property: { name: string } }> = {};
 test.describe('Right Panel Test Suite', () => {
   // Setup test data and page objects
   test.beforeAll(async ({ browser }) => {
-    test.setTimeout(300_000); // 5 minutes
+    test.slow(true); // 5 minutes
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {
