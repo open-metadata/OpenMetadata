@@ -27,6 +27,7 @@ import {
   getEntityIcon,
   getExpandAllKeysToDepth,
   getHighlightedRowClassName,
+  getNestedSectionTitle,
   getParentKeysToExpand,
   getSafeExpandAllKeys,
   getSchemaDepth,
@@ -2443,4 +2444,38 @@ describe('getColumnOptionsFromTableColumn', () => {
 
     expect(result).toEqual([{ label: 'column1', value: 'column1' }]);
   });
+});
+
+describe('getNestedSectionTitle', () => {
+  it('should return schema-field-plural for TOPIC', () => {
+    expect(getNestedSectionTitle(EntityType.TOPIC)).toBe(
+      'label.schema-field-plural'
+    );
+  });
+
+  it('should return schema-field-plural for API_ENDPOINT', () => {
+    expect(getNestedSectionTitle(EntityType.API_ENDPOINT)).toBe(
+      'label.schema-field-plural'
+    );
+  });
+
+  it('should return field-plural for SEARCH_INDEX', () => {
+    expect(getNestedSectionTitle(EntityType.SEARCH_INDEX)).toBe(
+      'label.field-plural'
+    );
+  });
+
+  it.each([
+    EntityType.TABLE,
+    EntityType.DASHBOARD_DATA_MODEL,
+    EntityType.CONTAINER,
+    undefined,
+  ])(
+    'should return nested-column-plural for %s',
+    (entityType) => {
+      expect(getNestedSectionTitle(entityType)).toBe(
+        'label.nested-column-plural'
+      );
+    }
+  );
 });
