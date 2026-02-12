@@ -695,24 +695,30 @@ export const updateDescriptionForChildren = async (
   // Wait for modal to close
   await expect(modal).not.toBeVisible();
 
-  // CRITICAL: Wait for UI to update after API response
-  // The modal closing doesn't guarantee the row has updated yet
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  // CRITICAL: Wait for the specific row's description to update
+  // Don't rely on generic loader - wait for actual content change
+  const rowLocator = page.locator(`[${rowSelector}="${rowId}"]`);
 
-  // Verify the description was updated in the UI
   if (isEmpty(description)) {
-    await expect(
-      page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
-    ).toContainText('No Description');
+    const descriptionLocator = rowLocator.getByTestId('description');
+
+    // Wait for the description to update to "No Description"
+    // Use increased timeout for CI environments where rendering is slower
+    await expect(descriptionLocator).toContainText('No Description', {
+      timeout: 15000,
+    });
   } else {
-    await expect(
-      page
-        .locator(`[${rowSelector}="${rowId}"]`)
-        .getByTestId('viewer-container')
-        .getByRole('paragraph')
-    ).toContainText(description);
+    const paragraphLocator = rowLocator
+      .getByTestId('viewer-container')
+      .getByRole('paragraph');
+
+    // Wait for paragraph to be visible first (structure changes from "No Description")
+    await paragraphLocator.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Then verify content with increased timeout for CI
+    await expect(paragraphLocator).toContainText(description, {
+      timeout: 15000,
+    });
   }
 };
 
