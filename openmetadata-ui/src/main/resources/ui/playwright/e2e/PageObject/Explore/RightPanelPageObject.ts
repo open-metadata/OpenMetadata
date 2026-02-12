@@ -283,6 +283,26 @@ export class RightPanelPageObject {
       },
     };
 
+  /** Maps camelCase / spec entity type keys to DATA_ASSET_CONFIGS keys for lookup. */
+  private static readonly ENTITY_TYPE_TO_CONFIG_KEY: Record<string, string> = {
+    table: 'Table',
+    database: 'Database',
+    databaseSchema: 'Database Schema',
+    dashboard: 'Dashboard',
+    dashboardDataModel: 'DashboardDataModel',
+    pipeline: 'Pipeline',
+    topic: 'Topic',
+    mlmodel: 'MlModel',
+    container: 'Container',
+    searchIndex: 'SearchIndex',
+  };
+
+  private static getConfigKey(assetType: string): string {
+    return (
+      RightPanelPageObject.ENTITY_TYPE_TO_CONFIG_KEY[assetType] ?? assetType
+    );
+  }
+
   constructor(page: Page, entity?: EntityClass) {
     this.page = page;
 
@@ -325,7 +345,8 @@ export class RightPanelPageObject {
    * Use when orchestrating tab assertions without an EntityClass instance.
    */
   public setEntityConfigByType(assetType: string): void {
-    this.entityConfig = RightPanelPageObject.DATA_ASSET_CONFIGS[assetType];
+    const configKey = RightPanelPageObject.getConfigKey(assetType);
+    this.entityConfig = RightPanelPageObject.DATA_ASSET_CONFIGS[configKey];
     if (!this.entityConfig) {
       this.entityConfig = {
         entityType: assetType,
@@ -597,7 +618,8 @@ export class RightPanelPageObject {
    * Falls back to overview, lineage, custom properties for unknown types.
    */
   getExpectedTabsForEntityType(entityType: string): readonly string[] {
-    const config = RightPanelPageObject.DATA_ASSET_CONFIGS[entityType];
+    const configKey = RightPanelPageObject.getConfigKey(entityType);
+    const config = RightPanelPageObject.DATA_ASSET_CONFIGS[configKey];
     if (config?.availableTabs?.length) {
       return config.availableTabs;
     }

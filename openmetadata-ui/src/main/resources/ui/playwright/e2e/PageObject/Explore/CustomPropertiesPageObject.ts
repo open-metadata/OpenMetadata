@@ -117,7 +117,9 @@ export class CustomPropertiesPageObject extends RightPanelBase {
    */
   async shouldShowCustomProperty(propertyName: string): Promise<void> {
     // Use semantic selectors - look for property by name text
-    const propertyCard = this.propertyCard.filter({ hasText: propertyName });
+    const propertyCard = this.customPropertiesContainer.getByTestId(
+      `${propertyName}`
+    );
     await propertyCard.scrollIntoViewIfNeeded();
     await propertyCard.waitFor({ state: 'visible' });
   }
