@@ -145,7 +145,7 @@ def _get_service_cached(
 
 def get_context_entities(
     entity: Table, metadata: OpenMetadata
-) -> Tuple[DatabaseSchema, Database, DatabaseService]:
+) -> Tuple[Optional[DatabaseSchema], Optional[Database], Optional[DatabaseService]]:
     """Based on the table, get all the parent entities"""
     schema_entity = None
     database_entity = None
