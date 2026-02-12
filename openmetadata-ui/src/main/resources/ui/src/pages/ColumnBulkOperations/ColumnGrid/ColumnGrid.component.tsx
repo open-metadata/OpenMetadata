@@ -2087,6 +2087,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   <Switch
                     checked={viewSelectedOnly}
                     size="small"
+                    sx={{ mx: '10px' }}
                     onChange={(event) => {
                       setViewSelectedOnly(event.target.checked);
                     }}
@@ -2101,6 +2102,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                     disabled={isUpdating}
                     startIcon={<EditIcon height={14} width={14} />}
                     sx={{
+                      ml: '10px',
                       padding: theme.spacing(2, 3),
                       borderRadius: '8px',
                       border: `1px solid ${theme.palette.primary.main}`,
