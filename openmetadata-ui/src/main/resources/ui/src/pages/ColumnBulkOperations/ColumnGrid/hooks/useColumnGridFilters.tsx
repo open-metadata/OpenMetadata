@@ -177,7 +177,7 @@ export const useColumnGridFilters = (
             },
           }}
           onClose={handleMenuClose}>
-          {remainingFilters.map((filter) => [
+          {remainingFilters.map((filter) => (
             <MenuItem
               key={filter.key}
               sx={{
@@ -188,8 +188,8 @@ export const useColumnGridFilters = (
               }}
               onClick={() => handleAddFilter(filter.key)}>
               {filter.label}
-            </MenuItem>,
-          ])}
+            </MenuItem>
+          ))}
         </Menu>
       </>
     );
