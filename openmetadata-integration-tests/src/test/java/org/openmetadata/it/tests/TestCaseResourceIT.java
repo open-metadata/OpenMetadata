@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
@@ -35,6 +36,7 @@ import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 
 /**
@@ -2784,6 +2786,214 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         Exception.class,
         () -> getEntityIncludeDeleted(created.getId().toString()),
         "Hard deleted entity should not be retrievable");
+  }
+
+  // ===================================================================
+  // CSV IMPORT WITH WILDCARD NAME TESTS
+  // ===================================================================
+
+  @Test
+  void test_importCsvWithWildcardName_multipleTablesSucceeds(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table1 = createTable(ns);
+    Table table2 = createTable(ns);
+
+    String testName1 = ns.prefix("csvWild1");
+    String testName2 = ns.prefix("csvWild2");
+
+    String csvData =
+        buildCsvWithHeaders()
+            + buildCsvRow(
+                testName1,
+                "",
+                "Import test 1",
+                "tableRowCountToBeBetween",
+                table1.getFullyQualifiedName(),
+                "",
+                "",
+                "false",
+                "false",
+                "",
+                "",
+                "")
+            + buildCsvRow(
+                testName2,
+                "",
+                "Import test 2",
+                "tableRowCountToBeBetween",
+                table2.getFullyQualifiedName(),
+                "",
+                "",
+                "false",
+                "false",
+                "",
+                "",
+                "");
+
+    // Dry run with name="*" should succeed
+    CsvImportResult dryRunResult = importCsvWithWildcard(client, csvData, true);
+    assertEquals(ApiStatus.SUCCESS, dryRunResult.getStatus());
+    assertEquals(3, dryRunResult.getNumberOfRowsProcessed());
+
+    // Actual import with name="*" — previously failed because
+    // processChangeEventForBulkImport would call getByName("*")
+    CsvImportResult result = importCsvWithWildcard(client, csvData, false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(3, result.getNumberOfRowsProcessed());
+
+    // Verify test cases created on different tables
+    TestCase tc1 =
+        client
+            .testCases()
+            .getByName(
+                table1.getFullyQualifiedName() + "." + testName1, "testDefinition,testSuite");
+    assertNotNull(tc1);
+    assertEquals("tableRowCountToBeBetween", tc1.getTestDefinition().getName());
+
+    TestCase tc2 =
+        client
+            .testCases()
+            .getByName(
+                table2.getFullyQualifiedName() + "." + testName2, "testDefinition,testSuite");
+    assertNotNull(tc2);
+    assertEquals("tableRowCountToBeBetween", tc2.getTestDefinition().getName());
+
+    // Test cases on different tables should belong to different test suites
+    assertNotEquals(tc1.getTestSuite().getId(), tc2.getTestSuite().getId());
+  }
+
+  @Test
+  void test_importCsvWithWildcardName_explicitTestSuiteTracked(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    // Create a test case via API so a basic test suite is auto-created for this table
+    TestCase setupTc =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("setupForCsvSuite"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Get the auto-created basic test suite FQN
+    TestCase fetched = client.testCases().getByName(setupTc.getFullyQualifiedName(), "testSuite");
+    String basicSuiteFqn = fetched.getTestSuite().getFullyQualifiedName();
+
+    String testName = ns.prefix("csvExplicitSuite");
+
+    String csvData =
+        buildCsvWithHeaders()
+            + buildCsvRow(
+                testName,
+                "",
+                "Explicit suite test",
+                "tableRowCountToBeBetween",
+                table.getFullyQualifiedName(),
+                basicSuiteFqn,
+                "",
+                "false",
+                "false",
+                "",
+                "",
+                "");
+
+    CsvImportResult result = importCsvWithWildcard(client, csvData, false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(2, result.getNumberOfRowsProcessed());
+
+    TestCase imported =
+        client.testCases().getByName(table.getFullyQualifiedName() + "." + testName, "testSuite");
+    assertNotNull(imported);
+    assertEquals(basicSuiteFqn, imported.getTestSuite().getFullyQualifiedName());
+  }
+
+  @Test
+  void test_importCsvWithWildcardName_invalidTestSuiteFails(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    String testName = ns.prefix("csvBadSuite");
+
+    String csvData =
+        buildCsvWithHeaders()
+            + buildCsvRow(
+                testName,
+                "",
+                "Bad suite test",
+                "tableRowCountToBeBetween",
+                table.getFullyQualifiedName(),
+                "nonExistentSuite",
+                "",
+                "false",
+                "false",
+                "",
+                "",
+                "");
+
+    CsvImportResult result = importCsvWithWildcard(client, csvData, false);
+    assertNotEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(1, result.getNumberOfRowsFailed());
+  }
+
+  @Test
+  void test_importCsvWithWildcardName_dryRunDoesNotCreateEntities(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    String testName = ns.prefix("csvDryOnly");
+
+    String csvData =
+        buildCsvWithHeaders()
+            + buildCsvRow(
+                testName,
+                "",
+                "Dry run test",
+                "tableRowCountToBeBetween",
+                table.getFullyQualifiedName(),
+                "",
+                "",
+                "false",
+                "false",
+                "",
+                "",
+                "");
+
+    CsvImportResult dryRunResult = importCsvWithWildcard(client, csvData, true);
+    assertEquals(ApiStatus.SUCCESS, dryRunResult.getStatus());
+    assertEquals(2, dryRunResult.getNumberOfRowsProcessed());
+
+    // Entity should NOT exist after dry run
+    String expectedFqn = table.getFullyQualifiedName() + "." + testName;
+    assertThrows(
+        Exception.class,
+        () -> client.testCases().getByName(expectedFqn),
+        "Test case should not exist after dry run");
+  }
+
+  private CsvImportResult importCsvWithWildcard(
+      OpenMetadataClient client, String csvData, boolean dryRun) {
+    RequestOptions options =
+        RequestOptions.builder()
+            .header("Content-Type", "text/plain; charset=UTF-8")
+            .queryParam("dryRun", String.valueOf(dryRun))
+            .build();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT, "/v1/dataQuality/testCases/name/*/import", csvData, options);
+    return JsonUtils.readValue(response, CsvImportResult.class);
+  }
+
+  private String buildCsvWithHeaders() {
+    return "name*,displayName,description,testDefinition*,entityFQN*,testSuite,"
+        + "parameterValues,computePassedFailedRowCount,useDynamicAssertion,"
+        + "inspectionQuery,tags,glossaryTerms\n";
+  }
+
+  private String buildCsvRow(String... fields) {
+    return String.join(",", fields) + "\n";
   }
 
   // ===================================================================

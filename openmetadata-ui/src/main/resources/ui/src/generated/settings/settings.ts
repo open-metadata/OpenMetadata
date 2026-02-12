@@ -2103,6 +2103,10 @@ export interface NaturalLanguageSearch {
      * Fully qualified class name of the NLQService implementation to use
      */
     providerClass?: string;
+    /**
+     * Enable or disable semantic search using vector embeddings
+     */
+    semanticSearchEnabled?: boolean;
 }
 
 /**
