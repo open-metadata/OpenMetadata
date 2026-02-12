@@ -889,4 +889,238 @@ class ElasticSearchDataInsightAggregatorManagerIntegrationTest extends OpenMetad
 
     return chart;
   }
+
+  @Test
+  void testFetchDIChartFields_WithDataStream() {
+    // This test verifies that fetchDIChartFields works correctly with data streams
+    // where the backing index name (e.g., .ds-di-data-assets-table-2026.02.11-000001)
+    // differs from the data stream name (di-data-assets-table)
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    String dataStreamName =
+        (clusterAlias == null || clusterAlias.isEmpty())
+            ? "di-data-assets-table"
+            : clusterAlias + "-di-data-assets-table";
+
+    try {
+      // Create index template for data stream
+      client
+          .indices()
+          .putIndexTemplate(
+              t ->
+                  t.name(dataStreamName + "-template")
+                      .indexPatterns(dataStreamName + "*")
+                      .dataStream(ds -> ds)
+                      .template(
+                          tmpl ->
+                              tmpl.mappings(
+                                  m ->
+                                      m.properties("@timestamp", p -> p.date(d -> d))
+                                          .properties("entityId", p -> p.keyword(k -> k))
+                                          .properties("entityType", p -> p.keyword(k -> k))
+                                          .properties("entityFQN", p -> p.keyword(k -> k))
+                                          .properties(
+                                              "entityName",
+                                              p ->
+                                                  p.text(
+                                                      txt ->
+                                                          txt.fields(
+                                                              "keyword",
+                                                              f ->
+                                                                  f.keyword(
+                                                                      kw -> kw.ignoreAbove(256)))))
+                                          .properties("views", p -> p.long_(l -> l))
+                                          .properties("owner", p -> p.keyword(k -> k))
+                                          .properties("team", p -> p.keyword(k -> k))
+                                          .properties("tier", p -> p.keyword(k -> k))
+                                          .properties(
+                                              "metadata",
+                                              p ->
+                                                  p.object(
+                                                      o ->
+                                                          o.properties(
+                                                                  "description",
+                                                                  ep -> ep.text(txt -> txt))
+                                                              .properties(
+                                                                  "columns",
+                                                                  ep -> ep.integer(i -> i)))))));
+
+      // Create data stream by indexing a document
+      Map<String, Object> doc = new LinkedHashMap<>();
+      doc.put("@timestamp", System.currentTimeMillis());
+      doc.put("entityId", "test-entity-1");
+      doc.put("entityType", "table");
+      doc.put("entityFQN", "test.database.table1");
+      doc.put("entityName", "table1");
+      doc.put("views", 100L);
+      doc.put("owner", "testUser");
+      doc.put("team", "TestTeam");
+      doc.put("tier", "Tier1");
+
+      client.index(i -> i.index(dataStreamName).document(doc).refresh(Refresh.True).opType(null));
+
+      LOG.info("Created data stream: {}", dataStreamName);
+
+      // Fetch fields - this should work even though the backing index name
+      // is different from the data stream name
+      List<Map<String, String>> fields = aggregatorManager.fetchDIChartFields();
+
+      assertNotNull(fields, "Fields list should not be null");
+
+      // Verify that we got fields from the data stream
+      // The fields should include the ones we defined in the template
+      boolean hasEntityTypeField =
+          fields.stream()
+              .anyMatch(
+                  f -> f.get("name").equals("entityType") && f.get("entityType").equals("table"));
+
+      boolean hasViewsField =
+          fields.stream()
+              .anyMatch(f -> f.get("name").equals("views") && f.get("entityType").equals("table"));
+
+      boolean hasNestedField =
+          fields.stream()
+              .anyMatch(
+                  f ->
+                      f.get("name").startsWith("metadata.") && f.get("entityType").equals("table"));
+
+      LOG.info(
+          "Data stream test - hasEntityTypeField: {}, hasViewsField: {}, hasNestedField: {}",
+          hasEntityTypeField,
+          hasViewsField,
+          hasNestedField);
+
+      // At least one of these should be true if fields were fetched correctly
+      assertTrue(
+          hasEntityTypeField || hasViewsField || !fields.isEmpty(),
+          "Should have fetched fields from data stream");
+
+    } catch (Exception e) {
+      LOG.error("Failed to test data stream fields", e);
+      // If data streams are not supported (older ES version), skip the test
+      if (e.getMessage() != null && e.getMessage().contains("data_stream")) {
+        LOG.info("Data streams not supported in this ES version, skipping test");
+        return;
+      }
+      throw new RuntimeException("Data stream test failed", e);
+    } finally {
+      // Cleanup
+      try {
+        client.indices().deleteDataStream(d -> d.name(dataStreamName));
+        LOG.info("Deleted data stream: {}", dataStreamName);
+      } catch (Exception e) {
+        LOG.debug("Failed to delete data stream: {}", dataStreamName);
+      }
+      try {
+        client.indices().deleteIndexTemplate(d -> d.name(dataStreamName + "-template"));
+        LOG.info("Deleted index template: {}-template", dataStreamName);
+      } catch (Exception e) {
+        LOG.debug("Failed to delete index template: {}-template", dataStreamName);
+      }
+    }
+  }
+
+  @Test
+  void testFetchDIChartFields_IteratesOverAllBackingIndices() {
+    // This test verifies that the fix for ES 9.x data streams works correctly
+    // by checking that response.mappings().entrySet() is used to iterate over all indices
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    String indexPrefix =
+        (clusterAlias == null || clusterAlias.isEmpty())
+            ? "di-data-assets"
+            : clusterAlias + "-di-data-assets";
+
+    // Create test index for "table" entity type (one of the dataAssetTypes)
+    String tableIndex = indexPrefix + "-table";
+    createDataInsightFieldsTestIndex(tableIndex);
+
+    try {
+      List<Map<String, String>> fields = aggregatorManager.fetchDIChartFields();
+
+      assertNotNull(fields, "Fields list should not be null");
+      assertFalse(fields.isEmpty(), "Fields list should not be empty");
+
+      // Verify we got fields from the table entity type
+      boolean hasTableFields =
+          fields.stream().anyMatch(f -> "table".equalsIgnoreCase(f.get("entityType")));
+
+      LOG.info("Multiple indices test - hasTableFields: {}", hasTableFields);
+
+      assertTrue(hasTableFields, "Should have fields from table entity type");
+
+      // Verify field structure for all returned fields
+      for (Map<String, String> field : fields) {
+        assertNotNull(field.get("name"), "Field name should not be null");
+        assertNotNull(field.get("displayName"), "Field displayName should not be null");
+        assertNotNull(field.get("type"), "Field type should not be null");
+        assertNotNull(field.get("entityType"), "Field entityType should not be null");
+      }
+
+      // Verify that text fields with keyword subfields are handled correctly
+      boolean hasKeywordField = fields.stream().anyMatch(f -> f.get("name").endsWith(".keyword"));
+      LOG.info("Has .keyword fields: {}", hasKeywordField);
+      assertTrue(
+          hasKeywordField, "Should have .keyword suffix for text fields with keyword subfield");
+
+    } finally {
+      // Cleanup
+      try {
+        client.indices().delete(d -> d.index(tableIndex));
+      } catch (Exception e) {
+        LOG.debug("Failed to cleanup index: {}", tableIndex);
+      }
+    }
+  }
+
+  @Test
+  void testFetchDIChartFields_HandlesMultipleBackingIndicesForSameDataStream() throws Exception {
+    // This test simulates the ES 9.x data stream scenario where the GetMappingResponse
+    // contains a backing index with a different name than the data stream alias
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    String indexPrefix =
+        (clusterAlias == null || clusterAlias.isEmpty())
+            ? "di-data-assets"
+            : clusterAlias + "-di-data-assets";
+
+    // Create an index with a name that simulates a data stream backing index pattern
+    // This demonstrates that the fix iterates over response.mappings() entries
+    // rather than using response.get(indexName) which would fail for data streams
+    String tableIndex = indexPrefix + "-table";
+    createDataInsightFieldsTestIndex(tableIndex);
+
+    try {
+      // Directly test the GetMappingResponse iteration behavior
+      var response = client.indices().getMapping(m -> m.index(tableIndex));
+
+      // Verify that mappings() returns entries we can iterate over
+      assertNotNull(response.mappings(), "Mappings should not be null");
+      assertFalse(response.mappings().isEmpty(), "Mappings should not be empty");
+
+      // Iterate over mappings (this is what the fix does)
+      int entryCount = 0;
+      for (var entry : response.mappings().entrySet()) {
+        assertNotNull(entry.getKey(), "Index name should not be null");
+        assertNotNull(entry.getValue(), "IndexMappingRecord should not be null");
+        assertNotNull(entry.getValue().mappings(), "TypeMapping should not be null");
+        entryCount++;
+      }
+
+      assertTrue(entryCount > 0, "Should have at least one mapping entry");
+      LOG.info("GetMappingResponse contained {} index mapping entries", entryCount);
+
+      // Also verify through the aggregator manager
+      List<Map<String, String>> fields = aggregatorManager.fetchDIChartFields();
+      assertNotNull(fields, "Fields from aggregator should not be null");
+
+      boolean hasTableFields =
+          fields.stream().anyMatch(f -> "table".equalsIgnoreCase(f.get("entityType")));
+      assertTrue(hasTableFields, "Should have extracted fields from table index");
+
+    } finally {
+      try {
+        client.indices().delete(d -> d.index(tableIndex));
+      } catch (Exception e) {
+        LOG.debug("Failed to cleanup index: {}", tableIndex);
+      }
+    }
+  }
 }

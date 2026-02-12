@@ -111,9 +111,13 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
 
         GetMappingResponse response = client.indices().getMapping(m -> m.index(indexName));
 
-        var indexMappingRecord = response.get(indexName);
-        if (indexMappingRecord != null && indexMappingRecord.mappings().properties() != null) {
-          getFieldNames(indexMappingRecord.mappings().properties(), "", fields, type);
+        // Iterate over all indices in the response to handle data streams
+        // where the backing index name differs from the alias (e.g., .ds-di-data-assets-database-*)
+        for (var entry : response.mappings().entrySet()) {
+          var indexMappingRecord = entry.getValue();
+          if (indexMappingRecord != null && indexMappingRecord.mappings().properties() != null) {
+            getFieldNames(indexMappingRecord.mappings().properties(), "", fields, type);
+          }
         }
       } catch (Exception e) {
         LOG.error("Failed to get mappings for type: {}", type, e);
