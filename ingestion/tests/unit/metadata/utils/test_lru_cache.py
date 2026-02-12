@@ -64,7 +64,7 @@ class TestSkipNoneLRUCache:
         assert str(None) not in cache
 
     def test_it_caches_other_results(self) -> None:
-        cache = LRUCache(2)
+        cache = SkipNoneLRUCache(2)
 
         # two object() calls will have return the same result for str(type(x)) == '<class 'object'>
         @cache.wrap(lambda x: str(type(x)))
