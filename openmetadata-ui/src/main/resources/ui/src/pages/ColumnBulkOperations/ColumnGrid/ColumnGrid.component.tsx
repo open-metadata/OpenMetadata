@@ -1631,7 +1631,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         key={drawerKey}
         sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Typography color="text.secondary" fontSize="14px" fontWeight={500}>
+          <Typography
+            color="text.secondary"
+            fontWeight={theme.typography.subtitle2.fontWeight}
+            variant="body2">
             {t('label.column-name')}
           </Typography>
           <TextField
@@ -1650,7 +1653,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         </Box>
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Typography color="text.secondary" fontSize="14px" fontWeight={500}>
+          <Typography
+            color="text.secondary"
+            fontWeight={theme.typography.subtitle2.fontWeight}
+            variant="body2">
             {t('label.display-name')}
           </Typography>
           <TextField
@@ -1671,7 +1677,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <Box
           data-testid="description-field"
           sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Typography color="text.secondary" fontSize="14px" fontWeight={500}>
+          <Typography
+            color="text.secondary"
+            fontWeight={theme.typography.subtitle2.fontWeight}
+            variant="body2">
             {t('label.description')}
           </Typography>
           <RichTextEditor
@@ -1692,7 +1701,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <Box
           data-testid="tags-field"
           sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Typography color="text.secondary" fontSize="14px" fontWeight={500}>
+          <Typography
+            color="text.secondary"
+            fontWeight={theme.typography.subtitle2.fontWeight}
+            variant="body2">
             {t('label.tag-plural')}
           </Typography>
           <AsyncSelectList
@@ -1745,7 +1757,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <Box
           data-testid="glossary-terms-field"
           sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Typography color="text.secondary" fontSize="14px" fontWeight={500}>
+          <Typography
+            color="text.secondary"
+            fontWeight={theme.typography.subtitle2.fontWeight}
+            variant="body2">
             {t('label.glossary-term-plural')}
           </Typography>
           <TreeAsyncSelectList
@@ -1963,14 +1978,13 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 <Typography
                   color={theme.palette.grey[900]}
                   data-testid="total-unique-columns-value"
-                  fontSize="18px"
-                  fontWeight={600}>
+                  fontWeight={theme.typography.h6.fontWeight}
+                  variant="subtitle1">
                   {columnGridListing.totalUniqueColumns.toLocaleString()}
                 </Typography>
                 <Typography
                   color={theme.palette.grey[700]}
-                  fontSize="14px"
-                  fontWeight={400}
+                  variant="body2"
                   whiteSpace="nowrap">
                   {t('label.total-unique-columns')}
                 </Typography>
@@ -1990,14 +2004,13 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 <Typography
                   color={theme.palette.grey[900]}
                   data-testid="total-occurrences-value"
-                  fontSize="18px"
-                  fontWeight={600}>
+                  fontWeight={theme.typography.h6.fontWeight}
+                  variant="subtitle1">
                   {columnGridListing.totalOccurrences.toLocaleString()}
                 </Typography>
                 <Typography
                   color={theme.palette.grey[700]}
-                  fontSize="14px"
-                  fontWeight={400}
+                  variant="body2"
                   whiteSpace="nowrap">
                   {t('label.total-occurrences')}
                 </Typography>
@@ -2017,16 +2030,15 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 <Typography
                   color={theme.palette.grey[900]}
                   data-testid="pending-changes-value"
-                  fontSize="18px"
-                  fontWeight={600}>
+                  fontWeight={theme.typography.h6.fontWeight}
+                  variant="subtitle1">
                   {editedCount > 0
                     ? `${editedCount}/${selectedCount || editedCount}`
                     : '0'}
                 </Typography>
                 <Typography
                   color={theme.palette.grey[700]}
-                  fontSize="14px"
-                  fontWeight={400}
+                  variant="body2"
                   whiteSpace="nowrap">
                   {t('label.pending-changes')}
                 </Typography>
@@ -2079,8 +2091,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   <Typography
                     className="view-selected-label"
                     color={theme.palette.grey[900]}
-                    fontSize="14px"
-                    fontWeight={400}
+                    variant="body2"
                     whiteSpace="nowrap">
                     {t('label.view-selected')} ({selectedCount})
                   </Typography>

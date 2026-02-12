@@ -150,7 +150,7 @@ export const useColumnGridFilters = (
           sx={{
             color: defaultColors.blue[600],
             fontSize: theme.typography.body2.fontSize,
-            fontWeight: 500,
+            fontWeight: theme.typography.subtitle2.fontWeight,
             padding: 0,
             minWidth: 'auto',
             whiteSpace: 'nowrap',
@@ -183,7 +183,7 @@ export const useColumnGridFilters = (
               sx={{
                 color: defaultColors.gray[700],
                 fontSize: theme.typography.body2.fontSize,
-                fontWeight: 500,
+                fontWeight: theme.typography.subtitle2.fontWeight,
                 padding: theme.spacing(1),
               }}
               onClick={() => handleAddFilter(filter.key)}>
