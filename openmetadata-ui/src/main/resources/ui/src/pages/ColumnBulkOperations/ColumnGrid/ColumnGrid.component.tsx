@@ -2067,7 +2067,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   color={theme.palette.grey[900]}
                   fontSize="14px"
                   fontWeight={400}
-                  lineHeight="19px">
+                  whiteSpace="nowrap">
                   {t('label.view-selected')} ({selectedCount})
                 </Typography>
                 <Switch
@@ -2089,6 +2089,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                     disabled={isUpdating}
                     startIcon={<EditIcon height={14} width={14} />}
                     sx={{
+                      padding: theme.spacing(2, 3),
                       borderRadius: '8px',
                       border: `1px solid ${theme.palette.primary.main}`,
                       backgroundColor: theme.palette.primary.main,
