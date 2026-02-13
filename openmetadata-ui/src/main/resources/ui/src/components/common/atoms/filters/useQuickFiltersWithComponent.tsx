@@ -48,18 +48,26 @@ export const useQuickFiltersWithComponent = (
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
   >([]);
-  const previousParsedFiltersRef = useRef<ExploreQuickFilterField[]>();
+  const previousConfigRef = useRef<{
+    parsedFilters?: ExploreQuickFilterField[];
+    mode?: 'single' | 'multi';
+    defaultFilters: ExploreQuickFilterField[];
+  }>();
 
   useEffect(() => {
-    // Use parsedFilters if available (from URL), otherwise use defaultFilters
     const isSingleSelect = config.mode === 'single';
 
-    // Only update if parsedFilters has actually changed (deep comparison)
-    if (isEqual(previousParsedFiltersRef.current, config.parsedFilters)) {
+    const currentConfig = {
+      parsedFilters: config.parsedFilters,
+      mode: config.mode,
+      defaultFilters: config.defaultFilters,
+    };
+
+    if (isEqual(previousConfigRef.current, currentConfig)) {
       return;
     }
 
-    previousParsedFiltersRef.current = config.parsedFilters;
+    previousConfigRef.current = currentConfig;
 
     if (config.parsedFilters && config.parsedFilters.length > 0) {
       // Merge parsedFilters with defaultFilters to maintain structure

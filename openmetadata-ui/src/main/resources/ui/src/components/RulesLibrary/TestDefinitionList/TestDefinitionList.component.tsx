@@ -116,9 +116,6 @@ const TestDefinitionList = () => {
   >({});
   const [permissionLoading, setPermissionLoading] = useState(true);
 
-  const entityTypeParam = urlParams.entityType ?? '';
-  const testPlatformsParam = urlParams.testPlatforms ?? '';
-
   // Parse filters from URL dynamically
   const urlFilters = useMemo(() => {
     const filters: Record<string, string[]> = {};
@@ -133,7 +130,7 @@ const TestDefinitionList = () => {
     });
 
     return filters;
-  }, [entityTypeParam, testPlatformsParam]);
+  }, [urlParams]);
 
   // Create parsedFilters from URL for filter hooks
   const parsedFilters = useMemo<ExploreQuickFilterField[]>(() => {
@@ -312,7 +309,7 @@ const TestDefinitionList = () => {
     } else {
       fetchTestDefinitions();
     }
-  }, [pageSize, pagingCursor, entityTypeParam, testPlatformsParam]);
+  }, [pageSize, pagingCursor]);
 
   const handleEnableToggle = async (
     record: TestDefinition,
