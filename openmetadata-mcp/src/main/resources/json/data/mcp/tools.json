@@ -100,6 +100,67 @@
       }
     },
     {
+      "name": "semantic_search",
+      "description": "Search data assets using natural language with vector-based semantic similarity. Unlike keyword search, this finds conceptually related results even when exact terms don't match. Requires semantic search to be enabled on the OpenMetadata server with vector embeddings configured.",
+      "parameters": {
+        "description": "Use 'query' for natural language descriptions of what you're looking for. Optionally filter by entity type, service, or tags.",
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural language query describing what you're looking for. Semantic search finds conceptually similar results, so phrasing matters more than exact keywords. Examples: 'customer purchase history', 'tables tracking revenue metrics', 'pipeline processing user events'."
+          },
+          "filters": {
+            "type": "object",
+            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entity_type' (e.g., ['table', 'dashboard']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'tags' (e.g., ['PII.Sensitive']). Example: {\"entity_type\": [\"table\"], \"service\": [\"BigQuery\"]}.",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "size": {
+            "type": "integer",
+            "description": "Number of parent entities to return. Default is 10, maximum is 50.",
+            "default": 10
+          },
+          "k": {
+            "type": "integer",
+            "description": "Number of nearest neighbors to consider internally (KNN parameter). Higher values may improve result quality at the cost of latency. Default is 1000.",
+            "default": 1000
+          },
+          "threshold": {
+            "type": "number",
+            "description": "Minimum similarity score threshold (0.0 to 1.0). Results below this score are excluded. Default is 0.0 (no filtering). Use higher values like 0.5 or 0.7 to get only highly relevant results.",
+            "default": 0.0
+          }
+        },
+        "required": ["query"],
+        "examples": [
+          {
+            "description": "Find tables related to customer purchases",
+            "query": "customer purchase history"
+          },
+          {
+            "description": "Find dashboards about revenue in BigQuery",
+            "query": "revenue metrics dashboard",
+            "filters": {"entity_type": ["dashboard"], "service": ["BigQuery"]}
+          },
+          {
+            "description": "High-confidence search for PII data",
+            "query": "personal identifiable information",
+            "threshold": 0.5
+          },
+          {
+            "description": "Find pipeline assets processing user events",
+            "query": "user event processing pipeline",
+            "filters": {"entity_type": ["pipeline"]}
+          }
+        ]
+      }
+    },
+    {
       "name": "get_entity_details",
       "description": "Get detailed information about a specific entity. Response is optimized for LLM context by excluding verbose metadata fields.",
       "parameters": {
