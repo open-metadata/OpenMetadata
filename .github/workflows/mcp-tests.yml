@@ -119,6 +119,7 @@ jobs:
       - name: Run MCP Tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_HOST: unix:///var/run/docker.sock
         run: mvn test -pl :openmetadata-mcp
 
       - name: Clean Up
