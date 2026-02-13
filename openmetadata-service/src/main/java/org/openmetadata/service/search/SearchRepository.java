@@ -306,8 +306,13 @@ public class SearchRepository {
   }
 
   public void updateIndexes() {
-    for (IndexMapping indexMapping : entityIndexMap.values()) {
-      updateIndex(indexMapping);
+    boolean isOpenSearch = getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH;
+    for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
+      if (VectorIndexService.VECTOR_INDEX_KEY.equals(entry.getKey()) && !isOpenSearch) {
+        LOG.info("Skipping vector search index update - only supported with OpenSearch");
+        continue;
+      }
+      updateIndex(entry.getValue());
     }
   }
 
