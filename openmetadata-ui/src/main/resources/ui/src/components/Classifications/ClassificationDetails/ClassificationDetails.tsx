@@ -32,7 +32,6 @@ import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
-import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
@@ -68,7 +67,6 @@ import { GenericProvider } from '../../Customization/GenericProvider/GenericProv
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
 
@@ -415,12 +413,6 @@ const ClassificationDetails = forwardRef(
                 isDisabled={isClassificationDisabled}
                 name={name ?? currentClassification.name}
                 serviceName="classification"
-                suffix={
-                  <LearningIcon
-                    className="m-t-xss"
-                    pageId={LEARNING_PAGE_IDS.CLASSIFICATION}
-                  />
-                }
               />
             </Col>
 

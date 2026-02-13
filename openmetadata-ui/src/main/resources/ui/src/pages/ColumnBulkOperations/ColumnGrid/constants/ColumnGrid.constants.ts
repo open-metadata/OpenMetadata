@@ -21,6 +21,23 @@ export const COLUMN_GLOSSARY_FIELD = 'columnGlossaryTerms';
 
 export const RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS = 1000;
 
+export const MAX_REFETCH_CHAIN_PAGES = 25;
+export const SCROLL_TO_ROW_MAX_RETRIES = 3;
+export const SCROLL_TO_ROW_RETRY_DELAY_MS = 50;
+
+export const DEFAULT_VISIBLE_FILTER_KEYS = [
+  EntityFields.SERVICE,
+  EntityFields.ENTITY_TYPE,
+  'metadataStatus',
+];
+
+export const ADDITIONAL_FILTER_KEYS = [
+  EntityFields.SERVICE_TYPE,
+  EntityFields.DOMAINS,
+  COLUMN_TAG_FIELD,
+  COLUMN_GLOSSARY_FIELD,
+];
+
 export const COLUMN_GRID_FILTERS: ExploreQuickFilterField[] = [
   {
     label: i18n.t('label.service'),
@@ -67,14 +84,28 @@ export const COLUMN_GRID_FILTERS: ExploreQuickFilterField[] = [
     hideCounts: true,
     hideSearchBar: true,
     key: 'metadataStatus',
+    dropdownClassName: 'column-bulk-operations-metadata-dropdown',
     options: [
-      { key: 'HAS_DESCRIPTION', label: i18n.t('message.has-description') },
       {
-        key: 'MISSING_DESCRIPTION',
-        label: i18n.t('message.missing-description'),
+        key: 'MISSING',
+        label: i18n.t('label.missing'),
+        description: i18n.t('message.metadata-status-missing-description'),
       },
-      { key: 'HAS_TAGS', label: i18n.t('message.has-tags') },
-      { key: 'HAS_GLOSSARY', label: i18n.t('message.has-glossary') },
+      {
+        key: 'INCOMPLETE',
+        label: i18n.t('label.incomplete'),
+        description: i18n.t('message.metadata-status-incomplete-description'),
+      },
+      {
+        key: 'INCONSISTENT',
+        label: i18n.t('label.inconsistent'),
+        description: i18n.t('message.metadata-status-inconsistent-description'),
+      },
+      {
+        key: 'COMPLETE',
+        label: i18n.t('label.complete'),
+        description: i18n.t('message.metadata-status-complete-description'),
+      },
     ],
   },
 ];

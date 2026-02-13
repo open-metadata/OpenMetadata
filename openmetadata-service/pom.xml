@@ -62,7 +62,7 @@
       <dependency>
         <groupId>software.amazon.awssdk</groupId>
         <artifactId>bom</artifactId>
-        <version>2.22.12</version>
+        <version>2.25.70</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -529,6 +529,30 @@
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>s3</artifactId>
+    </dependency>
+
+    <!-- Dependencies for vector embedding (Bedrock) -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>bedrockruntime</artifactId>
+      <version>${bedrock.runtime.version}</version>
+    </dependency>
+
+    <!-- Dependencies for vector embedding (DJL) -->
+    <dependency>
+      <groupId>ai.djl</groupId>
+      <artifactId>api</artifactId>
+      <version>0.34.0</version>
+    </dependency>
+    <dependency>
+      <groupId>ai.djl.pytorch</groupId>
+      <artifactId>pytorch-engine</artifactId>
+      <version>0.34.0</version>
+    </dependency>
+    <dependency>
+      <groupId>ai.djl.huggingface</groupId>
+      <artifactId>tokenizers</artifactId>
+      <version>0.34.0</version>
     </dependency>
 
     <!--test dependencies-->
@@ -1006,6 +1030,11 @@
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>regions</artifactId>
     </dependency>
+    <!-- AWS CRT HTTP Client for AwsSdk2Transport with OpenSearch IAM auth -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>aws-crt-client</artifactId>
+    </dependency>
     <dependency>
       <groupId>jakarta.ws.rs</groupId>
       <artifactId>jakarta.ws.rs-api</artifactId>
@@ -1181,8 +1210,8 @@
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
                   <jdbcContainerImage>postgres:15</jdbcContainerImage>
-                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
-                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:3.4.0</openSearchContainerClassName>
                   <runESTestCases>false</runESTestCases>
                   <api.version>1.44</api.version>
                 </systemPropertyVariables>
@@ -1222,8 +1251,8 @@
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
                   <jdbcContainerImage>mysql:8.3.0</jdbcContainerImage>
-                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
-                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:3.4.0</openSearchContainerClassName>
                   <runESTestCases>false</runESTestCases>
                   <api.version>1.44</api.version>
                 </systemPropertyVariables>
@@ -1269,8 +1298,8 @@
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
                   <jdbcContainerImage>postgres:15</jdbcContainerImage>
-                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
-                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:3.4.0</openSearchContainerClassName>
                   <redisContainerClassName>org.testcontainers.containers.GenericContainer</redisContainerClassName>
                   <redisContainerImage>redis:7-alpine</redisContainerImage>
                   <runESTestCases>false</runESTestCases>
@@ -1312,8 +1341,8 @@
                           <systemPropertyVariables>
                               <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
                               <jdbcContainerImage>postgres:15</jdbcContainerImage>
-                              <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
-                              <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                              <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</elasticSearchContainerClassName>
+                              <openSearchContainerClassName>opensearchproject/opensearch:3.4.0</openSearchContainerClassName>
                               <runESTestCases>false</runESTestCases>
                               <enableRdf>true</enableRdf>
                               <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
@@ -1361,8 +1390,8 @@
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
                   <jdbcContainerImage>mysql:8</jdbcContainerImage>
-                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
-                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:3.4.0</openSearchContainerClassName>
                   <redisContainerClassName>org.testcontainers.containers.GenericContainer</redisContainerClassName>
                   <redisContainerImage>redis:7-alpine</redisContainerImage>
                   <runESTestCases>false</runESTestCases>

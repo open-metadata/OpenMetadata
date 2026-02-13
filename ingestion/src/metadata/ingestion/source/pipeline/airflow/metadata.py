@@ -22,7 +22,7 @@ from airflow.models.dag import DagModel
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.serialization.serialized_objects import SerializedDAG
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import and_, func, inspect, join
+from sqlalchemy import and_, column, func, inspect, join
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -218,25 +218,22 @@ class AirflowSource(PipelineServiceSource):
         Return the DagRuns of given dag
         """
         try:
-            # In Airflow 3.x, execution_date was renamed to logical_date
-            # We check the database schema to verify which column to use
-            execution_date_column = (
-                DagRun.logical_date
-                if self.execution_date_column == "logical_date"
-                else DagRun.execution_date
-            )
+            # The Airflow SDK is always v3.x (which has logical_date on the ORM model),
+            # but we may connect to Airflow 2.x databases (which have execution_date column).
+            # Use column() to reference the actual database column name regardless of ORM.
+            db_date_column = column(self.execution_date_column)
 
             dag_run_list = (
                 self.session.query(
                     DagRun.dag_id,
                     DagRun.run_id,
                     DagRun.queued_at,
-                    execution_date_column,
+                    db_date_column.label("date_value"),
                     DagRun.start_date,
                     DagRun.state,
                 )
                 .filter(DagRun.dag_id == dag_id)
-                .order_by(execution_date_column.desc())
+                .order_by(db_date_column.desc())
                 .limit(self.config.serviceConnection.root.config.numberOfStatus)
                 .all()
             )
@@ -247,27 +244,17 @@ class AirflowSource(PipelineServiceSource):
             # different Airflow versions
             dag_runs = []
             for elem in dag_run_dict:
-                # Get the execution/logical date value
-                date_value = (
-                    elem.get("logical_date")
-                    if "logical_date" in elem
-                    else elem.get("execution_date")
-                )
+                date_value = elem.get("date_value")
 
-                # Build kwargs based on Airflow version
+                # Build kwargs - always use logical_date since SDK is Airflow 3.x
                 kwargs = {
                     "dag_id": elem.get("dag_id"),
                     "run_id": elem.get("run_id"),
                     "queued_at": elem.get("queued_at"),
                     "start_date": elem.get("start_date"),
                     "state": elem.get("state"),
+                    "logical_date": date_value,
                 }
-
-                # Use logical_date for Airflow 3.x, execution_date for Airflow 2.x
-                if self.execution_date_column == "logical_date":
-                    kwargs["logical_date"] = date_value
-                else:
-                    kwargs["execution_date"] = date_value
 
                 dag_runs.append(DagRun(**kwargs))
 
@@ -363,13 +350,8 @@ class AirflowSource(PipelineServiceSource):
                         if task.task_id in self.context.get().task_names
                     ]
 
-                    # In Airflow 3.x, execution_date was renamed to logical_date
-                    execution_date = (
-                        dag_run.logical_date
-                        if self.execution_date_column == "logical_date"
-                        and dag_run.logical_date is not None
-                        else dag_run.execution_date
-                    )
+                    # DagRun objects are built with logical_date (SDK is Airflow 3.x)
+                    execution_date = dag_run.logical_date
                     timestamp = datetime_to_ts(execution_date)
                     pipeline_status = PipelineStatus(
                         executionId=dag_run.run_id,
@@ -814,13 +796,19 @@ class AirflowSource(PipelineServiceSource):
                             yield Either(right=lineage)
                         else:
                             logger.warning(
-                                f"Could not find [{to_xlet.entity.__name__}] [{to_xlet.fqn}] from "
-                                f"[{pipeline_entity.fullyQualifiedName.root}] outlets"
+                                f"Lineage skipped: Outlet entity not found in OpenMetadata. "
+                                f"Entity type: [{to_xlet.entity.__name__}], "
+                                f"FQN: [{to_xlet.fqn}], "
+                                f"Pipeline: [{pipeline_entity.fullyQualifiedName.root}]. "
+                                f"Ensure the entity exists in OpenMetadata before running lineage ingestion."
                             )
                 else:
                     logger.warning(
-                        f"Could not find [{from_xlet.entity.__name__}] [{from_xlet.fqn}] from "
-                        f"[{pipeline_entity.fullyQualifiedName.root}] inlets"
+                        f"Lineage skipped: Inlet entity not found in OpenMetadata. "
+                        f"Entity type: [{from_xlet.entity.__name__}], "
+                        f"FQN: [{from_xlet.fqn}], "
+                        f"Pipeline: [{pipeline_entity.fullyQualifiedName.root}]. "
+                        f"Ensure the entity exists in OpenMetadata before running lineage ingestion."
                     )
 
         # Cache observability data for later use
@@ -844,12 +832,8 @@ class AirflowSource(PipelineServiceSource):
         schedule_interval: Optional[str] = None,
     ) -> PipelineObservability:
         """Build PipelineObservability object from DagRun data."""
-        # In Airflow 3.x, execution_date was renamed to logical_date
-        execution_date = (
-            dag_run.logical_date
-            if hasattr(dag_run, "logical_date") and dag_run.logical_date is not None
-            else dag_run.execution_date
-        )
+        # DagRun objects are built with logical_date (SDK is Airflow 3.x)
+        execution_date = dag_run.logical_date
 
         return PipelineObservability(
             pipeline=EntityReference(

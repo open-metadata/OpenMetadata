@@ -52,7 +52,7 @@ public class OpenSearchPageViewsByEntitiesAggregator
   @Override
   protected long getKeyAsEpochTimestamp(Object bucket) {
     if (bucket instanceof DateHistogramBucket) {
-      return Long.parseLong(((DateHistogramBucket) bucket).key());
+      return ((DateHistogramBucket) bucket).key();
     }
     return 0;
   }

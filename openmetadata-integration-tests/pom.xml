@@ -147,73 +147,14 @@
       <version>5.0.0</version>
       <scope>test</scope>
     </dependency>
+    <!-- Source: https://mvnrepository.com/artifact/org.junit-pioneer/junit-pioneer -->
+    <dependency>
+      <groupId>org.junit-pioneer</groupId>
+      <artifactId>junit-pioneer</artifactId>
+      <version>2.3.0</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-failsafe-plugin</artifactId>
-        <version>${maven.failsafe.version}</version>
-        <executions>
-          <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially in integration-test phase -->
-          <execution>
-            <id>sequential-test</id>
-            <goals>
-              <goal>integration-test</goal>
-            </goals>
-            <configuration>
-              <forkCount>1</forkCount>
-              <reuseForks>true</reuseForks>
-              <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
-              <includes>
-                <include>**/TagRecognizerFeedbackIT.java</include>
-              </includes>
-              <systemPropertyVariables>
-                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
-                <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
-              </systemPropertyVariables>
-              <trimStackTrace>false</trimStackTrace>
-              <reportFormat>plain</reportFormat>
-              <useFile>true</useFile>
-            </configuration>
-          </execution>
-          <!-- Phase 2: Run all other tests in parallel in integration-test phase -->
-          <execution>
-            <id>parallel-tests</id>
-            <goals>
-              <goal>integration-test</goal>
-            </goals>
-            <configuration>
-              <forkCount>1</forkCount>
-              <reuseForks>true</reuseForks>
-              <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
-              <includes>
-                <include>**/*IT.java</include>
-                <include>**/*Test.java</include>
-              </includes>
-              <excludes>
-                <exclude>**/TagRecognizerFeedbackIT.java</exclude>
-              </excludes>
-              <systemPropertyVariables>
-                <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
-                <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
-              </systemPropertyVariables>
-              <trimStackTrace>false</trimStackTrace>
-              <reportFormat>plain</reportFormat>
-              <useFile>true</useFile>
-            </configuration>
-          </execution>
-          <!-- Verify phase: Fails the build if any tests failed -->
-          <execution>
-            <id>verify</id>
-            <goals>
-              <goal>verify</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
   <profiles>
     <!-- MySQL + Elasticsearch (default) -->
     <profile>
@@ -228,9 +169,9 @@
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially in integration-test phase -->
+              <!-- Run sequential tests -->
               <execution>
-                <id>sequential-test</id>
+                <id>sequential-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                 </goals>
@@ -242,6 +183,11 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                   </includes>
                   <systemPropertyVariables>
+                    <databaseType>mysql</databaseType>
+                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
                   </systemPropertyVariables>
@@ -250,7 +196,7 @@
                   <useFile>true</useFile>
                 </configuration>
               </execution>
-              <!-- Phase 2: Run all other tests in parallel in integration-test phase -->
+              <!-- Run parallel tests -->
               <execution>
                 <id>parallel-tests</id>
                 <goals>
@@ -268,6 +214,11 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
+                    <databaseType>mysql</databaseType>
+                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
                   </systemPropertyVariables>
@@ -298,9 +249,9 @@
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially in integration-test phase -->
+              <!-- Run sequential tests -->
               <execution>
-                <id>sequential-test</id>
+                <id>sequential-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                 </goals>
@@ -312,6 +263,11 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                   </includes>
                   <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>opensearch</searchType>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
+
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
                   </systemPropertyVariables>
@@ -320,7 +276,7 @@
                   <useFile>true</useFile>
                 </configuration>
               </execution>
-              <!-- Phase 2: Run all other tests in parallel in integration-test phase -->
+              <!-- Run parallel tests -->
               <execution>
                 <id>parallel-tests</id>
                 <goals>
@@ -338,6 +294,11 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>opensearch</searchType>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
+                    
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
                   </systemPropertyVariables>
@@ -368,9 +329,9 @@
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially in integration-test phase -->
+              <!-- Run sequential tests -->
               <execution>
-                <id>sequential-test</id>
+                <id>sequential-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                 </goals>
@@ -382,6 +343,11 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                   </includes>
                   <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
                   </systemPropertyVariables>
@@ -390,7 +356,7 @@
                   <useFile>true</useFile>
                 </configuration>
               </execution>
-              <!-- Phase 2: Run all other tests in parallel in integration-test phase -->
+              <!-- Run parallel tests -->
               <execution>
                 <id>parallel-tests</id>
                 <goals>
@@ -408,6 +374,11 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
                   </systemPropertyVariables>
@@ -438,9 +409,9 @@
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially in integration-test phase -->
+              <!-- Run sequential tests -->
               <execution>
-                <id>sequential-test</id>
+                <id>sequential-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                 </goals>
@@ -452,6 +423,11 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                   </includes>
                   <systemPropertyVariables>
+                    <databaseType>mysql</databaseType>
+                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <searchType>opensearch</searchType>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
+                    
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
                   </systemPropertyVariables>
@@ -460,7 +436,7 @@
                   <useFile>true</useFile>
                 </configuration>
               </execution>
-              <!-- Phase 2: Run all other tests in parallel in integration-test phase -->
+              <!-- Run parallel tests -->
               <execution>
                 <id>parallel-tests</id>
                 <goals>
@@ -478,6 +454,11 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
+                    <databaseType>mysql</databaseType>
+                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <searchType>opensearch</searchType>
+                    <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
+                    
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
                   </systemPropertyVariables>
@@ -508,9 +489,9 @@
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>${maven.failsafe.version}</version>
             <executions>
-              <!-- Phase 1: Run TagRecognizerFeedbackIT sequentially in integration-test phase -->
+              <!-- Run sequential tests -->
               <execution>
-                <id>sequential-test</id>
+                <id>sequential-tests</id>
                 <goals>
                   <goal>integration-test</goal>
                 </goals>
@@ -522,6 +503,13 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                   </includes>
                   <systemPropertyVariables>
+                    <enableRdf>true</enableRdf>
+                    <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
                   </systemPropertyVariables>
@@ -530,7 +518,7 @@
                   <useFile>true</useFile>
                 </configuration>
               </execution>
-              <!-- Phase 2: Run all other tests in parallel in integration-test phase -->
+              <!-- Run parallel tests -->
               <execution>
                 <id>parallel-tests</id>
                 <goals>
@@ -548,6 +536,13 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                   </excludes>
                   <systemPropertyVariables>
+                    <enableRdf>true</enableRdf>
+                    <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
+                    <databaseType>postgres</databaseType>
+                    <databaseImage>postgres:15</databaseImage>
+                    <searchType>elasticsearch</searchType>
+                    <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
+                    
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
                   </systemPropertyVariables>

@@ -14,6 +14,7 @@ public class Workflow {
   public static final String ENTITY_LIST_VARIABLE = "entityList";
   public static final String BATCH_SINK_PROCESSED_VARIABLE = "batchSinkProcessed";
   public static final String TRIGGERING_OBJECT_ID_VARIABLE = "triggeringObjectId";
+  public static final String RECOGNIZER_FEEDBACK = "recognizerFeedback";
   public static final String RESULT_VARIABLE = "result";
   public static final String UPDATED_BY_VARIABLE = "updatedBy";
   public static final String STAGE_INSTANCE_STATE_ID_VARIABLE = "stageInstanceStateId";

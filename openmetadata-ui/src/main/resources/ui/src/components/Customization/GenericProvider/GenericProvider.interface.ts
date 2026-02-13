@@ -55,4 +55,5 @@ export interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   isColumnDetailOpen: boolean;
   openColumnDetailPanel: (column: ColumnOrTask) => void;
   closeColumnDetailPanel: () => void;
+  setDisplayedColumns: (columns: ColumnOrTask[]) => void;
 }

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import os.org.opensearch.client.opensearch._types.FieldSort;
+import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.NestedSortValue;
 import os.org.opensearch.client.opensearch._types.SearchType;
 import os.org.opensearch.client.opensearch._types.SortMode;
@@ -30,7 +31,7 @@ public class OpenSearchRequestBuilder {
   private Integer trackTotalHitsUpTo;
   private String timeout;
   private Boolean explain;
-  private List<String> searchAfter;
+  private List<FieldValue> searchAfter;
   private SearchType searchType;
 
   public OpenSearchRequestBuilder() {}
@@ -199,12 +200,12 @@ public class OpenSearchRequestBuilder {
     return this.explain;
   }
 
-  public OpenSearchRequestBuilder searchAfter(List<String> searchAfter) {
+  public OpenSearchRequestBuilder searchAfter(List<FieldValue> searchAfter) {
     this.searchAfter = searchAfter;
     return this;
   }
 
-  public List<String> searchAfter() {
+  public List<FieldValue> searchAfter() {
     return this.searchAfter;
   }
 

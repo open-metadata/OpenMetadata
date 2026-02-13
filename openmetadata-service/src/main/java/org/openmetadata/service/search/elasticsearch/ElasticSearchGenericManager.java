@@ -161,12 +161,12 @@ public class ElasticSearchGenericManager implements GenericClient {
     try {
       var getIndexResponse = client.indices().get(g -> g.index(indexPattern));
 
-      if (getIndexResponse.result().isEmpty()) {
+      if (getIndexResponse.indices().isEmpty()) {
         LOG.warn("No indices found matching pattern: {}", indexPattern);
         return;
       }
 
-      for (String indexName : getIndexResponse.result().keySet()) {
+      for (String indexName : getIndexResponse.indices().keySet()) {
         try {
           client
               .indices()

@@ -50,6 +50,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.DataProductPortsView;
 import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -97,6 +98,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
 
   private static final java.util.Set<String> ALLOWED_PORT_FIELDS =
       java.util.Set.of(PORT_FIELDS.split(","));
+
+  private Response buildBulkOperationResponse(BulkOperationResult result) {
+    if (result.getStatus() == ApiStatus.FAILURE) {
+      return Response.status(Response.Status.BAD_REQUEST).entity(result).build();
+    }
+    return Response.ok().entity(result).build();
+  }
 
   private void validatePortFields(String fieldsParam) {
     if (nullOrEmpty(fieldsParam)) {
@@ -366,6 +374,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
                 @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "All operations failed",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response bulkAddAssets(
@@ -378,7 +393,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
+    return buildBulkOperationResponse(repository.bulkAddAssets(name, request));
   }
 
   @PUT
@@ -394,7 +409,14 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = ChangeEvent.class))),
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "All operations failed",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response bulkRemoveAssets(
@@ -407,7 +429,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
+    return buildBulkOperationResponse(repository.bulkRemoveAssets(name, request));
   }
 
   @PUT
@@ -420,6 +442,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         @ApiResponse(
             responseCode = "200",
             description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "All operations failed",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -438,7 +467,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkAddInputPorts(name, request)).build();
+    return buildBulkOperationResponse(repository.bulkAddInputPorts(name, request));
   }
 
   @PUT
@@ -451,6 +480,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         @ApiResponse(
             responseCode = "200",
             description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "All operations failed",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -469,7 +505,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkRemoveInputPorts(name, request)).build();
+    return buildBulkOperationResponse(repository.bulkRemoveInputPorts(name, request));
   }
 
   @PUT
@@ -482,6 +518,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         @ApiResponse(
             responseCode = "200",
             description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "All operations failed",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -500,7 +543,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkAddOutputPorts(name, request)).build();
+    return buildBulkOperationResponse(repository.bulkAddOutputPorts(name, request));
   }
 
   @PUT
@@ -513,6 +556,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         @ApiResponse(
             responseCode = "200",
             description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "All operations failed",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -531,7 +581,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return Response.ok().entity(repository.bulkRemoveOutputPorts(name, request)).build();
+    return buildBulkOperationResponse(repository.bulkRemoveOutputPorts(name, request));
   }
 
   @PUT
@@ -544,6 +594,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         @ApiResponse(
             responseCode = "200",
             description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "All operations failed",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -564,7 +621,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return Response.ok().entity(repository.bulkAddInputPorts(fqn, request)).build();
+    return buildBulkOperationResponse(repository.bulkAddInputPorts(fqn, request));
   }
 
   @PUT
@@ -577,6 +634,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         @ApiResponse(
             responseCode = "200",
             description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "All operations failed",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -597,7 +661,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return Response.ok().entity(repository.bulkRemoveInputPorts(fqn, request)).build();
+    return buildBulkOperationResponse(repository.bulkRemoveInputPorts(fqn, request));
   }
 
   @PUT
@@ -610,6 +674,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         @ApiResponse(
             responseCode = "200",
             description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "All operations failed",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -630,7 +701,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return Response.ok().entity(repository.bulkAddOutputPorts(fqn, request)).build();
+    return buildBulkOperationResponse(repository.bulkAddOutputPorts(fqn, request));
   }
 
   @PUT
@@ -643,6 +714,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         @ApiResponse(
             responseCode = "200",
             description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "All operations failed",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -663,7 +741,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return Response.ok().entity(repository.bulkRemoveOutputPorts(fqn, request)).build();
+    return buildBulkOperationResponse(repository.bulkRemoveOutputPorts(fqn, request));
   }
 
   @PATCH

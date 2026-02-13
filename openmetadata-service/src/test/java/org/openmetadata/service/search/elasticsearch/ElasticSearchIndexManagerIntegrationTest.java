@@ -10,8 +10,8 @@ import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasRequest;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasResponse;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
-import es.co.elastic.clients.transport.rest_client.RestClientTransport;
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -101,9 +101,8 @@ class ElasticSearchIndexManagerIntegrationTest extends OpenMetadataApplicationTe
         "test_idx_"
             + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS"));
 
-    // Create ES client from the test container
-    RestClient restClient = getSearchClient();
-    RestClientTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
+    Rest5Client restClient = getSearchClient();
+    Rest5ClientTransport transport = new Rest5ClientTransport(restClient, new JacksonJsonpMapper());
     client = new ElasticsearchClient(transport);
 
     // Create IndexManager instance
@@ -252,10 +251,10 @@ class ElasticSearchIndexManagerIntegrationTest extends OpenMetadataApplicationTe
     GetAliasRequest getAliasRequest = GetAliasRequest.of(b -> b.index(indexName));
     GetAliasResponse aliasResponse = client.indices().getAlias(getAliasRequest);
 
-    assertNotNull(aliasResponse.result(), "Alias response should not be null");
-    assertTrue(aliasResponse.result().containsKey(indexName), "Index should have aliases");
+    assertNotNull(aliasResponse, "Alias response should not be null");
+    assertTrue(aliasResponse.aliases().containsKey(indexName), "Index should have aliases");
 
-    Set<String> aliases = aliasResponse.result().get(indexName).aliases().keySet();
+    Set<String> aliases = aliasResponse.aliases().get(indexName).aliases().keySet();
     assertTrue(aliases.contains(mainAlias), "Main alias should exist");
 
     for (String parentAlias : parentAliases) {
@@ -283,7 +282,7 @@ class ElasticSearchIndexManagerIntegrationTest extends OpenMetadataApplicationTe
     GetAliasRequest getAliasRequest = GetAliasRequest.of(b -> b.index(indexName));
     GetAliasResponse aliasResponse = client.indices().getAlias(getAliasRequest);
 
-    Set<String> aliases = aliasResponse.result().get(indexName).aliases().keySet();
+    Set<String> aliases = aliasResponse.aliases().get(indexName).aliases().keySet();
     assertTrue(aliases.contains(additionalAlias), "Additional alias should exist");
   }
 
@@ -309,7 +308,7 @@ class ElasticSearchIndexManagerIntegrationTest extends OpenMetadataApplicationTe
     GetAliasRequest getAliasRequest = GetAliasRequest.of(b -> b.index(indexName));
     GetAliasResponse aliasResponse = client.indices().getAlias(getAliasRequest);
 
-    Set<String> aliases = aliasResponse.result().get(indexName).aliases().keySet();
+    Set<String> aliases = aliasResponse.aliases().get(indexName).aliases().keySet();
     assertTrue(aliases.contains(alias1), "Alias1 should exist");
     assertTrue(aliases.contains(alias2), "Alias2 should exist");
     assertTrue(aliases.contains(alias3), "Alias3 should exist");

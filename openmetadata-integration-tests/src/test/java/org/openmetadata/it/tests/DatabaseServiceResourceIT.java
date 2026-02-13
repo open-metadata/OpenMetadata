@@ -7,15 +7,28 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
@@ -26,7 +39,12 @@ import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 
@@ -441,5 +459,239 @@ public class DatabaseServiceResourceIT
         storedService.getTestConnectionResult(), "Test connection result should be persisted");
     assertEquals(
         TestConnectionResultStatus.SUCCESSFUL, storedService.getTestConnectionResult().getStatus());
+  }
+
+  @Test
+  void test_importExportRecursive_withColumnTagsAndGlossaryTerms(TestNamespace ns)
+      throws IOException, InterruptedException {
+    String serviceName = ns.prefix("import_export_recursive_tags_service");
+
+    DatabaseService service = createEntity(createMinimalRequest(ns).withName(serviceName));
+
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db1"))
+                    .withService(service.getFullyQualifiedName()));
+
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema1"))
+                    .withDatabase(database.getFullyQualifiedName())
+                    .withDescription("Test schema for column tags"));
+
+    Column column1 =
+        new Column()
+            .withName("sensitive_column")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(255)
+            .withDescription("Column with PII tag");
+
+    Column column2 =
+        new Column()
+            .withName("business_column")
+            .withDataType(ColumnDataType.INT)
+            .withDescription("Column with glossary term");
+
+    Column nestedColumn =
+        new Column()
+            .withName("address")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(
+                List.of(
+                    new Column()
+                        .withName("street")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)
+                        .withDescription("Street address - should get tags")));
+
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("test_table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(column1, column2, nestedColumn))
+                    .withDescription("Test table for column tags and glossary terms"));
+
+    SharedEntities shared = SharedEntities.get();
+
+    String exportedCsv = exportCsvRecursive(service.getFullyQualifiedName());
+    assertNotNull(exportedCsv);
+    assertTrue(
+        exportedCsv.contains("sensitive_column"), "Exported CSV should contain column names");
+    assertTrue(exportedCsv.contains("business_column"), "Exported CSV should contain column names");
+    assertTrue(
+        exportedCsv.contains("address.street"), "Exported CSV should contain nested column names");
+
+    String[] lines = exportedCsv.split("\n");
+    String header = lines[0];
+    StringBuilder modifiedCsv = new StringBuilder();
+    modifiedCsv.append(header).append("\n");
+
+    for (int i = 1; i < lines.length; i++) {
+      String line = lines[i];
+      if (line.contains("sensitive_column") && line.contains("column")) {
+        line = addColumnTags(line, shared.PERSONAL_DATA_TAG_LABEL.getTagFQN());
+      } else if (line.contains("business_column") && line.contains("column")) {
+        line = addColumnGlossaryTerms(line, shared.GLOSSARY1_TERM1_LABEL.getTagFQN());
+      } else if (line.contains("address.street") && line.contains("column")) {
+        line = addColumnTags(line, shared.PERSONAL_DATA_TAG_LABEL.getTagFQN());
+        line = addColumnGlossaryTerms(line, shared.GLOSSARY1_TERM1_LABEL.getTagFQN());
+      }
+      modifiedCsv.append(line).append("\n");
+    }
+
+    CsvImportResult result =
+        importCsvRecursive(service.getFullyQualifiedName(), modifiedCsv.toString(), false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    Table updatedTable =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
+    assertNotNull(updatedTable);
+    assertNotNull(updatedTable.getColumns());
+
+    Column sensitiveColumn =
+        updatedTable.getColumns().stream()
+            .filter(c -> "sensitive_column".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(sensitiveColumn, "Sensitive column should exist");
+    assertNotNull(sensitiveColumn.getTags(), "Sensitive column should have tags");
+    assertTrue(
+        sensitiveColumn.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().contains("PersonalData")),
+        "Sensitive column should have PersonalData tag");
+
+    Column businessColumn =
+        updatedTable.getColumns().stream()
+            .filter(c -> "business_column".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(businessColumn, "Business column should exist");
+    assertNotNull(businessColumn.getTags(), "Business column should have tags");
+    assertTrue(
+        businessColumn.getTags().stream()
+            .anyMatch(tag -> tag.getSource() == TagLabel.TagSource.GLOSSARY),
+        "Business column should have glossary term");
+
+    Column addressColumn =
+        updatedTable.getColumns().stream()
+            .filter(c -> "address".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(addressColumn, "Address column should exist");
+    assertNotNull(addressColumn.getChildren(), "Address column should have children");
+
+    Column streetColumn =
+        addressColumn.getChildren().stream()
+            .filter(c -> "street".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(streetColumn, "Street nested column should exist");
+    assertNotNull(streetColumn.getTags(), "Street nested column should have tags");
+    assertTrue(
+        streetColumn.getTags().stream().anyMatch(tag -> tag.getTagFQN().contains("PersonalData")),
+        "Street nested column should have PersonalData tag");
+    assertTrue(
+        streetColumn.getTags().stream()
+            .anyMatch(tag -> tag.getSource() == TagLabel.TagSource.GLOSSARY),
+        "Street nested column should have glossary term");
+  }
+
+  private String addColumnTags(String csvLine, String tagFQN) {
+    String[] parts = csvLine.split(",");
+    if (parts.length >= 5) {
+      if (parts[4] == null || parts[4].trim().isEmpty() || parts[4].equals("\"\"")) {
+        parts[4] = "\"" + tagFQN + "\"";
+      } else {
+        String existingTags = parts[4].replaceAll("\"", "");
+        parts[4] = "\"" + existingTags + ";" + tagFQN + "\"";
+      }
+    }
+    return String.join(",", parts);
+  }
+
+  private String addColumnGlossaryTerms(String csvLine, String glossaryTermFQN) {
+    String[] parts = csvLine.split(",");
+    if (parts.length >= 6) {
+      if (parts[5] == null || parts[5].trim().isEmpty() || parts[5].equals("\"\"")) {
+        parts[5] = "\"" + glossaryTermFQN + "\"";
+      } else {
+        String existingTerms = parts[5].replaceAll("\"", "");
+        parts[5] = "\"" + existingTerms + ";" + glossaryTermFQN + "\"";
+      }
+    }
+    return String.join(",", parts);
+  }
+
+  private String exportCsvRecursive(String entityName) throws IOException, InterruptedException {
+    String serverUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+
+    HttpClient client = HttpClient.newHttpClient();
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    serverUrl
+                        + "/v1/services/databaseServices/name/"
+                        + entityName
+                        + "/export?recursive=true"))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .GET()
+            .build();
+
+    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+    if (response.statusCode() != 200) {
+      throw new RuntimeException(
+          "Failed to export CSV. Status: " + response.statusCode() + ", Body: " + response.body());
+    }
+
+    return response.body();
+  }
+
+  private CsvImportResult importCsvRecursive(String entityName, String csvData, boolean dryRun)
+      throws IOException, InterruptedException {
+    String serverUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+
+    HttpClient client = HttpClient.newHttpClient();
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    serverUrl
+                        + "/v1/services/databaseServices/name/"
+                        + entityName
+                        + "/import?recursive=true&dryRun="
+                        + dryRun))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "text/plain")
+            .PUT(HttpRequest.BodyPublishers.ofString(csvData))
+            .build();
+
+    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+    if (response.statusCode() != 200) {
+      throw new RuntimeException(
+          "Failed to import CSV. Status: " + response.statusCode() + ", Body: " + response.body());
+    }
+
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      return mapper.readValue(response.body(), CsvImportResult.class);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to parse import result: " + e.getMessage(), e);
+    }
   }
 }

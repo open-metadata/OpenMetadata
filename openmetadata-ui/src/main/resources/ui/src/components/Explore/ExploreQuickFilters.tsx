@@ -48,6 +48,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   defaultQueryFilter,
   showSelectedCounts = false,
   optionPageSize,
+  additionalActions,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -255,6 +256,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         return (
           <SearchDropdown
             highlight
+            dropdownClassName={field.dropdownClassName}
             fixedOrderOptions={field.key === TIER_FQN_KEY}
             hasNullOption={hasNullOption}
             hideCounts={field.hideCounts ?? false}
@@ -281,6 +283,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           />
         );
       })}
+      {additionalActions}
     </Space>
   );
 };

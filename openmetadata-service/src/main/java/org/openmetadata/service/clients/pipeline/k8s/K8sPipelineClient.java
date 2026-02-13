@@ -34,6 +34,7 @@ import io.kubernetes.client.openapi.models.V1Job;
 import io.kubernetes.client.openapi.models.V1JobList;
 import io.kubernetes.client.openapi.models.V1JobSpec;
 import io.kubernetes.client.openapi.models.V1JobTemplateSpec;
+import io.kubernetes.client.openapi.models.V1ObjectFieldSelector;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
@@ -1362,8 +1363,22 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     envVars.add(
         new V1EnvVar().name(ENV_PIPELINE_TYPE).value(pipeline.getPipelineType().toString()));
-    // Use placeholder that will be replaced by CronOMJobReconciler at runtime with unique UUID
-    envVars.add(new V1EnvVar().name(ENV_PIPELINE_RUN_ID).value(CRONOMJOB_DYNAMIC_RUN_ID));
+
+    // Handle pipelineRunId differently for standard CronJobs vs CronOMJobs
+    if (useOMJobOperator) {
+      // For CronOMJobs: Use placeholder that CronOMJobReconciler will replace at runtime
+      envVars.add(new V1EnvVar().name(ENV_PIPELINE_RUN_ID).value(CRONOMJOB_DYNAMIC_RUN_ID));
+    } else {
+      // For standard K8s CronJobs: Use Downward API to inject pod's UID as runId
+      // Pod UIDs are valid UUIDs and unique per pod execution
+      envVars.add(
+          new V1EnvVar()
+              .name(ENV_PIPELINE_RUN_ID)
+              .valueFrom(
+                  new V1EnvVarSource()
+                      .fieldRef(new V1ObjectFieldSelector().fieldPath("metadata.uid"))));
+    }
+
     envVars.add(
         new V1EnvVar().name(ENV_INGESTION_PIPELINE_FQN).value(pipeline.getFullyQualifiedName()));
     envVars.add(
@@ -1663,6 +1678,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
   }
 
   private V1Job buildAutomationJob(Workflow workflow, String runId, String jobName) {
+    List<V1EnvVar> envVars = new ArrayList<>();
+    envVars.add(new V1EnvVar().name(ENV_CONFIG).value(JsonUtils.pojoToJson(workflow)));
+    addExtraEnvVars(envVars);
+
     return new V1Job()
         .metadata(
             new V1ObjectMeta()
@@ -1696,11 +1715,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                             .image(k8sConfig.getIngestionImage())
                                             .imagePullPolicy(k8sConfig.getImagePullPolicy())
                                             .command(List.of(PYTHON_MAIN_PY, RUN_AUTOMATION_PY))
-                                            .env(
-                                                List.of(
-                                                    new V1EnvVar()
-                                                        .name(ENV_CONFIG)
-                                                        .value(JsonUtils.pojoToJson(workflow))))
+                                            .env(envVars)
                                             .resources(
                                                 new V1ResourceRequirements()
                                                     .requests(k8sConfig.getResourceRequests())
@@ -1709,6 +1724,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   private V1Job buildApplicationJob(App application, String runId, String jobName) {
     Map<String, String> labels = buildApplicationLabels(application, runId);
+    List<V1EnvVar> envVars = new ArrayList<>();
+    envVars.add(new V1EnvVar().name(ENV_CONFIG).value(JsonUtils.pojoToJson(application)));
+    addExtraEnvVars(envVars);
+
     return new V1Job()
         .metadata(
             new V1ObjectMeta().name(jobName).namespace(k8sConfig.getNamespace()).labels(labels))
@@ -1738,11 +1757,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                                     PYTHON_MAIN_PY,
                                                     APPLICATIONS_RUNNER,
                                                     APPLICATIONS_RUNNER_MODULE))
-                                            .env(
-                                                List.of(
-                                                    new V1EnvVar()
-                                                        .name(ENV_CONFIG)
-                                                        .value(JsonUtils.pojoToJson(application))))
+                                            .env(envVars)
                                             .resources(
                                                 new V1ResourceRequirements()
                                                     .requests(k8sConfig.getResourceRequests())
@@ -1752,6 +1767,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
   private OMJob buildApplicationOMJob(App application, String runId, String jobName) {
     Map<String, String> labels = buildApplicationLabels(application, runId);
 
+    List<V1EnvVar> envVars = new ArrayList<>();
+    envVars.add(new V1EnvVar().name(ENV_CONFIG).value(JsonUtils.pojoToJson(application)));
+    addExtraEnvVars(envVars);
+
     OMJob.OMJobPodSpec mainPodSpec =
         OMJob.OMJobPodSpec.builder()
             .image(k8sConfig.getIngestionImage())
@@ -1760,7 +1779,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                 k8sConfig.getImagePullSecrets().isEmpty() ? null : k8sConfig.getImagePullSecrets())
             .serviceAccountName(k8sConfig.getServiceAccountName())
             .command(List.of(PYTHON_MAIN_PY, APPLICATIONS_RUNNER, APPLICATIONS_RUNNER_MODULE))
-            .env(List.of(new V1EnvVar().name(ENV_CONFIG).value(JsonUtils.pojoToJson(application))))
+            .env(envVars)
             .resources(
                 new V1ResourceRequirements()
                     .requests(k8sConfig.getResourceRequests())

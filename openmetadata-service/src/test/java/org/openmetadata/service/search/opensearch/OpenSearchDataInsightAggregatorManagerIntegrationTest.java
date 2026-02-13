@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpHost;
+import org.apache.hc.core5.http.HttpHost;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,7 +34,8 @@ import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch.core.IndexRequest;
 import os.org.opensearch.client.opensearch.indices.CreateIndexRequest;
-import os.org.opensearch.client.transport.rest_client.RestClientTransport;
+import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport;
+import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -88,21 +89,15 @@ class OpenSearchDataInsightAggregatorManagerIntegrationTest extends OpenMetadata
 
   private OpenSearchClient createOpenSearchClient() {
     try {
-      es.org.elasticsearch.client.RestClient esRestClient = getSearchClient();
-      HttpHost[] hosts =
-          esRestClient.getNodes().stream()
-              .map(
-                  node ->
-                      new HttpHost(
-                          node.getHost().getHostName(),
-                          node.getHost().getPort(),
-                          node.getHost().getSchemeName()))
-              .toArray(HttpHost[]::new);
+      org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration
+          searchConfig = getSearchConfig();
+      HttpHost host =
+          new HttpHost(searchConfig.getScheme(), searchConfig.getHost(), searchConfig.getPort());
 
-      os.org.opensearch.client.RestClient osRestClient =
-          os.org.opensearch.client.RestClient.builder(hosts).build();
-      RestClientTransport transport =
-          new RestClientTransport(osRestClient, new JacksonJsonpMapper());
+      ApacheHttpClient5Transport transport =
+          ApacheHttpClient5TransportBuilder.builder(host)
+              .setMapper(new JacksonJsonpMapper())
+              .build();
       return new OpenSearchClient(transport);
     } catch (Exception e) {
       LOG.error("Failed to create OpenSearch client", e);

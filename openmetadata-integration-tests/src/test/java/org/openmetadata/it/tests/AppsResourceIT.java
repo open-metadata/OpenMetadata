@@ -21,8 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -371,29 +373,17 @@ public class AppsResourceIT {
 
     waitForAppJobCompletion(appName);
 
-    // Retry trigger with backoff in case a previous job is still finishing up
-    int maxTriggerRetries = 10;
-    boolean triggered = false;
-    Exception lastException = null;
-
-    for (int i = 0; i < maxTriggerRetries && !triggered; i++) {
-      try {
-        Apps.trigger(appName).run();
-        triggered = true;
-      } catch (Exception e) {
-        lastException = e;
-        if (e.getMessage() != null && e.getMessage().contains("already running")) {
-          // Job is still running from previous test, wait and retry
-          Thread.sleep(2000);
-        } else {
-          throw e; // Re-throw if it's a different error
-        }
-      }
-    }
-
-    if (!triggered && lastException != null) {
-      throw lastException;
-    }
+    // Wait for any in-flight job to finish, then trigger
+    Awaitility.await("Trigger " + appName)
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(3))
+        .ignoreExceptionsMatching(
+            e -> e.getMessage() != null && e.getMessage().contains("already running"))
+        .until(
+            () -> {
+              Apps.trigger(appName).run();
+              return true;
+            });
 
     Thread.sleep(2000);
 

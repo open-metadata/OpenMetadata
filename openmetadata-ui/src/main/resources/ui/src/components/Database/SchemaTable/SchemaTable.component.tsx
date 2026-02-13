@@ -163,6 +163,7 @@ const SchemaTable = () => {
     data: table,
     onThreadLinkSelect,
     openColumnDetailPanel,
+    setDisplayedColumns,
   } = useGenericContext<TableType>();
 
   useFqnDeepLink({
@@ -430,7 +431,7 @@ const SchemaTable = () => {
   const updateColumnDetails = async (
     columnFqn: string,
     column: Partial<Column>,
-    field?: keyof Column
+    field: keyof Column
   ) => {
     const response = await updateTableColumn(columnFqn, column);
     const cleanResponse = isEmpty(response.children)
@@ -438,11 +439,8 @@ const SchemaTable = () => {
       : response;
 
     setTableColumns((prev) =>
-      prev.map((col) =>
-        col.fullyQualifiedName === columnFqn
-          ? // Have to omit the field which is being updated to avoid persisted old value
-            { ...omit(col, field ?? ''), ...cleanResponse }
-          : col
+      pruneEmptyChildren(
+        updateColumnInNestedStructure(prev, columnFqn, cleanResponse, field)
       )
     );
 
@@ -891,6 +889,11 @@ const SchemaTable = () => {
       getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName')
     );
   }, [tableColumns]);
+
+  // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
+  useEffect(() => {
+    setDisplayedColumns(tableColumns);
+  }, [tableColumns, setDisplayedColumns]);
 
   const searchProps = useMemo(
     () => ({
