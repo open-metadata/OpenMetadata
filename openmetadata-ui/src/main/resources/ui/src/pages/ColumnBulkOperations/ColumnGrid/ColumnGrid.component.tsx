@@ -15,6 +15,7 @@ import { RightOutlined } from '@ant-design/icons';
 import {
   Box,
   Button as MUIButton,
+  IconButton,
   Paper,
   Stack,
   Switch,
@@ -23,7 +24,8 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { ArrowRight, Tag01 as TagIcon } from '@untitledui/icons';
+import { defaultColors } from '@openmetadata/ui-core-components';
+import { ArrowRight, Tag01 as TagIcon, XClose } from '@untitledui/icons';
 import { Button, Tag, Typography as AntTypography } from 'antd';
 import { isEmpty, isUndefined, some } from 'lodash';
 import React, {
@@ -1305,7 +1307,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   }, [recentlyUpdatedRowIds, columnGridListing.setExpandedRows]);
 
   // Set up filters
-  const { quickFilters, defaultFilters } = useColumnGridFilters({
+  const { filterSection, defaultFilters } = useColumnGridFilters({
     aggregations: columnGridListing.aggregations || undefined,
     parsedFilters: columnGridListing.parsedFilters,
     onFilterChange: columnGridListing.handleFilterChange,
@@ -1324,6 +1326,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     searchPlaceholder: t('label.search-columns'),
     onSearchChange: columnGridListing.handleSearchChange,
     initialSearchQuery: columnGridListing.urlState.searchQuery,
+    customStyles: { searchBoxWidth: 260 },
   });
 
   // Helper function to compute child row IDs from gridItem data (before expansion)
@@ -1628,7 +1631,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         key={drawerKey}
         sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Typography color="text.secondary" fontSize="14px" fontWeight={500}>
+          <Typography
+            color="text.secondary"
+            fontWeight={theme.typography.subtitle2.fontWeight}
+            variant="body2">
             {t('label.column-name')}
           </Typography>
           <TextField
@@ -1647,7 +1653,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         </Box>
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Typography color="text.secondary" fontSize="14px" fontWeight={500}>
+          <Typography
+            color="text.secondary"
+            fontWeight={theme.typography.subtitle2.fontWeight}
+            variant="body2">
             {t('label.display-name')}
           </Typography>
           <TextField
@@ -1668,7 +1677,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <Box
           data-testid="description-field"
           sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Typography color="text.secondary" fontSize="14px" fontWeight={500}>
+          <Typography
+            color="text.secondary"
+            fontWeight={theme.typography.subtitle2.fontWeight}
+            variant="body2">
             {t('label.description')}
           </Typography>
           <RichTextEditor
@@ -1689,7 +1701,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <Box
           data-testid="tags-field"
           sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Typography color="text.secondary" fontSize="14px" fontWeight={500}>
+          <Typography
+            color="text.secondary"
+            fontWeight={theme.typography.subtitle2.fontWeight}
+            variant="body2">
             {t('label.tag-plural')}
           </Typography>
           <AsyncSelectList
@@ -1742,7 +1757,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <Box
           data-testid="glossary-terms-field"
           sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Typography color="text.secondary" fontSize="14px" fontWeight={500}>
+          <Typography
+            color="text.secondary"
+            fontWeight={theme.typography.subtitle2.fontWeight}
+            variant="body2">
             {t('label.glossary-term-plural')}
           </Typography>
           <TreeAsyncSelectList
@@ -1960,14 +1978,14 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 <Typography
                   color={theme.palette.grey[900]}
                   data-testid="total-unique-columns-value"
-                  fontSize="18px"
-                  fontWeight={600}>
+                  fontWeight={theme.typography.h6.fontWeight}
+                  variant="subtitle1">
                   {columnGridListing.totalUniqueColumns.toLocaleString()}
                 </Typography>
                 <Typography
                   color={theme.palette.grey[700]}
-                  fontSize="14px"
-                  fontWeight={400}>
+                  variant="body2"
+                  whiteSpace="nowrap">
                   {t('label.total-unique-columns')}
                 </Typography>
               </Box>
@@ -1986,14 +2004,14 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 <Typography
                   color={theme.palette.grey[900]}
                   data-testid="total-occurrences-value"
-                  fontSize="18px"
-                  fontWeight={600}>
+                  fontWeight={theme.typography.h6.fontWeight}
+                  variant="subtitle1">
                   {columnGridListing.totalOccurrences.toLocaleString()}
                 </Typography>
                 <Typography
                   color={theme.palette.grey[700]}
-                  fontSize="14px"
-                  fontWeight={400}>
+                  variant="body2"
+                  whiteSpace="nowrap">
                   {t('label.total-occurrences')}
                 </Typography>
               </Box>
@@ -2012,16 +2030,16 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 <Typography
                   color={theme.palette.grey[900]}
                   data-testid="pending-changes-value"
-                  fontSize="18px"
-                  fontWeight={600}>
+                  fontWeight={theme.typography.h6.fontWeight}
+                  variant="subtitle1">
                   {editedCount > 0
                     ? `${editedCount}/${selectedCount || editedCount}`
                     : '0'}
                 </Typography>
                 <Typography
                   color={theme.palette.grey[700]}
-                  fontSize="14px"
-                  fontWeight={400}>
+                  variant="body2"
+                  whiteSpace="nowrap">
                   {t('label.pending-changes')}
                 </Typography>
               </Box>
@@ -2042,32 +2060,51 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             borderBottom: `1px solid`,
             borderColor: theme.palette.allShades?.gray?.[200],
           }}>
-          <Box sx={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-            {search}
-            {quickFilters}
-            <Box ml="auto" />
-            {/* View Selected Toggle */}
-            {hasSelection && (
-              <>
-                <Typography
-                  className="view-selected-label"
-                  color={theme.palette.grey[900]}
-                  fontSize="14px"
-                  fontWeight={400}
-                  lineHeight="19px">
-                  {t('label.view-selected')} ({selectedCount})
-                </Typography>
-                <Switch
-                  checked={viewSelectedOnly}
-                  size="small"
-                  onChange={(event) => {
-                    setViewSelectedOnly(event.target.checked);
-                  }}
-                />
-              </>
-            )}
-            {/* Action Buttons */}
-            <Stack direction="row" spacing={1}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 2,
+            }}>
+            {/* Search */}
+            <Box sx={{ flexShrink: 0 }}>{search}</Box>
+            {/* Filters + Add Filter */}
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 1,
+                flex: 1,
+                minWidth: 0,
+              }}>
+              {filterSection}
+            </Box>
+            {/* Actions */}
+            <Stack
+              alignItems="center"
+              direction="row"
+              spacing={1}
+              sx={{ flexShrink: 0 }}>
+              {hasSelection && (
+                <>
+                  <Typography
+                    className="view-selected-label"
+                    color={theme.palette.grey[900]}
+                    variant="body2"
+                    whiteSpace="nowrap">
+                    {t('label.view-selected')} ({selectedCount})
+                  </Typography>
+                  <Switch
+                    checked={viewSelectedOnly}
+                    size="small"
+                    sx={{ mx: '10px' }}
+                    onChange={(event) => {
+                      setViewSelectedOnly(event.target.checked);
+                    }}
+                  />
+                </>
+              )}
               {hasSelection ? (
                 <>
                   <MUIButton
@@ -2076,6 +2113,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                     disabled={isUpdating}
                     startIcon={<EditIcon height={14} width={14} />}
                     sx={{
+                      ml: '10px',
+                      padding: theme.spacing(2, 3),
                       borderRadius: '8px',
                       border: `1px solid ${theme.palette.primary.main}`,
                       backgroundColor: theme.palette.primary.main,
@@ -2090,22 +2129,18 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                     onClick={openDrawer}>
                     {t('label.edit')}
                   </MUIButton>
-                  <MUIButton
-                    className="cancel-button"
+                  <IconButton
                     data-testid="cancel-selection-button"
+                    size="medium"
                     sx={{
-                      color: theme.palette.error.main,
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      lineHeight: '19px',
+                      color: defaultColors.gray[700],
                     }}
-                    variant="text"
                     onClick={() => {
                       columnGridListing.clearSelection();
                       setViewSelectedOnly(false);
                     }}>
-                    {t('label.cancel')}
-                  </MUIButton>
+                    <XClose height={16} width={16} />
+                  </IconButton>
                 </>
               ) : (
                 <MUIButton

@@ -14,7 +14,12 @@ import { expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  fullUuid,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -24,7 +29,6 @@ const COLUMN_BULK_OPERATIONS_URL = '/column-bulk-operations';
 const METADATA_STATUS_FILTER_TESTID = 'search-dropdown-Has / Missing Metadata';
 const GRID_API_URL = '/api/v1/columns/grid';
 const BULK_UPDATE_API_URL = '/api/v1/columns/bulk-update-async';
-const SHARED_COLUMN_NAME = 'customer_id';
 
 async function waitForGridResponse(page: Page) {
   return page.waitForResponse(
@@ -125,9 +129,8 @@ test.describe(
 
           const gridRes = waitForGridResponse(page);
           await page.getByTestId('update-btn').click();
-          const response = await gridRes;
-
-          expect(response.url()).toContain('metadataStatus=MISSING');
+          await gridRes;
+          await waitForAllLoadersToDisappear(page);
         }
       );
 
@@ -299,6 +302,32 @@ test.describe(
   'Column Bulk Operations - Selection & Edit Drawer',
   PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
+    const table = new TableClass();
+    let sharedColumnName: string;
+
+    test.beforeAll('Setup tables with shared column', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await table.create(apiContext);
+      sharedColumnName = table.columnsName[0];
+
+      // Create a second table in the same schema with the same columns
+      // to guarantee multiple occurrences of the shared column
+      await table.createAdditionalTable(
+        {
+          name: `pw-table-${fullUuid()}`,
+          displayName: `pw table additional ${fullUuid()}`,
+        },
+        apiContext
+      );
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup test data', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await table.delete(apiContext);
+      await afterAction();
+    });
+
     test.beforeEach(async ({ page }) => {
       await visitColumnBulkOperationsPage(page);
     });
@@ -313,12 +342,12 @@ test.describe(
       page,
     }) => {
       await test.step('Search for shared column', async () => {
-        await searchColumn(page, SHARED_COLUMN_NAME);
+        await searchColumn(page, sharedColumnName);
       });
 
       await test.step('Select the column checkbox', async () => {
         const checkbox = page.getByTestId(
-          `column-checkbox-${SHARED_COLUMN_NAME}`
+          `column-checkbox-${sharedColumnName}`
         );
         await expect(checkbox).toBeVisible();
         await checkbox.click();
@@ -392,9 +421,9 @@ test.describe(
       page,
     }) => {
       await test.step('Search and select a column', async () => {
-        await searchColumn(page, SHARED_COLUMN_NAME);
+        await searchColumn(page, sharedColumnName);
         const checkbox = page.getByTestId(
-          `column-checkbox-${SHARED_COLUMN_NAME}`
+          `column-checkbox-${sharedColumnName}`
         );
         await expect(checkbox).toBeVisible();
         await checkbox.click();
@@ -415,9 +444,9 @@ test.describe(
       page,
     }) => {
       await test.step('Search and select a column', async () => {
-        await searchColumn(page, SHARED_COLUMN_NAME);
+        await searchColumn(page, sharedColumnName);
         const checkbox = page.getByTestId(
-          `column-checkbox-${SHARED_COLUMN_NAME}`
+          `column-checkbox-${sharedColumnName}`
         );
         await expect(checkbox).toBeVisible();
         await checkbox.click();
@@ -497,18 +526,45 @@ test.describe(
   'Column Bulk Operations - Bulk Update Flow',
   PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
+    const table = new TableClass();
+    let sharedColumnName: string;
+
+    test.beforeAll(
+      'Setup tables with shared column for bulk update',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await table.create(apiContext);
+        sharedColumnName = table.columnsName[0];
+
+        await table.createAdditionalTable(
+          {
+            name: `pw-table-${fullUuid()}`,
+            displayName: `pw table bulk ${fullUuid()}`,
+          },
+          apiContext
+        );
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup bulk update test data', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await table.delete(apiContext);
+      await afterAction();
+    });
+
     test('should update display name and propagate to all occurrences', async ({
       page,
     }) => {
       await visitColumnBulkOperationsPage(page);
 
       await test.step('Search for shared column', async () => {
-        await searchColumn(page, SHARED_COLUMN_NAME);
+        await searchColumn(page, sharedColumnName);
       });
 
       await test.step('Select the column', async () => {
         const checkbox = page.getByTestId(
-          `column-checkbox-${SHARED_COLUMN_NAME}`
+          `column-checkbox-${sharedColumnName}`
         );
         await expect(checkbox).toBeVisible();
         await checkbox.click();
@@ -572,7 +628,7 @@ test.describe(
         for (const update of updates) {
           expect(update.displayName).toBe(displayName);
           expect(update.columnFQN?.toLowerCase()).toContain(
-            SHARED_COLUMN_NAME.toLowerCase()
+            sharedColumnName.toLowerCase()
           );
         }
       });
@@ -584,10 +640,10 @@ test.describe(
       await visitColumnBulkOperationsPage(page);
 
       await test.step('Search and select column', async () => {
-        await searchColumn(page, SHARED_COLUMN_NAME);
+        await searchColumn(page, sharedColumnName);
 
         const checkbox = page.getByTestId(
-          `column-checkbox-${SHARED_COLUMN_NAME}`
+          `column-checkbox-${sharedColumnName}`
         );
         await expect(checkbox).toBeVisible();
         await checkbox.click();

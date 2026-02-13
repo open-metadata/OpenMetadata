@@ -603,6 +603,89 @@ public class DatabaseServiceResourceIT
         streetColumn.getTags().stream()
             .anyMatch(tag -> tag.getSource() == TagLabel.TagSource.GLOSSARY),
         "Street nested column should have glossary term");
+
+    // Phase 2: Test tag REMOVAL via CSV import
+    // Export the CSV again (now with tags)
+    String exportedCsvWithTags = exportCsvRecursive(service.getFullyQualifiedName());
+    assertNotNull(exportedCsvWithTags);
+
+    // Remove tags from sensitive_column and glossary term from business_column
+    String[] linesWithTags = exportedCsvWithTags.split("\n");
+    String headerWithTags = linesWithTags[0];
+    StringBuilder csvWithRemovedTags = new StringBuilder();
+    csvWithRemovedTags.append(headerWithTags).append("\n");
+
+    for (int i = 1; i < linesWithTags.length; i++) {
+      String line = linesWithTags[i];
+      if (line.contains("sensitive_column") && line.contains("column")) {
+        // Remove the classification tag from sensitive_column
+        line = removeColumnTags(line);
+      } else if (line.contains("business_column") && line.contains("column")) {
+        // Remove the glossary term from business_column
+        line = removeColumnGlossaryTerms(line);
+      }
+      // Keep address.street tags intact to verify partial removal works
+      csvWithRemovedTags.append(line).append("\n");
+    }
+
+    // Import CSV with removed tags
+    CsvImportResult removalResult =
+        importCsvRecursive(service.getFullyQualifiedName(), csvWithRemovedTags.toString(), false);
+    assertEquals(ApiStatus.SUCCESS, removalResult.getStatus());
+
+    // Verify tags were removed
+    Table tableAfterRemoval =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
+    assertNotNull(tableAfterRemoval);
+
+    // Verify sensitive_column no longer has classification tag
+    Column sensitiveColumnAfterRemoval =
+        tableAfterRemoval.getColumns().stream()
+            .filter(c -> "sensitive_column".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(sensitiveColumnAfterRemoval, "Sensitive column should still exist");
+    assertTrue(
+        sensitiveColumnAfterRemoval.getTags() == null
+            || sensitiveColumnAfterRemoval.getTags().stream()
+                .noneMatch(tag -> tag.getTagFQN().contains("PersonalData")),
+        "Sensitive column should NOT have PersonalData tag after removal");
+
+    // Verify business_column no longer has glossary term
+    Column businessColumnAfterRemoval =
+        tableAfterRemoval.getColumns().stream()
+            .filter(c -> "business_column".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(businessColumnAfterRemoval, "Business column should still exist");
+    assertTrue(
+        businessColumnAfterRemoval.getTags() == null
+            || businessColumnAfterRemoval.getTags().stream()
+                .noneMatch(tag -> tag.getSource() == TagLabel.TagSource.GLOSSARY),
+        "Business column should NOT have glossary term after removal");
+
+    // Verify address.street STILL has its tags (we didn't remove them)
+    Column addressColumnAfterRemoval =
+        tableAfterRemoval.getColumns().stream()
+            .filter(c -> "address".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(addressColumnAfterRemoval, "Address column should still exist");
+    Column streetColumnAfterRemoval =
+        addressColumnAfterRemoval.getChildren().stream()
+            .filter(c -> "street".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(streetColumnAfterRemoval, "Street nested column should still exist");
+    assertNotNull(streetColumnAfterRemoval.getTags(), "Street column should still have tags");
+    assertTrue(
+        streetColumnAfterRemoval.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().contains("PersonalData")),
+        "Street column should STILL have PersonalData tag (not removed)");
+    assertTrue(
+        streetColumnAfterRemoval.getTags().stream()
+            .anyMatch(tag -> tag.getSource() == TagLabel.TagSource.GLOSSARY),
+        "Street column should STILL have glossary term (not removed)");
   }
 
   private String addColumnTags(String csvLine, String tagFQN) {
@@ -627,6 +710,22 @@ public class DatabaseServiceResourceIT
         String existingTerms = parts[5].replaceAll("\"", "");
         parts[5] = "\"" + existingTerms + ";" + glossaryTermFQN + "\"";
       }
+    }
+    return String.join(",", parts);
+  }
+
+  private String removeColumnTags(String csvLine) {
+    String[] parts = csvLine.split(",");
+    if (parts.length >= 5) {
+      parts[4] = "";
+    }
+    return String.join(",", parts);
+  }
+
+  private String removeColumnGlossaryTerms(String csvLine) {
+    String[] parts = csvLine.split(",");
+    if (parts.length >= 6) {
+      parts[5] = "";
     }
     return String.join(",", parts);
   }
