@@ -2,13 +2,17 @@ package org.openmetadata.mcp.tools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -27,6 +31,8 @@ import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 @ExtendWith(MockitoExtension.class)
 class SemanticSearchToolTest {
@@ -46,6 +52,29 @@ class SemanticSearchToolTest {
     vectorService = mock(OpenSearchVectorService.class);
 
     Entity.setSearchRepository(searchRepository);
+  }
+
+  @Test
+  void testAuthorizationIsEnforced() throws Exception {
+    doThrow(new RuntimeException("Unauthorized"))
+        .when(authorizer)
+        .authorize(
+            any(CatalogSecurityContext.class),
+            any(OperationContext.class),
+            any(ResourceContextInterface.class));
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "test query");
+
+    assertThrows(
+        RuntimeException.class,
+        () -> semanticSearchTool.execute(authorizer, securityContext, params));
+
+    verify(authorizer)
+        .authorize(
+            any(CatalogSecurityContext.class),
+            any(OperationContext.class),
+            any(ResourceContextInterface.class));
   }
 
   @Test
@@ -228,6 +257,7 @@ class SemanticSearchToolTest {
       assertEquals("BigQuery", cleaned.get("serviceType"));
       assertEquals("A short description", cleaned.get("description"));
       assertNotNull(cleaned.get("columns"));
+      assertEquals(0.95, cleaned.get("similarityScore"));
       assertTrue(!cleaned.containsKey("_score"));
       assertTrue(!cleaned.containsKey("embedding"));
       assertTrue(!cleaned.containsKey("fingerprint"));
