@@ -97,6 +97,7 @@ public class SemanticSearchTool implements McpTool {
 
     result.put("results", cleanedResults);
     result.put("returnedCount", cleanedResults.size());
+    result.put("totalFound", cleanedResults.size());
 
     if (cleanedResults.size() >= requestedSize) {
       result.put(
