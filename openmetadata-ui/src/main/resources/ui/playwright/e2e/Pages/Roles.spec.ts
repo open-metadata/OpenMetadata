@@ -523,7 +523,7 @@ test('Delete role action from manage button options', async ({ page }) => {
   const policies = ['ApplicationBotPolicy'];
   const roleLocator = page.locator(
     `[data-testid="role-name"][href="/settings/access/roles/${encodeURIComponent(
-      role.data.fullyQualifiedName?? role.data.name
+      role.data.name
     )}"]`
   );
 
