@@ -35,6 +35,7 @@ import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Database } from '../../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema';
+import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { UsageDetails } from '../../../../generated/type/entityUsage';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
@@ -49,6 +50,7 @@ import {
 import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
+import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getColumnSorter,
@@ -102,6 +104,15 @@ export const DatabaseSchemaTable = ({
     );
   }, [permissions, isVersionPage]);
 
+  const viewUsagePermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        permissions.databaseSchema,
+        Operation.ViewUsage
+      ),
+    [permissions.databaseSchema]
+  );
+
   const searchValue = useMemo(() => {
     const param = location.search;
     const searchData = QueryString.parse(
@@ -135,7 +146,10 @@ export const DatabaseSchemaTable = ({
           after: params?.after,
           before: params?.before,
           include: showDeletedSchemas ? Include.Deleted : Include.NonDeleted,
-          fields: [TabSpecificField.USAGE_SUMMARY, commonTableFields],
+          fields: [
+            ...(viewUsagePermission ? [TabSpecificField.USAGE_SUMMARY] : []),
+            commonTableFields,
+          ],
         });
 
         setSchemas(data);
@@ -146,7 +160,7 @@ export const DatabaseSchemaTable = ({
         setIsLoading(false);
       }
     },
-    [pageSize, decodedDatabaseFQN, showDeletedSchemas]
+    [pageSize, decodedDatabaseFQN, showDeletedSchemas, viewUsagePermission]
   );
 
   const searchSchema = useCallback(
@@ -273,16 +287,20 @@ export const DatabaseSchemaTable = ({
       ...domainTableObject<DatabaseSchema>(),
       ...dataProductTableObject<DatabaseSchema>(),
       ...tagTableObject<DatabaseSchema>(),
-      {
-        title: t('label.usage'),
-        dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
-        key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
-        width: 120,
-        render: (text: UsageDetails) =>
-          getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
-      },
+      ...(viewUsagePermission
+        ? [
+            {
+              title: t('label.usage'),
+              dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
+              key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
+              width: 120,
+              render: (text: UsageDetails) =>
+                getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
+            },
+          ]
+        : []),
     ],
-    [handleDisplayNameUpdate, allowEditDisplayNamePermission]
+    [handleDisplayNameUpdate, allowEditDisplayNamePermission, viewUsagePermission]
   );
 
   const handleEditTable = () => {
