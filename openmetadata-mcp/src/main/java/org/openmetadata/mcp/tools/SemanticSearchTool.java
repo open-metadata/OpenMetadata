@@ -7,10 +7,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
@@ -18,8 +14,6 @@ import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 @Slf4j
 public class SemanticSearchTool implements McpTool {
@@ -37,11 +31,6 @@ public class SemanticSearchTool implements McpTool {
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
     LOG.info("Executing semanticSearch with params: {}", params);
-
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_BASIC),
-        new SearchResourceContext());
 
     String query = (String) params.get("query");
     if (query == null || query.isBlank()) {
@@ -243,32 +232,5 @@ public class SemanticSearchTool implements McpTool {
     result.put("returnedCount", 0);
     result.put("error", message);
     return result;
-  }
-
-  static class SearchResourceContext implements ResourceContextInterface {
-    @Override
-    public String getResource() {
-      return Entity.TABLE;
-    }
-
-    @Override
-    public List<EntityReference> getOwners() {
-      return null;
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return Collections.emptyList();
-    }
-
-    @Override
-    public EntityInterface getEntity() {
-      return null;
-    }
-
-    @Override
-    public List<EntityReference> getDomains() {
-      return null;
-    }
   }
 }
