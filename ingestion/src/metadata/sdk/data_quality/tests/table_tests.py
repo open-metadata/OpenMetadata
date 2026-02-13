@@ -196,8 +196,10 @@ class TableRowInsertedCountToBeBetween(TableTest):
         description: Custom test description
 
     Examples:
-        >>> test = TableRowInsertedCountToBeBetween(column_name="created_at", min_count=100, max_count=1000, range_type="DAY", range_interval=1)
-        >>> test = TableRowInsertedCountToBeBetween(column_name="inserted_at", min_count=50, range_type="HOUR", range_interval=6)
+        >>> test = TableRowInsertedCountToBeBetween(column_name="created_at",
+            min_count=100, max_count=1000, range_type="DAY", range_interval=1)
+        >>> test = TableRowInsertedCountToBeBetween(column_name="inserted_at",
+            min_count=50, range_type="HOUR", range_interval=6)
     """
 
     def __init__(  # pylint: disable=too-many-arguments
