@@ -90,6 +90,9 @@ const StyledPageLayout = styled(PageLayoutV1)(() => ({
     display: 'flex',
     flexDirection: 'column',
   },
+  '& .learning-resources-page-layout .ant-row .ant-col': {
+    flex: 'none',
+  },
   '& .learning-resources-page-layout .ant-row .ant-col:last-child': {
     minHeight: 0,
     flex: 1,
@@ -207,7 +210,7 @@ const ResourceRow = ({
               overflow: 'hidden',
               display: 'flex',
               flexWrap: 'nowrap',
-              gap: theme.spacing(0.75),
+              gap: theme.spacing(1.5),
               alignItems: 'center',
             }}>
             {record.categories?.slice(0, MAX_VISIBLE_TAGS).map((cat) => {
@@ -271,7 +274,7 @@ const ResourceRow = ({
               overflow: 'hidden',
               display: 'flex',
               flexWrap: 'nowrap',
-              gap: theme.spacing(0.75),
+              gap: theme.spacing(1.5),
               alignItems: 'center',
             }}>
             {record.contexts?.slice(0, MAX_VISIBLE_CONTEXTS).map((ctx, i) => (
@@ -340,6 +343,7 @@ const ResourceRow = ({
               size="small"
               sx={{
                 borderRadius: '4px',
+                padding: theme.spacing(1),
                 border: `1px solid ${theme.palette.grey[200]}`,
                 bgcolor: 'common.white',
                 '&:hover': {
@@ -358,6 +362,7 @@ const ResourceRow = ({
               sx={{
                 borderRadius: '4px',
                 border: `1px solid ${theme.palette.grey[200]}`,
+                padding: theme.spacing(1),
                 bgcolor: 'common.white',
                 '&:hover': {
                   bgcolor: 'common.white',
@@ -520,8 +525,20 @@ export const LearningResourcesPage: React.FC = () => {
 
           <Button
             data-testid="create-resource"
-            startIcon={<PlusOutlined />}
-            variant="contained"
+            startIcon={<PlusOutlined style={{ fontSize: 16 }} />}
+            sx={{
+              fontSize: theme.typography.body2.fontSize,
+              fontWeight: theme.typography.fontWeightMedium,
+              color: defaultColors.white,
+              borderRadius: '8px',
+              border: `1px solid ${defaultColors.blue[600]}`,
+              background: defaultColors.blue[600],
+              padding: theme.spacing(2, 3.5),
+              '&:hover': {
+                background: defaultColors.blue[600],
+                color: defaultColors.white,
+              },
+            }}
             onClick={handleCreate}>
             {t('label.add-entity', {
               entity: t('label.resource'),
