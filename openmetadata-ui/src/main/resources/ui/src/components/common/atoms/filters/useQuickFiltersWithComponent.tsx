@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { isEqual } from 'lodash';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Aggregations } from '../../../../interface/search.interface';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
@@ -40,10 +48,18 @@ export const useQuickFiltersWithComponent = (
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
   >([]);
+  const previousParsedFiltersRef = useRef<ExploreQuickFilterField[]>();
 
   useEffect(() => {
     // Use parsedFilters if available (from URL), otherwise use defaultFilters
     const isSingleSelect = config.mode === 'single';
+
+    // Only update if parsedFilters has actually changed (deep comparison)
+    if (isEqual(previousParsedFiltersRef.current, config.parsedFilters)) {
+      return;
+    }
+
+    previousParsedFiltersRef.current = config.parsedFilters;
 
     if (config.parsedFilters && config.parsedFilters.length > 0) {
       // Merge parsedFilters with defaultFilters to maintain structure

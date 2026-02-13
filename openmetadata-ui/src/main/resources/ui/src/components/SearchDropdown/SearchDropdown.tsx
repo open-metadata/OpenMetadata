@@ -93,7 +93,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     const selectedOptionsObj = independent
       ? selectedOptions
       : options.filter((option) =>
-          selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
+          selectedOptions.some((selectedOpt) => option.key === selectedOpt.key)
         );
 
     if (fixedOrderOptions) {
@@ -101,7 +101,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         key: item.key,
         label: generateSearchDropdownLabel(
           item,
-          selectedOptionsObj.indexOf(item) !== -1,
+          selectedOptionsObj.includes(item),
           highlight ? searchText : '',
           showProfilePicture,
           hideCounts,
@@ -123,7 +123,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       // Filtering out unselected options
       const unselectedOptions = options.filter(
         (option) =>
-          !selectedOptions.find((selectedOpt) => option.key === selectedOpt.key)
+          !selectedOptions.some((selectedOpt) => option.key === selectedOpt.key)
       );
 
       // Labels for unselected options
@@ -160,18 +160,18 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       const isAlreadySelected = selectedOptions.some(
         (opt) => opt.key === currentKey
       );
-      const updatedValues = isAlreadySelected ? [] : option ? [option] : [];
+      const updatedValues = !isAlreadySelected && option ? [option] : [];
       setSelectedOptions(updatedValues);
       if (!isAlreadySelected && option) {
         setNullOptionSelected(false);
       }
     } else {
-      const selectedKey = selectedOptions.find(
+      const isAlreadySelected = selectedOptions.some(
         (option) => option.key === currentKey
       );
-      const updatedValues = isUndefined(selectedKey)
-        ? [...selectedOptions, ...(option ? [option] : [])]
-        : selectedOptions.filter((option) => option.key !== currentKey);
+      const updatedValues = isAlreadySelected
+        ? selectedOptions.filter((option) => option.key !== currentKey)
+        : [...selectedOptions, ...(option ? [option] : [])];
       setSelectedOptions(updatedValues);
     }
   };

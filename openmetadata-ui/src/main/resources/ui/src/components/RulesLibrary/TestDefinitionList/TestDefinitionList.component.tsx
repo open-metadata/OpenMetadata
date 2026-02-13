@@ -126,7 +126,9 @@ const TestDefinitionList = () => {
     TEST_DEFINITION_DEFAULT_QUICK_FILTERS.forEach((key) => {
       const paramValue = urlParams[key as keyof typeof urlParams];
       if (paramValue) {
-        filters[key] = String(paramValue).split(',').filter(Boolean);
+        const values = String(paramValue).split(',').filter(Boolean);
+        // For single-select mode, only take the first value
+        filters[key] = values.length > 0 ? [values[0]] : [];
       }
     });
 

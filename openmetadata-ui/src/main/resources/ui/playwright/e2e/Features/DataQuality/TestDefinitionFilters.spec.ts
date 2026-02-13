@@ -435,5 +435,111 @@ test.describe(
         }
       });
     });
+
+    test('should not revert to previous value when changing filter selection', async ({
+      page,
+    }) => {
+      test.slow();
+
+      await test.step('Select initial testPlatform filter (dbt)', async () => {
+        const testDefinitionResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/dataQuality/testDefinitions')
+        );
+
+        await toggleFilter(
+          page,
+          FILTER_LABELS.TEST_PLATFORMS,
+          TEST_PLATFORM_OPTIONS.DBT
+        );
+
+        const response = await testDefinitionResponse;
+        const responseData = await response.json();
+
+        expect(page.url()).toContain('testPlatforms=dbt');
+        expect(responseData.data).toBeDefined();
+      });
+
+      await test.step(
+        'Change to a different testPlatform filter (OpenMetadata)',
+        async () => {
+          const testDefinitionResponse = page.waitForResponse((response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions')
+          );
+
+          await toggleFilter(
+            page,
+            FILTER_LABELS.TEST_PLATFORMS,
+            TEST_PLATFORM_OPTIONS.OPENMETADATA
+          );
+
+          await testDefinitionResponse;
+
+          expect(page.url()).toContain('testPlatforms=OpenMetadata');
+          expect(page.url()).not.toContain('testPlatforms=dbt');
+        }
+      );
+
+      await test.step(
+        'Verify the new filter persists after page reload',
+        async () => {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+
+          expect(page.url()).toContain('testPlatforms=OpenMetadata');
+          expect(page.url()).not.toContain('testPlatforms=dbt');
+
+          await page.click(
+            `[data-testid="search-dropdown-${FILTER_LABELS.TEST_PLATFORMS}"]`
+          );
+          await page.waitForSelector('[data-testid="drop-down-menu"]', {
+            state: 'visible',
+          });
+
+          const openMetadataRadio = page.getByTestId('OpenMetadata-radio');
+
+          await expect(openMetadataRadio).toBeChecked();
+
+          await page.keyboard.press('Escape');
+        }
+      );
+
+      await test.step(
+        'Change back to previous testPlatform filter (dbt)',
+        async () => {
+          const testDefinitionResponse = page.waitForResponse((response) =>
+            response
+              .url()
+              .includes('/api/v1/dataQuality/testDefinitions?limit=15')
+          );
+
+          await toggleFilter(
+            page,
+            FILTER_LABELS.TEST_PLATFORMS,
+            TEST_PLATFORM_OPTIONS.DBT
+          );
+
+          await testDefinitionResponse;
+
+          expect(page.url()).toContain('testPlatforms=dbt');
+          expect(page.url()).not.toContain('testPlatforms=OpenMetadata');
+        }
+      );
+
+      await test.step('Verify final selection persists', async () => {
+        await page.click(
+          `[data-testid="search-dropdown-${FILTER_LABELS.TEST_PLATFORMS}"]`
+        );
+        await page.waitForSelector('[data-testid="drop-down-menu"]', {
+          state: 'visible',
+        });
+
+        const dbtRadio = page.getByTestId('dbt-radio');
+
+        await expect(dbtRadio).toBeChecked();
+        expect(page.url()).toContain('testPlatforms=dbt');
+
+        await page.keyboard.press('Escape');
+      });
+    });
   }
 );
