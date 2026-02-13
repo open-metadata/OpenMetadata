@@ -259,6 +259,10 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await navigateToPersonaNavigation(page);
 
     const treeItems = page.locator('.ant-tree-node-content-wrapper');
+    
+    // Wait for the tree to be fully ready
+    await expect(treeItems.first()).toBeVisible();
+    
     const firstItem = treeItems.first();
     const secondItem = treeItems.nth(1);
 
@@ -272,7 +276,6 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     if (firstItemBox && secondItemBox) {
       await firstItem.dragTo(secondItem, {
-        force: true,
         sourcePosition: {
           x: firstItemBox.width / 2,
           y: firstItemBox.height / 2,
@@ -282,15 +285,14 @@ test.describe.serial('Settings Navigation Page Tests', () => {
           y: secondItemBox.height / 2 + 10,
         },
       });
-
-      // Adding wait so that drop action can complete
-      await page.waitForTimeout(500);
-
-      await expect(page.getByTestId('save-button')).toBeEnabled();
-
       const newFirstItemText = await treeItems.first().textContent();
-
       expect(newFirstItemText).not.toBe(firstItemText);
+
+      // Now check if save button is enabled
+      await page
+        .getByTestId('save-button')
+        .and(page.locator(':not([disabled])'))
+        .waitFor({ state: 'visible' });
     }
   });
 
