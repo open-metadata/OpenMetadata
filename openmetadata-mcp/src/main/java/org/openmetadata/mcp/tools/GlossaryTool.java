@@ -44,6 +44,14 @@ public class GlossaryTool implements McpTool {
     if (params.containsKey("reviewers")) {
       setReviewers(createGlossary, params);
     }
+    if (params.containsKey("mutuallyExclusive")) {
+      Object meObj = params.get("mutuallyExclusive");
+      if (meObj instanceof Boolean b) {
+        createGlossary.setMutuallyExclusive(b);
+      } else if (meObj instanceof String s) {
+        createGlossary.setMutuallyExclusive("true".equalsIgnoreCase(s));
+      }
+    }
 
     Glossary glossary =
         glossaryMapper.createToEntity(createGlossary, securityContext.getUserPrincipal().getName());
