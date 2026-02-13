@@ -55,7 +55,15 @@ public class CreateTestCaseTool implements McpTool {
           params.containsKey("name")
               ? (String) params.get("name")
               : "TestCase_" + System.currentTimeMillis();
-      MessageParser.EntityLink entityLink = new MessageParser.EntityLink(entityType, fqn);
+      String columnName =
+          params.containsKey("columnName") ? (String) params.get("columnName") : null;
+      MessageParser.EntityLink entityLink;
+      if (columnName != null && !columnName.trim().isEmpty()) {
+        entityLink =
+            new MessageParser.EntityLink(entityType, fqn, "columns", columnName.trim(), null);
+      } else {
+        entityLink = new MessageParser.EntityLink(entityType, fqn);
+      }
       String entityLinkValue = entityLink.getLinkString();
       List<TestCaseParameterValue> parameterValue =
           params.containsKey("parameterValues")

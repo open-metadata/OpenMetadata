@@ -343,7 +343,11 @@
           },
           "fqn": {
             "type": "string",
-            "description": "Fully qualified name of the asset or entity for which the test case is being added. It is asset fqn that user originally ask to add test for , and not column fqn in case of column tests."
+            "description": "Fully qualified name of the table for which the test case is being added. Always use the table FQN, not the column FQN."
+          },
+          "columnName": {
+            "type": "string",
+            "description": "Name of the column to test. Required for column-level test definitions (entityType=COLUMN). This is just the column name, not the full FQN. For example, 'shop_id' not the full table.column path."
           },
           "entityType": {
             "type": "string",
