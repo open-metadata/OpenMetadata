@@ -58,6 +58,18 @@ public class DefaultToolContext {
         case "get_entity_lineage":
           result = new GetLineageTool().execute(authorizer, securityContext, params);
           break;
+        case "create_lineage":
+          result = new LineageTool().execute(authorizer, securityContext, params);
+          break;
+        case "get_test_definitions":
+          result = new TestDefinitionsTool().execute(authorizer, securityContext, params);
+          break;
+        case "create_test_case":
+          result = new CreateTestCaseTool().execute(authorizer, securityContext, params);
+          break;
+        case "root_cause_analysis":
+          result = new RootCauseAnalysisTool().execute(authorizer, securityContext, params);
+          break;
         default:
           return McpSchema.CallToolResult.builder()
               .content(
