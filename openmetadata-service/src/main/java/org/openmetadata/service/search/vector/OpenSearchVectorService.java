@@ -25,6 +25,7 @@ import os.org.opensearch.client.opensearch._types.mapping.TypeMapping;
 import os.org.opensearch.client.opensearch.core.BulkRequest;
 import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import os.org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
 import os.org.opensearch.client.opensearch.generic.Requests;
 import os.org.opensearch.client.opensearch.indices.CreateIndexRequest;
@@ -481,8 +482,21 @@ public class OpenSearchVectorService implements VectorIndexService {
       BulkResponse response = client.bulk(bulkRequest);
 
       if (response.errors()) {
+        long errorCount = 0;
+        for (BulkResponseItem item : response.items()) {
+          if (item.error() != null) {
+            errorCount++;
+            LOG.warn(
+                "Bulk vector indexing error for document [{}] in [{}]: type={}, reason={}",
+                item.id(),
+                targetIndex,
+                item.error().type(),
+                item.error().reason());
+          }
+        }
         LOG.warn(
-            "Bulk vector indexing had errors for {} documents in {}",
+            "Bulk vector indexing completed with {}/{} errors in {}",
+            errorCount,
             documents.size(),
             targetIndex);
       } else {

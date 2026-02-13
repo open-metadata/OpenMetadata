@@ -1,8 +1,9 @@
 """Tests for the LRU cache class"""
+from typing import Any
 
 import pytest
 
-from metadata.utils.lru_cache import LRUCache
+from metadata.utils.lru_cache import LRUCache, SkipNoneLRUCache
 
 
 class TestLRUCache:
@@ -48,3 +49,32 @@ class TestLRUCache:
         cache = LRUCache(2)
         cache.put(1, 2)
         assert cache.get(1) == 2
+
+
+class TestSkipNoneLRUCache:
+    def test_it_does_not_cache_when_result_is_none(self) -> None:
+        cache = SkipNoneLRUCache(2)
+
+        # If returning `None`, `str(None)` should not be a key
+        @cache.wrap(str)
+        def noop(val: Any) -> Any:
+            return val
+
+        assert noop(None) is None
+        assert str(None) not in cache
+
+    def test_it_caches_other_results(self) -> None:
+        cache = SkipNoneLRUCache(2)
+
+        # two object() calls will have return the same result for str(type(x)) == '<class 'object'>
+        @cache.wrap(lambda x: str(type(x)))
+        def noop(val: Any) -> Any:
+            return val
+
+        obj = object()
+
+        assert noop(obj) is obj
+        assert "<class 'object'>" in cache
+
+        # Should be the same cached object
+        assert noop(object()) is obj

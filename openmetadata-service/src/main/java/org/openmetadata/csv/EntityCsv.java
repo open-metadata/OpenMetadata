@@ -1905,7 +1905,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
               Entity.getEntityByName(
                   TABLE,
                   tableFQN,
-                  "name,displayName,fullyQualifiedName,columns",
+                  "name,displayName,fullyQualifiedName,columns,tags",
                   Include.NON_DELETED);
         } catch (EntityNotFoundException ex) {
           // Simulate a table for validation without persisting it
@@ -1926,7 +1926,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
               getEntityWithDependencyResolution(
                   TABLE,
                   tableFQN,
-                  "name,displayName,fullyQualifiedName,columns",
+                  "name,displayName,fullyQualifiedName,columns,tags",
                   Include.NON_DELETED);
         } catch (EntityNotFoundException ex) {
           // Table not found, create a new one (following createTableEntity pattern)
