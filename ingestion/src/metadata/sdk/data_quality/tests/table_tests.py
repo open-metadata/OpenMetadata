@@ -423,9 +423,7 @@ class TableDiff(TableTest):
                 TestCaseParameterValue(name="threshold", value=str(threshold))
             )
         if where:
-            self.parameters.append(
-                TestCaseParameterValue(name="where", value=where)
-            )
+            self.parameters.append(TestCaseParameterValue(name="where", value=where))
         if case_sensitive_columns is not None:
             self.parameters.append(
                 TestCaseParameterValue(
