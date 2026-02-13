@@ -52,7 +52,8 @@ class NonExistentModel(Base):
 def crdb_engine():
     container = CockroachDBContainer(image="cockroachdb/cockroach:v23.1.0")
     with container as container:
-        engine = create_engine(container.get_connection_url())
+        url = container.get_connection_url().replace("cockroach@", "root@")
+        engine = create_engine(url)
         engine.execute(
             "CREATE TABLE IF NOT EXISTS public.metric_computer_test "
             "(id INTEGER PRIMARY KEY, name VARCHAR(256))"
