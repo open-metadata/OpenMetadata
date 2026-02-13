@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Aggregations } from '../../../../interface/search.interface';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
@@ -25,6 +25,7 @@ interface QuickFiltersWithComponentConfig {
   searchIndex: SearchIndex | SearchIndex[];
   assetType: AssetsOfEntity;
   onFilterChange: (filters: ExploreQuickFilterField[]) => void;
+  additionalActions?: ReactNode;
 }
 
 export const useQuickFiltersWithComponent = (
@@ -81,6 +82,7 @@ export const useQuickFiltersWithComponent = (
     () => (
       <ExploreQuickFilters
         showSelectedCounts
+        additionalActions={config.additionalActions}
         aggregations={config.aggregations || {}}
         fields={selectedQuickFilters}
         index={config.searchIndex}
@@ -91,6 +93,7 @@ export const useQuickFiltersWithComponent = (
     [
       config.aggregations,
       config.searchIndex,
+      config.additionalActions,
       selectedQuickFilters,
       handleQuickFiltersValueSelect,
     ]
