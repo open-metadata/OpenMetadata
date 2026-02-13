@@ -463,23 +463,6 @@ export const TaskTabNew = ({
       });
   };
 
-  const handleMenuItemClick: MenuProps['onClick'] = (info) => {
-    if (info.key === TaskActionMode.EDIT) {
-      setShowEditTaskModel(true);
-    } else if (info.key === TaskActionMode.CLOSE) {
-      onTaskReject();
-    } else {
-      onTaskResolve();
-    }
-    setTaskAction(
-      [
-        ...TASK_ACTION_LIST,
-        ...GLOSSARY_TASK_ACTION_LIST,
-        ...INCIDENT_TASK_ACTION_LIST,
-      ].find((action) => action.key === info.key) ?? TASK_ACTION_LIST[0]
-    );
-  };
-
   const onTaskReject = () => {
     if (
       !isTaskGlossaryApproval &&
@@ -504,6 +487,23 @@ export const TaskTabNew = ({
         rest.onUpdateEntityDetails?.();
       })
       .catch((err: AxiosError) => showErrorToast(err));
+  };
+
+  const handleMenuItemClick: MenuProps['onClick'] = (info) => {
+    if (info.key === TaskActionMode.EDIT) {
+      setShowEditTaskModel(true);
+    } else if (info.key === TaskActionMode.CLOSE) {
+      onTaskReject();
+    } else {
+      onTaskResolve();
+    }
+    setTaskAction(
+      [
+        ...TASK_ACTION_LIST,
+        ...GLOSSARY_TASK_ACTION_LIST,
+        ...INCIDENT_TASK_ACTION_LIST,
+      ].find((action) => action.key === info.key) ?? TASK_ACTION_LIST[0]
+    );
   };
 
   const onTestCaseIncidentAssigneeUpdate = async () => {
@@ -662,9 +662,9 @@ export const TaskTabNew = ({
         size="small">
         <Tooltip
           title={
-            !hasApprovalAccess
-              ? t('message.only-reviewers-can-approve-or-reject')
-              : ''
+            hasApprovalAccess
+              ? ''
+              : t('message.only-reviewers-can-approve-or-reject')
           }>
           <Dropdown.Button
             className="task-action-button"
@@ -900,13 +900,16 @@ export const TaskTabNew = ({
       })}>
       <div className="d-flex gap-2" data-testid="task-assignees">
         <Row className="m-l-0" gutter={[16, 16]}>
-          <Col className="flex items-center gap-2 text-grey-muted" span={11}>
+          <Col
+            className="flex items-center gap-2 text-grey-muted"
+            span={8}
+            style={{ paddingLeft: 0 }}>
             <UserIcon height={16} />
             <Typography.Text className="incident-manager-details-label">
               {t('label.created-by')}
             </Typography.Text>
           </Col>
-          <Col span={13}>
+          <Col span={16} style={{ paddingLeft: '2px' }}>
             <Link
               className="no-underline flex items-center gap-2"
               to={getUserPath(taskThread.createdBy ?? '')}>
@@ -965,13 +968,19 @@ export const TaskTabNew = ({
             </Form>
           ) : (
             <>
-              <Col className="flex gap-2 text-grey-muted" span={11}>
+              <Col
+                className="flex gap-2 text-grey-muted"
+                span={8}
+                style={{ paddingLeft: 0 }}>
                 <AssigneesIcon height={16} />
                 <Typography.Text className="incident-manager-details-label @grey-8">
                   {t('label.assignee-plural')}
                 </Typography.Text>
               </Col>
-              <Col className="flex gap-2" span={13}>
+              <Col
+                className="flex gap-2"
+                span={16}
+                style={{ paddingLeft: '2px' }}>
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
                     <UserPopOverCard

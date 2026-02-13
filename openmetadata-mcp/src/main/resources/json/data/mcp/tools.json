@@ -22,7 +22,7 @@
           "from": {
             "type": "integer",
             "description": "In case the request more than 'size' results, this is the offset from the first result you want to fetch. Default is 0.",
-            "default": 10
+            "default": 0
           },
           "size": {
             "type": "integer",
@@ -254,6 +254,181 @@
         "required": [
           "entityType",
           "fqn"
+        ]
+      }
+    },
+    {
+      "name": "create_lineage",
+      "description": "This tool can be used to create lineage between two assets. It takes the source and target asset details and creates a lineage relationship between them.",
+      "parameters": {
+        "description": "Required to create lineage between two assets.",
+        "type": "object",
+        "properties": {
+          "fromEntity": {
+            "description": "Source Entity.",
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "Type of entity"
+              },
+              "id": {
+                "type": "string",
+                "description": "Id of the entity"
+              }
+            },
+            "required": ["type", "id"]
+          },
+          "toEntity": {
+            "description": "Destination Entity.",
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "Type of entity"
+              },
+              "id": {
+                "type": "string",
+                "description": "Id of the entity"
+              }
+            },
+            "required": ["type", "id"]
+          }
+        },
+        "required": [
+          "fromEntity",
+          "toEntity"
+        ]
+      }
+    },
+    {
+      "name": "get_test_definitions",
+      "description": "This tool can be used to get all the test definitions in the OpenMetadata. It returns a list of test definitions. These test definition can be used to create a test case for a table or a table's column. While creating column test for entity, column data type should be in supportedDataTypes of parameterDefinition.",
+      "parameters": {
+        "description": "These test definition are required to create a test case for table or a table's column.",
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "description": "Entity Type can be 'TABLE' for table asset/entity or 'COLUMN' for column level tests. Default is TABLE."
+          },
+          "testPlatform": {
+            "type": "string",
+            "description": "Default value can be 'OpenMetadata'. Other Platform can be 'OpenMetadata','GreatExpectations', 'DBT', 'Deequ', 'Soda', 'Other' if the user specifically gives the platform name."
+          },
+          "after": {
+            "type": "string",
+            "description": "This can be used to paginate the results. In the response you will get a nextCursor value, which can be used to get the next set of results. For the first call, this should be ignored."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of results to return. Default is 10."
+          }
+        },
+        "required": [
+          "entityType"
+        ]
+      }
+    },
+    {
+      "name": "create_test_case",
+      "description": "This tool can be used to create a test case for a table or a table's column. It needs test definitions. These test definition can be found using the get_test_definitions tool. If this fails do not do other operations.",
+      "parameters": {
+        "description": "This tool can be used to create a test case for a table or a table's column. It requires the test definition and the entity (table or column) to be tested.",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the test case. Either the user tells the name or auto generate a name based on the test definition and entity fqn."
+          },
+          "fqn": {
+            "type": "string",
+            "description": "Fully qualified name of the table for which the test case is being added. Always use the table FQN, not the column FQN."
+          },
+          "columnName": {
+            "type": "string",
+            "description": "Name of the column to test. Required for column-level test definitions (entityType=COLUMN). This is just the column name, not the full FQN. For example, 'shop_id' not the full table.column path."
+          },
+          "entityType": {
+            "type": "string",
+            "description": "Type of the entity for which the test case is being added. Default is 'table'. It can only be one of these values 'container', 'workflowDefinition', 'testSuite', 'pipelineService', 'messagingService', 'type', 'dataContract', 'metadataService', 'appMarketPlaceDefinition', 'tag', 'dashboard', 'app', 'dataProduct', 'persona', 'workflow', 'kpi', 'apiService', 'query', 'searchIndex', 'classification', 'dashboardDataModel', 'glossary', 'apiEndpoint', 'storageService', 'domain', 'topic', 'databaseSchema', 'role', 'dataInsightChart', 'bot', 'mlmodelService', 'document', 'ingestionPipeline', 'database', 'searchService', 'testConnectionDefinition', 'webAnalyticEvent', 'table', 'policy', 'storedProcedure', 'databaseService', 'eventsubscription', 'dashboardService', 'apiCollection', 'team', 'mlmodel', 'glossaryTerm', 'pipeline', 'dataInsightCustomChart', 'metric', 'report', 'chart', 'user', 'testCase', 'testDefinition'."
+          },
+          "testDefinitionName": {
+            "type": "string",
+            "description": "Fully qualified name of the test definition to be used for the test case."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the test case. This can be auto generated based on entity details, the test definition and type of test."
+          },
+          "parameterValues": {
+            "type": "array",
+            "description": "Parameter values for the test case. This is an array of objects, where each object contains the parameter name (this is 'name' from parameter definition in test definition) and value (can be asked from user or auto supplied). These parameter can be found from the testDefinitions from `parameterDefinition` which has name, description, dataType and whether it is required mandatorily.",
+            "items": {
+              "type": "object",
+              "description": "Parameter values that can be passed for a Test Case.",
+              "properties": {
+                "name": {
+                  "description": "Name of the parameter. Must match the parameter names in testCaseParameterDefinition",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "value to be passed for the Parameters. These are input from Users. We capture this in string and convert during the runtime.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "value"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name",
+          "fqn",
+          "testDefinitionName",
+          "parameterValues"
+        ]
+      }
+    },
+    {
+      "name": "root_cause_analysis",
+      "description": "Performs comprehensive root cause analysis via data quality lineage. First identifies upstream failures that may be causing issues for the specified asset. If failures are found, automatically analyzes downstream impact to show which assets may be affected. Returns both upstream root causes and downstream impact analysis. In the response 'status' indicates whether upstream failures were found. If 'status' is 'failed', the 'upstreamAnalysis' can be used to identify the nodes and edges leading to failures and downstreamAnalysis can tell what all nodes in downstream are impacted. If 'status' is 'success', it means no upstream failures were found, and downstream impact analysis was not performed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "fqn": {
+            "type": "string",
+            "description": "Fully qualified name of the entity to analyze for root cause analysis"
+          },
+          "upstreamDepth": {
+            "type": "integer",
+            "description": "Number of levels upstream to traverse for root cause analysis. Default is 3.",
+            "default": 3
+          },
+          "downstreamDepth": {
+            "type": "integer",
+            "description": "Number of levels downstream to traverse for impact analysis (only performed if upstream failures are found). Default is 3.",
+            "default": 3
+          },
+          "queryFilter": {
+            "type": "string",
+            "description": "Optional Elasticsearch query filter to refine the lineage search results"
+          },
+          "includeDeleted": {
+            "type": "boolean",
+            "description": "Whether to include deleted entities in the analysis. Default is false.",
+            "default": false
+          },
+          "entityType": {
+            "type": "string",
+            "description": "Required mandatorily for this tool. The OpenMetadata entities are categorized as follows: Service Entities include databaseService, messagingService, apiService, dashboardService, pipelineService, storageService, mlmodelService, metadataService, and searchService; Data Asset Entities include apiCollection, apiEndpoint, table, storedProcedure, database, databaseSchema, dashboard, dashboardDataModel, pipeline, chart, topic, searchIndex, mlmodel, and container; User Entities include user and team; Domain entities include domain and dataProduct; and Governance entities include metric, glossary, and glossaryTerm."
+          }
+        },
+        "required": [
+          "fqn",
+          "entityType"
         ]
       }
     }
