@@ -285,7 +285,11 @@ test.describe.serial('Settings Navigation Page Tests', () => {
           y: secondItemBox.height / 2 + 10,
         },
       });
+      // Adding wait so that drop action can complete
+      await page.waitForTimeout(500);
+
       const newFirstItemText = await treeItems.first().textContent();
+      
       expect(newFirstItemText).not.toBe(firstItemText);
 
       // Now check if save button is enabled
