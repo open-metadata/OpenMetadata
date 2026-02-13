@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -29,7 +28,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { defaultColors } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@untitledui/icons';
+import { Plus, Trash01 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import { DateTime } from 'luxon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -532,9 +531,7 @@ export const LearningResourcesPage: React.FC = () => {
           <Button
             data-testid="create-resource"
             startIcon={
-              <PlusOutlined
-                style={{ fontSize: theme.typography.pxToRem(16) }}
-              />
+              <Plus style={{ fontSize: theme.typography.pxToRem(16) }} />
             }
             sx={{
               fontSize: theme.typography.body2.fontSize,

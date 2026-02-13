@@ -128,7 +128,7 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
             alignItems: 'flex-start',
             gap: 1.5,
             minWidth: 0,
-            height: 40,
+            minHeight: 40,
           }}>
           <Box sx={{ flexShrink: 0, mt: '2px' }}>{resourceTypeIcon}</Box>
           <Typography
@@ -154,7 +154,7 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
           sx={{
             display: 'flex',
             flexDirection: 'column',
-            height: 56,
+            minHeight: 56,
           }}>
           {resource.description ? (
             <>
