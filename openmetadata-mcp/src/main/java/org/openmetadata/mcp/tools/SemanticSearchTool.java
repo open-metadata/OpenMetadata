@@ -54,6 +54,7 @@ public class SemanticSearchTool implements McpTool {
     k = Math.min(Math.max(k, 1), MAX_K);
 
     double threshold = parseDoubleParam(params, "threshold", DEFAULT_THRESHOLD);
+    threshold = Math.min(Math.max(threshold, 0.0), 1.0);
 
     Map<String, List<String>> filters = parseFilters(params);
 
