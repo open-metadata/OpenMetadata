@@ -138,8 +138,7 @@ public class SemanticSearchTool implements McpTool {
     return cleaned;
   }
 
-  private void copyIfPresent(
-      Map<String, Object> source, Map<String, Object> target, String key) {
+  private void copyIfPresent(Map<String, Object> source, Map<String, Object> target, String key) {
     if (source.containsKey(key)) {
       target.put(key, source.get(key));
     }

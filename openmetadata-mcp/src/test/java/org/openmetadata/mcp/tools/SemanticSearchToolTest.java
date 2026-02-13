@@ -3,7 +3,6 @@ package org.openmetadata.mcp.tools;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -408,8 +407,7 @@ class SemanticSearchToolTest {
     }
   }
 
-  private Map<String, Object> createHit(
-      String entityType, String fqn, String name, double score) {
+  private Map<String, Object> createHit(String entityType, String fqn, String name, double score) {
     Map<String, Object> hit = new HashMap<>();
     hit.put("entity_type", entityType);
     hit.put("fqn", fqn);
