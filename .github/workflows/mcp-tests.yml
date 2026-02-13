@@ -122,6 +122,7 @@ jobs:
         run: mvn test -pl :openmetadata-mcp
 
       - name: Clean Up
+        if: ${{ always() }}
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
