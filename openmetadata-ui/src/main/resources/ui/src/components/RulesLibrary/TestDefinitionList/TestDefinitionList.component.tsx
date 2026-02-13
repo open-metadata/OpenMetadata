@@ -73,7 +73,10 @@ import {
 } from '../../../utils/TestDefinitionUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
-import { useQuickFiltersWithComponent } from '../../common/atoms/filters/useQuickFiltersWithComponent';
+import {
+  SelectMode,
+  useQuickFiltersWithComponent,
+} from '../../common/atoms/filters/useQuickFiltersWithComponent';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -186,7 +189,7 @@ const TestDefinitionList = () => {
     parsedFilters,
     searchIndex: SearchIndex.ALL,
     onFilterChange: handleFilterChange,
-    mode: 'single',
+    mode: SelectMode.SINGLE,
   });
 
   const { filterSelectionDisplay } = useFilterSelection({

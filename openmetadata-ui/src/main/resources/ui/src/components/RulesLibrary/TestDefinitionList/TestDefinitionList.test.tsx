@@ -137,6 +137,9 @@ jest.mock('../../../hooks/useTableFilters', () => ({
 }));
 
 jest.mock('../../common/atoms/filters/useQuickFiltersWithComponent', () => ({
+  ...jest.requireActual(
+    '../../common/atoms/filters/useQuickFiltersWithComponent'
+  ),
   useQuickFiltersWithComponent: jest.fn().mockReturnValue({
     quickFilters: <div data-testid="quick-filters">Quick Filters</div>,
   }),

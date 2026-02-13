@@ -86,7 +86,7 @@ describe('useQuickFiltersWithComponent', () => {
           defaultFilters: mockDefaultFilters,
           searchIndex: SearchIndex.ALL,
           onFilterChange: mockOnFilterChange,
-          mode: 'single',
+          mode: SelectMode.SINGLE,
         })
       );
 
@@ -101,7 +101,7 @@ describe('useQuickFiltersWithComponent', () => {
           defaultFilters: mockDefaultFilters,
           searchIndex: SearchIndex.ALL,
           onFilterChange: mockOnFilterChange,
-          mode: 'multi',
+          mode: SelectMode.MULTI,
         })
       );
 
@@ -193,7 +193,7 @@ describe('useQuickFiltersWithComponent', () => {
           parsedFilters: mockParsedFilters,
           searchIndex: SearchIndex.ALL,
           onFilterChange: mockOnFilterChange,
-          mode: 'single',
+          mode: SelectMode.SINGLE,
         })
       );
 
@@ -284,13 +284,13 @@ describe('useQuickFiltersWithComponent', () => {
             mode,
           }),
         {
-          initialProps: { mode: 'multi' },
+          initialProps: { mode: SelectMode.MULTI },
         }
       );
 
       expect(result.current.selectedFilters[0].singleSelect).toBe(false);
 
-      rerender({ mode: 'single' });
+      rerender({ mode: SelectMode.SINGLE });
 
       expect(result.current.selectedFilters[0].singleSelect).toBe(true);
     });

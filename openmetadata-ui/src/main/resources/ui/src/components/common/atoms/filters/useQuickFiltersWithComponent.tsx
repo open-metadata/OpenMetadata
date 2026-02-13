@@ -26,7 +26,10 @@ import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface'
 import ExploreQuickFilters from '../../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 
-export type SelectMode = 'single' | 'multi';
+export enum SelectMode {
+  SINGLE = 'single',
+  MULTI = 'multi',
+}
 
 interface QuickFiltersWithComponentConfig {
   defaultFilters: ExploreQuickFilterField[];
@@ -57,7 +60,7 @@ export const useQuickFiltersWithComponent = (
   }>();
 
   useEffect(() => {
-    const isSingleSelect = config.mode === 'single';
+    const isSingleSelect = config.mode === SelectMode.SINGLE;
 
     const currentConfig = {
       parsedFilters: config.parsedFilters,
