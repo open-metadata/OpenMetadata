@@ -20,7 +20,7 @@ public class SemanticSearchTool implements McpTool {
 
   private static final int DEFAULT_SIZE = 10;
   private static final int MAX_SIZE = 50;
-  private static final int DEFAULT_K = 1000;
+  private static final int DEFAULT_K = 100;
   private static final int MAX_K = 10_000;
   private static final double DEFAULT_THRESHOLD = 0.0;
   private static final int DESCRIPTION_MAX_LENGTH = 500;
@@ -115,23 +115,24 @@ public class SemanticSearchTool implements McpTool {
     Map<String, Object> cleaned = new HashMap<>();
 
     copyIfPresent(hit, cleaned, "parent_id");
-    copyIfPresent(hit, cleaned, "entity_type");
-    copyIfPresent(hit, cleaned, "fqn");
+    copyIfPresent(hit, cleaned, "entityType");
+    copyIfPresent(hit, cleaned, "fullyQualifiedName");
     copyIfPresent(hit, cleaned, "name");
-    copyIfPresent(hit, cleaned, "display_name");
-    copyIfPresent(hit, cleaned, "service");
+    copyIfPresent(hit, cleaned, "displayName");
+    copyIfPresent(hit, cleaned, "serviceType");
     copyIfPresent(hit, cleaned, "owners");
     copyIfPresent(hit, cleaned, "tier");
     copyIfPresent(hit, cleaned, "tags");
-    copyIfPresent(hit, cleaned, "chunk_type");
-    copyIfPresent(hit, cleaned, "_score");
+    copyIfPresent(hit, cleaned, "domains");
+    copyIfPresent(hit, cleaned, "columns");
+    copyIfPresent(hit, cleaned, "certification");
 
-    if (hit.containsKey("text")) {
-      Object textObj = hit.get("text");
+    if (hit.containsKey("text_to_embed")) {
+      Object textObj = hit.get("text_to_embed");
       if (textObj instanceof String text && text.length() > DESCRIPTION_MAX_LENGTH) {
-        cleaned.put("text", text.substring(0, DESCRIPTION_TRUNCATE_LENGTH) + "...");
+        cleaned.put("description", text.substring(0, DESCRIPTION_TRUNCATE_LENGTH) + "...");
       } else {
-        cleaned.put("text", textObj);
+        cleaned.put("description", textObj);
       }
     }
 

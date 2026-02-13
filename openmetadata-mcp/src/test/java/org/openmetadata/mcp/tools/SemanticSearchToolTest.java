@@ -193,14 +193,16 @@ class SemanticSearchToolTest {
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
 
     Map<String, Object> hit = new HashMap<>();
-    hit.put("entity_type", "table");
-    hit.put("fqn", "db.schema.users");
+    hit.put("entityType", "table");
+    hit.put("fullyQualifiedName", "db.schema.users");
     hit.put("name", "users");
-    hit.put("display_name", "Users");
-    hit.put("service", "my_db");
+    hit.put("displayName", "Users");
+    hit.put("serviceType", "BigQuery");
     hit.put("_score", 0.95);
-    hit.put("text", "A short description");
-    hit.put("unknown_field", "should be excluded");
+    hit.put("text_to_embed", "A short description");
+    hit.put("columns", List.of(Map.of("name", "id", "dataType", "INT")));
+    hit.put("embedding", new float[] {0.1f, 0.2f});
+    hit.put("fingerprint", "abc123");
 
     VectorSearchResponse response = new VectorSearchResponse(10L, List.of(hit));
 
@@ -219,25 +221,27 @@ class SemanticSearchToolTest {
       @SuppressWarnings("unchecked")
       Map<String, Object> cleaned = (Map<String, Object>) results.get(0);
 
-      assertEquals("table", cleaned.get("entity_type"));
-      assertEquals("db.schema.users", cleaned.get("fqn"));
+      assertEquals("table", cleaned.get("entityType"));
+      assertEquals("db.schema.users", cleaned.get("fullyQualifiedName"));
       assertEquals("users", cleaned.get("name"));
-      assertEquals("Users", cleaned.get("display_name"));
-      assertEquals("my_db", cleaned.get("service"));
-      assertEquals(0.95, cleaned.get("_score"));
-      assertEquals("A short description", cleaned.get("text"));
-      assertTrue(!cleaned.containsKey("unknown_field"));
+      assertEquals("Users", cleaned.get("displayName"));
+      assertEquals("BigQuery", cleaned.get("serviceType"));
+      assertEquals("A short description", cleaned.get("description"));
+      assertNotNull(cleaned.get("columns"));
+      assertTrue(!cleaned.containsKey("_score"));
+      assertTrue(!cleaned.containsKey("embedding"));
+      assertTrue(!cleaned.containsKey("fingerprint"));
     }
   }
 
   @Test
-  void testLongTextIsTruncated() throws Exception {
+  void testLongDescriptionIsTruncated() throws Exception {
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
 
     String longText = "x".repeat(600);
     Map<String, Object> hit = new HashMap<>();
-    hit.put("fqn", "db.schema.table");
-    hit.put("text", longText);
+    hit.put("fullyQualifiedName", "db.schema.table");
+    hit.put("text_to_embed", longText);
 
     VectorSearchResponse response = new VectorSearchResponse(10L, List.of(hit));
 
@@ -255,7 +259,7 @@ class SemanticSearchToolTest {
       List<?> results = (List<?>) result.get("results");
       @SuppressWarnings("unchecked")
       Map<String, Object> cleaned = (Map<String, Object>) results.get(0);
-      String truncated = (String) cleaned.get("text");
+      String truncated = (String) cleaned.get("description");
 
       assertEquals(453, truncated.length());
       assertTrue(truncated.endsWith("..."));
@@ -409,8 +413,8 @@ class SemanticSearchToolTest {
 
   private Map<String, Object> createHit(String entityType, String fqn, String name, double score) {
     Map<String, Object> hit = new HashMap<>();
-    hit.put("entity_type", entityType);
-    hit.put("fqn", fqn);
+    hit.put("entityType", entityType);
+    hit.put("fullyQualifiedName", fqn);
     hit.put("name", name);
     hit.put("_score", score);
     return hit;
