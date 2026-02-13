@@ -531,8 +531,7 @@ test('Delete role action from manage button options', async ({ page }) => {
 
   await page.reload();
 
-  // Wait for page to be ready after reload
-  await page.waitForLoadState('networkidle');
+
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
