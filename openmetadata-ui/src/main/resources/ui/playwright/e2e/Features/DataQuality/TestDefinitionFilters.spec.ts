@@ -11,77 +11,22 @@
  *  limitations under the License.
  */
 
-import { expect, Page, Response, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
-import { redirectToHomePage } from '../../../utils/common';
+import {
+  ENTITY_TYPE_OPTIONS,
+  FILTER_LABELS,
+  TEST_PLATFORM_OPTIONS,
+} from '../../../constant/testDefinitionFilter';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import {
+  closeFilterDropdown,
+  navigateToRulesLibrary,
+  openFilterDropdown,
+  toggleFilter,
+} from '../../../utils/testDefinitionFilter';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
-
-const FILTER_LABELS = {
-  ENTITY_TYPE: 'Entity Type',
-  TEST_PLATFORMS: 'Test Platforms',
-};
-
-// Entity Type enum values are uppercase
-const ENTITY_TYPE_OPTIONS = {
-  TABLE: 'TABLE',
-  COLUMN: 'COLUMN',
-};
-
-// Test Platform enum values use specific casing
-const TEST_PLATFORM_OPTIONS = {
-  OPENMETADATA: 'OpenMetadata',
-  DBT: 'dbt',
-};
-
-const navigateToRulesLibrary = async (page: Page) => {
-  await redirectToHomePage(page);
-  const testDefinitionResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-      response.request().method() === 'GET'
-  );
-  await page.goto('/rules-library');
-  await testDefinitionResponse;
-  await waitForAllLoadersToDisappear(page);
-};
-
-const openFilterDropdown = async (page: Page, filterLabel: string) => {
-  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
-  await expect(page.getByTestId('drop-down-menu')).toBeVisible();
-};
-
-const closeFilterDropdown = async (page: Page) => {
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('drop-down-menu')).not.toBeVisible();
-};
-
-const toggleFilter = async (
-  page: Page,
-  filterLabel: string,
-  optionKey: string
-): Promise<Response> => {
-  await openFilterDropdown(page, filterLabel);
-
-  const option = page.getByTestId(optionKey);
-  await expect(option).toBeVisible();
-  await option.click();
-
-  const updateResponse = page.waitForResponse((response) =>
-    response.url().includes('/api/v1/dataQuality/testDefinitions')
-  );
-
-  const updateBtn = page.getByTestId('update-btn');
-  await expect(updateBtn).toBeVisible();
-  await expect(updateBtn).toBeEnabled();
-  await updateBtn.click();
-
-  const response = await updateResponse;
-  await waitForAllLoadersToDisappear(page);
-
-  return response;
-};
 
 test.describe(
   'Test Definition Filters',

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,7 +15,10 @@ import { renderHook } from '@testing-library/react';
 import React from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
-import { useQuickFiltersWithComponent } from './useQuickFiltersWithComponent';
+import {
+  SelectMode,
+  useQuickFiltersWithComponent,
+} from './useQuickFiltersWithComponent';
 
 jest.mock('../../../Explore/ExploreQuickFilters', () => ({
   __esModule: true,
@@ -273,7 +276,7 @@ describe('useQuickFiltersWithComponent', () => {
 
     it('should update singleSelect when mode changes', () => {
       const { result, rerender } = renderHook(
-        ({ mode }: { mode: 'single' | 'multi' }) =>
+        ({ mode }: { mode: SelectMode }) =>
           useQuickFiltersWithComponent({
             defaultFilters: mockDefaultFilters,
             searchIndex: SearchIndex.ALL,

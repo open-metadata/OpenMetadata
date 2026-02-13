@@ -666,7 +666,7 @@ const TestDefinitionList = () => {
               }}
               pagination={false}
               rowKey="id"
-              scroll={{ x: 1200 }}
+              scroll={{ x: testDefinitions.length ? 1200 : undefined }}
               size="small"
             />
           </Card>

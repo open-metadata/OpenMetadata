@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEqual } from 'lodash';
+import isEqual from 'lodash/isEqual';
 import {
   ReactNode,
   useCallback,
@@ -26,6 +26,8 @@ import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface'
 import ExploreQuickFilters from '../../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 
+export type SelectMode = 'single' | 'multi';
+
 interface QuickFiltersWithComponentConfig {
   defaultFilters: ExploreQuickFilterField[];
   aggregations?: Aggregations;
@@ -34,7 +36,7 @@ interface QuickFiltersWithComponentConfig {
   assetType?: AssetsOfEntity;
   onFilterChange: (filters: ExploreQuickFilterField[]) => void;
   additionalActions?: ReactNode;
-  mode?: 'single' | 'multi';
+  mode?: SelectMode;
 }
 
 interface UseQuickFiltersWithComponentReturn {
@@ -50,7 +52,7 @@ export const useQuickFiltersWithComponent = (
   >([]);
   const previousConfigRef = useRef<{
     parsedFilters?: ExploreQuickFilterField[];
-    mode?: 'single' | 'multi';
+    mode?: SelectMode;
     defaultFilters: ExploreQuickFilterField[];
   }>();
 

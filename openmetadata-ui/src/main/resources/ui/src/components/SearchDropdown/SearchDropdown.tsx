@@ -207,12 +207,10 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     // call on change with updated value
     if (nullOptionSelected) {
       onChange(
-        singleSelect
-          ? [{ key: NULL_OPTION_KEY, label: nullLabelText }]
-          : [
-              { key: NULL_OPTION_KEY, label: nullLabelText },
-              ...selectedOptions,
-            ],
+        [
+          { key: NULL_OPTION_KEY, label: nullLabelText },
+          ...(singleSelect ? [] : selectedOptions),
+        ],
         searchKey
       );
     } else {
