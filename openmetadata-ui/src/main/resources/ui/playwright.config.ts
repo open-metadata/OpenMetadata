@@ -88,6 +88,7 @@ export default defineConfig({
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
       ],
+      testMatch: '**/Entity.spec.ts',
     },
     {
       name: 'entity-data-teardown',

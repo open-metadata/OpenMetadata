@@ -675,20 +675,29 @@ export const updateDescriptionForChildren = async (
   // REMOVED: toHaveText check - rich text editor may have formatting that makes exact match unreliable
   // The final verification after save is sufficient
 
-  // Wait for API response
+  const saveButton = page.getByTestId('save');
+  await expect(saveButton).toBeVisible();
+  await expect(saveButton).toBeEnabled();
   let updateRequest;
   if (
     entityEndpoint === 'tables' ||
     entityEndpoint === 'dashboard/datamodels'
   ) {
-    updateRequest = page.waitForResponse('/api/v1/columns/name/*');
+    updateRequest = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/columns/name/') &&
+        response.request().method() === 'PATCH' &&
+        response.status() === 200
+    );
   } else {
-    updateRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
+    updateRequest = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/v1/${entityEndpoint}/`) &&
+        response.request().method() === 'PATCH' &&
+        response.status() === 200
+    );
   }
 
-  const saveButton = page.getByTestId('save');
-  await expect(saveButton).toBeVisible();
-  await expect(saveButton).toBeEnabled();
   await saveButton.click();
   await updateRequest;
 
