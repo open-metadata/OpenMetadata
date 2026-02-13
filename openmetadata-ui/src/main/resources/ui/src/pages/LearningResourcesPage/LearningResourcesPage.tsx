@@ -525,7 +525,11 @@ export const LearningResourcesPage: React.FC = () => {
 
           <Button
             data-testid="create-resource"
-            startIcon={<PlusOutlined style={{ fontSize: 16 }} />}
+            startIcon={
+              <PlusOutlined
+                style={{ fontSize: theme.typography.pxToRem(16) }}
+              />
+            }
             sx={{
               fontSize: theme.typography.body2.fontSize,
               fontWeight: theme.typography.fontWeightMedium,
@@ -539,6 +543,7 @@ export const LearningResourcesPage: React.FC = () => {
                 color: defaultColors.white,
               },
             }}
+            variant="text"
             onClick={handleCreate}>
             {t('label.add-entity', {
               entity: t('label.resource'),

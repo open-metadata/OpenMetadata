@@ -279,8 +279,6 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                   }
                   sx={{
                     color: theme.palette.allShades?.gray?.[600],
-                    height: 16,
-                    width: 16,
                     '&:hover': {
                       color: theme.palette.allShades?.gray?.[700],
                     },
@@ -290,11 +288,7 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                     },
                   }}
                   onClick={handleFullScreenToggle}>
-                  {isFullScreen ? (
-                    <Minimize01 size={16} strokeWidth={2} />
-                  ) : (
-                    <Maximize01 size={16} strokeWidth={2} />
-                  )}
+                  {isFullScreen ? <Minimize01 /> : <Maximize01 />}
                 </IconButton>
               </Tooltip>
               <IconButton
@@ -303,8 +297,6 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                 data-testid="close-resource-player"
                 sx={{
                   color: theme.palette.allShades?.gray?.[600],
-                  height: 16,
-                  width: 16,
                   '&:hover': {
                     color: theme.palette.allShades?.gray?.[700],
                   },
@@ -314,7 +306,7 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                   },
                 }}
                 onClick={onClose}>
-                <XClose size={16} />
+                <XClose />
               </IconButton>
             </Box>
           </Box>
@@ -342,13 +334,11 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
                       key={`${ctx.pageId}-${idx}`}
                       sx={{
                         backgroundColor: theme.palette.grey[50],
-                        border: '1px solid',
-                        borderColor: theme.palette.grey[200],
+                        border: `1px solid ${theme.palette.grey[200]}`,
                         borderRadius: theme.spacing(0.75),
                         color: theme.palette.grey[700],
                         fontSize: theme.typography.caption.fontSize,
                         fontWeight: theme.typography.fontWeightMedium,
-                        lineHeight: 1.5,
                         padding: theme.spacing(0.25, 0.75),
                         flexShrink: 1,
                         minWidth: 0,
