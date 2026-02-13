@@ -475,7 +475,6 @@ public class DirectoryResource extends EntityResource<Directory, DirectoryReposi
   public Response restoreDirectory(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid RestoreEntity restore,
       @Parameter(description = "Id of the directory", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {

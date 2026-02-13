@@ -487,7 +487,6 @@ public class FileResource extends EntityResource<File, FileRepository> {
   public Response restoreFile(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid RestoreEntity restore,
       @Parameter(description = "Id of the file", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return restoreEntity(uriInfo, securityContext, id);
