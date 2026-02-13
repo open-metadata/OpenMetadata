@@ -31,7 +31,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+} from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import {
   TEST_DEFINITION_DEFAULT_QUICK_FILTERS,
@@ -99,7 +102,7 @@ const TestDefinitionList = () => {
     handlePageSizeChange,
     showPagination,
     pagingCursor,
-  } = usePaging();
+  } = usePaging(PAGE_SIZE_BASE);
 
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -309,7 +312,7 @@ const TestDefinitionList = () => {
     } else {
       fetchTestDefinitions();
     }
-  }, [pageSize, pagingCursor]);
+  }, [pageSize, pagingCursor, urlParams.entityType, urlParams.testPlatforms]);
 
   const handleEnableToggle = async (
     record: TestDefinition,
