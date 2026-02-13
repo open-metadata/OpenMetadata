@@ -1874,3 +1874,17 @@ export const getHighlightedRowClassName = <
 
   return '';
 };
+
+export const getNestedSectionTitle = (
+  entityType: EntityType | undefined
+): string => {
+  switch (entityType) {
+    case EntityType.TOPIC:
+    case EntityType.API_ENDPOINT:
+      return 'label.schema-field-plural';
+    case EntityType.SEARCH_INDEX:
+      return 'label.field-plural';
+    default:
+      return 'label.nested-column-plural';
+  }
+};

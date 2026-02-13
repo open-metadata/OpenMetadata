@@ -171,7 +171,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer call() {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
-            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'reindexdi', 'deploy-pipelines', "
+            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reembed', 'reindex-rdf', 'reindexdi', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes', "
             + "'setOpenMetadataUrl', 'configureEmailSettings', 'get-security-config', 'update-security-config', 'install-app', 'delete-app', 'create-user', 'reset-password', "
             + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history'");
@@ -1399,6 +1399,353 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.error("Failed to reindex due to ", e);
       return 1;
     }
+  }
+
+  @Command(
+      name = "reembed",
+      description =
+          "Drop the vector index, recreate it, and fully re-embed all entities using the configured embedding provider.")
+  public Integer reembed(
+      @Option(
+              names = {"-b", "--batch-size"},
+              defaultValue = "300",
+              description = "Number of records to process in each batch.")
+          int batchSize,
+      @Option(
+              names = {"--producer-threads"},
+              defaultValue = "10",
+              description = "Number of producer threads for reading entity batches.")
+          int producerThreads,
+      @Option(
+              names = {"--consumer-threads"},
+              defaultValue = "5",
+              description = "Number of consumer threads for embedding updates.")
+          int consumerThreads,
+      @Option(
+              names = {"--queue-size"},
+              defaultValue = "300",
+              description = "Queue size for buffering embedding tasks.")
+          int queueSize) {
+    int finalProducerThreads =
+        producerThreads <= 0
+            ? Math.max(1, Runtime.getRuntime().availableProcessors())
+            : producerThreads;
+    int finalConsumerThreads =
+        consumerThreads <= 0
+            ? Math.max(1, Runtime.getRuntime().availableProcessors())
+            : consumerThreads;
+    int finalQueueSize = Math.max(1, queueSize);
+    java.util.concurrent.BlockingQueue<ReembedTask> taskQueue =
+        new java.util.concurrent.LinkedBlockingQueue<>(finalQueueSize);
+    java.util.concurrent.atomic.AtomicBoolean producersDone =
+        new java.util.concurrent.atomic.AtomicBoolean(false);
+    java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger>
+        processedCounts = new java.util.concurrent.ConcurrentHashMap<>();
+    java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger>
+        failedCounts = new java.util.concurrent.ConcurrentHashMap<>();
+    java.util.concurrent.ExecutorService producerExecutor =
+        java.util.concurrent.Executors.newFixedThreadPool(
+            finalProducerThreads, Thread.ofPlatform().name("reembed-producer-", 0).factory());
+    java.util.concurrent.ExecutorService consumerExecutor =
+        java.util.concurrent.Executors.newFixedThreadPool(
+            finalConsumerThreads, Thread.ofPlatform().name("reembed-consumer-", 0).factory());
+    try {
+      if (!OpenMetadataApplicationConfigHolder.isInitialized()) {
+        parseConfig();
+      }
+      CollectionRegistry.initialize();
+      var omConfig = OpenMetadataApplicationConfigHolder.getInstance();
+      ApplicationHandler.initialize(omConfig);
+      CollectionRegistry.getInstance()
+          .loadSeedData(Entity.getJdbi(), omConfig, null, null, null, true);
+      TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
+      TypeRegistry.instance().initialize(typeRepository);
+
+      SearchRepository repo = Entity.getSearchRepository();
+      if (repo == null) {
+        LOG.error("Search repository is not initialized; cannot run re-embedding");
+        return 1;
+      }
+
+      repo.prepareForReindex();
+      org.openmetadata.service.search.vector.OpenSearchVectorService vecService =
+          org.openmetadata.service.search.vector.OpenSearchVectorService.getInstance();
+      if (vecService == null || vecService.getEmbeddingClient() == null) {
+        LOG.warn("Vector embeddings are disabled or not initialized. Skipping re-embedding.");
+        return 1;
+      }
+
+      IndexMapping vectorMapping =
+          repo.getIndexMapping(
+              org.openmetadata.service.search.vector.VectorIndexService.VECTOR_INDEX_KEY);
+      if (vectorMapping != null) {
+        try {
+          String indexName = vectorMapping.getIndexName(repo.getClusterAlias());
+          LOG.info("Dropping vector index '{}' before re-embedding", indexName);
+          repo.deleteIndex(vectorMapping);
+        } catch (Exception e) {
+          LOG.warn(
+              "Failed to drop vector index '{}' - continuing with recreate",
+              org.openmetadata.service.search.vector.VectorIndexService.VECTOR_INDEX_KEY,
+              e);
+        }
+        try {
+          repo.createIndex(vectorMapping);
+        } catch (Exception e) {
+          LOG.error(
+              "Failed to recreate vector index '{}'",
+              org.openmetadata.service.search.vector.VectorIndexService.VECTOR_INDEX_KEY,
+              e);
+          return 1;
+        }
+      } else {
+        LOG.warn(
+            "Vector index mapping '{}' not found; skipping index recreation step",
+            org.openmetadata.service.search.vector.VectorIndexService.VECTOR_INDEX_KEY);
+      }
+
+      String targetIndex =
+          org.openmetadata.service.search.vector.VectorIndexService.getClusteredIndexName();
+
+      java.util.concurrent.ConcurrentHashMap<String, Integer> entityTotals =
+          new java.util.concurrent.ConcurrentHashMap<>();
+      int totalBatches = calculateReembedTotalBatches(batchSize, entityTotals);
+      java.util.concurrent.CountDownLatch producerLatch =
+          new java.util.concurrent.CountDownLatch(totalBatches);
+
+      LOG.info(
+          "Re-embedding with producers: {}, consumers: {}, queue size: {}, batch size: {}",
+          finalProducerThreads,
+          finalConsumerThreads,
+          finalQueueSize,
+          batchSize);
+
+      java.util.concurrent.CountDownLatch consumerLatch =
+          startReembedConsumers(
+              finalConsumerThreads,
+              consumerExecutor,
+              taskQueue,
+              producersDone,
+              vecService,
+              targetIndex,
+              processedCounts,
+              failedCounts);
+
+      for (String entityType :
+          org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
+        int totalRecords = entityTotals.getOrDefault(entityType, 0);
+        int batches = calculateReembedNumberOfBatches(totalRecords, batchSize);
+        if (batches == 0) {
+          LOG.info("No entities found for type {}, skipping", entityType);
+          continue;
+        }
+
+        org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource source =
+            new org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource(
+                entityType, batchSize, List.of("*"));
+
+        LOG.info(
+            "Scheduling re-embedding for entity type {} with {} records ({} batches)",
+            entityType,
+            totalRecords,
+            batches);
+
+        for (int i = 0; i < batches; i++) {
+          int offset = i * batchSize;
+          producerExecutor.submit(
+              () -> {
+                try {
+                  org.openmetadata.schema.utils.ResultList<? extends EntityInterface> batch =
+                      source.readWithCursor(RestUtil.encodeCursor(String.valueOf(offset)));
+                  if (batch != null && batch.getData() != null && !batch.getData().isEmpty()) {
+                    taskQueue.put(new ReembedTask(entityType, batch));
+                  }
+                  if (batch != null && batch.getErrors() != null && !batch.getErrors().isEmpty()) {
+                    failedCounts
+                        .computeIfAbsent(
+                            entityType, key -> new java.util.concurrent.atomic.AtomicInteger(0))
+                        .addAndGet(batch.getErrors().size());
+                  }
+                } catch (Exception e) {
+                  LOG.warn(
+                      "Failed to read batch for entity type {} at offset {}",
+                      entityType,
+                      offset,
+                      e);
+                } finally {
+                  producerLatch.countDown();
+                }
+              });
+        }
+      }
+
+      awaitReembedProducers(producerLatch, producerExecutor);
+      producersDone.set(true);
+      signalReembedConsumersToStop(finalConsumerThreads, taskQueue);
+      consumerLatch.await();
+
+      for (String entityType :
+          org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
+        int processed =
+            processedCounts
+                .getOrDefault(entityType, new java.util.concurrent.atomic.AtomicInteger(0))
+                .get();
+        int failed =
+            failedCounts
+                .getOrDefault(entityType, new java.util.concurrent.atomic.AtomicInteger(0))
+                .get();
+        LOG.info(
+            "Finished re-embedding {} entities for type {} (failed reads: {})",
+            processed,
+            entityType,
+            failed);
+      }
+
+      LOG.info("Re-embedding completed successfully");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to run full re-embedding", e);
+      return 1;
+    } finally {
+      shutdownReembedExecutor(producerExecutor, "reembed-producer");
+      shutdownReembedExecutor(consumerExecutor, "reembed-consumer");
+    }
+  }
+
+  private record ReembedTask(
+      String entityType,
+      org.openmetadata.schema.utils.ResultList<? extends EntityInterface> batch) {}
+
+  private java.util.concurrent.CountDownLatch startReembedConsumers(
+      int consumerThreads,
+      java.util.concurrent.ExecutorService consumerExecutor,
+      java.util.concurrent.BlockingQueue<ReembedTask> taskQueue,
+      java.util.concurrent.atomic.AtomicBoolean producersDone,
+      org.openmetadata.service.search.vector.OpenSearchVectorService vecService,
+      String targetIndex,
+      Map<String, java.util.concurrent.atomic.AtomicInteger> processedCounts,
+      Map<String, java.util.concurrent.atomic.AtomicInteger> failedCounts) {
+    java.util.concurrent.CountDownLatch consumerLatch =
+        new java.util.concurrent.CountDownLatch(consumerThreads);
+    for (int i = 0; i < consumerThreads; i++) {
+      final int consumerId = i;
+      consumerExecutor.submit(
+          () -> {
+            try {
+              runReembedConsumer(
+                  consumerId,
+                  taskQueue,
+                  producersDone,
+                  vecService,
+                  targetIndex,
+                  processedCounts,
+                  failedCounts);
+            } finally {
+              consumerLatch.countDown();
+            }
+          });
+    }
+    return consumerLatch;
+  }
+
+  private void runReembedConsumer(
+      int consumerId,
+      java.util.concurrent.BlockingQueue<ReembedTask> taskQueue,
+      java.util.concurrent.atomic.AtomicBoolean producersDone,
+      org.openmetadata.service.search.vector.OpenSearchVectorService vecService,
+      String targetIndex,
+      Map<String, java.util.concurrent.atomic.AtomicInteger> processedCounts,
+      Map<String, java.util.concurrent.atomic.AtomicInteger> failedCounts) {
+    LOG.debug("Consumer {} started", consumerId);
+    try {
+      while (!producersDone.get() || !taskQueue.isEmpty()) {
+        ReembedTask task = taskQueue.poll(100, java.util.concurrent.TimeUnit.MILLISECONDS);
+        if (task == null) {
+          continue;
+        }
+        if (task.batch() == null) {
+          break;
+        }
+        String entityType = task.entityType();
+        for (EntityInterface entity : task.batch().getData()) {
+          try {
+            vecService.updateVectorEmbeddings(entity, targetIndex);
+            processedCounts
+                .computeIfAbsent(
+                    entityType, key -> new java.util.concurrent.atomic.AtomicInteger(0))
+                .incrementAndGet();
+          } catch (Exception e) {
+            failedCounts
+                .computeIfAbsent(
+                    entityType, key -> new java.util.concurrent.atomic.AtomicInteger(0))
+                .incrementAndGet();
+            LOG.warn("Failed to embed entity {} of type {}", entity.getId(), entityType, e);
+          }
+        }
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    } finally {
+      LOG.debug("Consumer {} stopped", consumerId);
+    }
+  }
+
+  private void signalReembedConsumersToStop(
+      int consumerThreads, java.util.concurrent.BlockingQueue<ReembedTask> taskQueue) {
+    for (int i = 0; i < consumerThreads; i++) {
+      taskQueue.offer(new ReembedTask("__POISON_PILL__", null));
+    }
+  }
+
+  private void awaitReembedProducers(
+      java.util.concurrent.CountDownLatch producerLatch,
+      java.util.concurrent.ExecutorService producerExecutor)
+      throws InterruptedException {
+    while (!producerLatch.await(1, java.util.concurrent.TimeUnit.SECONDS)) {
+      if (Thread.currentThread().isInterrupted()) {
+        producerExecutor.shutdownNow();
+        throw new InterruptedException("Interrupted while waiting for producers");
+      }
+    }
+  }
+
+  private void shutdownReembedExecutor(java.util.concurrent.ExecutorService executor, String name) {
+    if (executor == null) {
+      return;
+    }
+    executor.shutdown();
+    try {
+      if (!executor.awaitTermination(1, java.util.concurrent.TimeUnit.MINUTES)) {
+        LOG.warn("Forcing shutdown of {}", name);
+        executor.shutdownNow();
+      }
+    } catch (InterruptedException e) {
+      executor.shutdownNow();
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  private int calculateReembedTotalBatches(int batchSize, Map<String, Integer> entityTotals) {
+    int totalBatches = 0;
+    for (String entityType :
+        org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
+      try {
+        int totalRecords = Entity.getEntityRepository(entityType).getDao().listTotalCount();
+        entityTotals.put(entityType, totalRecords);
+        totalBatches += calculateReembedNumberOfBatches(totalRecords, batchSize);
+      } catch (EntityNotFoundException e) {
+        LOG.warn(
+            "Skipping re-embedding for entity type '{}': repository not registered", entityType);
+      }
+    }
+    return totalBatches;
+  }
+
+  private int calculateReembedNumberOfBatches(int totalRecords, int batchSize) {
+    if (totalRecords <= 0 || batchSize <= 0) {
+      return 0;
+    }
+    return (int) Math.ceil((double) totalRecords / (double) batchSize);
   }
 
   @Command(name = "syncAlertOffset", description = "Sync the Alert Offset.")
