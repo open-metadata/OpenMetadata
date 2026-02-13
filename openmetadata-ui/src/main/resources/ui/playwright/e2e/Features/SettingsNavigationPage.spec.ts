@@ -268,6 +268,8 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     const firstItemText = await firstItem.textContent();
 
+    expect(firstItemText).not.toBeNull();
+
     const firstItemBox = await firstItem.boundingBox();
     const secondItemBox = await secondItem.boundingBox();
 
@@ -285,12 +287,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
           y: secondItemBox.height / 2 + 10,
         },
       });
-      // Adding wait so that drop action can complete
-      await page.waitForTimeout(500);
-
-      const newFirstItemText = await treeItems.first().textContent();
-      
-      expect(newFirstItemText).not.toBe(firstItemText);
+      await expect(treeItems.first()).not.toHaveText(firstItemText as string);
 
       // Now check if save button is enabled
       await page
