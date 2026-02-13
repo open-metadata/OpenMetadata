@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test } from '@playwright/test';
+import { expect, Page, Response, test } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -47,15 +47,22 @@ const navigateToRulesLibrary = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
 };
 
+const openFilterDropdown = async (page: Page, filterLabel: string) => {
+  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
+  await expect(page.getByTestId('drop-down-menu')).toBeVisible();
+};
+
+const closeFilterDropdown = async (page: Page) => {
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('drop-down-menu')).not.toBeVisible();
+};
+
 const toggleFilter = async (
   page: Page,
   filterLabel: string,
   optionKey: string
-) => {
-  await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
-  await page.waitForSelector('[data-testid="drop-down-menu"]', {
-    state: 'visible',
-  });
+): Promise<Response> => {
+  await openFilterDropdown(page, filterLabel);
 
   const option = page.getByTestId(optionKey);
   await expect(option).toBeVisible();
@@ -70,8 +77,10 @@ const toggleFilter = async (
   await expect(updateBtn).toBeEnabled();
   await updateBtn.click();
 
-  await updateResponse;
+  const response = await updateResponse;
   await waitForAllLoadersToDisappear(page);
+
+  return response;
 };
 
 test.describe(
@@ -108,26 +117,16 @@ test.describe(
       });
 
       await test.step('Verify radio button is checked', async () => {
-        await page.click(
-          `[data-testid="search-dropdown-${FILTER_LABELS.ENTITY_TYPE}"]`
-        );
-        await page.waitForSelector('[data-testid="drop-down-menu"]', {
-          state: 'visible',
-        });
+        await openFilterDropdown(page, FILTER_LABELS.ENTITY_TYPE);
 
         const tableRadio = page.getByTestId('TABLE-radio');
         await expect(tableRadio).toBeChecked();
 
-        await page.keyboard.press('Escape');
+        await closeFilterDropdown(page);
       });
 
       await test.step('Change filter selection', async () => {
-        await page.click(
-          `[data-testid="search-dropdown-${FILTER_LABELS.ENTITY_TYPE}"]`
-        );
-        await page.waitForSelector('[data-testid="drop-down-menu"]', {
-          state: 'visible',
-        });
+        await openFilterDropdown(page, FILTER_LABELS.ENTITY_TYPE);
 
         const columnOption = page.getByTestId(ENTITY_TYPE_OPTIONS.COLUMN);
         await expect(columnOption).toBeVisible();
@@ -149,12 +148,7 @@ test.describe(
       });
 
       await test.step('Verify previous selection is cleared', async () => {
-        await page.click(
-          `[data-testid="search-dropdown-${FILTER_LABELS.ENTITY_TYPE}"]`
-        );
-        await page.waitForSelector('[data-testid="drop-down-menu"]', {
-          state: 'visible',
-        });
+        await openFilterDropdown(page, FILTER_LABELS.ENTITY_TYPE);
 
         const tableRadioAfterChange = page.getByTestId('TABLE-radio');
         await expect(tableRadioAfterChange).not.toBeChecked();
@@ -162,7 +156,7 @@ test.describe(
         const columnRadio = page.getByTestId('COLUMN-radio');
         await expect(columnRadio).toBeChecked();
 
-        await page.keyboard.press('Escape');
+        await closeFilterDropdown(page);
       });
     });
 
@@ -179,29 +173,19 @@ test.describe(
       });
 
       await test.step('Verify filters are pre-selected', async () => {
-        await page.click(
-          `[data-testid="search-dropdown-${FILTER_LABELS.ENTITY_TYPE}"]`
-        );
-        await page.waitForSelector('[data-testid="drop-down-menu"]', {
-          state: 'visible',
-        });
+        await openFilterDropdown(page, FILTER_LABELS.ENTITY_TYPE);
 
         const tableRadio = page.getByTestId('TABLE-radio');
         await expect(tableRadio).toBeChecked();
 
-        await page.keyboard.press('Escape');
+        await closeFilterDropdown(page);
 
-        await page.click(
-          `[data-testid="search-dropdown-${FILTER_LABELS.TEST_PLATFORMS}"]`
-        );
-        await page.waitForSelector('[data-testid="drop-down-menu"]', {
-          state: 'visible',
-        });
+        await openFilterDropdown(page, FILTER_LABELS.TEST_PLATFORMS);
 
         const openMetadataRadio = page.getByTestId('OpenMetadata-radio');
         await expect(openMetadataRadio).toBeChecked();
 
-        await page.keyboard.press('Escape');
+        await closeFilterDropdown(page);
       });
 
       await test.step(
@@ -224,12 +208,7 @@ test.describe(
 
     test('should handle filter UI interactions correctly', async ({ page }) => {
       await test.step('Verify radio button rendering', async () => {
-        await page.click(
-          `[data-testid="search-dropdown-${FILTER_LABELS.ENTITY_TYPE}"]`
-        );
-        await page.waitForSelector('[data-testid="drop-down-menu"]', {
-          state: 'visible',
-        });
+        await openFilterDropdown(page, FILTER_LABELS.ENTITY_TYPE);
 
         const tableRadio = page.getByTestId('TABLE-radio');
         await expect(tableRadio).toBeVisible();
@@ -238,16 +217,11 @@ test.describe(
         const tableCheckbox = page.getByTestId('TABLE-checkbox');
         await expect(tableCheckbox).not.toBeVisible();
 
-        await page.keyboard.press('Escape');
+        await closeFilterDropdown(page);
       });
 
       await test.step('Test toggle selection behavior', async () => {
-        await page.click(
-          `[data-testid="search-dropdown-${FILTER_LABELS.ENTITY_TYPE}"]`
-        );
-        await page.waitForSelector('[data-testid="drop-down-menu"]', {
-          state: 'visible',
-        });
+        await openFilterDropdown(page, FILTER_LABELS.ENTITY_TYPE);
 
         const tableOption = page.getByTestId(ENTITY_TYPE_OPTIONS.TABLE);
         await expect(tableOption).toBeVisible();
@@ -261,16 +235,11 @@ test.describe(
         const tableRadioAfterDeselect = page.getByTestId('TABLE-radio');
         await expect(tableRadioAfterDeselect).not.toBeChecked();
 
-        await page.keyboard.press('Escape');
+        await closeFilterDropdown(page);
       });
 
       await test.step('Verify update button and dropdown closing', async () => {
-        await page.click(
-          `[data-testid="search-dropdown-${FILTER_LABELS.ENTITY_TYPE}"]`
-        );
-        await page.waitForSelector('[data-testid="drop-down-menu"]', {
-          state: 'visible',
-        });
+        await openFilterDropdown(page, FILTER_LABELS.ENTITY_TYPE);
 
         const tableOption = page.getByTestId(ENTITY_TYPE_OPTIONS.TABLE);
         await tableOption.click();
@@ -288,9 +257,7 @@ test.describe(
         await updateResponse;
         await waitForAllLoadersToDisappear(page);
 
-        await expect(
-          page.locator('[data-testid="drop-down-menu"]')
-        ).not.toBeVisible();
+        await expect(page.getByTestId('drop-down-menu')).not.toBeVisible();
 
         expect(page.url()).toContain('entityType=TABLE');
       });
@@ -298,17 +265,12 @@ test.describe(
       await test.step(
         'Verify no clear all button in single-select mode',
         async () => {
-          await page.click(
-            `[data-testid="search-dropdown-${FILTER_LABELS.ENTITY_TYPE}"]`
-          );
-          await page.waitForSelector('[data-testid="drop-down-menu"]', {
-            state: 'visible',
-          });
+          await openFilterDropdown(page, FILTER_LABELS.ENTITY_TYPE);
 
           const clearButton = page.getByTestId('clear-button');
           await expect(clearButton).not.toBeVisible();
 
-          await page.keyboard.press('Escape');
+          await closeFilterDropdown(page);
         }
       );
     });
@@ -400,40 +362,32 @@ test.describe(
         await toggleFilter(
           page,
           FILTER_LABELS.ENTITY_TYPE,
-          ENTITY_TYPE_OPTIONS.TABLE
+          ENTITY_TYPE_OPTIONS.COLUMN
         );
       });
 
-      await test.step('Navigate to page 2 if pagination exists', async () => {
-        const paginationExists = await page
-          .locator('.ant-pagination')
-          .isVisible();
+      await test.step(
+        'Navigate to page 2 and verify pagination resets on filter change',
+        async () => {
+          await expect(page.getByTestId('pagination')).toBeVisible();
 
-        if (paginationExists) {
-          const nextButton = page.locator('.ant-pagination-next');
+          const nextButton = page.getByTestId('next');
+          await expect(nextButton).toBeEnabled();
+          await nextButton.click();
+          await waitForAllLoadersToDisappear(page);
 
-          if (await nextButton.isEnabled()) {
-            await nextButton.click();
-            await waitForAllLoadersToDisappear(page);
+          expect(page.url()).toMatch(/currentPage=2/);
 
-            expect(page.url()).toMatch(/page=2/);
+          await toggleFilter(
+            page,
+            FILTER_LABELS.ENTITY_TYPE,
+            ENTITY_TYPE_OPTIONS.TABLE
+          );
 
-            await test.step(
-              'Change filter and verify pagination reset',
-              async () => {
-                await toggleFilter(
-                  page,
-                  FILTER_LABELS.ENTITY_TYPE,
-                  ENTITY_TYPE_OPTIONS.COLUMN
-                );
-
-                expect(page.url()).not.toContain('page=2');
-                expect(page.url()).toContain('entityType=COLUMN');
-              }
-            );
-          }
+          expect(page.url()).not.toContain('currentPage=2');
+          expect(page.url()).toContain('entityType=TABLE');
         }
-      });
+      );
     });
 
     test('should not revert to previous value when changing filter selection', async ({
@@ -442,17 +396,12 @@ test.describe(
       test.slow();
 
       await test.step('Select initial testPlatform filter (dbt)', async () => {
-        const testDefinitionResponse = page.waitForResponse((response) =>
-          response.url().includes('/api/v1/dataQuality/testDefinitions')
-        );
-
-        await toggleFilter(
+        const response = await toggleFilter(
           page,
           FILTER_LABELS.TEST_PLATFORMS,
           TEST_PLATFORM_OPTIONS.DBT
         );
 
-        const response = await testDefinitionResponse;
         const responseData = await response.json();
 
         expect(page.url()).toContain('testPlatforms=dbt');
@@ -462,17 +411,11 @@ test.describe(
       await test.step(
         'Change to a different testPlatform filter (OpenMetadata)',
         async () => {
-          const testDefinitionResponse = page.waitForResponse((response) =>
-            response.url().includes('/api/v1/dataQuality/testDefinitions')
-          );
-
           await toggleFilter(
             page,
             FILTER_LABELS.TEST_PLATFORMS,
             TEST_PLATFORM_OPTIONS.OPENMETADATA
           );
-
-          await testDefinitionResponse;
 
           expect(page.url()).toContain('testPlatforms=OpenMetadata');
           expect(page.url()).not.toContain('testPlatforms=dbt');
@@ -488,37 +431,24 @@ test.describe(
           expect(page.url()).toContain('testPlatforms=OpenMetadata');
           expect(page.url()).not.toContain('testPlatforms=dbt');
 
-          await page.click(
-            `[data-testid="search-dropdown-${FILTER_LABELS.TEST_PLATFORMS}"]`
-          );
-          await page.waitForSelector('[data-testid="drop-down-menu"]', {
-            state: 'visible',
-          });
+          await openFilterDropdown(page, FILTER_LABELS.TEST_PLATFORMS);
 
           const openMetadataRadio = page.getByTestId('OpenMetadata-radio');
 
           await expect(openMetadataRadio).toBeChecked();
 
-          await page.keyboard.press('Escape');
+          await closeFilterDropdown(page);
         }
       );
 
       await test.step(
         'Change back to previous testPlatform filter (dbt)',
         async () => {
-          const testDefinitionResponse = page.waitForResponse((response) =>
-            response
-              .url()
-              .includes('/api/v1/dataQuality/testDefinitions?limit=15')
-          );
-
           await toggleFilter(
             page,
             FILTER_LABELS.TEST_PLATFORMS,
             TEST_PLATFORM_OPTIONS.DBT
           );
-
-          await testDefinitionResponse;
 
           expect(page.url()).toContain('testPlatforms=dbt');
           expect(page.url()).not.toContain('testPlatforms=OpenMetadata');
@@ -526,19 +456,14 @@ test.describe(
       );
 
       await test.step('Verify final selection persists', async () => {
-        await page.click(
-          `[data-testid="search-dropdown-${FILTER_LABELS.TEST_PLATFORMS}"]`
-        );
-        await page.waitForSelector('[data-testid="drop-down-menu"]', {
-          state: 'visible',
-        });
+        await openFilterDropdown(page, FILTER_LABELS.TEST_PLATFORMS);
 
         const dbtRadio = page.getByTestId('dbt-radio');
 
         await expect(dbtRadio).toBeChecked();
         expect(page.url()).toContain('testPlatforms=dbt');
 
-        await page.keyboard.press('Escape');
+        await closeFilterDropdown(page);
       });
     });
   }
