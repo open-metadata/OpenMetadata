@@ -552,6 +552,36 @@ class OpenSearchDataInsightAggregatorManagerIntegrationTest extends OpenMetadata
   }
 
   @Test
+  void testGetQueryCostRecords_WithNonExistentService_ReturnsEmptyStats() throws Exception {
+    String nonExistentService = "NonExistentService_" + System.currentTimeMillis();
+
+    assertDoesNotThrow(
+        () -> {
+          QueryCostSearchResult result = aggregatorManager.getQueryCostRecords(nonExistentService);
+          assertNotNull(result, "Query cost result should not be null for non-existent service");
+          assertNotNull(result.getQueryGroups(), "Query groups should not be null");
+          assertTrue(
+              result.getQueryGroups().isEmpty(),
+              "Query groups should be empty for non-existent service");
+          if (result.getOverallStats() != null) {
+            assertEquals(
+                0.0,
+                result.getOverallStats().getMinCost(),
+                "Min cost should be 0 for empty results");
+            assertEquals(
+                0.0,
+                result.getOverallStats().getMaxCost(),
+                "Max cost should be 0 for empty results");
+            assertEquals(
+                0.0,
+                result.getOverallStats().getAvgCost(),
+                "Avg cost should be 0 for empty results");
+          }
+        },
+        "Getting query cost records for non-existent service should not throw NPE");
+  }
+
+  @Test
   void testBuildDIChart_AggregatedUnusedAssetsCount() throws Exception {
     String clusterAlias = Entity.getSearchRepository().getClusterAlias();
     String diIndexName =
