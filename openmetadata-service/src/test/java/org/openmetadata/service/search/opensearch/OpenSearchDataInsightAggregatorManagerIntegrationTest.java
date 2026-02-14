@@ -563,20 +563,14 @@ class OpenSearchDataInsightAggregatorManagerIntegrationTest extends OpenMetadata
           assertTrue(
               result.getQueryGroups().isEmpty(),
               "Query groups should be empty for non-existent service");
-          if (result.getOverallStats() != null) {
-            assertEquals(
-                0.0,
-                result.getOverallStats().getMinCost(),
-                "Min cost should be 0 for empty results");
-            assertEquals(
-                0.0,
-                result.getOverallStats().getMaxCost(),
-                "Max cost should be 0 for empty results");
-            assertEquals(
-                0.0,
-                result.getOverallStats().getAvgCost(),
-                "Avg cost should be 0 for empty results");
-          }
+          assertNotNull(
+              result.getOverallStats(), "Overall stats should not be null for empty results");
+          assertEquals(
+              0.0, result.getOverallStats().getMinCost(), "Min cost should be 0 for empty results");
+          assertEquals(
+              0.0, result.getOverallStats().getMaxCost(), "Max cost should be 0 for empty results");
+          assertEquals(
+              0.0, result.getOverallStats().getAvgCost(), "Avg cost should be 0 for empty results");
         },
         "Getting query cost records for non-existent service should not throw NPE");
   }
