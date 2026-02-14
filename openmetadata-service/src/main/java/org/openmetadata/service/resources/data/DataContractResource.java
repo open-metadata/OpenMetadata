@@ -96,7 +96,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   static final String EXPORT_FIELDS = "owners,reviewers,extension,schema,sla,security";
 
   private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
-  private static final ObjectMapper YAML_MAPPER = new ObjectMapper(new YAMLFactory());
+  private static final ObjectMapper YAML_MAPPER =
+      new ObjectMapper(new YAMLFactory())
+          .setSerializationInclusion(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
 
   @Override
   public DataContract addHref(UriInfo uriInfo, DataContract dataContract) {
@@ -1059,10 +1061,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         getInternal(uriInfo, securityContext, id, fields, Include.NON_DELETED);
     ODCSDataContract odcs = ODCSConverter.toODCS(dataContract);
     try {
-      ObjectMapper yamlMapper = YAML_MAPPER;
-      yamlMapper.setSerializationInclusion(
-          com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
-      String yamlContent = yamlMapper.writeValueAsString(odcs);
+      String yamlContent = YAML_MAPPER.writeValueAsString(odcs);
       return Response.ok(yamlContent, "application/yaml").build();
     } catch (Exception e) {
       throw new IllegalArgumentException("Failed to convert to YAML: " + e.getMessage(), e);
@@ -1138,10 +1137,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         getByNameInternal(uriInfo, securityContext, fqn, fields, Include.NON_DELETED);
     ODCSDataContract odcs = ODCSConverter.toODCS(dataContract);
     try {
-      ObjectMapper yamlMapper = YAML_MAPPER;
-      yamlMapper.setSerializationInclusion(
-          com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
-      String yamlContent = yamlMapper.writeValueAsString(odcs);
+      String yamlContent = YAML_MAPPER.writeValueAsString(odcs);
       return Response.ok(yamlContent, "application/yaml").build();
     } catch (Exception e) {
       throw new IllegalArgumentException("Failed to convert to YAML: " + e.getMessage(), e);
