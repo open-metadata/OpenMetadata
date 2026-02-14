@@ -16,9 +16,14 @@ package org.openmetadata.service.util;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -1653,10 +1658,21 @@ class ODCSConverterTest {
         "columnValuesToBeUnique",
         ODCSConverter.mapODCSMetricToTestDefinition(
             ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES));
-    assertEquals(
-        "columnValueDistinctCountToEqual",
+    assertNull(
+        ODCSConverter.mapODCSMetricToTestDefinition(
+            ODCSQualityRule.OdcsQualityMetric.DUPLICATE_VALUES));
+    assertNull(
         ODCSConverter.mapODCSMetricToTestDefinition(
             ODCSQualityRule.OdcsQualityMetric.DISTINCT_VALUES));
+    assertNull(
+        ODCSConverter.mapODCSMetricToTestDefinition(ODCSQualityRule.OdcsQualityMetric.FRESHNESS));
+    assertEquals(
+        "columnValuesMissingCountToBeEqual",
+        ODCSConverter.mapODCSMetricToTestDefinition(
+            ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES));
+    assertNull(
+        ODCSConverter.mapODCSMetricToTestDefinition(
+            ODCSQualityRule.OdcsQualityMetric.INVALID_VALUES));
   }
 
   @Test
@@ -2056,5 +2072,298 @@ class ODCSConverterTest {
     assertEquals(original.getSchema().size(), converted.getSchema().size());
     assertEquals("col1", converted.getSchema().get(0).getName());
     assertEquals("col2", converted.getSchema().get(1).getName());
+  }
+
+  @Test
+  void testFromODCS_WithElementLevelQuality() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName("orders");
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+
+    ODCSQualityRule tableRule = new ODCSQualityRule();
+    tableRule.setType(ODCSQualityRule.Type.LIBRARY);
+    tableRule.setMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT);
+    tableRule.setMustBeGreaterThan(0.0);
+    tableObject.setQuality(List.of(tableRule));
+
+    tableObject.setProperties(
+        List.of(
+            new ODCSSchemaElement()
+                .withName("id")
+                .withLogicalType(ODCSSchemaElement.LogicalType.INTEGER)));
+    odcs.setSchema(List.of(tableObject));
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+    entityRef.setName("orders");
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
+
+    assertNotNull(contract.getOdcsQualityRules());
+    assertEquals(1, contract.getOdcsQualityRules().size());
+    assertEquals("orders", contract.getOdcsQualityRules().get(0).getColumn());
+    assertEquals(
+        ODCSQualityRule.OdcsQualityMetric.ROW_COUNT,
+        contract.getOdcsQualityRules().get(0).getMetric());
+  }
+
+  @Test
+  void testFromODCS_WithPropertyLevelQuality() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName("orders");
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+
+    ODCSSchemaElement emailProperty = new ODCSSchemaElement();
+    emailProperty.setName("email");
+    emailProperty.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
+
+    ODCSQualityRule propRule = new ODCSQualityRule();
+    propRule.setType(ODCSQualityRule.Type.SQL);
+    propRule.setQuery("SELECT COUNT(*) FROM ${table} WHERE ${column} NOT LIKE '%@%'");
+    propRule.setMustBe(0.0);
+    emailProperty.setQuality(List.of(propRule));
+
+    tableObject.setProperties(List.of(emailProperty));
+    odcs.setSchema(List.of(tableObject));
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+    entityRef.setName("orders");
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
+
+    assertNotNull(contract.getOdcsQualityRules());
+    assertEquals(1, contract.getOdcsQualityRules().size());
+    assertEquals("email", contract.getOdcsQualityRules().get(0).getColumn());
+    assertEquals(ODCSQualityRule.Type.SQL, contract.getOdcsQualityRules().get(0).getType());
+  }
+
+  @Test
+  void testFromODCS_MergesTopLevelAndElementLevelQuality() {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSQualityRule topLevelRule = new ODCSQualityRule();
+    topLevelRule.setType(ODCSQualityRule.Type.LIBRARY);
+    topLevelRule.setMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT);
+    topLevelRule.setName("row_count_check");
+    odcs.setQuality(List.of(topLevelRule));
+
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName("orders");
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+
+    ODCSSchemaElement emailProperty = new ODCSSchemaElement();
+    emailProperty.setName("email");
+    emailProperty.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
+
+    ODCSQualityRule propRule = new ODCSQualityRule();
+    propRule.setType(ODCSQualityRule.Type.LIBRARY);
+    propRule.setMetric(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES);
+    propRule.setName("email_not_null");
+    emailProperty.setQuality(List.of(propRule));
+
+    tableObject.setProperties(List.of(emailProperty));
+    odcs.setSchema(List.of(tableObject));
+
+    EntityReference entityRef = new EntityReference();
+    entityRef.setId(UUID.randomUUID());
+    entityRef.setType("table");
+    entityRef.setName("orders");
+
+    DataContract contract = ODCSConverter.fromODCS(odcs, entityRef);
+
+    assertNotNull(contract.getOdcsQualityRules());
+    assertEquals(2, contract.getOdcsQualityRules().size());
+    assertEquals("row_count_check", contract.getOdcsQualityRules().get(0).getName());
+    assertEquals("email_not_null", contract.getOdcsQualityRules().get(1).getName());
+    assertEquals("email", contract.getOdcsQualityRules().get(1).getColumn());
+  }
+
+  @Test
+  void testRoundTrip_ElementLevelQuality() {
+    DataContract contract = new DataContract();
+    contract.setId(UUID.randomUUID());
+    contract.setName("quality_roundtrip");
+    contract.setEntityStatus(EntityStatus.APPROVED);
+
+    EntityReference entity = new EntityReference();
+    entity.setId(UUID.randomUUID());
+    entity.setType("table");
+    entity.setName("orders");
+    contract.setEntity(entity);
+
+    List<Column> columns = new ArrayList<>();
+    columns.add(new Column().withName("email").withDataType(ColumnDataType.STRING));
+    contract.setSchema(columns);
+
+    List<ODCSQualityRule> qualityRules = new ArrayList<>();
+
+    ODCSQualityRule topRule = new ODCSQualityRule();
+    topRule.setType(ODCSQualityRule.Type.LIBRARY);
+    topRule.setMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT);
+    topRule.setName("row_count");
+    qualityRules.add(topRule);
+
+    ODCSQualityRule colRule = new ODCSQualityRule();
+    colRule.setType(ODCSQualityRule.Type.LIBRARY);
+    colRule.setMetric(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES);
+    colRule.setColumn("email");
+    colRule.setName("email_not_null");
+    qualityRules.add(colRule);
+
+    contract.setOdcsQualityRules(qualityRules);
+
+    ODCSDataContract odcs = ODCSConverter.toODCS(contract);
+
+    assertNotNull(odcs.getQuality());
+    assertEquals(1, odcs.getQuality().size());
+    assertEquals("row_count", odcs.getQuality().get(0).getName());
+
+    ODCSSchemaElement tableObject = odcs.getSchema().get(0);
+    ODCSSchemaElement emailProp = tableObject.getProperties().get(0);
+    assertNotNull(emailProp.getQuality());
+    assertEquals(1, emailProp.getQuality().size());
+    assertEquals("email_not_null", emailProp.getQuality().get(0).getName());
+
+    EntityReference newEntityRef = new EntityReference();
+    newEntityRef.setId(UUID.randomUUID());
+    newEntityRef.setType("table");
+    newEntityRef.setName("orders");
+
+    DataContract reimported = ODCSConverter.fromODCS(odcs, newEntityRef);
+    assertNotNull(reimported.getOdcsQualityRules());
+    assertEquals(2, reimported.getOdcsQualityRules().size());
+  }
+
+  @Test
+  void testNormalizeODCSInput_TeamAsObject() {
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode root = mapper.createObjectNode();
+    root.put("apiVersion", "v3.1.0");
+    root.put("kind", "DataContract");
+    root.put("id", UUID.randomUUID().toString());
+    root.put("version", "1.0");
+    root.put("status", "active");
+
+    ObjectNode teamObj = mapper.createObjectNode();
+    ArrayNode membersArray = mapper.createArrayNode();
+    ObjectNode member = mapper.createObjectNode();
+    member.put("username", "alice");
+    member.put("role", "owner");
+    membersArray.add(member);
+    teamObj.set("members", membersArray);
+    root.set("team", teamObj);
+
+    ODCSConverter.normalizeODCSInput(root);
+
+    JsonNode teamNode = root.get("team");
+    assertTrue(teamNode.isArray());
+    assertEquals(1, teamNode.size());
+    assertEquals("alice", teamNode.get(0).get("username").asText());
+  }
+
+  @Test
+  void testNormalizeODCSInput_TeamAsArray() {
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode root = mapper.createObjectNode();
+    root.put("apiVersion", "v3.1.0");
+
+    ArrayNode teamArray = mapper.createArrayNode();
+    ObjectNode member = mapper.createObjectNode();
+    member.put("username", "bob");
+    member.put("role", "owner");
+    teamArray.add(member);
+    root.set("team", teamArray);
+
+    ODCSConverter.normalizeODCSInput(root);
+
+    JsonNode teamNode = root.get("team");
+    assertTrue(teamNode.isArray());
+    assertEquals(1, teamNode.size());
+    assertEquals("bob", teamNode.get(0).get("username").asText());
+  }
+
+  @Test
+  void testNormalizeODCSInput_ApproversAsString() {
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode root = mapper.createObjectNode();
+
+    ArrayNode rolesArray = mapper.createArrayNode();
+    ObjectNode role = mapper.createObjectNode();
+    role.put("role", "analyst");
+    role.put("access", "read");
+    role.put("firstLevelApprovers", "manager@company.com");
+    role.put("secondLevelApprovers", "director@company.com");
+    rolesArray.add(role);
+    root.set("roles", rolesArray);
+
+    ODCSConverter.normalizeODCSInput(root);
+
+    JsonNode firstApprovers = root.get("roles").get(0).get("firstLevelApprovers");
+    assertTrue(firstApprovers.isArray());
+    assertEquals(1, firstApprovers.size());
+    assertEquals("manager@company.com", firstApprovers.get(0).asText());
+
+    JsonNode secondApprovers = root.get("roles").get(0).get("secondLevelApprovers");
+    assertTrue(secondApprovers.isArray());
+    assertEquals(1, secondApprovers.size());
+    assertEquals("director@company.com", secondApprovers.get(0).asText());
+  }
+
+  @Test
+  void testNormalizeODCSInput_ApproversAsArray() {
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode root = mapper.createObjectNode();
+
+    ArrayNode rolesArray = mapper.createArrayNode();
+    ObjectNode role = mapper.createObjectNode();
+    role.put("role", "analyst");
+    ArrayNode approvers = mapper.createArrayNode();
+    approvers.add("approver1@company.com");
+    approvers.add("approver2@company.com");
+    role.set("firstLevelApprovers", approvers);
+    rolesArray.add(role);
+    root.set("roles", rolesArray);
+
+    ODCSConverter.normalizeODCSInput(root);
+
+    JsonNode firstApprovers = root.get("roles").get(0).get("firstLevelApprovers");
+    assertTrue(firstApprovers.isArray());
+    assertEquals(2, firstApprovers.size());
+    assertEquals("approver1@company.com", firstApprovers.get(0).asText());
+    assertEquals("approver2@company.com", firstApprovers.get(1).asText());
+  }
+
+  @Test
+  void testNormalizeODCSInput_NullInput() {
+    ODCSConverter.normalizeODCSInput(null);
+  }
+
+  @Test
+  void testMapTestDefinitionToODCSMetric_MissingValues() {
+    assertEquals(
+        ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES,
+        ODCSConverter.mapTestDefinitionToODCSMetric("columnValuesMissingCountToBeEqual"));
   }
 }

@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.data;
 import static org.openmetadata.service.jdbi3.DataContractRepository.RESULT_EXTENSION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -1182,12 +1183,20 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string"))
           @QueryParam("objectName")
           String objectName,
-      @Valid ODCSDataContract odcs) {
-    EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-    DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef, objectName);
-    dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
-    dataContract.setUpdatedAt(System.currentTimeMillis());
-    return create(uriInfo, securityContext, dataContract);
+      String jsonContent) {
+    try {
+      ObjectMapper jsonMapper = new ObjectMapper();
+      JsonNode rootNode = jsonMapper.readTree(jsonContent);
+      ODCSConverter.normalizeODCSInput(rootNode);
+      ODCSDataContract odcs = jsonMapper.treeToValue(rootNode, ODCSDataContract.class);
+      EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
+      DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef, objectName);
+      dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
+      dataContract.setUpdatedAt(System.currentTimeMillis());
+      return create(uriInfo, securityContext, dataContract);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid ODCS JSON content: " + e.getMessage(), e);
+    }
   }
 
   @POST
@@ -1231,7 +1240,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       String yamlContent) {
     try {
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-      ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
+      JsonNode rootNode = yamlMapper.readTree(yamlContent);
+      ODCSConverter.normalizeODCSInput(rootNode);
+      ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);
       EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
       DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef, objectName);
       dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
@@ -1265,7 +1276,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
     try {
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-      ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
+      JsonNode rootNode = yamlMapper.readTree(yamlContent);
+      ODCSConverter.normalizeODCSInput(rootNode);
+      ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);
 
       ODCSParseResult result = new ODCSParseResult();
       result.setName(odcs.getName());
@@ -1384,7 +1397,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       String yamlContent) {
     try {
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-      ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
+      JsonNode rootNode = yamlMapper.readTree(yamlContent);
+      ODCSConverter.normalizeODCSInput(rootNode);
+      ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);
       EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
       DataContract dataContract = ODCSConverter.fromODCS(odcs, entityRef, objectName);
 
@@ -1445,16 +1460,24 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string"))
           @QueryParam("objectName")
           String objectName,
-      @Valid ODCSDataContract odcs) {
-    EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
-    DataContract imported = ODCSConverter.fromODCS(odcs, entityRef, objectName);
-    DataContract dataContract =
-        "replace".equalsIgnoreCase(mode)
-            ? applyFullReplace(entityRef, imported)
-            : applySmartMerge(entityRef, imported);
-    dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
-    dataContract.setUpdatedAt(System.currentTimeMillis());
-    return createOrUpdate(uriInfo, securityContext, dataContract);
+      String jsonContent) {
+    try {
+      ObjectMapper jsonMapper = new ObjectMapper();
+      JsonNode rootNode = jsonMapper.readTree(jsonContent);
+      ODCSConverter.normalizeODCSInput(rootNode);
+      ODCSDataContract odcs = jsonMapper.treeToValue(rootNode, ODCSDataContract.class);
+      EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
+      DataContract imported = ODCSConverter.fromODCS(odcs, entityRef, objectName);
+      DataContract dataContract =
+          "replace".equalsIgnoreCase(mode)
+              ? applyFullReplace(entityRef, imported)
+              : applySmartMerge(entityRef, imported);
+      dataContract.setUpdatedBy(securityContext.getUserPrincipal().getName());
+      dataContract.setUpdatedAt(System.currentTimeMillis());
+      return createOrUpdate(uriInfo, securityContext, dataContract);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid ODCS JSON content: " + e.getMessage(), e);
+    }
   }
 
   @PUT
@@ -1510,7 +1533,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       String yamlContent) {
     try {
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
-      ODCSDataContract odcs = yamlMapper.readValue(yamlContent, ODCSDataContract.class);
+      JsonNode rootNode = yamlMapper.readTree(yamlContent);
+      ODCSConverter.normalizeODCSInput(rootNode);
+      ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);
       EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
       DataContract imported = ODCSConverter.fromODCS(odcs, entityRef, objectName);
       DataContract dataContract =
