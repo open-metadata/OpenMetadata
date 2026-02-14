@@ -95,6 +95,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   static final String FIELDS = "owners,reviewers,extension";
   static final String EXPORT_FIELDS = "owners,reviewers,extension,schema,sla,security";
 
+  private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+  private static final ObjectMapper YAML_MAPPER = new ObjectMapper(new YAMLFactory());
+
   @Override
   public DataContract addHref(UriInfo uriInfo, DataContract dataContract) {
     super.addHref(uriInfo, dataContract);
@@ -426,7 +429,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   public Response createFromYaml(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      ObjectMapper yamlMapper = YAML_MAPPER;
       CreateDataContract create = yamlMapper.readValue(yamlContent, CreateDataContract.class);
       DataContract dataContract =
           getDataContract(create, securityContext.getUserPrincipal().getName());
@@ -508,7 +511,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   public Response createOrUpdateFromYaml(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      ObjectMapper yamlMapper = YAML_MAPPER;
       CreateDataContract create = yamlMapper.readValue(yamlContent, CreateDataContract.class);
       DataContract dataContract =
           getDataContract(create, securityContext.getUserPrincipal().getName());
@@ -1056,7 +1059,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         getInternal(uriInfo, securityContext, id, fields, Include.NON_DELETED);
     ODCSDataContract odcs = ODCSConverter.toODCS(dataContract);
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      ObjectMapper yamlMapper = YAML_MAPPER;
       yamlMapper.setSerializationInclusion(
           com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
       String yamlContent = yamlMapper.writeValueAsString(odcs);
@@ -1135,7 +1138,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         getByNameInternal(uriInfo, securityContext, fqn, fields, Include.NON_DELETED);
     ODCSDataContract odcs = ODCSConverter.toODCS(dataContract);
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      ObjectMapper yamlMapper = YAML_MAPPER;
       yamlMapper.setSerializationInclusion(
           com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
       String yamlContent = yamlMapper.writeValueAsString(odcs);
@@ -1185,7 +1188,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           String objectName,
       String jsonContent) {
     try {
-      ObjectMapper jsonMapper = new ObjectMapper();
+      ObjectMapper jsonMapper = JSON_MAPPER;
       JsonNode rootNode = jsonMapper.readTree(jsonContent);
       ODCSConverter.normalizeODCSInput(rootNode);
       ODCSDataContract odcs = jsonMapper.treeToValue(rootNode, ODCSDataContract.class);
@@ -1239,7 +1242,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           String objectName,
       String yamlContent) {
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      ObjectMapper yamlMapper = YAML_MAPPER;
       JsonNode rootNode = yamlMapper.readTree(yamlContent);
       ODCSConverter.normalizeODCSInput(rootNode);
       ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);
@@ -1275,7 +1278,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   public Response parseODCSYaml(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      ObjectMapper yamlMapper = YAML_MAPPER;
       JsonNode rootNode = yamlMapper.readTree(yamlContent);
       ODCSConverter.normalizeODCSInput(rootNode);
       ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);
@@ -1343,7 +1346,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   public Response validateDataContractRequestYaml(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, String yamlContent) {
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      ObjectMapper yamlMapper = YAML_MAPPER;
       CreateDataContract createRequest =
           yamlMapper.readValue(yamlContent, CreateDataContract.class);
       DataContract dataContract = DataContractMapper.createEntity(createRequest, "validation");
@@ -1396,7 +1399,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           String objectName,
       String yamlContent) {
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      ObjectMapper yamlMapper = YAML_MAPPER;
       JsonNode rootNode = yamlMapper.readTree(yamlContent);
       ODCSConverter.normalizeODCSInput(rootNode);
       ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);
@@ -1462,7 +1465,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           String objectName,
       String jsonContent) {
     try {
-      ObjectMapper jsonMapper = new ObjectMapper();
+      ObjectMapper jsonMapper = JSON_MAPPER;
       JsonNode rootNode = jsonMapper.readTree(jsonContent);
       ODCSConverter.normalizeODCSInput(rootNode);
       ODCSDataContract odcs = jsonMapper.treeToValue(rootNode, ODCSDataContract.class);
@@ -1532,7 +1535,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           String objectName,
       String yamlContent) {
     try {
-      ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
+      ObjectMapper yamlMapper = YAML_MAPPER;
       JsonNode rootNode = yamlMapper.readTree(yamlContent);
       ODCSConverter.normalizeODCSInput(rootNode);
       ODCSDataContract odcs = yamlMapper.treeToValue(rootNode, ODCSDataContract.class);

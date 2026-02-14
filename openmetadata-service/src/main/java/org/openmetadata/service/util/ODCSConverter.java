@@ -756,29 +756,64 @@ public class ODCSConverter {
 
     if (odcs.getSchema() != null) {
       for (ODCSSchemaElement schemaObject : odcs.getSchema()) {
-        if (schemaObject.getQuality() != null && !schemaObject.getQuality().isEmpty()) {
-          for (ODCSQualityRule rule : schemaObject.getQuality()) {
-            if (rule.getColumn() == null || rule.getColumn().isEmpty()) {
-              rule.setColumn(schemaObject.getName());
-            }
-            allRules.add(rule);
-          }
-        }
-
-        if (schemaObject.getProperties() != null) {
-          for (ODCSSchemaElement property : schemaObject.getProperties()) {
-            if (property.getQuality() != null && !property.getQuality().isEmpty()) {
-              for (ODCSQualityRule rule : property.getQuality()) {
-                rule.setColumn(property.getName());
-                allRules.add(rule);
-              }
-            }
-          }
-        }
+        collectQualityRulesFromElement(schemaObject, allRules);
       }
     }
 
     return allRules;
+  }
+
+  private static void collectQualityRulesFromElement(
+      ODCSSchemaElement element, List<ODCSQualityRule> allRules) {
+    if (element.getQuality() != null && !element.getQuality().isEmpty()) {
+      for (ODCSQualityRule rule : element.getQuality()) {
+        if (rule.getColumn() == null || rule.getColumn().isEmpty()) {
+          ODCSQualityRule copy = copyQualityRule(rule);
+          copy.setColumn(element.getName());
+          allRules.add(copy);
+        } else {
+          allRules.add(rule);
+        }
+      }
+    }
+
+    if (element.getProperties() != null) {
+      for (ODCSSchemaElement property : element.getProperties()) {
+        collectQualityRulesFromElement(property, allRules);
+      }
+    }
+  }
+
+  private static ODCSQualityRule copyQualityRule(ODCSQualityRule source) {
+    ODCSQualityRule copy = new ODCSQualityRule();
+    copy.setType(source.getType());
+    copy.setName(source.getName());
+    copy.setDescription(source.getDescription());
+    copy.setRule(source.getRule());
+    copy.setMetric(source.getMetric());
+    copy.setColumn(source.getColumn());
+    copy.setQuery(source.getQuery());
+    copy.setEngine(source.getEngine());
+    copy.setImplementation(source.getImplementation());
+    copy.setDimension(source.getDimension());
+    copy.setSeverity(source.getSeverity());
+    copy.setBusinessImpact(source.getBusinessImpact());
+    copy.setUnit(source.getUnit());
+    copy.setMustBe(source.getMustBe());
+    copy.setMustNotBe(source.getMustNotBe());
+    copy.setMustBeGreaterThan(source.getMustBeGreaterThan());
+    copy.setMustBeGreaterOrEqualTo(source.getMustBeGreaterOrEqualTo());
+    copy.setMustBeLessThan(source.getMustBeLessThan());
+    copy.setMustBeLessOrEqualTo(source.getMustBeLessOrEqualTo());
+    copy.setMustBeBetween(source.getMustBeBetween());
+    copy.setMustNotBeBetween(source.getMustNotBeBetween());
+    copy.setValidValues(source.getValidValues());
+    copy.setScheduler(source.getScheduler());
+    copy.setSchedule(source.getSchedule());
+    copy.setCustomProperties(source.getCustomProperties());
+    copy.setAuthoritativeDefinitions(source.getAuthoritativeDefinitions());
+    copy.setTags(source.getTags());
+    return copy;
   }
 
   private static void distributeQualityRules(
@@ -798,32 +833,24 @@ public class ODCSConverter {
       }
     }
 
-    if (!topLevelRules.isEmpty()) {
-      odcs.setQuality(topLevelRules);
-    }
+    odcs.setQuality(topLevelRules.isEmpty() ? null : topLevelRules);
   }
 
   private static boolean placeRuleInSchema(
       List<ODCSSchemaElement> schemaElements, ODCSQualityRule rule) {
     for (ODCSSchemaElement element : schemaElements) {
-      if (element.getProperties() != null) {
-        for (ODCSSchemaElement property : element.getProperties()) {
-          if (rule.getColumn().equals(property.getName())) {
-            if (property.getQuality() == null) {
-              property.setQuality(new ArrayList<>());
-            }
-            property.getQuality().add(rule);
-            return true;
-          }
-        }
-      }
-
       if (rule.getColumn().equals(element.getName())) {
         if (element.getQuality() == null) {
           element.setQuality(new ArrayList<>());
         }
         element.getQuality().add(rule);
         return true;
+      }
+
+      if (element.getProperties() != null) {
+        if (placeRuleInSchema(element.getProperties(), rule)) {
+          return true;
+        }
       }
     }
     return false;
