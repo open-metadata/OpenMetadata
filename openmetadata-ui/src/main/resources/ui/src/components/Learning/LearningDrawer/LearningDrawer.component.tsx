@@ -67,10 +67,14 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
     }
   }, [open, fetchResources]);
 
-  const handleResourceClick = useCallback((resource: LearningResource) => {
-    setSelectedResource(resource);
-    setPlayerOpen(true);
-  }, []);
+  const handleResourceClick = useCallback(
+    (resource: LearningResource) => {
+      setSelectedResource(resource);
+      setPlayerOpen(true);
+      onClose();
+    },
+    [onClose]
+  );
 
   const handlePlayerClose = useCallback(() => {
     setPlayerOpen(false);

@@ -125,6 +125,7 @@ export interface ExploreQuickFilterField {
   searchIndex?: SearchIndex;
   searchKey?: string;
   dropdownClassName?: string;
+  singleSelect?: boolean;
 }
 
 // Type for all the explore tab entities
