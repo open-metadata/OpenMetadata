@@ -807,7 +807,7 @@ public class ODCSConverter {
       }
     }
 
-    odcs.setQuality(topLevelRules);
+    odcs.setQuality(topLevelRules.isEmpty() ? null : topLevelRules);
   }
 
   private static boolean placeRuleInSchema(

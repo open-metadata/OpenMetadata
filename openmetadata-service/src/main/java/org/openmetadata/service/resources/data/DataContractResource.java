@@ -98,8 +98,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
   private static final ObjectMapper YAML_MAPPER =
       new ObjectMapper(new YAMLFactory())
-          .setSerializationInclusion(
-              com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY);
+          .setSerializationInclusion(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
 
   @Override
   public DataContract addHref(UriInfo uriInfo, DataContract dataContract) {
