@@ -14,6 +14,7 @@
 package org.openmetadata.service.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
@@ -55,6 +56,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ODCSConverter {
   private static final Logger LOG = LoggerFactory.getLogger(ODCSConverter.class);
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private ODCSConverter() {}
 
@@ -785,35 +787,7 @@ public class ODCSConverter {
   }
 
   private static ODCSQualityRule copyQualityRule(ODCSQualityRule source) {
-    ODCSQualityRule copy = new ODCSQualityRule();
-    copy.setType(source.getType());
-    copy.setName(source.getName());
-    copy.setDescription(source.getDescription());
-    copy.setRule(source.getRule());
-    copy.setMetric(source.getMetric());
-    copy.setColumn(source.getColumn());
-    copy.setQuery(source.getQuery());
-    copy.setEngine(source.getEngine());
-    copy.setImplementation(source.getImplementation());
-    copy.setDimension(source.getDimension());
-    copy.setSeverity(source.getSeverity());
-    copy.setBusinessImpact(source.getBusinessImpact());
-    copy.setUnit(source.getUnit());
-    copy.setMustBe(source.getMustBe());
-    copy.setMustNotBe(source.getMustNotBe());
-    copy.setMustBeGreaterThan(source.getMustBeGreaterThan());
-    copy.setMustBeGreaterOrEqualTo(source.getMustBeGreaterOrEqualTo());
-    copy.setMustBeLessThan(source.getMustBeLessThan());
-    copy.setMustBeLessOrEqualTo(source.getMustBeLessOrEqualTo());
-    copy.setMustBeBetween(source.getMustBeBetween());
-    copy.setMustNotBeBetween(source.getMustNotBeBetween());
-    copy.setValidValues(source.getValidValues());
-    copy.setScheduler(source.getScheduler());
-    copy.setSchedule(source.getSchedule());
-    copy.setCustomProperties(source.getCustomProperties());
-    copy.setAuthoritativeDefinitions(source.getAuthoritativeDefinitions());
-    copy.setTags(source.getTags());
-    return copy;
+    return MAPPER.convertValue(source, ODCSQualityRule.class);
   }
 
   private static void distributeQualityRules(
