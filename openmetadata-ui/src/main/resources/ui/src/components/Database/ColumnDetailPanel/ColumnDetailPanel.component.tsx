@@ -58,6 +58,7 @@ import AlertBar from '../../AlertBar/AlertBar';
 import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
 import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
 import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import TagsSection from '../../common/TagsSection/TagsSection';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -78,7 +79,6 @@ import {
 import './ColumnDetailPanel.less';
 import { KeyProfileMetrics } from './KeyProfileMetrics';
 import { NestedColumnsSection } from './NestedColumnsSection';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 
 const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;
@@ -359,15 +359,15 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
       const response = onColumnFieldUpdate
         ? await onColumnFieldUpdate(
-          activeColumn.fullyQualifiedName,
-          update,
-          true
-        )
+            activeColumn.fullyQualifiedName,
+            update,
+            true
+          )
         : // Fallback to direct API call for Table entities when used outside GenericProvider
-        ((await updateTableColumn(
-          activeColumn.fullyQualifiedName,
-          update
-        )) as T);
+          ((await updateTableColumn(
+            activeColumn.fullyQualifiedName,
+            update
+          )) as T);
 
       // Only show success toast if we got a valid response
       if (response) {
@@ -537,10 +537,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         if (response) {
           setActiveColumn(
             (prev) =>
-            ({
-              ...prev,
-              displayName: (response as { displayName?: string }).displayName,
-            } as T)
+              ({
+                ...prev,
+                displayName: (response as { displayName?: string }).displayName,
+              } as T)
           );
         }
       } catch (error) {
@@ -739,7 +739,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     return (
       <div className="overview-tab-content">
         <CustomPropertiesSection
-          emptyStateMessage={t('label.table-entity-text', { entityText: t('label.column-plural') })}
+          emptyStateMessage={t('label.table-entity-text', {
+            entityText: t('label.column-plural'),
+          })}
           entityData={toEntityData(activeColumn)}
           entityType={entityType}
           entityTypeDetail={entityTypeDetail}
@@ -769,72 +771,78 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const columnTitle = activeColumn ? (
     <div className="title-section">
       <Box sx={{ marginLeft: 4 }}>
-        {breadcrumbPath.length > 1 && breadcrumbPath.map((breadcrumb, index) => {
-          const isLastItem = index === breadcrumbPath.length - 1;
+        {breadcrumbPath.length > 1 &&
+          breadcrumbPath.map((breadcrumb, index) => {
+            const isLastItem = index === breadcrumbPath.length - 1;
 
-          return (
-            <Box key={breadcrumb.fullyQualifiedName} sx={{ display: 'inline-flex', alignItems: 'center' }}>
+            return (
               <Box
-                sx={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                }}>
-                <Typography.Text
-                  style={{
-                    fontSize: 12,
-                    color: isLastItem
-                      ? theme.palette.allShades?.gray?.[700]
-                      : theme.palette.allShades?.gray?.[500],
-                    fontWeight: isLastItem ? 500 : 400,
-                    cursor: isLastItem ? 'default' : 'pointer',
-                  }}
-                  onClick={
-                    isLastItem
-                      ? undefined
-                      : () => handleBreadcrumbClick(breadcrumb)
-                  }
-                  onMouseEnter={(e) => {
-                    if (!isLastItem) {
-                      e.currentTarget.style.textDecoration = 'underline';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.textDecoration = 'none';
+                key={breadcrumb.fullyQualifiedName}
+                sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 0.5,
                   }}>
-                  {getEntityName(breadcrumb)}
-                </Typography.Text>
-                {index < breadcrumbPath.length - 1 && (
-                  <ChevronRight
-                    color={theme.palette.allShades?.gray?.[400]}
-                    height={16}
-                    width={16}
-                  />
-                )}
+                  <Typography.Text
+                    style={{
+                      fontSize: 12,
+                      color: isLastItem
+                        ? theme.palette.allShades?.gray?.[700]
+                        : theme.palette.allShades?.gray?.[500],
+                      fontWeight: isLastItem ? 500 : 400,
+                      cursor: isLastItem ? 'default' : 'pointer',
+                    }}
+                    onClick={
+                      isLastItem
+                        ? undefined
+                        : () => handleBreadcrumbClick(breadcrumb)
+                    }
+                    onMouseEnter={(e) => {
+                      if (!isLastItem) {
+                        e.currentTarget.style.textDecoration = 'underline';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.textDecoration = 'none';
+                    }}>
+                    {getEntityName(breadcrumb)}
+                  </Typography.Text>
+                  {index < breadcrumbPath.length - 1 && (
+                    <ChevronRight
+                      color={theme.palette.allShades?.gray?.[400]}
+                      height={16}
+                      width={16}
+                    />
+                  )}
+                </Box>
               </Box>
-            </Box>
-          );
-        })}
+            );
+          })}
       </Box>
       <div className="title-container items-start gap-4">
         <div className="d-flex items-center justify-between w-full">
-
           <div className="d-flex items-center w-full">
-            <Box sx={{
-              marginRight: 2,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 40,
-              height: 40,
-              borderRadius: '4px',
-              boxShadow: '0 1px 2px -1px rgba(10, 13, 18, 0.1), 0 1px 3px 0 rgba(10, 13, 18, 0.1)',
-            }}>
-              <ColumnIcon style={{
-                width: 20,
-                height: 20,
-                color: theme.palette.allShades?.gray?.[700],
-              }} />
+            <Box
+              sx={{
+                marginRight: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 40,
+                height: 40,
+                borderRadius: '4px',
+                boxShadow:
+                  '0 1px 2px -1px rgba(10, 13, 18, 0.1), 0 1px 3px 0 rgba(10, 13, 18, 0.1)',
+              }}>
+              <ColumnIcon
+                style={{
+                  width: 20,
+                  height: 20,
+                  color: theme.palette.allShades?.gray?.[700],
+                }}
+              />
             </Box>
             <div className="d-flex flex-column w-full overflow-hidden">
               <div className="d-flex items-center gap-2 w-full">
@@ -849,8 +857,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                     ellipsis={{ tooltip: true }}>
                     {stringToHTML(
                       (activeColumn as { displayName?: string }).displayName ||
-                      activeColumn.name ||
-                      ''
+                        activeColumn.name ||
+                        ''
                     )}
                   </Typography.Text>
                 </Tooltip>
@@ -862,7 +870,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                       newLook
                       data-testid="edit-displayName-button"
                       disabled={false}
-                      icon={<IconEdit color={DE_ACTIVE_COLOR} height={18} width={18} />}
+                      icon={
+                        <IconEdit
+                          color={DE_ACTIVE_COLOR}
+                          height={18}
+                          width={18}
+                        />
+                      }
                       size="small"
                       style={{ marginLeft: 8 }}
                       title={t('label.edit-entity', {

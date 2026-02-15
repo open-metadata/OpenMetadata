@@ -401,10 +401,28 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
 
         return createContract(contractData) as Promise<DataContract>;
       } else if (hasExistingContract && importMode === 'merge') {
-        const patchOperations = compare(existingContract as object, {
+        const mergedForPatch: Record<string, unknown> = {
           ...existingContract,
           ...contractData,
-        });
+        };
+
+        // The OM export converts termsOfUse from entity object {content, inherited}
+        // to a plain string (CreateDataContract format). Convert it back to entity
+        // format so the JSON Patch targets the object fields correctly.
+        if (typeof mergedForPatch.termsOfUse === 'string') {
+          mergedForPatch.termsOfUse = {
+            ...(existingContract?.termsOfUse &&
+            typeof existingContract.termsOfUse === 'object'
+              ? existingContract.termsOfUse
+              : {}),
+            content: mergedForPatch.termsOfUse,
+          };
+        }
+
+        const patchOperations = compare(
+          existingContract as object,
+          mergedForPatch
+        );
 
         return updateContract(
           existingContract!.id!,

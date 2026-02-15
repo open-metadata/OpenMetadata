@@ -96,6 +96,7 @@ import {
   patchTableDetails,
 } from '../../../rest/tableAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../../rest/topicsAPI';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityLinkFromType,
@@ -106,7 +107,6 @@ import {
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -911,7 +911,9 @@ export default function EntitySummaryPanel({
               />
             )}
             <CustomPropertiesSection
-              emptyStateMessage={entityUtilClassBase.getFormattedEntityType(entityType)}
+              emptyStateMessage={entityUtilClassBase.getFormattedEntityType(
+                entityType
+              )}
               entityData={entityData}
               entityDetails={entityDetails}
               entityType={entityType}
@@ -972,11 +974,13 @@ export default function EntitySummaryPanel({
       <div className="d-flex gap-2 w-full h-full">
         <Card
           bordered={false}
-          className={`summary-panel-container ${isSideDrawer ? 'drawer-summary-panel-container' : ''
-            }`}>
+          className={`summary-panel-container ${
+            isSideDrawer ? 'drawer-summary-panel-container' : ''
+          }`}>
           <Card
-            className={`content-area ${isSideDrawer ? 'drawer-content-area' : ''
-              }`}
+            className={`content-area ${
+              isSideDrawer ? 'drawer-content-area' : ''
+            }`}
             style={{ width: '100%', display: 'block' }}>
             {renderTabContent()}
           </Card>

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,11 +27,16 @@ interface UseLearningResourceActionsParams {
 interface UseLearningResourceActionsReturn {
   isFormOpen: boolean;
   isPlayerOpen: boolean;
+  isDeleteModalOpen: boolean;
+  isDeleting: boolean;
   selectedResource: LearningResource | null;
   editingResource: LearningResource | null;
+  deletingResource: LearningResource | null;
   handleCreate: () => void;
   handleEdit: (resource: LearningResource) => void;
   handleDelete: (resource: LearningResource) => void;
+  handleDeleteConfirm: () => Promise<void>;
+  handleDeleteCancel: () => void;
   handlePreview: (resource: LearningResource) => void;
   handleFormClose: () => void;
   handlePlayerClose: () => void;
@@ -44,9 +48,13 @@ export const useLearningResourceActions = ({
   const { t } = useTranslation();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedResource, setSelectedResource] =
     useState<LearningResource | null>(null);
   const [editingResource, setEditingResource] =
+    useState<LearningResource | null>(null);
+  const [deletingResource, setDeletingResource] =
     useState<LearningResource | null>(null);
 
   const handleCreate = useCallback(() => {
@@ -59,35 +67,37 @@ export const useLearningResourceActions = ({
     setIsFormOpen(true);
   }, []);
 
-  const handleDelete = useCallback(
-    (resource: LearningResource) => {
-      Modal.confirm({
-        centered: true,
-        content: t('message.are-you-sure-delete-entity', {
-          entity: resource.displayName || resource.name,
-        }),
-        okText: t('label.delete'),
-        okType: 'danger',
-        title: t('label.delete-entity', {
+  const handleDelete = useCallback((resource: LearningResource) => {
+    setDeletingResource(resource);
+    setIsDeleteModalOpen(true);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deletingResource) {
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await deleteLearningResource(deletingResource.id);
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
           entity: t('label.learning-resource'),
-        }),
-        onOk: async () => {
-          try {
-            await deleteLearningResource(resource.id);
-            showSuccessToast(
-              t('server.entity-deleted-successfully', {
-                entity: t('label.learning-resource'),
-              })
-            );
-            await onRefetch();
-          } catch (error) {
-            showErrorToast(error as AxiosError);
-          }
-        },
-      });
-    },
-    [t, onRefetch]
-  );
+        })
+      );
+      setIsDeleteModalOpen(false);
+      setDeletingResource(null);
+      await onRefetch();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deletingResource, t, onRefetch]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setIsDeleteModalOpen(false);
+    setDeletingResource(null);
+  }, []);
 
   const handlePreview = useCallback((resource: LearningResource) => {
     setSelectedResource(resource);
@@ -108,11 +118,16 @@ export const useLearningResourceActions = ({
   return {
     isFormOpen,
     isPlayerOpen,
+    isDeleteModalOpen,
+    isDeleting,
     selectedResource,
     editingResource,
+    deletingResource,
     handleCreate,
     handleEdit,
     handleDelete,
+    handleDeleteConfirm,
+    handleDeleteCancel,
     handlePreview,
     handleFormClose,
     handlePlayerClose,

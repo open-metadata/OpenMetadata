@@ -43,6 +43,9 @@ public class DefaultToolContext {
         case "search_metadata":
           result = new SearchMetadataTool().execute(authorizer, securityContext, params);
           break;
+        case "semantic_search":
+          result = new SemanticSearchTool().execute(authorizer, securityContext, params);
+          break;
         case "get_entity_details":
           result = new GetEntityTool().execute(authorizer, securityContext, params);
           break;

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import DescriptionSection from './DescriptionSection';
 import { EntityType } from '../../../enums/entity.enum';
+import DescriptionSection from './DescriptionSection';
 
 // Mock i18n
 jest.mock('react-i18next', () => ({
@@ -85,7 +85,9 @@ describe('DescriptionSection', () => {
 
   describe('Rendering - Empty Description', () => {
     it('renders title and no-data placeholder when description is empty', () => {
-      const { container } = render(<DescriptionSection entityType={EntityType.LINEAGE_EDGE} />);
+      const { container } = render(
+        <DescriptionSection entityType={EntityType.LINEAGE_EDGE} />
+      );
 
       expect(screen.getByText('label.description')).toBeInTheDocument();
       expect(
@@ -136,7 +138,12 @@ describe('DescriptionSection', () => {
     });
 
     it('does not show edit control when onDescriptionUpdate is not provided', () => {
-      render(<DescriptionSection showEditButton entityType={EntityType.LINEAGE_EDGE} />);
+      render(
+        <DescriptionSection
+          showEditButton
+          entityType={EntityType.LINEAGE_EDGE}
+        />
+      );
 
       const clickable = document.querySelector(
         '.description-header .edit-icon'
