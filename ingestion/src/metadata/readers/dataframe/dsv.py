@@ -140,6 +140,8 @@ class DSVDataFrameReader(DataFrameReader):
                 storage_options=storage_options,
                 compression=compression,
                 encoding_errors="ignore",
+                escapechar="\\",
+                engine="python",
             ) as reader:
                 for chunks in reader:
                     chunks = self._fix_malformed_quoted_chunk(

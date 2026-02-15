@@ -102,8 +102,12 @@ const SearchIndexFieldsTable = ({
   );
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
-  const { openColumnDetailPanel, permissions, selectedColumn } =
-    useGenericContext<SearchIndex>();
+  const {
+    openColumnDetailPanel,
+    permissions,
+    selectedColumn,
+    setDisplayedColumns,
+  } = useGenericContext<SearchIndex>();
 
   // Extract base FQN and column part from URL
   const { columnFqn: columnPart, fqn } = useFqn({
@@ -407,7 +411,18 @@ const SearchIndexFieldsTable = ({
       setSearchedFields(sortByOrdinalPosition);
       setExpandedRowKeys([]);
     }
-  }, [searchText, searchIndexFields]);
+  }, [searchText]);
+
+  useEffect(() => {
+    if (!searchText) {
+      setSearchedFields(sortByOrdinalPosition);
+    }
+  }, [searchIndexFields, sortByOrdinalPosition]);
+
+  // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
+  useEffect(() => {
+    setDisplayedColumns(searchedFields);
+  }, [searchedFields, setDisplayedColumns]);
 
   return (
     <>

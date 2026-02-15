@@ -30,10 +30,13 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -69,8 +72,11 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
 
   {
     supportsImportExport = true;
+    supportsBatchImport = true;
+    supportsRecursiveImport = true; // Database supports recursive import with nested schemas/tables
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
   }
 
   // Store last created database for import/export tests
@@ -1362,5 +1368,244 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
       lastCreatedDatabase = createEntity(request);
     }
     return lastCreatedDatabase.getFullyQualifiedName();
+  }
+
+  // ===================================================================
+  // CSV IMPORT/EXPORT SUPPORT
+  // ===================================================================
+
+  protected String generateValidCsvData(TestNamespace ns, List<Database> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return null;
+    }
+
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "name,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension\n");
+
+    for (Database database : entities) {
+      csv.append(escapeCSVValue(database.getName())).append(",");
+      csv.append(escapeCSVValue(database.getDisplayName())).append(",");
+      csv.append(escapeCSVValue(database.getDescription())).append(",");
+      csv.append(escapeCSVValue(formatOwnersForCsv(database.getOwners()))).append(",");
+      csv.append(escapeCSVValue(formatTagsForCsv(database.getTags()))).append(",");
+      csv.append(escapeCSVValue("")).append(","); // glossaryTerms - not available on Database
+      csv.append(escapeCSVValue(formatTiersForCsv(database.getTags()))).append(",");
+      csv.append(escapeCSVValue(formatCertificationForCsv(database.getCertification())))
+          .append(",");
+      csv.append(escapeCSVValue(database.getRetentionPeriod())).append(",");
+      csv.append(escapeCSVValue(database.getSourceUrl() != null ? database.getSourceUrl() : ""))
+          .append(",");
+      csv.append(escapeCSVValue(formatDomainsForCsv(database.getDomains()))).append(",");
+      csv.append(escapeCSVValue(formatExtensionForCsv(database.getExtension())));
+      csv.append("\n");
+    }
+
+    return csv.toString();
+  }
+
+  protected String generateInvalidCsvData(TestNamespace ns) {
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension\n");
+    // Missing required name field
+    csv.append(",Test Database,Description,,,,,,,,,\n");
+    // Invalid owner format
+    csv.append("invalid_database,,,,invalid_owner_format,,,,,,,\n");
+    return csv.toString();
+  }
+
+  protected List<String> getRequiredCsvHeaders() {
+    return List.of("name");
+  }
+
+  protected List<String> getAllCsvHeaders() {
+    return List.of(
+        "name*",
+        "displayName",
+        "description",
+        "owner",
+        "tags",
+        "glossaryTerms",
+        "tiers",
+        "certification",
+        "retentionPeriod",
+        "sourceUrl",
+        "domains",
+        "extension");
+  }
+
+  private String formatOwnersForCsv(List<org.openmetadata.schema.type.EntityReference> owners) {
+    if (owners == null || owners.isEmpty()) {
+      return "";
+    }
+    return owners.stream()
+        .map(
+            owner -> {
+              String prefix = "user";
+              if ("team".equals(owner.getType())) {
+                prefix = "team";
+              }
+              return prefix + ";" + owner.getName();
+            })
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatTagsForCsv(List<org.openmetadata.schema.type.TagLabel> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return "";
+    }
+    return tags.stream()
+        .filter(
+            tag ->
+                !tag.getTagFQN().startsWith("Tier.")
+                    && !tag.getTagFQN().startsWith("Certification."))
+        .map(org.openmetadata.schema.type.TagLabel::getTagFQN)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatTiersForCsv(List<org.openmetadata.schema.type.TagLabel> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return "";
+    }
+    return tags.stream()
+        .filter(tag -> tag.getTagFQN().startsWith("Tier."))
+        .map(org.openmetadata.schema.type.TagLabel::getTagFQN)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatCertificationForCsv(
+      org.openmetadata.schema.type.AssetCertification certification) {
+    if (certification == null || certification.getTagLabel() == null) {
+      return "";
+    }
+    return certification.getTagLabel().getTagFQN();
+  }
+
+  private String formatDomainsForCsv(List<org.openmetadata.schema.type.EntityReference> domains) {
+    if (domains == null || domains.isEmpty()) {
+      return "";
+    }
+    return domains.stream()
+        .map(org.openmetadata.schema.type.EntityReference::getName)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatExtensionForCsv(Object extension) {
+    if (extension == null) {
+      return "";
+    }
+    return extension.toString();
+  }
+
+  private String escapeCSVValue(String value) {
+    if (value == null) {
+      return "";
+    }
+    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+      return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+    return value;
+  }
+
+  @Override
+  protected void validateCsvDataPersistence(
+      List<Database> originalEntities, String csvData, CsvImportResult result) {
+    super.validateCsvDataPersistence(originalEntities, csvData, result);
+
+    if (result.getStatus() != ApiStatus.SUCCESS) {
+      return;
+    }
+
+    if (originalEntities != null) {
+      for (Database originalEntity : originalEntities) {
+        Database updatedEntity =
+            getEntityByNameWithFields(originalEntity.getName(), "owners,tags,domains");
+        assertNotNull(
+            updatedEntity,
+            "Database " + originalEntity.getName() + " should exist after CSV import");
+
+        validateDatabaseFieldsAfterImport(originalEntity, updatedEntity);
+      }
+    }
+  }
+
+  private void validateDatabaseFieldsAfterImport(Database original, Database imported) {
+    assertEquals(original.getName(), imported.getName(), "Database name should match");
+
+    if (original.getDisplayName() != null) {
+      assertEquals(
+          original.getDisplayName(),
+          imported.getDisplayName(),
+          "Database displayName should be preserved");
+    }
+
+    if (original.getDescription() != null) {
+      assertEquals(
+          original.getDescription(),
+          imported.getDescription(),
+          "Database description should be preserved");
+    }
+
+    if (original.getRetentionPeriod() != null) {
+      assertEquals(
+          original.getRetentionPeriod(),
+          imported.getRetentionPeriod(),
+          "Database retention period should be preserved");
+    }
+
+    if (original.getSourceUrl() != null) {
+      assertEquals(
+          original.getSourceUrl(),
+          imported.getSourceUrl(),
+          "Database source URL should be preserved");
+    }
+
+    if (original.getOwners() != null && !original.getOwners().isEmpty()) {
+      assertNotNull(imported.getOwners(), "Database owners should be preserved");
+      assertEquals(
+          original.getOwners().size(),
+          imported.getOwners().size(),
+          "Database owner count should match");
+    }
+
+    if (original.getTags() != null && !original.getTags().isEmpty()) {
+      assertNotNull(imported.getTags(), "Database tags should be preserved");
+      assertEquals(
+          original.getTags().size(), imported.getTags().size(), "Database tag count should match");
+    }
+
+    if (original.getDomains() != null && !original.getDomains().isEmpty()) {
+      assertNotNull(imported.getDomains(), "Database domains should be preserved");
+      assertEquals(
+          original.getDomains().size(),
+          imported.getDomains().size(),
+          "Database domain count should match");
+    }
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateDatabase> createRequests) {
+    return SdkClients.adminClient().databases().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateDatabase> createRequests) {
+    return SdkClients.adminClient().databases().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateDatabase createInvalidRequestForBulk(TestNamespace ns) {
+    CreateDatabase request = new CreateDatabase();
+    request.setName(ns.prefix("invalid_database"));
+    return request;
   }
 }

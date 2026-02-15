@@ -111,14 +111,14 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
 
         GetMappingResponse response = client.indices().getMapping(m -> m.index(indexName));
 
-        response
-            .result()
-            .forEach(
-                (index, indexMappings) -> {
-                  if (indexMappings.mappings().properties() != null) {
-                    getFieldNames(indexMappings.mappings().properties(), "", fields, type);
-                  }
-                });
+        // Iterate over all indices in the response to handle data streams
+        // where the backing index name differs from the alias (e.g., .ds-di-data-assets-database-*)
+        for (var entry : response.mappings().entrySet()) {
+          var indexMappingRecord = entry.getValue();
+          if (indexMappingRecord != null && indexMappingRecord.mappings().properties() != null) {
+            getFieldNames(indexMappingRecord.mappings().properties(), "", fields, type);
+          }
+        }
       } catch (Exception e) {
         LOG.error("Failed to get mappings for type: {}", type, e);
       }
@@ -340,9 +340,15 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
               q ->
                   q.range(
                       r ->
-                          r.field(DataInsightChartRepository.TIMESTAMP)
-                              .gte(JsonData.of(startTs))
-                              .lte(JsonData.of(endTs))));
+                          r.untyped(
+                              u ->
+                                  u.field(DataInsightChartRepository.TIMESTAMP)
+                                      .gte(
+                                          es.co.elastic.clients.json.JsonData.of(
+                                              String.valueOf(startTs)))
+                                      .lte(
+                                          es.co.elastic.clients.json.JsonData.of(
+                                              String.valueOf(endTs))))));
       boolQueryBuilder.must(rangeQuery);
     }
 

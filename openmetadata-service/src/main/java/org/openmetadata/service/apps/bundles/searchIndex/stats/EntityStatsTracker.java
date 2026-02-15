@@ -21,8 +21,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
  */
 @Slf4j
 public class EntityStatsTracker {
-  private static final int FLUSH_THRESHOLD = 100;
-  private static final long FLUSH_INTERVAL_MS = 5000;
+  private static final int FLUSH_THRESHOLD = 500;
+  private static final long FLUSH_INTERVAL_MS = 10000;
 
   @Getter private final String jobId;
   @Getter private final String serverId;

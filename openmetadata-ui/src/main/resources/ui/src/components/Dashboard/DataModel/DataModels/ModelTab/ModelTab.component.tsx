@@ -49,6 +49,7 @@ import {
   getHighlightedRowClassName,
   getTableExpandableConfig,
   pruneEmptyChildren,
+  updateColumnInNestedStructure,
 } from '../../../../../utils/TableUtils';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -71,7 +72,7 @@ const ModelTab = () => {
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
   const [_expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
-  const { openColumnDetailPanel, selectedColumn } =
+  const { openColumnDetailPanel, selectedColumn, setDisplayedColumns } =
     useGenericContext<DashboardDataModel>();
 
   const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
@@ -200,10 +201,15 @@ const ModelTab = () => {
     }
   }, [entityFqn, searchText, fetchPaginatedColumns, pageSize, dataModel]);
 
+  // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
+  useEffect(() => {
+    setDisplayedColumns(paginatedColumns);
+  }, [paginatedColumns, setDisplayedColumns]);
+
   const updateColumnDetails = async (
     columnFqn: string,
     column: Partial<Column>,
-    field?: keyof Column
+    field: keyof Column
   ) => {
     const response = await updateDataModelColumn(columnFqn, column);
     const cleanResponse = isEmpty(response.children)
@@ -211,12 +217,7 @@ const ModelTab = () => {
       : response;
 
     setPaginatedColumns((prev) =>
-      prev.map((col) =>
-        col.fullyQualifiedName === columnFqn
-          ? // Have to omit the field which is being updated to avoid persisted old value
-            { ...omit(col, field ?? ''), ...cleanResponse }
-          : col
-      )
+      updateColumnInNestedStructure(prev, columnFqn, cleanResponse, field)
     );
 
     return response;

@@ -137,6 +137,11 @@ public interface SearchIndex {
     TagLabel tierTag = new ParseTags(Entity.getEntityTags(entityType, entity)).getTierTag();
     map.put("tier", tierTag);
     map.put("certification", entity.getCertification());
+
+    map.put(
+        "customPropertiesTyped",
+        SearchIndexUtils.buildTypedCustomProperties(entity.getExtension(), entityType));
+
     return map;
   }
 

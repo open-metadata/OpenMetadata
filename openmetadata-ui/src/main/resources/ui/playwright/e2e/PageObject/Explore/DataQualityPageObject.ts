@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Locator } from '@playwright/test';
+import { expect, Locator } from '@playwright/test';
+import { RightPanelBase } from './OverviewPageObject';
 import { RightPanelPageObject } from './RightPanelPageObject';
 
 /**
@@ -24,10 +25,7 @@ import { RightPanelPageObject } from './RightPanelPageObject';
  * 4. Private locators, public methods only
  * 5. Descriptive method names following BDD style
  */
-export class DataQualityPageObject {
-
-  private readonly rightPanel: RightPanelPageObject;
-
+export class DataQualityPageObject extends RightPanelBase {
   // ============ PRIVATE LOCATORS (scoped to container) ============
   private readonly container: Locator;
   private readonly incidentsTab: Locator;
@@ -39,20 +37,33 @@ export class DataQualityPageObject {
   private readonly nameLink: Locator;
 
   constructor(rightPanel: RightPanelPageObject) {
-
-    this.rightPanel = rightPanel;
-
-    // Base container - scoped to right panel summary panel
-    this.container = this.rightPanel.getSummaryPanel().locator('.data-quality-tab-container');
+    super(rightPanel);
+    this.container = this.getSummaryPanel().locator(
+      '.data-quality-tab-container'
+    );
 
     // All other locators are scoped to the container
-    this.incidentsTab = this.container.locator('.ant-tabs-tab').filter({ hasText: /incident/i });
-    this.successStatCard = this.container.locator('[data-testid="data-quality-stat-card-success"]');
-    this.failedStatCard = this.container.locator('[data-testid="data-quality-stat-card-failed"]');
-    this.abortedStatCard = this.container.locator('[data-testid="data-quality-stat-card-aborted"]');
-    this.testCaseCardsSection = this.container.locator('[data-testid="test-case-cards-section"]');
-    this.testCaseCards = this.testCaseCardsSection.locator('.test-case-card, [class*="test-case"], [data-testid*="test-case"]');
-    this.nameLink = this.testCaseCards.locator('.test-case-name, [class*="name"], a').first();
+    this.incidentsTab = this.container
+      .locator('.ant-tabs-tab')
+      .filter({ hasText: /incident/i });
+    this.successStatCard = this.container.locator(
+      '[data-testid="data-quality-stat-card-success"]'
+    );
+    this.failedStatCard = this.container.locator(
+      '[data-testid="data-quality-stat-card-failed"]'
+    );
+    this.abortedStatCard = this.container.locator(
+      '[data-testid="data-quality-stat-card-aborted"]'
+    );
+    this.testCaseCardsSection = this.container.locator(
+      '[data-testid="test-case-cards-section"]'
+    );
+    this.testCaseCards = this.testCaseCardsSection.locator(
+      '.test-case-card, [class*="test-case"], [data-testid*="test-case"]'
+    );
+    this.nameLink = this.testCaseCards
+      .locator('.test-case-name, [class*="name"], a')
+      .first();
   }
 
   // ============ NAVIGATION METHODS (Fluent Interface) ============
@@ -63,8 +74,17 @@ export class DataQualityPageObject {
    */
   async navigateToDataQualityTab(): Promise<DataQualityPageObject> {
     await this.rightPanel.navigateToTab('data quality');
-    await this.rightPanel.waitForLoadersToDisappear();
+    await this.waitForLoadersToDisappear();
     return this;
+  }
+
+  /**
+   * Reusable assertion: navigate to Data Quality tab and assert tab + stat cards visible.
+   */
+  async assertContent(): Promise<void> {
+    await this.navigateToDataQualityTab();
+    await this.shouldBeVisible();
+    await this.shouldShowAllStatCards();
   }
 
   /**
@@ -73,7 +93,7 @@ export class DataQualityPageObject {
    */
   async navigateToIncidentsTab(): Promise<DataQualityPageObject> {
     await this.incidentsTab.click();
-    await this.rightPanel.waitForLoadersToDisappear();
+    await this.waitForLoadersToDisappear();
     return this;
   }
 
@@ -84,13 +104,14 @@ export class DataQualityPageObject {
    * @param statType - Type of stat card ('success', 'failed', 'aborted')
    * @returns DataQualityPageObject for method chaining
    */
-  async clickStatCard(statType: 'success' | 'failed' | 'aborted'): Promise<DataQualityPageObject> {
+  async clickStatCard(
+    statType: 'success' | 'failed' | 'aborted'
+  ): Promise<DataQualityPageObject> {
     const statCard = this.getStatCardLocator(statType);
     await statCard.click();
-    await this.rightPanel.waitForLoadersToDisappear();
+    await this.waitForLoadersToDisappear();
     return this;
   }
-
 
   // ============ PRIVATE HELPERS ============
 
@@ -98,15 +119,20 @@ export class DataQualityPageObject {
    * Get a specific stat card locator
    * @param statType - Type of stat card
    */
-  private getStatCardLocator(statType: 'success' | 'failed' | 'aborted'): Locator {
+  private getStatCardLocator(
+    statType: 'success' | 'failed' | 'aborted'
+  ): Locator {
     switch (statType) {
-      case 'success': return this.successStatCard;
-      case 'failed': return this.failedStatCard;
-      case 'aborted': return this.abortedStatCard;
-      default: throw new Error(`Invalid stat type: ${statType}`);
+      case 'success':
+        return this.successStatCard;
+      case 'failed':
+        return this.failedStatCard;
+      case 'aborted':
+        return this.abortedStatCard;
+      default:
+        throw new Error(`Invalid stat type: ${statType}`);
     }
   }
-
 
   // ============ VERIFICATION METHODS (BDD Style) ============
 
@@ -131,12 +157,17 @@ export class DataQualityPageObject {
    * @param statType - Type of stat card
    * @param expectedText - Text to verify (partial match)
    */
-  async shouldShowStatCardWithText(statType: 'success' | 'failed' | 'aborted', expectedText: string): Promise<void> {
+  async shouldShowStatCardWithText(
+    statType: 'success' | 'failed' | 'aborted',
+    expectedText: string
+  ): Promise<void> {
     const statCard = this.getStatCardLocator(statType);
-    await statCard.waitFor({ state: 'visible' }); 
+    await statCard.waitFor({ state: 'visible' });
     const statCardText = await statCard.textContent();
     if (!statCardText?.includes(expectedText)) {
-      throw new Error(`Stat card ${statType} should show "${expectedText}" but shows "${statCardText}"`);
+      throw new Error(
+        `Stat card ${statType} should show "${expectedText}" but shows "${statCardText}"`
+      );
     }
   }
 
@@ -149,7 +180,9 @@ export class DataQualityPageObject {
     const cards = this.testCaseCards;
     const actualCount = await cards.count();
     if (actualCount !== expectedCount) {
-      throw new Error(`Should show ${expectedCount} test case cards, but shows ${actualCount}`);
+      throw new Error(
+        `Should show ${expectedCount} test case cards, but shows ${actualCount}`
+      );
     }
   }
 
@@ -158,7 +191,10 @@ export class DataQualityPageObject {
    * @param testCaseName - Expected test case name
    * @param cardIndex - Index of the test case card (default: 0)
    */
-  async shouldShowTestCaseCardWithName(testCaseName: string, cardIndex: number = 0): Promise<void> {
+  async shouldShowTestCaseCardWithName(
+    testCaseName: string,
+    cardIndex: number = 0
+  ): Promise<void> {
     // Use semantic selectors - find card by index and check name
     const cards = this.testCaseCards;
     const card = cards.nth(cardIndex);
@@ -167,7 +203,9 @@ export class DataQualityPageObject {
     await nameElement.waitFor({ state: 'visible' });
     const nameText = await nameElement.textContent();
     if (!nameText?.includes(testCaseName)) {
-      throw new Error(`Test case card ${cardIndex} should show name "${testCaseName}" but shows "${nameText}"`);
+      throw new Error(
+        `Test case card ${cardIndex} should show name "${testCaseName}" but shows "${nameText}"`
+      );
     }
   }
 
@@ -176,17 +214,24 @@ export class DataQualityPageObject {
    * @param status - Expected status ('success', 'failed', 'aborted')
    * @param cardIndex - Index of the test case card (default: 0)
    */
-  async shouldShowTestCaseCardWithStatus(status: 'success' | 'failed' | 'aborted', cardIndex: number = 0): Promise<void> {
+  async shouldShowTestCaseCardWithStatus(
+    status: 'success' | 'failed' | 'aborted',
+    cardIndex: number = 0
+  ): Promise<void> {
     // Use semantic selectors - find card by index and check status
     const cards = this.testCaseCards;
     const card = cards.nth(cardIndex);
     await card.waitFor({ state: 'visible' });
-    const statusBadge = card.locator('.status-badge, .badge, [class*="status"]');
+    const statusBadge = card.locator(
+      '.status-badge, .badge, [class*="status"]'
+    );
     await statusBadge.waitFor({ state: 'visible' });
     const statusText = await statusBadge.textContent();
     const expectedStatusText = status.toLowerCase();
     if (!statusText?.toLowerCase().includes(expectedStatusText)) {
-      throw new Error(`Test case card ${cardIndex} should show status "${expectedStatusText}" but shows "${statusText}"`);
+      throw new Error(
+        `Test case card ${cardIndex} should show status "${expectedStatusText}" but shows "${statusText}"`
+      );
     }
   }
 
@@ -195,7 +240,10 @@ export class DataQualityPageObject {
    * @param columnName - Expected column name
    * @param cardIndex - Index of the test case card (default: 0)
    */
-  async shouldShowTestCaseCardWithColumnName(columnName: string, cardIndex: number = 0): Promise<void> {
+  async shouldShowTestCaseCardWithColumnName(
+    columnName: string,
+    cardIndex: number = 0
+  ): Promise<void> {
     // Use semantic selectors - find card and look for column name in details
     const cards = this.testCaseCards;
     const card = cards.nth(cardIndex);
@@ -219,7 +267,9 @@ export class DataQualityPageObject {
     await this.nameLink.nth(cardIndex).waitFor({ state: 'visible' });
     const href = await this.nameLink.nth(cardIndex).getAttribute('href');
     if (!href) {
-      throw new Error(`Test case card ${cardIndex} should have a working link but doesn't`);
+      throw new Error(
+        `Test case card ${cardIndex} should have a working link but doesn't`
+      );
     }
   }
 
@@ -235,5 +285,21 @@ export class DataQualityPageObject {
    */
   async shouldNotShowIncidentsTab(): Promise<void> {
     await this.incidentsTab.waitFor({ state: 'hidden' });
+  }
+
+  /**
+   * Assert internal fields of the Data Quality tab for Table (stat cards, incidents tab).
+   * Use only when Data Quality tab is available (e.g. Table). Call after navigating to Data Quality tab.
+   */
+  async assertInternalFieldsForTable(assetType?: string): Promise<void> {
+    const tabLabel = 'Data Quality';
+    const prefix = assetType ? `[Asset: ${assetType}] [Tab: ${tabLabel}] ` : '';
+    // await expect(this.successStatCard, `${prefix}Missing: success stat card`).toBeVisible();
+    // await expect(this.failedStatCard, `${prefix}Missing: failed stat card`).toBeVisible();
+    // await expect(this.abortedStatCard, `${prefix}Missing: aborted stat card`).toBeVisible();
+    await expect(
+      this.incidentsTab,
+      `${prefix}Missing: incidents tab`
+    ).toBeVisible();
   }
 }

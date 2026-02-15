@@ -23,6 +23,7 @@ import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -41,6 +42,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
   {
     supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
   }
 
   // ===================================================================
@@ -634,5 +636,26 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
         EntityStatus.DEPRECATED,
         updatedMetric.getEntityStatus(),
         "Metric should be updated to DEPRECATED status");
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateMetric> createRequests) {
+    return SdkClients.adminClient().metrics().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateMetric> createRequests) {
+    return SdkClients.adminClient().metrics().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateMetric createInvalidRequestForBulk(TestNamespace ns) {
+    CreateMetric request = new CreateMetric();
+    request.setName("");
+    return request;
   }
 }

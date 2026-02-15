@@ -22,7 +22,7 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
 import {
@@ -67,6 +67,7 @@ function WorksheetColumnsTable() {
     permissions,
     onUpdate,
     openColumnDetailPanel,
+    setDisplayedColumns,
   } = useGenericContext<Worksheet>();
 
   const [editWorksheetColumnDescription, setEditWorksheetColumnDescription] =
@@ -91,7 +92,15 @@ function WorksheetColumnsTable() {
     };
   }, [permissions, worksheetDetails]);
 
-  const schema = pruneEmptyChildren(worksheetDetails?.columns ?? []);
+  const schema = useMemo(
+    () => pruneEmptyChildren(worksheetDetails?.columns ?? []),
+    [worksheetDetails?.columns]
+  );
+
+  // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
+  useEffect(() => {
+    setDisplayedColumns(schema);
+  }, [schema, setDisplayedColumns]);
 
   const handleFieldClick = (field: Column) => {
     openColumnDetailPanel(field);
@@ -174,10 +183,7 @@ function WorksheetColumnsTable() {
                 })}
                 <Typography.Text
                   className={classNames(
-                    'm-b-0 d-block break-word text-link-color',
-                    {
-                      'text-grey-600': !isEmpty(displayName),
-                    }
+                    'm-b-0 d-block break-word text-link-color'
                   )}
                   data-testid="column-name">
                   {name}
