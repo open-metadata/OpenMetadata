@@ -128,6 +128,7 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
             alignItems: 'flex-start',
             gap: 1.5,
             minWidth: 0,
+            minHeight: 40,
           }}>
           <Box sx={{ flexShrink: 0, mt: '2px' }}>{resourceTypeIcon}</Box>
           <Typography
@@ -153,8 +154,7 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
           sx={{
             display: 'flex',
             flexDirection: 'column',
-            gap: 0.5,
-            minHeight: 0,
+            minHeight: 56,
           }}>
           {resource.description ? (
             <>
@@ -169,9 +169,10 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   display: '-webkit-box',
-                  WebkitLineClamp: 2,
+                  WebkitLineClamp: showViewMore ? 2 : 3,
                   WebkitBoxOrient: 'vertical',
-                  minHeight: 40,
+                  flex: 1,
+                  minHeight: 0,
                 }}>
                 {resource.description}
               </Typography>
@@ -184,7 +185,6 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
                     cursor: 'pointer',
                     flexShrink: 0,
                     alignSelf: 'flex-start',
-                    mt: 0.25,
                     '&:hover': { textDecoration: 'underline' },
                   }}
                   type="button"
@@ -204,7 +204,6 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
                 fontStyle: 'italic',
                 fontWeight: theme.typography.fontWeightRegular,
                 lineHeight: theme.typography.body2.lineHeight,
-                minHeight: 40,
               }}>
               {t('label.no-entity-added', {
                 entity: t('label.description-lowercase'),

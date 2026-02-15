@@ -173,173 +173,141 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
         }}>
         <Box
           sx={{
-            alignItems: 'flex-start',
             borderBottom: '1px solid',
             borderColor: theme.palette.allShades?.gray?.[200],
             display: 'flex',
-            gap: 2,
-            justifyContent: 'space-between',
+            flexDirection: 'column',
             padding: theme.spacing(3, 6),
-            position: 'relative',
             ...(isFullScreen && { flexShrink: 0 }),
           }}>
           <Box
-            sx={{ flex: 1, minWidth: 0, paddingRight: theme.spacing(1.125) }}>
-            <Typography
-              component="div"
-              fontWeight={600}
-              sx={{
-                color: theme.palette.allShades?.gray?.[900],
-                display: 'block',
-                fontSize: theme.typography.body1.fontSize,
-                lineHeight: theme.typography.body1.lineHeight,
-                marginBottom: theme.spacing(0.5),
-                overflowWrap: 'break-word',
-                wordBreak: 'break-word',
-              }}>
-              {displayResource.displayName || displayResource.name}
-            </Typography>
-
-            {displayResource.description && (
+            sx={{
+              alignItems: 'flex-start',
+              display: 'flex',
+              gap: 2,
+              justifyContent: 'space-between',
+            }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography
-                aria-label={displayResource.description}
                 component="div"
+                fontWeight={600}
                 sx={{
-                  color: theme.palette.allShades?.gray?.[600],
-                  fontSize: theme.typography.pxToRem(13),
-                  lineHeight: theme.typography.body2.lineHeight,
+                  color: theme.palette.allShades?.gray?.[900],
+                  display: 'block',
+                  fontSize: theme.typography.body1.fontSize,
+                  lineHeight: theme.typography.body1.lineHeight,
+                  marginBottom: theme.spacing(0.5),
+                  overflowWrap: 'break-word',
+                  wordBreak: 'break-word',
+                }}>
+                {displayResource.displayName || displayResource.name}
+              </Typography>
+
+              {displayResource.description && (
+                <Typography
+                  aria-label={displayResource.description}
+                  component="div"
+                  sx={{
+                    color: theme.palette.allShades?.gray?.[600],
+                    fontSize: theme.typography.pxToRem(13),
+                    lineHeight: theme.typography.body2.lineHeight,
+                    paddingTop: theme.spacing(3),
+                  }}>
+                  {displayResource.description}
+                </Typography>
+              )}
+
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: theme.spacing(1.5),
                   paddingTop: theme.spacing(3),
                 }}>
-                {displayResource.description}
-              </Typography>
-            )}
+                {categoryTags.map((category) => {
+                  const colors = getCategoryColors(category);
 
-            <Box
-              sx={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: theme.spacing(0.75),
-                paddingTop: theme.spacing(3),
-              }}>
-              {categoryTags.map((category) => {
-                const colors = getCategoryColors(category);
-
-                return (
-                  <Box
-                    component="span"
-                    key={category}
-                    sx={{
-                      margin: 0,
-                      fontSize: theme.typography.caption.fontSize,
-                      lineHeight: 1.5,
-                      padding: theme.spacing(0.25, 0.75),
-                      borderRadius: theme.spacing(0.75),
-                      fontWeight: theme.typography.fontWeightMedium,
-                      borderWidth: 1,
-                      borderStyle: 'solid',
-                      backgroundColor: colors.bgColor,
-                      borderColor: colors.borderColor,
-                      color: colors.color,
-                      flexShrink: 1,
-                      minWidth: 0,
-                      maxWidth: '100%',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}>
-                    {LEARNING_CATEGORIES[
-                      category as keyof typeof LEARNING_CATEGORIES
-                    ]?.label ?? category}
-                  </Box>
-                );
-              })}
+                  return (
+                    <Box
+                      component="span"
+                      key={category}
+                      sx={{
+                        margin: 0,
+                        fontSize: theme.typography.caption.fontSize,
+                        lineHeight: 1.5,
+                        padding: theme.spacing(0.25, 0.75),
+                        borderRadius: theme.spacing(0.75),
+                        fontWeight: theme.typography.fontWeightMedium,
+                        borderWidth: 1,
+                        borderStyle: 'solid',
+                        backgroundColor: colors.bgColor,
+                        borderColor: colors.borderColor,
+                        color: colors.color,
+                        flexShrink: 1,
+                        minWidth: 0,
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                      {LEARNING_CATEGORIES[
+                        category as keyof typeof LEARNING_CATEGORIES
+                      ]?.label ?? category}
+                    </Box>
+                  );
+                })}
+              </Box>
             </Box>
 
             <Box
               sx={{
                 alignItems: 'center',
                 display: 'flex',
-                flexWrap: 'wrap',
-                gap: 2,
-                justifyContent: 'space-between',
-                paddingTop: theme.spacing(3),
+                flexShrink: 0,
+                gap: 1,
               }}>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                {contextItems.length > 0 && (
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: theme.spacing(1),
-                    }}>
-                    {contextItems.map((ctx, idx) => (
-                      <Box
-                        component="span"
-                        key={`${ctx.pageId}-${idx}`}
-                        sx={{
-                          backgroundColor: theme.palette.grey[50],
-                          border: '1px solid',
-                          borderColor: theme.palette.grey[200],
-                          borderRadius: theme.spacing(0.75),
-                          color: theme.palette.grey[700],
-                          fontSize: theme.typography.caption.fontSize,
-                          fontWeight: theme.typography.fontWeightMedium,
-                          lineHeight: 1.5,
-                          padding: theme.spacing(0.25, 0.75),
-                          flexShrink: 1,
-                          minWidth: 0,
-                          maxWidth: '100%',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}>
-                        {getContextLabel(ctx.pageId)}
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              </Box>
-              {(formattedDate || formattedDuration) && (
-                <Box
+              <Tooltip
+                title={
+                  isFullScreen
+                    ? t('label.exit-full-screen')
+                    : t('label.fullscreen')
+                }>
+                <IconButton
+                  color="inherit"
+                  data-testid={
+                    isFullScreen ? 'minimize-button' : 'maximize-button'
+                  }
                   sx={{
-                    alignItems: 'center',
-                    display: 'flex',
-                    flexShrink: 0,
-                    gap: 0.5,
-                  }}>
-                  {formattedDate && (
-                    <Typography
-                      component="span"
-                      sx={{
-                        color: theme.palette.allShades?.gray?.[600],
-                        fontSize: theme.typography.caption.fontSize,
-                      }}>
-                      {formattedDate}
-                    </Typography>
-                  )}
-                  {formattedDate && formattedDuration && (
-                    <Typography
-                      component="span"
-                      sx={{
-                        color: theme.palette.allShades?.gray?.[400],
-                        fontSize: theme.typography.caption.fontSize,
-                        px: theme.spacing(0.875),
-                      }}>
-                      |
-                    </Typography>
-                  )}
-                  {formattedDuration && (
-                    <Typography
-                      component="span"
-                      sx={{
-                        color: theme.palette.allShades?.gray?.[500],
-                        fontSize: theme.typography.caption.fontSize,
-                      }}>
-                      {formattedDuration}
-                    </Typography>
-                  )}
-                </Box>
-              )}
+                    color: theme.palette.allShades?.gray?.[600],
+                    '&:hover': {
+                      color: theme.palette.allShades?.gray?.[700],
+                    },
+                    '& svg': {
+                      height: 16,
+                      width: 16,
+                    },
+                  }}
+                  onClick={handleFullScreenToggle}>
+                  {isFullScreen ? <Minimize01 /> : <Maximize01 />}
+                </IconButton>
+              </Tooltip>
+              <IconButton
+                aria-label={t('label.close')}
+                color="inherit"
+                data-testid="close-resource-player"
+                sx={{
+                  color: theme.palette.allShades?.gray?.[600],
+                  '&:hover': {
+                    color: theme.palette.allShades?.gray?.[700],
+                  },
+                  '& svg': {
+                    height: 16,
+                    width: 16,
+                  },
+                }}
+                onClick={onClose}>
+                <XClose />
+              </IconButton>
             </Box>
           </Box>
 
@@ -347,61 +315,85 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
             sx={{
               alignItems: 'center',
               display: 'flex',
-              gap: 2,
-              position: 'absolute',
-              right: theme.spacing(1.875),
-              top: theme.spacing(1.5),
+              flexWrap: 'wrap',
+              gap: theme.spacing(1.5),
+              justifyContent: 'space-between',
+              paddingTop: theme.spacing(3),
             }}>
-            <Tooltip
-              title={
-                isFullScreen
-                  ? t('label.exit-full-screen')
-                  : t('label.fullscreen')
-              }>
-              <IconButton
-                color="inherit"
-                data-testid={
-                  isFullScreen ? 'minimize-button' : 'maximize-button'
-                }
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              {contextItems.length > 0 && (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: theme.spacing(1),
+                  }}>
+                  {contextItems.map((ctx, idx) => (
+                    <Box
+                      component="span"
+                      key={`${ctx.pageId}-${idx}`}
+                      sx={{
+                        backgroundColor: theme.palette.grey[50],
+                        border: `1px solid ${theme.palette.grey[200]}`,
+                        borderRadius: theme.spacing(0.75),
+                        color: theme.palette.grey[700],
+                        fontSize: theme.typography.caption.fontSize,
+                        fontWeight: theme.typography.fontWeightMedium,
+                        padding: theme.spacing(0.25, 0.75),
+                        flexShrink: 1,
+                        minWidth: 0,
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                      {getContextLabel(ctx.pageId)}
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+            {(formattedDate || formattedDuration) && (
+              <Box
                 sx={{
-                  color: theme.palette.allShades?.gray?.[600],
-                  height: 20,
-                  width: 20,
-                  '&:hover': {
-                    color: theme.palette.allShades?.gray?.[700],
-                  },
-                  '& svg': {
-                    height: 20,
-                    width: 20,
-                  },
-                }}
-                onClick={handleFullScreenToggle}>
-                {isFullScreen ? (
-                  <Minimize01 size={20} strokeWidth={2} />
-                ) : (
-                  <Maximize01 size={20} strokeWidth={2} />
+                  alignItems: 'center',
+                  display: 'flex',
+                  flexShrink: 0,
+                  gap: 0.5,
+                }}>
+                {formattedDate && (
+                  <Typography
+                    component="span"
+                    sx={{
+                      color: theme.palette.allShades?.gray?.[600],
+                      fontSize: theme.typography.caption.fontSize,
+                    }}>
+                    {formattedDate}
+                  </Typography>
                 )}
-              </IconButton>
-            </Tooltip>
-            <IconButton
-              aria-label={t('label.close')}
-              color="inherit"
-              data-testid="close-resource-player"
-              sx={{
-                color: theme.palette.allShades?.gray?.[600],
-                height: 20,
-                width: 20,
-                '&:hover': {
-                  color: theme.palette.allShades?.gray?.[700],
-                },
-                '& svg': {
-                  height: 20,
-                  width: 20,
-                },
-              }}
-              onClick={onClose}>
-              <XClose size={20} />
-            </IconButton>
+                {formattedDate && formattedDuration && (
+                  <Typography
+                    component="span"
+                    sx={{
+                      color: theme.palette.allShades?.gray?.[400],
+                      fontSize: theme.typography.caption.fontSize,
+                      px: theme.spacing(0.875),
+                    }}>
+                    |
+                  </Typography>
+                )}
+                {formattedDuration && (
+                  <Typography
+                    component="span"
+                    sx={{
+                      color: theme.palette.allShades?.gray?.[500],
+                      fontSize: theme.typography.caption.fontSize,
+                    }}>
+                    {formattedDuration}
+                  </Typography>
+                )}
+              </Box>
+            )}
           </Box>
         </Box>
 
@@ -411,7 +403,6 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
             width: '100%',
             flex: isFullScreen ? 1 : undefined,
             minHeight: isFullScreen ? 0 : undefined,
-            paddingTop: 12,
             '& .video-player-wrapper, & .storylane-tour-wrapper, & .article-viewer-wrapper':
               isFullScreen ? { height: '100%', padding: 2, width: '100%' } : {},
             '& .video-player-container, & .storylane-tour-container':
