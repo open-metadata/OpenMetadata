@@ -6440,8 +6440,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(1, emailProp.getQuality().size());
     assertEquals("email_not_null", emailProp.getQuality().get(0).getName());
 
-    assertNull(
-        exported.getQuality(), "Top-level quality should be null when all rules are column-level");
+    assertTrue(
+        exported.getQuality().isEmpty(),
+        "Top-level quality should be empty when all rules are column-level");
   }
 
   @Test
