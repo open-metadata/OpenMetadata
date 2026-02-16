@@ -72,11 +72,14 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
                     : null);
 
     // validate Bot if provided
-    validateAndAddBot(app, createAppRequest.getBot());
+    validateAndAddBot(
+        app,
+        createAppRequest.getBot(),
+        Boolean.TRUE.equals(createAppRequest.getAllowBotImpersonation()));
     return app;
   }
 
-  private void validateAndAddBot(App app, String botName) {
+  private void validateAndAddBot(App app, String botName, boolean allowBotImpersonation) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     try {
       JsonUtils.validateJsonSchema(app, App.class);
@@ -86,7 +89,7 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
     if (!CommonUtil.nullOrEmpty(botName)) {
       app.setBot(Entity.getEntityReferenceByName(BOT, botName, Include.NON_DELETED));
     } else {
-      app.setBot(appRepository.createNewAppBot(app));
+      app.setBot(appRepository.createNewAppBot(app, allowBotImpersonation));
     }
   }
 }

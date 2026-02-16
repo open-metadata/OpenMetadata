@@ -99,6 +99,10 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   public EntityReference createNewAppBot(App application) {
+    return createNewAppBot(application, false);
+  }
+
+  public EntityReference createNewAppBot(App application, boolean allowImpersonation) {
     String botName = String.format("%sBot", application.getName());
     BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
@@ -128,6 +132,7 @@ public class AppRepository extends EntityRepository<App> {
 
       // Set User Ownership to the application creator
       user.setOwners(application.getOwners());
+      user.setAllowImpersonation(allowImpersonation);
 
       // Set Auth Mechanism in Bot
       JWTAuthMechanism jwtAuthMechanism = (JWTAuthMechanism) authMechanism.getConfig();
