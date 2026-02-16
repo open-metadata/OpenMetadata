@@ -136,8 +136,28 @@ public class OidcDiscoveryValidator {
       DiscoveryDocument discovery,
       List<String> errors,
       List<String> warnings) {
-    if (!nullOrEmpty(config.getScope()) && !discovery.scopesSupported.isEmpty()) {
-      String[] requestedScopes = config.getScope().split(" ");
+    if (nullOrEmpty(config.getScope())) {
+      errors.add("Scope is required for OIDC. Must include 'openid' scope.");
+      return;
+    }
+
+    String[] requestedScopes = config.getScope().split(" ");
+
+    boolean hasOpenIdScope = false;
+    for (String scope : requestedScopes) {
+      if ("openid".equals(scope)) {
+        hasOpenIdScope = true;
+        break;
+      }
+    }
+
+    if (!hasOpenIdScope) {
+      errors.add(
+          "The scope must include 'openid' for OIDC authentication. Current scopes: "
+              + config.getScope());
+    }
+
+    if (!discovery.scopesSupported.isEmpty()) {
       List<String> unsupportedScopes = new ArrayList<>();
 
       for (String scope : requestedScopes) {

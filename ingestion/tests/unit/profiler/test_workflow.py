@@ -114,6 +114,10 @@ class User(Base):
 
 
 @patch.object(
+    ProfilerWorkflow,
+    "test_connection",
+)
+@patch.object(
     SQAProfilerInterface,
     "table",
     new_callable=lambda: User,
@@ -299,6 +303,7 @@ def test_filter_entities():
     assert len(fetcher._filter_entities(all_tables)) == 1
 
 
+@patch.object(ProfilerWorkflow, "test_connection")
 @patch.object(
     base,
     "get_orm_database",
@@ -359,6 +364,7 @@ def test_profile_def(mocked_method, *_):  # pylint: disable=unused-argument
     assert config_metrics_label == profiler_obj_metrics
 
 
+@patch.object(ProfilerWorkflow, "test_connection")
 @patch.object(
     base,
     "get_orm_database",
@@ -410,7 +416,13 @@ def test_default_profile_def(mocked_method, *_):  # pylint: disable=unused-argum
     )
 
 
-def test_service_name_validation_raised():
+@patch.object(ProfilerWorkflow, "test_connection")
+@patch.object(
+    OpenMetadataSource,
+    "_validate_service_name",
+    return_value=None,
+)
+def test_service_name_validation_raised(*_):
     """Test the service name validation for the profiler
     workflow is raised correctly
     """

@@ -1,6 +1,6 @@
 import pytest
 
-from ingestion.tests.unit.lineage.e2e.helpers import assert_lineage
+from ingestion.tests.integration.lineage.e2e.helpers import assert_lineage
 from metadata.generated.schema.entity.data.table import Table
 
 
