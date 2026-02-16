@@ -138,12 +138,23 @@ def static_checks(session):
     python=get_python_versions(),
 )
 def unit_tests(session):
-    """Run Python unit tests with coverage and parallel execution."""
+    """Run Python unit tests with coverage and parallel execution.
+
+    Pass additional pytest arguments after --:
+        nox -s unit-tests -- -v           # verbose output
+        nox -s unit-tests -- -k test_name # run specific test
+        nox -s unit-tests -- tests/unit/topology/  # run specific directory
+    """
     install(session, ".[dev]")
     install(session, ".[all]")
     install(session, ".[test]")
-    session.run(
-        "pytest",
+
+    # Separate test paths from pytest flags in posargs
+    args = list(session.posargs)
+    test_paths = [a for a in args if not a.startswith("-")]
+    extra_flags = [a for a in args if a.startswith("-")]
+
+    pytest_args = [
         "-c",
         "pyproject.toml",
         "--cov=metadata",
@@ -154,8 +165,12 @@ def unit_tests(session):
         "auto",
         "--dist",
         "loadfile",
-        "tests/unit/",
-    )
+    ]
+
+    pytest_args.extend(test_paths or ["tests/unit/"])
+    pytest_args.extend(extra_flags)
+
+    session.run("pytest", *pytest_args)
 
 
 # ---------------------------------------------------------------------------
