@@ -85,10 +85,11 @@ class User(Base):
 
 
 @pytest.fixture
-def create_sqlite_table():
+def create_sqlite_table(worker_id):
     """create and delete sqlite table"""
+    worker_suffix = f"_{worker_id}" if worker_id != "master" else ""
     db_path = os.path.join(
-        os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db"
+        os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}{worker_suffix}.db"
     )
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
