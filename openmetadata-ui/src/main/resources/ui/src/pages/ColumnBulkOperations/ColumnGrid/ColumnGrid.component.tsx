@@ -1952,7 +1952,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   ]);
 
   const drawerHeaderAssetLink = useMemo(() => {
-    if (selectedCount === 0) {
+    if (selectedCount !== 1) {
       return null;
     }
     const firstRow = selectedRowsData[0];
