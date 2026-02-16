@@ -262,29 +262,13 @@ CREATE TABLE IF NOT EXISTS learning_resource_entity (
     UNIQUE (fqnhash)
 );
 
--- Set FINISHED for completed workflow instances where status is null
-UPDATE workflow_instance_time_series 
-SET json = jsonb_set(json, '{status}', '"FINISHED"'::jsonb, true)
-WHERE json->>'status' IS NULL 
-  AND json->>'endedAt' IS NOT NULL;
+-- DELETE old workflow instances where status is null
+DELETE FROM workflow_instance_time_series
+WHERE json->>'status' IS NULL;
 
--- Set FAILURE for incomplete workflow instances where status is null
-UPDATE workflow_instance_time_series 
-SET json = jsonb_set(json, '{status}', '"FAILURE"'::jsonb, true)
-WHERE json->>'status' IS NULL 
-  AND json->>'endedAt' IS NULL;
-
--- Set FINISHED for completed workflow instance states where status is null
-UPDATE workflow_instance_state_time_series
-SET json = jsonb_set(json, '{status}', '"FINISHED"'::jsonb, true)
-WHERE json->>'status' IS NULL
-  AND json->>'endedAt' IS NOT NULL;
-
--- Set FAILURE for incomplete workflow instance states where status is null
-UPDATE workflow_instance_state_time_series
-SET json = jsonb_set(json, '{status}', '"FAILURE"'::jsonb, true)
-WHERE json->>'status' IS NULL
-  AND json->>'endedAt' IS NULL;
+-- DELETE old workflow instance states where status is null
+DELETE FROM workflow_instance_state_time_series
+WHERE json->>'status' IS NULL;
 
 -- Widen entityLink generated column from VARCHAR(255) to TEXT
 -- The entity link from workflow variables can exceed 255 characters for deeply nested entities

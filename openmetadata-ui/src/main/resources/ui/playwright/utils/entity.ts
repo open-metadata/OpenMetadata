@@ -164,11 +164,17 @@ export const addOwnerWithoutValidation = async ({
 }) => {
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
-    const userListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=&index=user_search_index&*'
-    );
-    await page.getByRole('tab', { name: type }).click();
-    await userListResponse;
+    const usersTab = page.getByRole('tab', { name: type });
+    const isTabAlreadySelected =
+      (await usersTab.getAttribute('aria-selected')) === 'true';
+
+    if (!isTabAlreadySelected) {
+      const userListResponse = page.waitForResponse(
+        '/api/v1/search/query?q=&index=user_search_index&*'
+      );
+      await usersTab.click();
+      await userListResponse;
+    }
   }
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 

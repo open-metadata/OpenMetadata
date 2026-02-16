@@ -13,6 +13,10 @@
 
 package org.openmetadata.service.util;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -52,6 +56,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ODCSConverter {
   private static final Logger LOG = LoggerFactory.getLogger(ODCSConverter.class);
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private ODCSConverter() {}
 
@@ -126,9 +131,8 @@ public class ODCSConverter {
       odcs.setTags(tags);
     }
 
-    // Export quality rules from dedicated field
     if (contract.getOdcsQualityRules() != null && !contract.getOdcsQualityRules().isEmpty()) {
-      odcs.setQuality(contract.getOdcsQualityRules());
+      distributeQualityRules(odcs, contract.getOdcsQualityRules());
     }
 
     return odcs;
@@ -204,9 +208,9 @@ public class ODCSConverter {
       contract.setSla(convertODCSSLAToContract(odcs.getSlaProperties()));
     }
 
-    // Store ODCS quality rules in dedicated field for round-trip compatibility
-    if (odcs.getQuality() != null && !odcs.getQuality().isEmpty()) {
-      contract.setOdcsQualityRules(odcs.getQuality());
+    List<ODCSQualityRule> allQualityRules = collectAllQualityRules(odcs);
+    if (!allQualityRules.isEmpty()) {
+      contract.setOdcsQualityRules(allQualityRules);
     }
 
     return contract;
@@ -745,6 +749,132 @@ public class ODCSConverter {
     };
   }
 
+  private static List<ODCSQualityRule> collectAllQualityRules(ODCSDataContract odcs) {
+    List<ODCSQualityRule> allRules = new ArrayList<>();
+
+    if (odcs.getQuality() != null && !odcs.getQuality().isEmpty()) {
+      allRules.addAll(odcs.getQuality());
+    }
+
+    if (odcs.getSchema() != null) {
+      for (ODCSSchemaElement schemaObject : odcs.getSchema()) {
+        collectQualityRulesFromElement(schemaObject, allRules);
+      }
+    }
+
+    return allRules;
+  }
+
+  private static void collectQualityRulesFromElement(
+      ODCSSchemaElement element, List<ODCSQualityRule> allRules) {
+    if (element.getQuality() != null && !element.getQuality().isEmpty()) {
+      for (ODCSQualityRule rule : element.getQuality()) {
+        if (rule.getColumn() == null || rule.getColumn().isEmpty()) {
+          ODCSQualityRule copy = copyQualityRule(rule);
+          copy.setColumn(element.getName());
+          allRules.add(copy);
+        } else {
+          allRules.add(rule);
+        }
+      }
+    }
+
+    if (element.getProperties() != null) {
+      for (ODCSSchemaElement property : element.getProperties()) {
+        collectQualityRulesFromElement(property, allRules);
+      }
+    }
+  }
+
+  private static ODCSQualityRule copyQualityRule(ODCSQualityRule source) {
+    return MAPPER.convertValue(source, ODCSQualityRule.class);
+  }
+
+  private static void distributeQualityRules(
+      ODCSDataContract odcs, List<ODCSQualityRule> allRules) {
+    List<ODCSQualityRule> topLevelRules = new ArrayList<>();
+
+    for (ODCSQualityRule rule : allRules) {
+      if (rule.getColumn() == null || rule.getColumn().isEmpty()) {
+        topLevelRules.add(rule);
+      } else if (odcs.getSchema() != null) {
+        boolean placed = placeRuleInSchema(odcs.getSchema(), rule);
+        if (!placed) {
+          topLevelRules.add(rule);
+        }
+      } else {
+        topLevelRules.add(rule);
+      }
+    }
+
+    odcs.setQuality(topLevelRules.isEmpty() ? null : topLevelRules);
+  }
+
+  private static boolean placeRuleInSchema(
+      List<ODCSSchemaElement> schemaElements, ODCSQualityRule rule) {
+    for (ODCSSchemaElement element : schemaElements) {
+      if (rule.getColumn().equals(element.getName())) {
+        if (element.getQuality() == null) {
+          element.setQuality(new ArrayList<>());
+        }
+        element.getQuality().add(rule);
+        return true;
+      }
+
+      if (element.getProperties() != null) {
+        if (placeRuleInSchema(element.getProperties(), rule)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Normalizes ODCS input to handle flexible representations. Converts: - team from object form
+   * {members: [...]} to array form [...] - roles' firstLevelApprovers and secondLevelApprovers from
+   * scalar strings to arrays
+   */
+  public static void normalizeODCSInput(JsonNode rootNode) {
+    if (rootNode == null || !rootNode.isObject()) return;
+    ObjectNode root = (ObjectNode) rootNode;
+
+    normalizeTeamField(root);
+    normalizeApproverFields(root);
+  }
+
+  private static void normalizeTeamField(ObjectNode root) {
+    JsonNode teamNode = root.get("team");
+    if (teamNode == null || !teamNode.isObject()) return;
+
+    JsonNode membersNode = teamNode.get("members");
+    if (membersNode != null && membersNode.isArray()) {
+      root.set("team", membersNode);
+    }
+  }
+
+  private static void normalizeApproverFields(ObjectNode root) {
+    JsonNode rolesNode = root.get("roles");
+    if (rolesNode == null || !rolesNode.isArray()) return;
+
+    for (JsonNode roleNode : rolesNode) {
+      if (!roleNode.isObject()) continue;
+      ObjectNode role = (ObjectNode) roleNode;
+
+      wrapScalarAsArray(role, "firstLevelApprovers");
+      wrapScalarAsArray(role, "secondLevelApprovers");
+    }
+  }
+
+  private static void wrapScalarAsArray(ObjectNode node, String fieldName) {
+    JsonNode field = node.get(fieldName);
+    if (field != null && field.isTextual()) {
+      ArrayNode array = node.arrayNode();
+      array.add(field.asText());
+      node.set(fieldName, array);
+    }
+  }
+
   private static void validateRequiredODCSFields(ODCSDataContract odcs) {
     List<String> missingFields = new ArrayList<>();
 
@@ -916,10 +1046,8 @@ public class ODCSConverter {
       case NULL_VALUES -> "columnValuesToBeNotNull";
       case ROW_COUNT -> "tableRowCountToEqual";
       case UNIQUE_VALUES -> "columnValuesToBeUnique";
-      case DUPLICATE_VALUES -> "columnValuesToBeDuplicates";
-      case DISTINCT_VALUES -> "columnValueDistinctCountToEqual";
+      case MISSING_VALUES -> "columnValuesMissingCountToBeEqual";
       case COMPLETENESS -> "columnValuesToBeNotNull";
-      case FRESHNESS -> "tableLastModifiedDate";
       default -> null;
     };
   }
@@ -939,7 +1067,7 @@ public class ODCSConverter {
       case "tablerowcounttoequal", "tablerowcounttobebetween" -> ODCSQualityRule.OdcsQualityMetric
           .ROW_COUNT;
       case "columnvaluestobeunique" -> ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES;
-      case "columnvaluedistinctcounttoequal" -> ODCSQualityRule.OdcsQualityMetric.DISTINCT_VALUES;
+      case "columnvaluesmissingcounttobeequal" -> ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES;
       default -> null;
     };
   }

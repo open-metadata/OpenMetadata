@@ -2,9 +2,9 @@
   "tools": [
     {
       "name": "search_metadata",
-      "description": "Find data assets and business terms in OpenMetadata catalog. Searches tables, dashboards, topics, pipelines, and other metadata entities using natural language.",
+      "description": "Keyword-based search for data assets in OpenMetadata. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes.",
       "parameters": {
-        "description": "Use 'query' parameter for natural language search (recommended for most use cases). The system will automatically optimize the search query.",
+        "description": "Use 'query' for keyword search or 'queryFilter' for advanced OpenSearch DSL. Best for exact matches and filtering by metadata properties.",
         "type": "object",
         "properties": {
           "query": {
@@ -95,6 +95,67 @@
           {
             "description": "Advanced - Aggregation query for counting",
             "queryFilter": "{\"size\": 0, \"query\": {\"bool\": {\"must\": [{\"term\": {\"entityType\": \"databaseService\"}}, {\"term\": {\"serviceType\": \"BigQuery\"}}]}}, \"aggs\": {\"total_count\": {\"value_count\": {\"field\": \"_id\"}}}}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "semantic_search",
+      "description": "Meaning-based discovery of data assets using vector embeddings. Best for exploratory or vague queries where you don't know exact names — it finds conceptually related assets even when no keywords match. Use this when the user describes what data they need in plain language (e.g., 'tables about customer spending behavior', 'anything related to revenue forecasting'). Returns entity summaries with name, columns, description, and metadata. Choose this over search_metadata when the query is about meaning or concepts rather than specific identifiers or attributes.",
+      "parameters": {
+        "description": "Use 'query' to describe what you're looking for in plain language. The system finds conceptually similar assets using vector similarity. Optionally filter by entity type, service, or tags.",
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural language query describing what you're looking for. Semantic search finds conceptually similar results, so phrasing matters more than exact keywords. Examples: 'customer purchase history', 'tables tracking revenue metrics', 'pipeline processing user events'."
+          },
+          "filters": {
+            "type": "object",
+            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entity_type' (e.g., ['table', 'dashboard']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'tags' (e.g., ['PII.Sensitive']). Example: {\"entity_type\": [\"table\"], \"service\": [\"BigQuery\"]}.",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "size": {
+            "type": "integer",
+            "description": "Number of parent entities to return. Default is 10, maximum is 50.",
+            "default": 10
+          },
+          "k": {
+            "type": "integer",
+            "description": "Number of nearest neighbors to consider internally (KNN parameter). Higher values may improve result quality at the cost of latency. Default is 100.",
+            "default": 100
+          },
+          "threshold": {
+            "type": "number",
+            "description": "Minimum similarity score threshold (0.0 to 1.0). Results below this score are excluded. Default is 0.0 (no filtering). Use higher values like 0.5 or 0.7 to get only highly relevant results.",
+            "default": 0.0
+          }
+        },
+        "required": ["query"],
+        "examples": [
+          {
+            "description": "Find tables related to customer purchases",
+            "query": "customer purchase history"
+          },
+          {
+            "description": "Find dashboards about revenue in BigQuery",
+            "query": "revenue metrics dashboard",
+            "filters": {"entity_type": ["dashboard"], "service": ["BigQuery"]}
+          },
+          {
+            "description": "High-confidence search for PII data",
+            "query": "personal identifiable information",
+            "threshold": 0.5
+          },
+          {
+            "description": "Find pipeline assets processing user events",
+            "query": "user event processing pipeline",
+            "filters": {"entity_type": ["pipeline"]}
           }
         ]
       }

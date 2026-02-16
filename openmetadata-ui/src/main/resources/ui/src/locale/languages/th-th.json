@@ -2564,7 +2564,7 @@
     "most-expensive-queries-widget-subheader": "ติดตามคิวรีที่ใช้ทรัพยากรมากที่สุดในบริการของคุณ",
     "most-used-assets-widget-description": "5 อันดับสินทรัพย์ข้อมูลที่ใช้มากที่สุดในบริการ <0>เรียนรู้เพิ่มเติม</0>",
     "most-used-assets-widget-subheader": "รู้สึกถึงสินทรัพย์ข้อมูลที่ใช้งานมากที่สุดในบริการของคุณ.",
-    "most-viewed-data-assets": "Displays the most viewed feed-field-action-entity-headerdata assets.",
+    "most-viewed-data-assets": "แสดงสินทรัพย์ข้อมูลที่มีการเข้าชมมากที่สุด",
     "multi-object-contract-detected": "This contract contains multiple schema objects",
     "mutually-exclusive-alert": "If you enable 'Mutually Exclusive' for a {{entity}}, users will be restricted to using only one {{child-entity}} to apply to a data asset. Once this option is activated, it cannot be deactivated.",
     "my-task-no-data-placeholder": "ทุกอย่างเรียบร้อย – ไม่มีงานใดรอคุณอยู่ตอนนี้",

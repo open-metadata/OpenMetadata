@@ -13,7 +13,15 @@
 
 import { FieldOrGroup } from '@react-awesome-query-builder/antd';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
+import {
+  COMMON_DROPDOWN_ITEMS,
+  DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
+  GLOSSARY_ASSETS_DROPDOWN_ITEMS,
+  LINEAGE_DROPDOWN_ITEMS,
+  TAG_ASSETS_DROPDOWN_ITEMS,
+} from '../constants/AdvancedSearch.constants';
 import {
   EntityFields,
   EntityReferenceFields,
@@ -22,6 +30,7 @@ import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import {
+  getAssetsPageQuickFilters,
   getChartsOptions,
   getColumnsOptions,
   getEmptyJsonTree,
@@ -647,6 +656,64 @@ describe('AdvancedSearchUtils tests', () => {
       expect(
         advancedSearchClassBase.getCustomPropertiesSubFields
       ).toHaveBeenCalledWith(mockField, undefined);
+    });
+  });
+
+  describe('getAssetsPageQuickFilters', () => {
+    it('should return DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS for DOMAIN type', () => {
+      expect(getAssetsPageQuickFilters(AssetsOfEntity.DOMAIN)).toEqual(
+        DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS
+      );
+    });
+
+    it('should return DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS for DATA_PRODUCT type', () => {
+      expect(getAssetsPageQuickFilters(AssetsOfEntity.DATA_PRODUCT)).toEqual(
+        DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS
+      );
+    });
+
+    it('should return DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS for DATA_PRODUCT_INPUT_PORT type', () => {
+      expect(
+        getAssetsPageQuickFilters(AssetsOfEntity.DATA_PRODUCT_INPUT_PORT)
+      ).toEqual(DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS);
+    });
+
+    it('should return DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS for DATA_PRODUCT_OUTPUT_PORT type', () => {
+      expect(
+        getAssetsPageQuickFilters(AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT)
+      ).toEqual(DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS);
+    });
+
+    it('should return GLOSSARY_ASSETS_DROPDOWN_ITEMS for GLOSSARY type', () => {
+      expect(getAssetsPageQuickFilters(AssetsOfEntity.GLOSSARY)).toEqual(
+        GLOSSARY_ASSETS_DROPDOWN_ITEMS
+      );
+    });
+
+    it('should return TAG_ASSETS_DROPDOWN_ITEMS for TAG type', () => {
+      expect(getAssetsPageQuickFilters(AssetsOfEntity.TAG)).toEqual(
+        TAG_ASSETS_DROPDOWN_ITEMS
+      );
+    });
+
+    it('should return LINEAGE_DROPDOWN_ITEMS for LINEAGE type', () => {
+      expect(getAssetsPageQuickFilters(AssetsOfEntity.LINEAGE)).toEqual(
+        LINEAGE_DROPDOWN_ITEMS
+      );
+    });
+
+    it('should return COMMON_DROPDOWN_ITEMS for undefined type', () => {
+      expect(getAssetsPageQuickFilters(undefined)).toEqual(
+        COMMON_DROPDOWN_ITEMS
+      );
+    });
+
+    it('should return a new array instance each time', () => {
+      const result1 = getAssetsPageQuickFilters(AssetsOfEntity.DOMAIN);
+      const result2 = getAssetsPageQuickFilters(AssetsOfEntity.DOMAIN);
+
+      expect(result1).not.toBe(result2);
+      expect(result1).toEqual(result2);
     });
   });
 
