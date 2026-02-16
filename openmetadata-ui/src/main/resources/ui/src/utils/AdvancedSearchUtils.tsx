@@ -73,6 +73,8 @@ export const getAssetsPageQuickFilters = (type?: AssetsOfEntity) => {
   switch (type) {
     case AssetsOfEntity.DOMAIN:
     case AssetsOfEntity.DATA_PRODUCT:
+    case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
+    case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
       return [...DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS];
 
     case AssetsOfEntity.GLOSSARY:
