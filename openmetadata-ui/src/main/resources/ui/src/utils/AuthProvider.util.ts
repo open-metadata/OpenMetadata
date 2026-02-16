@@ -46,12 +46,12 @@ export const EXPIRY_THRESHOLD_MILLES = 1 * 60 * 1000;
 
 const subPath = getBasePath();
 
-export const getRedirectUri = (callbackUrl: string) => {
+export const getRedirectUri = (callbackUrl?: string) => {
   if (isDev()) {
     return `http://localhost:3000${subPath}/callback`;
   }
 
-  if (isNil(callbackUrl)) {
+  if (isNil(callbackUrl) || isEmpty(callbackUrl)) {
     return `${globalThis.location.origin}${subPath}/callback`;
   }
 
@@ -67,7 +67,7 @@ export const getSilentRedirectUri = () => {
 export const getUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority = '', clientId = '', callbackUrl = '', scope } = authClient;
+  const { authority = '', clientId = '', callbackUrl, scope } = authClient;
 
   return {
     authority,
@@ -96,7 +96,7 @@ export const getAuthConfig = (
     clientType = 'public',
   } = authClient;
   let config = {};
-  const redirectUri = getRedirectUri(callbackUrl ?? '');
+  const redirectUri = getRedirectUri(callbackUrl);
   switch (provider) {
     case AuthProvider.Okta:
       config = {
@@ -466,6 +466,8 @@ export const prepareUserProfileFromClaims = ({
             jwtPrincipalClaimsMapping
           )
         : {
+            // For confidential clients, backend handles displayName extraction
+            // via AuthenticationCodeFlowHandler during OAuth2 code flow
             name: user.profile?.name ?? '',
             email: user.profile?.email ?? '',
           },
