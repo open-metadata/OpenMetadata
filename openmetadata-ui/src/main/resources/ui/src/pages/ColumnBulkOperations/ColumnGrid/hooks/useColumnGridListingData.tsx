@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -242,8 +243,12 @@ export const useColumnGridListingData = (
           return;
         }
         if (!options?.rethrowOnError) {
-          // Keep previous data on transient errors/loading transitions to avoid
-          // jarring "0 stats + empty grid" flicker while requests are in flight.
+          showErrorToast(
+            error as AxiosError,
+            t('server.entity-fetch-error', {
+              entity: t('label.column-lowercase-plural'),
+            })
+          );
         }
         if (process.env.NODE_ENV === 'development') {
           // eslint-disable-next-line no-console
