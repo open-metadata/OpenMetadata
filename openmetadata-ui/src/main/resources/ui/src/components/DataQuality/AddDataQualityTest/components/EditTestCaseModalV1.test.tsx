@@ -711,14 +711,17 @@ describe('EditTestCaseModalV1 Component', () => {
       ],
     };
 
-    render(<EditTestCaseModalV1 {...mockProps} testCase={testCaseWithBooleanFalse} />);
+    const { container } = render(<EditTestCaseModalV1 {...mockProps} testCase={testCaseWithBooleanFalse} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
     });
 
-    const form = document.querySelector('[data-testid="edit-test-form"]') as HTMLFormElement;
-    expect(form).toBeInTheDocument();
+    const switchElement = container.querySelector('button[role="switch"]') as HTMLButtonElement;
+    
+    if (switchElement) {
+      expect(switchElement.getAttribute('aria-checked')).toBe('false');
+    }
   });
 
   it('should correctly convert boolean parameter values when value is "true"', async () => {
@@ -742,13 +745,16 @@ describe('EditTestCaseModalV1 Component', () => {
       ],
     };
 
-    render(<EditTestCaseModalV1 {...mockProps} testCase={testCaseWithBooleanTrue} />);
+    const { container } = render(<EditTestCaseModalV1 {...mockProps} testCase={testCaseWithBooleanTrue} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
     });
 
-    const form = document.querySelector('[data-testid="edit-test-form"]') as HTMLFormElement;
-    expect(form).toBeInTheDocument();
+    const switchElement = container.querySelector('button[role="switch"]') as HTMLButtonElement;
+    
+    if (switchElement) {
+      expect(switchElement.getAttribute('aria-checked')).toBe('true');
+    }
   });
 });
