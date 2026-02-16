@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -29,7 +28,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { defaultColors } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@untitledui/icons';
+import { Plus, Trash01 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import { DateTime } from 'luxon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -38,6 +37,7 @@ import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as StoryLaneIcon } from '../../assets/svg/ic_storylane.svg';
 import { ReactComponent as VideoIcon } from '../../assets/svg/ic_video.svg';
 
+import { DeleteModalMUI } from '../../components/common/DeleteModal/DeleteModalMUI';
 import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -89,6 +89,9 @@ const StyledPageLayout = styled(PageLayoutV1)(() => ({
     minHeight: 0,
     display: 'flex',
     flexDirection: 'column',
+  },
+  '& .learning-resources-page-layout .ant-row .ant-col': {
+    flex: 'none',
   },
   '& .learning-resources-page-layout .ant-row .ant-col:last-child': {
     minHeight: 0,
@@ -207,7 +210,7 @@ const ResourceRow = ({
               overflow: 'hidden',
               display: 'flex',
               flexWrap: 'nowrap',
-              gap: theme.spacing(0.75),
+              gap: theme.spacing(1.5),
               alignItems: 'center',
             }}>
             {record.categories?.slice(0, MAX_VISIBLE_TAGS).map((cat) => {
@@ -271,7 +274,7 @@ const ResourceRow = ({
               overflow: 'hidden',
               display: 'flex',
               flexWrap: 'nowrap',
-              gap: theme.spacing(0.75),
+              gap: theme.spacing(1.5),
               alignItems: 'center',
             }}>
             {record.contexts?.slice(0, MAX_VISIBLE_CONTEXTS).map((ctx, i) => (
@@ -340,6 +343,7 @@ const ResourceRow = ({
               size="small"
               sx={{
                 borderRadius: '4px',
+                padding: theme.spacing(1),
                 border: `1px solid ${theme.palette.grey[200]}`,
                 bgcolor: 'common.white',
                 '&:hover': {
@@ -358,6 +362,7 @@ const ResourceRow = ({
               sx={{
                 borderRadius: '4px',
                 border: `1px solid ${theme.palette.grey[200]}`,
+                padding: theme.spacing(1),
                 bgcolor: 'common.white',
                 '&:hover': {
                   bgcolor: 'common.white',
@@ -393,11 +398,16 @@ export const LearningResourcesPage: React.FC = () => {
   const {
     isFormOpen,
     isPlayerOpen,
+    isDeleteModalOpen,
+    isDeleting,
     selectedResource,
     editingResource,
+    deletingResource,
     handleCreate,
     handleEdit,
     handleDelete,
+    handleDeleteConfirm,
+    handleDeleteCancel,
     handlePreview,
     handleFormClose,
     handlePlayerClose,
@@ -520,8 +530,23 @@ export const LearningResourcesPage: React.FC = () => {
 
           <Button
             data-testid="create-resource"
-            startIcon={<PlusOutlined />}
-            variant="contained"
+            startIcon={
+              <Plus style={{ fontSize: theme.typography.pxToRem(16) }} />
+            }
+            sx={{
+              fontSize: theme.typography.body2.fontSize,
+              fontWeight: theme.typography.fontWeightMedium,
+              color: defaultColors.white,
+              borderRadius: '8px',
+              border: `1px solid ${defaultColors.blue[600]}`,
+              background: defaultColors.blue[600],
+              padding: theme.spacing(2, 3.5),
+              '&:hover': {
+                background: defaultColors.blue[600],
+                color: defaultColors.white,
+              },
+            }}
+            variant="text"
             onClick={handleCreate}>
             {t('label.add-entity', {
               entity: t('label.resource'),
@@ -712,6 +737,19 @@ export const LearningResourcesPage: React.FC = () => {
             open={isPlayerOpen}
             resource={selectedResource}
             onClose={handlePlayerClose}
+          />
+        )}
+
+        {deletingResource && (
+          <DeleteModalMUI
+            entityTitle={deletingResource.displayName || deletingResource.name}
+            isDeleting={isDeleting}
+            message={t('message.delete-entity-permanently', {
+              entityType: t('label.learning-resource'),
+            })}
+            open={isDeleteModalOpen}
+            onCancel={handleDeleteCancel}
+            onDelete={handleDeleteConfirm}
           />
         )}
       </Box>

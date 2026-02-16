@@ -1163,6 +1163,30 @@ public class TableRepository extends EntityRepository<Table> {
     List<UUID> ids = entities.stream().map(Table::getId).toList();
     deleteToMany(ids, Entity.TABLE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
     deleteFromMany(ids, Entity.TABLE, Relationship.RELATED_TO, Entity.TABLE);
+
+    // Delete column tags - they will be re-applied from the updated table via applyTagsToEntities
+    List<String> columnFqns = new ArrayList<>();
+    for (Table table : entities) {
+      collectColumnFqns(table.getColumns(), columnFqns);
+    }
+    if (!columnFqns.isEmpty()) {
+      daoCollection.tagUsageDAO().deleteTagsByTargets(columnFqns);
+    }
+  }
+
+  /** Recursively collect all column FQNs including nested columns */
+  private void collectColumnFqns(List<Column> columns, List<String> columnFqns) {
+    if (columns == null || columns.isEmpty()) {
+      return;
+    }
+    for (Column column : columns) {
+      if (column.getFullyQualifiedName() != null) {
+        columnFqns.add(column.getFullyQualifiedName());
+      }
+      if (column.getChildren() != null) {
+        collectColumnFqns(column.getChildren(), columnFqns);
+      }
+    }
   }
 
   @Override

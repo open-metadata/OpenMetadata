@@ -186,21 +186,25 @@ class TableRowInsertedCountToBeBetween(TableTest):
     column to track insertions.
 
     Args:
+        column_name: Name of the timestamp/date/datetime column to check insertions
         min_count: Minimum acceptable number of inserted rows (inclusive)
         max_count: Maximum acceptable number of inserted rows (inclusive)
-        range_type: Time unit for the range ("HOUR", "DAY", "WEEK", "MONTH")
+        range_type: Time unit for the range ("HOUR", "DAY", "MONTH", "YEAR")
         range_interval: Number of time units to look back
         name: Custom test case name
         display_name: Custom display name for UI
         description: Custom test description
 
     Examples:
-        >>> test = TableRowInsertedCountToBeBetween(min_count=100, max_count=1000, range_type="DAY", range_interval=1)
-        >>> test = TableRowInsertedCountToBeBetween(min_count=50, range_type="HOUR", range_interval=6)
+        >>> test = TableRowInsertedCountToBeBetween(column_name="created_at",
+            min_count=100, max_count=1000, range_type="DAY", range_interval=1)
+        >>> test = TableRowInsertedCountToBeBetween(column_name="inserted_at",
+            min_count=50, range_type="HOUR", range_interval=6)
     """
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
+        column_name: str,
         min_count: Optional[int] = None,
         max_count: Optional[int] = None,
         range_type: str = "DAY",
@@ -222,12 +226,15 @@ class TableRowInsertedCountToBeBetween(TableTest):
         )
         if min_count is not None:
             self.parameters.append(
-                TestCaseParameterValue(name="minValue", value=str(min_count))
+                TestCaseParameterValue(name="min", value=str(min_count))
             )
         if max_count is not None:
             self.parameters.append(
-                TestCaseParameterValue(name="maxValue", value=str(max_count))
+                TestCaseParameterValue(name="max", value=str(max_count))
             )
+        self.parameters.append(
+            TestCaseParameterValue(name="columnName", value=column_name)
+        )
         self.parameters.append(
             TestCaseParameterValue(name="rangeType", value=range_type)
         )
@@ -363,8 +370,9 @@ class TableDiff(TableTest):
         key_columns: Columns to use as join keys for comparison
         table2_key_columns: Columns from table 2 to use as join keys for comparison
         use_columns: Specific columns to compare (compares all if not specified)
-        extra_columns: Additional columns to include in diff output
-        table2_extra_columns: Additional columns from table 2 to include in diff output
+        threshold: Number of allowed diff rows before failing (defaults to 0)
+        where: SQL WHERE clause to filter rows to compare
+        case_sensitive_columns: Use case sensitivity when comparing columns
         name: Custom test case name
         display_name: Custom display name for UI
         description: Custom test description
@@ -383,8 +391,9 @@ class TableDiff(TableTest):
         key_columns: Optional[List[str]] = None,
         table2_key_columns: Optional[List[str]] = None,
         use_columns: Optional[List[str]] = None,
-        extra_columns: Optional[List[str]] = None,
-        table2_extra_columns: Optional[List[str]] = None,
+        threshold: Optional[int] = None,
+        where: Optional[str] = None,
+        case_sensitive_columns: Optional[bool] = None,
         name: Optional[str] = None,
         display_name: Optional[str] = None,
         description: Optional[str] = None,
@@ -411,13 +420,15 @@ class TableDiff(TableTest):
             self.parameters.append(
                 TestCaseParameterValue(name="useColumns", value=str(use_columns))
             )
-        if extra_columns:
+        if threshold is not None:
             self.parameters.append(
-                TestCaseParameterValue(name="extraColumns", value=str(extra_columns))
+                TestCaseParameterValue(name="threshold", value=str(threshold))
             )
-        if table2_extra_columns:
+        if where:
+            self.parameters.append(TestCaseParameterValue(name="where", value=where))
+        if case_sensitive_columns is not None:
             self.parameters.append(
                 TestCaseParameterValue(
-                    name="table2.extraColumns", value=str(table2_extra_columns)
+                    name="caseSensitiveColumns", value=str(case_sensitive_columns)
                 )
             )

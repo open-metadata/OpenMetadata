@@ -270,6 +270,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             searchKey={field.key}
             selectedKeys={selectedKeys ?? []}
             showSelectedCounts={showSelectedCounts}
+            singleSelect={field.singleSelect}
             triggerButtonSize="middle"
             onChange={(updatedValues) => {
               onFieldValueSelect({ ...field, value: updatedValues });

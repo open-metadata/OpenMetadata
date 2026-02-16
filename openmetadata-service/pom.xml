@@ -17,7 +17,7 @@
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <org.testcontainers.version>1.20.4</org.testcontainers.version>
-    <awssdk.version>2.30.19</awssdk.version>
+    <awssdk.version>2.31.7</awssdk.version>
     <azure-identity.version>1.14.0</azure-identity.version>
     <azure-kv.version>4.10.0</azure-kv.version>
     <azure-identity-extensions.version>1.0.0</azure-identity-extensions.version>
@@ -30,8 +30,6 @@
     <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
     <socket.io-client.version>2.1.1</socket.io-client.version>
     <json-smart.version>2.5.2</json-smart.version>
-    <aws.sdk.version>2.31.1</aws.sdk.version>
-    <bedrock.runtime.version>2.31.1</bedrock.runtime.version>
     <jetty.version>12.1.1</jetty.version>
     <logback-core.version>1.5.19</logback-core.version>
     <logback-classic.version>1.5.18</logback-classic.version>
@@ -42,27 +40,16 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>com.amazonaws</groupId>
-        <artifactId>aws-java-sdk-bom</artifactId>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>bom</artifactId>
         <version>${awssdk.version}</version>
         <type>pom</type>
-      </dependency>
-      <dependency>
-        <groupId>software.amazon.awssdk</groupId>
-        <artifactId>checksums</artifactId>
-        <version>${awssdk.version}</version>
+        <scope>import</scope>
       </dependency>
       <dependency>
         <groupId>com.google.cloud</groupId>
         <artifactId>libraries-bom</artifactId>
         <version>26.73.0</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-      <dependency>
-        <groupId>software.amazon.awssdk</groupId>
-        <artifactId>bom</artifactId>
-        <version>2.25.70</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -535,7 +522,6 @@
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>bedrockruntime</artifactId>
-      <version>${bedrock.runtime.version}</version>
     </dependency>
 
     <!-- Dependencies for vector embedding (DJL) -->
