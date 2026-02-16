@@ -870,5 +870,17 @@ public class AppsResourceIT {
         "/v1/apps/" + appId,
         patchRequest1,
         RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    // Resume/activate the AutoPilot application at the end of the test
+    httpClient.executeForString(
+        HttpMethod.PATCH,
+        "/v1/apps/" + appId,
+        patchRequest2,
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    // Verify app is active
+    App finalApp = Apps.getByName(autopilotAppName);
+    Map<String, Object> finalConfig = JsonUtils.getMap(finalApp.getAppConfiguration());
+    assertTrue((Boolean) finalConfig.get("active"), "AutoPilot should be active at test end");
   }
 }
