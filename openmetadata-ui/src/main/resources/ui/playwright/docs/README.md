@@ -66,7 +66,7 @@
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
 | [Data Quality](./Observability.md#data-quality) | 11 | 66 | 150 | 0 |
-| [Rules Library](./Observability.md#rules-library) | 2 | 21 | 37 | 0 |
+| [Test Library](./Observability.md#test-library) | 2 | 21 | 37 | 0 |
 | [Alerts & Notifications](./Observability.md#alerts-notifications) | 2 | 12 | 38 | 0 |
 | [Incident Manager](./Observability.md#incident-manager) | 2 | 11 | 24 | 0 |
 | [Profiler](./Observability.md#profiler) | 2 | 6 | 9 | 0 |

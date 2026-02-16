@@ -12,10 +12,10 @@
  */
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import RulesLibraryPage from './RulesLibraryPage';
+import TestLibraryPage from './TestLibraryPage';
 
 jest.mock(
-  '../../components/RulesLibrary/TestDefinitionList/TestDefinitionList.component',
+  '../../components/TestLibrary/TestDefinitionList/TestDefinitionList.component',
   () => ({
     __esModule: true,
     default: jest
@@ -36,22 +36,22 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
   )),
 }));
 
-describe('RulesLibraryPage Component', () => {
+describe('TestLibraryPage Component', () => {
   it('should render page layout with correct title', () => {
-    render(<RulesLibraryPage />, { wrapper: MemoryRouter });
+    render(<TestLibraryPage />, { wrapper: MemoryRouter });
 
     expect(screen.getByTestId('page-layout')).toBeInTheDocument();
-    expect(screen.getByText('label.rules-library')).toBeInTheDocument();
+    expect(screen.getByText('label.test-library')).toBeInTheDocument();
   });
 
   it('should render TestDefinitionList component', () => {
-    render(<RulesLibraryPage />, { wrapper: MemoryRouter });
+    render(<TestLibraryPage />, { wrapper: MemoryRouter });
 
     expect(screen.getByTestId('test-definition-list')).toBeInTheDocument();
   });
 
   it('should render with correct layout structure', () => {
-    const { container } = render(<RulesLibraryPage />, {
+    const { container } = render(<TestLibraryPage />, {
       wrapper: MemoryRouter,
     });
 
