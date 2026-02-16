@@ -29,6 +29,7 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import com.google.gson.Gson;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -50,6 +51,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
@@ -237,13 +240,10 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public void storeEntity(User user, boolean update) {
-    // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> roles = user.getRoles();
     List<EntityReference> teams = user.getTeams();
     EntityReference defaultPersona = user.getDefaultPersona();
 
-    // Don't store roles, teams, defaultPersona and href as JSON. Build it on the fly based on
-    // relationships
     user.withRoles(null).withTeams(null).withInheritedRoles(null).withDefaultPersona(null);
 
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
@@ -254,8 +254,34 @@ public class UserRepository extends EntityRepository<User> {
 
     store(user, update);
 
-    // Restore the relationships
     user.withRoles(roles).withTeams(teams).withDefaultPersona(defaultPersona);
+  }
+
+  @Override
+  public void storeEntities(List<User> entities) {
+    List<User> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (User user : entities) {
+      List<EntityReference> roles = user.getRoles();
+      List<EntityReference> teams = user.getTeams();
+      EntityReference defaultPersona = user.getDefaultPersona();
+
+      user.withRoles(null).withTeams(null).withInheritedRoles(null).withDefaultPersona(null);
+
+      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+      if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
+        secretsManager.encryptAuthenticationMechanism(
+            user.getName(), user.getAuthenticationMechanism());
+      }
+
+      String jsonCopy = gson.toJson(user);
+      entitiesToStore.add(gson.fromJson(jsonCopy, User.class));
+
+      user.withRoles(roles).withTeams(teams).withDefaultPersona(defaultPersona);
+    }
+
+    storeMany(entitiesToStore);
   }
 
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
@@ -323,6 +349,19 @@ public class UserRepository extends EntityRepository<User> {
       String caseStatements = caseBuilder.toString();
       userDAO.updateLastActivityTimeBulk(caseStatements, nameHashes);
     }
+  }
+
+  /**
+   * Used during CSV import to clear relationships before re-establishing them.
+   * Only clears relationships that ARE in the CSV and will be re-added by storeRelationships().
+   * Relationships NOT in CSV (e.g., personas) are preserved to avoid data loss.
+   */
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<User> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(User::getId).toList();
+    deleteFromMany(ids, Entity.USER, Relationship.HAS, Entity.ROLE);
+    deleteToMany(ids, Entity.USER, Relationship.HAS, Entity.TEAM);
   }
 
   @Override
@@ -400,8 +439,29 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
+  public String exportToCsv(
+      String importingTeam, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
+    return exportToCsv(importingTeam, user, recursive);
+  }
+
+  @Override
   public CsvImportResult importFromCsv(
       String importingTeam, String csv, boolean dryRun, String user, boolean recursive)
+      throws IOException {
+    Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
+    UserCsv userCsv = new UserCsv(team, user);
+    return userCsv.importCsv(csv, dryRun);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String importingTeam,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
       throws IOException {
     Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
     UserCsv userCsv = new UserCsv(team, user);

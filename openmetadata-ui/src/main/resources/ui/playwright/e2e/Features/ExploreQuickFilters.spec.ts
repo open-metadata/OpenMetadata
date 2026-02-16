@@ -15,16 +15,11 @@ import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  assignSingleSelectDomain,
   clickOutside,
   createNewPage,
   redirectToHomePage,
 } from '../../utils/common';
-import {
-  assignTag,
-  assignTier,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { searchAndClickOnOption, selectNullOption } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -37,26 +32,39 @@ const table = new TableClass();
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow();
 
-  const { page, apiContext, afterAction } = await createNewPage(browser);
+  const { apiContext, afterAction } = await createNewPage(browser);
   await table.create(apiContext);
   await domain.create(apiContext);
-  await table.visitEntityPage(page);
-  await assignSingleSelectDomain(page, domain.data);
-  await assignTag(
-    page,
-    'PersonalData.Personal',
-    'Add',
-    table.endpoint,
-    'KnowledgePanel.Tags'
-  );
-  await assignTier(page, 'Tier5', table.endpoint);
-  await afterAction();
-});
 
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await createNewPage(browser);
-  await table.delete(apiContext);
-  await domain.delete(apiContext);
+  await table.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'add',
+        value: {
+          tagFQN: 'PersonalData.Personal',
+        },
+        path: '/tags/0',
+      },
+      {
+        op: 'add',
+        value: {
+          tagFQN: 'Tier.Tier5',
+        },
+        path: '/tags/1',
+      },
+      {
+        op: 'add',
+        path: '/domains/0',
+        value: {
+          id: domain.responseData.id,
+          type: 'domain',
+          name: domain.responseData.name,
+          displayName: domain.responseData.displayName,
+        },
+      },
+    ],
+  });
   await afterAction();
 });
 
@@ -85,7 +93,7 @@ test('search dropdown should work properly for quick filters', async ({
 
     const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${
       filter.key
-    }*${(filter.value ?? '').replace(/ /g, '+').toLowerCase()}*`;
+    }*${(filter.value ?? '').replaceAll(' ', '+').toLowerCase()}*`;
 
     const queryRes = page.waitForResponse(querySearchURL);
     await page.click('[data-testid="update-btn"]');
@@ -130,7 +138,7 @@ test('should show correct count for initial options', async ({ page }) => {
         )
         .join('.');
 
-      expect(
+      await expect(
         page
           .locator(`[data-menu-id$="-${normalizedKey}"]`)
           .getByTestId('filter-count')
@@ -175,7 +183,7 @@ test('should persist quick filter on global search', async ({ page }) => {
 
   await page
     .getByTestId('searchBox')
-    .fill(table.entityResponseData.fullyQualifiedName);
+    .fill(table.entityResponseData.fullyQualifiedName ?? '');
   await waitForSearchResponse;
 
   await clickOutside(page);

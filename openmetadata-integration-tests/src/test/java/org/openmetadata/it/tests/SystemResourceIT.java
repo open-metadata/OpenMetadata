@@ -1027,6 +1027,21 @@ public class SystemResourceIT {
 
     assertEquals("NewCertification", updatedCertificationConfig.getAllowedClassification());
     assertEquals("P60D", updatedCertificationConfig.getValidityPeriod());
+
+    // Reset to original values to avoid cross-test pollution
+    certificationConfig.setAllowedClassification("Certification");
+    certificationConfig.setValidityPeriod("P30D");
+
+    Settings resetSettings =
+        new Settings()
+            .withConfigType(SettingsType.ASSET_CERTIFICATION_SETTINGS)
+            .withConfigValue(certificationConfig);
+
+    String resetJson = MAPPER.writeValueAsString(resetSettings);
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, "/v1/system/settings", resetJson, RequestOptions.builder().build());
   }
 
   @Test

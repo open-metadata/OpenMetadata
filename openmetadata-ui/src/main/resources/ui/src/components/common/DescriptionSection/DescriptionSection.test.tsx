@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { EntityType } from '../../../enums/entity.enum';
 import DescriptionSection from './DescriptionSection';
 
 // Mock i18n
@@ -84,7 +85,9 @@ describe('DescriptionSection', () => {
 
   describe('Rendering - Empty Description', () => {
     it('renders title and no-data placeholder when description is empty', () => {
-      const { container } = render(<DescriptionSection />);
+      const { container } = render(
+        <DescriptionSection entityType={EntityType.LINEAGE_EDGE} />
+      );
 
       expect(screen.getByText('label.description')).toBeInTheDocument();
       expect(
@@ -108,6 +111,7 @@ describe('DescriptionSection', () => {
         <DescriptionSection
           hasPermission
           showEditButton
+          entityType={EntityType.LINEAGE_EDGE}
           onDescriptionUpdate={jest.fn()}
         />
       );
@@ -120,6 +124,7 @@ describe('DescriptionSection', () => {
     it('does not show edit control when showEditButton is false', () => {
       render(
         <DescriptionSection
+          entityType={EntityType.LINEAGE_EDGE}
           showEditButton={false}
           onDescriptionUpdate={jest.fn()}
         />
@@ -133,7 +138,12 @@ describe('DescriptionSection', () => {
     });
 
     it('does not show edit control when onDescriptionUpdate is not provided', () => {
-      render(<DescriptionSection showEditButton />);
+      render(
+        <DescriptionSection
+          showEditButton
+          entityType={EntityType.LINEAGE_EDGE}
+        />
+      );
 
       const clickable = document.querySelector(
         '.description-header .edit-icon'
@@ -149,6 +159,7 @@ describe('DescriptionSection', () => {
         <DescriptionSection
           hasPermission
           showEditButton
+          entityType={EntityType.LINEAGE_EDGE}
           onDescriptionUpdate={jest.fn()}
         />
       );
@@ -176,6 +187,7 @@ describe('DescriptionSection', () => {
         <DescriptionSection
           hasPermission
           showEditButton
+          entityType={EntityType.LINEAGE_EDGE}
           onDescriptionUpdate={onUpdate}
         />
       );
@@ -199,6 +211,7 @@ describe('DescriptionSection', () => {
       render(
         <DescriptionSection
           description="Some markdown text"
+          entityType={EntityType.LINEAGE_EDGE}
           onDescriptionUpdate={jest.fn()}
         />
       );
@@ -218,6 +231,7 @@ describe('DescriptionSection', () => {
           hasPermission
           showEditButton
           description="Content"
+          entityType={EntityType.LINEAGE_EDGE}
           onDescriptionUpdate={jest.fn()}
         />
       );

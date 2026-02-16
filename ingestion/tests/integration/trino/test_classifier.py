@@ -1,4 +1,5 @@
 from copy import deepcopy
+from logging import getLogger
 from time import sleep
 
 import pytest
@@ -7,10 +8,11 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
     DatabaseServiceAutoClassificationPipeline,
 )
-from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
+
+logger = getLogger(__name__)
 
 
 @pytest.fixture(scope="module")
@@ -23,20 +25,32 @@ def sampling_only_classifier_config(
 
 
 def _run_classifier_with_retry(
-    run_workflow, ingestion_config, classifier_config, max_retries=3, delay=30
+    run_workflow,
+    ingestion_config,
+    classifier_config,
+    max_retries=3,
+    delay=30,
 ):
     """Run classifier workflow with retry logic for flaky elasticsearch issues."""
     last_error = None
+    logger.info("Running trino metadata ingestion workflow")
+
     for attempt in range(max_retries):
+        logger.info(
+            "Trino classification workflow attempt %d of %d",
+            attempt + 1,
+            max_retries,
+        )
         try:
-            search_cache.clear()
             run_workflow(MetadataWorkflow, ingestion_config)
             run_workflow(AutoClassificationWorkflow, classifier_config)
             return
         except Exception as e:
             last_error = e
+
             if attempt < max_retries - 1:
                 sleep(delay)
+
     raise last_error
 
 
@@ -52,12 +66,13 @@ def run_classifier(
     request,
 ):
     _run_classifier_with_retry(
-        run_workflow, ingestion_config, sampling_only_classifier_config
+        run_workflow,
+        ingestion_config,
+        sampling_only_classifier_config,
     )
     return ingestion_config
 
 
-@pytest.mark.flaky(reruns=3, reruns_delay=30)
 @pytest.mark.parametrize(
     "table_name",
     (

@@ -14,7 +14,7 @@
 import base, { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
-import { DataProduct } from '../../support/domain/DataProduct';
+import { AssetReference, DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -31,9 +31,22 @@ import {
   expandLineageSection,
   navigateToPortsTab,
   selectDataProduct,
+  verifyPortCounts,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
+
+const createAssetRef = (
+  entity: TableClass | TopicClass | DashboardClass,
+  type: string
+): AssetReference => ({
+  id: entity.entityResponseData.id,
+  type,
+  name: entity.entityResponseData.name,
+  displayName: entity.entityResponseData.displayName,
+  fullyQualifiedName: entity.entityResponseData.fullyQualifiedName,
+  description: entity.entityResponseData.description,
+});
 
 const domain = new Domain();
 
@@ -54,7 +67,7 @@ test.describe('Input Output Ports', () => {
   const dashboards: DashboardClass[] = [];
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext } = await performAdminLogin(browser);
 
     await domain.create(apiContext);
 
@@ -105,41 +118,54 @@ test.describe('Input Output Ports', () => {
       });
       dashboards.push(dashboard);
     }
-
-    await afterAction();
   });
 
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    for (const table of tables) {
-      await table.delete(apiContext);
-    }
-    for (const topic of topics) {
-      await topic.delete(apiContext);
-    }
-    for (const dashboard of dashboards) {
-      await dashboard.delete(apiContext);
-    }
-    await domain.delete(apiContext);
-
-    await afterAction();
-  });
 
   test.describe('Section 1: Tab Initialization & Empty States', () => {
+    test('Input port button visible, output port button hidden when no assets', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+      await test.step('Create data product via API', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+
+      });
+
+      await test.step('Navigate to data product ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Verify button states', async () => {
+        // Input port button should be visible in empty state (can add from any asset in system)
+        await expect(page.getByTestId('add-input-port-button')).toBeVisible();
+        await expect(page.getByTestId('add-input-port-button')).toBeEnabled();
+        // Output port button should NOT be visible (requires data product assets first)
+        await expect(page.getByTestId('add-output-port-button')).not.toBeVisible();
+      });
+    });
+
     test('Tab renders with empty state when no ports exist', async ({
       page,
     }) => {
       const dataProduct = new DataProduct([domain]);
 
-      await test.step('Create data product via API', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+      await test.step('Create data product with assets via API', async () => {
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
-        await afterAction();
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate to data product', async () => {
@@ -166,6 +192,8 @@ test.describe('Input Output Ports', () => {
 
         await expect(page.getByTestId('add-input-port-button')).toBeVisible();
         await expect(page.getByTestId('add-output-port-button')).toBeVisible();
+        await expect(page.getByTestId('add-input-port-button')).toBeEnabled();
+        await expect(page.getByTestId('add-output-port-button')).toBeEnabled();
       });
 
       await test.step('Verify lineage section shows zero counts', async () => {
@@ -176,20 +204,22 @@ test.describe('Input Output Ports', () => {
           page.locator('text=0 output').first()
         ).toBeVisible();
       });
-
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
     });
 
     test('Tab displays correct port counts', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with ports via API', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+          createAssetRef(dashboards[0], 'dashboard'),
+          createAssetRef(dashboards[1], 'dashboard'),
+          createAssetRef(topics[0], 'topic'),
+        ]);
 
         await dataProduct.addInputPorts(apiContext, [
           {
@@ -217,7 +247,7 @@ test.describe('Input Output Ports', () => {
           },
         ]);
 
-        await afterAction();
+
       });
 
       await test.step('Navigate to data product ports tab', async () => {
@@ -233,22 +263,16 @@ test.describe('Input Output Ports', () => {
 
         await expect(page.locator('text=2 input').first()).toBeVisible();
         await expect(page.locator('text=3 output').first()).toBeVisible();
-      });
-
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+      }); 
     });
 
     test('Lineage section is collapsed by default', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product via API', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
-        await afterAction();
+
       });
 
       await test.step('Navigate to data product', async () => {
@@ -264,12 +288,6 @@ test.describe('Input Output Ports', () => {
         ).toBeVisible();
         await expect(page.getByTestId('ports-lineage-view')).not.toBeVisible();
       });
-
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
     });
   });
 
@@ -278,9 +296,14 @@ test.describe('Input Output Ports', () => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Setup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
-        await afterAction();
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -298,21 +321,20 @@ test.describe('Input Output Ports', () => {
         await expect(page.locator('text=(1)').first()).toBeVisible();
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
-
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
     });
 
     test('Add single output port', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Setup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
-        await afterAction();
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -330,20 +352,22 @@ test.describe('Input Output Ports', () => {
         await expect(page.getByTestId('output-ports-list')).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
 
     test('Add multiple input ports at once', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Setup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
-        await afterAction();
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -401,21 +425,22 @@ test.describe('Input Output Ports', () => {
       await test.step('Verify both ports were added', async () => {
         await expect(page.locator('text=(2)').first()).toBeVisible();
       });
-
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
     });
 
     test('Add different entity types as ports', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Setup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
-        await afterAction();
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[2], 'table'),
+          createAssetRef(topics[1], 'topic'),
+          createAssetRef(dashboards[0], 'dashboard'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -442,20 +467,21 @@ test.describe('Input Output Ports', () => {
         await expect(page.getByTestId('output-ports-list')).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
 
     test('Cancel adding port', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Setup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
-        await afterAction();
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[3], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -482,10 +508,243 @@ test.describe('Input Output Ports', () => {
         ).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
+
+    });
+
+    test('Input port drawer shows assets from outside data product', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with ONE asset', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Open input port drawer and verify unfiltered assets', async () => {
+        await page.getByTestId('add-input-port-button').click();
+        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+          state: 'visible',
+        });
+
+        await waitForAllLoadersToDisappear(page);
+
+        // Search for an asset NOT in the data product (tables[1])
+        const searchBar = page
+          .getByTestId('asset-selection-modal')
+          .getByTestId('searchbar');
+        const table2Name = get(tables[1], 'entityResponseData.name');
+
+        const searchRes = page.waitForResponse(
+          (res) =>
+            res.url().includes('/api/v1/search/query') &&
+            res.request().method() === 'GET'
+        );
+        await searchBar.fill(table2Name);
+        await searchRes;
+
+        // Asset should be visible even though it's not in the data product
+        const table2Fqn = get(tables[1], 'entityResponseData.fullyQualifiedName');
+        await expect(
+          page.locator(`[data-testid="table-data-card_${table2Fqn}"]`)
+        ).toBeVisible();
+      });
+    });
+
+    test('Add input port from asset not in data product', async ({ page }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product WITHOUT any assets', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+        // Note: NOT adding any assets to data product
+      });
+
+      await test.step('Navigate to ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Add input port from external asset', async () => {
+        // tables[0] is NOT a data product asset, but should still be addable as input port
+        await addInputPortToDataProduct(page, tables[0]);
+      });
+
+      await test.step('Verify port was added', async () => {
+        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(page.getByTestId('input-ports-list')).toBeVisible();
+      });
+    });
+
+    test('Output port drawer shows info banner about data product assets', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with assets', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Open output port drawer and verify info banner', async () => {
+        await page.getByTestId('add-output-port-button').click();
+        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+          state: 'visible',
+        });
+
+        // Verify info banner is visible with correct message
+        await expect(page.locator('.ant-alert-info')).toBeVisible();
+        await expect(
+          page.locator(
+            'text=Output ports can only be added from assets that belong to this Data Product'
+          )
+        ).toBeVisible();
+      });
+    });
+
+    test('Input port drawer does not show info banner', async ({ page }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+      });
+
+      await test.step('Navigate to ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Open input port drawer and verify no info banner', async () => {
+        await page.getByTestId('add-input-port-button').click();
+        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+          state: 'visible',
+        });
+
+        // Info banner should NOT be visible for input ports
+        await expect(page.locator('.ant-alert-info')).not.toBeVisible();
+      });
+    });
+
+    test('Port drawers show Entity Type quick filter', async ({ page }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with assets', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Verify Entity Type filter in input port drawer', async () => {
+        await page.getByTestId('add-input-port-button').click();
+        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+          state: 'visible',
+        });
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('search-dropdown-Entity Type')
+        ).toBeVisible();
+
+        await page.getByTestId('cancel-btn').click();
+      });
+
+      await test.step('Verify Entity Type filter in output port drawer', async () => {
+        await page.getByTestId('add-output-port-button').click();
+        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+          state: 'visible',
+        });
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('search-dropdown-Entity Type')
+        ).toBeVisible();
+
+        await page.getByTestId('cancel-btn').click();
+      });
+    });
+
+    test('Output port drawer only shows data product assets', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with specific assets', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+        // Only add tables[0] as data product asset
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Open output port drawer and verify filtering', async () => {
+        await page.getByTestId('add-output-port-button').click();
+        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+          state: 'visible',
+        });
+
+        await waitForAllLoadersToDisappear(page);
+
+        // Search for asset NOT in data product - should not appear
+        const searchBar = page
+          .getByTestId('asset-selection-modal')
+          .getByTestId('searchbar');
+        const table2Name = get(tables[1], 'entityResponseData.name');
+
+        const searchRes = page.waitForResponse(
+          (res) =>
+            res.url().includes('/api/v1/search/query') &&
+            res.request().method() === 'GET'
+        );
+        await searchBar.fill(table2Name);
+        await searchRes;
+
+        // Asset should NOT be visible (filtered out)
+        const table2Fqn = get(tables[1], 'entityResponseData.fullyQualifiedName');
+        await expect(
+          page.locator(`[data-testid="table-data-card_${table2Fqn}"]`)
+        ).not.toBeVisible();
       });
     });
   });
@@ -495,16 +754,22 @@ test.describe('Input Output Ports', () => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with input ports via API', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
-          { id: tables[1].entityResponseData.id, type: 'table' },
-          { id: tables[2].entityResponseData.id, type: 'table' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+          createAssetRef(tables[2], 'table'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+          createAssetRef(tables[2], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -526,26 +791,27 @@ test.describe('Input Output Ports', () => {
         await expect(page.locator(`text=${table3Name}`).first()).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
 
     test('Output ports list displays entity cards', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with output ports via API', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addOutputPorts(apiContext, [
-          { id: dashboards[0].entityResponseData.id, type: 'dashboard' },
-          { id: dashboards[1].entityResponseData.id, type: 'dashboard' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
+          createAssetRef(dashboards[1], 'dashboard'),
         ]);
 
-        await afterAction();
+        await dataProduct.addOutputPorts(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
+          createAssetRef(dashboards[1], 'dashboard'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -575,11 +841,7 @@ test.describe('Input Output Ports', () => {
         ).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
 
     test('Port action dropdown visible with EditAll permission', async ({
@@ -588,14 +850,18 @@ test.describe('Input Output Ports', () => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with ports via API', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -617,11 +883,7 @@ test.describe('Input Output Ports', () => {
         ).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
   });
 
@@ -630,15 +892,20 @@ test.describe('Input Output Ports', () => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with input ports via API', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
-          { id: tables[1].entityResponseData.id, type: 'table' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -672,26 +939,27 @@ test.describe('Input Output Ports', () => {
         await expect(page.locator('text=(1)').first()).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
 
     test('Remove single output port', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with output ports via API', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addOutputPorts(apiContext, [
-          { id: dashboards[0].entityResponseData.id, type: 'dashboard' },
-          { id: dashboards[1].entityResponseData.id, type: 'dashboard' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
+          createAssetRef(dashboards[1], 'dashboard'),
         ]);
 
-        await afterAction();
+        await dataProduct.addOutputPorts(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
+          createAssetRef(dashboards[1], 'dashboard'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -720,25 +988,25 @@ test.describe('Input Output Ports', () => {
         await toastNotification(page, /deleted successfully/i);
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
 
     test('Cancel port removal', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with input port via API', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -766,25 +1034,25 @@ test.describe('Input Output Ports', () => {
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
 
     test('Remove last port shows empty state', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with single input port via API', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -817,11 +1085,7 @@ test.describe('Input Output Ports', () => {
         await expect(page.locator('text=(0)').first()).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
   });
 
@@ -830,17 +1094,22 @@ test.describe('Input Output Ports', () => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with ports via API', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
-        ]);
-        await dataProduct.addOutputPorts(apiContext, [
-          { id: dashboards[0].entityResponseData.id, type: 'dashboard' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(dashboards[0], 'dashboard'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+        await dataProduct.addOutputPorts(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -858,25 +1127,25 @@ test.describe('Input Output Ports', () => {
         await expect(page.getByTestId('ports-lineage-view')).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
 
     test('Lineage displays data product center node', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with ports via API', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab and expand lineage', async () => {
@@ -894,31 +1163,34 @@ test.describe('Input Output Ports', () => {
         ).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
 
     test('Lineage displays input and output ports', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with input and output ports', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+          createAssetRef(dashboards[0], 'dashboard'),
+          createAssetRef(dashboards[1], 'dashboard'),
+        ]);
+
         await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
-          { id: tables[1].entityResponseData.id, type: 'table' },
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
         ]);
 
         await dataProduct.addOutputPorts(apiContext, [
-          { id: dashboards[0].entityResponseData.id, type: 'dashboard' },
-          { id: dashboards[1].entityResponseData.id, type: 'dashboard' },
+          createAssetRef(dashboards[0], 'dashboard'),
+          createAssetRef(dashboards[1], 'dashboard'),
         ]);
 
-        await afterAction();
+
       });
 
       await test.step('Navigate to ports tab and expand lineage', async () => {
@@ -955,25 +1227,24 @@ test.describe('Input Output Ports', () => {
         ).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
     });
 
     test('Lineage with only input ports', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with only input ports', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate and expand lineage', async () => {
@@ -990,25 +1261,24 @@ test.describe('Input Output Ports', () => {
         await expect(page.locator(`text=${tableName}`).first()).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
     });
 
     test('Lineage with only output ports', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with only output ports', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addOutputPorts(apiContext, [
-          { id: dashboards[0].entityResponseData.id, type: 'dashboard' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
         ]);
 
-        await afterAction();
+        await dataProduct.addOutputPorts(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
+        ]);
+
+
       });
 
       await test.step('Navigate and expand lineage', async () => {
@@ -1029,26 +1299,24 @@ test.describe('Input Output Ports', () => {
           page.locator(`text=${dashboardName}`).first()
         ).toBeVisible();
       });
-
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
     });
 
     test('Lineage controls work', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with ports', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate and expand lineage', async () => {
@@ -1064,12 +1332,6 @@ test.describe('Input Output Ports', () => {
           page.locator('.react-flow__controls')
         ).toBeVisible();
       });
-
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
     });
   });
 
@@ -1078,14 +1340,18 @@ test.describe('Input Output Ports', () => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with ports', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -1108,26 +1374,24 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId('toggle-lineage-collapse').click();
         await expect(page.getByTestId('ports-lineage-view')).not.toBeVisible();
       });
-
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
     });
 
     test('Input ports section collapse/expand', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with input port', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -1155,26 +1419,24 @@ test.describe('Input Output Ports', () => {
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
         await expect(page.getByTestId('add-input-port-button')).toBeVisible();
       });
-
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
     });
 
     test('Output ports section collapse/expand', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with output port', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addOutputPorts(apiContext, [
-          { id: dashboards[0].entityResponseData.id, type: 'dashboard' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
         ]);
 
-        await afterAction();
+        await dataProduct.addOutputPorts(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -1202,12 +1464,6 @@ test.describe('Input Output Ports', () => {
         await expect(page.getByTestId('output-ports-list')).toBeVisible();
         await expect(page.getByTestId('add-output-port-button')).toBeVisible();
       });
-
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
     });
 
     test('Multiple sections can be collapsed independently', async ({
@@ -1216,17 +1472,22 @@ test.describe('Input Output Ports', () => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with ports', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
-        ]);
-        await dataProduct.addOutputPorts(apiContext, [
-          { id: dashboards[0].entityResponseData.id, type: 'dashboard' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(dashboards[0], 'dashboard'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+        await dataProduct.addOutputPorts(apiContext, [
+          createAssetRef(dashboards[0], 'dashboard'),
+        ]);
+
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -1249,11 +1510,7 @@ test.describe('Input Output Ports', () => {
         await expect(page.getByTestId('output-ports-list')).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
   });
 
@@ -1262,14 +1519,18 @@ test.describe('Input Output Ports', () => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with ports', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate and expand lineage', async () => {
@@ -1287,25 +1548,25 @@ test.describe('Input Output Ports', () => {
         await expect(lineageView).toHaveCSS('position', 'fixed');
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
 
     test('Exit fullscreen with button', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with ports', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate and expand lineage', async () => {
@@ -1326,25 +1587,25 @@ test.describe('Input Output Ports', () => {
         await expect(lineageView).toHaveCSS('position', 'relative');
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
 
     test('Exit fullscreen with Escape key', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with ports', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate and expand lineage', async () => {
@@ -1356,7 +1617,7 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Enter fullscreen and exit with Escape', async () => {
-        await page.getByTestId('toggle-fullscreen-btn').click();
+      await page.getByTestId('toggle-fullscreen-btn').click();
 
         const lineageView = page.getByTestId('ports-lineage-view');
         await expect(lineageView).toHaveCSS('position', 'fixed');
@@ -1365,25 +1626,25 @@ test.describe('Input Output Ports', () => {
         await expect(lineageView).toHaveCSS('position', 'relative');
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
 
     test('Fullscreen lineage is interactive', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with ports', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        await dataProduct.addInputPorts(apiContext, [
-          { id: tables[0].entityResponseData.id, type: 'table' },
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
         ]);
 
-        await afterAction();
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+
       });
 
       await test.step('Navigate and expand lineage', async () => {
@@ -1400,11 +1661,7 @@ test.describe('Input Output Ports', () => {
         await expect(page.locator('.react-flow__controls')).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
-      });
+    
     });
   });
 
@@ -1413,17 +1670,15 @@ test.describe('Input Output Ports', () => {
       const dataProduct = new DataProduct([domain]);
 
       await test.step('Create data product with many input ports via API', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
+        const { apiContext } = await getApiContext(page);
         await dataProduct.create(apiContext);
 
-        const portAssets = tables.map((table) => ({
-          id: table.entityResponseData.id,
-          type: 'table',
-        }));
+        const portAssets = tables.map((table) => createAssetRef(table, 'table'));
 
+        await dataProduct.addAssets(apiContext, portAssets);
         await dataProduct.addInputPorts(apiContext, portAssets);
 
-        await afterAction();
+
       });
 
       await test.step('Navigate to ports tab', async () => {
@@ -1437,10 +1692,249 @@ test.describe('Input Output Ports', () => {
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
 
-      await test.step('Cleanup', async () => {
-        const { apiContext, afterAction } = await getApiContext(page);
-        await dataProduct.delete(apiContext);
-        await afterAction();
+
+    });
+  });
+
+  test.describe('Section 9: Asset Removal Warning for Output Ports', () => {
+    test('Warning shown when removing asset that is also an output port', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with asset as output port via API', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+        await dataProduct.addOutputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to data product assets tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        const assetsTab = page.getByTestId('assets');
+        await assetsTab.click();
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Delete asset and verify warning', async () => {
+        const tableFqn = get(
+          tables[0],
+          'entityResponseData.fullyQualifiedName'
+        );
+        await page.getByTestId(`manage-button-${tableFqn}`).click();
+        await page.getByTestId('delete-button').click();
+
+        await expect(page.locator('.ant-alert-warning')).toBeVisible();
+        await expect(
+          page.locator(
+            'text=This asset is also configured as an Output Port'
+          )
+        ).toBeVisible();
+      });
+    });
+
+    test('No warning when removing asset that is NOT an output port', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with asset (not output port) via API', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+        ]);
+
+        await dataProduct.addOutputPorts(apiContext, [
+          createAssetRef(tables[1], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to data product assets tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        const assetsTab = page.getByTestId('assets');
+        await assetsTab.click();
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Delete asset that is NOT an output port', async () => {
+        const tableFqn = get(
+          tables[0],
+          'entityResponseData.fullyQualifiedName'
+        );
+        await page.getByTestId(`manage-button-${tableFqn}`).click();
+        await page.getByTestId('delete-button').click();
+
+        await expect(page.locator('.ant-alert-warning')).not.toBeVisible();
+        await expect(
+          page.getByText('Are you sure you want to remove')
+        ).toBeVisible();
+      });
+    });
+
+    test('Bulk delete shows warning listing only assets in output ports', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with mixed assets via API', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+          createAssetRef(tables[2], 'table'),
+        ]);
+
+        await dataProduct.addOutputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to data product assets tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        const assetsTab = page.getByTestId('assets');
+        await assetsTab.click();
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Select all assets and click bulk delete', async () => {
+        await page.getByRole('checkbox', { name: 'Select All' }).click();
+
+        await page.getByTestId('delete-all-button').click();
+
+        await expect(page.locator('.ant-alert-warning')).toBeVisible();
+        await expect(
+          page.locator(
+            'text=The following asset(s) are also configured as Output Ports'
+          )
+        ).toBeVisible();
+
+        const table1Name = get(tables[0], 'entityResponseData.displayName');
+        const table2Name = get(tables[1], 'entityResponseData.displayName');
+        const table3Name = get(tables[2], 'entityResponseData.displayName');
+
+        const warningAlert = page.locator('.ant-alert-warning');
+
+        await expect(
+          warningAlert.locator(`li:has-text("${table1Name}")`)
+        ).toBeVisible();
+        await expect(
+          warningAlert.locator(`li:has-text("${table2Name}")`)
+        ).toBeVisible();
+        await expect(
+          warningAlert.locator(`li:has-text("${table3Name}")`)
+        ).not.toBeVisible();
+      });
+    });
+
+    test('No warning when data product has no output ports', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with assets but no output ports', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate and delete asset', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        const assetsTab = page.getByTestId('assets');
+        await assetsTab.click();
+        await waitForAllLoadersToDisappear(page);
+
+        const tableFqn = get(
+          tables[0],
+          'entityResponseData.fullyQualifiedName'
+        );
+        await page.getByTestId(`manage-button-${tableFqn}`).click();
+        await page.getByTestId('delete-button').click();
+
+        await expect(page.locator('.ant-alert-warning')).not.toBeVisible();
+      });
+    });
+
+    test('Removing asset from data product also removes it from output ports', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with two assets as output ports via API', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+        ]);
+
+        await dataProduct.addOutputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to data product and verify output ports', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+        await verifyPortCounts(page, 0, 2);
+      });
+
+      await test.step('Go to assets tab and remove one asset', async () => {
+        const assetsTab = page.getByTestId('assets');
+        await assetsTab.click();
+        await waitForAllLoadersToDisappear(page);
+
+        const tableFqn = get(
+          tables[0],
+          'entityResponseData.fullyQualifiedName'
+        );
+        await page
+          .locator(`[data-testid="table-data-card_${tableFqn}"] input`)
+          .check();
+
+        await page.getByTestId('delete-all-button').click();
+
+        // Confirmation modal with output port warning should appear
+        await expect(page.locator('.ant-alert-warning')).toBeVisible();
+
+        const removeRes = page.waitForResponse(
+          (res) =>
+            res.url().includes('/assets/remove') &&
+            res.request().method() === 'PUT'
+        );
+        await page.getByTestId('save-button').click();
+        await removeRes;
+      });
+
+      await test.step('Verify output port was also removed', async () => {
+        await navigateToPortsTab(page);
+        await verifyPortCounts(page, 0, 1);
       });
     });
   });

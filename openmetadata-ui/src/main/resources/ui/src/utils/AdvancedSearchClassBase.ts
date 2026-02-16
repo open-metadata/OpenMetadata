@@ -1361,6 +1361,27 @@ class AdvancedSearchClassBase {
         ];
       }
 
+      case 'hyperlink-cp': {
+        return [
+          {
+            subfieldsKey: `${field.name}.url.keyword`,
+            dataObject: {
+              type: 'text',
+              label: `${label} ${t('label.url')}`,
+              operators: TEXT_FIELD_OPERATORS,
+            },
+          },
+          {
+            subfieldsKey: `${field.name}.displayText.keyword`,
+            dataObject: {
+              type: 'text',
+              label: `${label} ${t('label.display-text')}`,
+              operators: TEXT_FIELD_OPERATORS,
+            },
+          },
+        ];
+      }
+
       case 'table-cp': {
         const config = field.customPropertyConfig?.config as Config | undefined;
         const columns = config?.columns ?? [];

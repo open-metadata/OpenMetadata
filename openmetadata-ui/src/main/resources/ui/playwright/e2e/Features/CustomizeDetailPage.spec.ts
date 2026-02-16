@@ -236,16 +236,19 @@ test.describe('Persona customize UI tab', async () => {
 
         // Select navigation persona
         await userPage.getByTestId('dropdown-profile').click();
+
+        const personaMenuItem = userPage.getByRole('menuitem', {
+          name: navigationPersona.responseData.displayName,
+        });
+
+        await expect(personaMenuItem).toBeVisible();
+
         const personaDocsStore = userPage.waitForResponse(
           `/api/v1/docStore/name/persona.${getEncodedFqn(
             navigationPersona.responseData.fullyQualifiedName ?? ''
           )}*`
         );
-        await userPage
-          .getByRole('menuitem', {
-            name: navigationPersona.responseData.displayName,
-          })
-          .click();
+        await personaMenuItem.click();
         await personaDocsStore;
         await waitForAllLoadersToDisappear(userPage);
         await clickOutside(userPage);
@@ -319,11 +322,14 @@ test.describe('Persona customize UI tab', async () => {
         // Select navigation persona
         await redirectToHomePage(userPage);
         await userPage.getByTestId('dropdown-profile').click();
-        await userPage
-          .getByRole('menuitem', {
-            name: navigationPersona.responseData.displayName,
-          })
-          .click();
+
+        const personaMenuItem = userPage.getByRole('menuitem', {
+          name: navigationPersona.responseData.displayName,
+        });
+
+        await expect(personaMenuItem).toBeVisible();
+
+        await personaMenuItem.click();
         await clickOutside(userPage);
         await userPage.waitForTimeout(500);
 
@@ -419,22 +425,46 @@ test.describe('Persona customization', () => {
 
         await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-        await adminPage
+        const dialogTextbox = adminPage.getByTestId('add-tab-input');
+        await dialogTextbox.fill('Custom Tab');
+
+        const addButton = adminPage
           .getByRole('dialog')
-          .getByRole('textbox')
-          .fill('Custom Tab');
+          .getByRole('button', { name: 'Add' });
+
+        // Wait for dialog animation to complete and button to be stable
+        await adminPage.locator('.ant-modal').waitFor({ state: 'visible' });
+        await expect(addButton).toBeEnabled();
+        await addButton.click();
+
+        await expect(adminPage.getByTestId('tab-Custom Tab')).toBeVisible();
+        await expect(adminPage.getByText('Customize Custom Tab Widgets')).toBeVisible();
+
+        // Wait for dialog to close before interacting with grid layout
+        await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
+        await adminPage.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
+
+        // Get locator after dialog closes to avoid layout shift issues
+        const addWidgetButton = adminPage.getByTestId('ExtraWidget.EmptyWidgetPlaceholder').getByTestId('add-widget-button');
+        await addWidgetButton.waitFor({ state: 'visible' });
+        await expect(addWidgetButton).toBeEnabled();
+        await addWidgetButton.click();
+        await adminPage
+          .getByTestId('widget-info-tabs')
+          .waitFor({ state: 'visible' });
 
         await adminPage
-          .getByRole('dialog')
-          .getByRole('button', { name: 'Add' })
+          .getByTestId('add-widget-modal')
+          .getByTestId('Description-widget')
           .click();
-
-        await adminPage.getByTestId('add-widget-button').click();
-        await adminPage.getByTestId('Description-widget').click();
         await adminPage
           .getByTestId('add-widget-modal')
           .getByTestId('add-widget-button')
           .click();
+
+        await adminPage
+          .getByTestId('widget-info-tabs')
+          .waitFor({ state: 'hidden' });
         await adminPage.getByTestId('save-button').click();
 
         await toastNotification(
@@ -544,21 +574,41 @@ test.describe('Persona customization', () => {
 
         await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-        await adminPage
+        const dialogTextbox = adminPage.getByTestId('add-tab-input');
+        await dialogTextbox.fill('Custom Tab');
+
+        const addButton = adminPage
           .getByRole('dialog')
-          .getByRole('textbox')
-          .fill('Custom Tab');
+          .getByRole('button', { name: 'Add' });
+
+        await expect(addButton).toBeEnabled();
+        await addButton.click();
+
+        await expect(adminPage.getByTestId('tab-Custom Tab')).toBeVisible();
+        await expect(adminPage.getByText('Customize Custom Tab Widgets')).toBeVisible();
+
+        // Get locator after dialog closes to avoid layout shift issues
+        const addWidgetButton = adminPage.getByTestId('ExtraWidget.EmptyWidgetPlaceholder').getByTestId('add-widget-button');
+        await addWidgetButton.waitFor({ state: 'visible' });
+        await expect(addWidgetButton).toBeEnabled();
+        await addWidgetButton.click();
+        await adminPage
+          .getByTestId('widget-info-tabs')
+          .waitFor({ state: 'visible' });
 
         await adminPage
-          .getByRole('dialog')
-          .getByRole('button', { name: 'Add' })
+          .getByTestId('add-widget-modal')
+          .getByTestId('Description-widget')
           .click();
-        await adminPage.getByTestId('add-widget-button').click();
-        await adminPage.getByTestId('Description-widget').click();
         await adminPage
           .getByTestId('add-widget-modal')
           .getByTestId('add-widget-button')
           .click();
+
+        await adminPage
+          .getByTestId('widget-info-tabs')
+          .waitFor({ state: 'hidden' });
+
         await adminPage.getByTestId('save-button').click();
 
         await toastNotification(

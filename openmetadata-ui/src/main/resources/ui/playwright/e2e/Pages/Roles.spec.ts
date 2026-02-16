@@ -38,9 +38,6 @@ const errorMessageValidation = {
   lastPolicyCannotBeRemoved: 'At least one policy is required in a role',
 };
 
-const roleName = `Role-test-${uuid()}`;
-const description = `This is ${roleName} description`;
-const updatedRoleName = `PW Updated ${roleName}`;
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -58,6 +55,10 @@ test.beforeEach(async ({ page }) => {
 
 test('Roles page should work properly', async ({ page }) => {
   test.slow();
+
+  const roleName = `Role-test-${uuid()}`;
+  const description = `This is ${roleName} description`;
+  const updatedRoleName = `PW Updated ${roleName}`;
 
   await test.step('Add new role and check all tabs data', async () => {
     // Ensure add-role button is visible before clicking
@@ -180,7 +181,7 @@ test('Roles page should work properly', async ({ page }) => {
     // Wait for roles list to load
     await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
 
-    const roleLocator = page.getByRole('cell', { name: roleName, exact: true });
+    const roleLocator = page.getByRole('link', { name: roleName });
     await getElementWithPagination(page, roleLocator, false);
 
     // Wait for plus-more-count button to be visible before clicking
@@ -190,14 +191,19 @@ test('Roles page should work properly', async ({ page }) => {
     await expect(plusMoreButton).toBeVisible();
     await plusMoreButton.click();
 
-    // Wait for popover to be visible and verify policies
+    // Wait for popover to be visible
+    await expect(page.locator('.ant-popover-content')).toBeVisible();
+
+    // Both policies should be visible - one in the table row and one in the popover
+    // The order is non-deterministic, so check both are visible within the row + popover scope
+    const rowAndPopover = page.locator(
+      `[data-row-key="${roleName}"], .ant-popover-content`
+    );
     await expect(
-      page
-        .locator(`[data-row-key="${roleName}"]`)
-        .getByText(policies.dataConsumerPolicy)
+      rowAndPopover.getByRole('link', { name: policies.dataConsumerPolicy })
     ).toBeVisible();
     await expect(
-      page.getByRole('link', { name: policies.dataStewardPolicy })
+      rowAndPopover.getByRole('link', { name: policies.dataStewardPolicy })
     ).toBeVisible();
   });
 
@@ -328,7 +334,9 @@ test('Roles page should work properly', async ({ page }) => {
     // Wait for roles page to be ready
     await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
 
-    const roleLocator = page.getByRole('link', { name: roleName });
+    const roleLocator = page.locator(
+      `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
+    );
     await getElementWithPagination(page, roleLocator);
 
     // Wait for role details page to load
@@ -390,7 +398,9 @@ test('Roles page should work properly', async ({ page }) => {
     // Wait for roles page to be ready
     await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
 
-    const roleLocator = page.getByRole('link', { name: roleName });
+    const roleLocator = page.locator(
+      `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
+    );
     await getElementWithPagination(page, roleLocator);
 
     // Wait for role details page to load
@@ -418,7 +428,9 @@ test('Roles page should work properly', async ({ page }) => {
     // Wait for roles page to be ready
     await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
 
-    const roleLocator = page.getByRole('link', { name: roleName });
+    const roleLocator = page.locator(
+      `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
+    );
     await getElementWithPagination(page, roleLocator);
 
     // Wait for role details page to load
@@ -519,8 +531,10 @@ test('Delete role action from manage button options', async ({ page }) => {
 
   await page.reload();
 
-  // Wait for page to be ready after reload
-  await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
   await expect(page.locator('[data-testid="add-role"]')).toBeVisible();
 
   await getElementWithPagination(page, roleLocator);

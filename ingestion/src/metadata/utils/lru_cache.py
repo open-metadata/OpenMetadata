@@ -118,3 +118,62 @@ class LRUCache(Generic[T]):
             return wrapped
 
         return wrapper
+
+
+class SkipNoneLRUCache(LRUCache[T]):
+    """A caching mechanism that does not cache `None` results"""
+
+    def wrap(self, key_func: Callable[..., str]):
+        """Decorator to cache the result of a function based on its arguments.
+
+        Example:
+        ```python
+        import time
+        from metadata.utils.lru_cache import SkipNoneLRUCache
+        cache = SkipNoneLRUCache(4096)
+
+        @cache.wrap(lambda x: x)
+        def noop(x: Optional[str]) -> Optional[str]:
+            time.sleep(1)
+            return x
+
+        start1 = time.time()
+        noop(1)  # This will be cached and take 1 second
+        print('took', time.time() - start1, 'seconds')
+
+        start2 = time.time()
+        noop(1)  # This will return the cached value and take no time
+        print('took', time.time() - start2, 'seconds')
+
+        start3 = time.time()
+        noop(None)  # This will wait 1 second and return without caching
+        print('took', time.time() - start3, 'seconds')
+
+        start4 = time.time()
+        noop(None)  # This will wait 1 second again and return without caching
+        print('took', time.time() - start4, 'seconds')
+        ```
+
+        Args:
+            key_func: A function that generates a key based on the arguments
+                of the decorated function.
+
+        Returns:
+            A decorator that caches the result of the decorated function.
+        """
+
+        def wrapper(func: Callable[..., T]):
+            def wrapped(*args, **kwargs) -> T:
+                key = key_func(*args, **kwargs)
+                if key in self:
+                    return self.get(key)
+                value = func(*args, **kwargs)
+
+                if value is not None:
+                    self.put(key, value)
+
+                return value
+
+            return wrapped
+
+        return wrapper

@@ -168,36 +168,24 @@ test.describe('Impact Analysis', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    test.slow(true);
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await Promise.all([
-      table.delete(apiContext),
-      table2.delete(apiContext),
-      topic.delete(apiContext),
-      dashboard.delete(apiContext),
-      dataModel.delete(apiContext),
-      pipeline.delete(apiContext),
-      mlModel.delete(apiContext),
-    ]);
-    await afterAction();
-  });
-
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-    await table.visitEntityPage(page);
-    await visitLineageTab(page);
-    const lineageResponse = page.waitForResponse(
-      `/api/v1/lineage/getLineageByEntityCount?*`
-    );
-    const impactAnalysisResponse = page.waitForResponse(
-      `/api/v1/lineage/getPaginationInfo?*`
-    );
-    await page.getByRole('button', { name: 'Impact Analysis' }).click();
-    await lineageResponse;
-    await impactAnalysisResponse;
-    await waitForAllLoadersToDisappear(page);
-  });
+  test.beforeEach(
+    'prepare for test and navigate to Impact Analysis',
+    async ({ page }) => {
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await visitLineageTab(page);
+      const lineageResponse = page.waitForResponse(
+        `/api/v1/lineage/getLineageByEntityCount?*`
+      );
+      const impactAnalysisResponse = page.waitForResponse(
+        `/api/v1/lineage/getPaginationInfo?*`
+      );
+      await page.getByRole('button', { name: 'Impact Analysis' }).click();
+      await lineageResponse;
+      await impactAnalysisResponse;
+      await waitForAllLoadersToDisappear(page);
+    }
+  );
 
   test('validate upstream/ downstream counts', async ({ page }) => {
     await expect(

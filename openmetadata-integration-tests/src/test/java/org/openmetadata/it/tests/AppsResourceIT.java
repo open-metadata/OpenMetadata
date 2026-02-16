@@ -21,8 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,6 +51,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for Apps API.
@@ -371,29 +374,17 @@ public class AppsResourceIT {
 
     waitForAppJobCompletion(appName);
 
-    // Retry trigger with backoff in case a previous job is still finishing up
-    int maxTriggerRetries = 10;
-    boolean triggered = false;
-    Exception lastException = null;
-
-    for (int i = 0; i < maxTriggerRetries && !triggered; i++) {
-      try {
-        Apps.trigger(appName).run();
-        triggered = true;
-      } catch (Exception e) {
-        lastException = e;
-        if (e.getMessage() != null && e.getMessage().contains("already running")) {
-          // Job is still running from previous test, wait and retry
-          Thread.sleep(2000);
-        } else {
-          throw e; // Re-throw if it's a different error
-        }
-      }
-    }
-
-    if (!triggered && lastException != null) {
-      throw lastException;
-    }
+    // Wait for any in-flight job to finish, then trigger
+    Awaitility.await("Trigger " + appName)
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(3))
+        .ignoreExceptionsMatching(
+            e -> e.getMessage() != null && e.getMessage().contains("already running"))
+        .until(
+            () -> {
+              Apps.trigger(appName).run();
+              return true;
+            });
 
     Thread.sleep(2000);
 
@@ -822,5 +813,74 @@ public class AppsResourceIT {
     assertNotNull(apps);
     assertNotNull(apps.getData());
     assertTrue(apps.getData().size() <= 50);
+  }
+
+  @Test
+  void test_autopilotSuspendResume(TestNamespace ns) throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String autopilotAppName = "AutoPilotApplication";
+
+    // Get AutoPilot app
+    App autopilotApp = Apps.getByName(autopilotAppName);
+    assertNotNull(autopilotApp, "AutoPilot app should exist");
+    String appId = autopilotApp.getId().toString();
+
+    // Test 1: Set active to false (suspend workflow)
+    String patchRequest1 =
+        "[{\"op\":\"replace\",\"path\":\"/appConfiguration/active\",\"value\":false}]";
+
+    // This should work without throwing FlowableException
+    httpClient.executeForString(
+        HttpMethod.PATCH,
+        "/v1/apps/" + appId,
+        patchRequest1,
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    // Verify app is updated
+    App updatedApp1 = Apps.getByName(autopilotAppName);
+    Map<String, Object> appConfig1 = JsonUtils.getMap(updatedApp1.getAppConfiguration());
+    assertFalse((Boolean) appConfig1.get("active"), "AutoPilot should be inactive");
+
+    // Test 2: Set active to true (resume workflow)
+    String patchRequest2 =
+        "[{\"op\":\"replace\",\"path\":\"/appConfiguration/active\",\"value\":true}]";
+
+    // This should also work without throwing exception
+    httpClient.executeForString(
+        HttpMethod.PATCH,
+        "/v1/apps/" + appId,
+        patchRequest2,
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    // Verify app is updated
+    App updatedApp2 = Apps.getByName(autopilotAppName);
+    Map<String, Object> appConfig2 = JsonUtils.getMap(updatedApp2.getAppConfiguration());
+    assertTrue((Boolean) appConfig2.get("active"), "AutoPilot should be active");
+
+    // Test 3: Try to suspend again (should be idempotent, no error)
+    httpClient.executeForString(
+        HttpMethod.PATCH,
+        "/v1/apps/" + appId,
+        patchRequest1,
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    // Test 4: Try to suspend when already suspended (should not throw error)
+    httpClient.executeForString(
+        HttpMethod.PATCH,
+        "/v1/apps/" + appId,
+        patchRequest1,
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    // Resume/activate the AutoPilot application at the end of the test
+    httpClient.executeForString(
+        HttpMethod.PATCH,
+        "/v1/apps/" + appId,
+        patchRequest2,
+        RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    // Verify app is active
+    App finalApp = Apps.getByName(autopilotAppName);
+    Map<String, Object> finalConfig = JsonUtils.getMap(finalApp.getAppConfiguration());
+    assertTrue((Boolean) finalConfig.get("active"), "AutoPilot should be active at test end");
   }
 }

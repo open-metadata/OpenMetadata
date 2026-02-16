@@ -62,3 +62,17 @@ UPDATE test_definition
 SET json = JSON_SET(json, '$.validatorClass', CONCAT(UPPER(SUBSTRING(JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')), 1, 1)), SUBSTRING(JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')), 2), 'Validator'))
 WHERE JSON_EXTRACT(json, '$.validatorClass') IS NULL
   AND JSON_EXTRACT(json, '$.provider') = 'system';
+
+-- Remove orphaned inputPorts and outputPorts fields from data_product_entity
+-- These fields were added in 1.10.x but removed in 1.12.x (now relationship-based)
+UPDATE data_product_entity
+SET json = JSON_REMOVE(JSON_REMOVE(json, '$.inputPorts'), '$.outputPorts')
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.inputPorts')
+   OR JSON_CONTAINS_PATH(json, 'one', '$.outputPorts');
+
+-- Remove orphaned inputPorts and outputPorts fields from entity_extension (version history)
+UPDATE entity_extension
+SET json = JSON_REMOVE(JSON_REMOVE(json, '$.inputPorts'), '$.outputPorts')
+WHERE jsonSchema = 'dataProduct'
+  AND (JSON_CONTAINS_PATH(json, 'one', '$.inputPorts')
+       OR JSON_CONTAINS_PATH(json, 'one', '$.outputPorts'));

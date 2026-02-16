@@ -20,6 +20,7 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 class TableParameter(BaseModel):
     serviceUrl: Union[str, dict]
     path: str
+    fullyQualifiedName: Optional[str] = None
     columns: List[Column]
     database_service_type: DatabaseServiceType
     privateKey: Optional[CustomSecretStr]

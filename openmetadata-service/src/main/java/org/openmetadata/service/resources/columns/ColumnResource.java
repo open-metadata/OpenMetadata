@@ -237,6 +237,11 @@ public class ColumnResource {
       @Parameter(description = "Filter by service name", example = "sample_data")
           @QueryParam("serviceName")
           String serviceName,
+      @Parameter(
+              description = "Filter by service types (comma-separated)",
+              example = "BigQuery,Mysql,Postgres")
+          @QueryParam("serviceTypes")
+          String serviceTypes,
       @Parameter(description = "Filter by database name", example = "ecommerce_db")
           @QueryParam("databaseName")
           String databaseName,
@@ -290,6 +295,9 @@ public class ColumnResource {
       request.setEntityTypes(java.util.Arrays.asList(entityTypes.split(",")));
     }
     request.setServiceName(serviceName);
+    if (serviceTypes != null && !serviceTypes.isEmpty()) {
+      request.setServiceTypes(java.util.Arrays.asList(serviceTypes.split(",")));
+    }
     request.setDatabaseName(databaseName);
     request.setSchemaName(schemaName);
     request.setDomainId(domainId);

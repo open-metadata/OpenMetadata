@@ -12,14 +12,6 @@ public interface BulkSink {
 
   StepStats getStats();
 
-  /**
-   * Returns the count of entities that failed during SearchIndex document construction. These are
-   * entities that were passed to write() but failed before being added to the bulk request.
-   */
-  default long getEntityBuildFailures() {
-    return 0;
-  }
-
   void close() throws IOException;
 
   /**
@@ -57,4 +49,39 @@ public interface BulkSink {
   default void setFailureCallback(FailureCallback callback) {
     // Default implementation does nothing - subclasses should override
   }
+
+  /**
+   * Returns the vector indexing statistics. This is used for tracking vector embedding
+   * indexing separately from the main search index stats.
+   *
+   * @return StepStats with vector indexing success/failed counts, or null if not supported
+   */
+  default StepStats getVectorStats() {
+    return null;
+  }
+
+  /**
+   * Wait for all pending vector embedding tasks to complete. This is important for ensuring
+   * no vector tasks are lost when the job completes. The sink's close() method should also
+   * call this, but this method allows explicit waiting before close if needed.
+   *
+   * @param timeoutSeconds Maximum time to wait for vector tasks to complete
+   * @return true if all tasks completed within timeout, false otherwise
+   */
+  default boolean awaitVectorCompletion(int timeoutSeconds) {
+    // Default: no async vector tasks, nothing to wait for
+    return true;
+  }
+
+  /**
+   * Get the count of pending vector embedding tasks.
+   *
+   * @return Number of vector tasks still in progress
+   */
+  default int getPendingVectorTaskCount() {
+    return 0;
+  }
+
+  /** Key for passing StageStatsTracker through context data to the sink. */
+  String STATS_TRACKER_CONTEXT_KEY = "stageStatsTracker";
 }

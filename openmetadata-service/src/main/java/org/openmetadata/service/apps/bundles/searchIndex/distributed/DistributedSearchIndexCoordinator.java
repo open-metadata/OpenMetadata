@@ -57,16 +57,18 @@ public class DistributedSearchIndexCoordinator {
   private static final long PARTITION_CLAIM_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(3);
 
   /**
-   * Percentage of partitions to make immediately claimable (20%).
-   * The remaining 80% are released in batches over PARTITION_RELEASE_WINDOW_MS.
+   * Percentage of partitions to make immediately claimable (50%).
+   * Increased from 20% to give single-server deployments faster startup.
    */
-  private static final double IMMEDIATE_CLAIMABLE_PERCENT = 0.20;
+  private static final double IMMEDIATE_CLAIMABLE_PERCENT = 0.50;
 
   /**
-   * Time window over which to stagger partition release (30 seconds).
-   * Partitions are released evenly across this window to give late joiners time to discover the job.
+   * Time window over which to stagger partition release (5 seconds).
+   * Reduced from 30 seconds - the MAX_IN_FLIGHT limit provides the primary fairness mechanism,
+   * while this short window gives late-joining servers a brief opportunity to claim fresh work.
+   * 5 seconds is enough for Redis notification latency but short enough for single-server.
    */
-  private static final long PARTITION_RELEASE_WINDOW_MS = TimeUnit.SECONDS.toMillis(30);
+  private static final long PARTITION_RELEASE_WINDOW_MS = TimeUnit.SECONDS.toMillis(5);
 
   /** Maximum number of retries for a failed partition */
   private static final int MAX_PARTITION_RETRIES = 3;
@@ -74,12 +76,14 @@ public class DistributedSearchIndexCoordinator {
   /**
    * Maximum in-flight partitions per server. Prevents one server from hoarding too many partitions
    * while processing. Once a server finishes processing, it can claim more partitions.
+   * This is the primary mechanism for fair work distribution across servers.
    */
   private static final int MAX_IN_FLIGHT_PARTITIONS_PER_SERVER = 5;
 
   private final CollectionDAO collectionDAO;
   private final PartitionCalculator partitionCalculator;
   private final String serverId;
+  private EntityCompletionTracker entityTracker;
 
   public DistributedSearchIndexCoordinator(CollectionDAO collectionDAO) {
     this.collectionDAO = collectionDAO;
@@ -96,6 +100,15 @@ public class DistributedSearchIndexCoordinator {
 
   public CollectionDAO getCollectionDAO() {
     return collectionDAO;
+  }
+
+  /**
+   * Set the entity completion tracker for per-entity index promotion.
+   *
+   * @param tracker The entity completion tracker
+   */
+  public void setEntityCompletionTracker(EntityCompletionTracker tracker) {
+    this.entityTracker = tracker;
   }
 
   /**
@@ -201,15 +214,15 @@ public class DistributedSearchIndexCoordinator {
     }
 
     // Calculate staggered claimableAt timestamps for partitions
+    // 50% immediately claimable, remaining 50% staggered over 5 seconds
+    // This balances single-server performance with multi-server fairness
     long now = System.currentTimeMillis();
     int totalPartitions = partitions.size();
     int immediateCount = Math.max(1, (int) (totalPartitions * IMMEDIATE_CLAIMABLE_PERCENT));
 
-    // Persist partitions with staggered release times
     for (int i = 0; i < partitions.size(); i++) {
       SearchIndexPartition partition = partitions.get(i);
 
-      // Calculate claimableAt: first 20% immediately, rest staggered over 30 seconds
       long claimableAt;
       if (i < immediateCount) {
         claimableAt = now; // Immediately claimable
@@ -395,6 +408,17 @@ public class DistributedSearchIndexCoordinator {
         successCount,
         failedCount);
 
+    // Record partition completion for per-entity index promotion
+    if (entityTracker != null) {
+      LOG.debug(
+          "Recording partition completion for entity '{}' (failed={}) in tracker",
+          record.entityType(),
+          failedCount > 0);
+      entityTracker.recordPartitionComplete(record.entityType(), failedCount > 0);
+    } else {
+      LOG.debug("Entity tracker is null, skipping per-entity completion tracking");
+    }
+
     // Check if job should be marked as complete
     checkAndUpdateJobCompletion(UUID.fromString(record.jobId()));
   }
@@ -462,6 +486,11 @@ public class DistributedSearchIndexCoordinator {
           partitionId,
           MAX_PARTITION_RETRIES,
           errorMessage);
+
+      // Record partition completion (with failure) for per-entity index promotion
+      if (entityTracker != null) {
+        entityTracker.recordPartitionComplete(record.entityType(), true);
+      }
 
       checkAndUpdateJobCompletion(UUID.fromString(record.jobId()));
     }

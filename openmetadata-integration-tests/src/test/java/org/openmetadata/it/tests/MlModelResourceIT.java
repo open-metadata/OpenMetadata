@@ -25,6 +25,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlFeatureDataType;
 import org.openmetadata.schema.type.MlHyperParameter;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -43,6 +44,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
   }
 
   // ===================================================================
@@ -1086,5 +1088,26 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
         org.openmetadata.it.factories.DatabaseSchemaTestFactory.createSimple(ns);
     return org.openmetadata.it.factories.TableTestFactory.createSimple(
         ns, schema.getFullyQualifiedName());
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateMlModel> createRequests) {
+    return SdkClients.adminClient().mlModels().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateMlModel> createRequests) {
+    return SdkClients.adminClient().mlModels().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateMlModel createInvalidRequestForBulk(TestNamespace ns) {
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("invalid_ml_model"));
+    return request;
   }
 }

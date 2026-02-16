@@ -17,6 +17,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
+import com.google.gson.Gson;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
@@ -222,6 +224,123 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ingestionPipeline.setService(entityReference);
   }
 
+  protected boolean requiresRedeployment(IngestionPipeline original, IngestionPipeline updated) {
+    if (hasScheduleChanged(original, updated)) {
+      LOG.debug("Pipeline '{}' requires redeployment: schedule changed", updated.getName());
+      return true;
+    }
+
+    if (!Objects.equals(original.getEnabled(), updated.getEnabled())) {
+      LOG.debug(
+          "Pipeline '{}' requires redeployment: enabled changed from {} to {}",
+          updated.getName(),
+          original.getEnabled(),
+          updated.getEnabled());
+      return true;
+    }
+
+    if (hasSourceConfigChanged(original, updated)) {
+      LOG.debug("Pipeline '{}' requires redeployment: sourceConfig changed", updated.getName());
+      return true;
+    }
+
+    if (!Objects.equals(original.getLoggerLevel(), updated.getLoggerLevel())) {
+      LOG.debug(
+          "Pipeline '{}' requires redeployment: loggerLevel changed from {} to {}",
+          updated.getName(),
+          original.getLoggerLevel(),
+          updated.getLoggerLevel());
+      return true;
+    }
+
+    return false;
+  }
+
+  boolean hasScheduleChanged(IngestionPipeline original, IngestionPipeline updated) {
+    String originalSchedule =
+        original.getAirflowConfig() != null
+            ? original.getAirflowConfig().getScheduleInterval()
+            : null;
+    String updatedSchedule =
+        updated.getAirflowConfig() != null
+            ? updated.getAirflowConfig().getScheduleInterval()
+            : null;
+    return !Objects.equals(originalSchedule, updatedSchedule);
+  }
+
+  boolean hasSourceConfigChanged(IngestionPipeline original, IngestionPipeline updated) {
+    if (original.getSourceConfig() == null && updated.getSourceConfig() == null) {
+      return false;
+    }
+    if (original.getSourceConfig() == null || updated.getSourceConfig() == null) {
+      return true;
+    }
+    String originalJson = JsonUtils.pojoToJson(original.getSourceConfig());
+    String updatedJson = JsonUtils.pojoToJson(updated.getSourceConfig());
+    return !originalJson.equals(updatedJson);
+  }
+
+  protected void deployPipelineBeforeUpdate(IngestionPipeline ingestionPipeline) {
+    IngestionPipeline decrypted = buildIngestionPipelineDecrypted(ingestionPipeline);
+
+    OpenMetadataConnection openMetadataServerConnection =
+        new org.openmetadata.service.util.OpenMetadataConnectionBuilder(
+                openMetadataApplicationConfig, decrypted)
+            .build();
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    decrypted.setOpenMetadataServerConnection(
+        secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
+
+    ServiceEntityInterface service =
+        Entity.getEntity(decrypted.getService(), "", Include.NON_DELETED);
+
+    if (isS3LogStorageEnabled() && getLogStorageConfiguration().getEnabled()) {
+      decrypted.setEnableStreamableLogs(true);
+    }
+
+    PipelineServiceClientResponse deployResponse = deployIngestionPipeline(decrypted, service);
+
+    if (deployResponse.getCode() != 200) {
+      String errorContext = extractErrorContext(deployResponse.getReason());
+      throw new PipelineServiceClientException(
+          String.format("Deployment failed: %s. Changes not saved.", errorContext));
+    }
+
+    LOG.info(
+        "Pipeline '{}' deployed successfully to {} with response: {}",
+        decrypted.getName(),
+        deployResponse.getPlatform(),
+        deployResponse.getReason());
+  }
+
+  String extractErrorContext(String message) {
+    if (message == null || message.isEmpty()) {
+      return "runner unavailable";
+    }
+
+    if (message.contains("WebSocket is inactive") || message.contains("WebSocket")) {
+      return "runner not connected";
+    }
+
+    if (message.contains("Connection refused")) {
+      return "connection refused";
+    }
+
+    if (message.contains("timeout") || message.contains("timed out")) {
+      return "connection timeout";
+    }
+
+    if (message.contains("Failed to delete CRON")) {
+      return "cannot update workflow";
+    }
+
+    if (message.length() > 50) {
+      return "deployment error";
+    }
+
+    return message;
+  }
+
   @Transaction
   public IngestionPipeline deletePipelineStatus(UUID ingestionPipelineId) {
     // Validate the request content
@@ -260,6 +379,50 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         .withService(service)
         .withOpenMetadataServerConnection(openmetadataConnection)
         .withProcessingEngine(processingEngine);
+  }
+
+  @Override
+  public void storeEntities(List<IngestionPipeline> entities) {
+    List<IngestionPipeline> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+
+    for (IngestionPipeline ingestionPipeline : entities) {
+      EntityReference service = ingestionPipeline.getService();
+      OpenMetadataConnection openmetadataConnection =
+          ingestionPipeline.getOpenMetadataServerConnection();
+
+      if (secretsManager != null) {
+        secretsManager.encryptIngestionPipeline(ingestionPipeline);
+        openmetadataConnection =
+            secretsManager.encryptOpenMetadataConnection(openmetadataConnection, true);
+      }
+
+      EntityReference processingEngine = ingestionPipeline.getProcessingEngine();
+
+      ingestionPipeline
+          .withService(null)
+          .withOpenMetadataServerConnection(null)
+          .withProcessingEngine(null);
+
+      String jsonCopy = gson.toJson(ingestionPipeline);
+      entitiesToStore.add(gson.fromJson(jsonCopy, IngestionPipeline.class));
+
+      ingestionPipeline
+          .withService(service)
+          .withOpenMetadataServerConnection(openmetadataConnection)
+          .withProcessingEngine(processingEngine);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<IngestionPipeline> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(IngestionPipeline::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteFromMany(ids, entityType, Relationship.USES, null);
   }
 
   @Override
@@ -526,6 +689,50 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError());
       updateEnableStreamableLogs(
           original.getEnableStreamableLogs(), updated.getEnableStreamableLogs());
+
+      deployIfRequired(original, updated);
+    }
+
+    private void deployIfRequired(IngestionPipeline original, IngestionPipeline updated) {
+      if (!requiresRedeployment(original, updated)) {
+        return;
+      }
+
+      if (!Boolean.TRUE.equals(original.getDeployed())) {
+        LOG.debug(
+            "Pipeline '{}' requires redeployment but was never deployed. Skipping automatic redeployment.",
+            updated.getName());
+        return;
+      }
+
+      if (pipelineServiceClient == null) {
+        LOG.warn(
+            "Pipeline '{}' requires redeployment but pipeline service client is not configured. Skipping deployment.",
+            updated.getName());
+        return;
+      }
+
+      LOG.info(
+          "Pipeline '{}' requires redeployment due to configuration changes. Deploying before DB update.",
+          updated.getName());
+
+      try {
+        deployPipelineBeforeUpdate(updated);
+        LOG.info(
+            "Successfully deployed pipeline '{}'. Proceeding with DB update.", updated.getName());
+      } catch (PipelineServiceClientException e) {
+        LOG.error(
+            "Failed to deploy pipeline '{}' before update. Aborting DB update to maintain consistency.",
+            updated.getName(),
+            e);
+        throw e;
+      } catch (Exception e) {
+        LOG.error(
+            "Unexpected error deploying pipeline '{}' before update. Aborting DB update.",
+            updated.getName(),
+            e);
+        throw new PipelineServiceClientException("Deployment failed. Changes not saved.");
+      }
     }
 
     protected void updateProcessingEngine(IngestionPipeline original, IngestionPipeline updated) {

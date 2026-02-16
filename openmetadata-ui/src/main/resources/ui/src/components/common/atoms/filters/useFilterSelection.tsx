@@ -117,7 +117,7 @@ export const useFilterSelection = (config: FilterSelectionConfig) => {
             <Box className="filter-selection-chip" key={filter.key}>
               <Box className="filter-selection-chip-content" component="span">
                 <span className="filter-selection-label">
-                  {filter.label}
+                  {t(filter.label)}
                   {': '}
                 </span>
                 <span

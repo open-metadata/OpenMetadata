@@ -7,15 +7,31 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
@@ -26,7 +42,12 @@ import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 
@@ -441,5 +462,521 @@ public class DatabaseServiceResourceIT
         storedService.getTestConnectionResult(), "Test connection result should be persisted");
     assertEquals(
         TestConnectionResultStatus.SUCCESSFUL, storedService.getTestConnectionResult().getStatus());
+  }
+
+  @Test
+  void test_importExportRecursive_withColumnTagsAndGlossaryTerms(TestNamespace ns)
+      throws IOException, InterruptedException {
+    String serviceName = ns.prefix("import_export_recursive_tags_service");
+
+    DatabaseService service = createEntity(createMinimalRequest(ns).withName(serviceName));
+
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db1"))
+                    .withService(service.getFullyQualifiedName()));
+
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema1"))
+                    .withDatabase(database.getFullyQualifiedName())
+                    .withDescription("Test schema for column tags"));
+
+    Column column1 =
+        new Column()
+            .withName("sensitive_column")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(255)
+            .withDescription("Column with PII tag");
+
+    Column column2 =
+        new Column()
+            .withName("business_column")
+            .withDataType(ColumnDataType.INT)
+            .withDescription("Column with glossary term");
+
+    Column nestedColumn =
+        new Column()
+            .withName("address")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(
+                List.of(
+                    new Column()
+                        .withName("street")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(255)
+                        .withDescription("Street address - should get tags")));
+
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("test_table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(column1, column2, nestedColumn))
+                    .withDescription("Test table for column tags and glossary terms"));
+
+    SharedEntities shared = SharedEntities.get();
+
+    String exportedCsv = exportCsvRecursive(service.getFullyQualifiedName());
+    assertNotNull(exportedCsv);
+    assertTrue(
+        exportedCsv.contains("sensitive_column"), "Exported CSV should contain column names");
+    assertTrue(exportedCsv.contains("business_column"), "Exported CSV should contain column names");
+    assertTrue(
+        exportedCsv.contains("address.street"), "Exported CSV should contain nested column names");
+
+    String[] lines = exportedCsv.split("\n");
+    String header = lines[0];
+    StringBuilder modifiedCsv = new StringBuilder();
+    modifiedCsv.append(header).append("\n");
+
+    for (int i = 1; i < lines.length; i++) {
+      String line = lines[i];
+      if (line.contains("sensitive_column") && line.contains("column")) {
+        line = addColumnTags(line, shared.PERSONAL_DATA_TAG_LABEL.getTagFQN());
+      } else if (line.contains("business_column") && line.contains("column")) {
+        line = addColumnGlossaryTerms(line, shared.GLOSSARY1_TERM1_LABEL.getTagFQN());
+      } else if (line.contains("address.street") && line.contains("column")) {
+        line = addColumnTags(line, shared.PERSONAL_DATA_TAG_LABEL.getTagFQN());
+        line = addColumnGlossaryTerms(line, shared.GLOSSARY1_TERM1_LABEL.getTagFQN());
+      }
+      modifiedCsv.append(line).append("\n");
+    }
+
+    CsvImportResult result =
+        importCsvRecursive(service.getFullyQualifiedName(), modifiedCsv.toString(), false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    Table updatedTable =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
+    assertNotNull(updatedTable);
+    assertNotNull(updatedTable.getColumns());
+
+    Column sensitiveColumn =
+        updatedTable.getColumns().stream()
+            .filter(c -> "sensitive_column".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(sensitiveColumn, "Sensitive column should exist");
+    assertNotNull(sensitiveColumn.getTags(), "Sensitive column should have tags");
+    assertTrue(
+        sensitiveColumn.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().contains("PersonalData")),
+        "Sensitive column should have PersonalData tag");
+
+    Column businessColumn =
+        updatedTable.getColumns().stream()
+            .filter(c -> "business_column".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(businessColumn, "Business column should exist");
+    assertNotNull(businessColumn.getTags(), "Business column should have tags");
+    assertTrue(
+        businessColumn.getTags().stream()
+            .anyMatch(tag -> tag.getSource() == TagLabel.TagSource.GLOSSARY),
+        "Business column should have glossary term");
+
+    Column addressColumn =
+        updatedTable.getColumns().stream()
+            .filter(c -> "address".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(addressColumn, "Address column should exist");
+    assertNotNull(addressColumn.getChildren(), "Address column should have children");
+
+    Column streetColumn =
+        addressColumn.getChildren().stream()
+            .filter(c -> "street".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(streetColumn, "Street nested column should exist");
+    assertNotNull(streetColumn.getTags(), "Street nested column should have tags");
+    assertTrue(
+        streetColumn.getTags().stream().anyMatch(tag -> tag.getTagFQN().contains("PersonalData")),
+        "Street nested column should have PersonalData tag");
+    assertTrue(
+        streetColumn.getTags().stream()
+            .anyMatch(tag -> tag.getSource() == TagLabel.TagSource.GLOSSARY),
+        "Street nested column should have glossary term");
+
+    // Phase 2: Test tag REMOVAL via CSV import
+    // Export the CSV again (now with tags)
+    String exportedCsvWithTags = exportCsvRecursive(service.getFullyQualifiedName());
+    assertNotNull(exportedCsvWithTags);
+
+    // Remove tags from sensitive_column and glossary term from business_column
+    String[] linesWithTags = exportedCsvWithTags.split("\n");
+    String headerWithTags = linesWithTags[0];
+    StringBuilder csvWithRemovedTags = new StringBuilder();
+    csvWithRemovedTags.append(headerWithTags).append("\n");
+
+    for (int i = 1; i < linesWithTags.length; i++) {
+      String line = linesWithTags[i];
+      if (line.contains("sensitive_column") && line.contains("column")) {
+        // Remove the classification tag from sensitive_column
+        line = removeColumnTags(line);
+      } else if (line.contains("business_column") && line.contains("column")) {
+        // Remove the glossary term from business_column
+        line = removeColumnGlossaryTerms(line);
+      }
+      // Keep address.street tags intact to verify partial removal works
+      csvWithRemovedTags.append(line).append("\n");
+    }
+
+    // Import CSV with removed tags
+    CsvImportResult removalResult =
+        importCsvRecursive(service.getFullyQualifiedName(), csvWithRemovedTags.toString(), false);
+    assertEquals(ApiStatus.SUCCESS, removalResult.getStatus());
+
+    // Verify tags were removed
+    Table tableAfterRemoval =
+        SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
+    assertNotNull(tableAfterRemoval);
+
+    // Verify sensitive_column no longer has classification tag
+    Column sensitiveColumnAfterRemoval =
+        tableAfterRemoval.getColumns().stream()
+            .filter(c -> "sensitive_column".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(sensitiveColumnAfterRemoval, "Sensitive column should still exist");
+    assertTrue(
+        sensitiveColumnAfterRemoval.getTags() == null
+            || sensitiveColumnAfterRemoval.getTags().stream()
+                .noneMatch(tag -> tag.getTagFQN().contains("PersonalData")),
+        "Sensitive column should NOT have PersonalData tag after removal");
+
+    // Verify business_column no longer has glossary term
+    Column businessColumnAfterRemoval =
+        tableAfterRemoval.getColumns().stream()
+            .filter(c -> "business_column".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(businessColumnAfterRemoval, "Business column should still exist");
+    assertTrue(
+        businessColumnAfterRemoval.getTags() == null
+            || businessColumnAfterRemoval.getTags().stream()
+                .noneMatch(tag -> tag.getSource() == TagLabel.TagSource.GLOSSARY),
+        "Business column should NOT have glossary term after removal");
+
+    // Verify address.street STILL has its tags (we didn't remove them)
+    Column addressColumnAfterRemoval =
+        tableAfterRemoval.getColumns().stream()
+            .filter(c -> "address".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(addressColumnAfterRemoval, "Address column should still exist");
+    Column streetColumnAfterRemoval =
+        addressColumnAfterRemoval.getChildren().stream()
+            .filter(c -> "street".equals(c.getName()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(streetColumnAfterRemoval, "Street nested column should still exist");
+    assertNotNull(streetColumnAfterRemoval.getTags(), "Street column should still have tags");
+    assertTrue(
+        streetColumnAfterRemoval.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().contains("PersonalData")),
+        "Street column should STILL have PersonalData tag (not removed)");
+    assertTrue(
+        streetColumnAfterRemoval.getTags().stream()
+            .anyMatch(tag -> tag.getSource() == TagLabel.TagSource.GLOSSARY),
+        "Street column should STILL have glossary term (not removed)");
+  }
+
+  private String addColumnTags(String csvLine, String tagFQN) {
+    String[] parts = csvLine.split(",");
+    if (parts.length >= 5) {
+      if (parts[4] == null || parts[4].trim().isEmpty() || parts[4].equals("\"\"")) {
+        parts[4] = "\"" + tagFQN + "\"";
+      } else {
+        String existingTags = parts[4].replaceAll("\"", "");
+        parts[4] = "\"" + existingTags + ";" + tagFQN + "\"";
+      }
+    }
+    return String.join(",", parts);
+  }
+
+  private String addColumnGlossaryTerms(String csvLine, String glossaryTermFQN) {
+    String[] parts = csvLine.split(",");
+    if (parts.length >= 6) {
+      if (parts[5] == null || parts[5].trim().isEmpty() || parts[5].equals("\"\"")) {
+        parts[5] = "\"" + glossaryTermFQN + "\"";
+      } else {
+        String existingTerms = parts[5].replaceAll("\"", "");
+        parts[5] = "\"" + existingTerms + ";" + glossaryTermFQN + "\"";
+      }
+    }
+    return String.join(",", parts);
+  }
+
+  private String removeColumnTags(String csvLine) {
+    String[] parts = csvLine.split(",");
+    if (parts.length >= 5) {
+      parts[4] = "";
+    }
+    return String.join(",", parts);
+  }
+
+  private String removeColumnGlossaryTerms(String csvLine) {
+    String[] parts = csvLine.split(",");
+    if (parts.length >= 6) {
+      parts[5] = "";
+    }
+    return String.join(",", parts);
+  }
+
+  private String exportCsvRecursive(String entityName) throws IOException, InterruptedException {
+    String serverUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+
+    HttpClient client = HttpClient.newHttpClient();
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    serverUrl
+                        + "/v1/services/databaseServices/name/"
+                        + entityName
+                        + "/export?recursive=true"))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .GET()
+            .build();
+
+    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+    if (response.statusCode() != 200) {
+      throw new RuntimeException(
+          "Failed to export CSV. Status: " + response.statusCode() + ", Body: " + response.body());
+    }
+
+    return response.body();
+  }
+
+  private CsvImportResult importCsvRecursive(String entityName, String csvData, boolean dryRun)
+      throws IOException, InterruptedException {
+    String serverUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+
+    HttpClient client = HttpClient.newHttpClient();
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    serverUrl
+                        + "/v1/services/databaseServices/name/"
+                        + entityName
+                        + "/import?recursive=true&dryRun="
+                        + dryRun))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "text/plain")
+            .PUT(HttpRequest.BodyPublishers.ofString(csvData))
+            .build();
+
+    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+    if (response.statusCode() != 200) {
+      throw new RuntimeException(
+          "Failed to import CSV. Status: " + response.statusCode() + ", Body: " + response.body());
+    }
+
+    try {
+      com.fasterxml.jackson.databind.ObjectMapper mapper =
+          new com.fasterxml.jackson.databind.ObjectMapper();
+      return mapper.readValue(response.body(), CsvImportResult.class);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to parse import result: " + e.getMessage(), e);
+    }
+  }
+
+  @Test
+  void test_csvImportEntityRuleValidation(TestNamespace ns)
+      throws IOException, InterruptedException {
+
+    final String MULTI_DOMAIN_RULE = "Multiple Domains are not allowed";
+
+    // Check if rule is currently enabled and store original state
+    boolean originalRuleState =
+        EntityRulesUtil.isRuleEnabled(SdkClients.adminClient(), MULTI_DOMAIN_RULE);
+
+    try {
+      // Enable the multi-domain rule for testing
+      EntityRulesUtil.toggleMultiDomainRule(SdkClients.adminClient(), true);
+
+      String serviceName = ns.prefix("rule_validation_service");
+      DatabaseService service = createEntity(createMinimalRequest(ns).withName(serviceName));
+
+      // Create test entities first
+      Database database =
+          SdkClients.adminClient()
+              .databases()
+              .create(
+                  new CreateDatabase()
+                      .withName(ns.prefix("rule_test_db"))
+                      .withService(service.getFullyQualifiedName()));
+
+      DatabaseSchema schema =
+          SdkClients.adminClient()
+              .databaseSchemas()
+              .create(
+                  new CreateDatabaseSchema()
+                      .withName(ns.prefix("rule_test_schema"))
+                      .withDatabase(database.getFullyQualifiedName()));
+
+      Table table =
+          SdkClients.adminClient()
+              .tables()
+              .create(
+                  new CreateTable()
+                      .withName(ns.prefix("rule_test_table"))
+                      .withDatabaseSchema(schema.getFullyQualifiedName())
+                      .withColumns(
+                          List.of(
+                              new Column()
+                                  .withName("test_column")
+                                  .withDataType(ColumnDataType.VARCHAR)
+                                  .withDataLength(255))));
+
+      // Create second domain for testing multiple domains
+      CreateDomain domain2Request =
+          new CreateDomain()
+              .withName(ns.prefix("TestDomain2"))
+              .withDescription("Second domain for CSV rule testing")
+              .withDomainType(CreateDomain.DomainType.AGGREGATE);
+
+      Domain domain2 = SdkClients.adminClient().domains().create(domain2Request);
+
+      // Export current CSV
+      String originalCsv = exportCsvRecursive(service.getFullyQualifiedName());
+      assertNotNull(originalCsv);
+
+      // Modify CSV to include multiple domains (violates the rule)
+      String[] lines = originalCsv.split("\n");
+      String header = lines[0];
+      StringBuilder modifiedCsv = new StringBuilder();
+      modifiedCsv.append(header).append("\n");
+
+      for (int i = 1; i < lines.length; i++) {
+        String line = lines[i];
+        if (line.contains(table.getName()) && line.contains("table")) {
+          // Add multiple domains to the table row (semicolon-separated)
+          // Using SharedEntities domain and the new domain to violate the rule
+          SharedEntities shared = SharedEntities.get();
+          String multipleDomains = shared.DOMAIN.getName() + ";" + domain2.getName();
+          line = addDomainsToTableRow(line, multipleDomains);
+        }
+        modifiedCsv.append(line).append("\n");
+      }
+
+      // Test with dry run first - should catch validation errors without applying changes
+      try {
+        CsvImportResult dryRunResult =
+            importCsvRecursive(service.getFullyQualifiedName(), modifiedCsv.toString(), true);
+
+        // Dry run should either fail entirely or report validation errors
+        if (dryRunResult.getStatus() == ApiStatus.SUCCESS) {
+          // Should not succeed - there should be validation failures
+          assertTrue(
+              dryRunResult.getNumberOfRowsFailed() > 0,
+              "Dry run should have validation failures for multiple domains");
+
+          // Check that the failure CSV contains the specific rule violation
+          String resultsCsv = dryRunResult.getImportResultsCsv();
+          assertNotNull(resultsCsv, "Should have results CSV with failure details");
+          assertTrue(
+              resultsCsv.contains("Rule [Multiple Domains are not allowed] validation failed"),
+              "Should contain exact rule validation failure message: " + resultsCsv);
+        } else {
+          // Dry run failed entirely, which is also acceptable
+          assertEquals(
+              ApiStatus.PARTIAL_SUCCESS,
+              dryRunResult.getStatus(),
+              "Dry run should fail due to rule validation");
+        }
+
+      } catch (RuntimeException e) {
+        // HTTP error is also acceptable - rule validation should prevent even dry run
+        assertTrue(
+            e.getMessage().contains("Rule [Multiple Domains are not allowed] validation failed"),
+            "Should get exact rule validation error in dry run: " + e.getMessage());
+      }
+
+      // Also test actual import (not dry run) should fail
+      try {
+        CsvImportResult actualResult =
+            importCsvRecursive(service.getFullyQualifiedName(), modifiedCsv.toString(), false);
+
+        // The import should either fail entirely or report validation errors
+        if (actualResult.getStatus() == ApiStatus.SUCCESS) {
+          // Should not succeed - there should be validation failures
+          assertTrue(
+              actualResult.getNumberOfRowsFailed() > 0,
+              "Import should have validation failures for multiple domains");
+
+          // Check that the failure CSV contains the specific rule violation
+          String resultsCsv = actualResult.getImportResultsCsv();
+          assertNotNull(resultsCsv, "Should have results CSV with failure details");
+          assertTrue(
+              resultsCsv.contains("Rule [Multiple Domains are not allowed] validation failed"),
+              "Should contain exact rule validation failure message: " + resultsCsv);
+        } else {
+          // Import failed entirely, which is also acceptable
+          assertEquals(
+              ApiStatus.PARTIAL_SUCCESS,
+              actualResult.getStatus(),
+              "Import should fail due to rule validation");
+        }
+
+      } catch (RuntimeException e) {
+        // HTTP error is also acceptable - rule validation should prevent the import
+        assertTrue(
+            e.getMessage().contains("Rule [Multiple Domains are not allowed] validation failed"),
+            "Should get exact rule validation error: " + e.getMessage());
+      }
+
+      // Verify the table still has only one domain (import should not have succeeded)
+      Table verifyTable =
+          SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "domains");
+
+      if (verifyTable.getDomains() != null) {
+        assertTrue(
+            verifyTable.getDomains().size() <= 1,
+            "Table should not have multiple domains due to rule validation");
+      }
+
+    } finally {
+      // Restore the original rule state
+      EntityRulesUtil.toggleMultiDomainRule(SdkClients.adminClient(), originalRuleState);
+    }
+  }
+
+  private int getDomainColumnIndex(String header) {
+    String[] columns = header.split(",");
+    for (int i = 0; i < columns.length; i++) {
+      String column = columns[i].replaceAll("\"", "").trim();
+      if ("domains".equals(column)) {
+        return i;
+      }
+    }
+    // Based on CSV documentation, domains is at index 10 (0-based)
+    return 10;
+  }
+
+  private String addDomainsToTableRow(String csvLine, String newDomains) {
+    String[] parts = csvLine.split(",");
+    // Domains column is at index 10 based on CSV documentation
+    int domainsIndex = 10;
+    if (parts.length > domainsIndex) {
+      parts[domainsIndex] = "\"" + newDomains + "\"";
+    }
+    return String.join(",", parts);
   }
 }

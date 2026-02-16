@@ -3,15 +3,19 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.util.List;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -19,6 +23,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
+import org.openmetadata.service.rdf.RdfUpdater;
 
 /**
  * Integration tests for RDF resource operations.
@@ -36,6 +41,24 @@ import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 public class RdfResourceIT {
 
   private static final String TABLE_RDF_TYPE = "dcat:Dataset";
+
+  @BeforeAll
+  static void enableRdf() {
+    RdfConfiguration rdfConfig = new RdfConfiguration();
+    rdfConfig.setEnabled(true);
+    rdfConfig.setBaseUri(java.net.URI.create("https://open-metadata.org/"));
+    rdfConfig.setStorageType(RdfConfiguration.StorageType.FUSEKI);
+    rdfConfig.setRemoteEndpoint(java.net.URI.create(TestSuiteBootstrap.getFusekiEndpoint()));
+    rdfConfig.setUsername("admin");
+    rdfConfig.setPassword("test-admin");
+    rdfConfig.setDataset("openmetadata");
+    RdfUpdater.initialize(rdfConfig);
+  }
+
+  @AfterAll
+  static void disableRdf() {
+    RdfUpdater.disable();
+  }
 
   @Test
   void testEntityStoredInRdf(TestNamespace ns) {

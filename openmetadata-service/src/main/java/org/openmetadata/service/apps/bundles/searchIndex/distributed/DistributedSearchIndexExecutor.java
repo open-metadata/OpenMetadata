@@ -13,7 +13,11 @@
 
 package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,7 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
-import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.CompositeProgressListener;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
@@ -37,6 +41,9 @@ import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.DefaultRecreateHandler;
+import org.openmetadata.service.search.EntityReindexContext;
+import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 
 /**
@@ -107,11 +114,14 @@ public class DistributedSearchIndexExecutor {
   // Job context for listener callbacks
   private ReindexingJobContext jobContext;
 
-  // Server stats persistence
-  private Thread serverStatsPersistThread;
-  private static final long SERVER_STATS_PERSIST_INTERVAL_MS = 30000;
+  // Failure recording
   private IndexingFailureRecorder failureRecorder;
   private BulkSink searchIndexSink;
+
+  // Per-entity index promotion
+  private EntityCompletionTracker entityTracker;
+  private RecreateIndexHandler recreateIndexHandler;
+  private ReindexContext recreateContext;
 
   // Reader stats tracking (accumulated across all worker threads)
   private final AtomicLong coordinatorReaderSuccess = new AtomicLong(0);
@@ -366,11 +376,16 @@ public class DistributedSearchIndexExecutor {
           }
         });
 
-    // Start server stats persist thread
-    serverStatsPersistThread =
-        Thread.ofVirtual()
-            .name("server-stats-persist-" + jobId.toString().substring(0, 8))
-            .start(() -> runServerStatsPersistLoop(jobId));
+    // Stats are tracked per-entityType by StageStatsTracker in PartitionWorker
+    // No need for redundant server-level stats persistence
+
+    // Store recreate context for per-entity promotion
+    this.recreateContext = recreateContext;
+
+    // Initialize entity completion tracker for per-entity index promotion
+    this.entityTracker = new EntityCompletionTracker(jobId);
+    initializeEntityTracker(jobId, recreateIndex);
+    coordinator.setEntityCompletionTracker(entityTracker);
 
     // Start lock refresh thread to prevent lock expiration during long-running jobs
     lockRefreshThread =
@@ -449,11 +464,6 @@ public class DistributedSearchIndexExecutor {
         partitionHeartbeatThread.interrupt();
       }
 
-      // Stop server stats persist thread
-      if (serverStatsPersistThread != null) {
-        serverStatsPersistThread.interrupt();
-      }
-
       // Shutdown executor
       workerExecutor.shutdown();
       try {
@@ -465,17 +475,17 @@ public class DistributedSearchIndexExecutor {
         Thread.currentThread().interrupt();
       }
 
-      // Flush sink and wait for all pending bulk requests to complete before persisting final stats
+      // Flush sink and wait for all pending bulk requests to complete
       if (searchIndexSink != null) {
-        LOG.info("Flushing sink and waiting for pending requests before final stats persist");
+        LOG.info("Flushing sink and waiting for pending requests");
         boolean completed = searchIndexSink.flushAndAwait(60);
         if (!completed) {
           LOG.warn("Sink flush timed out - some requests may not be reflected in final stats");
         }
       }
 
-      // Final server stats persist
-      persistServerStats(jobId);
+      // Stats are tracked per-entityType by StageStatsTracker in PartitionWorker
+      // No need for redundant server-level stats persistence
 
       // Final stats broadcast and cleanup
       statsAggregator.forceUpdate();
@@ -627,8 +637,7 @@ public class DistributedSearchIndexExecutor {
             result.readerFailed(),
             result.readerWarnings());
 
-        // Persist stats after each partition completion
-        persistServerStats(currentJob.getId());
+        // Stats are tracked per-entityType by StageStatsTracker in PartitionWorker
       }
     } finally {
       synchronized (activeWorkers) {
@@ -743,84 +752,6 @@ public class DistributedSearchIndexExecutor {
       } catch (Exception e) {
         LOG.error("Error updating partition heartbeats", e);
       }
-    }
-  }
-
-  private void runServerStatsPersistLoop(UUID jobId) {
-    while (!stopped.get() && !Thread.currentThread().isInterrupted()) {
-      try {
-        Thread.sleep(SERVER_STATS_PERSIST_INTERVAL_MS);
-
-        SearchIndexJob job = coordinator.getJob(jobId).orElse(null);
-        if (job == null || job.isTerminal()) {
-          break;
-        }
-
-        persistServerStats(jobId);
-
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        break;
-      } catch (Exception e) {
-        LOG.error("Error persisting server stats for job {}", jobId, e);
-      }
-    }
-  }
-
-  private void persistServerStats(UUID jobId) {
-    if (searchIndexSink == null) {
-      return;
-    }
-
-    try {
-      StepStats sinkStats = searchIndexSink.getStats();
-      long entityBuildFailures = searchIndexSink.getEntityBuildFailures();
-
-      long totalFailed = sinkStats != null ? sinkStats.getFailedRecords() : 0;
-      long actualSinkFailed = totalFailed - entityBuildFailures;
-      long sinkWarnings =
-          sinkStats != null && sinkStats.getWarningRecords() != null
-              ? sinkStats.getWarningRecords()
-              : 0;
-
-      // Use local counters instead of querying DB (more accurate, no timing issues)
-      int partitionsCompleted = coordinatorPartitionsCompleted.get();
-      int partitionsFailed = coordinatorPartitionsFailed.get();
-
-      String statsId = UUID.nameUUIDFromBytes((jobId.toString() + serverId).getBytes()).toString();
-
-      collectionDAO
-          .searchIndexServerStatsDAO()
-          .upsert(
-              statsId,
-              jobId.toString(),
-              serverId,
-              coordinatorReaderSuccess.get(),
-              coordinatorReaderFailed.get(),
-              coordinatorReaderWarnings.get(),
-              sinkStats != null ? sinkStats.getTotalRecords() : 0,
-              sinkStats != null ? sinkStats.getSuccessRecords() : 0,
-              actualSinkFailed,
-              sinkWarnings,
-              entityBuildFailures,
-              partitionsCompleted,
-              partitionsFailed,
-              System.currentTimeMillis());
-
-      LOG.debug(
-          "Persisted server stats for job {} server {}: readerSuccess={}, readerFailed={}, "
-              + "readerWarnings={}, sinkFailed={}, sinkWarnings={}, entityBuildFailures={}, partitionsCompleted={}",
-          jobId,
-          serverId,
-          coordinatorReaderSuccess.get(),
-          coordinatorReaderFailed.get(),
-          coordinatorReaderWarnings.get(),
-          actualSinkFailed,
-          sinkWarnings,
-          entityBuildFailures,
-          partitionsCompleted);
-    } catch (Exception e) {
-      LOG.error("Error persisting server stats for job {} server {}", jobId, serverId, e);
     }
   }
 
@@ -945,6 +876,15 @@ public class DistributedSearchIndexExecutor {
   }
 
   /**
+   * Get the entity completion tracker for checking which entities have been promoted.
+   *
+   * @return The entity completion tracker, or null if not initialized
+   */
+  public EntityCompletionTracker getEntityTracker() {
+    return entityTracker;
+  }
+
+  /**
    * Update the staged index mapping for the current job. This mapping tells participant servers
    * which staged index to write to for each entity type during index recreation.
    *
@@ -956,6 +896,89 @@ public class DistributedSearchIndexExecutor {
       return;
     }
     coordinator.updateStagedIndexMapping(currentJob.getId(), stagedIndexMapping);
+  }
+
+  /**
+   * Initialize the entity completion tracker with partition counts and promotion callback.
+   */
+  private void initializeEntityTracker(UUID jobId, boolean recreateIndex) {
+    // Count partitions per entity
+    Map<String, Integer> partitionCountByEntity = new HashMap<>();
+    List<SearchIndexPartition> allPartitions = coordinator.getPartitions(jobId, null);
+    for (SearchIndexPartition p : allPartitions) {
+      partitionCountByEntity.merge(p.getEntityType(), 1, Integer::sum);
+    }
+
+    // Initialize tracking for each entity
+    for (Map.Entry<String, Integer> entry : partitionCountByEntity.entrySet()) {
+      entityTracker.initializeEntity(entry.getKey(), entry.getValue());
+    }
+
+    LOG.info(
+        "Initialized entity tracker for job {} with {} entity types: {}",
+        jobId,
+        partitionCountByEntity.size(),
+        partitionCountByEntity);
+
+    // Set up per-entity promotion callback if recreating indices
+    if (recreateIndex && recreateContext != null) {
+      this.recreateIndexHandler = Entity.getSearchRepository().createReindexHandler();
+      entityTracker.setOnEntityComplete(
+          (entityType, success) -> promoteEntityIndex(entityType, success));
+      LOG.info(
+          "Per-entity promotion callback SET for job {} (recreateIndex={}, recreateContext entities={})",
+          jobId,
+          recreateIndex,
+          recreateContext.getEntities());
+    } else {
+      LOG.info(
+          "Per-entity promotion callback NOT set for job {} (recreateIndex={}, recreateContext={})",
+          jobId,
+          recreateIndex,
+          recreateContext != null ? "present" : "null");
+    }
+  }
+
+  /**
+   * Promote a single entity's index when all its partitions complete.
+   */
+  private void promoteEntityIndex(String entityType, boolean success) {
+    if (recreateIndexHandler == null || recreateContext == null) {
+      LOG.warn(
+          "Cannot promote index for entity '{}' - no recreateIndexHandler or recreateContext",
+          entityType);
+      return;
+    }
+
+    Optional<String> stagedIndexOpt = recreateContext.getStagedIndex(entityType);
+    if (stagedIndexOpt.isEmpty()) {
+      LOG.debug("No staged index for entity '{}', skipping promotion", entityType);
+      return;
+    }
+
+    try {
+      EntityReindexContext entityContext =
+          EntityReindexContext.builder()
+              .entityType(entityType)
+              .originalIndex(recreateContext.getOriginalIndex(entityType).orElse(null))
+              .canonicalIndex(recreateContext.getCanonicalIndex(entityType).orElse(null))
+              .activeIndex(recreateContext.getOriginalIndex(entityType).orElse(null))
+              .stagedIndex(stagedIndexOpt.get())
+              .canonicalAliases(recreateContext.getCanonicalAlias(entityType).orElse(null))
+              .existingAliases(recreateContext.getExistingAliases(entityType))
+              .parentAliases(
+                  new HashSet<>(listOrEmpty(recreateContext.getParentAliases(entityType))))
+              .build();
+
+      if (recreateIndexHandler instanceof DefaultRecreateHandler defaultHandler) {
+        LOG.info("Promoting index for entity '{}' (success={})", entityType, success);
+        defaultHandler.promoteEntityIndex(entityContext, success);
+      } else {
+        recreateIndexHandler.finalizeReindex(entityContext, success);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to promote index for entity '{}'", entityType, e);
+    }
   }
 
   /**

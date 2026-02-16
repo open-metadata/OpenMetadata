@@ -19,6 +19,7 @@ export interface PortsLineageViewProps {
   dataProduct: DataProduct;
   inputPortsData: SearchedDataProps['data'];
   outputPortsData: SearchedDataProps['data'];
+  assetCount: number;
   isFullScreen?: boolean;
   height?: number;
   onToggleFullScreen?: () => void;
