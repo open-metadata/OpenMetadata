@@ -14,7 +14,9 @@
 package org.openmetadata.service.resources.feeds;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.SUGGESTION_ACCEPTED;
 import static org.openmetadata.schema.type.EventType.SUGGESTION_CREATED;
+import static org.openmetadata.schema.type.EventType.SUGGESTION_DELETED;
 import static org.openmetadata.schema.type.EventType.SUGGESTION_REJECTED;
 import static org.openmetadata.schema.type.EventType.SUGGESTION_UPDATED;
 import static org.openmetadata.service.util.RestUtil.CHANGE_CUSTOM_HEADER;
@@ -44,26 +46,40 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CreateSuggestion;
 import org.openmetadata.schema.entity.feed.Suggestion;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.SuggestionPayload;
 import org.openmetadata.schema.type.SuggestionStatus;
 import org.openmetadata.schema.type.SuggestionType;
+import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.SuggestionFilter;
-import org.openmetadata.service.jdbi3.SuggestionRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PostResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.tasks.SuggestionHandler;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 
+/**
+ * SuggestionsResource - Backward-compatible API for suggestions.
+ * This resource now uses the Task entity storage underneath while maintaining
+ * the same API contract for existing clients.
+ */
+@Slf4j
 @Path("/v1/suggestions")
 @Tag(
     name = "Suggestions",
@@ -74,8 +90,10 @@ import org.openmetadata.service.util.RestUtil;
 @Collection(name = "suggestions")
 public class SuggestionsResource {
   public static final String COLLECTION_PATH = "/v1/suggestions/";
-  private final SuggestionMapper mapper = new SuggestionMapper();
-  private final SuggestionRepository dao;
+  private static final String TASK_FIELDS = "about,payload,assignees,createdBy";
+
+  private final SuggestionTaskAdapter adapter = new SuggestionTaskAdapter();
+  private final TaskRepository taskRepository;
   private final Authorizer authorizer;
 
   public static void addHref(UriInfo uriInfo, List<Suggestion> suggestions) {
@@ -92,7 +110,7 @@ public class SuggestionsResource {
   }
 
   public SuggestionsResource(Authorizer authorizer) {
-    this.dao = Entity.getSuggestionRepository();
+    this.taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     this.authorizer = authorizer;
   }
 
@@ -151,26 +169,38 @@ public class SuggestionsResource {
           @QueryParam("status")
           String status) {
     RestUtil.validateCursors(before, after);
-    SuggestionFilter filter =
-        SuggestionFilter.builder()
-            .suggestionStatus(SuggestionStatus.valueOf(status))
-            .entityFQN(entityFQN)
-            .createdBy(userId)
-            .paginationType(
-                before != null
-                    ? SuggestionRepository.PaginationType.BEFORE
-                    : SuggestionRepository.PaginationType.AFTER)
-            .before(before)
-            .after(after)
-            .build();
-    ResultList<Suggestion> suggestions;
-    if (before != null) {
-      suggestions = dao.listBefore(filter, limitParam, before);
-    } else {
-      suggestions = dao.listAfter(filter, limitParam, after);
+
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("type", TaskEntityType.Suggestion.value());
+
+    TaskEntityStatus taskStatus = mapSuggestionStatusToTaskStatus(SuggestionStatus.valueOf(status));
+    if (taskStatus != null) {
+      filter.addQueryParam("status", taskStatus.value());
     }
-    addHref(uriInfo, suggestions.getData());
-    return suggestions;
+
+    if (entityFQN != null) {
+      filter.addQueryParam("aboutFQN", entityFQN);
+    }
+    if (userId != null) {
+      filter.addQueryParam("createdBy", userId.toString());
+    }
+
+    Fields fields = taskRepository.getFields(TASK_FIELDS);
+    ResultList<Task> tasks;
+    if (before != null) {
+      tasks = taskRepository.listBefore(uriInfo, fields, filter, limitParam, before);
+    } else {
+      tasks = taskRepository.listAfter(uriInfo, fields, filter, limitParam, after);
+    }
+
+    List<Suggestion> suggestions = tasks.getData().stream().map(adapter::taskToSuggestion).toList();
+    addHref(uriInfo, suggestions);
+
+    return new ResultList<>(
+        suggestions,
+        tasks.getPaging().getBefore(),
+        tasks.getPaging().getAfter(),
+        tasks.getPaging().getTotal());
   }
 
   @GET
@@ -196,7 +226,10 @@ public class SuggestionsResource {
       @Parameter(description = "Id of the Thread", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id) {
-    return addHref(uriInfo, dao.get(id));
+    Fields fields = taskRepository.getFields(TASK_FIELDS);
+    Task task = taskRepository.get(uriInfo, id, fields);
+    Suggestion suggestion = adapter.taskToSuggestion(task);
+    return addHref(uriInfo, suggestion);
   }
 
   @PUT
@@ -221,10 +254,23 @@ public class SuggestionsResource {
       @Parameter(description = "Id of the suggestion", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id) {
-    Suggestion suggestion = dao.get(id);
-    dao.checkPermissionsForAcceptOrRejectSuggestion(
-        suggestion, SuggestionStatus.Accepted, securityContext);
-    return dao.acceptSuggestion(uriInfo, suggestion, securityContext, authorizer).toResponse();
+    String userName = securityContext.getUserPrincipal().getName();
+    Fields fields = taskRepository.getFields(TASK_FIELDS);
+    Task task = taskRepository.get(uriInfo, id, fields);
+
+    taskRepository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
+
+    if (task.getPayload() instanceof SuggestionPayload) {
+      SuggestionHandler suggestionHandler = new SuggestionHandler();
+      suggestionHandler.approveSuggestion(task, userName, null);
+      taskRepository.storeEntity(task, true);
+    } else {
+      taskRepository.resolveTaskWithWorkflow(task, true, null, userName);
+    }
+
+    Suggestion suggestion = adapter.taskToSuggestion(task);
+    addHref(uriInfo, suggestion);
+    return Response.ok(suggestion).header(CHANGE_CUSTOM_HEADER, SUGGESTION_ACCEPTED).build();
   }
 
   @PUT
@@ -249,11 +295,23 @@ public class SuggestionsResource {
       @Parameter(description = "Id of the suggestion", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id) {
-    Suggestion suggestion = dao.get(id);
-    dao.checkPermissionsForAcceptOrRejectSuggestion(
-        suggestion, SuggestionStatus.Rejected, securityContext);
-    return dao.rejectSuggestion(uriInfo, suggestion, securityContext.getUserPrincipal().getName())
-        .toResponse();
+    String userName = securityContext.getUserPrincipal().getName();
+    Fields fields = taskRepository.getFields(TASK_FIELDS);
+    Task task = taskRepository.get(uriInfo, id, fields);
+
+    taskRepository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
+
+    if (task.getPayload() instanceof SuggestionPayload) {
+      SuggestionHandler suggestionHandler = new SuggestionHandler();
+      suggestionHandler.rejectSuggestion(task, userName, null);
+      taskRepository.storeEntity(task, true);
+    } else {
+      taskRepository.resolveTaskWithWorkflow(task, false, null, userName);
+    }
+
+    Suggestion suggestion = adapter.taskToSuggestion(task);
+    addHref(uriInfo, suggestion);
+    return Response.ok(suggestion).header(CHANGE_CUSTOM_HEADER, SUGGESTION_REJECTED).build();
   }
 
   @PUT
@@ -284,26 +342,55 @@ public class SuggestionsResource {
           @QueryParam("suggestionType")
           @DefaultValue("SuggestDescription")
           SuggestionType suggestionType) {
-    SuggestionFilter filter =
-        SuggestionFilter.builder()
-            .suggestionStatus(SuggestionStatus.Open)
-            .entityFQN(entityFQN)
-            .createdBy(userId)
-            .suggestionType(suggestionType)
-            .build();
-    List<Suggestion> suggestions = dao.listAll(filter);
-    if (!nullOrEmpty(suggestions)) {
-      // Validate the permissions for one suggestion
-      Suggestion suggestion = dao.get(suggestions.get(0).getId());
-      dao.checkPermissionsForAcceptOrRejectSuggestion(
-          suggestion, SuggestionStatus.Rejected, securityContext);
-      dao.checkPermissionsForEditEntity(suggestion, suggestionType, securityContext, authorizer);
-      return dao.acceptSuggestionList(uriInfo, suggestions, securityContext, authorizer);
-    } else {
-      // No suggestions found
+    String userName = securityContext.getUserPrincipal().getName();
+
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("type", TaskEntityType.Suggestion.value());
+    filter.addQueryParam("status", TaskEntityStatus.Open.value());
+    if (entityFQN != null) {
+      filter.addQueryParam("aboutFQN", entityFQN);
+    }
+    if (userId != null) {
+      filter.addQueryParam("createdBy", userId.toString());
+    }
+
+    Fields fields = taskRepository.getFields(TASK_FIELDS);
+    ResultList<Task> tasks =
+        taskRepository.listAfter(uriInfo, fields, filter, Integer.MAX_VALUE - 1, null);
+
+    SuggestionPayload.SuggestionType payloadType =
+        adapter.mapToPayloadSuggestionType(suggestionType);
+    List<Task> matchingTasks =
+        tasks.getData().stream()
+            .filter(
+                task ->
+                    task.getPayload() instanceof SuggestionPayload payload
+                        && payload.getSuggestionType() == payloadType)
+            .toList();
+
+    if (matchingTasks.isEmpty()) {
       return new RestUtil.PutResponse<>(
           Response.Status.BAD_REQUEST, List.of(), SUGGESTION_REJECTED);
     }
+
+    Task firstTask = matchingTasks.get(0);
+    taskRepository.checkPermissionsForResolveTask(authorizer, firstTask, false, securityContext);
+
+    List<Suggestion> acceptedSuggestions = new ArrayList<>();
+    for (Task task : matchingTasks) {
+      if (task.getPayload() instanceof SuggestionPayload) {
+        SuggestionHandler suggestionHandler = new SuggestionHandler();
+        suggestionHandler.approveSuggestion(task, userName, null);
+        taskRepository.storeEntity(task, true);
+      } else {
+        taskRepository.resolveTaskWithWorkflow(task, true, null, userName);
+      }
+      Suggestion suggestion = adapter.taskToSuggestion(task);
+      addHref(uriInfo, suggestion);
+      acceptedSuggestions.add(suggestion);
+    }
+
+    return new RestUtil.PutResponse<>(Response.Status.OK, acceptedSuggestions, SUGGESTION_ACCEPTED);
   }
 
   @PUT
@@ -334,26 +421,55 @@ public class SuggestionsResource {
           @QueryParam("suggestionType")
           @DefaultValue("SuggestDescription")
           SuggestionType suggestionType) {
-    SuggestionFilter filter =
-        SuggestionFilter.builder()
-            .suggestionStatus(SuggestionStatus.Open)
-            .entityFQN(entityFQN)
-            .createdBy(userId)
-            .suggestionType(suggestionType)
-            .build();
-    List<Suggestion> suggestions = dao.listAll(filter);
-    if (!nullOrEmpty(suggestions)) {
-      // Validate the permissions for one suggestion
-      Suggestion suggestion = dao.get(suggestions.get(0).getId());
-      dao.checkPermissionsForAcceptOrRejectSuggestion(
-          suggestion, SuggestionStatus.Rejected, securityContext);
-      return dao.rejectSuggestionList(
-          uriInfo, suggestions, securityContext.getUserPrincipal().getName());
-    } else {
-      // No suggestions found
+    String userName = securityContext.getUserPrincipal().getName();
+
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("type", TaskEntityType.Suggestion.value());
+    filter.addQueryParam("status", TaskEntityStatus.Open.value());
+    if (entityFQN != null) {
+      filter.addQueryParam("aboutFQN", entityFQN);
+    }
+    if (userId != null) {
+      filter.addQueryParam("createdBy", userId.toString());
+    }
+
+    Fields fields = taskRepository.getFields(TASK_FIELDS);
+    ResultList<Task> tasks =
+        taskRepository.listAfter(uriInfo, fields, filter, Integer.MAX_VALUE - 1, null);
+
+    SuggestionPayload.SuggestionType payloadType =
+        adapter.mapToPayloadSuggestionType(suggestionType);
+    List<Task> matchingTasks =
+        tasks.getData().stream()
+            .filter(
+                task ->
+                    task.getPayload() instanceof SuggestionPayload payload
+                        && payload.getSuggestionType() == payloadType)
+            .toList();
+
+    if (matchingTasks.isEmpty()) {
       return new RestUtil.PutResponse<>(
           Response.Status.BAD_REQUEST, List.of(), SUGGESTION_REJECTED);
     }
+
+    Task firstTask = matchingTasks.get(0);
+    taskRepository.checkPermissionsForResolveTask(authorizer, firstTask, false, securityContext);
+
+    List<Suggestion> rejectedSuggestions = new ArrayList<>();
+    for (Task task : matchingTasks) {
+      if (task.getPayload() instanceof SuggestionPayload) {
+        SuggestionHandler suggestionHandler = new SuggestionHandler();
+        suggestionHandler.rejectSuggestion(task, userName, null);
+        taskRepository.storeEntity(task, true);
+      } else {
+        taskRepository.resolveTaskWithWorkflow(task, false, null, userName);
+      }
+      Suggestion suggestion = adapter.taskToSuggestion(task);
+      addHref(uriInfo, suggestion);
+      rejectedSuggestions.add(suggestion);
+    }
+
+    return new RestUtil.PutResponse<>(Response.Status.OK, rejectedSuggestions, SUGGESTION_REJECTED);
   }
 
   @PUT
@@ -373,13 +489,25 @@ public class SuggestionsResource {
           @PathParam("id")
           UUID id,
       @Valid Suggestion suggestion) {
-    Suggestion origSuggestion = dao.get(id);
-    dao.checkPermissionsForUpdateSuggestion(origSuggestion, securityContext);
-    suggestion.setCreatedAt(origSuggestion.getCreatedAt());
-    suggestion.setCreatedBy(origSuggestion.getCreatedBy());
-    addHref(uriInfo, dao.update(suggestion, securityContext.getUserPrincipal().getName()));
-    return Response.created(suggestion.getHref())
-        .entity(suggestion)
+    String userName = securityContext.getUserPrincipal().getName();
+    Fields fields = taskRepository.getFields(TASK_FIELDS);
+    Task existingTask = taskRepository.get(uriInfo, id, fields);
+
+    if (existingTask.getPayload() instanceof SuggestionPayload payload) {
+      if (suggestion.getDescription() != null) {
+        payload.setSuggestedValue(suggestion.getDescription());
+      }
+    }
+
+    existingTask.setUpdatedAt(System.currentTimeMillis());
+    existingTask.setUpdatedBy(userName);
+    taskRepository.createOrUpdate(uriInfo, existingTask, userName);
+
+    Suggestion updatedSuggestion = adapter.taskToSuggestion(existingTask);
+    addHref(uriInfo, updatedSuggestion);
+
+    return Response.created(updatedSuggestion.getHref())
+        .entity(updatedSuggestion)
         .header(CHANGE_CUSTOM_HEADER, SUGGESTION_UPDATED)
         .build();
   }
@@ -404,9 +532,17 @@ public class SuggestionsResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateSuggestion create) {
-    Suggestion suggestion =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    addHref(uriInfo, dao.create(suggestion));
+    String userName = securityContext.getUserPrincipal().getName();
+
+    Task task = adapter.createSuggestionToTask(create, userName);
+
+    taskRepository.prepareInternal(task, false);
+    taskRepository.storeEntity(task, false);
+    taskRepository.storeRelationships(task);
+
+    Suggestion suggestion = adapter.taskToSuggestion(task);
+    addHref(uriInfo, suggestion);
+
     return Response.created(suggestion.getHref())
         .entity(suggestion)
         .header(CHANGE_CUSTOM_HEADER, SUGGESTION_CREATED)
@@ -425,22 +561,25 @@ public class SuggestionsResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response deleteSuggestion(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "ThreadId of the thread to be deleted",
               schema = @Schema(type = "string"))
           @PathParam("suggestionId")
           UUID suggestionId) {
-    // validate and get the thread
-    Suggestion suggestion = dao.get(suggestionId);
-    // delete thread only if the admin/bot/author tries to delete it
-    OperationContext operationContext =
-        new OperationContext(Entity.SUGGESTION, MetadataOperation.DELETE);
+    Fields fields = taskRepository.getFields(TASK_FIELDS);
+    Task task = taskRepository.get(uriInfo, suggestionId, fields);
+
+    OperationContext operationContext = new OperationContext(Entity.TASK, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext =
-        new PostResourceContext(suggestion.getCreatedBy().getName());
+        new PostResourceContext(task.getCreatedBy().getName());
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.deleteSuggestion(suggestion, securityContext.getUserPrincipal().getName())
-        .toResponse();
+
+    taskRepository.delete(securityContext.getUserPrincipal().getName(), suggestionId, true, true);
+
+    Suggestion suggestion = adapter.taskToSuggestion(task);
+    return Response.ok(suggestion).header(CHANGE_CUSTOM_HEADER, SUGGESTION_DELETED).build();
   }
 
   @DELETE
@@ -455,6 +594,7 @@ public class SuggestionsResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response deleteSuggestions(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "entity type", schema = @Schema(type = "string"))
           @PathParam("entityType")
@@ -462,16 +602,42 @@ public class SuggestionsResource {
       @Parameter(description = "fullyQualifiedName of entity", schema = @Schema(type = "string"))
           @PathParam("entityFQN")
           String entityFQN) {
-    // validate and get the thread
     EntityInterface entity =
         Entity.getEntityByName(entityType, entityFQN, "owners", Include.NON_DELETED);
-    // delete thread only if the admin/bot/author tries to delete it
-    OperationContext operationContext =
-        new OperationContext(Entity.SUGGESTION, MetadataOperation.DELETE);
-    ResourceContextInterface resourceContext =
-        new PostResourceContext(entity.getOwners().get(0).getName());
+
+    OperationContext operationContext = new OperationContext(Entity.TASK, MetadataOperation.DELETE);
+    ResourceContextInterface resourceContext;
+    if (!nullOrEmpty(entity.getOwners())) {
+      resourceContext = new PostResourceContext(entity.getOwners().get(0).getName());
+    } else {
+      resourceContext = new PostResourceContext(securityContext.getUserPrincipal().getName());
+    }
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return dao.deleteSuggestionsForAnEntity(entity, securityContext.getUserPrincipal().getName())
-        .toResponse();
+
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("type", TaskEntityType.Suggestion.value());
+    filter.addQueryParam("aboutFQN", entityFQN);
+
+    Fields fields = taskRepository.getFields(TASK_FIELDS);
+    ResultList<Task> tasks =
+        taskRepository.listAfter(uriInfo, fields, filter, Integer.MAX_VALUE - 1, null);
+
+    String userName = securityContext.getUserPrincipal().getName();
+    for (Task task : tasks.getData()) {
+      taskRepository.delete(userName, task.getId(), true, true);
+    }
+
+    return Response.ok(entity).header(CHANGE_CUSTOM_HEADER, SUGGESTION_DELETED).build();
+  }
+
+  private TaskEntityStatus mapSuggestionStatusToTaskStatus(SuggestionStatus status) {
+    if (status == null) {
+      return TaskEntityStatus.Open;
+    }
+    return switch (status) {
+      case Open -> TaskEntityStatus.Open;
+      case Accepted -> TaskEntityStatus.Approved;
+      case Rejected -> TaskEntityStatus.Rejected;
+    };
   }
 }

@@ -17,7 +17,7 @@ import { Table } from '../../../src/generated/entity/data/table';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { fullUuid, uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageByUrl } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -320,14 +320,17 @@ export class TableClass extends EntityClass {
     this.entityResponseData = entityData.entity;
   }
 
-  async visitEntityPage(page: Page, searchTerm?: string) {
-    await visitEntityPage({
+  async visitEntityPage(page: Page) {
+    // Reload entity data if not loaded (handles case where loadResponseData ran before setup created the JSON file)
+    if (!this.entityResponseData.fullyQualifiedName) {
+      const { EntityDataClass } = await import('./EntityDataClass');
+      EntityDataClass.loadResponseData();
+    }
+
+    await visitEntityPageByUrl({
       page,
-      searchTerm:
-        searchTerm ?? this.entityResponseData.fullyQualifiedName ?? '',
-      dataTestId: `${
-        this.entityResponseData.service?.name ?? this.service.name
-      }-${this.entityResponseData.name ?? this.entity.name}`,
+      entityType: 'table',
+      fqn: this.entityResponseData.fullyQualifiedName ?? '',
     });
   }
 
@@ -526,5 +529,21 @@ export class TableClass extends EntityClass {
       service: serviceResponse.body,
       entity: this.entityResponseData,
     };
+  }
+
+  async setOwner(
+    apiContext: APIRequestContext,
+    owner: { id: string; type: 'user' | 'team' }
+  ) {
+    return this.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/owners',
+          value: [owner],
+        },
+      ],
+    });
   }
 }

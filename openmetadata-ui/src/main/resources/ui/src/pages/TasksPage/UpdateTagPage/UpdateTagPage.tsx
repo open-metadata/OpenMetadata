@@ -25,27 +25,22 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { EntityField } from '../../../constants/Feeds.constants';
 import { TASK_SANITIZE_VALUE_REGEX } from '../../../constants/regex.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import {
-  CreateThread,
-  TaskType,
-} from '../../../generated/api/feed/createThread';
 import { Chart } from '../../../generated/entity/data/chart';
 import { Glossary } from '../../../generated/entity/data/glossary';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { withPageLayout } from '../../../hoc/withPageLayout';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
-import { postThread } from '../../../rest/feedsAPI';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
-  ENTITY_LINK_SEPARATOR,
-  getEntityFeedLink,
-} from '../../../utils/EntityUtils';
+  CreateTask,
+  createTask,
+  TaskCategory,
+  TaskEntityType,
+  TaskPriority,
+} from '../../../rest/tasksAPI';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import i18n from '../../../utils/i18next/LocalUtil';
 import {
   fetchEntityDetail,
@@ -69,7 +64,6 @@ const UpdateTag = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [form] = useForm();
-  const { currentUser } = useApplicationStore();
 
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
@@ -139,49 +133,63 @@ const UpdateTag = () => {
     fetchOptions(data);
   };
 
-  const getTaskAbout = () => {
+  const getFieldPath = () => {
     if (field && value) {
-      return `${field}${ENTITY_LINK_SEPARATOR}${value}${ENTITY_LINK_SEPARATOR}tags`;
-    } else {
-      return EntityField.TAGS;
+      return `${field}.${value}`;
     }
+
+    return undefined;
   };
 
-  const onCreateTask: FormProps['onFinish'] = (value) => {
+  const onCreateTask: FormProps['onFinish'] = async (formValues) => {
     setIsLoading(true);
-    const data: CreateThread = {
-      from: currentUser?.name as string,
-      message: value.title || taskMessage,
-      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
-      taskDetails: {
-        assignees: assignees.map((assignee) => ({
-          id: assignee.value,
-          type: assignee.type,
-        })),
-        suggestion: JSON.stringify(suggestion),
-        type: TaskType.UpdateTag,
-        oldValue: JSON.stringify(currentTags),
+
+    // Compute tags to add and remove by comparing current vs suggested
+    const currentTagFQNs = new Set(currentTags.map((t) => t.tagFQN));
+    const suggestionTagFQNs = new Set(suggestion.map((t) => t.tagFQN));
+
+    const tagsToAdd = suggestion.filter((t) => !currentTagFQNs.has(t.tagFQN));
+    const tagsToRemove = currentTags.filter(
+      (t) => !suggestionTagFQNs.has(t.tagFQN)
+    );
+
+    const data: CreateTask = {
+      name: formValues.title || taskMessage,
+      category: TaskCategory.MetadataUpdate,
+      type: TaskEntityType.TagUpdate,
+      priority: TaskPriority.Medium,
+      about: entityFQN,
+      aboutType: entityType,
+      assignees: assignees.map((assignee) => assignee.name ?? ''),
+      payload: {
+        fieldPath: getFieldPath(),
+        currentTags,
+        tagsToAdd,
+        tagsToRemove,
+        operation: 'Replace',
       },
-      type: ThreadType.Task,
     };
-    postThread(data)
-      .then(() => {
-        showSuccessToast(
-          t('server.create-entity-success', {
-            entity: t('label.task'),
-          })
-        );
-        navigate(
-          entityUtilClassBase.getEntityLink(
-            entityType,
-            entityFQN,
-            EntityTabs.ACTIVITY_FEED,
-            ActivityFeedTabs.TASKS
-          )
-        );
-      })
-      .catch((err: AxiosError) => showErrorToast(err))
-      .finally(() => setIsLoading(false));
+
+    try {
+      await createTask(data);
+      showSuccessToast(
+        t('server.create-entity-success', {
+          entity: t('label.task'),
+        })
+      );
+      navigate(
+        entityUtilClassBase.getEntityLink(
+          entityType,
+          entityFQN,
+          EntityTabs.ACTIVITY_FEED,
+          ActivityFeedTabs.TASKS
+        )
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {

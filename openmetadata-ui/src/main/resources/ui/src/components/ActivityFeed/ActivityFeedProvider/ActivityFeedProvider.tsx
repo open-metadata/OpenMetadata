@@ -28,11 +28,11 @@ import { POST_FEED_PAGE_COUNT } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
+import { CreateThread } from '../../../generated/api/feed/createThread';
+import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import {
   Post,
-  TaskType,
   Thread,
-  ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
@@ -40,16 +40,32 @@ import { Paging } from '../../../generated/type/paging';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
+  addActivityReaction,
   deletePostById,
   deleteThread,
+  getActivityEvents,
   getAllFeeds,
+  getEntityActivityByFqn,
   getFeedById,
+  getMyActivityFeed,
   getPostsFeedById,
+  getUserActivity,
+  ListActivityParams,
   postFeedById,
+  postThread,
+  removeActivityReaction,
   updatePost,
   updateThread,
 } from '../../../rest/feedsAPI';
 import { getListTestCaseIncidentByStateId } from '../../../rest/incidentManagerAPI';
+import {
+  addTaskComment,
+  getTaskById,
+  listTasks,
+  Task,
+  TaskEntityType,
+  TaskStatusGroup,
+} from '../../../rest/tasksAPI';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -69,7 +85,18 @@ export const ActivityFeedContext = createContext(
 
 const ActivityFeedProvider = ({ children, user }: Props) => {
   const { t } = useTranslation();
+  // For activity events (entity changes)
+  const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([]);
+  const [selectedActivity, setSelectedActivity] = useState<ActivityEvent>();
+  const [activityThread, setActivityThread] = useState<Thread | undefined>();
+  const [isActivityLoading, setIsActivityLoading] = useState(false);
+  // For regular feeds (conversations, announcements)
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
+  const [selectedThread, setSelectedThread] = useState<Thread>();
+  // For tasks - using Task type directly
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [selectedTask, setSelectedTask] = useState<Task>();
+
   const [entityPaging, setEntityPaging] = useState<Paging>({} as Paging);
   const [focusReplyEditor, setFocusReplyEditor] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
@@ -77,7 +104,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [isTestCaseResolutionLoading, setIsTestCaseResolutionLoading] =
     useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedThread, setSelectedThread] = useState<Thread>();
   const [testCaseResolutionStatus, setTestCaseResolutionStatus] = useState<
     TestCaseResolutionStatus[]
   >([]);
@@ -123,35 +149,47 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const setActiveThread = useCallback((active?: Thread) => {
     setSelectedThread(active);
     active && fetchPostsFeed(active);
+  }, []);
 
+  const setActiveTask = useCallback((active?: Task) => {
+    setSelectedTask(active);
+
+    // Fetch test case resolution if applicable
     if (
       active &&
-      active.task?.type === TaskType.RequestTestCaseFailureResolution &&
-      active.task?.testCaseResolutionStatusId
+      active.type === TaskEntityType.TestCaseResolution &&
+      active.payload &&
+      typeof active.payload === 'object' &&
+      'testCaseResolutionStatusId' in active.payload
     ) {
-      fetchTestCaseResolution(active.task.testCaseResolutionStatusId);
+      fetchTestCaseResolution(
+        active.payload.testCaseResolutionStatusId as string
+      );
     }
   }, []);
 
   const fetchUpdatedThread = useCallback(
-    async (id: string) => {
+    async (id: string, isTask?: boolean) => {
       try {
-        const res = await getFeedById(id);
-        setSelectedThread(res.data);
-        setEntityThread((prev) => {
-          return prev.map((thread) => {
-            if (thread.id === id) {
-              return res.data;
-            } else {
-              return thread;
-            }
+        if (isTask) {
+          const res = await getTaskById(id, {
+            fields: 'assignees,createdBy,about,comments,payload',
           });
-        });
+          const task = res.data;
+          setSelectedTask(task);
+          setTasks((prev) => prev.map((t) => (t.id === id ? task : t)));
+        } else {
+          const res = await getFeedById(id);
+          setSelectedThread(res.data);
+          setEntityThread((prev) =>
+            prev.map((thread) => (thread.id === id ? res.data : thread))
+          );
+        }
       } catch {
         // no need to show error toast
       }
     },
-    [setEntityThread]
+    []
   );
 
   const getFeedData = useCallback(
@@ -161,7 +199,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       type?: ThreadType,
       entityType?: EntityType,
       fqn?: string,
-      taskStatus?: ThreadTaskStatus,
+      taskStatusGroup?: TaskStatusGroup,
       limit?: number
     ) => {
       try {
@@ -175,19 +213,55 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           userId = currentUser?.id;
         }
 
-        const { data, paging } = await getAllFeeds(
-          entityType !== EntityType.USER && fqn
-            ? getEntityFeedLink(entityType, fqn)
-            : undefined,
-          after,
-          type,
-          feedFilterType,
-          type === ThreadType.Task ? taskStatus : undefined,
-          userId,
-          limit
-        );
-        setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
-        setEntityPaging(paging);
+        // Use tasksAPI for Task type, feedsAPI for everything else
+        if (type === ThreadType.Task) {
+          const { data: taskData, paging } = await listTasks({
+            statusGroup: taskStatusGroup,
+            assignee: userId,
+            aboutEntity:
+              entityType !== EntityType.USER && fqn ? fqn : undefined,
+            after,
+            limit,
+            fields: 'assignees,createdBy,about,comments,payload',
+          });
+
+          // Sort tasks by createdAt descending (newest first)
+          const sortedTasks = orderBy(taskData, ['createdAt'], ['desc']);
+
+          setTasks((prev) => (after ? [...prev, ...sortedTasks] : sortedTasks));
+          setEntityPaging(paging);
+        } else if (feedFilterType === FeedFilter.MENTIONS) {
+          // For mentions, fetch tasks where user was mentioned in comments
+          const userFqn = currentUser?.fullyQualifiedName ?? currentUser?.name;
+          const { data: taskData, paging: taskPaging } = await listTasks({
+            mentionedUser: userFqn,
+            aboutEntity:
+              entityType !== EntityType.USER && fqn ? fqn : undefined,
+            after,
+            limit,
+            fields: 'assignees,createdBy,about,comments,payload',
+          });
+
+          // Sort tasks by createdAt descending (newest first)
+          const sortedTasks = orderBy(taskData, ['createdAt'], ['desc']);
+
+          setTasks((prev) => (after ? [...prev, ...sortedTasks] : sortedTasks));
+          setEntityPaging(taskPaging);
+        } else {
+          const { data, paging } = await getAllFeeds(
+            entityType !== EntityType.USER && fqn
+              ? getEntityFeedLink(entityType, fqn)
+              : undefined,
+            after,
+            type,
+            feedFilterType,
+            undefined,
+            userId,
+            limit
+          );
+          setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
+          setEntityPaging(paging);
+        }
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -203,38 +277,50 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   );
 
   // Here value is the post message and id can be thread id or post id.
-  const postFeed = useCallback(async (value: string, id: string) => {
-    if (!currentUser) {
-      return;
-    }
+  const postFeed = useCallback(
+    async (value: string, id: string, isTask?: boolean) => {
+      if (!currentUser) {
+        return;
+      }
 
-    const data = {
-      message: value,
-      from: currentUser.name,
-    } as Post;
+      try {
+        if (isTask) {
+          // Use tasksAPI for task comments
+          const updatedTask = await addTaskComment(id, value);
+          setActiveTask(updatedTask);
+          setTasks((prev) =>
+            prev.map((task) => (task.id === id ? updatedTask : task))
+          );
+        } else {
+          const data = {
+            message: value,
+            from: currentUser.name,
+          } as Post;
 
-    try {
-      const res = await postFeedById(id, data);
-      setActiveThread(res);
-      const { id: responseId, posts } = res;
-      setEntityThread((pre) => {
-        return pre.map((thread) => {
-          if (thread.id === responseId) {
-            return { ...res, posts: posts?.slice(-3) };
-          } else {
-            return thread;
-          }
-        });
-      });
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.add-entity-error', {
-          entity: t('label.feed-plural'),
-        })
-      );
-    }
-  }, []);
+          const res = await postFeedById(id, data);
+          setActiveThread(res);
+          const { id: responseId, posts } = res;
+          setEntityThread((pre) =>
+            pre.map((thread) => {
+              if (thread.id === responseId) {
+                return { ...res, posts: posts?.slice(-3) };
+              }
+
+              return thread;
+            })
+          );
+        }
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.add-entity-error', {
+            entity: t('label.feed-plural'),
+          })
+        );
+      }
+    },
+    [currentUser]
+  );
 
   const refreshActivityFeed = useCallback((threads: Thread[]) => {
     setEntityThread([...threads]);
@@ -242,17 +328,22 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
   const updateEntityThread = useCallback(
     (thread: Thread) => {
-      setEntityThread((prev) => {
-        return prev.map((threadItem) => {
-          if (threadItem.id === thread.id) {
-            return thread;
-          } else {
-            return threadItem;
-          }
-        });
-      });
+      setEntityThread((prev) =>
+        prev.map((threadItem) =>
+          threadItem.id === thread.id ? thread : threadItem
+        )
+      );
     },
     [setEntityThread]
+  );
+
+  const updateTask = useCallback(
+    (task: Task) => {
+      setTasks((prev) =>
+        prev.map((taskItem) => (taskItem.id === task.id ? task : taskItem))
+      );
+    },
+    [setTasks]
   );
 
   const deleteFeed = useCallback(
@@ -262,12 +353,16 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         setEntityThread((prev) =>
           prev.filter((thread) => thread.id !== data.id)
         );
+        // Clear activityThread if it's the deleted thread
+        if (activityThread?.id === data.id) {
+          setActivityThread(undefined);
+        }
       } else {
         const deleteResponse = await deletePostById(threadId, postId);
         if (deleteResponse) {
           const data = await getUpdatedThread(threadId);
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
+          setEntityThread((pre) =>
+            pre.map((thread) => {
               if (thread.id === data.id) {
                 return {
                   ...thread,
@@ -277,21 +372,25 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
               } else {
                 return thread;
               }
-            });
-          });
+            })
+          );
           setActiveThread(data);
+          // Also update activityThread if it matches
+          if (activityThread?.id === threadId) {
+            setActivityThread(data);
+          }
         }
       }
     },
-    []
+    [activityThread]
   );
 
   const updateThreadHandler = useCallback(
     async (threadId: string, data: Operation[]) => {
       try {
         const res = await updateThread(threadId, data);
-        setEntityThread((prevData) => {
-          return prevData.map((thread) => {
+        setEntityThread((prevData) =>
+          prevData.map((thread) => {
             if (isEqual(threadId, thread.id)) {
               return {
                 ...thread,
@@ -302,8 +401,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
             } else {
               return thread;
             }
-          });
-        });
+          })
+        );
       } catch (err) {
         showErrorToast(err as AxiosError);
       }
@@ -316,8 +415,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       try {
         const res = await updatePost(threadId, postId, data);
         const activeThreadData = await getFeedById(threadId);
-        setEntityThread((prevData) => {
-          return prevData.map((thread) => {
+        setEntityThread((prevData) =>
+          prevData.map((thread) => {
             if (isEqual(threadId, thread.id)) {
               const updatedPosts = (thread.posts ?? []).map((post) => {
                 if (isEqual(postId, post.id)) {
@@ -335,14 +434,18 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
             } else {
               return thread;
             }
-          });
-        });
+          })
+        );
         setSelectedThread(activeThreadData.data);
+        // Also update activityThread if it matches
+        if (activityThread?.id === threadId) {
+          setActivityThread(activeThreadData.data);
+        }
       } catch (err) {
         showErrorToast(err as AxiosError);
       }
     },
-    []
+    [activityThread]
   );
 
   const updateFeed = useCallback(
@@ -405,6 +508,43 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     });
   };
 
+  const updateActivityReaction = useCallback(
+    async (
+      activityId: string,
+      reactionType: ReactionType,
+      reactionOperation: ReactionOperation
+    ) => {
+      try {
+        let updatedActivity: ActivityEvent;
+        if (reactionOperation === ReactionOperation.ADD) {
+          updatedActivity = await addActivityReaction(activityId, reactionType);
+        } else {
+          await removeActivityReaction(activityId, reactionType);
+          const currentActivity = activityEvents.find(
+            (a) => a.id === activityId
+          );
+          updatedActivity = {
+            ...currentActivity,
+            reactions: (currentActivity?.reactions ?? []).filter(
+              (r) =>
+                !(
+                  r.reactionType === reactionType &&
+                  r.user?.id === currentUser?.id
+                )
+            ),
+          } as ActivityEvent;
+        }
+
+        setActivityEvents((prev) =>
+          prev.map((a) => (a.id === activityId ? updatedActivity : a))
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [activityEvents, currentUser?.id]
+  );
+
   const updateEditorFocus = (isFocused: boolean) => {
     setFocusReplyEditor(isFocused);
   };
@@ -412,11 +552,77 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const showDrawer = useCallback((thread: Thread) => {
     setIsDrawerOpen(true);
     setActiveThread(thread);
+    setSelectedTask(undefined);
   }, []);
+
+  const showTaskDrawer = useCallback((task: Task) => {
+    setIsDrawerOpen(true);
+    setActiveTask(task);
+    setSelectedThread(undefined);
+    setSelectedActivity(undefined);
+  }, []);
+
+  const setActiveActivity = useCallback(async (activity?: ActivityEvent) => {
+    setSelectedActivity(activity);
+    setActivityThread(undefined);
+
+    if (activity?.about) {
+      try {
+        const response = await getAllFeeds(
+          activity.about,
+          undefined,
+          ThreadType.Conversation
+        );
+        if (response.data.length > 0) {
+          setActivityThread(response.data[0]);
+        }
+      } catch {
+        // No thread found for this activity, which is fine
+      }
+    }
+  }, []);
+
+  const showActivityDrawer = useCallback((activity: ActivityEvent) => {
+    setIsDrawerOpen(true);
+    setSelectedActivity(activity);
+    setSelectedThread(undefined);
+    setSelectedTask(undefined);
+  }, []);
+
+  const postActivityComment = useCallback(
+    async (message: string, activity: ActivityEvent) => {
+      try {
+        if (activityThread) {
+          // Add to existing thread
+          const updatedThread = await postFeedById(activityThread.id, {
+            from: currentUser?.name ?? '',
+            message,
+          } as Post);
+          setActivityThread(updatedThread);
+        } else {
+          // Create new thread
+          const threadData: CreateThread = {
+            from: currentUser?.name ?? '',
+            message,
+            about: activity.about ?? '',
+            type: ThreadType.Conversation,
+          };
+
+          const createdThread = await postThread(threadData);
+          setEntityThread((prev) => [createdThread, ...prev]);
+          setActivityThread(createdThread);
+        }
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      }
+    },
+    [currentUser?.name, activityThread]
+  );
 
   const hideDrawer = useCallback(() => {
     setFocusReplyEditor(false);
     setIsDrawerOpen(false);
+    setSelectedActivity(undefined);
   }, []);
 
   const updateTestCaseIncidentStatus = useCallback(
@@ -426,12 +632,80 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     [setTestCaseResolutionStatus]
   );
 
+  // Activity Events fetch methods
+  const fetchActivityEventsHandler = useCallback(
+    async (params?: ListActivityParams) => {
+      setIsActivityLoading(true);
+      try {
+        const { data } = await getActivityEvents(params);
+        setActivityEvents(data);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsActivityLoading(false);
+      }
+    },
+    []
+  );
+
+  const fetchMyActivityFeedHandler = useCallback(
+    async (params?: { days?: number; limit?: number }) => {
+      setIsActivityLoading(true);
+      try {
+        const { data } = await getMyActivityFeed(params);
+        setActivityEvents(data);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsActivityLoading(false);
+      }
+    },
+    []
+  );
+
+  const fetchEntityActivityHandler = useCallback(
+    async (
+      entityType: string,
+      fqn: string,
+      params?: { days?: number; limit?: number }
+    ) => {
+      setIsActivityLoading(true);
+      try {
+        const { data } = await getEntityActivityByFqn(entityType, fqn, params);
+        setActivityEvents(data);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsActivityLoading(false);
+      }
+    },
+    []
+  );
+
+  const fetchUserActivityHandler = useCallback(
+    async (userId: string, params?: { days?: number; limit?: number }) => {
+      setIsActivityLoading(true);
+      try {
+        const { data } = await getUserActivity(userId, params);
+        setActivityEvents(data);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsActivityLoading(false);
+      }
+    },
+    []
+  );
+
   const activityFeedContextValues = useMemo(() => {
     return {
       entityThread,
       selectedThread,
+      tasks,
+      selectedTask,
       isDrawerOpen,
       loading,
+      isActivityLoading,
       isPostsLoading,
       isTestCaseResolutionLoading,
       focusReplyEditor,
@@ -442,21 +716,38 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       updateReactions,
       getFeedData,
       showDrawer,
+      showTaskDrawer,
+      showActivityDrawer,
       hideDrawer,
       updateEditorFocus,
       setActiveThread,
+      setActiveTask,
+      setActiveActivity,
       updateEntityThread,
+      updateTask,
       entityPaging,
       userId: user ?? currentUser?.id ?? '',
       testCaseResolutionStatus,
       fetchUpdatedThread,
       updateTestCaseIncidentStatus,
+      activityEvents,
+      selectedActivity,
+      activityThread,
+      fetchActivityEvents: fetchActivityEventsHandler,
+      fetchMyActivityFeed: fetchMyActivityFeedHandler,
+      fetchEntityActivity: fetchEntityActivityHandler,
+      fetchUserActivity: fetchUserActivityHandler,
+      updateActivityReaction,
+      postActivityComment,
     };
   }, [
     entityThread,
     selectedThread,
+    tasks,
+    selectedTask,
     isDrawerOpen,
     loading,
+    isActivityLoading,
     isPostsLoading,
     isTestCaseResolutionLoading,
     focusReplyEditor,
@@ -467,16 +758,30 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     updateReactions,
     getFeedData,
     showDrawer,
+    showTaskDrawer,
+    showActivityDrawer,
     hideDrawer,
     updateEditorFocus,
     setActiveThread,
+    setActiveTask,
+    setActiveActivity,
     updateEntityThread,
+    updateTask,
     entityPaging,
     user,
     currentUser,
     testCaseResolutionStatus,
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
+    activityEvents,
+    selectedActivity,
+    activityThread,
+    fetchActivityEventsHandler,
+    fetchMyActivityFeedHandler,
+    fetchEntityActivityHandler,
+    fetchUserActivityHandler,
+    updateActivityReaction,
+    postActivityComment,
   ]);
 
   return (

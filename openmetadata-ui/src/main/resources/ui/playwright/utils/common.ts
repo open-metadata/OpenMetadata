@@ -75,19 +75,28 @@ export const redirectToExplorePage = async (page: Page) => {
 
 export const removeLandingBanner = async (page: Page) => {
   try {
-    const welcomePageCloseButton = await page
-      .waitForSelector('[data-testid="welcome-screen-close-btn"]', {
-        state: 'visible',
-        timeout: 5000,
-      })
-      .catch(() => {
-        // Do nothing if the welcome banner does not exist
-        return;
-      });
+    // Check if welcome screen is visible
+    const welcomeScreen = await page
+      .locator('[data-testid="welcome-screen"]')
+      .isVisible()
+      .catch(() => false);
 
-    // Close the welcome banner if it exists
-    if (welcomePageCloseButton?.isVisible()) {
-      await welcomePageCloseButton.click();
+    if (welcomeScreen) {
+      // Try multiple selectors for the close button
+      const closeButton = page.locator(
+        '[data-testid="welcome-screen-close-btn"], .welcome-screen-close-btn, [data-testid="welcome-screen"] .ant-card-extra button'
+      ).first();
+
+      if (await closeButton.isVisible().catch(() => false)) {
+        await closeButton.click();
+        // Wait for the welcome screen to disappear
+        await page
+          .locator('[data-testid="welcome-screen"]')
+          .waitFor({ state: 'hidden', timeout: 5000 })
+          .catch(() => {
+            // Ignore if welcome screen doesn't disappear
+          });
+      }
     }
   } catch {
     // Do nothing if the welcome banner does not exist

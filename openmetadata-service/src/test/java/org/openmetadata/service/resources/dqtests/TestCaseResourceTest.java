@@ -93,8 +93,6 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateTable;
-import org.openmetadata.schema.api.feed.CloseTask;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -104,9 +102,9 @@ import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -140,7 +138,9 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskStatus;
+import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TestCaseResolutionPayload;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -148,7 +148,6 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
@@ -1986,10 +1985,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_testCaseResolutionTaskResolveWorkflowThruFeed(TestInfo test)
+  void test_testCaseResolutionTaskResolveWorkflow(TestInfo test)
       throws HttpResponseException, ParseException {
     Long startTs = System.currentTimeMillis();
-    FeedResourceTest feedResourceTest = new FeedResourceTest();
 
     TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
 
@@ -2009,30 +2007,45 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
             .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
     TestCaseResolutionStatus assignedIncident = createTestCaseFailureStatus(createAssignedIncident);
-    String jsonThread =
-        Entity.getCollectionDAO()
-            .feedDAO()
-            .fetchThreadByTestCaseResolutionStatusId(assignedIncident.getStateId());
-    Thread thread = JsonUtils.readValue(jsonThread, Thread.class);
-    assertEquals(assignedIncident.getStateId(), thread.getTask().getTestCaseResolutionStatusId());
-    assertEquals(TaskStatus.Open, thread.getTask().getStatus());
 
-    // resolve the task. The old task should be closed and the latest test case resolution status
-    // should be updated (resolved) with the same state ID
-
-    ResolveTask resolveTask =
-        new ResolveTask()
-            .withTestCaseFQN(testCaseEntity.getFullyQualifiedName())
-            .withTestCaseFailureReason(TestCaseFailureReasonType.FalsePositive)
-            .withNewValue("False positive, test case was valid");
-    feedResourceTest.resolveTask(thread.getTask().getId(), resolveTask, ADMIN_AUTH_HEADERS);
-    jsonThread =
+    // Verify task was created using Task API
+    String jsonTask =
         Entity.getCollectionDAO()
-            .feedDAO()
-            .fetchThreadByTestCaseResolutionStatusId(assignedIncident.getStateId());
-    thread = JsonUtils.readValue(jsonThread, Thread.class);
-    // Confirm that the task is closed
-    assertEquals(TaskStatus.Closed, thread.getTask().getStatus());
+            .taskDAO()
+            .fetchTaskByTestCaseResolutionStatusId(assignedIncident.getStateId().toString());
+    assertNotNull(jsonTask, "Task should be created for incident");
+    Task task = JsonUtils.readValue(jsonTask, Task.class);
+    assertEquals(TaskEntityStatus.Open, task.getStatus());
+    assertEquals(TaskEntityType.TestCaseResolution, task.getType());
+
+    // Verify Task payload contains the testCaseResolutionStatusId
+    TestCaseResolutionPayload payload =
+        JsonUtils.convertValue(task.getPayload(), TestCaseResolutionPayload.class);
+    assertEquals(assignedIncident.getStateId(), payload.getTestCaseResolutionStatusId());
+
+    // Resolve the incident by creating a new resolution status
+    // This will automatically close the task
+    CreateTestCaseResolutionStatus createResolvedIncident =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
+            .withTestCaseResolutionStatusDetails(
+                new Resolved()
+                    .withTestCaseFailureReason(TestCaseFailureReasonType.FalsePositive)
+                    .withTestCaseFailureComment("False positive, test case was valid")
+                    .withResolvedBy(USER1_REF));
+    createTestCaseFailureStatus(createResolvedIncident);
+
+    // Verify the task is now closed
+    jsonTask =
+        Entity.getCollectionDAO()
+            .taskDAO()
+            .fetchTaskByTestCaseResolutionStatusId(assignedIncident.getStateId().toString());
+    task = JsonUtils.readValue(jsonTask, Task.class);
+    assertTrue(
+        task.getStatus() == TaskEntityStatus.Completed
+            || task.getStatus() == TaskEntityStatus.Cancelled,
+        "Task should be closed after resolution");
 
     // We'll confirm that we have created a new test case resolution status with the same state ID
     // and type Resolved
@@ -2061,10 +2074,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_testCaseResolutionTaskCloseWorkflowThruFeed(TestInfo test)
+  void test_testCaseResolutionTaskAssignmentWorkflow(TestInfo test)
       throws HttpResponseException, ParseException {
     Long startTs = System.currentTimeMillis();
-    FeedResourceTest feedResourceTest = new FeedResourceTest();
 
     TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
 
@@ -2077,39 +2089,66 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
         ADMIN_AUTH_HEADERS);
 
-    // Now, we should be good to create an ASSIGNED status
+    // Create ACK status first (which creates the task)
+    CreateTestCaseResolutionStatus createAckIncident =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack);
+    TestCaseResolutionStatus ackIncident = createTestCaseFailureStatus(createAckIncident);
+
+    // Verify task was created using Task API
+    String jsonTask =
+        Entity.getCollectionDAO()
+            .taskDAO()
+            .fetchTaskByTestCaseResolutionStatusId(ackIncident.getStateId().toString());
+    assertNotNull(jsonTask, "Task should be created for incident ACK");
+    Task task = JsonUtils.readValue(jsonTask, Task.class);
+    assertEquals(TaskEntityStatus.Open, task.getStatus());
+
+    // Now assign the incident to USER1
     CreateTestCaseResolutionStatus createAssignedIncident =
         new CreateTestCaseResolutionStatus()
             .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
             .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
             .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
-    TestCaseResolutionStatus assignedIncident = createTestCaseFailureStatus(createAssignedIncident);
+    createTestCaseFailureStatus(createAssignedIncident);
 
-    // Assert that the task is open
-    String jsonThread =
+    // Verify the task assignee was updated
+    jsonTask =
         Entity.getCollectionDAO()
-            .feedDAO()
-            .fetchThreadByTestCaseResolutionStatusId(assignedIncident.getStateId());
-    Thread thread = JsonUtils.readValue(jsonThread, Thread.class);
-    assertEquals(assignedIncident.getStateId(), thread.getTask().getTestCaseResolutionStatusId());
-    assertEquals(TaskStatus.Open, thread.getTask().getStatus());
+            .taskDAO()
+            .fetchTaskByTestCaseResolutionStatusId(ackIncident.getStateId().toString());
+    task = JsonUtils.readValue(jsonTask, Task.class);
+    assertEquals(TaskEntityStatus.Open, task.getStatus());
+    assertNotNull(task.getAssignees());
+    assertFalse(task.getAssignees().isEmpty());
+    assertEquals(USER1_REF.getName(), task.getAssignees().get(0).getName());
 
-    // close the task. The old task should be closed and the latest test case resolution status
-    // should be updated (resolved) with the same state ID.
-    CloseTask closeTask =
-        new CloseTask()
-            .withComment(USER1.getFullyQualifiedName())
-            .withTestCaseFQN(testCaseEntity.getFullyQualifiedName());
-    feedResourceTest.closeTask(thread.getTask().getId(), closeTask, ADMIN_AUTH_HEADERS);
-    jsonThread =
+    // Resolve the incident
+    CreateTestCaseResolutionStatus createResolvedIncident =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
+            .withTestCaseResolutionStatusDetails(
+                new Resolved()
+                    .withTestCaseFailureComment("Issue fixed")
+                    .withTestCaseFailureReason(TestCaseFailureReasonType.MissingData)
+                    .withResolvedBy(USER1_REF));
+    createTestCaseFailureStatus(createResolvedIncident);
+
+    // Verify task is closed
+    jsonTask =
         Entity.getCollectionDAO()
-            .feedDAO()
-            .fetchThreadByTestCaseResolutionStatusId(assignedIncident.getStateId());
-    thread = JsonUtils.readValue(jsonThread, Thread.class);
-    assertEquals(TaskStatus.Closed, thread.getTask().getStatus());
+            .taskDAO()
+            .fetchTaskByTestCaseResolutionStatusId(ackIncident.getStateId().toString());
+    task = JsonUtils.readValue(jsonTask, Task.class);
+    assertTrue(
+        task.getStatus() == TaskEntityStatus.Completed
+            || task.getStatus() == TaskEntityStatus.Cancelled,
+        "Task should be closed after resolution");
 
     // We'll confirm that we have created a new test case resolution status with the same state ID
-    // and type Assigned
+    // and type Resolved
     ResultList<TestCaseResolutionStatus> mostRecentTestCaseResolutionStatus =
         getTestCaseFailureStatus(
             10,
@@ -2124,15 +2163,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(
         TestCaseResolutionStatusTypes.Resolved,
         mostRecentTestCaseResolutionStatusData.getTestCaseResolutionStatusType());
-    assertEquals(
-        assignedIncident.getStateId(), mostRecentTestCaseResolutionStatusData.getStateId());
+    assertEquals(ackIncident.getStateId(), mostRecentTestCaseResolutionStatusData.getStateId());
     mostRecentTestCaseResolutionStatusData.getMetrics().stream()
         .filter(m -> m.getName().equals("timeToResolution"))
         .forEach(m -> assertNotNull(m.getValue()));
   }
 
   @Test
-  void test_testCaseResolutionTaskWorkflowThruAPI(TestInfo test)
+  void test_testCaseResolutionTaskDirectAssignmentWorkflow(TestInfo test)
       throws HttpResponseException, ParseException {
     TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
 
@@ -2145,7 +2183,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
         ADMIN_AUTH_HEADERS);
 
-    // Now, we should be good to create an ASSIGNED status
+    // Directly create an ASSIGNED status (skipping ACK)
+    // This tests the New -> Assigned flow
     CreateTestCaseResolutionStatus createAssignedIncident =
         new CreateTestCaseResolutionStatus()
             .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
@@ -2154,19 +2193,31 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     TestCaseResolutionStatus assignedIncident = createTestCaseFailureStatus(createAssignedIncident);
 
-    // Confirm that the task is open
-    String jsonThread =
+    // Verify task was created with correct assignee using Task API
+    String jsonTask =
         Entity.getCollectionDAO()
-            .feedDAO()
-            .fetchThreadByTestCaseResolutionStatusId(assignedIncident.getStateId());
-    Thread thread = JsonUtils.readValue(jsonThread, Thread.class);
-    assertEquals(TaskStatus.Open, thread.getTask().getStatus());
-    assertEquals(assignedIncident.getStateId(), thread.getTask().getTestCaseResolutionStatusId());
+            .taskDAO()
+            .fetchTaskByTestCaseResolutionStatusId(assignedIncident.getStateId().toString());
+    assertNotNull(jsonTask, "Task should be created for direct assignment");
+    Task task = JsonUtils.readValue(jsonTask, Task.class);
+    assertEquals(TaskEntityStatus.Open, task.getStatus());
+    assertEquals(TaskEntityType.TestCaseResolution, task.getType());
+
+    // Verify payload contains the stateId
+    TestCaseResolutionPayload payload =
+        JsonUtils.convertValue(task.getPayload(), TestCaseResolutionPayload.class);
+    assertEquals(assignedIncident.getStateId(), payload.getTestCaseResolutionStatusId());
+
+    // Verify assignee
+    assertNotNull(task.getAssignees());
+    assertFalse(task.getAssignees().isEmpty());
+    assertEquals(USER1_REF.getName(), task.getAssignees().get(0).getName());
 
     // Create a new test case resolution status with type Resolved
     // and confirm the task is closed
     CreateTestCaseResolutionStatus createTestCaseFailureStatusResolved =
-        createAssignedIncident
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
             .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
             .withTestCaseResolutionStatusDetails(
                 new Resolved()
@@ -2175,9 +2226,16 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                     .withResolvedBy(USER1_REF));
     createTestCaseFailureStatus(createTestCaseFailureStatusResolved);
 
-    jsonThread = Entity.getCollectionDAO().feedDAO().findById(thread.getId());
-    thread = JsonUtils.readValue(jsonThread, Thread.class);
-    assertEquals(TaskStatus.Closed, thread.getTask().getStatus());
+    // Verify task is now closed
+    jsonTask =
+        Entity.getCollectionDAO()
+            .taskDAO()
+            .fetchTaskByTestCaseResolutionStatusId(assignedIncident.getStateId().toString());
+    task = JsonUtils.readValue(jsonTask, Task.class);
+    assertTrue(
+        task.getStatus() == TaskEntityStatus.Completed
+            || task.getStatus() == TaskEntityStatus.Cancelled,
+        "Task should be closed after resolution");
   }
 
   @Test

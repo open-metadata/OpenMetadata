@@ -151,3 +151,99 @@ export const addMentionCommentInFeed = async (
   await page.locator('[data-testid="send-button"]').click();
   await postReplyResponse;
 };
+
+/**
+ * Add a reaction to an activity event (uses Activity API)
+ */
+export const reactOnActivity = async (
+  page: Page,
+  activityIndex: number,
+  reaction: string = 'thumbsUp'
+) => {
+  const message = getNthFeedMessage(page, Math.max(0, activityIndex - 1));
+
+  await expect(message).toBeVisible();
+
+  const reactionContainer = message.locator(
+    '[data-testid="feed-reaction-container"]'
+  );
+
+  if (await reactionContainer.isVisible()) {
+    const addReactionButton = reactionContainer.locator(
+      '[data-testid="add-reactions"]'
+    );
+
+    await expect(addReactionButton).toBeVisible();
+    await addReactionButton.click();
+
+    await page
+      .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
+      .waitFor({ state: 'visible' });
+
+    // Activity API uses /api/v1/activity/*/reaction/* endpoint
+    const waitForReactionResponse = page.waitForResponse(
+      (response) =>
+        (response.url().includes('/api/v1/activity') &&
+          response.url().includes('/reaction')) ||
+        response.url().includes('/api/v1/feed')
+    );
+
+    await page
+      .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
+      .click();
+    await waitForReactionResponse;
+  }
+};
+
+/**
+ * Navigate to activity feed tab on entity page
+ */
+export const navigateToActivityFeedTab = async (page: Page) => {
+  await page.getByTestId('activity_feed').click();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+};
+
+/**
+ * Wait for activity events to load
+ */
+export const waitForActivityFeedLoad = async (page: Page, timeout = 10000) => {
+  const feedContainer = page.locator('[data-testid="message-container"]');
+  const emptyState = page.locator(
+    '[data-testid="no-data-placeholder-container"]'
+  );
+
+  // Wait for either feed messages or empty state
+  await Promise.race([
+    feedContainer.first().waitFor({ state: 'visible', timeout }),
+    emptyState.waitFor({ state: 'visible', timeout }),
+  ]).catch(() => {
+    // Neither appeared within timeout, which may be acceptable
+  });
+};
+
+/**
+ * Post a comment on an activity event
+ */
+export const postActivityComment = async (page: Page, commentText: string) => {
+  const commentInput = page.locator('[data-testid="comments-input-field"]');
+
+  await expect(commentInput).toBeVisible();
+  await commentInput.click();
+
+  const editorField = page.locator(
+    '[data-testid="editor-wrapper"] .ql-editor'
+  );
+  await editorField.fill(commentText);
+
+  const sendButton = page.getByTestId('send-button');
+
+  await expect(sendButton).toBeEnabled();
+
+  const postResponse = page.waitForResponse('/api/v1/feed/*/posts');
+  await sendButton.click();
+  await postResponse;
+
+  // Verify comment appears
+  await expect(page.getByText(commentText)).toBeVisible({ timeout: 10000 });
+};

@@ -24,12 +24,10 @@ import {
 import { MY_TASK_WIDGET_FILTER_OPTIONS } from '../../../../constants/Widgets.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { FeedFilter, MyTaskFilter } from '../../../../enums/mydata.enum';
-import {
-  ThreadTaskStatus,
-  ThreadType,
-} from '../../../../generated/entity/feed/thread';
+import { ThreadType } from '../../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { TaskEntityStatus } from '../../../../rest/tasksAPI';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import FeedPanelBodyV1New from '../../../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1New';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -84,7 +82,7 @@ const MyTaskWidget = ({
       ThreadType.Task,
       undefined,
       undefined,
-      ThreadTaskStatus.Open,
+      TaskEntityStatus.Open,
       PAGE_SIZE_MEDIUM
     );
   }, [getFeedData, selectedFilter]);

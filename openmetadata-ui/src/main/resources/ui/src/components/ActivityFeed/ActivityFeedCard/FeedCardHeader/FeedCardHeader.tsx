@@ -54,7 +54,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
 
   const { t } = useTranslation();
 
-  const { task: taskDetails } = task;
+  const { task: taskDetails } = task ?? {};
 
   const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
 

@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/type/domainUpdatePayload.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DomainUpdatePayload",
+  "description": "Payload for Domain Update tasks.",
+  "javaType": "org.openmetadata.schema.type.DomainUpdatePayload",
+  "type": "object",
+  "properties": {
+    "currentDomain": {
+      "description": "Current domain of the entity.",
+      "$ref": "entityReference.json"
+    },
+    "newDomain": {
+      "description": "Proposed new domain for the entity.",
+      "$ref": "entityReference.json"
+    },
+    "reason": {
+      "description": "Reason for the domain change.",
+      "type": "string"
+    }
+  },
+  "required": ["newDomain"],
+  "additionalProperties": false
+}

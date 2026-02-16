@@ -29,23 +29,20 @@ import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TASK_SANITIZE_VALUE_REGEX } from '../../../constants/regex.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import {
-  CreateThread,
-  TaskType,
-  ThreadType,
-} from '../../../generated/api/feed/createThread';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { withPageLayout } from '../../../hoc/withPageLayout';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
-import { postThread } from '../../../rest/feedsAPI';
+import {
+  CreateTask,
+  createTask,
+  TaskCategory,
+  TaskEntityType,
+  TaskPriority,
+} from '../../../rest/tasksAPI';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  ENTITY_LINK_SEPARATOR,
-  getEntityFeedLink,
-} from '../../../utils/EntityUtils';
+import { ENTITY_LINK_SEPARATOR } from '../../../utils/EntityUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -64,7 +61,6 @@ import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateDescription = () => {
-  const { currentUser } = useApplicationStore();
   const location = useCustomLocation();
   const navigate = useNavigate();
   const [form] = useForm();
@@ -141,43 +137,46 @@ const UpdateDescription = () => {
     }
   };
 
-  const onCreateTask: FormProps['onFinish'] = (value) => {
+  const onCreateTask: FormProps['onFinish'] = async (formValues) => {
     setIsLoading(true);
-    const data: CreateThread = {
-      from: currentUser?.name as string,
-      message: value.title || taskMessage,
-      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
-      taskDetails: {
-        assignees: assignees.map((assignee) => ({
-          id: assignee.value,
-          type: assignee.type,
-        })),
-        suggestion: isDescriptionContentEmpty(value.description)
+
+    const data: CreateTask = {
+      name: formValues.title || taskMessage,
+      category: TaskCategory.MetadataUpdate,
+      type: TaskEntityType.DescriptionUpdate,
+      priority: TaskPriority.Medium,
+      about: entityFQN,
+      aboutType: entityType,
+      assignees: assignees.map((assignee) => assignee.name ?? ''),
+      payload: {
+        suggestedValue: isDescriptionContentEmpty(formValues.description)
           ? ''
-          : value.description,
-        type: TaskType.UpdateDescription,
-        oldValue: currentDescription,
+          : formValues.description,
+        currentValue: currentDescription,
+        field: getTaskAbout(),
       },
-      type: ThreadType.Task,
     };
-    postThread(data)
-      .then(() => {
-        showSuccessToast(
-          t('server.create-entity-success', {
-            entity: t('label.task'),
-          })
-        );
-        navigate(
-          entityUtilClassBase.getEntityLink(
-            entityType,
-            entityFQN,
-            EntityTabs.ACTIVITY_FEED,
-            ActivityFeedTabs.TASKS
-          )
-        );
-      })
-      .catch((err: AxiosError) => showErrorToast(err))
-      .finally(() => setIsLoading(false));
+
+    try {
+      await createTask(data);
+      showSuccessToast(
+        t('server.create-entity-success', {
+          entity: t('label.task'),
+        })
+      );
+      navigate(
+        entityUtilClassBase.getEntityLink(
+          entityType,
+          entityFQN,
+          EntityTabs.ACTIVITY_FEED,
+          ActivityFeedTabs.TASKS
+        )
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {

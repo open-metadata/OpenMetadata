@@ -35,6 +35,7 @@ import org.openmetadata.sdk.fluent.StorageServices;
 import org.openmetadata.sdk.fluent.StoredProcedures;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.Tags;
+import org.openmetadata.sdk.fluent.Tasks;
 import org.openmetadata.sdk.fluent.Teams;
 import org.openmetadata.sdk.fluent.TestCases;
 import org.openmetadata.sdk.fluent.Topics;
@@ -254,6 +255,7 @@ public class SdkClients {
     GlossaryTerms.setDefaultClient(client);
     Metrics.setDefaultClient(client);
     Tags.setDefaultClient(client);
+    Tasks.setDefaultClient(client);
     TestCases.setDefaultClient(client);
   }
 

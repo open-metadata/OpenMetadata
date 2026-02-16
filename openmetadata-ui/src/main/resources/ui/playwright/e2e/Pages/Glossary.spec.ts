@@ -1228,7 +1228,12 @@ test.describe('Glossary tests', () => {
 
       await createDescriptionTaskForGlossary(page, value, glossary1);
 
-      const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
+      // Wait for task resolve - supports both old and new API endpoints
+      const taskResolve = page.waitForResponse((response) =>
+        response.url().includes('/resolve') &&
+        (response.url().includes('/api/v1/tasks/') ||
+          response.url().includes('/api/v1/feed/tasks/'))
+      );
       await page.click(
         '.ant-btn-compact-first-item:has-text("Accept Suggestion")'
       );
@@ -1271,7 +1276,12 @@ test.describe('Glossary tests', () => {
 
       await createDescriptionTaskForGlossary(page, value, glossaryTerm1, false);
 
-      const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
+      // Wait for task resolve - supports both old and new API endpoints
+      const taskResolve = page.waitForResponse((response) =>
+        response.url().includes('/resolve') &&
+        (response.url().includes('/api/v1/tasks/') ||
+          response.url().includes('/api/v1/feed/tasks/'))
+      );
       await page.click(
         '.ant-btn-compact-first-item:has-text("Accept Suggestion")'
       );

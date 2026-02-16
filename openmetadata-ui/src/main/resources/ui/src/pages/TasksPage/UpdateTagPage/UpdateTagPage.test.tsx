@@ -13,7 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
-import { postThread } from '../../../rest/feedsAPI';
+import { createTask } from '../../../rest/tasksAPI';
 import i18n from '../../../utils/i18next/LocalUtil';
 import UpdateTag from './UpdateTagPage';
 const mockNavigate = jest.fn();
@@ -103,8 +103,11 @@ jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => jest.fn().mockImplementation(() => <div>TitleBreadcrumb.component</div>)
 );
-jest.mock('../../../rest/feedsAPI', () => ({
-  postThread: jest.fn().mockResolvedValue({}),
+jest.mock('../../../rest/tasksAPI', () => ({
+  createTask: jest.fn().mockResolvedValue({}),
+  TaskCategory: { MetadataUpdate: 'MetadataUpdate' },
+  TaskEntityType: { TagUpdate: 'TagUpdate' },
+  TaskPriority: { Medium: 'Medium' },
 }));
 jest.mock(
   '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard',
@@ -163,7 +166,7 @@ describe('UpdateTagPage', () => {
   });
 
   it('should submit form when submit button is clicked', async () => {
-    const mockPostThread = postThread as jest.Mock;
+    const mockCreateTask = createTask as jest.Mock;
     render(
       <UpdateTag
         pageTitle={i18n.t('label.update-entity', {
@@ -179,27 +182,23 @@ describe('UpdateTagPage', () => {
       fireEvent.click(submitBtn);
     });
 
-    expect(mockPostThread).toHaveBeenCalledWith({
-      about:
-        '<#E::table::sample_data.ecommerce_db.shopify.dim_location::columns::"address.street_name"::tags>',
-      from: undefined,
-      message: 'Task message',
-      taskDetails: {
-        assignees: [
-          {
-            id: 'id1',
-            type: 'User',
-          },
-        ],
-        oldValue:
-          // eslint-disable-next-line max-len
-          '[{"tagFQN":"PII.Sensitive","name":"Sensitive","description":"PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.","source":"Classification","labelType":"Manual","state":"Confirmed"}]',
-        suggestion:
-          // eslint-disable-next-line max-len
-          '[{"tagFQN":"PII.Sensitive","name":"Sensitive","description":"PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.","source":"Classification","labelType":"Manual","state":"Confirmed"}]',
-        type: 'UpdateTag',
+    const tagJson =
+      // eslint-disable-next-line max-len
+      '[{"tagFQN":"PII.Sensitive","name":"Sensitive","description":"PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.","source":"Classification","labelType":"Manual","state":"Confirmed"}]';
+
+    expect(mockCreateTask).toHaveBeenCalledWith({
+      name: 'Task message',
+      category: 'MetadataUpdate',
+      type: 'TagUpdate',
+      priority: 'Medium',
+      about: 'sample_data.ecommerce_db.shopify.dim_location',
+      aboutType: 'table',
+      assignees: ['sample_data'],
+      payload: {
+        suggestedValue: tagJson,
+        currentValue: tagJson,
+        field: 'columns::"address.street_name"::tags',
       },
-      type: 'Task',
     });
   });
 });

@@ -56,9 +56,9 @@ const FeedCardBodyV1 = ({
 
   const { entityFQN, entityType, cardStyle } = useMemo(() => {
     return {
-      entityFQN: getEntityFQN(feed.about) ?? '',
-      entityType: getEntityType(feed.about) ?? '',
-      cardStyle: feed.cardStyle ?? '',
+      entityFQN: getEntityFQN(feed?.about ?? '') ?? '',
+      entityType: getEntityType(feed?.about ?? '') ?? '',
+      cardStyle: feed?.cardStyle ?? '',
     };
   }, [feed]);
 
@@ -71,7 +71,7 @@ const FeedCardBodyV1 = ({
   };
 
   const feedBodyStyleCardsRender = useMemo(() => {
-    if (!isPost) {
+    if (!isPost && feed) {
       if (cardStyle === CardStyle.Description) {
         return <DescriptionFeed feed={feed} />;
       }
@@ -81,7 +81,7 @@ const FeedCardBodyV1 = ({
       }
 
       if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
-        const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
+        const entityInfo = feed?.feedInfo?.entitySpecificInfo?.entity;
         const isExecutableTestSuite =
           entityType === EntityType.TEST_SUITE && entityInfo.basic;
         const isObservabilityAlert =

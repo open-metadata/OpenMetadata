@@ -221,6 +221,20 @@ export class UserClass {
     await page.getByTestId('login').click();
     await loginRes;
 
+    // Set localStorage to prevent welcome screen from showing
+    // The welcome screen checks for user's name in 'loggedInUsers' localStorage key
+    if (this.responseData.name) {
+      await page.evaluate((username) => {
+        const storageKey = 'loggedInUsers';
+        const existing = localStorage.getItem(storageKey);
+        const users = existing ? existing.split(',') : [];
+        if (!users.includes(username)) {
+          users.push(username);
+          localStorage.setItem(storageKey, users.join(','));
+        }
+      }, this.responseData.name);
+    }
+
     const modal = await page
       .getByRole('dialog')
       .locator('div')

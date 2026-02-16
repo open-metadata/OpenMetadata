@@ -98,7 +98,9 @@ import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -1107,19 +1109,30 @@ public class FeedRepository {
     }
 
     // Allow if user is an assignee of the task and if the assignee has permissions to update the
-    // entity
+    // entity. Accept either the specific permission OR EDIT_ALL (which encompasses all edit perms)
     if (assignees.stream().anyMatch(assignee -> assignee.getName().equals(userName))) {
-      // If entity does not exist, this is a create operation, else update operation
       ResourceContext resourceContext =
           new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
+      OperationContext editAllOpContext =
+          new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_ALL);
       if (EntityUtil.isDescriptionTask(threadContext.getTaskWorkflow().getTaskType())) {
-        OperationContext operationContext =
+        OperationContext specificOpContext =
             new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_DESCRIPTION);
-        authorizer.authorize(securityContext, operationContext, resourceContext);
+        authorizer.authorizeRequests(
+            securityContext,
+            List.of(
+                new AuthRequest(specificOpContext, resourceContext),
+                new AuthRequest(editAllOpContext, resourceContext)),
+            AuthorizationLogic.ANY);
       } else if (EntityUtil.isTagTask(threadContext.getTaskWorkflow().getTaskType())) {
-        OperationContext operationContext =
+        OperationContext specificOpContext =
             new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_TAGS);
-        authorizer.authorize(securityContext, operationContext, resourceContext);
+        authorizer.authorizeRequests(
+            securityContext,
+            List.of(
+                new AuthRequest(specificOpContext, resourceContext),
+                new AuthRequest(editAllOpContext, resourceContext)),
+            AuthorizationLogic.ANY);
       }
       return;
     }

@@ -41,6 +41,7 @@ export enum EntityTypeEndpoint {
   StoreProcedure = 'storedProcedures',
   Table = 'tables',
   TableColumn = 'table-column',
+  Task = 'tasks',
   Teams = 'teams',
   TestSuites = 'dataQuality/testSuites',
   Topic = 'topics',

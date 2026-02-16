@@ -53,6 +53,9 @@ function FeedCardFooterNew({
 
   const onReactionUpdate = useCallback(
     async (reaction: ReactionType, operation: ReactionOperation) => {
+      if (!post) {
+        return;
+      }
       await updateReactions(post, feed.id, !isPost, reaction, operation);
       await fetchUpdatedThread(feed.id);
     },
@@ -106,7 +109,7 @@ function FeedCardFooterNew({
               </Button>
             )}
             <Reactions
-              reactions={post.reactions ?? []}
+              reactions={post?.reactions ?? []}
               onReactionSelect={onReactionUpdate ?? noop}
             />
           </div>

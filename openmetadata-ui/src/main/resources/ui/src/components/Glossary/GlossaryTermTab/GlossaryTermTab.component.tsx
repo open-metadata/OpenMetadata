@@ -54,7 +54,6 @@ import {
   TEXT_BODY_COLOR,
 } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
-import { TaskOperation } from '../../../constants/Feeds.constants';
 import {
   DEFAULT_VISIBLE_COLUMNS,
   GLOSSARY_TERM_STATUS_OPTIONS,
@@ -79,7 +78,7 @@ import { User } from '../../../generated/entity/teams/user';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getAllFeeds, updateTask } from '../../../rest/feedsAPI';
+import { getAllFeeds } from '../../../rest/feedsAPI';
 import {
   getFirstLevelGlossaryTermsPaginated,
   getGlossaryTermChildrenLazy,
@@ -87,6 +86,10 @@ import {
   patchGlossaryTerm,
   searchGlossaryTermsPaginated,
 } from '../../../rest/glossaryAPI';
+import {
+  resolveTask as resolveTaskAPI,
+  TaskResolutionType,
+} from '../../../rest/tasksAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
@@ -645,7 +648,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           return;
         }
 
-        await updateTask(TaskOperation.RESOLVE, taskId + '', data);
+        const resolutionType =
+          data.newValue === 'approved'
+            ? TaskResolutionType.Approved
+            : TaskResolutionType.Rejected;
+
+        await resolveTaskAPI(taskId + '', {
+          resolutionType,
+          newValue: data.newValue,
+        });
         showSuccessToast(t('server.task-resolved-successfully'));
 
         const currentExpandedKeys = [...expandedRowKeys];

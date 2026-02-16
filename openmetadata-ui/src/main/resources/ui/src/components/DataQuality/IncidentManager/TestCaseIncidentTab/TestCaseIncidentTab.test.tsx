@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MOCK_THREAD_DATA } from '../../../../mocks/TestCase.mock';
+import { MOCK_TASK_DATA } from '../../../../mocks/TestCase.mock';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import TestCaseIncidentTab from './TestCaseIncidentTab.component';
 
 const mockUseActivityFeedProviderValue = {
   entityPaging: { total: 4 },
-  entityThread: MOCK_THREAD_DATA,
+  tasks: MOCK_TASK_DATA,
   getFeedData: jest.fn().mockImplementation(() => Promise.resolve()),
   loading: false,
-  selectedThread: MOCK_THREAD_DATA[0],
-  setActiveThread: jest.fn(),
+  selectedTask: MOCK_TASK_DATA[0],
+  setActiveTask: jest.fn(),
 };
 
 jest.mock(
@@ -55,21 +55,16 @@ jest.mock('../../../Entity/Task/TaskTab/TaskTabNew.component', () => {
 jest.mock('../../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
-jest.mock(
-  '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1New.component',
-  () => {
-    return jest.fn().mockImplementation(({ onFeedClick }) => (
-      <div>
-        ActivityFeedListV1
-        <button
-          data-testid="feed"
-          onClick={() => onFeedClick(MOCK_THREAD_DATA[1])}>
-          Task1
-        </button>
-      </div>
-    ));
-  }
-);
+jest.mock('../../../ActivityFeed/ActivityFeedList/TaskListV1.component', () => {
+  return jest.fn().mockImplementation(({ onTaskClick }) => (
+    <div>
+      TaskListV1
+      <button data-testid="task" onClick={() => onTaskClick(MOCK_TASK_DATA[1])}>
+        Task1
+      </button>
+    </div>
+  ));
+});
 jest.mock(
   '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => ({
@@ -95,7 +90,7 @@ describe('TestCaseIssueTab', () => {
     expect(await screen.findByTestId('right-container')).toBeInTheDocument();
     expect(await screen.findByTestId('open-task')).toBeInTheDocument();
     expect(await screen.findByTestId('closed-task')).toBeInTheDocument();
-    expect(await screen.findByText('ActivityFeedListV1')).toBeInTheDocument();
+    expect(await screen.findByText('TaskListV1')).toBeInTheDocument();
     expect(await screen.findByText('TaskTab')).toBeInTheDocument();
   });
 
@@ -126,20 +121,20 @@ describe('TestCaseIssueTab', () => {
     );
   });
 
-  it('Should call setActiveThread, on click of task', async () => {
+  it('Should call setActiveTask, on click of task', async () => {
     render(<TestCaseIncidentTab />);
 
-    const feed = await screen.findByTestId('feed');
+    const task = await screen.findByTestId('task');
     await act(async () => {
-      fireEvent.click(feed);
+      fireEvent.click(task);
     });
 
-    expect(
-      mockUseActivityFeedProviderValue.setActiveThread
-    ).toHaveBeenCalledWith(MOCK_THREAD_DATA[1]);
+    expect(mockUseActivityFeedProviderValue.setActiveTask).toHaveBeenCalledWith(
+      MOCK_TASK_DATA[1]
+    );
   });
 
-  it('Should call setActiveThread, on click of open and close task btn', async () => {
+  it('Should call setActiveTask, on click of open and close task btn', async () => {
     render(<TestCaseIncidentTab />);
 
     const closeTaskBtn = await screen.findByTestId('closed-task');
@@ -147,21 +142,21 @@ describe('TestCaseIssueTab', () => {
       fireEvent.click(closeTaskBtn);
     });
 
-    expect(mockUseActivityFeedProviderValue.setActiveThread).toHaveBeenCalled();
+    expect(mockUseActivityFeedProviderValue.setActiveTask).toHaveBeenCalled();
 
     const openTaskBtn = await screen.findByTestId('open-task');
     await act(async () => {
       fireEvent.click(openTaskBtn);
     });
 
-    expect(mockUseActivityFeedProviderValue.setActiveThread).toHaveBeenCalled();
+    expect(mockUseActivityFeedProviderValue.setActiveTask).toHaveBeenCalled();
 
     await act(async () => {
       fireEvent.click(openTaskBtn);
     });
 
     expect(
-      mockUseActivityFeedProviderValue.setActiveThread
+      mockUseActivityFeedProviderValue.setActiveTask
     ).toHaveBeenCalledTimes(2);
   });
 });

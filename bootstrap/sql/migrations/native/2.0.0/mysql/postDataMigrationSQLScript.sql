@@ -1,0 +1,2 @@
+-- Post data migration script for Task System Redesign - OpenMetadata 2.0.0
+-- This script runs after the data migration completes

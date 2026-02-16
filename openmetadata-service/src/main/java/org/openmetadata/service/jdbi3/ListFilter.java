@@ -58,6 +58,8 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
     conditions.add(getCreatedByCondition());
+    conditions.add(getAboutEntityCondition());
+    conditions.add(getMentionedUserCondition());
     conditions.add(getEventSubscriptionAlertType());
     conditions.add(getNotificationTemplateCondition());
     conditions.add(getApiCollectionCondition(tableName));
@@ -65,6 +67,9 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getEntityLinkCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
+conditions.add(getTaskStatusCondition(tableName));
+    conditions.add(getTaskTypeCondition(tableName));
+    conditions.add(getTaskPriorityCondition(tableName));
     conditions.add(getEntityStatusCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
@@ -106,18 +111,102 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private String getAssignee() {
-    String assignee = queryParams.get("assignee");
-    return assignee == null ? "" : String.format("assignee = '%s'", assignee);
+    String assigneeId = queryParams.get("assigneeId");
+    if (assigneeId != null) {
+      queryParams.put("assigneeIdParam", assigneeId);
+      return String.format(
+          "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+              + "WHERE entity_relationship.fromEntity IN ('user', 'team') "
+              + "AND entity_relationship.fromId = :assigneeIdParam "
+              + "AND entity_relationship.relation = %d))",
+          Relationship.ASSIGNED_TO.ordinal());
+    }
+
+    String assigneeFqn = queryParams.get("assignee");
+    if (assigneeFqn == null) {
+      return "";
+    }
+    String assigneeFqnHash = FullyQualifiedName.buildHash(assigneeFqn);
+    queryParams.put("assigneeFqnHashParam", assigneeFqnHash);
+    return String.format(
+        "(id IN (SELECT er.toId FROM entity_relationship er "
+            + "INNER JOIN user_entity u ON er.fromId = u.id "
+            + "WHERE er.fromEntity = 'user' "
+            + "AND u.nameHash = :assigneeFqnHashParam "
+            + "AND er.relation = %d) "
+            + "OR id IN (SELECT er.toId FROM entity_relationship er "
+            + "INNER JOIN team_entity t ON er.fromId = t.id "
+            + "WHERE er.fromEntity = 'team' "
+            + "AND t.nameHash = :assigneeFqnHashParam "
+            + "AND er.relation = %d))",
+        Relationship.ASSIGNED_TO.ordinal(), Relationship.ASSIGNED_TO.ordinal());
   }
 
-  private String getCreatedByCondition() {
-    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      String createdBy = queryParams.get("createdBy");
-      return createdBy == null ? "" : "json->>'$.createdBy' = :createdBy";
-    } else {
-      String createdBy = queryParams.get("createdBy");
-      return createdBy == null ? "" : "json->>'createdBy' = :createdBy";
+  /**
+   * Filter tasks by the entity they are about.
+   * Uses prefix matching to include tasks about sub-entities (e.g., columns when viewing a table).
+   * The FQN is converted to a hash to avoid key length limitations.
+   */
+  private String getAboutEntityCondition() {
+    String aboutEntityFqn = queryParams.get("aboutEntity");
+    if (aboutEntityFqn == null) {
+      return "";
     }
+    String fqnHash = FullyQualifiedName.buildHash(aboutEntityFqn);
+    queryParams.put("aboutFqnHashParam", fqnHash);
+    queryParams.put("aboutFqnHashPrefixParam", fqnHash + ".%");
+    return "(aboutFqnHash = :aboutFqnHashParam OR aboutFqnHash LIKE :aboutFqnHashPrefixParam)";
+  }
+
+  /**
+   * Filter tasks/entities by mentioned user.
+   * Uses field_relationship table to find entities where the user was mentioned
+   * via MENTIONED_IN relationship.
+   */
+  private String getMentionedUserCondition() {
+    String mentionedUser = queryParams.get("mentionedUser");
+    if (mentionedUser == null) {
+      return "";
+    }
+    queryParams.put("mentionedUserParam", mentionedUser);
+    return String.format(
+        "(id IN (SELECT fr.toId FROM field_relationship fr "
+            + "WHERE fr.fromFQN = :mentionedUserParam "
+            + "AND fr.toType = 'task' "
+            + "AND fr.relation = %d))",
+        Relationship.MENTIONED_IN.ordinal());
+  }
+
+  /**
+   * Filter tasks by creator. Supports two modes:
+   * - createdById: Uses CREATED relationship for exact UUID match
+   * - createdBy: Uses CREATED relationship with FQN lookup
+   */
+  private String getCreatedByCondition() {
+    String createdById = queryParams.get("createdById");
+    if (createdById != null) {
+      queryParams.put("createdByIdParam", createdById);
+      return String.format(
+          "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+              + "WHERE entity_relationship.fromEntity = 'user' "
+              + "AND entity_relationship.fromId = :createdByIdParam "
+              + "AND entity_relationship.relation = %d))",
+          Relationship.CREATED.ordinal());
+    }
+
+    String createdBy = queryParams.get("createdBy");
+    if (createdBy == null) {
+      return "";
+    }
+    String createdByFqnHash = FullyQualifiedName.buildHash(createdBy);
+    queryParams.put("createdByFqnHashParam", createdByFqnHash);
+    return String.format(
+        "(id IN (SELECT er.toId FROM entity_relationship er "
+            + "INNER JOIN user_entity u ON er.fromId = u.id "
+            + "WHERE er.fromEntity = 'user' "
+            + "AND u.nameHash = :createdByFqnHashParam "
+            + "AND er.relation = %d))",
+        Relationship.CREATED.ordinal());
   }
 
   private String getWorkflowDefinitionIdCondition() {
@@ -648,5 +737,49 @@ public class ListFilter extends Filter<ListFilter> {
     name = escapeApostrophe(name);
     // "_" is a wildcard and looks for any single character. Add "\\" in front of it to escape it
     return name.replaceAll("_", "\\\\_");
+  }
+
+  private String getTaskStatusCondition(String tableName) {
+    String statusGroup = queryParams.get("taskStatusGroup");
+    if (statusGroup != null) {
+      String column = tableName == null ? "status" : tableName + ".status";
+      if ("open".equalsIgnoreCase(statusGroup)) {
+        return String.format("%s = 'Open'", column);
+      } else if ("closed".equalsIgnoreCase(statusGroup)) {
+        return String.format(
+            "%s IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed')", column);
+      }
+    }
+
+    String taskStatus = queryParams.get("taskStatus");
+    if (taskStatus == null) {
+      return "";
+    }
+    String safeStatus = escapeApostrophe(taskStatus);
+    return tableName == null
+        ? String.format("status = '%s'", safeStatus)
+        : String.format("%s.status = '%s'", tableName, safeStatus);
+  }
+
+  private String getTaskTypeCondition(String tableName) {
+    String taskType = queryParams.get("taskType");
+    if (taskType == null) {
+      return "";
+    }
+    String safeType = escapeApostrophe(taskType);
+    return tableName == null
+        ? String.format("type = '%s'", safeType)
+        : String.format("%s.type = '%s'", tableName, safeType);
+  }
+
+  private String getTaskPriorityCondition(String tableName) {
+    String taskPriority = queryParams.get("taskPriority");
+    if (taskPriority == null) {
+      return "";
+    }
+    String safePriority = escapeApostrophe(taskPriority);
+    return tableName == null
+        ? String.format("priority = '%s'", safePriority)
+        : String.format("%s.priority = '%s'", tableName, safePriority);
   }
 }

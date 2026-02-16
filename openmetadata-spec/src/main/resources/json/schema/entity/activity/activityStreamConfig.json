@@ -1,0 +1,72 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/activity/activityStreamConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ActivityStreamConfig",
+  "description": "Configuration for activity stream behavior at global or domain level.",
+  "javaType": "org.openmetadata.schema.entity.activity.ActivityStreamConfig",
+  "type": "object",
+  "definitions": {
+    "activityStreamScope": {
+      "javaType": "org.openmetadata.schema.type.ActivityStreamScope",
+      "description": "Scope of the activity stream configuration.",
+      "type": "string",
+      "enum": ["global", "domain"],
+      "default": "domain"
+    },
+    "activityStreamVisibility": {
+      "javaType": "org.openmetadata.schema.type.ActivityStreamVisibility",
+      "description": "Who can see activity events.",
+      "type": "string",
+      "enum": ["domainOnly", "organization"],
+      "default": "domainOnly"
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier for this configuration.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "scope": {
+      "description": "Whether this config applies globally or to a specific domain.",
+      "$ref": "#/definitions/activityStreamScope"
+    },
+    "scopeReference": {
+      "description": "Reference to the domain this config applies to (when scope is 'domain').",
+      "$ref": "../../type/entityReference.json"
+    },
+    "enabled": {
+      "description": "Whether to generate activity events for this scope.",
+      "type": "boolean",
+      "default": true
+    },
+    "retentionDays": {
+      "description": "How long to keep activity events before automatic deletion.",
+      "type": "integer",
+      "default": 30,
+      "minimum": 1,
+      "maximum": 365
+    },
+    "excludeEventTypes": {
+      "description": "Event types to exclude from the activity stream.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "excludeEntityTypes": {
+      "description": "Entity types to exclude from the activity stream.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "visibility": {
+      "description": "Who can see activity events in this scope.",
+      "$ref": "#/definitions/activityStreamVisibility"
+    }
+  },
+  "required": ["id", "scope", "enabled"],
+  "additionalProperties": false
+}

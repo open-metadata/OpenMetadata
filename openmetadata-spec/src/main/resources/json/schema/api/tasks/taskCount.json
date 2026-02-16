@@ -1,0 +1,31 @@
+{
+  "$id": "https://open-metadata.org/schema/api/tasks/taskCount.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Count of tasks",
+  "description": "This schema defines the type for reporting the count of tasks by status.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.tasks.TaskCount",
+  "properties": {
+    "open": {
+      "description": "Total count of all open tasks.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "inProgress": {
+      "description": "Total count of all in-progress tasks.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "completed": {
+      "description": "Total count of all completed/closed tasks.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "total": {
+      "description": "Total count of all tasks.",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}

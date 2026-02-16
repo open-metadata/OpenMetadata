@@ -1,0 +1,83 @@
+{
+  "$id": "https://open-metadata.org/schema/type/reviewPayload.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReviewPayload",
+  "description": "Payload for Review tasks (Pipeline Review, Data Quality Review).",
+  "javaType": "org.openmetadata.schema.type.ReviewPayload",
+  "type": "object",
+  "definitions": {
+    "reviewCriterion": {
+      "javaType": "org.openmetadata.schema.type.ReviewCriterion",
+      "description": "A single review criterion with status.",
+      "type": "object",
+      "properties": {
+        "criterion": {
+          "description": "Name of the criterion.",
+          "type": "string"
+        },
+        "status": {
+          "description": "Status of this criterion.",
+          "type": "string",
+          "enum": ["Pending", "Passed", "Failed", "NotApplicable"]
+        },
+        "notes": {
+          "description": "Notes about this criterion.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "reviewAttachment": {
+      "javaType": "org.openmetadata.schema.type.ReviewAttachment",
+      "description": "An attachment for a review.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the attachment.",
+          "type": "string"
+        },
+        "url": {
+          "description": "URL to the attachment.",
+          "$ref": "basic.json#/definitions/href"
+        },
+        "description": {
+          "description": "Description of the attachment.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "reviewType": {
+      "description": "Type of review.",
+      "type": "string",
+      "enum": ["Pipeline", "DataQuality", "Schema", "Documentation", "Security", "Custom"]
+    },
+    "reviewCriteria": {
+      "description": "Criteria to be reviewed.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/reviewCriterion"
+      }
+    },
+    "findings": {
+      "description": "Review findings and observations.",
+      "type": "string"
+    },
+    "recommendation": {
+      "description": "Reviewer's recommendation.",
+      "type": "string",
+      "enum": ["Approve", "Reject", "NeedsWork", "Defer"]
+    },
+    "attachments": {
+      "description": "Supporting documents or evidence.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/reviewAttachment"
+      }
+    }
+  },
+  "required": ["reviewType"],
+  "additionalProperties": false
+}

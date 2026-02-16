@@ -36,7 +36,8 @@
         "defaultsTo",
         "relatesTo",
         "inputPort",
-        "outputPort"
+        "outputPort",
+        "assignedTo"
       ],
       "javaEnums": [
         { "name": "CONTAINS" },
@@ -63,7 +64,8 @@
         { "name":  "DEFAULTS_TO" },
         { "name": "RELATES_TO" },
         { "name": "INPUT_PORT" },
-        { "name": "OUTPUT_PORT" }
+        { "name": "OUTPUT_PORT" },
+        { "name": "ASSIGNED_TO" }
       ]
     }
   },

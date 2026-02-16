@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ownershipUpdatePayload.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OwnershipUpdatePayload",
+  "description": "Payload for Ownership Update tasks.",
+  "javaType": "org.openmetadata.schema.type.OwnershipUpdatePayload",
+  "type": "object",
+  "properties": {
+    "currentOwners": {
+      "description": "Current owners of the entity.",
+      "$ref": "entityReferenceList.json"
+    },
+    "newOwners": {
+      "description": "Proposed new owners for the entity.",
+      "$ref": "entityReferenceList.json"
+    },
+    "reason": {
+      "description": "Reason for the ownership change.",
+      "type": "string"
+    }
+  },
+  "required": ["newOwners"],
+  "additionalProperties": false
+}

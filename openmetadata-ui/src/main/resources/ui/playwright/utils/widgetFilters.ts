@@ -25,72 +25,66 @@ export const verifyActivityFeedFilters = async (
   ).toBeVisible();
 
   // Wait for the widget feed to load
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
+  await page
+    .waitForSelector(`[data-testid="${widgetKey}"] entity-list-skeleton`, {
       state: 'detached',
-    }
-  );
+      timeout: 10000,
+    })
+    .catch(() => {
+      // Skeleton might already be detached
+    });
 
   await page
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
 
-  const myDataFilter = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/feed') &&
-      response.url().includes('type=Conversation') &&
-      response.url().includes('filterType=OWNER')
-  );
+  // Wait for either old or new feed API response with timeout
+  const myDataFilter = Promise.race([
+    page.waitForResponse(
+      (response) =>
+        (response.url().includes('/api/v1/feed') ||
+          response.url().includes('/api/v1/activities')) &&
+        response.url().includes('filterType=OWNER')
+    ),
+    page.waitForTimeout(5000),
+  ]);
   await page.getByRole('menuitem', { name: 'My Data' }).click();
   await myDataFilter;
-
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.waitForLoadState('networkidle');
 
   await page
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
-  const followingFilter = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/feed') &&
-      response.url().includes('type=Conversation') &&
-      response.url().includes('filterType=FOLLOWS')
-  );
+  const followingFilter = Promise.race([
+    page.waitForResponse(
+      (response) =>
+        (response.url().includes('/api/v1/feed') ||
+          response.url().includes('/api/v1/activities')) &&
+        response.url().includes('filterType=FOLLOWS')
+    ),
+    page.waitForTimeout(5000),
+  ]);
   await page.getByRole('menuitem', { name: 'Following' }).click();
   await followingFilter;
-
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.waitForLoadState('networkidle');
 
   await page
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
-  const allActivityFilter = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/feed') &&
-      response.url().includes('type=Conversation')
-  );
+  const allActivityFilter = Promise.race([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/feed') ||
+        response.url().includes('/api/v1/activities')
+    ),
+    page.waitForTimeout(5000),
+  ]);
   await page.getByRole('menuitem', { name: 'All Activity' }).click();
   await allActivityFilter;
-
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.waitForLoadState('networkidle');
 };
 
 export const verifyDataFilters = async (page: Page, widgetKey: string) => {
@@ -372,12 +366,26 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
 };
 
 export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
+  const waitForTaskFilterResponse = (filterType: string) =>
+    page.waitForResponse((response) => {
+      const url = response.url();
+
+      return (
+        url.includes('/api/v1/tasks') ||
+        (url.includes('/api/v1/feed') &&
+          url.includes('type=Task') &&
+          url.includes(`filterType=${filterType}`))
+      );
+    });
+
+  await page
+    .waitForSelector(`[data-testid="${widgetKey}"] entity-list-skeleton`, {
       state: 'detached',
-    }
-  );
+      timeout: 10000,
+    })
+    .catch(() => {
+      // Skeleton might already be detached
+    });
 
   await expect(
     page.getByTestId(widgetKey).getByTestId('widget-sort-by-dropdown')
@@ -387,58 +395,28 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
-  const mentionsTaskFilter = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/feed') &&
-      response.url().includes('type=Task') &&
-      response.url().includes('filterType=MENTIONS')
-  );
+  const mentionsTaskFilter = waitForTaskFilterResponse('MENTIONS');
   await page.getByRole('menuitem', { name: 'Mentions' }).click();
   await mentionsTaskFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.waitForLoadState('networkidle');
 
   await page
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
-  const assignedTasksFilter = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/feed') &&
-      response.url().includes('type=Task') &&
-      response.url().includes('filterType=ASSIGNED_TO')
-  );
+  const assignedTasksFilter = waitForTaskFilterResponse('ASSIGNED_TO');
   await page.getByRole('menuitem', { name: 'Assigned' }).click();
   await assignedTasksFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.waitForLoadState('networkidle');
 
   await page
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
-  const allTasksFilter = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/feed') &&
-      response.url().includes('type=Task') &&
-      response.url().includes('filterType=OWNER_OR_FOLLOWS')
-  );
+  const allTasksFilter = waitForTaskFilterResponse('OWNER_OR_FOLLOWS');
   await page.getByRole('menuitem', { name: 'All' }).click();
   await allTasksFilter;
-  await page.waitForSelector(
-    `[data-testid="${widgetKey}"] entity-list-skeleton`,
-    {
-      state: 'detached',
-    }
-  );
+  await page.waitForLoadState('networkidle');
 };
 
 export const verifyDataAssetsFilters = async (

@@ -118,8 +118,14 @@ export class EntityDataClass {
   static readonly dashboard2 = new DashboardClass(undefined, 'LookMlExplore');
   static readonly mlModel1 = new MlModelClass();
   static readonly mlModel2 = new MlModelClass();
-  static readonly pipeline1 = new PipelineClass();
-  static readonly pipeline2 = new PipelineClass();
+  static readonly pipeline1 = new PipelineClass(undefined, [
+    { name: 'snowflake_task', displayName: 'Snowflake Task' },
+    { name: 'bigquery_task', displayName: 'BigQuery Task' },
+  ]);
+  static readonly pipeline2 = new PipelineClass(undefined, [
+    { name: 'redshift_task', displayName: 'Redshift Task' },
+    { name: 'presto_task', displayName: 'Presto Task' },
+  ]);
   static readonly dashboardDataModel1 = new DashboardDataModelClass();
   static readonly dashboardDataModel2 = new DashboardDataModelClass();
   static readonly apiCollection1 = new ApiCollectionClass();

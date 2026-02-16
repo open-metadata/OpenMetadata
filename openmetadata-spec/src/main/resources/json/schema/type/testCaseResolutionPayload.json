@@ -1,0 +1,37 @@
+{
+  "$id": "https://open-metadata.org/schema/type/testCaseResolutionPayload.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestCaseResolutionPayload",
+  "description": "Payload for Test Case Resolution tasks. Links to the TestCaseResolutionStatus workflow via stateId.",
+  "javaType": "org.openmetadata.schema.type.TestCaseResolutionPayload",
+  "type": "object",
+  "properties": {
+    "testCaseResolutionStatusId": {
+      "description": "State ID linking to the TestCaseResolutionStatus workflow. This groups all status updates for a single incident lifecycle.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "testCaseResult": {
+      "description": "Reference to the failed test case result.",
+      "$ref": "entityReference.json"
+    },
+    "severity": {
+      "description": "Severity of the incident.",
+      "type": "string",
+      "enum": ["Severity1", "Severity2", "Severity3", "Severity4", "Severity5"]
+    },
+    "failureReason": {
+      "description": "Reason for the test failure.",
+      "type": "string"
+    },
+    "resolution": {
+      "description": "How the failure was resolved.",
+      "type": "string"
+    },
+    "rootCause": {
+      "description": "Root cause analysis.",
+      "type": "string"
+    }
+  },
+  "required": ["testCaseResolutionStatusId"],
+  "additionalProperties": false
+}

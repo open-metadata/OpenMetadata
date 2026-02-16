@@ -71,6 +71,22 @@ make unit_ingestion            # Python unit tests with coverage
 yarn test:coverage             # Frontend test coverage
 ```
 
+### Backend Integration Tests
+All backend API integration tests MUST be placed in `openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/` directory. Tests should:
+- Use naming convention `*IT.java` (Integration Test)
+- Extend `BaseEntityIT<T, K>` for entity CRUD tests
+- Be designed to run concurrently (use `@Execution(ExecutionMode.CONCURRENT)`)
+- Use `TestNamespace` for test isolation
+- Use `SdkClients` for API calls (e.g., `SdkClients.adminClient().tables().create(...)`)
+
+```bash
+# Run a specific integration test
+mvn test -pl openmetadata-integration-tests -Dtest=TaskResourceIT
+
+# Run all integration tests
+mvn test -pl openmetadata-integration-tests
+```
+
 ## Code Generation and Schemas
 
 OpenMetadata uses a schema-first approach with JSON Schema definitions driving code generation:

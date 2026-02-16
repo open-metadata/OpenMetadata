@@ -88,6 +88,49 @@ export const visitEntityPage = async (data: {
   await page.getByTestId('searchBox').clear();
 };
 
+export const visitEntityPageByUrl = async (data: {
+  page: Page;
+  entityType: string;
+  fqn: string;
+}) => {
+  const { page, entityType, fqn } = data;
+
+  if (!fqn) {
+    throw new Error(
+      `Cannot navigate to entity page: FQN is empty for entityType "${entityType}". ` +
+        'Ensure entity data is properly loaded from EntityDataClass.'
+    );
+  }
+
+  const encodedFqn = encodeURIComponent(fqn);
+  const url = `/${entityType}/${encodedFqn}`;
+
+  await page.goto(url);
+
+  // Wait for URL to contain the entity type to ensure navigation completed
+  await page.waitForURL(`**/${entityType}/**`, { timeout: 30000 }).catch(() => {
+    const currentUrl = page.url();
+    throw new Error(
+      `Navigation to entity page failed. Expected URL to contain "/${entityType}/", ` +
+        `but got "${currentUrl}". Entity FQN: "${fqn}"`
+    );
+  });
+
+  await page.waitForLoadState('networkidle');
+
+  await waitForAllLoadersToDisappear(page);
+
+  const isWelcomeScreenVisible = await page
+    .getByTestId('welcome-screen')
+    .isVisible()
+    .catch(() => false);
+
+  if (isWelcomeScreenVisible) {
+    await page.getByTestId('welcome-screen-close-btn').click();
+    await page.waitForLoadState('networkidle');
+  }
+};
+
 export const addOwner = async ({
   page,
   owner,

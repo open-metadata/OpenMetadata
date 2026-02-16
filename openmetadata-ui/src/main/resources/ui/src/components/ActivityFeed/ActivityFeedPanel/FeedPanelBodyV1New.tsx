@@ -13,6 +13,7 @@
 
 import { Button } from 'antd';
 import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
 import { Post, ThreadType } from '../../../generated/entity/feed/thread';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
@@ -22,8 +23,10 @@ import { FeedPanelBodyPropV1 } from './FeedPanelBodyV1.interface';
 
 const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   feed,
+  activity,
   showThread,
   onFeedClick,
+  onActivityClick,
   isActive,
   showActivityFeedEditor = false,
   onAfterClose,
@@ -34,21 +37,63 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   isFeedWidget = false,
   isFullSizeWidget = false,
 }) => {
-  const mainFeed = useMemo(
-    () =>
-      ({
-        message: feed.message,
-        postTs: feed.threadTs,
-        from: feed.createdBy,
-        id: feed.id,
-        reactions: feed.reactions,
-      } as Post),
-    [feed]
-  );
+  const isActivityEvent = !isUndefined(activity);
+
+  const mainFeed = useMemo(() => {
+    if (isActivityEvent) {
+      return undefined;
+    }
+
+    return feed
+      ? ({
+          message: feed.message,
+          postTs: feed.threadTs,
+          from: feed.createdBy,
+          id: feed.id,
+          reactions: feed.reactions,
+        } as Post)
+      : undefined;
+  }, [feed, isActivityEvent]);
 
   const handleFeedClick = useCallback(() => {
-    onFeedClick?.(feed);
+    if (feed) {
+      onFeedClick?.(feed);
+    }
   }, [onFeedClick, feed]);
+
+  const handleActivityClick = useCallback(() => {
+    if (activity) {
+      onActivityClick?.(activity);
+    }
+  }, [onActivityClick, activity]);
+
+  if (isActivityEvent) {
+    return (
+      <Button
+        block
+        className={classNames('activity-feed-card-container')}
+        data-testid="message-container"
+        type="text"
+        onClick={handleActivityClick}>
+        <ActivityFeedCardNew
+          activity={activity}
+          isActive={isActive}
+          isFeedWidget={isFeedWidget}
+          isForFeedTab={isForFeedTab}
+          isFullSizeWidget={isFullSizeWidget}
+          isOpenInDrawer={isOpenInDrawer}
+          isPost={false}
+          showActivityFeedEditor={showActivityFeedEditor}
+          showThread={showThread}
+          onActivityClick={onActivityClick}
+        />
+      </Button>
+    );
+  }
+
+  if (!feed) {
+    return null;
+  }
 
   return (
     <Button

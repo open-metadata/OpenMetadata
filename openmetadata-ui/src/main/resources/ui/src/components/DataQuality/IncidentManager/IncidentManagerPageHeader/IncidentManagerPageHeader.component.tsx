@@ -39,8 +39,10 @@ import {
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import {
+  getIncidentTaskByStateId,
   getListTestCaseIncidentByStateId,
   postTestCaseIncidentStatus,
+  Task,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
@@ -52,7 +54,8 @@ import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVer
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { getTaskDetailPath } from '../../../../utils/TasksUtils';
+import { getTaskDetailPath as getOldTaskDetailPath } from '../../../../utils/TasksUtils';
+import { getTaskDetailPath as getNewTaskDetailPath } from '../../../../utils/TaskUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -71,6 +74,7 @@ const IncidentManagerPageHeader = ({
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.TABLE);
   const [activeTask, setActiveTask] = useState<Thread>();
+  const [incidentTask, setIncidentTask] = useState<Task | null>(null);
   const [testCaseStatusData, setTestCaseStatusData] =
     useState<TestCaseResolutionStatus>();
   const [isLoading, setIsLoading] = useState(true);
@@ -181,6 +185,15 @@ const IncidentManagerPageHeader = ({
     }
   };
 
+  const fetchIncidentTask = async (stateId: string) => {
+    try {
+      const task = await getIncidentTaskByStateId(stateId);
+      setIncidentTask(task);
+    } catch {
+      setIncidentTask(null);
+    }
+  };
+
   useEffect(() => {
     if (decodedFqn) {
       setIsLoading(true);
@@ -223,6 +236,7 @@ const IncidentManagerPageHeader = ({
   useEffect(() => {
     if (testCaseData?.incidentId) {
       fetchTestCaseResolution(testCaseData.incidentId);
+      fetchIncidentTask(testCaseData.incidentId);
     }
   }, [testCaseData]);
 
@@ -270,9 +284,21 @@ const IncidentManagerPageHeader = ({
 
     const details = testCaseStatusData?.testCaseResolutionStatusDetails;
 
+    const taskLinkInfo = incidentTask
+      ? {
+          path: getNewTaskDetailPath(incidentTask),
+          label: incidentTask.taskId,
+        }
+      : activeTask
+      ? {
+          path: getOldTaskDetailPath(activeTask),
+          label: `#${activeTask?.task?.id}`,
+        }
+      : null;
+
     return (
       <>
-        {activeTask && (
+        {taskLinkInfo && (
           <>
             <Divider className="self-center m-x-sm" type="vertical" />
             <Typography.Text className="d-flex flex-col gap-3 text-xs whitespace-nowrap">
@@ -282,9 +308,9 @@ const IncidentManagerPageHeader = ({
 
               <Link
                 className="font-medium flex items-center gap-2"
-                data-testid="table-name"
-                to={getTaskDetailPath(activeTask)}>
-                {`#${activeTask?.task?.id}`}
+                data-testid="incident-task-link"
+                to={taskLinkInfo.path}>
+                {taskLinkInfo.label}
                 <InternalLinkIcon className="text-grey-muted" width="14px" />
               </Link>
             </Typography.Text>
@@ -329,7 +355,13 @@ const IncidentManagerPageHeader = ({
         </Typography.Text>
       </>
     );
-  }, [testCaseStatusData, isLoading, activeTask, hasEditStatusPermission]);
+  }, [
+    testCaseStatusData,
+    isLoading,
+    activeTask,
+    incidentTask,
+    hasEditStatusPermission,
+  ]);
 
   return (
     <Space wrap align="center" className="incident-manager-header w-full ">

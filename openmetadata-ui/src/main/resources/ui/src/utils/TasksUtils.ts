@@ -41,7 +41,10 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { Glossary } from '../generated/entity/data/glossary';
 import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
-import { Pipeline, Task } from '../generated/entity/data/pipeline';
+import {
+  Pipeline,
+  Task as PipelineTask,
+} from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Column, Table } from '../generated/entity/data/table';
 import { Field, Topic } from '../generated/entity/data/topic';
@@ -74,6 +77,7 @@ import { getSearchIndexDetailsByFQN } from '../rest/SearchIndexAPI';
 import { getContainerByFQN } from '../rest/storageAPI';
 import { getStoredProceduresByFqn } from '../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../rest/tableAPI';
+import { Task as TaskEntity, TaskEntityType } from '../rest/tasksAPI';
 import { getTopicByFqn } from '../rest/topicsAPI';
 import { getPartialNameFromTableFQN } from './CommonUtils';
 import { ContainerFields } from './ContainerDetailUtils';
@@ -87,7 +91,7 @@ import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { getEntityName } from './EntityUtils';
-import { getEntityFQN, getEntityType } from './FeedUtils';
+import { getEntityFQNFromAbout, getEntityTypeFromAbout } from './FeedUtils';
 import { getGlossaryBreadcrumbs } from './GlossaryUtils';
 import { t } from './i18next/LocalUtil';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
@@ -195,8 +199,11 @@ export const getKnowledgeCenterPagePath = (
 };
 
 export const getTaskDetailPath = (task: Thread) => {
-  const entityFqn = getEntityFQN(task.about) ?? '';
-  const entityType = getEntityType(task.about) ?? '';
+  // Use getEntityTypeFromAbout/getEntityFQNFromAbout to handle both:
+  // - Thread about: string entity link like "<#E::table::fqn>"
+  // - Task about: EntityReference object like { type, fullyQualifiedName }
+  const entityFqn = getEntityFQNFromAbout(task.about) ?? '';
+  const entityType = getEntityTypeFromAbout(task.about) ?? '';
 
   if (entityType === EntityType.TEST_CASE) {
     return getTestCaseDetailPagePath(entityFqn, TestCasePageTabs.ISSUES);
@@ -207,7 +214,9 @@ export const getTaskDetailPath = (task: Thread) => {
       ActivityFeedTabs.TASKS
     );
   } else if (
-    [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(entityType)
+    [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(
+      entityType as EntityType
+    )
   ) {
     return getGlossaryTermDetailsPath(
       entityFqn,
@@ -317,7 +326,7 @@ export const getEntityColumnsDetails = (
   }
 };
 
-type EntityColumns = Column[] | Task[] | MlFeature[] | Field[];
+type EntityColumns = Column[] | PipelineTask[] | MlFeature[] | Field[];
 
 interface EntityColumnProps {
   description: string;
@@ -788,6 +797,48 @@ export const isDescriptionTask = (taskType: TaskType) =>
 
 export const isTagsTask = (taskType: TaskType) =>
   [TaskType.RequestTag, TaskType.UpdateTag].includes(taskType);
+
+export const isDescriptionTaskType = (taskType: TaskEntityType) =>
+  [TaskEntityType.DescriptionUpdate].includes(taskType);
+
+export const isTagsTaskType = (taskType: TaskEntityType) =>
+  [TaskEntityType.TagUpdate].includes(taskType);
+
+export const getTaskDetailPathFromTask = (task: TaskEntity) => {
+  const entityFqn = task.about?.fullyQualifiedName ?? '';
+  const entityType = (task.about?.type as EntityType) ?? '';
+
+  if (entityType === EntityType.TEST_CASE) {
+    return getTestCaseDetailPagePath(entityFqn, TestCasePageTabs.ISSUES);
+  } else if (entityType === EntityType.USER) {
+    return getUserPath(
+      entityFqn,
+      EntityTabs.ACTIVITY_FEED,
+      ActivityFeedTabs.TASKS
+    );
+  } else if (
+    [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(entityType)
+  ) {
+    return getGlossaryTermDetailsPath(
+      entityFqn,
+      EntityTabs.ACTIVITY_FEED,
+      ActivityFeedTabs.TASKS
+    );
+  } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
+    return getKnowledgeCenterPagePath(
+      entityFqn,
+      EntityTabs.ACTIVITY_FEED,
+      ActivityFeedTabs.TASKS
+    );
+  }
+
+  return getEntityDetailsPath(
+    entityType as EntityType,
+    entityFqn,
+    EntityTabs.ACTIVITY_FEED,
+    ActivityFeedTabs.TASKS
+  );
+};
 
 export const getEntityTaskDetails = (
   entityType: EntityType

@@ -154,7 +154,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return null;
   }
 
-  public final ResultList<T> addHref(UriInfo uriInfo, ResultList<T> list) {
+  public final ResultList<T>  addHref(UriInfo uriInfo, ResultList<T> list) {
     listOrEmpty(list.getData()).forEach(i -> addHref(uriInfo, i));
     return list;
   }

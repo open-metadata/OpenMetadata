@@ -274,8 +274,9 @@ public final class SharedEntities {
       GlossaryService glossaryService = new GlossaryService(adminClient.getHttpClient());
       GlossaryTermService glossaryTermService =
           new GlossaryTermService(adminClient.getHttpClient());
-      Glossary glossary1 = createGlossary(glossaryService, "shared_glossary1");
-      Glossary glossary2 = createGlossary(glossaryService, "shared_glossary2");
+      Glossary glossary1 =
+          createGlossary(glossaryService, "shared_glossary1", List.of(user1.getEntityReference()));
+      Glossary glossary2 = createGlossary(glossaryService, "shared_glossary2", null);
       GlossaryTerm glossary1Term1 =
           createGlossaryTerm(glossaryTermService, glossary1, "shared_term1");
 
@@ -407,9 +408,13 @@ public final class SharedEntities {
     return tagService.create(createTag);
   }
 
-  private static Glossary createGlossary(GlossaryService glossaryService, String name) {
+  private static Glossary createGlossary(
+      GlossaryService glossaryService, String name, List<EntityReference> owners) {
     CreateGlossary createGlossary =
-        new CreateGlossary().withName(name).withDescription("Shared test glossary");
+        new CreateGlossary()
+            .withName(name)
+            .withDescription("Shared test glossary")
+            .withOwners(owners);
     return glossaryService.create(createGlossary);
   }
 

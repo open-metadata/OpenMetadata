@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/api/tasks/resolveTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ResolveTaskRequest",
+  "description": "Request to resolve a Task.",
+  "javaType": "org.openmetadata.schema.api.tasks.ResolveTask",
+  "type": "object",
+  "properties": {
+    "resolutionType": {
+      "description": "How the task should be resolved.",
+      "$ref": "../../entity/tasks/task.json#/definitions/resolutionType"
+    },
+    "comment": {
+      "description": "Comment explaining the resolution.",
+      "type": "string"
+    },
+    "newValue": {
+      "description": "New value to apply (for update tasks).",
+      "type": "string"
+    }
+  },
+  "required": ["resolutionType"],
+  "additionalProperties": false
+}

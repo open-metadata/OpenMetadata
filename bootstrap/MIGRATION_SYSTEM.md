@@ -1,4 +1,4 @@
-# OpenMetadata Migration System
+ # OpenMetadata Migration System
 
 This document describes the migration system architecture and execution order for OpenMetadata database schema and data migrations.
 

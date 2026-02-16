@@ -15,7 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageByUrl } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -211,12 +211,10 @@ export class TopicClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPage({
+    await visitEntityPageByUrl({
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${
-        this.entityResponseData.service.name ?? this.service.name
-      }-${this.entityResponseData.name ?? this.entity.name}`,
+      entityType: 'topic',
+      fqn: this.entityResponseData?.['fullyQualifiedName'] ?? '',
     });
   }
 

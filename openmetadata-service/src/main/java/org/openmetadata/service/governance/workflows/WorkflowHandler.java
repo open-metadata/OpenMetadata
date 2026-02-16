@@ -54,6 +54,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
@@ -568,8 +569,13 @@ public class WorkflowHandler {
             LOG.debug(
                 "[WorkflowTask] SUCCESS: Multi-approval task '{}' recorded vote, waiting for more votes",
                 customTaskId);
-            // Update the Thread entity to remove the task from the current voter's feed
-            removeTaskFromVoterFeed(task, customTaskId, variables);
+            // Update entity to remove the task from the current voter's feed
+            // Check if this is a Task entity (new system) or Thread entity (legacy)
+            if (isTaskEntity(customTaskId)) {
+              removeTaskFromVoterFeedForTaskEntity(task, customTaskId, variables);
+            } else {
+              removeTaskFromVoterFeed(task, customTaskId, variables);
+            }
           }
         } else {
           // Single approval - original behavior
@@ -757,6 +763,147 @@ public class WorkflowHandler {
     }
 
     return null;
+  }
+
+  /**
+   * Check if a customTaskId refers to a Task entity (new system) or Thread entity (legacy).
+   *
+   * <p>This method checks if there's a Task entity with the given ID. If found, it's a new Task
+   * entity; otherwise, it's assumed to be a legacy Thread entity.
+   *
+   * @param customTaskId The task ID to check
+   * @return true if this is a Task entity, false if it's a Thread entity
+   */
+  public boolean isTaskEntity(UUID customTaskId) {
+    try {
+      TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+      org.openmetadata.schema.entity.tasks.Task task =
+          taskRepository.find(customTaskId, Include.NON_DELETED);
+      return task != null;
+    } catch (Exception e) {
+      LOG.debug("Could not find Task entity with ID '{}': {}", customTaskId, e.getMessage());
+      return false;
+    }
+  }
+
+  /**
+   * Get the Task entity by customTaskId.
+   *
+   * @param customTaskId The task ID
+   * @return The Task entity, or null if not found
+   */
+  public org.openmetadata.schema.entity.tasks.Task getTaskEntity(UUID customTaskId) {
+    try {
+      TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+      return taskRepository.find(customTaskId, Include.NON_DELETED);
+    } catch (Exception e) {
+      LOG.debug("Could not find Task entity with ID '{}': {}", customTaskId, e.getMessage());
+      return null;
+    }
+  }
+
+  /**
+   * Update Task entity to reflect that a user has voted (for multi-approval tasks).
+   *
+   * <p>This method handles the new Task entity system. It removes the voting user from the
+   * assignees list so they no longer see the task in their pending tasks.
+   */
+  private void removeTaskFromVoterFeedForTaskEntity(
+      Task flowableTask, UUID customTaskId, Map<String, Object> variables) {
+    try {
+      String currentUser = extractCurrentUser(variables);
+      if (currentUser == null) {
+        LOG.warn("[WorkflowTask] Could not determine current user to remove from task feed");
+        return;
+      }
+
+      LOG.info(
+          "[WorkflowTask] Removing Task entity '{}' from feed for user '{}'",
+          customTaskId,
+          currentUser);
+
+      TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+      org.openmetadata.schema.entity.tasks.Task taskEntity =
+          taskRepository.find(customTaskId, Include.ALL);
+
+      if (taskEntity != null && taskEntity.getAssignees() != null) {
+        List<EntityReference> currentAssignees = new ArrayList<>(taskEntity.getAssignees());
+
+        boolean removed =
+            currentAssignees.removeIf(
+                assignee -> {
+                  if (assignee.getName() != null && assignee.getName().equals(currentUser)) {
+                    return true;
+                  }
+                  if (Entity.USER.equals(assignee.getType())) {
+                    try {
+                      User user =
+                          Entity.getEntity(Entity.USER, assignee.getId(), "", Include.NON_DELETED);
+                      return user.getName().equals(currentUser);
+                    } catch (Exception ex) {
+                      LOG.debug("Could not fetch user entity for assignee: {}", ex.getMessage());
+                    }
+                  }
+                  return false;
+                });
+
+        if (removed) {
+          taskEntity.setAssignees(currentAssignees);
+          taskEntity.setUpdatedBy(currentUser);
+          taskEntity.setUpdatedAt(System.currentTimeMillis());
+
+          taskRepository.createOrUpdate(null, taskEntity, currentUser);
+
+          LOG.info(
+              "[WorkflowTask] Successfully removed user '{}' from Task '{}' assignees. "
+                  + "Remaining assignees: {}",
+              currentUser,
+              taskEntity.getId(),
+              currentAssignees.size());
+        } else {
+          LOG.debug(
+              "[WorkflowTask] User '{}' was not in the assignees list for Task '{}'",
+              currentUser,
+              taskEntity.getId());
+        }
+      }
+
+      // Also update Flowable task to track voted users
+      if (flowableTask != null) {
+        TaskService taskService = processEngine.getTaskService();
+
+        @SuppressWarnings("unchecked")
+        List<String> votedUsers =
+            (List<String>) taskService.getVariable(flowableTask.getId(), "votedUsers");
+        if (votedUsers == null) {
+          votedUsers = new ArrayList<>();
+        }
+
+        if (!votedUsers.contains(currentUser)) {
+          votedUsers.add(currentUser);
+          taskService.setVariable(flowableTask.getId(), "votedUsers", votedUsers);
+          LOG.debug(
+              "[WorkflowTask] Added user '{}' to voted users list for Flowable task", currentUser);
+        }
+
+        // Remove user from Flowable task candidates
+        try {
+          String currentAssignee = flowableTask.getAssignee();
+          if (currentUser.equals(currentAssignee)) {
+            taskService.unclaim(flowableTask.getId());
+          }
+          taskService.deleteCandidateUser(flowableTask.getId(), currentUser);
+        } catch (Exception e) {
+          LOG.debug("[WorkflowTask] Could not update Flowable task assignees: {}", e.getMessage());
+        }
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "[WorkflowTask] Failed to update task voter information for Task entity '{}': {}",
+          customTaskId,
+          e.getMessage(),
+          e);
+    }
   }
 
   private boolean handleMultiApproval(

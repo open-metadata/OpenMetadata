@@ -24,25 +24,20 @@ import ResizablePanels from '../../../components/common/ResizablePanels/Resizabl
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
-import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import {
-  CreateThread,
-  TaskType,
-} from '../../../generated/api/feed/createThread';
 import { Glossary } from '../../../generated/entity/data/glossary';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { withPageLayout } from '../../../hoc/withPageLayout';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
-import { postThread } from '../../../rest/feedsAPI';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
-  ENTITY_LINK_SEPARATOR,
-  getEntityFeedLink,
-} from '../../../utils/EntityUtils';
+  CreateTask,
+  createTask,
+  TaskCategory,
+  TaskEntityType,
+  TaskPriority,
+} from '../../../rest/tasksAPI';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -59,7 +54,6 @@ import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestTag = () => {
-  const { currentUser } = useApplicationStore();
   const { t } = useTranslation();
   const location = useCustomLocation();
   const navigate = useNavigate();
@@ -104,49 +98,52 @@ const RequestTag = () => {
     fetchOptions(data);
   };
 
-  const getTaskAbout = () => {
+  const getFieldPath = () => {
     if (field && value) {
-      return `${field}${ENTITY_LINK_SEPARATOR}${value}${ENTITY_LINK_SEPARATOR}tags`;
-    } else {
-      return EntityField.TAGS;
+      return `${field}.${value}`;
     }
+
+    return undefined;
   };
 
-  const onCreateTask: FormProps['onFinish'] = (value) => {
+  const onCreateTask: FormProps['onFinish'] = async (formValues) => {
     setIsLoading(true);
-    const data: CreateThread = {
-      from: currentUser?.name as string,
-      message: value.title || taskMessage,
-      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
-      taskDetails: {
-        assignees: assignees.map((assignee) => ({
-          id: assignee.value,
-          type: assignee.type,
-        })),
-        suggestion: JSON.stringify(value.suggestTags),
-        type: TaskType.RequestTag,
-        oldValue: '[]',
+
+    const data: CreateTask = {
+      name: formValues.title || taskMessage,
+      category: TaskCategory.MetadataUpdate,
+      type: TaskEntityType.TagUpdate,
+      priority: TaskPriority.Medium,
+      about: entityFQN,
+      aboutType: entityType,
+      assignees: assignees.map((assignee) => assignee.name ?? ''),
+      payload: {
+        fieldPath: getFieldPath(),
+        tagsToAdd: formValues.suggestTags,
+        operation: 'Add',
       },
-      type: ThreadType.Task,
     };
-    postThread(data)
-      .then(() => {
-        showSuccessToast(
-          t('server.create-entity-success', {
-            entity: t('label.task'),
-          })
-        );
-        navigate(
-          entityUtilClassBase.getEntityLink(
-            entityType,
-            entityFQN,
-            EntityTabs.ACTIVITY_FEED,
-            ActivityFeedTabs.TASKS
-          )
-        );
-      })
-      .catch((err: AxiosError) => showErrorToast(err))
-      .finally(() => setIsLoading(false));
+
+    try {
+      await createTask(data);
+      showSuccessToast(
+        t('server.create-entity-success', {
+          entity: t('label.task'),
+        })
+      );
+      navigate(
+        entityUtilClassBase.getEntityLink(
+          entityType,
+          entityFQN,
+          EntityTabs.ACTIVITY_FEED,
+          ActivityFeedTabs.TASKS
+        )
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {

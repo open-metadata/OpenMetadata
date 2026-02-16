@@ -64,6 +64,7 @@ import org.openmetadata.sdk.services.storages.DirectoryService;
 import org.openmetadata.sdk.services.storages.FileService;
 import org.openmetadata.sdk.services.storages.SpreadsheetService;
 import org.openmetadata.sdk.services.storages.WorksheetService;
+import org.openmetadata.sdk.services.tasks.TaskService;
 import org.openmetadata.sdk.services.teams.PersonaService;
 import org.openmetadata.sdk.services.teams.RoleService;
 import org.openmetadata.sdk.services.teams.TeamService;
@@ -186,6 +187,9 @@ public class OpenMetadataClient {
   private final AIApplicationService aiApplications;
   private final PromptTemplateService promptTemplates;
 
+  // Tasks
+  private final TaskService tasks;
+
   public OpenMetadataClient(OpenMetadataConfig config) {
     this.config = config;
     this.httpClient = new OpenMetadataHttpClient(config);
@@ -293,6 +297,9 @@ public class OpenMetadataClient {
     // Initialize AI services
     this.aiApplications = new AIApplicationService(httpClient);
     this.promptTemplates = new PromptTemplateService(httpClient);
+
+// Initialize task services
+    this.tasks = new TaskService(httpClient);
 
     // Initialize feed service
     this.feed = new FeedService(httpClient);
@@ -582,6 +589,11 @@ public class OpenMetadataClient {
 
   public PromptTemplateService promptTemplates() {
     return promptTemplates;
+  }
+
+  // Task Service Getter
+  public TaskService tasks() {
+    return tasks;
   }
 
   /**

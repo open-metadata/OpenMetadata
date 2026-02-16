@@ -137,6 +137,7 @@ import org.openmetadata.schema.entity.services.SecurityService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
@@ -373,6 +374,9 @@ public interface CollectionDAO {
   FeedDAO feedDAO();
 
   @CreateSqlObject
+  TaskDAO taskDAO();
+
+  @CreateSqlObject
   StoredProcedureDAO storedProcedureDAO();
 
   @CreateSqlObject
@@ -464,6 +468,12 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   LLMServiceDAO llmServiceDAO();
+
+  @CreateSqlObject
+  ActivityStreamDAO activityStreamDAO();
+
+  @CreateSqlObject
+  ActivityStreamConfigDAO activityStreamConfigDAO();
 
   @CreateSqlObject
   SearchIndexJobDAO searchIndexJobDAO();
@@ -3000,6 +3010,89 @@ public interface CollectionDAO {
             rs.getString("count"));
       }
     }
+  }
+
+  interface TaskDAO extends EntityDAO<Task> {
+    @Override
+    default String getTableName() {
+      return "task_entity";
+    }
+
+    @Override
+    default Class<Task> getEntityClass() {
+      return Task.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO task_entity (id, json, fqnHash) VALUES (:id, :json, :fqnHash)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO task_entity (id, json, fqnHash) VALUES (:id, :json :: jsonb, :fqnHash)",
+        connectionType = POSTGRES)
+    void insertTask(
+        @Bind("id") String id, @Bind("json") String json, @BindFQN("fqnHash") String fqn);
+
+    @Override
+    default void insert(org.openmetadata.schema.EntityInterface entity, String fqn) {
+      Task task = (Task) entity;
+      insertTask(task.getId().toString(), JsonUtils.pojoToJson(task), task.getFullyQualifiedName());
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE task_entity SET json = :json WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE task_entity SET json = (:json :: jsonb) WHERE id = :id",
+        connectionType = POSTGRES)
+    void updateTask(@Bind("id") String id, @Bind("json") String json);
+
+    @Override
+    default void update(UUID id, String fqn, String json) {
+      updateTask(id.toString(), json);
+    }
+
+    @SqlUpdate("UPDATE new_task_sequence SET id = LAST_INSERT_ID(id + 1)")
+    int incrementSequenceMysql();
+
+    @SqlQuery("SELECT LAST_INSERT_ID()")
+    long getLastInsertIdMysql();
+
+    @SqlQuery("UPDATE new_task_sequence SET id = id + 1 RETURNING id")
+    long getNextTaskIdPostgres();
+
+    @SqlUpdate("DELETE FROM entity_relationship WHERE fromEntity = 'task' OR toEntity = 'task'")
+    void deleteTaskRelationships();
+
+    @SqlUpdate("DELETE FROM task_entity")
+    void deleteAll();
+
+    @SqlUpdate("UPDATE new_task_sequence SET id = 0")
+    void resetSequence();
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE fromEntity = 'domain' AND toEntity = 'task' "
+            + "AND relation = 10 AND toId IN (<taskIds>)")
+    void bulkRemoveDomainRelationships(@BindList("taskIds") List<String> taskIds);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM task_entity "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.payload.testCaseResolutionStatusId')) = :stateId "
+                + "AND (JSON_EXTRACT(json, '$.deleted') = false OR JSON_EXTRACT(json, '$.deleted') IS NULL)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM task_entity "
+                + "WHERE json->'payload'->>'testCaseResolutionStatusId' = :stateId "
+                + "AND ((json->>'deleted')::boolean = false OR json->>'deleted' IS NULL)",
+        connectionType = POSTGRES)
+    String fetchTaskByTestCaseResolutionStatusId(@Bind("stateId") String stateId);
   }
 
   interface FieldRelationshipDAO {
@@ -10522,6 +10615,191 @@ public interface CollectionDAO {
             rs.getLong("vectorFailed"));
       }
     }
+  }
+
+  interface ActivityStreamDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO activity_stream(id, eventType, entityType, entityId, entityFqnHash, "
+                + "about, aboutFqnHash, actorId, actorName, timestamp, summary, fieldName, oldValue, newValue, domains, json) "
+                + "VALUES (:id, :eventType, :entityType, :entityId, :entityFqnHash, "
+                + ":about, :aboutFqnHash, :actorId, :actorName, :timestamp, :summary, :fieldName, :oldValue, :newValue, :domains, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO activity_stream(id, eventtype, entitytype, entityid, entityfqnhash, "
+                + "about, aboutfqnhash, actorid, actorname, timestamp, summary, fieldname, oldvalue, newvalue, domains, json) "
+                + "VALUES (:id, :eventType, :entityType, :entityId, :entityFqnHash, "
+                + ":about, :aboutFqnHash, :actorId, :actorName, :timestamp, :summary, :fieldName, :oldValue, :newValue, :domains::jsonb, :json::jsonb)",
+        connectionType = POSTGRES)
+    void insert(
+        @Bind("id") String id,
+        @Bind("eventType") String eventType,
+        @Bind("entityType") String entityType,
+        @Bind("entityId") String entityId,
+        @Bind("entityFqnHash") String entityFqnHash,
+        @Bind("about") String about,
+        @Bind("aboutFqnHash") String aboutFqnHash,
+        @Bind("actorId") String actorId,
+        @Bind("actorName") String actorName,
+        @Bind("timestamp") long timestamp,
+        @Bind("summary") String summary,
+        @Bind("fieldName") String fieldName,
+        @Bind("oldValue") String oldValue,
+        @Bind("newValue") String newValue,
+        @Bind("domains") String domains,
+        @Bind("json") String json);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE timestamp >= :after "
+                + "ORDER BY timestamp DESC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE timestamp >= :after "
+                + "ORDER BY timestamp DESC LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> list(@Bind("after") long after, @Bind("limit") int limit);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entityType = :entityType AND entityId = :entityId "
+                + "AND timestamp >= :after ORDER BY timestamp DESC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entitytype = :entityType AND entityid = :entityId "
+                + "AND timestamp >= :after ORDER BY timestamp DESC LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listByEntity(
+        @Bind("entityType") String entityType,
+        @Bind("entityId") String entityId,
+        @Bind("after") long after,
+        @Bind("limit") int limit);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE actorId = :actorId "
+                + "AND timestamp >= :after ORDER BY timestamp DESC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE actorid = :actorId "
+                + "AND timestamp >= :after ORDER BY timestamp DESC LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listByActor(
+        @Bind("actorId") String actorId, @Bind("after") long after, @Bind("limit") int limit);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE JSON_CONTAINS(domains, :domainJson, '$') "
+                + "AND timestamp >= :after ORDER BY timestamp DESC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE domains @> :domainJson::jsonb "
+                + "AND timestamp >= :after ORDER BY timestamp DESC LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listByDomains(
+        @Bind("domainJson") String domainJson, @Bind("after") long after, @Bind("limit") int limit);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT count(*) FROM activity_stream WHERE timestamp >= :after",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT count(*) FROM activity_stream WHERE timestamp >= :after",
+        connectionType = POSTGRES)
+    int count(@Bind("after") long after);
+
+    @SqlUpdate("DELETE FROM activity_stream WHERE timestamp < :cutoff")
+    int deleteOlderThan(@Bind("cutoff") long cutoffTimestamp);
+
+    @SqlQuery("SELECT json FROM activity_stream WHERE id = :id")
+    String findById(@Bind("id") String id);
+
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE activity_stream SET json = :json WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE activity_stream SET json = :json::jsonb WHERE id = :id",
+        connectionType = POSTGRES)
+    void updateJson(@Bind("id") String id, @Bind("json") String json);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entityId IN ("
+                + "SELECT toId FROM entity_relationship WHERE relation = 8 "
+                + "AND ((fromEntity = 'user' AND fromId = :userId) "
+                + "OR (fromEntity = 'team' AND fromId IN (<teamIds>)))) "
+                + "AND timestamp >= :after ORDER BY timestamp DESC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entityid IN ("
+                + "SELECT toid FROM entity_relationship WHERE relation = 8 "
+                + "AND ((fromentity = 'user' AND fromid = :userId) "
+                + "OR (fromentity = 'team' AND fromid IN (<teamIds>)))) "
+                + "AND timestamp >= :after ORDER BY timestamp DESC LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listByOwners(
+        @Bind("userId") String userId,
+        @BindList("teamIds") List<String> teamIds,
+        @Bind("after") long after,
+        @Bind("limit") int limit);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE aboutFqnHash = :aboutFqnHash "
+                + "AND timestamp >= :after ORDER BY timestamp DESC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE aboutfqnhash = :aboutFqnHash "
+                + "AND timestamp >= :after ORDER BY timestamp DESC LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listByAbout(
+        @Bind("aboutFqnHash") String aboutFqnHash,
+        @Bind("after") long after,
+        @Bind("limit") int limit);
+  }
+
+  interface ActivityStreamConfigDAO {
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO activity_stream_config(id, json) VALUES (:id, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO activity_stream_config(id, json) VALUES (:id, :json::jsonb)",
+        connectionType = POSTGRES)
+    void insert(@Bind("id") String id, @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE activity_stream_config SET json = :json WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE activity_stream_config SET json = :json::jsonb WHERE id = :id",
+        connectionType = POSTGRES)
+    void update(@Bind("id") String id, @Bind("json") String json);
+
+    @SqlQuery("SELECT json FROM activity_stream_config WHERE id = :id")
+    String findById(@Bind("id") String id);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM activity_stream_config WHERE domainId = :domainId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM activity_stream_config WHERE domainid = :domainId",
+        connectionType = POSTGRES)
+    String findByDomainId(@Bind("domainId") String domainId);
+
+    @SqlQuery("SELECT json FROM activity_stream_config WHERE scope = 'global' LIMIT 1")
+    String findGlobalConfig();
+
+    @SqlQuery("SELECT json FROM activity_stream_config")
+    List<String> listAll();
+
+    @SqlUpdate("DELETE FROM activity_stream_config WHERE id = :id")
+    void delete(@Bind("id") String id);
   }
 
   @RegisterRowMapper(AuditLogRecordMapper.class)
