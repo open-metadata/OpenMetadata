@@ -686,7 +686,7 @@ export const updateDescriptionForChildren = async (
     updateRequest = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/columns/name/') &&
-        response.request().method() === 'PATCH' &&
+        response.request().method() === 'PUT' &&
         response.status() === 200
     );
   } else {
