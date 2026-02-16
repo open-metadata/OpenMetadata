@@ -847,7 +847,6 @@ entityStatus: Approved
 entity:
   id: b27eaa6a-f94f-4509-97eb-300afd853db7
   type: table
-  href: http://localhost:8585/api/v1/tables/b27eaa6a-f94f-4509-97eb-300afd853db7
 semantics: []
 sla:
   refreshFrequency:
