@@ -14,6 +14,7 @@ Unit tests for TagAnalyzer "any language" mode.
 from unittest.mock import MagicMock
 
 import pytest
+from dirty_equals import Contains, HasAttributes, IsDict
 
 from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.classification import (
     ClassificationFactory,
@@ -198,62 +199,10 @@ class TestAnalyzeWithAnyLanguage:
 
         assert len(build_calls) == 1
         _, used_nlp_engine = build_calls[0]
-        assert used_nlp_engine is None
-
-    def test_any_language_passes_nlp_engine_as_none(
-        self, pii_classification, column, mock_nlp_engine
-    ):
-        en_tag = _make_en_tag(pii_classification)
-        fr_tag = _make_fr_tag(pii_classification)
-
-        captured_nlp_engines = []
-        original_build_en = None
-
-        for tag, lang_value, test_value in [
-            (en_tag, "en", "john@example.com"),
-            (fr_tag, "fr", "01 23 45 67 89"),
-        ]:
-            tag_analyzer = TagAnalyzer(
-                tag=tag,
-                column=column,
-                nlp_engine=mock_nlp_engine,
-                language=ClassificationLanguage.any,
-            )
-
-            original_build = tag_analyzer.build_analyzer_with
-
-            def tracking_build(recs, nlp_engine=None, _original=original_build):
-                captured_nlp_engines.append(nlp_engine)
-                return _original(recs, nlp_engine=nlp_engine)
-
-            tag_analyzer.build_analyzer_with = tracking_build
-            tag_analyzer.analyze_content([test_value])
-
-        assert all(e is None for e in captured_nlp_engines)
-
-    def test_specific_language_uses_nlp_engine(
-        self, pii_classification, column, mock_nlp_engine
-    ):
-        en_tag = _make_en_tag(pii_classification)
-        analyzer = TagAnalyzer(
-            tag=en_tag,
-            column=column,
-            nlp_engine=mock_nlp_engine,
-            language=ClassificationLanguage.en,
+        assert used_nlp_engine == HasAttributes(
+            engine_name="spacy",
+            models=Contains(IsDict(lang_code="en", model_name="en_core_web_md")),
         )
-
-        captured_nlp_engines = []
-        original_build = analyzer.build_analyzer_with
-
-        def tracking_build(recs, nlp_engine=None):
-            captured_nlp_engines.append(nlp_engine)
-            return original_build(recs, nlp_engine=nlp_engine)
-
-        analyzer.build_analyzer_with = tracking_build
-        analyzer.analyze_content(["john@example.com"])
-
-        assert len(captured_nlp_engines) == 1
-        assert captured_nlp_engines[0] is None
 
     def test_any_language_no_exception_raised(
         self, pii_classification, column, mock_nlp_engine

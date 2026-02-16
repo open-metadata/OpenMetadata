@@ -21,7 +21,10 @@ from metadata.pii.algorithms.feature_extraction import split_column_name
 from metadata.pii.algorithms.presidio_recognizer_factory import (
     PresidioRecognizerFactory,
 )
-from metadata.pii.algorithms.presidio_utils import explain_recognition_results
+from metadata.pii.algorithms.presidio_utils import (
+    explain_recognition_results,
+    load_nlp_engine,
+)
 from metadata.utils.entity_link import (
     get_entity_link,  # pyright: ignore[reportUnknownVariableType]
 )
@@ -161,7 +164,12 @@ class TagAnalyzer:
         sorted_recs = sorted(recognizers, key=lambda r: r.supported_language)
         for lang, group in groupby(sorted_recs, key=lambda r: r.supported_language):
             lang_recognizers = list(group)
-            analyzer = self.build_analyzer_with(lang_recognizers, nlp_engine=None)
+            analyzer = self.build_analyzer_with(
+                lang_recognizers,
+                nlp_engine=load_nlp_engine(
+                    classification_language=ClassificationLanguage(lang)
+                ),
+            )
             for value in values:
                 results.extend(
                     analyzer.analyze(
