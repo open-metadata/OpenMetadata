@@ -19,6 +19,8 @@ import {
 } from '../../../../generated/type/tagLabel';
 import {
   MOCK_TEST_CASE,
+  MOCK_TEST_CASE_WITH_BOOLEAN_PARAM,
+  MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_BE_IN_SET,
   MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX,
 } from '../../../../mocks/TestSuite.mock';
 import { getTestDefinitionById } from '../../../../rest/testAPI';
@@ -691,8 +693,6 @@ describe('EditTestCaseModalV1 Component', () => {
   });
 
   it('should correctly convert boolean parameter values from string to boolean', async () => {
-    const { MOCK_TEST_CASE_WITH_BOOLEAN_PARAM, MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_BE_IN_SET } = await import('../../../../mocks/TestSuite.mock');
-    
     (getTestDefinitionById as jest.Mock).mockResolvedValue(
       MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_BE_IN_SET
     );
@@ -718,15 +718,11 @@ describe('EditTestCaseModalV1 Component', () => {
     });
 
     const switchElement = container.querySelector('button[role="switch"]') as HTMLButtonElement;
-    
-    if (switchElement) {
-      expect(switchElement.getAttribute('aria-checked')).toBe('false');
-    }
+    expect(switchElement).toBeInTheDocument();
+    expect(switchElement.getAttribute('aria-checked')).toBe('false');
   });
 
   it('should correctly convert boolean parameter values when value is "true"', async () => {
-    const { MOCK_TEST_CASE_WITH_BOOLEAN_PARAM, MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_BE_IN_SET } = await import('../../../../mocks/TestSuite.mock');
-    
     (getTestDefinitionById as jest.Mock).mockResolvedValue(
       MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_BE_IN_SET
     );
@@ -752,9 +748,7 @@ describe('EditTestCaseModalV1 Component', () => {
     });
 
     const switchElement = container.querySelector('button[role="switch"]') as HTMLButtonElement;
-    
-    if (switchElement) {
-      expect(switchElement.getAttribute('aria-checked')).toBe('true');
-    }
+    expect(switchElement).toBeInTheDocument();
+    expect(switchElement.getAttribute('aria-checked')).toBe('true');
   });
 });
