@@ -161,14 +161,12 @@ describe('LearningIcon', () => {
       expect(screen.getByTestId('learning-icon')).toBeInTheDocument();
     });
 
-    const badge = screen
-      .getByTestId('learning-icon')
-      .closest('.learning-icon-badge');
+    const iconElement = screen.getByTestId('learning-icon');
 
-    expect(badge).toHaveClass('custom-class');
+    expect(iconElement).toHaveClass('custom-class');
   });
 
-  it('should render learning icon badge when resources exist', async () => {
+  it('should render learning icon when resources exist', async () => {
     render(<LearningIcon pageId="glossary" />);
 
     await waitFor(() => {
@@ -179,11 +177,9 @@ describe('LearningIcon', () => {
       await Promise.resolve();
     });
 
-    const badge = screen
-      .getByTestId('learning-icon')
-      .closest('.learning-icon-badge');
+    const iconElement = screen.getByTestId('learning-icon');
 
-    expect(badge).toBeInTheDocument();
+    expect(iconElement).toBeInTheDocument();
     expect(mockGetLearningResourcesByContext).toHaveBeenCalledWith(
       'glossary',
       expect.objectContaining({ limit: 1 })

@@ -12,15 +12,13 @@
  */
 
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import { Button, useTheme } from '@mui/material';
+import { Box, Button, useTheme } from '@mui/material';
 import { Popover } from 'antd';
-import classNames from 'classnames';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LearningIconSvg } from '../../../assets/svg/ic-learning.svg';
 import { getLearningResourcesByContext } from '../../../rest/learningResourceAPI';
 import { LearningDrawer } from '../LearningDrawer/LearningDrawer.component';
-import './learning-icon.less';
 import { LearningIconProps } from './LearningIcon.interface';
 
 export const LearningIcon: React.FC<LearningIconProps> = ({
@@ -70,47 +68,87 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
   }
 
   const popoverContent = (
-    <div className="learning-tooltip-content">
-      <span className="learning-tooltip-text">
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: theme.spacing(1),
+      }}>
+      <Box
+        component="span"
+        sx={{
+          fontSize: theme.typography.pxToRem(13),
+          whiteSpace: 'nowrap',
+        }}>
         {t('label.learn-how-this-feature-works')}
-      </span>
+      </Box>
       <Button
-        className="learning-tooltip-button"
-        endIcon={<ArrowForwardIcon sx={{ fontSize: 14 }} />}
+        endIcon={
+          <ArrowForwardIcon
+            sx={{ fontSize: theme.typography.body2.fontSize }}
+          />
+        }
         size="small"
         sx={{
-          borderRadius: '10px',
+          borderRadius: theme.spacing(1.25),
           border: `0.5px solid ${theme.palette.grey[300]}`,
           background: theme.palette.background.paper,
           boxShadow: theme.shadows[1],
           color: theme.palette.text.secondary,
-          fontSize: 14,
-          fontWeight: 500,
-          padding: '4px 10px',
+          fontSize: theme.typography.body2.fontSize,
+          fontWeight: theme.typography.fontWeightMedium,
+          padding: theme.spacing(0.5, 1.25),
+          minWidth: 0,
         }}
         variant="text"
         onClick={handleClick}>
         {resourceCount} {t('label.resource-plural').toLowerCase()}
       </Button>
-    </div>
+    </Box>
   );
 
   return (
     <>
       <Popover
         content={popoverContent}
-        overlayClassName="learning-tooltip-popover"
+        overlayInnerStyle={{
+          borderRadius: theme.shape.borderRadius,
+          background: `linear-gradient(180deg, ${theme.palette.grey[50]} 0%, ${theme.palette.grey[100]} 100%)`,
+          boxShadow: theme.shadows[2],
+          padding: theme.spacing(0.5, 1.25),
+        }}
         placement="bottomLeft"
         showArrow={false}
         trigger="hover">
-        <div
-          className={classNames('learning-icon-badge', className)}
+        <Box
+          className={className}
           data-testid="learning-icon"
+          sx={{
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            verticalAlign: 'middle',
+            position: 'relative',
+            borderRadius: theme.spacing(2),
+            backgroundColor: theme.palette.grey[100],
+            padding: theme.spacing(0.5),
+            height: 'fit-content',
+          }}
           onClick={handleClick}>
-          <div className="learning-icon-container">
+          <Box
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                transform: 'scale(1.1)',
+              },
+            }}>
             <LearningIconSvg height={16} width={16} />
-          </div>
-        </div>
+          </Box>
+        </Box>
       </Popover>
 
       <LearningDrawer

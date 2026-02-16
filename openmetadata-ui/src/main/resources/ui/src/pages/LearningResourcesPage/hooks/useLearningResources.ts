@@ -12,8 +12,16 @@
  */
 
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
+import { MAX_CHAIN_PAGES } from '../../../constants/Learning.constants';
+import { Paging } from '../../../generated/type/paging';
 import {
   getLearningResourcesList,
   LearningResource,
@@ -21,96 +29,270 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import type { LearningResourceFilterState } from './useLearningResourceFilters';
 
-const matchesFilters = (
-  resource: LearningResource,
-  searchText: string,
-  filters: LearningResourceFilterState
-): boolean => {
-  if (searchText) {
-    const q = searchText.toLowerCase();
-    if (
-      !resource.name.toLowerCase().includes(q) &&
-      !resource.displayName?.toLowerCase().includes(q)
-    ) {
-      return false;
-    }
-  }
-  if (filters.type?.length && !filters.type.includes(resource.resourceType)) {
-    return false;
-  }
-  const { category, context, status } = filters;
-  if (
-    category?.length &&
-    !resource.categories?.some((c) => category.includes(c))
-  ) {
-    return false;
-  }
-  if (
-    context?.length &&
-    !resource.contexts?.some((c) => context.includes(c.pageId))
-  ) {
-    return false;
-  }
-  if (status?.length && !status.includes(resource.status ?? 'Active')) {
-    return false;
-  }
+const FIELDS = 'categories,contexts,difficulty,estimatedDuration,owners';
 
-  return true;
-};
+const INITIAL_PAGING: Paging = { total: 0 };
+
+const isAbortError = (error: unknown): boolean =>
+  error instanceof Error &&
+  (error.name === 'CanceledError' || error.name === 'AbortError');
+
+function applyResponseToRefs(
+  page: number,
+  list: LearningResource[],
+  nextPaging: Paging,
+  refs: {
+    itemsByPageRef: MutableRefObject<Map<number, LearningResource[]>>;
+    cursorsByPageRef: MutableRefObject<Map<number, string>>;
+    beforeCursorsByPageRef: MutableRefObject<Map<number, string>>;
+    totalFromPage1Ref: MutableRefObject<number>;
+  }
+): void {
+  refs.itemsByPageRef.current.set(page, list);
+  if (nextPaging.after != null) {
+    refs.cursorsByPageRef.current.set(page, nextPaging.after);
+  }
+  if (page >= 2 && nextPaging.before != null) {
+    refs.beforeCursorsByPageRef.current.set(page, nextPaging.before);
+  }
+  if (page === 1) {
+    refs.totalFromPage1Ref.current = nextPaging.total ?? 0;
+  }
+}
 
 interface UseLearningResourcesParams {
   searchText: string;
   filterState: LearningResourceFilterState;
+  pageSize: number;
+  currentPage: number;
 }
 
 interface UseLearningResourcesReturn {
   resources: LearningResource[];
-  filteredResources: LearningResource[];
+  paging: Paging;
   isLoading: boolean;
   refetch: () => Promise<void>;
+}
+
+function buildListParams(
+  searchText: string,
+  filterState: LearningResourceFilterState,
+  pageSize: number,
+  cursor?: { after?: string; before?: string }
+): Parameters<typeof getLearningResourcesList>[0] {
+  const hasCursor = cursor && (cursor.after ?? cursor.before);
+
+  return {
+    limit: pageSize,
+    fields: FIELDS,
+    q: searchText || undefined,
+    category: filterState.category?.length ? filterState.category : undefined,
+    pageId: filterState.context?.length ? filterState.context : undefined,
+    type: filterState.type?.length ? filterState.type : undefined,
+    status: filterState.status?.length ? filterState.status : undefined,
+    ...(hasCursor ? cursor : undefined),
+  };
 }
 
 export const useLearningResources = ({
   searchText,
   filterState,
+  pageSize,
+  currentPage,
 }: UseLearningResourcesParams): UseLearningResourcesReturn => {
   const { t } = useTranslation();
   const [resources, setResources] = useState<LearningResource[]>([]);
+  const [paging, setPaging] = useState<Paging>(INITIAL_PAGING);
   const [isLoading, setIsLoading] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const prevRequestKeyRef = useRef<string>('');
 
-  const fetchResources = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const apiParams: Parameters<typeof getLearningResourcesList>[0] = {
-        limit: 100,
-        fields: 'categories,contexts,difficulty,estimatedDuration,owners',
-      };
+  const cursorsByPageRef = useRef<Map<number, string>>(new Map());
+  const beforeCursorsByPageRef = useRef<Map<number, string>>(new Map());
+  const itemsByPageRef = useRef<Map<number, LearningResource[]>>(new Map());
+  const totalFromPage1Ref = useRef<number>(0);
 
-      const response = await getLearningResourcesList(apiParams);
-      setResources(response.data ?? []);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.learning-resources-fetch-error')
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
+  const loadData = useCallback(
+    async (
+      page: number,
+      options?: { skipGridItemsUpdate?: boolean; signal?: AbortSignal }
+    ): Promise<void> => {
+      const before = beforeCursorsByPageRef.current.get(2);
+      const after = cursorsByPageRef.current.get(page - 1);
+      let cursor: { before?: string; after?: string } | undefined;
+      if (page === 1) {
+        cursor = before ? { before } : undefined;
+      } else {
+        cursor = after ? { after } : undefined;
+      }
+
+      const signal = options?.signal;
+
+      try {
+        const apiParams = buildListParams(
+          searchText,
+          filterState,
+          pageSize,
+          cursor
+        );
+        const response = await getLearningResourcesList(apiParams, {
+          ...(signal && { signal }),
+        });
+
+        if (signal?.aborted) {
+          return;
+        }
+
+        const list = response?.data ?? [];
+        const nextPaging = response?.paging ?? INITIAL_PAGING;
+
+        applyResponseToRefs(page, list, nextPaging, {
+          itemsByPageRef,
+          cursorsByPageRef,
+          beforeCursorsByPageRef,
+          totalFromPage1Ref,
+        });
+
+        if (!options?.skipGridItemsUpdate) {
+          setResources(list);
+          setPaging({
+            ...nextPaging,
+            total: totalFromPage1Ref.current || nextPaging.total,
+          });
+        }
+      } catch (error) {
+        if (!isAbortError(error)) {
+          showErrorToast(
+            error as AxiosError,
+            t('server.learning-resources-fetch-error')
+          );
+        }
+
+        throw error;
+      }
+    },
+    [t, searchText, filterState, pageSize]
+  );
+
+  const loadPageWithChain = useCallback(
+    async (signal: AbortSignal): Promise<void> => {
+      const opts = { signal };
+      if (currentPage === 1) {
+        await loadData(1, opts);
+
+        return;
+      }
+      if (cursorsByPageRef.current.has(currentPage - 1)) {
+        await loadData(currentPage, opts);
+
+        return;
+      }
+      if (currentPage > MAX_CHAIN_PAGES) {
+        await loadData(1, opts);
+        setResources(itemsByPageRef.current.get(1) ?? []);
+        setPaging((prev) => ({
+          ...prev,
+          total: totalFromPage1Ref.current,
+        }));
+        showErrorToast(t('message.please-refresh-the-page'));
+
+        return;
+      }
+      for (let p = 1; p < currentPage; p++) {
+        if (signal.aborted) {
+          return;
+        }
+        await loadData(p, { skipGridItemsUpdate: true, signal });
+      }
+      if (signal.aborted) {
+        return;
+      }
+      await loadData(currentPage, opts);
+    },
+    [loadData, currentPage, t]
+  );
 
   useEffect(() => {
-    fetchResources();
-  }, [fetchResources]);
+    abortControllerRef.current?.abort();
 
-  const filteredResources = useMemo(
-    () => resources.filter((r) => matchesFilters(r, searchText, filterState)),
-    [resources, searchText, filterState]
-  );
+    const requestKey = JSON.stringify({ searchText, filterState, pageSize });
+    const filtersChanged = prevRequestKeyRef.current !== requestKey;
+    if (filtersChanged) {
+      prevRequestKeyRef.current = requestKey;
+      cursorsByPageRef.current = new Map();
+      beforeCursorsByPageRef.current = new Map();
+      itemsByPageRef.current = new Map();
+      totalFromPage1Ref.current = 0;
+    }
+
+    const cachedItems = itemsByPageRef.current.get(currentPage);
+    if (cachedItems && !filtersChanged) {
+      setResources(cachedItems);
+      setIsLoading(false);
+      setPaging((prev) => ({
+        ...prev,
+        total: totalFromPage1Ref.current || prev.total,
+      }));
+
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    setIsLoading(true);
+
+    const run = async () => {
+      try {
+        await loadPageWithChain(controller.signal);
+      } catch {
+        if (!cancelled && abortControllerRef.current === controller) {
+          setResources([]);
+          setPaging(INITIAL_PAGING);
+        }
+      } finally {
+        if (abortControllerRef.current === controller && !cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [currentPage, searchText, filterState, pageSize, loadPageWithChain]);
+
+  const refetch = useCallback(async () => {
+    cursorsByPageRef.current = new Map();
+    beforeCursorsByPageRef.current = new Map();
+    itemsByPageRef.current = new Map();
+    totalFromPage1Ref.current = 0;
+    prevRequestKeyRef.current = '';
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    setIsLoading(true);
+    try {
+      await loadPageWithChain(controller.signal);
+    } catch (error) {
+      if (!isAbortError(error)) {
+        setResources([]);
+        setPaging(INITIAL_PAGING);
+      }
+    } finally {
+      if (abortControllerRef.current === controller) {
+        setIsLoading(false);
+      }
+    }
+  }, [loadPageWithChain]);
 
   return {
     resources,
-    filteredResources,
+    paging,
     isLoading,
-    refetch: fetchResources,
+    refetch,
   };
 };

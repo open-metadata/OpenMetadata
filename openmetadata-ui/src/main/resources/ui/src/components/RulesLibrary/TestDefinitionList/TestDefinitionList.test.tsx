@@ -117,6 +117,37 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
     handlePageChange: jest.fn(),
     handlePageSizeChange: jest.fn(),
     showPagination: false,
+    pagingCursor: {
+      cursorType: undefined,
+      cursorValue: undefined,
+      currentPage: '1',
+      pageSize: 15,
+    },
+  }),
+}));
+
+jest.mock('../../../hooks/useTableFilters', () => ({
+  useTableFilters: jest.fn().mockReturnValue({
+    filters: {
+      entityType: undefined,
+      testPlatforms: undefined,
+    },
+    setFilters: jest.fn(),
+  }),
+}));
+
+jest.mock('../../common/atoms/filters/useQuickFiltersWithComponent', () => ({
+  ...jest.requireActual(
+    '../../common/atoms/filters/useQuickFiltersWithComponent'
+  ),
+  useQuickFiltersWithComponent: jest.fn().mockReturnValue({
+    quickFilters: <div data-testid="quick-filters">Quick Filters</div>,
+  }),
+}));
+
+jest.mock('../../common/atoms/filters/useFilterSelection', () => ({
+  useFilterSelection: jest.fn().mockReturnValue({
+    filterSelectionDisplay: null,
   }),
 }));
 
@@ -667,6 +698,282 @@ describe('TestDefinitionList Component', () => {
       expect(switches[1]).toBeDisabled();
       expect(switches[2]).toBeDisabled();
       expect(switches[3]).toBeDisabled();
+    });
+  });
+
+  describe('Filter Functionality', () => {
+    it('should initialize with useTableFilters hook', () => {
+      const { useTableFilters } = jest.requireMock(
+        '../../../hooks/useTableFilters'
+      );
+
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      expect(useTableFilters).toHaveBeenCalledWith({
+        entityType: undefined,
+        testPlatforms: undefined,
+      });
+    });
+
+    it('should initialize filter hooks with correct configuration', () => {
+      const { useQuickFiltersWithComponent } = jest.requireMock(
+        '../../common/atoms/filters/useQuickFiltersWithComponent'
+      );
+
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      expect(useQuickFiltersWithComponent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mode: 'single',
+          searchIndex: 'all',
+        })
+      );
+    });
+
+    it('should parse filters from URL params', () => {
+      const { useTableFilters } = jest.requireMock(
+        '../../../hooks/useTableFilters'
+      );
+
+      (useTableFilters as jest.Mock).mockReturnValue({
+        filters: {
+          entityType: 'TABLE',
+          testPlatforms: 'OpenMetadata,DBT',
+        },
+        setFilters: jest.fn(),
+      });
+
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      const { useQuickFiltersWithComponent } = jest.requireMock(
+        '../../common/atoms/filters/useQuickFiltersWithComponent'
+      );
+
+      const parsedFilters =
+        useQuickFiltersWithComponent.mock.calls[0][0].parsedFilters;
+
+      expect(parsedFilters).toBeDefined();
+      expect(parsedFilters).toHaveLength(2);
+    });
+
+    it('should reset pagination when filters change', async () => {
+      const mockHandlePageChange = jest.fn();
+      const mockUpdateUrlParams = jest.fn();
+
+      const { usePaging } = jest.requireMock('../../../hooks/paging/usePaging');
+      const { useTableFilters } = jest.requireMock(
+        '../../../hooks/useTableFilters'
+      );
+
+      (usePaging as jest.Mock).mockReturnValue({
+        currentPage: 2,
+        pageSize: 15,
+        paging: { total: 30 },
+        handlePagingChange: jest.fn(),
+        handlePageChange: mockHandlePageChange,
+        handlePageSizeChange: jest.fn(),
+        showPagination: true,
+        pagingCursor: {
+          cursorType: undefined,
+          cursorValue: undefined,
+          currentPage: '2',
+          pageSize: 15,
+        },
+      });
+
+      (useTableFilters as jest.Mock).mockReturnValue({
+        filters: {
+          entityType: undefined,
+          testPlatforms: undefined,
+        },
+        setFilters: mockUpdateUrlParams,
+      });
+
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      const { useQuickFiltersWithComponent } = jest.requireMock(
+        '../../common/atoms/filters/useQuickFiltersWithComponent'
+      );
+
+      const onFilterChange =
+        useQuickFiltersWithComponent.mock.calls[0][0].onFilterChange;
+
+      const mockFilters = [
+        {
+          key: 'entityType',
+          label: 'label.entity-type',
+          value: [{ key: 'TABLE', label: 'Table' }],
+        },
+      ];
+
+      onFilterChange(mockFilters);
+
+      await waitFor(() => {
+        expect(mockUpdateUrlParams).toHaveBeenCalledWith(
+          expect.objectContaining({
+            entityType: 'TABLE',
+            testPlatforms: null,
+          })
+        );
+        expect(mockHandlePageChange).toHaveBeenCalledWith(1, {
+          cursorType: null,
+          cursorValue: undefined,
+        });
+      });
+    });
+
+    it('should clear filters when empty array is passed', async () => {
+      const mockUpdateUrlParams = jest.fn();
+
+      const { useTableFilters } = jest.requireMock(
+        '../../../hooks/useTableFilters'
+      );
+
+      (useTableFilters as jest.Mock).mockReturnValue({
+        filters: {
+          entityType: 'TABLE',
+          testPlatforms: 'OpenMetadata',
+        },
+        setFilters: mockUpdateUrlParams,
+      });
+
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      const { useQuickFiltersWithComponent } = jest.requireMock(
+        '../../common/atoms/filters/useQuickFiltersWithComponent'
+      );
+
+      const onFilterChange =
+        useQuickFiltersWithComponent.mock.calls[0][0].onFilterChange;
+
+      onFilterChange([]);
+
+      await waitFor(() => {
+        expect(mockUpdateUrlParams).toHaveBeenCalledWith(
+          expect.objectContaining({
+            entityType: null,
+            testPlatforms: null,
+          })
+        );
+      });
+    });
+
+    it('should handle multiple filter selections', async () => {
+      const mockUpdateUrlParams = jest.fn();
+
+      const { useTableFilters } = jest.requireMock(
+        '../../../hooks/useTableFilters'
+      );
+
+      (useTableFilters as jest.Mock).mockReturnValue({
+        filters: {
+          entityType: undefined,
+          testPlatforms: undefined,
+        },
+        setFilters: mockUpdateUrlParams,
+      });
+
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      const { useQuickFiltersWithComponent } = jest.requireMock(
+        '../../common/atoms/filters/useQuickFiltersWithComponent'
+      );
+
+      const onFilterChange =
+        useQuickFiltersWithComponent.mock.calls[0][0].onFilterChange;
+
+      const mockFilters = [
+        {
+          key: 'entityType',
+          label: 'label.entity-type',
+          value: [{ key: 'COLUMN', label: 'Column' }],
+        },
+        {
+          key: 'testPlatforms',
+          label: 'label.test-platform-plural',
+          value: [{ key: 'DBT', label: 'DBT' }],
+        },
+      ];
+
+      onFilterChange(mockFilters);
+
+      await waitFor(() => {
+        expect(mockUpdateUrlParams).toHaveBeenCalledWith(
+          expect.objectContaining({
+            entityType: 'COLUMN',
+            testPlatforms: 'DBT',
+          })
+        );
+      });
+    });
+
+    it('should call updateUrlParams and handlePageChange when filters change', async () => {
+      const mockUpdateUrlParams = jest.fn();
+      const mockHandlePageChange = jest.fn();
+
+      const { useTableFilters } = jest.requireMock(
+        '../../../hooks/useTableFilters'
+      );
+      const { usePaging } = jest.requireMock('../../../hooks/paging/usePaging');
+
+      (useTableFilters as jest.Mock).mockReturnValue({
+        filters: {
+          entityType: undefined,
+          testPlatforms: undefined,
+        },
+        setFilters: mockUpdateUrlParams,
+      });
+
+      (usePaging as jest.Mock).mockReturnValue({
+        currentPage: 1,
+        pageSize: 15,
+        paging: { total: 4 },
+        handlePagingChange: jest.fn(),
+        handlePageChange: mockHandlePageChange,
+        handlePageSizeChange: jest.fn(),
+        showPagination: false,
+        pagingCursor: {
+          cursorType: undefined,
+          cursorValue: undefined,
+          currentPage: '1',
+          pageSize: 15,
+        },
+      });
+
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      const { useQuickFiltersWithComponent } = jest.requireMock(
+        '../../common/atoms/filters/useQuickFiltersWithComponent'
+      );
+
+      const onFilterChange =
+        useQuickFiltersWithComponent.mock.calls[0][0].onFilterChange;
+
+      const mockFilters = [
+        {
+          key: 'entityType',
+          label: 'label.entity-type',
+          value: [{ key: 'TABLE', label: 'Table' }],
+        },
+      ];
+
+      onFilterChange(mockFilters);
+
+      await waitFor(() => {
+        expect(mockUpdateUrlParams).toHaveBeenCalled();
+        expect(mockHandlePageChange).toHaveBeenCalledWith(1, {
+          cursorType: null,
+          cursorValue: undefined,
+        });
+      });
+    });
+
+    it('should render quick filters component', async () => {
+      render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('quick-filters')).toBeInTheDocument();
+      });
     });
   });
 });

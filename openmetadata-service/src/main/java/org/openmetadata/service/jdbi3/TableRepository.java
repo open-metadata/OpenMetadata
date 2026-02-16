@@ -49,6 +49,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -1162,6 +1163,30 @@ public class TableRepository extends EntityRepository<Table> {
     List<UUID> ids = entities.stream().map(Table::getId).toList();
     deleteToMany(ids, Entity.TABLE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
     deleteFromMany(ids, Entity.TABLE, Relationship.RELATED_TO, Entity.TABLE);
+
+    // Delete column tags - they will be re-applied from the updated table via applyTagsToEntities
+    List<String> columnFqns = new ArrayList<>();
+    for (Table table : entities) {
+      collectColumnFqns(table.getColumns(), columnFqns);
+    }
+    if (!columnFqns.isEmpty()) {
+      daoCollection.tagUsageDAO().deleteTagsByTargets(columnFqns);
+    }
+  }
+
+  /** Recursively collect all column FQNs including nested columns */
+  private void collectColumnFqns(List<Column> columns, List<String> columnFqns) {
+    if (columns == null || columns.isEmpty()) {
+      return;
+    }
+    for (Column column : columns) {
+      if (column.getFullyQualifiedName() != null) {
+        columnFqns.add(column.getFullyQualifiedName());
+      }
+      if (column.getChildren() != null) {
+        collectColumnFqns(column.getChildren(), columnFqns);
+      }
+    }
   }
 
   @Override
@@ -1186,6 +1211,22 @@ public class TableRepository extends EntityRepository<Table> {
     // Add table level tags by adding tag to table relationship
     super.applyTags(table);
     applyColumnTags(table.getColumns());
+  }
+
+  @Override
+  @Transaction
+  protected void applyTagsToEntities(List<Table> entities) {
+    super.applyTagsToEntities(entities);
+
+    if (entities.isEmpty()) {
+      return;
+    }
+
+    Map<String, List<TagLabel>> columnTagsByTarget = new LinkedHashMap<>();
+    for (Table table : entities) {
+      collectColumnTags(table.getColumns(), columnTagsByTarget);
+    }
+    applyTagsBatchWithRdf(columnTagsByTarget);
   }
 
   @Override

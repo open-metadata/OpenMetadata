@@ -1016,16 +1016,16 @@ export const saveAlertAndVerifyResponse = async (page: Page) => {
     '/api/v1/events/subscriptions/name/*'
   );
   const createAlert = page.waitForResponse(
-    (response) => response.request().method() === 'POST'
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().includes('/api/v1/events/subscriptions') &&
+      !response.url().includes('testDestination')
   );
 
-  // Click save
   await page.click('[data-testid="save-button"]');
-  await createAlert.then(async (response) => {
-    data.alertDetails = await response.json();
-
-    expect(response.status()).toEqual(201);
-  });
+  const response = await createAlert;
+  expect(response.status(), 'Create alert API should return 201').toBe(201);
+  data.alertDetails = await response.json();
   await toastNotification(page, 'Alerts created successfully.');
 
   // Check if the alert details page is visible

@@ -434,28 +434,13 @@ public class ElasticSearchBulkSink implements BulkSink {
    * Checks if vector embeddings are enabled for a specific entity type.
    * This combines SearchRepository capability check with job configuration.
    */
-  protected boolean isVectorEmbeddingEnabledForEntity(String entityType) {
+  boolean isVectorEmbeddingEnabledForEntity(String entityType) {
     return false;
   }
 
-  /**
-   * Adds entity to vector_search_index for embedding search.
-   * This method will only be called when embeddings are enabled for the entity type.
-   */
-  protected void addEntityToVectorIndex(
-      CustomBulkProcessor bulkProcessor, EntityInterface entity, boolean recreateIndex) {}
-
-  /**
-   * Process vector embeddings for a batch of entities.
-   * Override this method to implement batch vector indexing with optimizations.
-   *
-   * @param bulkProcessor The bulk processor for indexing
-   * @param entities The list of entities to process
-   * @param recreateIndex Whether indexes are being recreated
-   */
-  protected void addEntitiesToVectorIndexBatch(
+  void addEntitiesToVectorIndexBatch(
       CustomBulkProcessor bulkProcessor, List<EntityInterface> entities, boolean recreateIndex) {
-    // Default: no-op, subclasses can override for batch processing
+    // TODO: Implement Elasticsearch vector embedding support
   }
 
   public static class CustomBulkProcessor {

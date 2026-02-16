@@ -18,13 +18,11 @@ import { DisplayNameProps } from './DisplayName.interface';
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <a href="#" {...props}>
-        {children}
-      </a>
-    )),
+  Link: jest.fn().mockImplementation(({ children, ...props }) => (
+    <a href="#" {...props}>
+      {children}
+    </a>
+  )),
 }));
 
 jest.mock('../../../constants/constants', () => ({

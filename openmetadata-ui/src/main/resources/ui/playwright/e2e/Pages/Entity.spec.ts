@@ -63,7 +63,10 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
+import { getCurrentMillis } from '../../utils/dateTime';
+import { clickDataQualityStatCard } from '../../utils/entityPanel';
 import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
+import { Column, Table } from '../../../src/generated/entity/data/table';
 
 const entities = {
   'Api Endpoint': ApiEndpointClass,
@@ -1205,11 +1208,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         await test.step(
           'Verify array column with nested children renders correctly',
           async () => {
-            const tableResponse = entity.entityResponseData as any;
+            const tableResponse = entity.entityResponseData as Table;
             const columns = tableResponse?.columns || [];
 
             const nestedParent = columns.find(
-              (col: any) => col.name === (entity as TableClass).columnsName[2]
+              (col: Column) => col.name === (entity as TableClass).columnsName[2]
             );
 
             if (!nestedParent) {
@@ -1223,7 +1226,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             const nestedParentFQN = nestedParent.fullyQualifiedName;
 
             const arrayColumn = nestedParent.children?.find(
-              (col: any) => col.name === (entity as TableClass).columnsName[4]
+              (col: Column) => col.name === (entity as TableClass).columnsName[4]
             );
 
             if (!arrayColumn) {
@@ -1705,6 +1708,311 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             }
           );
         });
+      }
+
+      if (entity.type === 'Table') {
+        test(
+          'Column detail panel - Data Quality tab shows test cases',
+          async ({ page }) => {
+            test.slow();
+
+            const { apiContext, afterAction } = await getApiContext(page);
+            const tableEntity = entity as TableClass;
+            const tableFQN =
+              entity.entityResponseData?.['fullyQualifiedName'];
+            const columnName = tableEntity.columnsName[0];
+            let testCase1Name = '';
+            let testCase2Name = '';
+
+            try {
+              await tableEntity.createTestSuiteAndPipelines(apiContext);
+
+              const testCase1 = await tableEntity.createTestCase(apiContext, {
+                name: `pw_col_dq_success_${uuid()}`,
+                entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
+                testDefinition: 'columnValueLengthsToBeBetween',
+                parameterValues: [
+                  { name: 'minLength', value: 1 },
+                  { name: 'maxLength', value: 10 },
+                ],
+              });
+
+              const testCase2 = await tableEntity.createTestCase(apiContext, {
+                name: `pw_col_dq_failed_${uuid()}`,
+                entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
+                testDefinition: 'columnValueLengthsToBeBetween',
+                parameterValues: [
+                  { name: 'minLength', value: 100 },
+                  { name: 'maxLength', value: 200 },
+                ],
+              });
+
+              testCase1Name = testCase1.name;
+              testCase2Name = testCase2.name;
+
+              await tableEntity.addTestCaseResult(
+                apiContext,
+                testCase1.fullyQualifiedName,
+                { testCaseStatus: 'Success', timestamp: getCurrentMillis() }
+              );
+
+              await tableEntity.addTestCaseResult(
+                apiContext,
+                testCase2.fullyQualifiedName,
+                {
+                  testCaseStatus: 'Failed',
+                  result: 'Column value length exceeded maximum',
+                  timestamp: getCurrentMillis(),
+                }
+              );
+
+              await test.step(
+                'Open column detail panel and navigate to DQ tab',
+                async () => {
+                  await redirectToHomePage(page);
+                  await entity.visitEntityPage(page);
+
+                  await page.getByTestId(entity.childrenTabId ?? '').click();
+                  await waitForAllLoadersToDisappear(page);
+
+                  await openColumnDetailPanel({
+                    page,
+                    rowSelector,
+                    columnId: entity.childrenSelectorId ?? '',
+                    columnNameTestId: 'column-name',
+                    entityType: entity.type as EntityType,
+                  });
+
+                  const dqTabResponsePromise = page.waitForResponse(
+                    (response) =>
+                      response
+                        .url()
+                        .includes('/api/v1/dataQuality/testCases') 
+                  );
+                  await page.getByTestId('data-quality-tab').click();
+                  const dqTabResponse = await dqTabResponsePromise;
+                  expect(dqTabResponse.status()).toBe(200);
+                  await waitForAllLoadersToDisappear(page);
+                }
+              );
+
+              await test.step(
+                'Verify stat cards and filter by failed',
+                async () => {
+                  const panelContainer = page.locator('.column-detail-panel');
+                  const dqContent = panelContainer.locator(
+                    '.data-quality-tab-container'
+                  );
+
+                  await expect(dqContent).toBeVisible();
+
+                  const successStat = panelContainer.locator(
+                    '[data-testid="data-quality-stat-card-success"]'
+                  );
+                  const failedStat = panelContainer.locator(
+                    '[data-testid="data-quality-stat-card-failed"]'
+                  );
+
+                  await expect(successStat).toBeVisible();
+                  await expect(failedStat).toBeVisible();
+
+                  await expect(successStat).toHaveText('1Passed');
+                  await expect(failedStat).toHaveText('1Failed');
+
+                  await clickDataQualityStatCard(page, 'failed');
+
+                  const testCaseCardsSection = dqContent.locator(
+                    '.test-case-cards-section'
+                  );
+
+                  await expect(testCaseCardsSection).toBeVisible();
+
+                  const failedCards =
+                    testCaseCardsSection.locator('.test-case-card');
+
+                  await expect(failedCards).toHaveCount(1);
+
+                  const failedCard = failedCards.first();
+
+                  await expect(
+                    failedCard.locator('.test-case-name')
+                  ).toContainText(testCase2Name);
+                  
+                }
+              );
+
+              await test.step(
+                'Filter by success and verify test case card',
+                async () => {
+                  const panelContainer = page.locator('.column-detail-panel');
+                  const dqContent = panelContainer.locator(
+                    '.data-quality-tab-container'
+                  );
+                  await clickDataQualityStatCard(page, 'success');
+
+                  const testCaseCardsSection = dqContent.locator(
+                    '.test-case-cards-section'
+                  );
+                  const successCards =
+                    testCaseCardsSection.locator('.test-case-card');
+
+                  await expect(successCards).toHaveCount(1);
+                  await expect(
+                    successCards.first().locator('.test-case-name')
+                  ).toContainText(testCase1Name);
+
+                  await closeColumnDetailPanel(page);
+                }
+              );
+            } finally {
+              await afterAction();
+            }
+          }
+        );
+
+        test(
+          'Column detail panel - Data Quality Incidents tab',
+          async ({ page }) => {
+            test.slow();
+
+            const { apiContext, afterAction } = await getApiContext(page);
+            const tableEntity = entity as TableClass;
+            const tableFQN =
+              entity.entityResponseData?.['fullyQualifiedName'];
+            const columnName = tableEntity.columnsName[0];
+
+            try {
+              await tableEntity.createTestSuiteAndPipelines(apiContext);
+
+              const testCase = await tableEntity.createTestCase(apiContext, {
+                name: `pw_col_incident_${uuid()}`,
+                entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
+                testDefinition: 'columnValueLengthsToBeBetween',
+                parameterValues: [
+                  { name: 'minLength', value: 100 },
+                  { name: 'maxLength', value: 200 },
+                ],
+              });
+
+              await tableEntity.addTestCaseResult(
+                apiContext,
+                testCase.fullyQualifiedName,
+                {
+                  testCaseStatus: 'Failed',
+                  result: 'Column value length exceeded maximum',
+                  timestamp: getCurrentMillis(),
+                }
+              );
+
+              await test.step(
+                'Open column detail panel and navigate to Incidents tab',
+                async () => {
+                  await redirectToHomePage(page);
+                  await entity.visitEntityPage(page);
+
+                  await page.getByTestId(entity.childrenTabId ?? '').click();
+                  await waitForAllLoadersToDisappear(page);
+
+                  await openColumnDetailPanel({
+                    page,
+                    rowSelector,
+                    columnId: entity.childrenSelectorId ?? '',
+                    columnNameTestId: 'column-name',
+                    entityType: entity.type as EntityType,
+                  });
+
+                  const dqTabResponsePromise = page.waitForResponse(
+                    (response) =>
+                      response
+                        .url()
+                        .includes('/api/v1/dataQuality/testCases') 
+                  );
+                  await page.getByTestId('data-quality-tab').click();
+                  const dqTabResponse = await dqTabResponsePromise;
+                  expect(dqTabResponse.status()).toBe(200);
+
+                  await waitForAllLoadersToDisappear(page);
+
+                  const dqContent = page
+                    .locator('.column-detail-panel')
+                    .locator('.data-quality-tab-container');
+
+                  await expect(dqContent).toBeVisible();
+
+                  
+                  await dqContent
+                    .locator('.data-quality-tabs')
+                    .getByRole('tab', { name: /incidents/i })
+                    .click();
+                  await waitForAllLoadersToDisappear(page);
+                }
+              );
+
+              await test.step(
+                'Verify incidents stats container and cards',
+                async () => {
+                  const panelContainer = page.locator('.column-detail-panel');
+                  const dqContent = panelContainer.locator(
+                    '.data-quality-tab-container'
+                  );
+                  const incidentsTabContent = dqContent.locator(
+                    '.incidents-tab-content'
+                  );
+
+                  await expect(incidentsTabContent).toBeVisible();
+
+                  const incidentStatsContainer = incidentsTabContent.locator(
+                    '.incidents-stats-container'
+                  );
+
+                  await expect(incidentStatsContainer).toBeVisible();
+
+                  await expect(
+                    incidentStatsContainer.locator(
+                      '.incident-stat-card.new-card'
+                    )
+                  ).toBeVisible();
+                  await expect(
+                    incidentStatsContainer.locator(
+                      '.incident-stat-card.ack-card'
+                    )
+                  ).toBeVisible();
+                  await expect(
+                    incidentStatsContainer.locator(
+                      '.incident-stat-card.assigned-card'
+                    )
+                  ).toBeVisible();
+                  await expect(
+                    incidentStatsContainer.locator('.resolved-section')
+                  ).toBeVisible();
+
+                  const incidentCardsSection = incidentsTabContent.locator(
+                    '.incident-cards-section'
+                  );
+
+                  await expect(incidentCardsSection).toBeVisible();
+
+                  const incidentCards =
+                    incidentCardsSection.locator('.test-case-card');
+                  const cardCount = await incidentCards.count();
+
+                  if (cardCount > 0) {
+                    const assigneeSection = incidentCards
+                      .first()
+                      .locator('.test-case-detail-item')
+                      .filter({ hasText: /assignee/i });
+
+                    await expect(assigneeSection).toBeVisible();
+                  }
+
+                  await closeColumnDetailPanel(page);
+                }
+              );
+            } finally {
+              await afterAction();
+            }
+          }
+        );
       }
     }
 

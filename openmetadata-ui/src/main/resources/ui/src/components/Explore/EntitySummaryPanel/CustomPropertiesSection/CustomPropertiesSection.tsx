@@ -30,6 +30,7 @@ import './CustomPropertiesSection.less';
 const CustomPropertiesSection = ({
   entityData,
   entityTypeDetail,
+  emptyStateMessage,
   onExtensionUpdate,
   hasEditPermissions,
   isEntityDataLoading,
@@ -91,7 +92,7 @@ const CustomPropertiesSection = ({
                 />
               }
               values={{
-                entity: t('label.custom-property-plural'),
+                entity: emptyStateMessage ?? t('label.entity'),
                 docs: t('label.doc-plural-lowercase'),
               }}
             />
@@ -99,7 +100,7 @@ const CustomPropertiesSection = ({
         </ErrorPlaceHolderNew>
       </div>
     );
-  }, [searchText]);
+  }, [searchText, emptyStateMessage]);
 
   if (isEntityDataLoading) {
     return <Loader size="default" />;

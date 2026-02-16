@@ -79,6 +79,7 @@ import { Directory } from '../../generated/entity/data/directory';
 import { File } from '../../generated/entity/data/file';
 import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
@@ -137,7 +138,10 @@ import {
   PluginEntityDetailsContext,
   TabContribution,
 } from '../../utils/ExtensionPointTypes';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
   getServiceDetailsPath,
@@ -189,7 +193,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     () => decodedServiceFQN === OPEN_METADATA,
     [decodedServiceFQN]
   );
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const navigate = useNavigate();
   const { isAdminUser } = useAuth();
   const ingestionPagingInfo = usePaging();
@@ -664,9 +668,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const fetchDatabases = useCallback(
     async (paging?: PagingWithoutTotal) => {
+      const databaseUsagePermission = getPrioritizedViewPermission(
+        permissions.database,
+        PermissionOperation.ViewUsage
+      );
       const { data, paging: resPaging } = await getDatabases(
         decodedServiceFQN,
-        `${TabSpecificField.USAGE_SUMMARY},${commonTableFields}`,
+        databaseUsagePermission
+          ? `${TabSpecificField.USAGE_SUMMARY},${commonTableFields}`
+          : commonTableFields,
         paging,
         include
       );
@@ -674,7 +684,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setData(data);
       handlePagingChange(resPaging);
     },
-    [decodedServiceFQN, include]
+    [decodedServiceFQN, include, permissions.database]
   );
 
   const fetchTopics = useCallback(
@@ -693,16 +703,22 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const fetchDashboards = useCallback(
     async (paging?: PagingWithoutTotal) => {
+      const dashboardUsagePermission = getPrioritizedViewPermission(
+        permissions.dashboard,
+        PermissionOperation.ViewUsage
+      );
       const { data, paging: resPaging } = await getDashboards(
         decodedServiceFQN,
-        `${commonTableFields},${TabSpecificField.USAGE_SUMMARY}`,
+        dashboardUsagePermission
+          ? `${commonTableFields},${TabSpecificField.USAGE_SUMMARY}`
+          : commonTableFields,
         paging,
         include
       );
       setData(data);
       handlePagingChange(resPaging);
     },
-    [decodedServiceFQN, include]
+    [decodedServiceFQN, include, permissions.dashboard]
   );
 
   // Fetch Data Model count to show it in tab label
@@ -727,16 +743,22 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const fetchPipeLines = useCallback(
     async (paging?: PagingWithoutTotal) => {
+      const pipelineUsagePermission = getPrioritizedViewPermission(
+        permissions.pipeline,
+        PermissionOperation.ViewUsage
+      );
       const { data, paging: resPaging } = await getPipelines(
         decodedServiceFQN,
-        `${commonTableFields},${TabSpecificField.STATE},${TabSpecificField.USAGE_SUMMARY}`,
+        pipelineUsagePermission
+          ? `${commonTableFields},${TabSpecificField.STATE},${TabSpecificField.USAGE_SUMMARY}`
+          : `${commonTableFields},${TabSpecificField.STATE}`,
         paging,
         include
       );
       setData(data);
       handlePagingChange(resPaging);
     },
-    [decodedServiceFQN, include]
+    [decodedServiceFQN, include, permissions.pipeline]
   );
 
   const fetchMlModal = useCallback(

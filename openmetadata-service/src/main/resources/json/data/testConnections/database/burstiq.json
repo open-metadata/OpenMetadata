@@ -1,0 +1,28 @@
+{
+  "name": "BurstIQ",
+  "fullyQualifiedName": "BurstIQ",
+  "displayName": "BurstIQ Test Connection",
+  "description": "This Test Connection validates the access against BurstIQ LifeGraph and basic metadata extraction of dictionaries.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can properly authenticate with BurstIQ using the provided credentials.",
+      "errorMessage": "Failed to authenticate with BurstIQ. Please validate the username, password, and realm name are correct.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetDictionaries",
+      "description": "Validate that we can fetch dictionaries (tables) from BurstIQ LifeGraph API.",
+      "errorMessage": "Failed to fetch dictionaries from BurstIQ LifeGraph. Please validate that the user has sufficient privileges to read metadata.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetEdges",
+      "description": "List all the Edges available to the user in the BurstIQ LifeGraph platform for lineage extraction.",
+      "errorMessage": "Failed to fetch Edges. Lineage extraction may not be available but basic metadata ingestion will still work.",
+      "mandatory": false
+    }
+  ]
+}
