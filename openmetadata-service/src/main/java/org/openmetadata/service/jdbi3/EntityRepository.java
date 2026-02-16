@@ -105,7 +105,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.URI;
-import java.sql.SQLIntegrityConstraintViolationException;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -238,7 +238,6 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
-import org.postgresql.util.PSQLException;
 import software.amazon.awssdk.utils.Either;
 
 /**
@@ -8131,12 +8130,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private static boolean isDuplicateKeyException(Exception e) {
     Throwable cause = e.getCause();
-    if (cause instanceof SQLIntegrityConstraintViolationException) {
-      return true;
+    if (cause instanceof SQLException sqlEx) {
+      // MySQL: error code 1062 = ER_DUP_ENTRY
+      // PostgreSQL: SQL state "23505" = unique_violation
+      return sqlEx.getErrorCode() == 1062 || "23505".equals(sqlEx.getSQLState());
     }
-    return cause instanceof PSQLException
-        && cause.getMessage() != null
-        && cause.getMessage().contains("duplicate");
+    return false;
   }
 
   private void recordEntityMetrics(
