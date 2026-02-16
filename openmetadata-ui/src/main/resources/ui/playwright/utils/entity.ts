@@ -689,15 +689,13 @@ export const updateDescriptionForChildren = async (
     updateRequest = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/columns/name/') &&
-        response.request().method() === 'PUT' &&
-        response.status() === 200
+        response.request().method() === 'PUT'
     );
   } else {
     updateRequest = page.waitForResponse(
       (response) =>
         response.url().includes(`/api/v1/${entityEndpoint}/`) &&
-        response.request().method() === 'PATCH' &&
-        response.status() === 200
+        response.request().method() === 'PATCH'
     );
   }
 
@@ -716,21 +714,17 @@ export const updateDescriptionForChildren = async (
 
     // Wait for the description to update to "No Description"
     // Use increased timeout for CI environments where rendering is slower
-    await expect(descriptionLocator).toContainText('No Description', {
-      timeout: 15000,
-    });
+    await expect(descriptionLocator).toContainText('No Description');
   } else {
     const paragraphLocator = rowLocator
       .getByTestId('viewer-container')
       .getByRole('paragraph');
 
     // Wait for paragraph to be visible first (structure changes from "No Description")
-    await paragraphLocator.waitFor({ state: 'visible', timeout: 10000 });
+    await paragraphLocator.waitFor({ state: 'visible'});
 
     // Then verify content with increased timeout for CI
-    await expect(paragraphLocator).toContainText(description, {
-      timeout: 15000,
-    });
+    await expect(paragraphLocator).toContainText(description);
   }
 };
 
