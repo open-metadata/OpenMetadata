@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +57,10 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedSearchIndexCoordinator;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.PartitionCalculator;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.PartitionStatus;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.DefaultRecreateHandler;
 import org.openmetadata.service.search.EntityReindexContext;
@@ -455,6 +460,101 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
   // =========================================================================
   // Existing unit tests (mock-based, unordered - run after ordered tests)
   // =========================================================================
+
+  @Test
+  void testExecuteWithEmptyEntitiesCompletesImmediately() {
+    EventPublisherJob emptyEntitiesJob =
+        new EventPublisherJob().withEntities(Set.of()).withBatchSize(100).withRecreateIndex(false);
+
+    App app =
+        new App()
+            .withId(java.util.UUID.randomUUID())
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(emptyEntitiesJob, Object.class));
+
+    searchIndexApp.init(app);
+
+    org.quartz.JobKey jobKey = org.quartz.JobKey.jobKey("TestJob");
+    when(jobDetail.getKey()).thenReturn(jobKey);
+
+    searchIndexApp.execute(jobExecutionContext);
+
+    EventPublisherJob result = searchIndexApp.getJobData();
+    assertEquals(EventPublisherJob.Status.COMPLETED, result.getStatus());
+    assertNotNull(result.getStats());
+  }
+
+  @Test
+  void testCheckAndUpdateJobCompletionWithZeroPartitions() {
+    CollectionDAO.SearchIndexJobDAO mockJobDAO = mock(CollectionDAO.SearchIndexJobDAO.class);
+    CollectionDAO.SearchIndexPartitionDAO mockPartitionDAO =
+        mock(CollectionDAO.SearchIndexPartitionDAO.class);
+
+    CollectionDAO mockDAO = mock(CollectionDAO.class);
+    when(mockDAO.searchIndexJobDAO()).thenReturn(mockJobDAO);
+    when(mockDAO.searchIndexPartitionDAO()).thenReturn(mockPartitionDAO);
+
+    UUID jobId = UUID.randomUUID();
+    String jobIdStr = jobId.toString();
+
+    EventPublisherJob jobConfig =
+        new EventPublisherJob()
+            .withEntities(Set.of("topic"))
+            .withBatchSize(100)
+            .withRecreateIndex(false);
+
+    CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord jobRecord =
+        new CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord(
+            jobIdStr,
+            IndexJobStatus.RUNNING.name(),
+            JsonUtils.pojoToJson(jobConfig),
+            null,
+            null,
+            0,
+            0,
+            0,
+            0,
+            null,
+            "test",
+            System.currentTimeMillis(),
+            System.currentTimeMillis(),
+            null,
+            System.currentTimeMillis(),
+            null,
+            null,
+            null);
+
+    when(mockJobDAO.findById(jobIdStr)).thenReturn(jobRecord);
+    when(mockPartitionDAO.findByJobIdAndStatus(jobIdStr, PartitionStatus.PENDING.name()))
+        .thenReturn(List.of());
+    when(mockPartitionDAO.findByJobIdAndStatus(jobIdStr, PartitionStatus.PROCESSING.name()))
+        .thenReturn(List.of());
+    when(mockPartitionDAO.findByJobIdAndStatus(jobIdStr, PartitionStatus.FAILED.name()))
+        .thenReturn(List.of());
+    when(mockPartitionDAO.getAggregatedStats(jobIdStr)).thenReturn(null);
+
+    DistributedSearchIndexCoordinator coordinator =
+        new DistributedSearchIndexCoordinator(mockDAO, new PartitionCalculator());
+
+    coordinator.checkAndUpdateJobCompletion(jobId);
+
+    org.mockito.ArgumentCaptor<String> statusCaptor =
+        org.mockito.ArgumentCaptor.forClass(String.class);
+    org.mockito.Mockito.verify(mockJobDAO)
+        .update(
+            org.mockito.ArgumentMatchers.eq(jobIdStr),
+            statusCaptor.capture(),
+            org.mockito.ArgumentMatchers.anyLong(),
+            org.mockito.ArgumentMatchers.anyLong(),
+            org.mockito.ArgumentMatchers.anyLong(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.anyLong(),
+            org.mockito.ArgumentMatchers.any());
+
+    assertEquals(IndexJobStatus.COMPLETED.name(), statusCaptor.getValue());
+  }
 
   @Test
   void testInitialization() {
@@ -1273,6 +1373,39 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
               })
           .when(client)
           .deleteIndex(anyString());
+
+      lenient()
+          .doAnswer(
+              invocation -> {
+                String index = invocation.getArgument(0);
+                indexAliases.remove(index);
+                deletedIndices.add(index);
+                return null;
+              })
+          .when(client)
+          .deleteIndexWithBackoff(anyString());
+
+      lenient()
+          .when(client.swapAliases(anySet(), anyString(), anySet()))
+          .thenAnswer(
+              invocation -> {
+                @SuppressWarnings("unchecked")
+                Set<String> oldIndices = (Set<String>) invocation.getArgument(0);
+                String newIndex = invocation.getArgument(1);
+                @SuppressWarnings("unchecked")
+                Set<String> aliases = new HashSet<>((Set<String>) invocation.getArgument(2));
+
+                for (String oldIndex : oldIndices) {
+                  indexAliases.computeIfPresent(
+                      oldIndex,
+                      (k, v) -> {
+                        v.removeAll(aliases);
+                        return v;
+                      });
+                }
+                indexAliases.computeIfAbsent(newIndex, k -> new HashSet<>()).addAll(aliases);
+                return true;
+              });
 
       return client;
     }
