@@ -311,9 +311,9 @@ const TagsForm = ({
 
         {/* Icon and Color row */}
         {!isClassification && (
-          <Grid container spacing={2}>
+          <Grid container spacing={2} sx={{ flexWrap: 'nowrap' }}>
             <Grid>{getField(iconField)}</Grid>
-            <Grid sx={{ ml: 'auto' }}>{getField(colorField)}</Grid>
+            <Grid sx={{ ml: 'auto', minWidth: 0 }}>{getField(colorField)}</Grid>
           </Grid>
         )}
 
