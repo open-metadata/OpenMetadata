@@ -67,7 +67,7 @@ export const fillTextInputDetails = async (page: Page, text: string) => {
   const textboxLocator = page
     .locator('.ant-layout-content')
     .getByRole('textbox');
-
+  //wait for input field to stabalize 
   await expect(textboxLocator).toBeVisible({ timeout: 10000 });
 
   await textboxLocator.fill(text);
