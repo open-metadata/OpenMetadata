@@ -14,13 +14,13 @@
 import { Col, Row } from 'antd';
 import { useTranslation } from 'react-i18next';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import TestDefinitionList from '../../components/RulesLibrary/TestDefinitionList/TestDefinitionList.component';
+import TestDefinitionList from '../../components/TestLibrary/TestDefinitionList/TestDefinitionList.component';
 
-const RulesLibraryPage = () => {
+const TestLibraryPage = () => {
   const { t } = useTranslation();
 
   return (
-    <PageLayoutV1 pageTitle={t('label.rules-library')}>
+    <PageLayoutV1 pageTitle={t('label.test-library')}>
       <Row className="p-t-md" gutter={[16, 16]}>
         <Col span={24}>
           <TestDefinitionList />
@@ -30,4 +30,4 @@ const RulesLibraryPage = () => {
   );
 };
 
-export default RulesLibraryPage;
+export default TestLibraryPage;

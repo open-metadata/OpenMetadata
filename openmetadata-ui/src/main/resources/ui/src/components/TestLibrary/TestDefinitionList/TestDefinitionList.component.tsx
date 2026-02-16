@@ -608,7 +608,7 @@ const TestDefinitionList = () => {
                     {t('label.data-quality-rule-plural')}
                   </Typography.Title>
                   <LearningIcon
-                    pageId={LEARNING_PAGE_IDS.RULES_LIBRARY}
+                    pageId={LEARNING_PAGE_IDS.TEST_LIBRARY}
                     title={t('label.data-quality-rule-plural')}
                   />
                 </div>
