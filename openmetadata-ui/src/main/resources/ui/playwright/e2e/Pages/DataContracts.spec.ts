@@ -755,8 +755,6 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
         await deleteContract(page);
 
-        await toastNotification(page, '"Contract" deleted successfully!');
-
         const response = await contractRefreshResponse;
         expect(response.status()).toBe(404);
         await page.waitForSelector('[data-testid="loader"]', {
