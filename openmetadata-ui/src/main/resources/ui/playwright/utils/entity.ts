@@ -669,8 +669,11 @@ export const updateDescriptionForChildren = async (
   const modalEditor = modal.locator(descriptionBox);
   await expect(modalEditor).toBeVisible();
   await modalEditor.click();
-  await modalEditor.clear();
-  await modalEditor.fill(description);
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.press('Backspace');
+  if (description) {
+    await modalEditor.fill(description);
+  }
 
   // REMOVED: toHaveText check - rich text editor may have formatting that makes exact match unreliable
   // The final verification after save is sufficient
