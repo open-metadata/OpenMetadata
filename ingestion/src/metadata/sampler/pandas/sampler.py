@@ -100,18 +100,19 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         Returns:
             List[DataFrame]
         """
+        raw_dataset = self.raw_dataset
         if self.sample_query:
             return self._rdn_sample_from_user_query()
 
         if self.partition_details:
-            return self._partitioned_table()
+            raw_dataset = self._partitioned_table()
 
         if not self.sample_config.profileSample or (
             self.sample_config.profileSample == 100
             and self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
         ):
-            return self.raw_dataset
-        return self.get_sampled_dataframe(self.raw_dataset, self.sample_config)
+            return raw_dataset
+        return self.get_sampled_dataframe(raw_dataset, self.sample_config)
 
     def _fetch_rows(self, data_frame):
         return data_frame.dropna().values.tolist()

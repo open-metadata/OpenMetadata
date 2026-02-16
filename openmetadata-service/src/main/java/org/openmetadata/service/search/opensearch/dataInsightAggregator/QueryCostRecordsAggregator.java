@@ -205,10 +205,11 @@ public class QueryCostRecordsAggregator {
 
     var overallTotalsAgg = response.aggregations().get("overall_totals");
     if (overallTotalsAgg != null && overallTotalsAgg.isStats()) {
-      totalCostSum = overallTotalsAgg.stats().sum();
-      minCost = overallTotalsAgg.stats().min();
-      maxCost = overallTotalsAgg.stats().max();
-      avgCost = overallTotalsAgg.stats().avg();
+      var stats = overallTotalsAgg.stats();
+      totalCostSum = stats.sum();
+      minCost = stats.min() != null ? stats.min() : 0;
+      maxCost = stats.max() != null ? stats.max() : 0;
+      avgCost = stats.avg() != null ? stats.avg() : 0;
     }
     var totalExecCountAgg = response.aggregations().get("total_execution_count");
     if (totalExecCountAgg != null && totalExecCountAgg.isSum()) {

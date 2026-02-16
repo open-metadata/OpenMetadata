@@ -244,11 +244,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
     BulkOperationResult result =
         bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false);
-    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
-      for (EntityReference ref : listOrEmpty(request.getAssets())) {
-        LineageUtil.removeDataProductsLineage(
-            ref.getId(), ref.getType(), List.of(dataProduct.getEntityReference()));
-      }
+    for (BulkResponse response : listOrEmpty(result.getSuccessRequest())) {
+      EntityReference ref = (EntityReference) response.getRequest();
+      LineageUtil.removeDataProductsLineage(
+          ref.getId(), ref.getType(), List.of(dataProduct.getEntityReference()));
+      deleteRelationship(
+          dataProduct.getId(), DATA_PRODUCT, ref.getId(), ref.getType(), Relationship.OUTPUT_PORT);
     }
     return result;
   }

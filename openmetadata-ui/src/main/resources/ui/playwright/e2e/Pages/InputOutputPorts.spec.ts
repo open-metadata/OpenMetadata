@@ -31,6 +31,7 @@ import {
   expandLineageSection,
   navigateToPortsTab,
   selectDataProduct,
+  verifyPortCounts,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
@@ -646,6 +647,53 @@ test.describe('Input Output Ports', () => {
 
         // Info banner should NOT be visible for input ports
         await expect(page.locator('.ant-alert-info')).not.toBeVisible();
+      });
+    });
+
+    test('Port drawers show Entity Type quick filter', async ({ page }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with assets', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Verify Entity Type filter in input port drawer', async () => {
+        await page.getByTestId('add-input-port-button').click();
+        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+          state: 'visible',
+        });
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('search-dropdown-Entity Type')
+        ).toBeVisible();
+
+        await page.getByTestId('cancel-btn').click();
+      });
+
+      await test.step('Verify Entity Type filter in output port drawer', async () => {
+        await page.getByTestId('add-output-port-button').click();
+        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+          state: 'visible',
+        });
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('search-dropdown-Entity Type')
+        ).toBeVisible();
+
+        await page.getByTestId('cancel-btn').click();
       });
     });
 
@@ -1826,6 +1874,67 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId('delete-button').click();
 
         await expect(page.locator('.ant-alert-warning')).not.toBeVisible();
+      });
+    });
+
+    test('Removing asset from data product also removes it from output ports', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with two assets as output ports via API', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+        ]);
+
+        await dataProduct.addOutputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+          createAssetRef(tables[1], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to data product and verify output ports', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+        await verifyPortCounts(page, 0, 2);
+      });
+
+      await test.step('Go to assets tab and remove one asset', async () => {
+        const assetsTab = page.getByTestId('assets');
+        await assetsTab.click();
+        await waitForAllLoadersToDisappear(page);
+
+        const tableFqn = get(
+          tables[0],
+          'entityResponseData.fullyQualifiedName'
+        );
+        await page
+          .locator(`[data-testid="table-data-card_${tableFqn}"] input`)
+          .check();
+
+        await page.getByTestId('delete-all-button').click();
+
+        // Confirmation modal with output port warning should appear
+        await expect(page.locator('.ant-alert-warning')).toBeVisible();
+
+        const removeRes = page.waitForResponse(
+          (res) =>
+            res.url().includes('/assets/remove') &&
+            res.request().method() === 'PUT'
+        );
+        await page.getByTestId('save-button').click();
+        await removeRes;
+      });
+
+      await test.step('Verify output port was also removed', async () => {
+        await navigateToPortsTab(page);
+        await verifyPortCounts(page, 0, 1);
       });
     });
   });

@@ -1,4 +1,4 @@
-from ingestion.tests.unit.lineage.e2e.helpers import assert_lineage
+from ingestion.tests.integration.lineage.e2e.helpers import assert_lineage
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 
 # Note: Query history has very uncertain behavior on query execution time

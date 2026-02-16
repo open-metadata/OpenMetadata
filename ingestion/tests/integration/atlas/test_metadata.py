@@ -89,9 +89,7 @@ mock_atlas_config = {
 }
 
 
-mock_file_path = (
-    Path(__file__).parent.parent.parent / "resources/datasets/atlas_dataset.json"
-)
+mock_file_path = Path(__file__).parent / "atlas_dataset.json"
 with open(mock_file_path, encoding="UTF-8") as file:
     mock_data: dict = json.load(file)
 

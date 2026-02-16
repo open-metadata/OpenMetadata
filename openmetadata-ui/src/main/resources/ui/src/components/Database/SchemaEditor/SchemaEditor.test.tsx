@@ -89,12 +89,7 @@ class MockIntersectionObserver implements IntersectionObserver {
   }
 }
 
-const makeRect = (
-  x = 0,
-  y = 0,
-  width = 0,
-  height = 0
-): DOMRectReadOnly => ({
+const makeRect = (x = 0, y = 0, width = 0, height = 0): DOMRectReadOnly => ({
   x,
   y,
   width,

@@ -52,17 +52,6 @@ public class OktaAuthValidator {
         return domainValidation;
       }
 
-      // Validate against OIDC discovery document for public clients too
-      String discoveryUri = oktaDomain + OKTA_WELL_KNOWN_PATH;
-      OidcClientConfig publicClientConfig =
-          new OidcClientConfig().withId(authConfig.getClientId()).withDiscoveryUri(discoveryUri);
-
-      FieldError discoveryCheck =
-          discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, publicClientConfig);
-      if (discoveryCheck != null) {
-        return discoveryCheck;
-      }
-
       FieldError clientIdValidation = validatePublicClientId(oktaDomain, authConfig.getClientId());
       if (clientIdValidation != null) {
         return clientIdValidation;

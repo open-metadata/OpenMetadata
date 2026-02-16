@@ -122,11 +122,11 @@ class VectorDocBuilderTest {
 
     Map<String, Object> doc = docs.getFirst();
     @SuppressWarnings("unchecked")
-    List<Map<String, String>> columns = (List<Map<String, String>>) doc.get("columns");
+    List<String> columns = (List<String>) doc.get("columns");
     assertNotNull(columns);
     assertEquals(2, columns.size());
-    assertEquals("id", columns.get(0).get("name"));
-    assertEquals("email", columns.get(1).get("name"));
+    assertEquals("id", columns.get(0));
+    assertEquals("email", columns.get(1));
   }
 
   @Test
