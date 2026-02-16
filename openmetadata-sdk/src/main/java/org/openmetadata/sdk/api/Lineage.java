@@ -41,27 +41,12 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *     .to("dashboard", dashboardId)
  *     .confirm();
  *
- * // Export lineage graph
- * var graph = Lineage.export()
- *     .entity("table", tableId)
- *     .format(ExportFormat.DOT)
- *     .includeUpstream(true)
- *     .includeDownstream(true)
- *     .maxDepth(5)
+ * // Export lineage
+ * var csv = Lineage.export()
+ *     .entity("table", fqn)
+ *     .upstream(3)
+ *     .downstream(2)
  *     .execute();
- *
- * // Query lineage path
- * var path = Lineage.path()
- *     .from("table", sourceTableId)
- *     .to("dashboard", dashboardId)
- *     .findShortest();
- *
- * // Get impact analysis
- * var impact = Lineage.impact()
- *     .of("table", tableId)
- *     .downstream()
- *     .depth(3)
- *     .analyze();
  * </pre>
  */
 public final class Lineage {
@@ -597,13 +582,6 @@ public final class Lineage {
   }
 
   // ==================== Enums ====================
-
-  public enum ExportFormat {
-    JSON,
-    DOT,
-    GRAPHML,
-    CSV
-  }
 
   public enum Direction {
     UPSTREAM,

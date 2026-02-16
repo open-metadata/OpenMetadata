@@ -25,7 +25,7 @@ import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
  * </pre>
  */
 public class FluentTable {
-  private final Table table;
+  private Table table;
   private final OpenMetadataClient client;
   private boolean modified = false;
 
@@ -276,7 +276,7 @@ public class FluentTable {
       throw new IllegalStateException("Table must have an ID to update");
     }
 
-    client.tables().update(table.getId().toString(), table);
+    this.table = client.tables().update(table.getId().toString(), table);
     modified = false;
     return this;
   }

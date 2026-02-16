@@ -781,7 +781,7 @@ class TestSDKIntegration(unittest.TestCase):
                 else None
             )
 
-            rest_logger = logging.getLogger("metadata.OMetaAPI")
+            rest_logger = logging.getLogger("OMetaAPI")
             rest_logger.addHandler(handler)
             try:
                 exporter = om.DatabaseSchemas.export_csv(schema_fqn)

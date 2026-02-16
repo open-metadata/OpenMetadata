@@ -41,27 +41,12 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *     .to("dashboard", dashboardId)
  *     .confirm();
  *
- * // Export lineage graph
- * var graph = Lineage.export()
- *     .entity("table", tableId)
- *     .format(ExportFormat.DOT)
- *     .includeUpstream(true)
- *     .includeDownstream(true)
- *     .maxDepth(5)
+ * // Export lineage
+ * var csv = Lineage.export()
+ *     .entity("table", fqn)
+ *     .upstream(3)
+ *     .downstream(2)
  *     .execute();
- *
- * // Query lineage path
- * var path = Lineage.path()
- *     .from("table", sourceTableId)
- *     .to("dashboard", dashboardId)
- *     .findShortest();
- *
- * // Get impact analysis
- * var impact = Lineage.impact()
- *     .of("table", tableId)
- *     .downstream()
- *     .depth(3)
- *     .analyze();
  * </pre>
  */
 public final class LineageAPI {
@@ -227,21 +212,41 @@ public final class LineageAPI {
       edge.put("fromEntity", fromEntity.toMap());
       edge.put("toEntity", toEntity.toMap());
 
-      if (!fromColumns.isEmpty()) {
-        edge.put("fromColumns", fromColumns);
-      }
-      if (!toColumns.isEmpty()) {
-        edge.put("toColumns", toColumns);
-      }
-      if (pipelineEntity != null) {
-        edge.put("pipeline", pipelineEntity.toMap());
-      }
       if (description != null) {
         edge.put("description", description);
       }
-      if (sqlQuery != null) {
-        edge.put("sqlQuery", sqlQuery);
+
+      boolean hasDetails =
+          !fromColumns.isEmpty()
+              || !toColumns.isEmpty()
+              || pipelineEntity != null
+              || sqlQuery != null;
+
+      if (hasDetails) {
+        Map<String, Object> lineageDetails = new HashMap<>();
+
+        if (!toColumns.isEmpty()) {
+          List<Map<String, Object>> columnsLineage = new ArrayList<>();
+          for (String toCol : toColumns) {
+            Map<String, Object> mapping = new HashMap<>();
+            mapping.put("fromColumns", new ArrayList<>(fromColumns));
+            mapping.put("toColumn", toCol);
+            columnsLineage.add(mapping);
+          }
+          lineageDetails.put("columnsLineage", columnsLineage);
+        }
+
+        if (pipelineEntity != null) {
+          lineageDetails.put("pipeline", pipelineEntity.toMap());
+        }
+
+        if (sqlQuery != null) {
+          lineageDetails.put("sqlQuery", sqlQuery);
+        }
+
+        edge.put("lineageDetails", lineageDetails);
       }
+
       if (!properties.isEmpty()) {
         edge.put("properties", properties);
       }
@@ -576,13 +581,6 @@ public final class LineageAPI {
   }
 
   // ==================== Enums ====================
-
-  public enum ExportFormat {
-    JSON,
-    DOT,
-    GRAPHML,
-    CSV
-  }
 
   public enum Direction {
     UPSTREAM,
