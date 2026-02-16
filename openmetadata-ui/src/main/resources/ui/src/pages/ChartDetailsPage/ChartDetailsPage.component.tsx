@@ -96,7 +96,10 @@ const ChartDetailsPage = () => {
 
   const viewUsagePermission = useMemo(
     () =>
-      getPrioritizedViewPermission(chartPermissions, PermissionOperation.ViewUsage),
+      getPrioritizedViewPermission(
+        chartPermissions,
+        PermissionOperation.ViewUsage
+      ),
     [chartPermissions]
   );
 

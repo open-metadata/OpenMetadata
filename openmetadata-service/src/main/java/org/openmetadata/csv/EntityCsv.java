@@ -104,6 +104,7 @@ import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -1039,13 +1040,21 @@ public abstract class EntityCsv<T extends EntityInterface> {
       importFailure(resultsPrinter, violations, csvRecord);
       return;
     }
-    if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
-      try {
-        // Set FQN first so findMatchForImport can search by FQN
-        repository.setFullyQualifiedName(entity);
-        // In case of updating entity, prepareInternal as update=True
-        T original = repository.findMatchForImport(entity);
-        boolean isUpdate = original != null;
+    try {
+      // Set FQN first so findMatchForImport can search by FQN
+      repository.setFullyQualifiedName(entity);
+      // In case of updating entity, prepareInternal as update=True
+      T original = repository.findMatchForImport(entity);
+      boolean isUpdate = original != null;
+
+      // Validate entity against platform rules (for BOTH dry run and actual import)
+      if (isUpdate) {
+        RuleEngine.getInstance().evaluateUpdate(original, entity);
+      } else {
+        RuleEngine.getInstance().evaluate(entity);
+      }
+
+      if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
         if (isUpdate) {
           entity.setId(original.getId());
         } else {
@@ -1071,20 +1080,19 @@ public abstract class EntityCsv<T extends EntityInterface> {
             new PendingEntityOperation(entity, original, csvRecord, entityType, !isUpdate));
         pendingEntityFQNs.add(entity.getFullyQualifiedName());
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
-      } catch (Exception ex) {
-        pendingCsvResults.put(csvRecord, ex.getMessage());
-        importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
-        importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
-        importResult.setStatus(ApiStatus.FAILURE);
-        return;
+      } else { // Dry run don't create the entity
+        responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
+        // Track the dryRun created entities, as they may be referred by other entities being
+        // created
+        // during import
+        dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
       }
-    } else { // Dry run don't create the entity
-      repository.setFullyQualifiedName(entity);
-      boolean exists = repository.isUpdateForImport(entity);
-      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
-      // Track the dryRun created entities, as they may be referred by other entities being created
-      // during import
-      dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
+    } catch (Exception ex) {
+      pendingCsvResults.put(csvRecord, ex.getMessage());
+      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+      importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
+      importResult.setStatus(ApiStatus.FAILURE);
+      return;
     }
 
     if (Response.Status.CREATED.equals(responseStatus)) {
@@ -1125,13 +1133,21 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
 
     Response.Status responseStatus;
-    if (Boolean.FALSE.equals(importResult.getDryRun())) {
-      try {
-        // Set FQN first so findMatchForImport can search by FQN
-        repository.setFullyQualifiedName(entity);
-        // In case of updating entity, prepareInternal as update=True
-        T original = (T) repository.findMatchForImport(entity);
-        boolean isUpdate = original != null;
+    try {
+      // Set FQN first so findMatchForImport can search by FQN
+      repository.setFullyQualifiedName(entity);
+      // In case of updating entity, prepareInternal as update=True
+      T original = (T) repository.findMatchForImport(entity);
+      boolean isUpdate = original != null;
+
+      // Validate entity against platform rules (for BOTH dry run and actual import)
+      if (isUpdate) {
+        RuleEngine.getInstance().evaluateUpdate(original, entity);
+      } else {
+        RuleEngine.getInstance().evaluate(entity);
+      }
+
+      if (Boolean.FALSE.equals(importResult.getDryRun())) {
         if (isUpdate) {
           entity.setId(original.getId());
         } else {
@@ -1158,18 +1174,16 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 entity, (EntityInterface) original, csvRecord, type, !isUpdate));
         pendingEntityFQNs.add(entity.getFullyQualifiedName());
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
-      } catch (Exception ex) {
-        pendingCsvResults.put(csvRecord, ex.getMessage());
-        importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
-        importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
-        importResult.setStatus(ApiStatus.FAILURE);
-        return;
+      } else {
+        responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
+        dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
       }
-    } else {
-      repository.setFullyQualifiedName(entity);
-      boolean exists = repository.isUpdateForImport(entity);
-      responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
-      dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
+    } catch (Exception ex) {
+      pendingCsvResults.put(csvRecord, ex.getMessage());
+      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+      importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
+      importResult.setStatus(ApiStatus.FAILURE);
+      return;
     }
 
     if (Response.Status.CREATED.equals(responseStatus)) {

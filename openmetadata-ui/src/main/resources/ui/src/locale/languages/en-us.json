@@ -2564,7 +2564,7 @@
     "most-expensive-queries-widget-subheader": "Keep track of your most expensive queries in the service.",
     "most-used-assets-widget-description": "Top 5 most used data assets in the service. <0>learn more.</0>",
     "most-used-assets-widget-subheader": "Quickly understand the most visited assets in your service.",
-    "most-viewed-data-assets": "Displays the most viewed feed-field-action-entity-headerdata assets.",
+    "most-viewed-data-assets": "Displays the most viewed data assets.",
     "multi-object-contract-detected": "This contract has more than one schema. Choose the schema you want to import.",
     "mutually-exclusive-alert": "If you enable 'Mutually Exclusive' for a {{entity}}, users will be restricted to using only one {{child-entity}} to apply to a data asset. Once this option is activated, it cannot be deactivated.",
     "my-task-no-data-placeholder": "You're all clear, No tasks are waiting on you right now.",

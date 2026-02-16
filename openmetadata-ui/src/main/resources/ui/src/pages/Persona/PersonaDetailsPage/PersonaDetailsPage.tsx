@@ -43,12 +43,15 @@ import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
-import { getCustomizePageCategories } from '../../../utils/Persona/PersonaUtils';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getUserById } from '../../../rest/userAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { getPersonaDetailsPath, getSettingPath } from '../../../utils/RouterUtils';
+import { getCustomizePageCategories } from '../../../utils/Persona/PersonaUtils';
+import {
+  getPersonaDetailsPath,
+  getSettingPath,
+} from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './persona-details-page.less';
 
@@ -69,7 +72,9 @@ export const PersonaDetailsPage = () => {
     const activeKey = (location.hash?.replace('#', '') || 'customize-ui').split(
       '.'
     )[0];
-    const activeCategory = (location.hash?.replace('#', '') || '').split('.')[1];
+    const activeCategory = (location.hash?.replace('#', '') || '').split(
+      '.'
+    )[1];
 
     return {
       activeKey,

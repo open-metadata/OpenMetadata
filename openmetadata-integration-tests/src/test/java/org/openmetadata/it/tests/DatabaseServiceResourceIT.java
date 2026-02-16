@@ -18,17 +18,20 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
@@ -792,5 +795,188 @@ public class DatabaseServiceResourceIT
     } catch (Exception e) {
       throw new RuntimeException("Failed to parse import result: " + e.getMessage(), e);
     }
+  }
+
+  @Test
+  void test_csvImportEntityRuleValidation(TestNamespace ns)
+      throws IOException, InterruptedException {
+
+    final String MULTI_DOMAIN_RULE = "Multiple Domains are not allowed";
+
+    // Check if rule is currently enabled and store original state
+    boolean originalRuleState =
+        EntityRulesUtil.isRuleEnabled(SdkClients.adminClient(), MULTI_DOMAIN_RULE);
+
+    try {
+      // Enable the multi-domain rule for testing
+      EntityRulesUtil.toggleMultiDomainRule(SdkClients.adminClient(), true);
+
+      String serviceName = ns.prefix("rule_validation_service");
+      DatabaseService service = createEntity(createMinimalRequest(ns).withName(serviceName));
+
+      // Create test entities first
+      Database database =
+          SdkClients.adminClient()
+              .databases()
+              .create(
+                  new CreateDatabase()
+                      .withName(ns.prefix("rule_test_db"))
+                      .withService(service.getFullyQualifiedName()));
+
+      DatabaseSchema schema =
+          SdkClients.adminClient()
+              .databaseSchemas()
+              .create(
+                  new CreateDatabaseSchema()
+                      .withName(ns.prefix("rule_test_schema"))
+                      .withDatabase(database.getFullyQualifiedName()));
+
+      Table table =
+          SdkClients.adminClient()
+              .tables()
+              .create(
+                  new CreateTable()
+                      .withName(ns.prefix("rule_test_table"))
+                      .withDatabaseSchema(schema.getFullyQualifiedName())
+                      .withColumns(
+                          List.of(
+                              new Column()
+                                  .withName("test_column")
+                                  .withDataType(ColumnDataType.VARCHAR)
+                                  .withDataLength(255))));
+
+      // Create second domain for testing multiple domains
+      CreateDomain domain2Request =
+          new CreateDomain()
+              .withName(ns.prefix("TestDomain2"))
+              .withDescription("Second domain for CSV rule testing")
+              .withDomainType(CreateDomain.DomainType.AGGREGATE);
+
+      Domain domain2 = SdkClients.adminClient().domains().create(domain2Request);
+
+      // Export current CSV
+      String originalCsv = exportCsvRecursive(service.getFullyQualifiedName());
+      assertNotNull(originalCsv);
+
+      // Modify CSV to include multiple domains (violates the rule)
+      String[] lines = originalCsv.split("\n");
+      String header = lines[0];
+      StringBuilder modifiedCsv = new StringBuilder();
+      modifiedCsv.append(header).append("\n");
+
+      for (int i = 1; i < lines.length; i++) {
+        String line = lines[i];
+        if (line.contains(table.getName()) && line.contains("table")) {
+          // Add multiple domains to the table row (semicolon-separated)
+          // Using SharedEntities domain and the new domain to violate the rule
+          SharedEntities shared = SharedEntities.get();
+          String multipleDomains = shared.DOMAIN.getName() + ";" + domain2.getName();
+          line = addDomainsToTableRow(line, multipleDomains);
+        }
+        modifiedCsv.append(line).append("\n");
+      }
+
+      // Test with dry run first - should catch validation errors without applying changes
+      try {
+        CsvImportResult dryRunResult =
+            importCsvRecursive(service.getFullyQualifiedName(), modifiedCsv.toString(), true);
+
+        // Dry run should either fail entirely or report validation errors
+        if (dryRunResult.getStatus() == ApiStatus.SUCCESS) {
+          // Should not succeed - there should be validation failures
+          assertTrue(
+              dryRunResult.getNumberOfRowsFailed() > 0,
+              "Dry run should have validation failures for multiple domains");
+
+          // Check that the failure CSV contains the specific rule violation
+          String resultsCsv = dryRunResult.getImportResultsCsv();
+          assertNotNull(resultsCsv, "Should have results CSV with failure details");
+          assertTrue(
+              resultsCsv.contains("Rule [Multiple Domains are not allowed] validation failed"),
+              "Should contain exact rule validation failure message: " + resultsCsv);
+        } else {
+          // Dry run failed entirely, which is also acceptable
+          assertEquals(
+              ApiStatus.PARTIAL_SUCCESS,
+              dryRunResult.getStatus(),
+              "Dry run should fail due to rule validation");
+        }
+
+      } catch (RuntimeException e) {
+        // HTTP error is also acceptable - rule validation should prevent even dry run
+        assertTrue(
+            e.getMessage().contains("Rule [Multiple Domains are not allowed] validation failed"),
+            "Should get exact rule validation error in dry run: " + e.getMessage());
+      }
+
+      // Also test actual import (not dry run) should fail
+      try {
+        CsvImportResult actualResult =
+            importCsvRecursive(service.getFullyQualifiedName(), modifiedCsv.toString(), false);
+
+        // The import should either fail entirely or report validation errors
+        if (actualResult.getStatus() == ApiStatus.SUCCESS) {
+          // Should not succeed - there should be validation failures
+          assertTrue(
+              actualResult.getNumberOfRowsFailed() > 0,
+              "Import should have validation failures for multiple domains");
+
+          // Check that the failure CSV contains the specific rule violation
+          String resultsCsv = actualResult.getImportResultsCsv();
+          assertNotNull(resultsCsv, "Should have results CSV with failure details");
+          assertTrue(
+              resultsCsv.contains("Rule [Multiple Domains are not allowed] validation failed"),
+              "Should contain exact rule validation failure message: " + resultsCsv);
+        } else {
+          // Import failed entirely, which is also acceptable
+          assertEquals(
+              ApiStatus.PARTIAL_SUCCESS,
+              actualResult.getStatus(),
+              "Import should fail due to rule validation");
+        }
+
+      } catch (RuntimeException e) {
+        // HTTP error is also acceptable - rule validation should prevent the import
+        assertTrue(
+            e.getMessage().contains("Rule [Multiple Domains are not allowed] validation failed"),
+            "Should get exact rule validation error: " + e.getMessage());
+      }
+
+      // Verify the table still has only one domain (import should not have succeeded)
+      Table verifyTable =
+          SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "domains");
+
+      if (verifyTable.getDomains() != null) {
+        assertTrue(
+            verifyTable.getDomains().size() <= 1,
+            "Table should not have multiple domains due to rule validation");
+      }
+
+    } finally {
+      // Restore the original rule state
+      EntityRulesUtil.toggleMultiDomainRule(SdkClients.adminClient(), originalRuleState);
+    }
+  }
+
+  private int getDomainColumnIndex(String header) {
+    String[] columns = header.split(",");
+    for (int i = 0; i < columns.length; i++) {
+      String column = columns[i].replaceAll("\"", "").trim();
+      if ("domains".equals(column)) {
+        return i;
+      }
+    }
+    // Based on CSV documentation, domains is at index 10 (0-based)
+    return 10;
+  }
+
+  private String addDomainsToTableRow(String csvLine, String newDomains) {
+    String[] parts = csvLine.split(",");
+    // Domains column is at index 10 based on CSV documentation
+    int domainsIndex = 10;
+    if (parts.length > domainsIndex) {
+      parts[domainsIndex] = "\"" + newDomains + "\"";
+    }
+    return String.join(",", parts);
   }
 }

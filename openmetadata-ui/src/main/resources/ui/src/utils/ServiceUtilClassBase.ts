@@ -35,6 +35,7 @@ import {
   AZURESQL,
   BIGQUERY,
   BIGTABLE,
+  BURSTIQ,
   CASSANDRA,
   CLICKHOUSE,
   COCKROACH,
@@ -539,6 +540,9 @@ class ServiceUtilClassBase {
 
       case this.DatabaseServiceTypeSmallCase.Synapse:
         return SYNAPSE;
+
+      case this.DatabaseServiceTypeSmallCase.BurstIQ:
+        return BURSTIQ;
 
       case this.MessagingServiceTypeSmallCase.CustomMessaging:
         return TOPIC_DEFAULT;

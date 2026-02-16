@@ -109,10 +109,24 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn -DskipTests clean install -pl :openmetadata-mcp -am
 
+      - name: Free build artifacts
+        run: |
+          rm -rf openmetadata-service/target/lib openmetadata-service/target/classes
+          rm -rf openmetadata-spec/target openmetadata-sdk/target common/target
+          rm -rf openmetadata-shaded-deps/*/target
+          df -h /
+
       - name: Run MCP Tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn test -pl :openmetadata-mcp
+
+      - name: Clean Up
+        if: ${{ always() }}
+        run: |
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume
 
       - name: Publish Test Report
         if: ${{ always() }}

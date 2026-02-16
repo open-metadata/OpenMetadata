@@ -342,7 +342,7 @@ class NifiUnitTest(TestCase):
             f"{self.nifi.context.get().pipeline_service}.{EXPECTED_NIFI_DETAILS.id_}": MOCK_PIPELINE,
             f"{self.nifi.context.get().pipeline_service}.{EXPECTED_NIFI_DETAILS_2.id_}": MOCK_PIPELINE_2,
         }
-        return fqn_pipeline_mapping.get(fqn, self.original_get_by_name(entity, fqn))
+        return fqn_pipeline_mapping.get(fqn)
 
     def test_pipeline_name(self):
         assert (

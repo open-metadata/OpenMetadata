@@ -84,7 +84,7 @@ class QueryParserTest(TestCase):
             "sampleDataFolder"
         ] = (
             os.path.dirname(__file__)
-            + "/../../../"
+            + "/../../../../"
             + config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
                 "sampleDataFolder"
             ]
