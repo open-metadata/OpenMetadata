@@ -52,6 +52,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -1109,7 +1110,120 @@ public class TableRepository extends EntityRepository<Table> {
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
-    validateTableConstraints(table);
+
+    // For create operations (update=false), validate constraints immediately.
+    // For update operations (PATCH/PUT), constraint validation happens in updateTableConstraints()
+    // where we have access to both original and updated entities to properly detect removed
+    // columns.
+    if (!update) {
+      validateTableConstraints(table, Collections.emptySet());
+    }
+  }
+
+  /**
+   * Detect columns that exist in the original table but not in the updated table.
+   * This method accepts both entities as parameters to avoid redundant DB lookups.
+   *
+   * <p>This also handles null entries in the updated column list (e.g. from JSON patch "remove"
+   * operations): null columns are excluded via filter(Objects::nonNull), so original columns
+   * at those positions are correctly identified as removed. Any remaining null entries are
+   * cleaned up as a side effect.
+   */
+  private Set<String> detectRemovedColumns(Table origTable, Table updatedTable) {
+    Set<String> removedColumnNames = new HashSet<>();
+
+    if (origTable == null || origTable.getColumns() == null || updatedTable.getColumns() == null) {
+      return removedColumnNames;
+    }
+
+    List<Column> originalColumns = origTable.getColumns();
+    List<Column> updatedColumns = updatedTable.getColumns();
+
+    // Get column names from updated table (excluding any nulls) - use lowercase for
+    // case-insensitive comparison
+    Set<String> updatedColumnNamesLower =
+        updatedColumns.stream()
+            .filter(Objects::nonNull)
+            .map(col -> col.getName().toLowerCase())
+            .collect(Collectors.toSet());
+
+    // Find columns that exist in original but not in updated (these are removed)
+    // Use case-insensitive comparison, but store the original column name
+    for (Column originalColumn : originalColumns) {
+      if (originalColumn != null
+          && !updatedColumnNamesLower.contains(originalColumn.getName().toLowerCase())) {
+        removedColumnNames.add(originalColumn.getName());
+        LOG.debug(
+            "Detected removed column '{}' (not found in updated column list)",
+            originalColumn.getName());
+      }
+    }
+
+    // Clean up any null columns from the updated list as a side effect
+    if (updatedColumns.stream().anyMatch(Objects::isNull)) {
+      List<Column> cleanedColumns =
+          updatedColumns.stream().filter(Objects::nonNull).collect(Collectors.toList());
+      updatedTable.setColumns(cleanedColumns);
+      LOG.debug(
+          "Cleaned {} null columns from table. Removed columns: {}, Remaining columns: {}",
+          updatedColumns.size() - cleanedColumns.size(),
+          removedColumnNames,
+          cleanedColumns.size());
+    }
+
+    return removedColumnNames;
+  }
+
+  private void cleanupConstraintsForRemovedColumns(Table table, Set<String> removedColumnNames) {
+    if (nullOrEmpty(table.getTableConstraints()) || removedColumnNames.isEmpty()) {
+      return;
+    }
+
+    List<TableConstraint> originalConstraints = table.getTableConstraints();
+    List<TableConstraint> cleanedConstraints = new ArrayList<>();
+
+    for (TableConstraint constraint : originalConstraints) {
+      TableConstraint cleanedConstraint =
+          processConstraintForRemovedColumns(constraint, removedColumnNames);
+      if (cleanedConstraint != null) {
+        cleanedConstraints.add(cleanedConstraint);
+      }
+    }
+
+    table.setTableConstraints(cleanedConstraints);
+    LOG.debug(
+        "Constraint cleanup completed. Original constraints: {}, Final constraints: {}",
+        originalConstraints.size(),
+        cleanedConstraints.size());
+  }
+
+  private TableConstraint processConstraintForRemovedColumns(
+      TableConstraint constraint, Set<String> removedColumnNames) {
+    if (constraint == null || nullOrEmpty(constraint.getColumns())) {
+      return constraint;
+    }
+
+    // Create lowercase set of removed column names for case-insensitive comparison
+    Set<String> removedColumnNamesLower =
+        removedColumnNames.stream().map(String::toLowerCase).collect(Collectors.toSet());
+
+    boolean hasRemovedColumns =
+        constraint.getColumns().stream()
+            .anyMatch(col -> removedColumnNamesLower.contains(col.toLowerCase()));
+
+    if (hasRemovedColumns) {
+      List<String> removedFromConstraint =
+          constraint.getColumns().stream()
+              .filter(col -> removedColumnNamesLower.contains(col.toLowerCase()))
+              .collect(Collectors.toList());
+      LOG.debug(
+          "Removing {} constraint as it references removed columns: {}. Full constraint columns: {}",
+          constraint.getConstraintType(),
+          removedFromConstraint,
+          constraint.getColumns());
+      return null;
+    }
+    return constraint;
   }
 
   @Override
@@ -1750,7 +1864,7 @@ public class TableRepository extends EntityRepository<Table> {
     return customMetrics;
   }
 
-  private void validateTableConstraints(Table table) {
+  private void validateTableConstraints(Table table, Set<String> columnsBeingRemoved) {
     if (!nullOrEmpty(table.getTableConstraints())) {
       Set<TableConstraint> constraintSet = new HashSet<>();
       for (TableConstraint constraint : table.getTableConstraints()) {
@@ -1759,6 +1873,11 @@ public class TableRepository extends EntityRepository<Table> {
               "Duplicate constraint found in request: " + constraint);
         }
         for (String column : constraint.getColumns()) {
+          // Skip validation for columns that are being removed (case-insensitive)
+          if (columnsBeingRemoved != null
+              && columnsBeingRemoved.stream().anyMatch(col -> col.equalsIgnoreCase(column))) {
+            continue;
+          }
           validateColumn(table, column);
         }
         if (!nullOrEmpty(constraint.getReferredColumns())) {
@@ -1826,7 +1945,17 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateTableConstraints(Table origTable, Table updatedTable, Operation operation) {
-      validateTableConstraints(updatedTable);
+      // Detect columns that were removed (exist in original but not in updated).
+      // This also handles null column entries produced by JSON patch operations.
+      Set<String> removedColumns = detectRemovedColumns(origTable, updatedTable);
+
+      // Clean up constraints that reference removed columns BEFORE validation
+      if (!removedColumns.isEmpty()) {
+        cleanupConstraintsForRemovedColumns(updatedTable, removedColumns);
+      }
+
+      // Validate constraints, skipping validation for removed columns
+      validateTableConstraints(updatedTable, removedColumns);
       if (operation.isPatch()
           && !nullOrEmpty(updatedTable.getTableConstraints())
           && !nullOrEmpty(origTable.getTableConstraints())) {

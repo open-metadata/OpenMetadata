@@ -149,7 +149,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const schemaAllRowKeys = useMemo(() => {
     return getAllRowKeysByKeyName<Field>(
       messageSchema?.schemaFields ?? [],
-      'name'
+      'fullyQualifiedName'
     );
   }, [messageSchema?.schemaFields]);
 
@@ -252,7 +252,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const renderSchemaName = useCallback(
     (_: unknown, record: Field) => (
-      <div className="d-inline-flex items-center gap-2 hover-icon-group w-max-90 vertical-align-inherit">
+      <div
+        className="d-inline-flex gap-1 hover-icon-group vertical-align-inherit flex-column items-start"
+        style={{ maxWidth: '80%' }}>
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
             {isVersionView ? (
@@ -495,7 +497,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                 }
                 pagination={false}
                 rowClassName={getRowClassName}
-                rowKey="name"
+                rowKey="fullyQualifiedName"
                 scroll={TABLE_SCROLL_VALUE}
                 size="small"
                 staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}

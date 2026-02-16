@@ -15,14 +15,14 @@ import { expect, Page, Response } from '@playwright/test';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 
-export const navigateToRulesLibrary = async (page: Page) => {
+export const navigateToTestLibrary = async (page: Page) => {
   await redirectToHomePage(page);
   const testDefinitionResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/dataQuality/testDefinitions') &&
       response.request().method() === 'GET'
   );
-  await page.goto('/rules-library');
+  await page.goto('/test-library');
   await testDefinitionResponse;
   await waitForAllLoadersToDisappear(page);
 };

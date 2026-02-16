@@ -2,6 +2,7 @@ package org.openmetadata.service.security.auth.validator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -12,7 +13,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.service.util.ValidationHttpUtil;
 
 public class OidcDiscoveryValidatorTest {
@@ -216,6 +219,122 @@ public class OidcDiscoveryValidatorTest {
 
       assertTrue(exception.getMessage().contains("Failed to fetch discovery document"));
       assertTrue(exception.getMessage().contains("Status: 404"));
+    }
+  }
+
+  @Test
+  void testValidateAgainstDiscovery_MissingOpenIdScope_ReturnsError() {
+    String discoveryUri = "https://accounts.google.com/.well-known/openid-configuration";
+    String mockDiscoveryResponse =
+        "{"
+            + "\"issuer\": \"https://accounts.google.com\","
+            + "\"authorization_endpoint\": \"https://accounts.google.com/o/oauth2/v2/auth\","
+            + "\"token_endpoint\": \"https://oauth2.googleapis.com/token\","
+            + "\"jwks_uri\": \"https://www.googleapis.com/oauth2/v3/certs\","
+            + "\"response_types_supported\": [\"code\"],"
+            + "\"scopes_supported\": [\"openid\", \"email\", \"profile\"]"
+            + "}";
+
+    OidcClientConfig oidcConfig = new OidcClientConfig();
+    oidcConfig.setScope("email profile");
+
+    try (MockedStatic<ValidationHttpUtil> mockedHttp = mockStatic(ValidationHttpUtil.class)) {
+      ValidationHttpUtil.HttpResponseData mockResponse =
+          new ValidationHttpUtil.HttpResponseData(200, mockDiscoveryResponse);
+      mockedHttp.when(() -> ValidationHttpUtil.safeGet(anyString())).thenReturn(mockResponse);
+
+      FieldError error = validator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
+
+      assertNotNull(error);
+      assertTrue(error.getError().contains("openid"));
+      assertTrue(error.getError().contains("must include"));
+    }
+  }
+
+  @Test
+  void testValidateAgainstDiscovery_EmptyScope_ReturnsError() {
+    String discoveryUri = "https://accounts.google.com/.well-known/openid-configuration";
+    String mockDiscoveryResponse =
+        "{"
+            + "\"issuer\": \"https://accounts.google.com\","
+            + "\"authorization_endpoint\": \"https://accounts.google.com/o/oauth2/v2/auth\","
+            + "\"token_endpoint\": \"https://oauth2.googleapis.com/token\","
+            + "\"jwks_uri\": \"https://www.googleapis.com/oauth2/v3/certs\","
+            + "\"response_types_supported\": [\"code\"],"
+            + "\"scopes_supported\": [\"openid\", \"email\", \"profile\"]"
+            + "}";
+
+    OidcClientConfig oidcConfig = new OidcClientConfig();
+    oidcConfig.setScope("");
+
+    try (MockedStatic<ValidationHttpUtil> mockedHttp = mockStatic(ValidationHttpUtil.class)) {
+      ValidationHttpUtil.HttpResponseData mockResponse =
+          new ValidationHttpUtil.HttpResponseData(200, mockDiscoveryResponse);
+      mockedHttp.when(() -> ValidationHttpUtil.safeGet(anyString())).thenReturn(mockResponse);
+
+      FieldError error = validator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
+
+      assertNotNull(error);
+      assertTrue(error.getError().contains("Scope is required"));
+      assertTrue(error.getError().contains("openid"));
+    }
+  }
+
+  @Test
+  void testValidateAgainstDiscovery_ValidOpenIdScope_ReturnsNull() {
+    String discoveryUri = "https://accounts.google.com/.well-known/openid-configuration";
+    String mockDiscoveryResponse =
+        "{"
+            + "\"issuer\": \"https://accounts.google.com\","
+            + "\"authorization_endpoint\": \"https://accounts.google.com/o/oauth2/v2/auth\","
+            + "\"token_endpoint\": \"https://oauth2.googleapis.com/token\","
+            + "\"jwks_uri\": \"https://www.googleapis.com/oauth2/v3/certs\","
+            + "\"response_types_supported\": [\"code\"],"
+            + "\"scopes_supported\": [\"openid\", \"email\", \"profile\"],"
+            + "\"token_endpoint_auth_methods_supported\": [\"client_secret_basic\"],"
+            + "\"id_token_signing_alg_values_supported\": [\"RS256\"]"
+            + "}";
+
+    OidcClientConfig oidcConfig = new OidcClientConfig();
+    oidcConfig.setScope("openid email profile");
+
+    try (MockedStatic<ValidationHttpUtil> mockedHttp = mockStatic(ValidationHttpUtil.class)) {
+      ValidationHttpUtil.HttpResponseData mockResponse =
+          new ValidationHttpUtil.HttpResponseData(200, mockDiscoveryResponse);
+      mockedHttp.when(() -> ValidationHttpUtil.safeGet(anyString())).thenReturn(mockResponse);
+
+      FieldError error = validator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
+
+      assertNull(error);
+    }
+  }
+
+  @Test
+  void testValidateAgainstDiscovery_OnlyOpenIdScope_ReturnsNull() {
+    String discoveryUri = "https://accounts.google.com/.well-known/openid-configuration";
+    String mockDiscoveryResponse =
+        "{"
+            + "\"issuer\": \"https://accounts.google.com\","
+            + "\"authorization_endpoint\": \"https://accounts.google.com/o/oauth2/v2/auth\","
+            + "\"token_endpoint\": \"https://oauth2.googleapis.com/token\","
+            + "\"jwks_uri\": \"https://www.googleapis.com/oauth2/v3/certs\","
+            + "\"response_types_supported\": [\"code\"],"
+            + "\"scopes_supported\": [\"openid\", \"email\", \"profile\"],"
+            + "\"token_endpoint_auth_methods_supported\": [\"client_secret_basic\"],"
+            + "\"id_token_signing_alg_values_supported\": [\"RS256\"]"
+            + "}";
+
+    OidcClientConfig oidcConfig = new OidcClientConfig();
+    oidcConfig.setScope("openid");
+
+    try (MockedStatic<ValidationHttpUtil> mockedHttp = mockStatic(ValidationHttpUtil.class)) {
+      ValidationHttpUtil.HttpResponseData mockResponse =
+          new ValidationHttpUtil.HttpResponseData(200, mockDiscoveryResponse);
+      mockedHttp.when(() -> ValidationHttpUtil.safeGet(anyString())).thenReturn(mockResponse);
+
+      FieldError error = validator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
+
+      assertNull(error);
     }
   }
 }

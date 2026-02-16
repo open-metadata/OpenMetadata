@@ -109,20 +109,21 @@ class TestSDKAPIs(unittest.TestCase):
         self.mock_ometa.add_lineage.assert_called_once()
 
     def test_lineage_delete(self):
-        """Test deleting lineage"""
+        """Test deleting lineage builds an EntitiesEdge"""
+        from metadata.generated.schema.type.entityLineage import EntitiesEdge
+
         Lineage.delete_lineage(
-            from_entity="entity1",
+            from_entity="550e8400-e29b-41d4-a716-446655440000",
             from_entity_type="table",
-            to_entity="entity2",
+            to_entity="550e8400-e29b-41d4-a716-446655440001",
             to_entity_type="dashboard",
         )
 
-        self.mock_ometa.delete_lineage_edge.assert_called_once_with(
-            from_entity="entity1",
-            from_entity_type="table",
-            to_entity="entity2",
-            to_entity_type="dashboard",
-        )
+        self.mock_ometa.delete_lineage_edge.assert_called_once()
+        edge = self.mock_ometa.delete_lineage_edge.call_args[0][0]
+        self.assertIsInstance(edge, EntitiesEdge)
+        self.assertEqual(edge.fromEntity.type, "table")
+        self.assertEqual(edge.toEntity.type, "dashboard")
 
     def test_lineage_builder(self):
         """Test lineage builder pattern"""

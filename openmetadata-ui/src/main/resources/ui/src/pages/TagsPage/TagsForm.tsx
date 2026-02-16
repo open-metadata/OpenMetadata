@@ -24,6 +24,10 @@ import {
   TAG_NAME_VALIDATION_RULES,
 } from '../../constants/Tags.constant';
 import { EntityType } from '../../enums/entity.enum';
+import { CreateClassification } from '../../generated/api/classification/createClassification';
+import { CreateTag } from '../../generated/api/classification/createTag';
+import { Classification } from '../../generated/entity/classification/classification';
+import { Tag } from '../../generated/entity/classification/tag';
 import { EntityReference } from '../../generated/entity/type';
 import { useEntityRules } from '../../hooks/useEntityRules';
 import { FieldProp } from '../../interface/FormUtils.interface';
@@ -41,7 +45,7 @@ import {
   getOwnerField,
 } from './tagFormFields';
 import './TagsForm.less';
-import { RenameFormProps, SubmitProps } from './TagsPage.interface';
+import { RenameFormProps } from './TagsPage.interface';
 
 const LABEL_STYLES: SxProps<Theme> = {
   color: (theme) => theme.palette.grey[700],
@@ -260,7 +264,7 @@ const TagsForm = ({
     [isClassification]
   );
 
-  const handleSave = async (data: SubmitProps) => {
+  const handleSave = async (data: Classification | Tag | undefined) => {
     const domains = castArray(selectedDomain).filter(Boolean);
     const owners = castArray(selectedOwners).filter(Boolean);
 
@@ -280,7 +284,7 @@ const TagsForm = ({
         ...data,
         owners: owners?.length ? owners : undefined,
         domains: domainsData,
-      };
+      } as CreateClassification | CreateTag;
       await onSubmit(submitData);
       formRef.setFieldsValue(DEFAULT_FORM_VALUE);
     } catch {
@@ -311,9 +315,9 @@ const TagsForm = ({
 
         {/* Icon and Color row */}
         {!isClassification && (
-          <Grid container spacing={2}>
+          <Grid container spacing={2} sx={{ flexWrap: 'nowrap' }}>
             <Grid>{getField(iconField)}</Grid>
-            <Grid sx={{ ml: 'auto' }}>{getField(colorField)}</Grid>
+            <Grid sx={{ ml: 'auto', minWidth: 0 }}>{getField(colorField)}</Grid>
           </Grid>
         )}
 
