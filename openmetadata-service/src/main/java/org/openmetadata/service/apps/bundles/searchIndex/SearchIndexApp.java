@@ -185,9 +185,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void runReindexing(JobExecutionContext jobExecutionContext) throws Exception {
     boolean success = false;
     try {
-      setupEntities();
-      cleanupOldFailures();
-
       if (jobData.getEntities() == null || jobData.getEntities().isEmpty()) {
         LOG.info("No entities selected for reindexing, completing immediately");
         jobData.setStatus(EventPublisherJob.Status.COMPLETED);
@@ -195,6 +192,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
         success = true;
         return;
       }
+
+      setupEntities();
+      cleanupOldFailures();
 
       LOG.info(
           "Search Index Job Started for Entities: {}, RecreateIndex: {}, DistributedIndexing: {}",

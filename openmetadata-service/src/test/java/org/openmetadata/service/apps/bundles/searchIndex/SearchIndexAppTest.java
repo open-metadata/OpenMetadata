@@ -15,6 +15,9 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flipkart.zjsonpatch.JsonDiff;
 import io.dropwizard.testing.ResourceHelpers;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
@@ -39,6 +42,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.CreateTopic;
+import org.openmetadata.schema.api.services.CreateMessagingService;
+import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
@@ -46,14 +52,18 @@ import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.AccessDetails;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
@@ -207,6 +217,29 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
   void testTriggerInitialSearchIndexing() throws Exception {
     triggerSearchIndexApplication(true);
     waitForIndexingCompletion();
+
+    // Verify vector stats are populated after indexing with embeddings enabled
+    Map<String, Object> appRunRecord = getAppRunRecord();
+    assertNotNull(appRunRecord, "App run record should exist after indexing");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> successCtx = (Map<String, Object>) appRunRecord.get("successContext");
+    assertNotNull(successCtx, "successContext should exist for completed job");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> statsMap = (Map<String, Object>) successCtx.get("stats");
+    assertNotNull(statsMap, "stats should exist in successContext");
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> vectorStats = (Map<String, Object>) statsMap.get("vectorStats");
+    assertNotNull(vectorStats, "vectorStats should be present when semantic search is enabled");
+
+    int vectorTotal =
+        vectorStats.get("totalRecords") != null
+            ? ((Number) vectorStats.get("totalRecords")).intValue()
+            : 0;
+    assertTrue(
+        vectorTotal > 0, "vectorStats.totalRecords should be > 0 after indexing with embeddings");
   }
 
   @Test
@@ -455,6 +488,100 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     safeDelete("databaseSchemas", vectorTestSchema);
     safeDelete("databases", vectorTestDb);
     safeDelete("services/databaseServices", vectorTestService);
+  }
+
+  // =========================================================================
+  // LifeCycle indexing regression test
+  // =========================================================================
+
+  @Test
+  @Order(13)
+  void testTopicWithLifeCycleCanBeIndexed() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+
+    MessagingService messagingService =
+        TestUtils.post(
+            getResource("services/messagingServices"),
+            new CreateMessagingService()
+                .withName("lifecycle_test_kafka_" + System.currentTimeMillis())
+                .withServiceType(MessagingServiceType.Kafka)
+                .withConnection(TestUtils.KAFKA_CONNECTION),
+            MessagingService.class,
+            ADMIN_AUTH_HEADERS);
+
+    Topic topic =
+        TestUtils.post(
+            getResource("topics"),
+            new CreateTopic()
+                .withName("lifecycle_test_topic")
+                .withService(messagingService.getFullyQualifiedName())
+                .withPartitions(1),
+            Topic.class,
+            ADMIN_AUTH_HEADERS);
+
+    // PATCH the topic to add lifeCycle with an object value (accessed with timestamp)
+    Topic topicForPatch =
+        TestUtils.get(
+            getResource("topics/" + topic.getId()).queryParam("fields", "lifeCycle"),
+            Topic.class,
+            ADMIN_AUTH_HEADERS);
+    String originalJson = JsonUtils.pojoToJson(topicForPatch);
+
+    LifeCycle lifeCycle =
+        new LifeCycle()
+            .withAccessed(
+                new AccessDetails()
+                    .withTimestamp(System.currentTimeMillis() / 1000)
+                    .withAccessedByAProcess("lifecycle_indexing_test"));
+    topicForPatch.setLifeCycle(lifeCycle);
+    String updatedJson = JsonUtils.pojoToJson(topicForPatch);
+
+    JsonNode patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+    TestUtils.patch(getResource("topics/" + topic.getId()), patch, Topic.class, ADMIN_AUTH_HEADERS);
+
+    // Trigger search indexing for topics and wait for completion
+    triggerSearchIndexApplicationForEntities(Set.of("topic"), true);
+    waitForIndexingCompletion();
+
+    // Search for the topic — with the broken keyword mapping, ES rejects the lifeCycle
+    // object and the document never gets indexed, so this search will return 0 hits
+    boolean found = false;
+    int maxRetries = 10;
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      WebTarget searchTarget =
+          getResource("search/query")
+              .queryParam("q", "lifecycle_test_topic")
+              .queryParam("index", "topic_search_index")
+              .queryParam("from", "0")
+              .queryParam("size", "10");
+      Response searchResponse = SecurityUtil.addHeaders(searchTarget, ADMIN_AUTH_HEADERS).get();
+
+      if (searchResponse.getStatus() == 200) {
+        String body = searchResponse.readEntity(String.class);
+        JsonNode searchJson = mapper.readTree(body);
+        JsonNode hits = searchJson.path("hits").path("hits");
+        for (JsonNode hit : hits) {
+          String fqn = hit.path("_source").path("fullyQualifiedName").asText("");
+          if (fqn.contains("lifecycle_test_topic")) {
+            found = true;
+            break;
+          }
+        }
+      }
+
+      if (found) break;
+      Thread.sleep(3000);
+    }
+
+    assertTrue(
+        found,
+        "Topic with lifeCycle should be indexed successfully and found via search. "
+            + "If this fails, the topic_index_mapping.json likely has lifeCycle mapped as "
+            + "'keyword' instead of 'object'.");
+
+    // Cleanup
+    safeDelete("topics", topic);
+    safeDelete("services/messagingServices", messagingService);
   }
 
   // =========================================================================
@@ -1042,6 +1169,49 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     return TestUtils.post(getResource("tables"), createTable, Table.class, ADMIN_AUTH_HEADERS);
   }
 
+  private void triggerSearchIndexApplicationForEntities(Set<String> entities, boolean recreateIndex)
+      throws Exception {
+    waitForExistingJobToComplete();
+
+    EventPublisherJob jobConfig =
+        new EventPublisherJob()
+            .withEntities(entities)
+            .withBatchSize(10)
+            .withRecreateIndex(recreateIndex)
+            .withAutoTune(false);
+
+    WebTarget target = getResource("apps/trigger/SearchIndexingApplication");
+
+    int maxRetries = 5;
+    long retryBackoffMs = 5000;
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      Response response =
+          SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS)
+              .post(jakarta.ws.rs.client.Entity.entity(jobConfig, MediaType.APPLICATION_JSON));
+
+      if (response.getStatus() >= 200 && response.getStatus() < 300) {
+        return;
+      }
+
+      String body = response.readEntity(String.class);
+      if (body != null && body.contains("Job is already running") && attempt < maxRetries) {
+        LOG.info(
+            "Job is still running, waiting {}ms before retry {}/{}",
+            retryBackoffMs,
+            attempt,
+            maxRetries);
+        Thread.sleep(retryBackoffMs);
+        waitForExistingJobToComplete();
+        continue;
+      }
+
+      assertTrue(
+          response.getStatus() >= 200 && response.getStatus() < 300,
+          "Failed to trigger SearchIndexingApplication: " + body);
+    }
+  }
+
   private void triggerSearchIndexApplication(boolean recreateIndex) throws Exception {
     waitForExistingJobToComplete();
 
@@ -1082,6 +1252,23 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
           response.getStatus() >= 200 && response.getStatus() < 300,
           "Failed to trigger SearchIndexingApplication: " + body);
     }
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> getAppRunRecord() {
+    try {
+      WebTarget target = getResource("apps/name/SearchIndexingApplication/logs");
+      Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+      if (response.getStatus() == 200) {
+        String body = response.readEntity(String.class);
+        if (body != null) {
+          return JsonUtils.readValue(body, Map.class);
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to fetch app run record: {}", e.getMessage());
+    }
+    return null;
   }
 
   @SuppressWarnings("unchecked")
