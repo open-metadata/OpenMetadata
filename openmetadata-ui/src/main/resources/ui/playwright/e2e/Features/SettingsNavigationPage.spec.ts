@@ -290,10 +290,11 @@ test.describe.serial('Settings Navigation Page Tests', () => {
       await expect(treeItems.first()).not.toHaveText(firstItemText as string);
 
       // Now check if save button is enabled
-      await page
-        .getByTestId('save-button')
-        .and(page.locator(':not([disabled])'))
-        .waitFor({ state: 'visible' });
+      const saveButton = page.getByTestId('save-button');
+
+      await expect(saveButton).toBeVisible();
+      await expect(saveButton).toBeEnabled();
+       
     }
   });
 
