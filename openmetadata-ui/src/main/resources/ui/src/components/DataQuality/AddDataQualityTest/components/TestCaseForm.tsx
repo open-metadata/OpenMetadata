@@ -213,19 +213,34 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   };
 
   const getParamsValue = () => {
-    return initialValue?.parameterValues?.reduce(
-      (acc, curr) => ({
+    return initialValue?.parameterValues?.reduce((acc, curr) => {
+      const param = getSelectedTestDefinition()?.parameterDefinition?.find(
+        (definition) => definition.name === curr.name
+      );
+
+      if (param?.dataType === TestDataType.Array) {
+        const value = JSON.parse(curr?.value || '[]') as string[];
+
+        return {
+          ...acc,
+          [curr.name || '']: value.map((val) => ({
+            value: val,
+          })),
+        };
+      }
+
+      if (param?.dataType === TestDataType.Boolean) {
+        return {
+          ...acc,
+          [curr.name || '']: curr?.value === 'true',
+        };
+      }
+
+      return {
         ...acc,
-        [curr.name || '']:
-          getSelectedTestDefinition()?.parameterDefinition?.[0].dataType ===
-          TestDataType.Array
-            ? (JSON.parse(curr?.value || '[]') as string[]).map((val) => ({
-                value: val,
-              }))
-            : curr?.value,
-      }),
-      {}
-    );
+        [curr.name || '']: curr?.value,
+      };
+    }, {});
   };
 
   const handleValueChange: FormProps['onValuesChange'] = (value) => {
