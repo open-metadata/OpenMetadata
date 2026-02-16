@@ -206,7 +206,6 @@ const mockParams = {
 
 const API_FIELDS = [
   'owners',
-  'usageSummary',
   'tags',
   'domains',
   'votes',

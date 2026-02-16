@@ -121,7 +121,11 @@ SELECT
 FROM
     DBA_SOURCE
 WHERE TYPE IN ('PACKAGE', 'PACKAGE BODY') AND owner = '{schema}'
-ORDER BY OWNER, NAME, LINE
+ORDER BY OWNER, NAME, CASE type
+        WHEN 'PACKAGE' THEN 1
+        WHEN 'PACKAGE BODY' THEN 2
+        ELSE 3
+    END, LINE
 """
 )
 
@@ -145,7 +149,11 @@ WHERE
         WHERE
             ROWNUM = 1
     )
-ORDER BY OWNER, NAME, LINE
+ORDER BY OWNER, NAME, CASE type
+        WHEN 'PACKAGE' THEN 1
+        WHEN 'PACKAGE BODY' THEN 2
+        ELSE 3
+    END, LINE
 """
 )
 

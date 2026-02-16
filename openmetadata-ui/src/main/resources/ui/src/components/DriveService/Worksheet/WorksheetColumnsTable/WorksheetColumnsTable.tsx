@@ -92,9 +92,10 @@ function WorksheetColumnsTable() {
     };
   }, [permissions, worksheetDetails]);
 
-  const schema = useMemo(() => pruneEmptyChildren(worksheetDetails?.columns ?? []), [
-    worksheetDetails?.columns,
-  ]);
+  const schema = useMemo(
+    () => pruneEmptyChildren(worksheetDetails?.columns ?? []),
+    [worksheetDetails?.columns]
+  );
 
   // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
   useEffect(() => {

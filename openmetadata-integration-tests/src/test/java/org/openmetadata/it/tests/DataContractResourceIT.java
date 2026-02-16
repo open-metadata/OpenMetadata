@@ -6302,4 +6302,366 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         validation.getConstraintErrors() == null || validation.getConstraintErrors().isEmpty(),
         "Expected constraintErrors to be null or empty");
   }
+
+  // ==================== ODCS v3.1.0 Compatibility Tests ====================
+
+  @Test
+  void testImportODCSYamlWithElementLevelQuality(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("elem_quality")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "quality:\n"
+            + "  - type: library\n"
+            + "    metric: rowCount\n"
+            + "    name: top_level_row_count\n"
+            + "    mustBeGreaterThan: 0\n"
+            + "schema:\n"
+            + "  - name: "
+            + table.getName()
+            + "\n"
+            + "    logicalType: object\n"
+            + "    quality:\n"
+            + "      - type: library\n"
+            + "        metric: freshness\n"
+            + "        name: table_freshness\n"
+            + "    properties:\n"
+            + "      - name: email\n"
+            + "        logicalType: string\n"
+            + "        quality:\n"
+            + "          - type: sql\n"
+            + "            name: email_format_check\n"
+            + "            query: \"SELECT COUNT(*) FROM ${table} WHERE ${column} NOT LIKE '%@%'\"\n"
+            + "            mustBe: 0\n"
+            + "      - name: id\n"
+            + "        logicalType: integer\n"
+            + "      - name: name\n"
+            + "        logicalType: string\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertNotNull(imported.getOdcsQualityRules());
+    assertEquals(3, imported.getOdcsQualityRules().size());
+
+    ODCSQualityRule topLevelRule =
+        imported.getOdcsQualityRules().stream()
+            .filter(r -> "top_level_row_count".equals(r.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT, topLevelRule.getMetric());
+
+    ODCSQualityRule tableRule =
+        imported.getOdcsQualityRules().stream()
+            .filter(r -> "table_freshness".equals(r.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(table.getName(), tableRule.getColumn());
+
+    ODCSQualityRule emailRule =
+        imported.getOdcsQualityRules().stream()
+            .filter(r -> "email_format_check".equals(r.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals("email", emailRule.getColumn());
+    assertEquals(ODCSQualityRule.Type.SQL, emailRule.getType());
+  }
+
+  @Test
+  void testImportODCSYamlWithPropertyLevelQualityRoundTrip(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("prop_quality_rt")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "schema:\n"
+            + "  - name: "
+            + table.getName()
+            + "\n"
+            + "    logicalType: object\n"
+            + "    properties:\n"
+            + "      - name: email\n"
+            + "        logicalType: string\n"
+            + "        quality:\n"
+            + "          - type: library\n"
+            + "            metric: nullValues\n"
+            + "            name: email_not_null\n"
+            + "      - name: id\n"
+            + "        logicalType: integer\n"
+            + "      - name: name\n"
+            + "        logicalType: string\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertNotNull(imported.getOdcsQualityRules());
+    assertEquals(1, imported.getOdcsQualityRules().size());
+    assertEquals("email", imported.getOdcsQualityRules().get(0).getColumn());
+
+    ODCSDataContract exported =
+        SdkClients.adminClient().dataContracts().exportToODCS(imported.getId());
+
+    assertNotNull(exported);
+    assertNotNull(exported.getSchema());
+    assertFalse(exported.getSchema().isEmpty());
+
+    ODCSSchemaElement tableObject = exported.getSchema().get(0);
+    assertNotNull(tableObject.getProperties());
+
+    ODCSSchemaElement emailProp =
+        tableObject.getProperties().stream()
+            .filter(p -> "email".equals(p.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertNotNull(emailProp.getQuality());
+    assertEquals(1, emailProp.getQuality().size());
+    assertEquals("email_not_null", emailProp.getQuality().get(0).getName());
+
+    assertTrue(
+        exported.getQuality().isEmpty(),
+        "Top-level quality should be empty when all rules are column-level");
+  }
+
+  @Test
+  void testImportODCSYamlWithTeamAsObject(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("team_obj")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "team:\n"
+            + "  members:\n"
+            + "    - username: admin\n"
+            + "      role: owner\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(imported);
+    // admin user exists in the test environment, so it should resolve as owner
+    assertNotNull(imported.getOwners());
+    assertFalse(imported.getOwners().isEmpty());
+  }
+
+  @Test
+  void testImportODCSYamlWithTeamAsArray(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("team_arr")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "team:\n"
+            + "  - username: admin\n"
+            + "    role: owner\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertNotNull(imported.getOwners());
+    assertFalse(imported.getOwners().isEmpty());
+  }
+
+  @Test
+  void testImportODCSYamlWithScalarApprovers(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("scalar_approvers")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "roles:\n"
+            + "  - role: analyst\n"
+            + "    access: read\n"
+            + "    firstLevelApprovers: manager@company.com\n"
+            + "    secondLevelApprovers: director@company.com\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertNotNull(imported.getSecurity());
+    assertNotNull(imported.getSecurity().getPolicies());
+    assertFalse(imported.getSecurity().getPolicies().isEmpty());
+    assertTrue(
+        imported
+            .getSecurity()
+            .getPolicies()
+            .get(0)
+            .getIdentities()
+            .contains("manager@company.com"));
+  }
+
+  @Test
+  void testImportODCSYamlWithArrayApprovers(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("array_approvers")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "roles:\n"
+            + "  - role: engineer\n"
+            + "    access: readWrite\n"
+            + "    firstLevelApprovers:\n"
+            + "      - approver1@company.com\n"
+            + "      - approver2@company.com\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(imported);
+    assertNotNull(imported.getSecurity());
+    assertNotNull(imported.getSecurity().getPolicies());
+    assertEquals(1, imported.getSecurity().getPolicies().size());
+    assertEquals(2, imported.getSecurity().getPolicies().get(0).getIdentities().size());
+    assertTrue(
+        imported
+            .getSecurity()
+            .getPolicies()
+            .get(0)
+            .getIdentities()
+            .contains("approver1@company.com"));
+    assertTrue(
+        imported
+            .getSecurity()
+            .getPolicies()
+            .get(0)
+            .getIdentities()
+            .contains("approver2@company.com"));
+  }
+
+  @Test
+  void testImportODCSYamlWithAllV310Features(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    String yamlContent =
+        "apiVersion: v3.1.0\n"
+            + "kind: DataContract\n"
+            + "id: "
+            + UUID.randomUUID()
+            + "\n"
+            + "name: "
+            + ns.prefix("all_v310")
+            + "\n"
+            + "version: '1.0.0'\n"
+            + "status: active\n"
+            + "team:\n"
+            + "  members:\n"
+            + "    - username: admin\n"
+            + "      role: owner\n"
+            + "schema:\n"
+            + "  - name: "
+            + table.getName()
+            + "\n"
+            + "    logicalType: object\n"
+            + "    quality:\n"
+            + "      - type: library\n"
+            + "        metric: rowCount\n"
+            + "        name: table_row_count\n"
+            + "        mustBeGreaterThan: 0\n"
+            + "    properties:\n"
+            + "      - name: email\n"
+            + "        logicalType: string\n"
+            + "        quality:\n"
+            + "          - type: sql\n"
+            + "            name: email_check\n"
+            + "            query: \"SELECT COUNT(*) FROM ${table} WHERE ${column} NOT LIKE '%@%'\"\n"
+            + "            mustBe: 0\n"
+            + "      - name: id\n"
+            + "        logicalType: integer\n"
+            + "      - name: name\n"
+            + "        logicalType: string\n"
+            + "roles:\n"
+            + "  - role: analyst\n"
+            + "    access: read\n"
+            + "    firstLevelApprovers: manager@company.com\n";
+
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yamlContent, table.getId(), "table");
+
+    assertNotNull(imported);
+
+    // Verify team object form was normalized
+    assertNotNull(imported.getOwners());
+    assertFalse(imported.getOwners().isEmpty());
+
+    // Verify element-level quality rules were collected
+    assertNotNull(imported.getOdcsQualityRules());
+    assertEquals(2, imported.getOdcsQualityRules().size());
+
+    // Verify scalar approvers were normalized
+    assertNotNull(imported.getSecurity());
+    assertNotNull(imported.getSecurity().getPolicies());
+    assertTrue(
+        imported
+            .getSecurity()
+            .getPolicies()
+            .get(0)
+            .getIdentities()
+            .contains("manager@company.com"));
+  }
 }
