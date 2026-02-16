@@ -52,6 +52,10 @@ class NonExistentModel(Base):
 def crdb_engine():
     container = CockroachDBContainer(image="cockroachdb/cockroach:v23.1.0")
     with container as container:
+        container.exec(
+            "cockroach sql --insecure -e "
+            "'GRANT SELECT ON TABLE system.table_statistics TO cockroach'"
+        )
         engine = create_engine(container.get_connection_url())
         engine.execute(
             "CREATE TABLE IF NOT EXISTS public.metric_computer_test "
@@ -63,11 +67,10 @@ def crdb_engine():
         )
         engine.execute("ANALYZE metric_computer_test")
         yield engine
-        engine.execute("DROP TABLE IF EXISTS public.metric_computer_test")
         engine.dispose()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def session(crdb_engine):
     session = create_and_bind_session(crdb_engine)
     yield session

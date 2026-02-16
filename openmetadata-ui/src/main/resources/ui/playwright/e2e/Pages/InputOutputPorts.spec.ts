@@ -650,6 +650,53 @@ test.describe('Input Output Ports', () => {
       });
     });
 
+    test('Port drawers show Entity Type quick filter', async ({ page }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with assets', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate to ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.waitForLoadState('networkidle');
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Verify Entity Type filter in input port drawer', async () => {
+        await page.getByTestId('add-input-port-button').click();
+        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+          state: 'visible',
+        });
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('search-dropdown-Entity Type')
+        ).toBeVisible();
+
+        await page.getByTestId('cancel-btn').click();
+      });
+
+      await test.step('Verify Entity Type filter in output port drawer', async () => {
+        await page.getByTestId('add-output-port-button').click();
+        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+          state: 'visible',
+        });
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('search-dropdown-Entity Type')
+        ).toBeVisible();
+
+        await page.getByTestId('cancel-btn').click();
+      });
+    });
+
     test('Output port drawer only shows data product assets', async ({
       page,
     }) => {
