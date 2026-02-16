@@ -12,24 +12,17 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import {
+  DataTypeTopic,
+  Field,
+  Topic,
+} from '../../../src/generated/entity/data/topic';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import {
-  EntityTypeEndpoint,
-  ResponseDataType,
-  ResponseDataWithServiceType,
-} from './Entity.interface';
+import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
-
-export interface TopicChildrenDetails {
-  name: string;
-  dataType: string;
-  description?: string;
-  tags?: unknown[];
-  children?: Array<TopicChildrenDetails>;
-}
 
 export class TopicClass extends EntityClass {
   service: {
@@ -46,8 +39,8 @@ export class TopicClass extends EntityClass {
       };
     };
   };
-  private topicName: string;
-  children: TopicChildrenDetails[];
+  private readonly topicName: string;
+  children: Field[];
   entity: {
     name: string;
     displayName: string;
@@ -56,14 +49,13 @@ export class TopicClass extends EntityClass {
     messageSchema: {
       schemaText: string;
       schemaType: string;
-      schemaFields: unknown[];
+      schemaFields: Field[];
     };
     partitions: number;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
-  entityResponseData: ResponseDataWithServiceType =
-    {} as ResponseDataWithServiceType;
+  entityResponseData: Topic = {} as Topic;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Topic);
@@ -93,42 +85,42 @@ export class TopicClass extends EntityClass {
     this.children = [
       {
         name: `default${uuid()}`,
-        dataType: 'RECORD',
+        dataType: DataTypeTopic.Record,
         tags: [],
         children: [
           {
             name: `name${uuid()}`,
-            dataType: 'RECORD',
+            dataType: DataTypeTopic.Record,
             tags: [],
             children: [
               {
                 name: 'first_name',
-                dataType: 'STRING',
+                dataType: DataTypeTopic.String,
                 description: 'Description for schema field first_name',
                 tags: [],
               },
               {
                 name: 'last_name',
-                dataType: 'STRING',
+                dataType: DataTypeTopic.String,
                 tags: [],
               },
             ],
           },
           {
             name: 'age',
-            dataType: 'INT',
+            dataType: DataTypeTopic.Int,
             tags: [],
           },
           {
             name: 'club_name',
-            dataType: 'STRING',
+            dataType: DataTypeTopic.String,
             tags: [],
           },
         ],
       },
       {
         name: `secondary${uuid()}`,
-        dataType: 'RECORD',
+        dataType: DataTypeTopic.Record,
         tags: [],
         children: [],
       },
@@ -165,6 +157,10 @@ export class TopicClass extends EntityClass {
     this.serviceResponseData = await serviceResponse.json();
     this.entityResponseData = await entityResponse.json();
 
+    this.childrenSelectorId =
+      this.entityResponseData.messageSchema?.schemaFields?.[0]
+        .fullyQualifiedName ?? '';
+
     return {
       service: serviceResponse.body,
       entity: entityResponse.body,
@@ -179,7 +175,7 @@ export class TopicClass extends EntityClass {
     patchData: Operation[];
   }) {
     const response = await apiContext.patch(
-      `/api/v1/topics/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+      `/api/v1/topics/name/${this.entityResponseData?.fullyQualifiedName}`,
       {
         data: patchData,
         headers: {
@@ -202,10 +198,7 @@ export class TopicClass extends EntityClass {
     };
   }
 
-  public set(data: {
-    entity: ResponseDataWithServiceType;
-    service: ResponseDataType;
-  }): void {
+  public set(data: { entity: Topic; service: ResponseDataType }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
   }
@@ -213,9 +206,9 @@ export class TopicClass extends EntityClass {
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
+      searchTerm: this.entityResponseData?.fullyQualifiedName ?? '',
       dataTestId: `${
-        this.entityResponseData.service.name ?? this.service.name
+        this.entityResponseData.service?.name ?? this.service.name
       }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
@@ -223,7 +216,7 @@ export class TopicClass extends EntityClass {
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/messagingServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
+        this.serviceResponseData?.fullyQualifiedName ?? ''
       )}?recursive=true&hardDelete=true`
     );
 
