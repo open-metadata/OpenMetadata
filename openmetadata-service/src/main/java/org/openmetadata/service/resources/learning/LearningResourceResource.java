@@ -134,7 +134,8 @@ public class LearningResourceResource
           @DefaultValue("non-deleted")
           Include include,
       @Parameter(
-              description = "Filter resources to a specific page identifier",
+              description =
+                  "Filter resources to specific page identifiers (supports comma-separated values)",
               schema = @Schema(type = "string"))
           @QueryParam("pageId")
           String pageId,
@@ -144,7 +145,8 @@ public class LearningResourceResource
           @QueryParam("componentId")
           String componentId,
       @Parameter(
-              description = "Filter by primary category",
+              description =
+                  "Filter by category (supports comma-separated values, e.g. DataGovernance,DataQuality)",
               schema = @Schema(type = "string", example = "DataGovernance"))
           @QueryParam("category")
           String category,
@@ -154,10 +156,22 @@ public class LearningResourceResource
           @QueryParam("difficulty")
           String difficulty,
       @Parameter(
-              description = "Filter by lifecycle status",
+              description =
+                  "Filter by lifecycle status (supports comma-separated values, e.g. Active,Draft)",
               schema = @Schema(type = "string", example = "Active"))
           @QueryParam("status")
-          String status) {
+          String status,
+      @Parameter(
+              description =
+                  "Filter by resource type (supports comma-separated values, e.g. Video,Storylane,Article)",
+              schema = @Schema(type = "string", example = "Video"))
+          @QueryParam("resourceType")
+          String resourceType,
+      @Parameter(
+              description = "Search by name or display name (case-insensitive partial match)",
+              schema = @Schema(type = "string"))
+          @QueryParam("search")
+          String search) {
     LearningResourceRepository.LearningResourceFilter filter =
         new LearningResourceRepository.LearningResourceFilter(include);
     if (pageId != null) {
@@ -173,7 +187,13 @@ public class LearningResourceResource
       filter.addQueryParam("difficulty", difficulty);
     }
     if (status != null) {
-      filter.addQueryParam("statusPrefix", status);
+      filter.addQueryParam("status", status);
+    }
+    if (resourceType != null) {
+      filter.addQueryParam("resourceType", resourceType);
+    }
+    if (search != null) {
+      filter.addQueryParam("search", "%" + search + "%");
     }
 
     return addHref(
