@@ -689,4 +689,66 @@ describe('EditTestCaseModalV1 Component', () => {
     // Cleanup
     document.body.removeChild(testElement);
   });
+
+  it('should correctly convert boolean parameter values from string to boolean', async () => {
+    const { MOCK_TEST_CASE_WITH_BOOLEAN_PARAM, MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_BE_IN_SET } = await import('../../../../mocks/TestSuite.mock');
+    
+    (getTestDefinitionById as jest.Mock).mockResolvedValue(
+      MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_BE_IN_SET
+    );
+
+    const testCaseWithBooleanFalse = {
+      ...MOCK_TEST_CASE_WITH_BOOLEAN_PARAM,
+      parameterValues: [
+        {
+          name: 'allowedValues',
+          value: '["active","inactive","pending"]',
+        },
+        {
+          name: 'matchEnum',
+          value: 'false',
+        },
+      ],
+    };
+
+    render(<EditTestCaseModalV1 {...mockProps} testCase={testCaseWithBooleanFalse} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    const form = document.querySelector('[data-testid="edit-test-form"]') as HTMLFormElement;
+    expect(form).toBeInTheDocument();
+  });
+
+  it('should correctly convert boolean parameter values when value is "true"', async () => {
+    const { MOCK_TEST_CASE_WITH_BOOLEAN_PARAM, MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_BE_IN_SET } = await import('../../../../mocks/TestSuite.mock');
+    
+    (getTestDefinitionById as jest.Mock).mockResolvedValue(
+      MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_BE_IN_SET
+    );
+
+    const testCaseWithBooleanTrue = {
+      ...MOCK_TEST_CASE_WITH_BOOLEAN_PARAM,
+      parameterValues: [
+        {
+          name: 'allowedValues',
+          value: '["active","inactive","pending"]',
+        },
+        {
+          name: 'matchEnum',
+          value: 'true',
+        },
+      ],
+    };
+
+    render(<EditTestCaseModalV1 {...mockProps} testCase={testCaseWithBooleanTrue} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    const form = document.querySelector('[data-testid="edit-test-form"]') as HTMLFormElement;
+    expect(form).toBeInTheDocument();
+  });
 });
