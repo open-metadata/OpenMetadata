@@ -74,7 +74,7 @@ test.describe('Custom Property Advanced Search Filter for Dashboard', () => {
   });
 
   test.describe('Text Field Custom Properties', () => {
-    test('String CP with all operators', async ({ page }) => {
+    test('String CP with all the operators', async ({ page }) => {
       test.slow();
       const propertyName = propertyNames['string'];
 

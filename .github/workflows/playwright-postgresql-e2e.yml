@@ -100,6 +100,19 @@ jobs:
           # - other shards: skip ingestion setup
           args: ${{ matrix.shardIndex == 2 && '-d postgresql' || '-d postgresql -i false' }}
           ingestion_dependency: "all"
+          use_tmpfs: "true"
+
+      - name: Monitor System Resources
+        if: always()
+        run: |
+          echo "=== Memory Usage ==="
+          free -h
+          echo ""
+          echo "=== Disk Usage ==="
+          df -h
+          echo ""
+          echo "=== Docker Container Stats ==="
+          docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}" || true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
