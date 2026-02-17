@@ -11,7 +11,7 @@
       "name": "ApplicationBotRule-Allow",
       "description" : "Allow application bots to perform operations on data entities including triggering agents",
       "resources" : ["All"],
-      "operations": ["Create", "EditAll", "ViewAll", "Delete", "Trigger", "Impersonate"],
+      "operations": ["Create", "EditAll", "ViewAll", "Delete", "Trigger"],
       "effect": "allow"
     },
     {
