@@ -19,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.openmetadata.service.jdbi3.AppRepository.APP_BOT_IMPERSONATION_ROLE;
+import static org.openmetadata.service.jdbi3.AppRepository.APP_BOT_ROLE;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.time.Duration;
@@ -45,6 +47,7 @@ import org.openmetadata.schema.entity.app.NativeAppPermission;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -812,5 +815,135 @@ public class AppsResourceIT {
     assertNotNull(apps);
     assertNotNull(apps.getData());
     assertTrue(apps.getData().size() <= 50);
+  }
+
+  @Test
+  void test_appBotRole_withoutImpersonation(TestNamespace ns) throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = "noImpApp" + System.currentTimeMillis();
+
+    try {
+      CreateAppMarketPlaceDefinitionReq marketPlaceReq =
+          new CreateAppMarketPlaceDefinitionReq()
+              .withName(appName)
+              .withDisplayName("No Impersonation App")
+              .withDescription("Test app without impersonation")
+              .withFeatures("test features")
+              .withDeveloper("Test Developer")
+              .withDeveloperUrl("https://www.example.com")
+              .withPrivacyPolicyUrl("https://www.example.com/privacy")
+              .withSupportEmail("support@example.com")
+              .withClassName("org.openmetadata.service.resources.apps.TestApp")
+              .withAppType(AppType.Internal)
+              .withScheduleType(ScheduleType.Scheduled)
+              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+              .withAppConfiguration(new HashMap<>())
+              .withPermission(NativeAppPermission.All);
+
+      AppMarketPlaceDefinition marketPlaceDef =
+          httpClient.execute(
+              HttpMethod.POST,
+              "/v1/apps/marketplace",
+              marketPlaceReq,
+              AppMarketPlaceDefinition.class);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY))
+              .withAllowBotImpersonation(false);
+
+      App app = httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+      assertNotNull(app);
+
+      App retrievedApp =
+          httpClient.execute(
+              HttpMethod.GET, "/v1/apps/name/" + appName + "?fields=bot", null, App.class);
+      assertNotNull(retrievedApp.getBot(), "Bot should be created for the app");
+
+      String botUserName = appName + "Bot";
+      User botUser =
+          httpClient.execute(
+              HttpMethod.GET, "/v1/users/name/" + botUserName + "?fields=roles", null, User.class);
+
+      assertNotNull(botUser.getRoles(), "Bot user should have roles assigned");
+      assertTrue(
+          botUser.getRoles().stream().anyMatch(r -> r.getName().equals(APP_BOT_ROLE)),
+          "Bot without impersonation should have ApplicationBotRole");
+      assertTrue(
+          botUser.getRoles().stream()
+              .noneMatch(r -> r.getName().equals(APP_BOT_IMPERSONATION_ROLE)),
+          "Bot without impersonation should NOT have ApplicationBotImpersonationRole");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  @Test
+  void test_appBotRole_withImpersonation(TestNamespace ns) throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = "impApp" + System.currentTimeMillis();
+
+    try {
+      CreateAppMarketPlaceDefinitionReq marketPlaceReq =
+          new CreateAppMarketPlaceDefinitionReq()
+              .withName(appName)
+              .withDisplayName("With Impersonation App")
+              .withDescription("Test app with impersonation")
+              .withFeatures("test features")
+              .withDeveloper("Test Developer")
+              .withDeveloperUrl("https://www.example.com")
+              .withPrivacyPolicyUrl("https://www.example.com/privacy")
+              .withSupportEmail("support@example.com")
+              .withClassName("org.openmetadata.service.resources.apps.TestApp")
+              .withAppType(AppType.Internal)
+              .withScheduleType(ScheduleType.Scheduled)
+              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+              .withAppConfiguration(new HashMap<>())
+              .withPermission(NativeAppPermission.All);
+
+      AppMarketPlaceDefinition marketPlaceDef =
+          httpClient.execute(
+              HttpMethod.POST,
+              "/v1/apps/marketplace",
+              marketPlaceReq,
+              AppMarketPlaceDefinition.class);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(marketPlaceDef.getName())
+              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+              .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY))
+              .withAllowBotImpersonation(true);
+
+      App app = httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+      assertNotNull(app);
+
+      App retrievedApp =
+          httpClient.execute(
+              HttpMethod.GET, "/v1/apps/name/" + appName + "?fields=bot", null, App.class);
+      assertNotNull(retrievedApp.getBot(), "Bot should be created for the app");
+
+      String botUserName = appName + "Bot";
+      User botUser =
+          httpClient.execute(
+              HttpMethod.GET, "/v1/users/name/" + botUserName + "?fields=roles", null, User.class);
+
+      assertNotNull(botUser.getRoles(), "Bot user should have roles assigned");
+      assertTrue(
+          botUser.getRoles().stream().anyMatch(r -> r.getName().equals(APP_BOT_IMPERSONATION_ROLE)),
+          "Bot with impersonation should have ApplicationBotImpersonationRole");
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
   }
 }
