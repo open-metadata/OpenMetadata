@@ -47,7 +47,43 @@ jest.mock('../../../common/RichTextEditor/RichTextEditor', () => {
 });
 
 jest.mock('./ParameterForm', () => {
-  return jest.fn().mockImplementation(() => <div>ParameterForm.component</div>);
+  const { Form } = require('antd');
+
+  function ParameterFormMock({
+    definition,
+  }: Readonly<{
+    definition?: {
+      parameterDefinition?: Array<{ name: string; dataType: string }>;
+    };
+  }>) {
+    let params: Record<string, unknown> = {};
+
+    try {
+      const form = Form.useFormInstance();
+      params = form.getFieldValue('params') ?? {};
+    } catch {
+      // no form context
+    }
+
+    const booleanParams = (definition?.parameterDefinition ?? []).filter(
+      (param) => param.dataType === 'BOOLEAN'
+    );
+
+    return (
+      <div>
+        ParameterForm.component
+        {booleanParams.map((param) => (
+          <button
+            aria-checked={params[param.name] ? 'true' : 'false'}
+            key={param.name}
+            role="switch"
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return jest.fn().mockImplementation(ParameterFormMock);
 });
 
 jest.mock('../../../../pages/TasksPage/shared/TagSuggestion', () =>
@@ -689,7 +725,7 @@ describe('EditTestCaseModalV1 Component', () => {
     });
 
     // Cleanup
-    document.body.removeChild(testElement);
+    testElement.remove();
   });
 
   it('should correctly convert boolean parameter values from string to boolean', async () => {
@@ -711,14 +747,22 @@ describe('EditTestCaseModalV1 Component', () => {
       ],
     };
 
-    const { container } = render(<EditTestCaseModalV1 {...mockProps} testCase={testCaseWithBooleanFalse} />);
+    render(
+      <EditTestCaseModalV1 {...mockProps} testCase={testCaseWithBooleanFalse} />
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
     });
 
-    const switchElement = container.querySelector('button[role="switch"]') as HTMLButtonElement;
-    expect(switchElement).toBeInTheDocument();
+    const switchElement = await waitFor(() => {
+      const el = document.querySelector('button[role="switch"]');
+
+      expect(el).toBeInTheDocument();
+
+      return el as HTMLButtonElement;
+    });
+
     expect(switchElement.getAttribute('aria-checked')).toBe('false');
   });
 
@@ -741,14 +785,22 @@ describe('EditTestCaseModalV1 Component', () => {
       ],
     };
 
-    const { container } = render(<EditTestCaseModalV1 {...mockProps} testCase={testCaseWithBooleanTrue} />);
+    render(
+      <EditTestCaseModalV1 {...mockProps} testCase={testCaseWithBooleanTrue} />
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
     });
 
-    const switchElement = container.querySelector('button[role="switch"]') as HTMLButtonElement;
-    expect(switchElement).toBeInTheDocument();
+    const switchElement = await waitFor(() => {
+      const el = document.querySelector('button[role="switch"]');
+
+      expect(el).toBeInTheDocument();
+
+      return el as HTMLButtonElement;
+    });
+
     expect(switchElement.getAttribute('aria-checked')).toBe('true');
   });
 });
