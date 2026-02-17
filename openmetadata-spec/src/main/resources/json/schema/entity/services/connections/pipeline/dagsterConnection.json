@@ -38,6 +38,13 @@
       "type": "integer",
       "default": "1000"
     },
+    "stripAssetKeyPrefixLength": {
+      "title": "Strip Asset Key Prefix Length",
+      "description": "Number of leading segments to remove from asset key paths before resolving to tables. For example, if your asset keys follow the pattern 'project/environment/schema/table' but you only need 'schema/table', set this to 2.",
+      "type": "integer",
+      "default": 0,
+      "minimum": 0
+    },
     "pipelineFilterPattern": {
       "description": "Regex exclude pipelines.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",

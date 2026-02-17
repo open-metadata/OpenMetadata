@@ -558,16 +558,22 @@ class BigqueryUnitTest(TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
 
-    def test_usage_location_passed_to_client_and_engine(self):
+    @patch("metadata.utils.credentials.auth.default")
+    def test_usage_location_passed_to_client_and_engine(self, mock_auth_default):
         """
         Test usageLocation is correctly passed to BigQuery client and added to engine URL
         """
+        from google.auth.credentials import Credentials
+
         from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
             BigQueryConnection,
         )
         from metadata.ingestion.source.database.bigquery.helper import (
             get_inspector_details,
         )
+
+        mock_credentials = Mock(spec=Credentials)
+        mock_auth_default.return_value = (mock_credentials, "test-project")
 
         config_with_location = deepcopy(
             mock_bq_config["source"]["serviceConnection"]["config"]

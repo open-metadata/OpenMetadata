@@ -21,7 +21,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   closeFilterDropdown,
-  navigateToRulesLibrary,
+  navigateToTestLibrary,
   openFilterDropdown,
   toggleFilter,
 } from '../../../utils/testDefinitionFilter';
@@ -30,10 +30,10 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe(
   'Test Definition Filters',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` },
+  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Test_Library` },
   () => {
     test.beforeEach(async ({ page }) => {
-      await navigateToRulesLibrary(page);
+      await navigateToTestLibrary(page);
     });
 
     test('should filter test definitions with single-select filters', async ({
@@ -109,7 +109,7 @@ test.describe(
       test.slow();
       await test.step('Load page with URL parameters', async () => {
         await page.goto(
-          '/rules-library?entityType=TABLE&testPlatforms=OpenMetadata'
+          '/test-library?entityType=TABLE&testPlatforms=OpenMetadata'
         );
         await waitForAllLoadersToDisappear(page);
 

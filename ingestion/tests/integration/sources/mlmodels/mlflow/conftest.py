@@ -112,6 +112,22 @@ def mlflow_environment():
             else:
                 raise RuntimeError("MySQL did not become ready in time.")
 
+            # Wait for MLflow server to be ready
+            import requests
+
+            mlflow_port = config.mlflow_configs.exposed_port or 6000
+            mlflow_url = f"http://localhost:{mlflow_port}"
+            for _ in range(30):
+                try:
+                    response = requests.get(f"{mlflow_url}/health")
+                    if response.status_code == 200:
+                        break
+                except Exception:
+                    pass
+                time.sleep(2)
+            else:
+                raise RuntimeError("MLflow server did not become ready in time.")
+
             yield config
 
 
@@ -122,7 +138,7 @@ def build_and_get_mlflow_container(mlflow_config: MlflowContainerConfigs):
         b"""
         FROM python:3.10-slim-buster
         RUN python -m pip install --upgrade pip
-        RUN pip install cryptography "mlflow==2.22.1" boto3 pymysql
+        RUN pip install cryptography "mlflow~=3.6.0" boto3 pymysql
         """
     )
 

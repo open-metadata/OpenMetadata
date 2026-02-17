@@ -264,9 +264,10 @@ class REST:
                 try:
                     return resp.json()
                 except JSONDecodeError as json_decode_error:
-                    logger.error(
-                        f"Json decoding error while returning response {resp} in json format - {json_decode_error}."
-                        f"The Response still returned to be handled by client..."
+                    logger.debug(
+                        "Non-JSON response (%s) returned as-is: %s",
+                        resp.status_code,
+                        json_decode_error,
                     )
                     return resp
                 except Exception as exc:

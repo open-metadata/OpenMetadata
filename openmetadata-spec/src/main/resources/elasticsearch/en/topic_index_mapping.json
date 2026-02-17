@@ -640,7 +640,8 @@
         }
       },
       "lifeCycle": {
-        "type": "keyword"
+        "type": "object",
+        "dynamic": false
       },
       "serviceType": {
         "type": "keyword",

@@ -185,8 +185,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void runReindexing(JobExecutionContext jobExecutionContext) throws Exception {
     boolean success = false;
     try {
+      if (jobData.getEntities() == null || jobData.getEntities().isEmpty()) {
+        LOG.info("No entities selected for reindexing, completing immediately");
+        jobData.setStatus(EventPublisherJob.Status.COMPLETED);
+        jobData.setStats(new Stats());
+        success = true;
+        return;
+      }
+
       setupEntities();
       cleanupOldFailures();
+
       LOG.info(
           "Search Index Job Started for Entities: {}, RecreateIndex: {}, DistributedIndexing: {}",
           jobData.getEntities(),
@@ -353,6 +362,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
       // The partition-based stats may be inaccurate because the bulk sink is asynchronous
       StepStats sinkStats = searchIndexSink != null ? searchIndexSink.getStats() : null;
       updateJobDataFromDistributedJob(finalJob, sinkStats);
+
+      // Set vector stats directly from the bulk sink since the sink tracks vector
+      // success/failure internally and these may not be fully reflected in server stats
+      if (searchIndexSink != null && jobData.getStats() != null) {
+        StepStats sinkVectorStats = searchIndexSink.getVectorStats();
+        if (sinkVectorStats != null && sinkVectorStats.getTotalRecords() > 0) {
+          jobData.getStats().setVectorStats(sinkVectorStats);
+        }
+      }
+
       saveServerStatsToJobDataMap(jobExecutionContext, finalJob);
     }
 

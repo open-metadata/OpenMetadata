@@ -400,6 +400,7 @@ dev = {
     "pre-commit",
     "pycln",
     "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
+    "basedpyright~=1.14",
     # For publishing
     "twine",
     "build",
@@ -412,7 +413,6 @@ test_unit = {
     "pytest-cov",
     "pytest-order",
     "pytest-rerunfailures",
-    "pytest-xdist",
     "dirty-equals",
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     # TODO: Remove once no unit test requires testcontainers
@@ -429,9 +429,9 @@ test = {
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
-    "basedpyright~=1.14",
     "pytest==7.0.1",
     "pytest-cov",
+    "pytest-xdist~=3.5",
     "pytest-order",
     "dirty-equals",
     # install dbt dependency
@@ -475,14 +475,11 @@ test = {
     *plugins["datalake-gcs"],
     *plugins["pgspider"],
     *plugins["clickhouse"],
-    *plugins["mssql"],
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],
     VERSIONS["validators"],
     VERSIONS["pyathena"],
-    VERSIONS["pyiceberg"],
-    VERSIONS["pydoris"],
     "python-liquid",
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],

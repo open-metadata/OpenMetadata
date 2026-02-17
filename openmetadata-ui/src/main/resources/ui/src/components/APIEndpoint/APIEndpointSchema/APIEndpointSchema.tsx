@@ -268,7 +268,9 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 
   const renderSchemaName = useCallback(
     (_: string, record: Field) => (
-      <div className="d-inline-flex items-center gap-2 hover-icon-group w-max-90 vertical-align-inherit">
+      <div
+        className="d-inline-flex gap-1 hover-icon-group vertical-align-inherit flex-column items-start"
+        style={{ maxWidth: '80%' }}>
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
             {isVersionView ? (

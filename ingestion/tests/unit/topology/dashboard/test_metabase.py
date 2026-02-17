@@ -447,6 +447,7 @@ class MetabaseUnitTest(TestCase):
         )
         self.assertIsNotNone(chart_with_stages.dataset_query)
         self.assertIsNotNone(chart_with_stages.dataset_query.native)
+        self.assertEqual(chart_with_stages.dataset_query.type, "native")
         self.assertEqual(
             chart_with_stages.dataset_query.native.query,
             "SELECT * FROM new_format_table",

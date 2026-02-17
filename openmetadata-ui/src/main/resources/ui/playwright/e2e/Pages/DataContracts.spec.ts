@@ -22,6 +22,7 @@ import {
   DATA_CONTRACT_SEMANTICS2,
   NEW_TABLE_TEST_CASE,
   ODCS_WITH_SLA_YAML,
+  VALID_OM_SIMPLE_YAML,
 } from '../../constant/dataContracts';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
@@ -63,6 +64,7 @@ import {
   deleteContract,
   exportContractYaml,
   importOdcsViaDropdown,
+  importOMViaDropdown,
   navigateToContractTab,
   openContractActionsDropdown,
   saveAndTriggerDataContractValidation,
@@ -717,6 +719,44 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await toastNotification(page, '"Contract" deleted successfully!');
 
         await contractRefreshResponse;
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+      });
+
+      await test.step('Import contract from OM YAML', async () => {
+        await importOMViaDropdown(
+          page,
+          VALID_OM_SIMPLE_YAML,
+          'om-contract.yaml'
+        );
+
+        await toastNotification(page, 'Contract imported successfully');
+
+        await expect(page.getByTestId('contract-title')).toBeVisible();
+
+        await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+      });
+
+      await test.step('Export OM YAML', async () => {
+        const filename = await exportContractYaml(page, 'native');
+        expect(filename).toBeTruthy();
+        await toastNotification(page, 'Contract exported successfully');
+      });
+
+      await test.step('Delete OM imported contract', async () => {
+        const contractRefreshResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataContracts/entity') &&
+            response.request().method() === 'GET'
+        );
+
+        await deleteContract(page);
+
+        const response = await contractRefreshResponse;
+        expect(response.status()).toBe(404);
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
