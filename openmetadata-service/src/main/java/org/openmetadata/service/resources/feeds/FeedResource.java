@@ -251,10 +251,7 @@ public class FeedResource {
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the Thread", schema = @Schema(type = "string"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Type of the Entity", schema = @Schema(type = "string"))
-          @PathParam("entityType")
-          String entityType) {
+          UUID id) {
     return addHref(uriInfo, dao.get(id));
   }
 

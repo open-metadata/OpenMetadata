@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -92,6 +93,7 @@ export const useColumnGridListingData = (
   const totalOccurrencesRef = useRef<number>(0);
   const refetchInProgressRef = useRef(false);
   const needsRefetchAgainRef = useRef(false);
+  const latestRequestIdRef = useRef(0);
 
   // Local pagination state (cursor-based, not in URL)
   const [currentPage, setCurrentPage] = useState(1);
@@ -181,6 +183,7 @@ export const useColumnGridListingData = (
         rethrowOnError?: boolean;
       }
     ) => {
+      const requestId = ++latestRequestIdRef.current;
       setLoading(true);
       try {
         // For page 1, start fresh (no cursor). For other pages, use stored cursor from previous page
@@ -196,6 +199,12 @@ export const useColumnGridListingData = (
           };
 
         const response = await getColumnGrid(apiParams);
+
+        // Ignore stale out-of-order responses when a newer search/filter/page
+        // request is already in flight.
+        if (requestId !== latestRequestIdRef.current) {
+          return;
+        }
 
         // Store items for this specific page
         itemsByPageRef.current.set(page, response.columns);
@@ -230,12 +239,16 @@ export const useColumnGridListingData = (
         setCursor(response.cursor);
         setHasMore(!!response.cursor);
       } catch (error) {
+        if (requestId !== latestRequestIdRef.current) {
+          return;
+        }
         if (!options?.rethrowOnError) {
-          setGridItems([]);
-          setEntities([]);
-          setAllRows([]);
-          setTotalUniqueColumns(0);
-          setTotalOccurrences(0);
+          showErrorToast(
+            error as AxiosError,
+            t('server.entity-fetch-error', {
+              entity: t('label.column-lowercase-plural'),
+            })
+          );
         }
         if (process.env.NODE_ENV === 'development') {
           // eslint-disable-next-line no-console
@@ -245,7 +258,9 @@ export const useColumnGridListingData = (
           throw error;
         }
       } finally {
-        setLoading(false);
+        if (requestId === latestRequestIdRef.current) {
+          setLoading(false);
+        }
       }
     },
     []
@@ -337,9 +352,6 @@ export const useColumnGridListingData = (
       totalUniqueColumnsRef.current = 0;
       totalOccurrencesRef.current = 0;
       editedValuesRef.current = new Map();
-      setGridItems([]);
-      setTotalUniqueColumns(0);
-      setTotalOccurrences(0);
       previousFiltersRef.current = currentFiltersString;
     }
 

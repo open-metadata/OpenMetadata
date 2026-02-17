@@ -809,33 +809,51 @@ describe('TableUtils', () => {
 
   describe('Schema Performance Functions', () => {
     // Mock field structure for testing
-    type MockField = { name?: string; children?: MockField[] };
+    type MockField = {
+      name?: string;
+      fullyQualifiedName?: string;
+      children?: MockField[];
+    };
 
     const mockNestedFields: MockField[] = [
       {
         name: 'level1_field1',
+        fullyQualifiedName: 'level1_field1',
         children: [
           {
             name: 'level2_field1',
-            children: [{ name: 'level3_field1' }, { name: 'level3_field2' }],
+            fullyQualifiedName: 'level2_field1',
+            children: [
+              { name: 'level3_field1', fullyQualifiedName: 'level3_field1' },
+              { name: 'level3_field2', fullyQualifiedName: 'level3_field2' },
+            ],
           },
           {
             name: 'level2_field2',
-            children: [{ name: 'level3_field3' }],
+            fullyQualifiedName: 'level2_field2',
+            children: [
+              { name: 'level3_field3', fullyQualifiedName: 'level3_field3' },
+            ],
           },
         ],
       },
       {
         name: 'level1_field2',
+        fullyQualifiedName: 'level1_field2',
         children: [
           {
             name: 'level2_field3',
-            children: [{ name: 'level3_field4' }, { name: 'level3_field5' }],
+            fullyQualifiedName: 'level2_field3',
+            children: [
+              { name: 'level3_field4', fullyQualifiedName: 'level3_field4' },
+              { name: 'level3_field5', fullyQualifiedName: 'level3_field5' },
+            ],
           },
         ],
       },
       {
         name: 'level1_field3',
+        fullyQualifiedName: 'level1_field3',
       },
     ];
 

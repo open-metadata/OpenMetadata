@@ -253,7 +253,7 @@ public final class Tables {
       return this;
     }
 
-    public FluentTable fetch() {
+    public org.openmetadata.sdk.fluent.wrappers.FluentTable fetch() {
       Table table;
       if (includes.isEmpty()) {
         table = isFqn ? client.tables().getByName(identifier) : client.tables().get(identifier);
@@ -264,7 +264,7 @@ public final class Tables {
                 ? client.tables().getByName(identifier, fields)
                 : client.tables().get(identifier, fields);
       }
-      return new FluentTable(table, client);
+      return new org.openmetadata.sdk.fluent.wrappers.FluentTable(table, client);
     }
 
     public TableDeleter delete() {
@@ -280,7 +280,7 @@ public final class Tables {
     private boolean recursive = false;
     private boolean hardDelete = false;
 
-    TableDeleter(OpenMetadataClient client, String id) {
+    public TableDeleter(OpenMetadataClient client, String id) {
       this.client = client;
       this.id = id;
     }
@@ -325,21 +325,22 @@ public final class Tables {
       return this;
     }
 
-    public List<FluentTable> fetch() {
+    public List<org.openmetadata.sdk.fluent.wrappers.FluentTable> fetch() {
       var params = new org.openmetadata.sdk.models.ListParams();
       if (limit != null) params.setLimit(limit);
       if (after != null) params.setAfter(after);
       filters.forEach(params::addFilter);
 
       var response = client.tables().list(params);
-      List<FluentTable> items = new ArrayList<>();
+      List<org.openmetadata.sdk.fluent.wrappers.FluentTable> items = new ArrayList<>();
       for (Table item : response.getData()) {
-        items.add(new FluentTable(item, client));
+        items.add(new org.openmetadata.sdk.fluent.wrappers.FluentTable(item, client));
       }
       return items;
     }
 
-    public void forEach(java.util.function.Consumer<FluentTable> action) {
+    public void forEach(
+        java.util.function.Consumer<org.openmetadata.sdk.fluent.wrappers.FluentTable> action) {
       fetch().forEach(action);
     }
   }

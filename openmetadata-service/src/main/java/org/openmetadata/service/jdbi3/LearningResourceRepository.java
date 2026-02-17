@@ -18,6 +18,7 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import com.google.gson.Gson;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -214,15 +215,14 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
 
     @Override
     public String getCondition(String tableName) {
-      String baseCondition = super.getCondition(tableName);
+      ArrayList<String> conditions = new ArrayList<>();
+      conditions.add(getIncludeCondition(tableName));
       String placementCondition = buildPlacementCondition(tableName);
-      if (placementCondition.isEmpty()) {
-        return baseCondition;
+      if (!placementCondition.isEmpty()) {
+        conditions.add(placementCondition);
       }
-      if ("WHERE TRUE".equals(baseCondition) || baseCondition.isEmpty()) {
-        return "WHERE " + placementCondition;
-      }
-      return baseCondition + " AND " + placementCondition;
+      String condition = addCondition(conditions);
+      return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
     }
 
     private String buildPlacementCondition(String tableName) {
@@ -239,6 +239,15 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
       if (getQueryParam("difficulty") != null) {
         conditions.add(difficultyCondition(tableName));
       }
+      if (getQueryParam("resourceType") != null) {
+        conditions.add(resourceTypeCondition(tableName));
+      }
+      if (getQueryParam("status") != null) {
+        conditions.add(statusCondition(tableName));
+      }
+      if (getQueryParam("search") != null) {
+        conditions.add(searchCondition(tableName));
+      }
       return conditions.isEmpty() ? "" : addCondition(conditions);
     }
 
@@ -246,8 +255,16 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
       return tableName == null ? "json" : tableName + ".json";
     }
 
+    private String nameColumn(String tableName) {
+      return tableName == null ? "name" : tableName + ".name";
+    }
+
     private String pageCondition(String tableName) {
       String column = jsonColumn(tableName);
+      String pageId = getQueryParam("pageId");
+      if (pageId.contains(",")) {
+        return multiValuePageCondition(column, pageId);
+      }
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
         return String.format(
             "JSON_SEARCH(%s, 'one', :pageId, NULL, '$.contexts[*].pageId') IS NOT NULL", column);
@@ -256,6 +273,31 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
           "EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(%s->'contexts', '[]'::jsonb)) ctx"
               + " WHERE ctx->>'pageId' = :pageId)",
           column);
+    }
+
+    private String multiValuePageCondition(String column, String pageId) {
+      String[] values =
+          Arrays.stream(pageId.split(","))
+              .map(String::trim)
+              .filter(s -> !s.isEmpty())
+              .toArray(String[]::new);
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        StringBuilder sb = new StringBuilder("(");
+        for (int i = 0; i < values.length; i++) {
+          if (i > 0) sb.append(" OR ");
+          sb.append(
+              String.format(
+                  "JSON_SEARCH(%s, 'one', '%s', NULL, '$.contexts[*].pageId') IS NOT NULL",
+                  column, escapeApostrophe(values[i])));
+        }
+        sb.append(")");
+        return sb.toString();
+      }
+      String inClause = getInConditionFromString(pageId);
+      return String.format(
+          "EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(%s->'contexts', '[]'::jsonb)) ctx"
+              + " WHERE ctx->>'pageId' IN (%s))",
+          column, inClause);
     }
 
     private String componentCondition(String tableName) {
@@ -273,6 +315,10 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
 
     private String categoryCondition(String tableName) {
       String column = jsonColumn(tableName);
+      String category = getQueryParam("category");
+      if (category.contains(",")) {
+        return multiValueCategoryCondition(column, category);
+      }
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
         return String.format(
             "JSON_SEARCH(%s, 'one', :category, NULL, '$.categories') IS NOT NULL", column);
@@ -283,6 +329,31 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
           column);
     }
 
+    private String multiValueCategoryCondition(String column, String category) {
+      String[] values =
+          Arrays.stream(category.split(","))
+              .map(String::trim)
+              .filter(s -> !s.isEmpty())
+              .toArray(String[]::new);
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        StringBuilder sb = new StringBuilder("(");
+        for (int i = 0; i < values.length; i++) {
+          if (i > 0) sb.append(" OR ");
+          sb.append(
+              String.format(
+                  "JSON_SEARCH(%s, 'one', '%s', NULL, '$.categories') IS NOT NULL",
+                  column, escapeApostrophe(values[i])));
+        }
+        sb.append(")");
+        return sb.toString();
+      }
+      String inClause = getInConditionFromString(category);
+      return String.format(
+          "EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(%s->'categories', '[]'::jsonb)) cat"
+              + " WHERE cat IN (%s))",
+          column, inClause);
+    }
+
     private String difficultyCondition(String tableName) {
       String column = jsonColumn(tableName);
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
@@ -290,6 +361,40 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
             "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.difficulty')) = :difficulty", column);
       }
       return String.format("%s->>'difficulty' = :difficulty", column);
+    }
+
+    private String resourceTypeCondition(String tableName) {
+      String column = jsonColumn(tableName);
+      String inClause = getInConditionFromString(getQueryParam("resourceType"));
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        return String.format(
+            "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.resourceType')) IN (%s)", column, inClause);
+      }
+      return String.format("%s->>'resourceType' IN (%s)", column, inClause);
+    }
+
+    private String statusCondition(String tableName) {
+      String column = jsonColumn(tableName);
+      String inClause = getInConditionFromString(getQueryParam("status"));
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        return String.format(
+            "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.status')) IN (%s)", column, inClause);
+      }
+      return String.format("%s->>'status' IN (%s)", column, inClause);
+    }
+
+    private String searchCondition(String tableName) {
+      String column = jsonColumn(tableName);
+      String name = nameColumn(tableName);
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        return String.format(
+            "(LOWER(%s) LIKE LOWER(:search)"
+                + " OR LOWER(JSON_UNQUOTE(JSON_EXTRACT(%s, '$.displayName'))) LIKE LOWER(:search))",
+            name, column);
+      }
+      return String.format(
+          "(LOWER(%s) LIKE LOWER(:search) OR LOWER(%s->>'displayName') LIKE LOWER(:search))",
+          name, column);
     }
   }
 

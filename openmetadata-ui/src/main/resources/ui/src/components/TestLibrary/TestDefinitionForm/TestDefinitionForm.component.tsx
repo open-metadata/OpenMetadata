@@ -433,15 +433,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
                     <Form.Item
                       {...restField}
                       label={t('label.data-type')}
-                      name={[name, 'dataType']}
-                      rules={[
-                        {
-                          required: true,
-                          message: t('message.field-text-is-required', {
-                            fieldText: t('label.data-type'),
-                          }),
-                        },
-                      ]}>
+                      name={[name, 'dataType']}>
                       <Select
                         showSearch
                         disabled={isReadOnlyField}

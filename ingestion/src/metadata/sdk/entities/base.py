@@ -327,7 +327,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         )
         history = list_versions(
             entity=cls.entity_type(),
-            entity_id=str(entity_id),
+            entity_id=cls._stringify_identifier(entity_id),
         )
         versions = cast(Sequence[Any], getattr(history, "versions", []) or [])
         return [cls._coerce_entity(item) for item in versions]

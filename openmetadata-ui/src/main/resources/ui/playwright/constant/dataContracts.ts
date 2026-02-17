@@ -841,6 +841,27 @@ export const ODCS_INVALID_MALFORMED_JSON = `{
   "name": "Missing comma"
 }`;
 
+export const VALID_OM_SIMPLE_YAML = `name: test contract
+displayName: test contract
+entityStatus: Approved
+entity:
+  id: b27eaa6a-f94f-4509-97eb-300afd853db7
+  type: table
+semantics: []
+sla:
+  refreshFrequency:
+    interval: 1
+    unit: hour
+  maxLatency:
+    value: 1
+    unit: hour
+  timezone: GMT+00:00 (Europe/London)
+  retention:
+    period: 5
+    unit: day
+owners: []
+reviewers: []`
+
 // Helper function to generate unique ODCS contract
 export const generateODCSContract = (
   name: string,

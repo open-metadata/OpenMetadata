@@ -24,16 +24,16 @@ const TEST_DEFINITION_DESCRIPTION =
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe(
-  'Rules Library',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Rules_Library` },
+  'Test Library',
+  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Test_Library` },
   () => {
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
     });
 
-    test('should navigate to Rules Library page', async ({ page }) => {
-      // Navigate directly to Rules Library
-      await page.goto('/rules-library');
+    test('should navigate to Test Library page', async ({ page }) => {
+      // Navigate directly to Test Library
+      await page.goto('/test-library');
 
       // Wait for page to load
       await page.waitForSelector('[data-testid="test-definition-table"]', {
@@ -42,20 +42,20 @@ test.describe(
       });
 
       // Verify URL
-      await expect(page).toHaveURL(/.*\/rules-library/);
+      await expect(page).toHaveURL(/.*\/test-library/);
     });
 
     test('should display test definitions table with columns', async ({
       page,
     }) => {
-      // Navigate to Rules Library and wait for response
+      // Navigate to Test Library and wait for response
       const responsePromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/dataQuality/testDefinitions') &&
           response.request().method() === 'GET'
       );
 
-      await page.goto('/rules-library');
+      await page.goto('/test-library');
       await responsePromise;
 
       // Verify table is displayed
@@ -70,7 +70,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/rules-library');
+      await page.goto('/test-library');
       await responsePromise;
 
       // Verify at least one test definition is displayed
@@ -85,8 +85,8 @@ test.describe(
       page,
     }) => {
       await test.step('Create a new test definition', async () => {
-        // Navigate to Rules Library
-        await page.goto('/rules-library');
+        // Navigate to Test Library
+        await page.goto('/test-library');
 
         // Click add button
         await page.getByTestId('add-test-definition-button').click();
@@ -267,8 +267,8 @@ test.describe(
     });
 
     test('should validate required fields in create form', async ({ page }) => {
-      // Navigate to Rules Library
-      await page.goto('/rules-library');
+      // Navigate to Test Library
+      await page.goto('/test-library');
 
       // Click add button
       await page.getByTestId('add-test-definition-button').click();
@@ -286,8 +286,8 @@ test.describe(
     });
 
     test('should cancel form and close drawer', async ({ page }) => {
-      // Navigate to Rules Library
-      await page.goto('/rules-library');
+      // Navigate to Test Library
+      await page.goto('/test-library');
 
       // Click add button
       await page.getByTestId('add-test-definition-button').click();
@@ -315,7 +315,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/rules-library');
+      await page.goto('/test-library');
       const response = await responsePromise;
       const data = await response.json();
 
@@ -333,8 +333,8 @@ test.describe(
     });
 
     test('should display test platform badges correctly', async ({ page }) => {
-      // Navigate to Rules Library
-      await page.goto('/rules-library');
+      // Navigate to Test Library
+      await page.goto('/test-library');
 
       // Wait for table to load
       await page.waitForSelector('[data-testid="test-definition-table"]', {
@@ -423,7 +423,7 @@ test.describe(
           response.url().includes('/api/v1/dataQuality/testDefinitions') &&
           response.request().method() === 'GET'
       );
-      await page.goto('/rules-library');
+      await page.goto('/test-library');
       const response = await responsePromise;
       const data = await response.json();
 
@@ -456,7 +456,7 @@ test.describe(
       let createdTestDisplayName = EXTERNAL_TEST_DISPLAY_NAME;
 
       await test.step('Create external test definition', async () => {
-        await page.goto('/rules-library');
+        await page.goto('/test-library');
 
         await page.getByTestId('add-test-definition-button').click();
 
@@ -600,7 +600,7 @@ test.describe(
       await test.step(
         'Create test definition with specific supported services',
         async () => {
-          await page.goto('/rules-library');
+          await page.goto('/test-library');
 
           await page.getByTestId('add-test-definition-button').click();
 
@@ -921,7 +921,7 @@ test.describe(
       await test.step(
         'Create a test definition starting with "z"',
         async () => {
-          await page.goto('/rules-library');
+          await page.goto('/test-library');
           await page.getByTestId('add-test-definition-button').click();
           await expect(page.locator('.ant-drawer')).toBeVisible();
 

@@ -207,7 +207,7 @@ public class OpenSearchBulkSink implements BulkSink {
         // Process vector embeddings in batch (no-op in base class)
         if (embeddingsEnabled) {
           addEntitiesToVectorIndexBatch(
-              bulkProcessor, entityInterfaces, recreateIndex, reindexContext);
+              bulkProcessor, entityInterfaces, recreateIndex, reindexContext, tracker);
         }
       }
     } catch (Exception e) {
@@ -499,7 +499,8 @@ public class OpenSearchBulkSink implements BulkSink {
       CustomBulkProcessor bulkProcessor,
       List<EntityInterface> entities,
       boolean recreateIndex,
-      ReindexContext reindexContext) {
+      ReindexContext reindexContext,
+      StageStatsTracker tracker) {
     if (entities.isEmpty()) {
       return;
     }
@@ -546,9 +547,11 @@ public class OpenSearchBulkSink implements BulkSink {
 
       if (existingFp != null && existingFp.equals(currentFp) && srcIdx != null) {
         submitVectorTask(
-            () -> processMigration(vectorService, srcIdx, tgtIdx, parentId, currentFp, entity));
+            () ->
+                processMigration(
+                    vectorService, srcIdx, tgtIdx, parentId, currentFp, entity, tracker));
       } else {
-        submitVectorTask(() -> processEmbedding(vectorService, entity, tgtIdx));
+        submitVectorTask(() -> processEmbedding(vectorService, entity, tgtIdx, tracker));
       }
     }
   }
@@ -559,30 +562,43 @@ public class OpenSearchBulkSink implements BulkSink {
       String targetIndex,
       String parentId,
       String fingerprint,
-      EntityInterface entity) {
+      EntityInterface entity,
+      StageStatsTracker tracker) {
     try {
       if (vectorService.copyExistingVectorDocuments(
           sourceIndex, targetIndex, parentId, fingerprint)) {
         vectorSuccess.incrementAndGet();
+        if (tracker != null) {
+          tracker.recordVector(StatsResult.SUCCESS);
+        }
       } else {
-        processEmbedding(vectorService, entity, targetIndex);
+        processEmbedding(vectorService, entity, targetIndex, tracker);
       }
     } catch (Exception e) {
       LOG.warn(
           "Vector migration failed for parent_id={}, falling back to recomputation: {}",
           parentId,
           e.getMessage());
-      processEmbedding(vectorService, entity, targetIndex);
+      processEmbedding(vectorService, entity, targetIndex, tracker);
     }
   }
 
   private void processEmbedding(
-      OpenSearchVectorService vectorService, EntityInterface entity, String targetIndex) {
+      OpenSearchVectorService vectorService,
+      EntityInterface entity,
+      String targetIndex,
+      StageStatsTracker tracker) {
     try {
       vectorService.updateVectorEmbeddings(entity, targetIndex);
       vectorSuccess.incrementAndGet();
+      if (tracker != null) {
+        tracker.recordVector(StatsResult.SUCCESS);
+      }
     } catch (Exception e) {
       vectorFailed.incrementAndGet();
+      if (tracker != null) {
+        tracker.recordVector(StatsResult.FAILED);
+      }
       LOG.error("Vector embedding failed for entity {}: {}", entity.getId(), e.getMessage(), e);
     }
   }

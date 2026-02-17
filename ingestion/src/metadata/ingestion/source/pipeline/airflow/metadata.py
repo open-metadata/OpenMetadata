@@ -16,6 +16,7 @@ from collections import Counter, defaultdict
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
+from urllib.parse import quote
 
 from airflow.models import BaseOperator, DagRun, DagTag, TaskInstance
 from airflow.models.dag import DagModel
@@ -131,6 +132,46 @@ class AirflowSource(PipelineServiceSource):
         self.observability_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
 
         self._execution_date_column = None
+        self._is_remote_airflow_3 = None
+
+    @property
+    def is_remote_airflow_3(self):
+        """
+        Dynamically check if the remote Airflow instance is version 3.x
+        by inspecting the database schema.
+        """
+        if self._is_remote_airflow_3 is not None:
+            return self._is_remote_airflow_3
+
+        try:
+            inspector = inspect(self.session.bind)
+            tables = inspector.get_table_names()
+
+            # Airflow 3.x removed the 'task_instance' primary key column 'map_index'
+            # and uses 'run_id' instead of 'execution_date' more consistently
+            # Check for the presence of specific Airflow 3.x schema characteristics
+            if "dag_run" in tables:
+                columns = {col["name"] for col in inspector.get_columns("dag_run")}
+                # logical_date exists in both late 2.x and 3.x, but
+                # the absence of 'execution_date' is a strong indicator of 3.x
+                if "logical_date" in columns and "execution_date" not in columns:
+                    self._is_remote_airflow_3 = True
+                else:
+                    self._is_remote_airflow_3 = False
+            else:
+                # Fallback to False (assume Airflow 2.x) if we can't determine
+                self._is_remote_airflow_3 = False
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to detect remote Airflow version - {exc}. Assuming Airflow 2.x"
+            )
+            self._is_remote_airflow_3 = False
+
+        logger.info(
+            f"Detected remote Airflow version: {'3.x' if self._is_remote_airflow_3 else '2.x'}"
+        )
+        return self._is_remote_airflow_3
 
     @property
     def execution_date_column(self):
@@ -602,8 +643,12 @@ class AirflowSource(PipelineServiceSource):
                 name=task.task_id,
                 description=task.doc_md,
                 sourceUrl=SourceUrl(
-                    f"{clean_uri(host_port)}/taskinstance/list/"
-                    f"?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={task.task_id}"
+                    (
+                        f"{clean_uri(host_port)}/dags/{quote(dag.dag_id)}/tasks/{quote(task.task_id)}"
+                        if self.is_remote_airflow_3
+                        else f"{clean_uri(host_port)}/taskinstance/list/"
+                        f"?_flt_3_dag_id={quote(dag.dag_id)}&_flt_3_task_id={quote(task.task_id)}"
+                    )
                 ),
                 downstreamTasks=list(task.downstream_task_ids)
                 if task.downstream_task_ids
@@ -643,8 +688,11 @@ class AirflowSource(PipelineServiceSource):
         """
 
         try:
-            # Airflow uses /dags/dag_id/grid to show pipeline / dag
-            source_url = f"{clean_uri(self.service_connection.hostPort)}/dags/{pipeline_details.dag_id}/grid"
+            # Airflow 2.x uses /dags/dag_id/grid, Airflow 3.x uses /dags/dag_id
+            if self.is_remote_airflow_3:
+                source_url = f"{clean_uri(self.service_connection.hostPort)}/dags/{pipeline_details.dag_id}"
+            else:
+                source_url = f"{clean_uri(self.service_connection.hostPort)}/dags/{pipeline_details.dag_id}/grid"
             pipeline_state = self.get_pipeline_state(pipeline_details)
 
             pipeline_request = CreatePipelineRequest(

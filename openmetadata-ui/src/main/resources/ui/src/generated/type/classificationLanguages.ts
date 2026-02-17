@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 /**
- * Supported languages for auto classification recognizers (ISO 639-1 codes)
+ * Supported languages for auto classification recognizers (ISO 639-1 codes). Use 'any' to
+ * apply all recognizers regardless of their configured language.
  */
 export enum ClassificationLanguages {
     AF = "af",
     Am = "am",
+    Any = "any",
     Ar = "ar",
     Az = "az",
     Be = "be",
