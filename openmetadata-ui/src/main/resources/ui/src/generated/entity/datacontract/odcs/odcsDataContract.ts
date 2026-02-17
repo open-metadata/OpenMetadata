@@ -497,6 +497,10 @@ export interface OdcsSchemaElement {
      */
     properties?: OdcsSchemaElement[];
     /**
+     * Quality rules for this schema element.
+     */
+    quality?: OdcsQualityRule[];
+    /**
      * Whether null values are allowed.
      */
     required?: boolean;

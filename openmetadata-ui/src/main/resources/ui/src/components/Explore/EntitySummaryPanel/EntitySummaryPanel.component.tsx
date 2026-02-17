@@ -96,6 +96,7 @@ import {
   patchTableDetails,
 } from '../../../rest/tableAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../../rest/topicsAPI';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityLinkFromType,
@@ -910,6 +911,9 @@ export default function EntitySummaryPanel({
               />
             )}
             <CustomPropertiesSection
+              emptyStateMessage={entityUtilClassBase.getFormattedEntityType(
+                entityType
+              )}
               entityData={entityData}
               entityDetails={entityDetails}
               entityType={entityType}

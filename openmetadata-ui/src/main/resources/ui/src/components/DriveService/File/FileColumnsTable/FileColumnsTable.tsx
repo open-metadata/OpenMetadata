@@ -148,7 +148,9 @@ function FileColumnsTable() {
           const { displayName } = record;
 
           return (
-            <div className="d-inline-flex flex-column hover-icon-group w-max-90">
+            <div
+              className="d-inline-flex flex-column hover-icon-group"
+              style={{ maxWidth: '80%' }}>
               <div className="d-inline-flex items-baseline">
                 {prepareConstraintIcon({
                   columnName: name,

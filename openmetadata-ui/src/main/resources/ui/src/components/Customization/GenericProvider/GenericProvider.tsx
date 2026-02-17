@@ -272,7 +272,11 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   // Wrapper for onColumnFieldUpdate that updates
   const handleColumnFieldUpdate = useCallback(
-    async (fqn: string, update: ColumnFieldUpdate, skipGlobalError?: boolean) => {
+    async (
+      fqn: string,
+      update: ColumnFieldUpdate,
+      skipGlobalError?: boolean
+    ) => {
       let apiResponseColumn: Column | undefined;
 
       // For Table entities, use the specific column update endpoint instead of generic patch

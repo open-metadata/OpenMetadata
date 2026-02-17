@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
 import { Column } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getNestedSectionTitle } from '../../../utils/TableUtils';
 import { NestedColumnsSectionProps } from './NestedColumnsSection.interface';
 
 const NestedColumnItem: React.FC<{
@@ -78,6 +79,7 @@ const NestedColumnItem: React.FC<{
 
 export const NestedColumnsSection: React.FC<NestedColumnsSectionProps> = ({
   columns,
+  entityType,
   onColumnClick,
 }) => {
   const { t } = useTranslation();
@@ -105,7 +107,7 @@ export const NestedColumnsSection: React.FC<NestedColumnsSectionProps> = ({
             fontWeight: 600,
             color: theme.palette.allShades?.gray?.[900],
           }}>
-          {t('label.nested-column-plural')}
+          {t(getNestedSectionTitle(entityType))}
         </Typography.Text>
         <Box
           sx={{

@@ -431,7 +431,8 @@ elasticsearch:
     serviceName: ${SEARCH_AWS_SERVICE_NAME:-"es"}  # Use "es" for OpenSearch, "aoss" for OpenSearch Serverless
   naturalLanguageSearch:
     enabled: ${NATURAL_LANGUAGE_SEARCH_ENABLED:-false}
-    embeddingProvider: ${EMBEDDING_PROVIDER:-bedrock}
+    semanticSearchEnabled: ${SEMANTIC_SEARCH_ENABLED:-false}
+    embeddingProvider: ${EMBEDDING_PROVIDER:-bedrock} # Options: "openai", "bedrock", "djl"
     providerClass: ${NATURAL_LANGUAGE_SEARCH_PROVIDER_CLASS:-org.openmetadata.service.search.nlq.NoOpNLQService}
     bedrock:
       awsConfig:
@@ -443,6 +444,16 @@ elasticsearch:
       modelId: ${AWS_BEDROCK_MODEL_ID:-""}
       embeddingModelId: ${AWS_BEDROCK_EMBED_MODEL_ID:-""}
       embeddingDimension: ${AWS_BEDROCK_EMBEDDING_DIMENSION:-""}
+    openai:
+      apiKey: ${OPENAI_API_KEY:-""}
+      # For Azure OpenAI, set endpoint and deploymentName:
+      endpoint: ${OPENAI_API_ENDPOINT:-""}  # e.g., https://your-resource.openai.azure.com
+      deploymentName: ${OPENAI_DEPLOYMENT_NAME:-""}  # Required for Azure OpenAI
+      apiVersion: ${OPENAI_API_VERSION:-"2024-02-01"}  # Azure OpenAI API version
+      embeddingModelId: ${OPENAI_EMBEDDING_MODEL_ID:-"text-embedding-3-small"}
+      embeddingDimension: ${OPENAI_EMBEDDING_DIMENSION:-1536}
+    djl:
+      embeddingModel: ${DJL_EMBEDDING_MODEL:-"ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2"}
 
 eventMonitoringConfiguration:
   eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"

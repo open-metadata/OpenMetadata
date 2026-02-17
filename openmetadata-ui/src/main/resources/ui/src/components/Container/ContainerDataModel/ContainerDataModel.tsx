@@ -85,9 +85,10 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     useState<Column>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
-  const schema = useMemo(() => pruneEmptyChildren(dataModel?.columns ?? []), [
-    dataModel?.columns,
-  ]);
+  const schema = useMemo(
+    () => pruneEmptyChildren(dataModel?.columns ?? []),
+    [dataModel?.columns]
+  );
 
   // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
   useEffect(() => {
@@ -185,7 +186,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
           'data-testid': 'column-name-cell',
         }),
         render: (_, record: Column) => (
-          <div className="d-inline-flex items-center gap-2 hover-icon-group w-max-90">
+          <div
+            className="d-inline-flex items-start gap-1 hover-icon-group flex-column"
+            style={{ maxWidth: '80%' }}>
             <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
               <Typography.Text className="text-link-color">
                 {getEntityName(record)}
@@ -327,7 +330,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         }}
         pagination={false}
         rowClassName={getRowClassName}
-        rowKey="name"
+        rowKey="fullyQualifiedName"
         scroll={TABLE_SCROLL_VALUE}
         size="small"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}

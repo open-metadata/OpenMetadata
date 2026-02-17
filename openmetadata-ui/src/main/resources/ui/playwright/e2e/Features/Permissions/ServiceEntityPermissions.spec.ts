@@ -13,12 +13,15 @@
 
 import { Browser, Page } from '@playwright/test';
 import { test as baseTest } from '../../../support/fixtures/userPages';
+import { EntityClass } from '../../../support/entity/EntityClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 
 import {
   ALL_OPERATIONS,
   runCommonPermissionTests,
+  runEntitySpecificPermissionTests,
+  serviceEntityConfig,
 } from '../../../utils/entityPermissionUtils';
 import {
   assignRoleToUser,
@@ -49,6 +52,9 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
 Object.entries(SERVICE_ENTITIES).forEach(([entityType, EntityClass]) => {
   test.describe(`${entityType} Permissions`, () => {
     const entity = new EntityClass();
+    const serviceConfig =
+      serviceEntityConfig[entityType as keyof typeof serviceEntityConfig];
+
     test.beforeAll('Setup entity', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await entity.create(apiContext);
@@ -76,6 +82,25 @@ Object.entries(SERVICE_ENTITIES).forEach(([entityType, EntityClass]) => {
 
         await runCommonPermissionTests(testUserPage, entity, 'allow');
       });
+
+      if (serviceConfig?.specificTest) {
+        test(`${entityType} allow entity-specific permission operations`, async ({
+          testUserPage,
+        }) => {
+          test.slow(true);
+
+          await runEntitySpecificPermissionTests(
+            testUserPage,
+            entity,
+            'allow',
+            serviceConfig.specificTest as (
+              page: Page,
+              entity: EntityClass,
+              effect: 'allow' | 'deny'
+            ) => Promise<void>
+          );
+        });
+      }
     });
 
     test.describe('Deny permissions', () => {
@@ -99,6 +124,25 @@ Object.entries(SERVICE_ENTITIES).forEach(([entityType, EntityClass]) => {
 
         await runCommonPermissionTests(testUserPage, entity, 'deny');
       });
+
+      if (serviceConfig?.specificTest) {
+        test(`${entityType} deny entity-specific permission operations`, async ({
+          testUserPage,
+        }) => {
+          test.slow(true);
+
+          await runEntitySpecificPermissionTests(
+            testUserPage,
+            entity,
+            'deny',
+            serviceConfig.specificTest as (
+              page: Page,
+              entity: EntityClass,
+              effect: 'allow' | 'deny'
+            ) => Promise<void>
+          );
+        });
+      }
     });
   });
 });

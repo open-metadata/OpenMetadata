@@ -12,29 +12,21 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import {
+  Column,
+  DashboardDataModel,
+  DataType,
+} from '../../../src/generated/entity/data/dashboardDataModel';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import {
-  EntityTypeEndpoint,
-  ResponseDataType,
-  ResponseDataWithServiceType,
-} from './Entity.interface';
+import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
-export interface DashboardDataModelChild {
-  name: string;
-  dataType: string;
-  dataLength: number;
-  dataTypeDisplay: string;
-  description: string;
-  children?: Array<DashboardDataModelChild>;
-}
-
 export class DashboardDataModelClass extends EntityClass {
-  private dashboardDataModelName: string;
-  private projectName: string;
+  private readonly dashboardDataModelName: string;
+  private readonly projectName: string;
   service: {
     name: string;
     serviceType: string;
@@ -52,21 +44,20 @@ export class DashboardDataModelClass extends EntityClass {
     };
   };
 
-  children: Array<DashboardDataModelChild>;
+  children: Column[];
 
   entity: {
     name: string;
     displayName: string;
     service: string;
     description: string;
-    columns: unknown[];
+    columns: Column[];
     dataModelType: string;
     project: string;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
-  entityResponseData: ResponseDataWithServiceType =
-    {} as ResponseDataWithServiceType;
+  entityResponseData: DashboardDataModel = {} as DashboardDataModel;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.DataModel);
@@ -94,35 +85,35 @@ export class DashboardDataModelClass extends EntityClass {
     this.children = [
       {
         name: 'country_name',
-        dataType: 'VARCHAR',
+        dataType: DataType.Varchar,
         dataLength: 256,
         dataTypeDisplay: 'varchar',
         description: 'Name of the country.',
       },
       {
         name: 'user_details',
-        dataType: 'VARCHAR',
+        dataType: DataType.Varchar,
         dataLength: 256,
         dataTypeDisplay: 'varchar',
         description: 'User details.',
         children: [
           {
             name: 'name',
-            dataType: 'VARCHAR',
+            dataType: DataType.Varchar,
             dataLength: 256,
             dataTypeDisplay: 'varchar',
             description: 'Name of the user.',
             children: [
               {
                 name: 'first_name',
-                dataType: 'VARCHAR',
+                dataType: DataType.Varchar,
                 dataLength: 256,
                 dataTypeDisplay: 'varchar',
                 description: 'First name of the user.',
               },
               {
                 name: 'last_name',
-                dataType: 'VARCHAR',
+                dataType: DataType.Varchar,
                 dataLength: 256,
                 dataTypeDisplay: 'varchar',
                 description: 'Last name of the user.',
@@ -167,6 +158,9 @@ export class DashboardDataModelClass extends EntityClass {
     this.serviceResponseData = await serviceResponse.json();
     this.entityResponseData = await entityResponse.json();
 
+    this.childrenSelectorId =
+      this.entityResponseData.columns[0].fullyQualifiedName ?? '';
+
     return {
       service: serviceResponse.body,
       entity: entityResponse.body,
@@ -181,7 +175,7 @@ export class DashboardDataModelClass extends EntityClass {
     patchData: Operation[];
   }) {
     const response = await apiContext.patch(
-      `/api/v1/dashboard/datamodels/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+      `/api/v1/dashboard/datamodels/name/${this.entityResponseData?.fullyQualifiedName}`,
       {
         data: patchData,
         headers: {
@@ -205,7 +199,7 @@ export class DashboardDataModelClass extends EntityClass {
   }
 
   public set(data: {
-    entity: ResponseDataWithServiceType;
+    entity: DashboardDataModel;
     service: ResponseDataType;
   }): void {
     this.entityResponseData = data.entity;
@@ -215,9 +209,9 @@ export class DashboardDataModelClass extends EntityClass {
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
+      searchTerm: this.entityResponseData?.fullyQualifiedName ?? '',
       dataTestId: `${
-        this.entityResponseData.service.name ?? this.service.name
+        this.entityResponseData.service?.name ?? this.service.name
       }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
@@ -225,7 +219,7 @@ export class DashboardDataModelClass extends EntityClass {
   async delete(apiContext: APIRequestContext) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/dashboardServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
+        this.serviceResponseData?.fullyQualifiedName ?? ''
       )}?recursive=true&hardDelete=true`
     );
 

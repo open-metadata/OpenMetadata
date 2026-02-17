@@ -14,6 +14,7 @@ Nox sessions for testing and formatting checks.
 import os
 
 import nox
+from nox.virtualenv import PassthroughEnv
 
 # NOTE: This is still a work in progress! We still need to:
 #    - Fix ignored unit tests
@@ -33,6 +34,12 @@ def get_python_versions():
         # if some versions are not supported, they will be ignored by nox
         return python_versions
     return SUPPORTED_PYTHON_VERSIONS
+
+
+def install(session, *args, **kwargs):
+    """Install packages unless running with --no-venv (packages already installed)."""
+    if not isinstance(session.virtualenv, PassthroughEnv):
+        session.install(*args, **kwargs)
 
 
 @nox.session(
@@ -105,3 +112,167 @@ def unit_plugins(session, plugin):
     session.install(f".[{plugin}]")
     # Assuming the plugin has its own tests in a specific directory
     session.run("pytest", PLUGINS_TESTS[plugin])
+
+
+# ---------------------------------------------------------------------------
+# Static checks
+# ---------------------------------------------------------------------------
+@nox.session(
+    name="static-checks",
+    reuse_venv=True,
+    venv_backend="uv|venv",
+    python=get_python_versions(),
+)
+def static_checks(session):
+    install(session, ".[dev]")
+    session.run("basedpyright", "-p", "pyproject.toml")
+
+
+# ---------------------------------------------------------------------------
+# Unit tests
+# ---------------------------------------------------------------------------
+@nox.session(
+    name="unit-tests",
+    reuse_venv=True,
+    venv_backend="uv|venv",
+    python=get_python_versions(),
+)
+def unit_tests(session):
+    """Run Python unit tests with coverage and parallel execution.
+
+    Pass additional pytest arguments after --:
+        nox -s unit-tests -- -v           # verbose output
+        nox -s unit-tests -- -k test_name # run specific test
+        nox -s unit-tests -- tests/unit/topology/  # run specific directory
+    """
+    install(session, ".[dev]")
+    install(session, ".[all]")
+    install(session, ".[test]")
+
+    # Separate test paths from pytest flags in posargs
+    args = list(session.posargs)
+    test_paths = [a for a in args if not a.startswith("-")]
+    extra_flags = [a for a in args if a.startswith("-")]
+
+    pytest_args = [
+        "-c",
+        "pyproject.toml",
+        "--cov=metadata",
+        "--cov-branch",
+        "--cov-config=pyproject.toml",
+        "--junitxml=junit/test-results-unit.xml",
+        "-n",
+        "auto",
+        "--dist",
+        "loadfile",
+    ]
+
+    pytest_args.extend(test_paths or ["tests/unit/"])
+    pytest_args.extend(extra_flags)
+
+    session.run("pytest", *pytest_args)
+
+
+# ---------------------------------------------------------------------------
+# Integration tests
+# ---------------------------------------------------------------------------
+@nox.session(
+    name="integration-tests",
+    reuse_venv=True,
+    venv_backend="uv|venv",
+    python=get_python_versions(),
+)
+def integration_tests(session):
+    """Run Python integration tests with coverage.
+
+    By default includes --cov-append for local use (run after unit tests).
+    Pass --standalone to produce standalone coverage for CI split jobs.
+
+    Examples:
+        nox -s integration-tests                   # local, appends to .coverage
+        nox -s integration-tests -- --standalone   # CI, standalone .coverage
+    """
+    install(session, ".[all]")
+    install(session, ".[test]")
+
+    args = list(session.posargs)
+    standalone = "--standalone" in args
+    if standalone:
+        args.remove("--standalone")
+
+    workers = os.environ.get("PYTEST_INTEGRATION_WORKERS", "0")
+    if "--workers" in args:
+        idx = args.index("--workers")
+        workers = args[idx + 1]
+        args = args[:idx] + args[idx + 2 :]
+
+    # Separate test paths from pytest flags in posargs
+    test_paths = [a for a in args if not a.startswith("-")]
+    extra_flags = [a for a in args if a.startswith("-")]
+
+    pytest_args = [
+        "-c",
+        "pyproject.toml",
+        "--cov=metadata",
+        "--cov-branch",
+        "--cov-config=pyproject.toml",
+        "--junitxml=junit/test-results-integration.xml",
+    ]
+
+    if not standalone:
+        pytest_args.append("--cov-append")
+    use_xdist = int(workers) > 0
+    if use_xdist:
+        pytest_args.extend([f"-n{workers}", "--dist=loadgroup"])
+
+    pytest_args.extend(test_paths or ["tests/integration/"])
+    pytest_args.extend(extra_flags)
+
+    session.run("pytest", *pytest_args)
+
+
+# ---------------------------------------------------------------------------
+# Combine coverage
+# ---------------------------------------------------------------------------
+@nox.session(
+    name="combine-coverage",
+    reuse_venv=True,
+    venv_backend="uv|venv",
+)
+def combine_coverage(session):
+    """Combine coverage from multiple test runs and generate reports.
+
+    Used in CI to merge coverage artifacts from separate unit and
+    integration jobs. Expects .coverage files under coverage-data/.
+
+    NOTE: The ``sed -i`` step uses GNU sed syntax and only works on Linux
+    (CI runners).  On macOS, BSD sed requires a backup-extension argument
+    (``sed -i ''``), so running this session locally will fail at that step.
+
+    Example:
+        nox -s combine-coverage
+    """
+    install(session, "coverage[toml]")
+    session.run("coverage", "combine")
+    session.run(
+        "coverage",
+        "report",
+        "--rcfile=pyproject.toml",
+        success_codes=[0, 1],
+    )
+    session.run(
+        "coverage",
+        "xml",
+        "--rcfile=pyproject.toml",
+        "-o",
+        "coverage.xml",
+        success_codes=[0, 1],
+    )
+    session.run(
+        "sed",
+        r's|filename="[^"]*\(/metadata/[^"]*"\)|filename="src\1|g',
+        "coverage.xml",
+        "-i",
+        external=True,
+    )
+    session.run("mv", "coverage.xml", "ci-coverage.xml", external=True)

@@ -976,6 +976,181 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertEquals(1, updated.getTableConstraints().size());
   }
 
+  @Test
+  void test_patchTable_removeColumnWithPrimaryKeyConstraint(TestNamespace ns) {
+
+    // Create a table with 3 columns: id (PRIMARY KEY), name, email
+    CreateTable request = createMinimalRequest(ns);
+    request.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(255).build(),
+            ColumnBuilder.of("email", "VARCHAR").dataLength(255).build()));
+
+    // Add PRIMARY KEY constraint on id column
+    TableConstraint primaryKeyConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.PRIMARY_KEY)
+            .withColumns(List.of("id"));
+    request.setTableConstraints(List.of(primaryKeyConstraint));
+
+    Table originalTable = createEntity(request);
+    assertEquals(3, originalTable.getColumns().size(), "Should have 3 initial columns");
+    assertEquals(1, originalTable.getTableConstraints().size(), "Should have 1 constraint");
+    assertEquals(
+        TableConstraint.ConstraintType.PRIMARY_KEY,
+        originalTable.getTableConstraints().get(0).getConstraintType(),
+        "Should have PRIMARY_KEY constraint");
+
+    // Patch the table to remove the id column (keep only name and email)
+    List<Column> updatedColumns =
+        List.of(
+            ColumnBuilder.of("name", "VARCHAR").dataLength(255).build(),
+            ColumnBuilder.of("email", "VARCHAR").dataLength(255).build());
+
+    originalTable.setColumns(updatedColumns);
+    //    // Remove the constraint since the referenced column is being removed
+    //    originalTable.setTableConstraints(List.of());
+
+    Table updated = patchEntity(originalTable.getId().toString(), originalTable);
+
+    // Verify the patch operation succeeded and column is removed
+    assertEquals(2, updated.getColumns().size(), "Should have 2 columns after removing id");
+    assertFalse(
+        updated.getColumns().stream().anyMatch(col -> "id".equals(col.getName())),
+        "id column should be removed");
+    assertTrue(
+        updated.getColumns().stream().anyMatch(col -> "name".equals(col.getName())),
+        "name column should remain");
+    assertTrue(
+        updated.getColumns().stream().anyMatch(col -> "email".equals(col.getName())),
+        "email column should remain");
+
+    // Check that the table constraint is also removed
+    assertTrue(
+        updated.getTableConstraints() == null || updated.getTableConstraints().isEmpty(),
+        "PRIMARY_KEY constraint should be removed when referenced column is removed");
+  }
+
+  @Test
+  void test_patchTable_removeColumnWithForeignKeyConstraint(TestNamespace ns) {
+
+    // Create a referenced table with an id column
+    CreateTable referencedTableRequest = createMinimalRequest(ns);
+    referencedTableRequest.setName("referenced_table_" + UUID.randomUUID());
+    referencedTableRequest.setColumns(
+        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    Table referencedTable = createEntity(referencedTableRequest);
+
+    // Create a main table with columns: id, ref_id (with FOREIGN KEY), name
+    CreateTable mainTableRequest = createMinimalRequest(ns);
+    mainTableRequest.setName("main_table_" + UUID.randomUUID());
+    mainTableRequest.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("ref_id", "BIGINT").build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(255).build()));
+
+    // Add FOREIGN KEY constraint on ref_id referencing the other table
+    // referredColumns must be fully qualified column names (service.database.schema.table.column)
+    String referencedColumnFQN = referencedTable.getFullyQualifiedName() + ".id";
+    TableConstraint foreignKeyConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("ref_id"))
+            .withReferredColumns(List.of(referencedColumnFQN));
+    mainTableRequest.setTableConstraints(List.of(foreignKeyConstraint));
+
+    Table originalMainTable = createEntity(mainTableRequest);
+    assertEquals(3, originalMainTable.getColumns().size(), "Should have 3 initial columns");
+    assertEquals(1, originalMainTable.getTableConstraints().size(), "Should have 1 constraint");
+    assertEquals(
+        TableConstraint.ConstraintType.FOREIGN_KEY,
+        originalMainTable.getTableConstraints().get(0).getConstraintType(),
+        "Should have FOREIGN_KEY constraint");
+
+    // Patch the main table to remove the ref_id column
+    List<Column> updatedColumns =
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(255).build());
+
+    originalMainTable.setColumns(updatedColumns);
+    // Let the server-side cleanupConstraintsForRemovedColumns handle FK constraint removal
+
+    Table updated = patchEntity(originalMainTable.getId().toString(), originalMainTable);
+
+    // Verify the patch operation succeeded and column is removed
+    assertEquals(2, updated.getColumns().size(), "Should have 2 columns after removing ref_id");
+    assertFalse(
+        updated.getColumns().stream().anyMatch(col -> "ref_id".equals(col.getName())),
+        "ref_id column should be removed");
+    assertTrue(
+        updated.getColumns().stream().anyMatch(col -> "id".equals(col.getName())),
+        "id column should remain");
+    assertTrue(
+        updated.getColumns().stream().anyMatch(col -> "name".equals(col.getName())),
+        "name column should remain");
+
+    // Check that the foreign key constraint is also removed
+    assertTrue(
+        updated.getTableConstraints() == null || updated.getTableConstraints().isEmpty(),
+        "FOREIGN_KEY constraint should be removed when referenced column is removed");
+  }
+
+  @Test
+  void test_patchTable_removeColumnWithUniqueConstraint(TestNamespace ns) {
+
+    // Create a table with 3 columns: id, email (UNIQUE), name
+    CreateTable request = createMinimalRequest(ns);
+    request.setColumns(
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("email", "VARCHAR").dataLength(255).build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(255).build()));
+
+    // Add UNIQUE constraint on email column
+    TableConstraint uniqueConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+            .withColumns(List.of("email"));
+    request.setTableConstraints(List.of(uniqueConstraint));
+
+    Table originalTable = createEntity(request);
+    assertEquals(3, originalTable.getColumns().size(), "Should have 3 initial columns");
+    assertEquals(1, originalTable.getTableConstraints().size(), "Should have 1 constraint");
+    assertEquals(
+        TableConstraint.ConstraintType.UNIQUE,
+        originalTable.getTableConstraints().get(0).getConstraintType(),
+        "Should have UNIQUE constraint");
+
+    // Patch the table to remove the email column (keep only id and name)
+    List<Column> updatedColumns =
+        List.of(
+            ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
+            ColumnBuilder.of("name", "VARCHAR").dataLength(255).build());
+    originalTable.setColumns(updatedColumns);
+
+    Table updated = patchEntity(originalTable.getId().toString(), originalTable);
+
+    // Verify the patch operation succeeded and column is removed
+    assertEquals(2, updated.getColumns().size(), "Should have 2 columns after removing email");
+    assertFalse(
+        updated.getColumns().stream().anyMatch(col -> "email".equals(col.getName())),
+        "email column should be removed");
+    assertTrue(
+        updated.getColumns().stream().anyMatch(col -> "id".equals(col.getName())),
+        "id column should remain");
+    assertTrue(
+        updated.getColumns().stream().anyMatch(col -> "name".equals(col.getName())),
+        "name column should remain");
+
+    // Check that the UNIQUE constraint is automatically removed
+    assertTrue(
+        updated.getTableConstraints() == null || updated.getTableConstraints().isEmpty(),
+        "UNIQUE constraint should be automatically removed when referenced column is removed");
+  }
+
   // ===================================================================
   // TODO: TESTS REQUIRING SPECIAL SDK SUPPORT
   // ===================================================================

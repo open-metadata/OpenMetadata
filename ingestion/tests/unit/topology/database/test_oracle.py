@@ -228,8 +228,22 @@ class OracleUnitTest(TestCase):
         return rows in any physical order, causing scrambled code.
         """
         assert "ORDER BY OWNER, NAME, LINE" in ORACLE_GET_STORED_PROCEDURES
-        assert "ORDER BY OWNER, NAME, LINE" in ORACLE_GET_STORED_PACKAGES
-        assert "ORDER BY OWNER, NAME, LINE" in TEST_ORACLE_GET_STORED_PACKAGES
+        assert (
+            """ORDER BY OWNER, NAME, CASE type
+        WHEN 'PACKAGE' THEN 1
+        WHEN 'PACKAGE BODY' THEN 2
+        ELSE 3
+    END, LINE"""
+            in ORACLE_GET_STORED_PACKAGES
+        )
+        assert (
+            """ORDER BY OWNER, NAME, CASE type
+        WHEN 'PACKAGE' THEN 1
+        WHEN 'PACKAGE BODY' THEN 2
+        ELSE 3
+    END, LINE"""
+            in TEST_ORACLE_GET_STORED_PACKAGES
+        )
 
     def test_get_view_definition_with_view_def_and_view_ddl(self):
         """

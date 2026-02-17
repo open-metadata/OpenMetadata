@@ -695,7 +695,8 @@ export const testPaginationNavigation = async (
   page: Page,
   apiEndpointPattern: string,
   waitForLoadSelector?: string,
-  validateUrl = true
+  validateUrl = true,
+  validateRowCount = true
 ) => {
   const responseMatcher = (response: { url: () => string }) => {
     const url = response.url();
@@ -804,7 +805,9 @@ export const testPaginationNavigation = async (
     const initialRowCount = await page
       .locator('tbody > tr[data-row-key]:visible')
       .count();
-    expect(initialRowCount).toBeLessThanOrEqual(15);
+    if (validateRowCount) {
+      expect(initialRowCount).toBeLessThanOrEqual(15);
+    }
     const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
     await pageSizeDropdown.hover();
     const isMenuVisibleAfterHover = await menuItem
@@ -827,8 +830,10 @@ export const testPaginationNavigation = async (
     const newRowCount = await page
       .locator('tbody > tr[data-row-key]:visible')
       .count();
-    expect(newRowCount).toBeLessThanOrEqual(25);
-    expect(newRowCount).not.toBe(initialRowCount);
+    if (validateRowCount) {
+      expect(newRowCount).toBeLessThanOrEqual(25);
+      expect(newRowCount).not.toBe(initialRowCount);
+    }
   }
 };
 
