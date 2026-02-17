@@ -1122,6 +1122,7 @@ export const firstTimeGridAddRowAction = async (page: Page) => {
  * If the column index doesn't change, keeps retrying ArrowRight until it changes.
  */
 const moveToNextColumnWithVerification = async (page: Page): Promise<void> => {
+  const MAX_RETRIES = 10;
   const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
 
   const currentColIndex = await activeCell.getAttribute('aria-colindex');
@@ -1129,10 +1130,12 @@ const moveToNextColumnWithVerification = async (page: Page): Promise<void> => {
   await page.keyboard.press('ArrowRight', { delay: 100 });
 
   let newColIndex = await activeCell.getAttribute('aria-colindex');
+  let retries = 0;
 
-  while (currentColIndex === newColIndex) {
+  while (currentColIndex === newColIndex && retries < MAX_RETRIES) {
     await page.keyboard.press('ArrowRight', { delay: 100 });
     newColIndex = await activeCell.getAttribute('aria-colindex');
+    retries++;
   }
 };
 
