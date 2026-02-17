@@ -87,6 +87,14 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
       throw BadRequestException.of("Invalid App: " + e.getMessage());
     }
     if (!CommonUtil.nullOrEmpty(botName)) {
+      // When referencing an existing bot, allowBotImpersonation cannot be applied since
+      // impersonation is configured on the bot user, not the app. Reject this combination
+      // to avoid silent misconfiguration where the flag is ignored.
+      if (allowBotImpersonation) {
+        throw BadRequestException.of(
+            "allowBotImpersonation cannot be used with a custom bot reference. "
+                + "Configure impersonation directly on the bot user instead.");
+      }
       app.setBot(Entity.getEntityReferenceByName(BOT, botName, Include.NON_DELETED));
     } else {
       app.setBot(appRepository.createNewAppBot(app, allowBotImpersonation));
