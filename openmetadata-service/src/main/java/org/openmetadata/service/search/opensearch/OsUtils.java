@@ -124,6 +124,7 @@ public class OsUtils {
 
       LOG.info("Installed lenient ShardFailure deserializer for OpenSearch compatibility");
     } catch (Exception e) {
+      LENIENT_DESERIALIZERS_INSTALLED.set(false);
       LOG.warn(
           "Failed to install lenient ShardFailure deserializer. "
               + "OpenSearch responses with missing ShardFailure.primary may fail to deserialize.",
