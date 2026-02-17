@@ -463,8 +463,8 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
                 <Typography.Text
                   className="impersonated-by"
                   data-testid="impersonated-by">
-                  {t('label.impersonated-by')}:
-                </Typography.Text>
+                  {t('label.impersonated-by-with-colon')}
+                </Typography.Text>{' '}
                 <Link
                   className="user-link"
                   to={getUserPath(log.impersonatedBy)}>

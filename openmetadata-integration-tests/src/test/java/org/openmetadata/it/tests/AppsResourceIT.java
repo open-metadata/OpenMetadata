@@ -866,7 +866,10 @@ public class AppsResourceIT {
       String botUserName = appName + "Bot";
       User botUser =
           httpClient.execute(
-              HttpMethod.GET, "/v1/users/name/" + botUserName + "?fields=roles", null, User.class);
+              HttpMethod.GET,
+              "/v1/users/name/" + botUserName + "?fields=roles,allowImpersonation",
+              null,
+              User.class);
 
       assertNotNull(botUser.getRoles(), "Bot user should have roles assigned");
       assertTrue(
@@ -876,6 +879,9 @@ public class AppsResourceIT {
           botUser.getRoles().stream()
               .noneMatch(r -> r.getName().equals(APP_BOT_IMPERSONATION_ROLE)),
           "Bot without impersonation should NOT have ApplicationBotImpersonationRole");
+      assertFalse(
+          Boolean.TRUE.equals(botUser.getAllowImpersonation()),
+          "Bot without impersonation should have allowImpersonation disabled");
 
     } finally {
       try {
@@ -933,12 +939,18 @@ public class AppsResourceIT {
       String botUserName = appName + "Bot";
       User botUser =
           httpClient.execute(
-              HttpMethod.GET, "/v1/users/name/" + botUserName + "?fields=roles", null, User.class);
+              HttpMethod.GET,
+              "/v1/users/name/" + botUserName + "?fields=roles,allowImpersonation",
+              null,
+              User.class);
 
       assertNotNull(botUser.getRoles(), "Bot user should have roles assigned");
       assertTrue(
           botUser.getRoles().stream().anyMatch(r -> r.getName().equals(APP_BOT_IMPERSONATION_ROLE)),
           "Bot with impersonation should have ApplicationBotImpersonationRole");
+      assertTrue(
+          Boolean.TRUE.equals(botUser.getAllowImpersonation()),
+          "Bot with impersonation should have allowImpersonation enabled");
 
     } finally {
       try {

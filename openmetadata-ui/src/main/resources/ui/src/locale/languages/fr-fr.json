@@ -909,6 +909,7 @@
     "impacted": "Impacté",
     "impacted-column-plural": "Colonnes Impactées",
     "impersonated-by": "Impersonated By",
+    "impersonated-by-with-colon": "Impersonated By:",
     "import": "Importer",
     "import-contract": "Importer un Contrat",
     "import-entity": "Importer {{entity}}",

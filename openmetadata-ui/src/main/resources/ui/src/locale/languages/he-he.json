@@ -909,6 +909,7 @@
     "impacted": "מושפע",
     "impacted-column-plural": "עמודות מושפעות",
     "impersonated-by": "Impersonated By",
+    "impersonated-by-with-colon": "Impersonated By:",
     "import": "ייבוא",
     "import-contract": "ייבא חוזה",
     "import-entity": "ייבוא {{entity}}",
