@@ -319,7 +319,7 @@ def create_user(metadata, request):
         if create_request is None:
             user_name = generate_name()
             create_request = CreateUserRequest(
-                name=user_name, email=f"{user_name}@test.com"
+                name=user_name, email=f"{user_name.root}@test.com"
             )
 
         user = metadata.create_or_update(data=create_request)
