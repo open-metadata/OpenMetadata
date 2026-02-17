@@ -22,7 +22,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import sqlparse
 from cached_property import cached_property
 from collate_sqllineage import SQLPARSE_DIALECT
-from collate_sqllineage.core.models import Column, DataFunction, Table, Location
+from collate_sqllineage.core.models import Column, DataFunction, Location, Table
 from collate_sqllineage.core.parser.sqlfluff.analyzer import SqlFluffLineageAnalyzer
 from collate_sqllineage.core.parser.sqlglot.analyzer import SqlGlotLineageAnalyzer
 from collate_sqllineage.exceptions import SQLLineageException

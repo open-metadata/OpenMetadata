@@ -16,9 +16,9 @@ import uuid
 from unittest import TestCase
 
 import pytest
-
 from collate_sqllineage.core.models import Location
 from collate_sqllineage.core.models import Table as LineageTable
+
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
