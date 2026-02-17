@@ -1265,69 +1265,69 @@ export const fillTestCaseDetails = async (
   if (row.name) {
     await fillTextInputDetails(page, row.name);
   }
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
+  await page.keyboard.press('ArrowRight', { delay: 100 });
 
+  // Fill displayName if provided
   if (row.displayName) {
     await fillTextInputDetails(page, row.displayName);
   }
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
+  await page.keyboard.press('ArrowRight', { delay: 100 });
 
+  // Fill description if provided
   if (row.description) {
     await fillDescriptionDetails(page, row.description);
   }
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
+  await page.keyboard.press('ArrowRight', { delay: 100 });
 
+  // Fill testDefinition if provided
   if (row.testDefinition) {
     await fillTextInputDetails(page, row.testDefinition);
   }
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
+  await page.keyboard.press('ArrowRight', { delay: 100 });
 
+  // Fill entityFQN if provided
   if (row.entityFQN) {
     await fillTextInputDetails(page, row.entityFQN);
   }
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
+  await page.keyboard.press('ArrowRight', { delay: 100 });
 
+   // Fill testSuite if provided
   if (row.testSuite) {
     await fillTextInputDetails(page, row.testSuite);
   }
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
+  await page.keyboard.press('ArrowRight', { delay: 100 });
 
+  // Fill parameterValues if provided
   if (row.parameterValues) {
     await fillTextInputDetails(page, row.parameterValues);
   }
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
+  await page.keyboard.press('ArrowRight', { delay: 100 });
 
+  // Fill computePassedFailedRowCount if provided
   if (row.computePassedFailedRowCount) {
     await fillTextInputDetails(page, row.computePassedFailedRowCount);
   }
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
+  await page.keyboard.press('ArrowRight', { delay: 100 });
 
+  // Fill useDynamicAssertion if provided
   if (row.useDynamicAssertion) {
     await fillTextInputDetails(page, row.useDynamicAssertion);
   }
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
+  await page.keyboard.press('ArrowRight', { delay: 100 });
 
+  // Fill inspectionQuery if provided
   if (row.inspectionQuery) {
     await fillTextInputDetails(page, row.inspectionQuery);
   }
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
+  await page.keyboard.press('ArrowRight', { delay: 100 });
 
+  // Fill tags if provided
   if (row.tags) {
     await fillTagDetails(page, row.tags);
   }
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
+  await page.keyboard.press('ArrowRight', { delay: 100 });
 
+  // Fill glossaryTerms if provided
   if (row.glossary) {
     await fillGlossaryTermDetails(page, row.glossary);
   }
