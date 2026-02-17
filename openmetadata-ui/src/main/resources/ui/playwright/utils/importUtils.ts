@@ -67,8 +67,8 @@ export const fillTextInputDetails = async (page: Page, text: string) => {
   const textboxLocator = page
     .locator('.ant-layout-content')
     .getByRole('textbox');
-  //wait for input field to stabalize 
-  await expect(textboxLocator).toBeVisible({ timeout: 10000 });
+
+  await expect(textboxLocator).toBeVisible();
 
   await textboxLocator.fill(text);
   await textboxLocator.press('Enter', { delay: 100 });
@@ -1291,7 +1291,7 @@ export const fillTestCaseDetails = async (
   }
   await page.keyboard.press('ArrowRight', { delay: 100 });
 
-   // Fill testSuite if provided
+  // Fill testSuite if provided
   if (row.testSuite) {
     await fillTextInputDetails(page, row.testSuite);
   }
