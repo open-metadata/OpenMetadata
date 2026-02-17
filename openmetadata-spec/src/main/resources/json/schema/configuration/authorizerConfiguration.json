@@ -18,12 +18,40 @@
     },
     "adminPrincipals": {
       "title": "Admin Principals",
-      "description": "List of unique admin principals.",
+      "description": "[DEPRECATED: Use 'adminEmails' instead] List of unique admin principals.",
       "type": "array",
       "items": {
         "type": "string"
       },
-      "uniqueItems": true
+      "uniqueItems": true,
+      "deprecated": true
+    },
+    "adminEmails": {
+      "title": "Admin Emails",
+      "description": "List of email addresses that should be granted admin privileges. Preferred over adminPrincipals.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "email"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "allowedEmailDomains": {
+      "title": "Allowed Email Domains",
+      "description": "List of email domains allowed to authenticate. If empty, all domains are allowed.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "botDomain": {
+      "title": "Bot Domain",
+      "description": "Email domain used for system-created bots (e.g., ingestion-bot@{botDomain}).",
+      "type": "string",
+      "default": "openmetadata.org"
     },
     "botPrincipals": {
       "title": "Bot Principals",
@@ -55,8 +83,9 @@
     },
     "principalDomain": {
       "title": "Principal Domain",
-      "description": "Principal Domain",
-      "type": "string"
+      "description": "[DEPRECATED: Use 'botDomain' for bots, 'allowedEmailDomains' for domain restrictions] Domain to use for constructing email addresses.",
+      "type": "string",
+      "deprecated": true
     },
     "allowedDomains": {
       "title": "Allowed Domains",

@@ -522,13 +522,10 @@ public class UserRepository extends EntityRepository<User> {
 
   public void initializeUsers(OpenMetadataApplicationConfig config) {
     AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
-    // Create Admins
-    Set<String> adminUsers =
-        new HashSet<>(config.getAuthorizerConfiguration().getAdminPrincipals());
-    String domain = SecurityUtil.getDomain(config);
-    UserUtil.addUsers(authProvider, adminUsers, domain, true);
 
-    // Create Test Users
+    UserUtil.createOrUpdateAdminUsers(authProvider, config.getAuthorizerConfiguration());
+
+    String domain = SecurityUtil.getDomain(config);
     Set<String> testUsers = new HashSet<>(config.getAuthorizerConfiguration().getTestPrincipals());
     UserUtil.addUsers(authProvider, testUsers, domain, null);
   }

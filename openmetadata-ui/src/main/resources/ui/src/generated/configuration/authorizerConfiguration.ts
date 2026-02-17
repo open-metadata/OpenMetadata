@@ -15,7 +15,12 @@
  */
 export interface AuthorizerConfiguration {
     /**
-     * List of unique admin principals.
+     * List of email addresses that should be granted admin privileges. Preferred over
+     * adminPrincipals.
+     */
+    adminEmails?: string[];
+    /**
+     * [DEPRECATED: Use 'adminEmails' instead] List of unique admin principals.
      */
     adminPrincipals: string[];
     /**
@@ -23,9 +28,17 @@ export interface AuthorizerConfiguration {
      */
     allowedDomains?: string[];
     /**
+     * List of email domains allowed to authenticate. If empty, all domains are allowed.
+     */
+    allowedEmailDomains?: string[];
+    /**
      * List of unique email domains that are allowed to signup on the platforms
      */
     allowedEmailRegistrationDomains?: string[];
+    /**
+     * Email domain used for system-created bots (e.g., ingestion-bot@{botDomain}).
+     */
+    botDomain?: string;
     /**
      * **@Deprecated** List of unique bot principals
      */
@@ -47,7 +60,8 @@ export interface AuthorizerConfiguration {
      */
     enforcePrincipalDomain: boolean;
     /**
-     * Principal Domain
+     * [DEPRECATED: Use 'botDomain' for bots, 'allowedEmailDomains' for domain restrictions]
+     * Domain to use for constructing email addresses.
      */
     principalDomain: string;
     /**

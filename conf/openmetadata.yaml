@@ -279,9 +279,18 @@ migrationConfiguration:
 authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
   containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.service.security.JwtFilter}
+
+  # Email-first admin configuration (recommended)
+  adminEmails: ${AUTHORIZER_ADMIN_EMAILS:-[]}
+  allowedEmailDomains: ${AUTHORIZER_ALLOWED_EMAIL_DOMAINS:-[]}
+  botDomain: ${AUTHORIZER_BOT_DOMAIN:-openmetadata.org}
+
+  # Deprecated - use adminEmails instead
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
-  allowedEmailRegistrationDomains: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
+  # Deprecated - use botDomain for bots, allowedEmailDomains for user restrictions
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
+
+  allowedEmailRegistrationDomains: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
   allowedDomains: ${AUTHORIZER_ALLOWED_DOMAINS:-[]}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
   enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
@@ -299,7 +308,15 @@ authenticationConfiguration:
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
+
+  # Email-first claim configuration (recommended)
+  # Uses email as primary identifier, defaults vary by provider (OIDC: email, LDAP: mail)
+  emailClaim: ${AUTHENTICATION_EMAIL_CLAIM:-email}
+  displayNameClaim: ${AUTHENTICATION_DISPLAY_NAME_CLAIM:-name}
+
+  # Deprecated - use emailClaim instead
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
+  # Deprecated - use emailClaim and displayNameClaim instead
   jwtPrincipalClaimsMapping: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING:-[]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
   enableAutoRedirect: ${AUTHENTICATION_ENABLE_AUTO_REDIRECT:-false}

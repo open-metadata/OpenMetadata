@@ -161,6 +161,43 @@ public final class SecurityUtil {
     return email.toLowerCase();
   }
 
+  public static String extractEmailFromClaim(Map<String, ?> claims, String emailClaim) {
+    Object claimValue = claims.get(emailClaim);
+    String claimString = getClaimOrObject(claimValue);
+
+    if (claimValue == null || claimString.isEmpty()) {
+      throw new AuthenticationException(
+          String.format("Authentication failed: email claim '%s' not found in token", emailClaim));
+    }
+
+    String email = claimString.toLowerCase();
+
+    if (!email.contains("@") || !isValidEmail(email)) {
+      throw new AuthenticationException(
+          String.format("Authentication failed: invalid email format in claim '%s'", emailClaim));
+    }
+
+    return email;
+  }
+
+  public static String extractDisplayNameFromClaim(
+      Map<String, ?> claims, String displayNameClaim, String email) {
+    Object claimValue = claims.get(displayNameClaim);
+    if (claimValue != null) {
+      claimValue = getClaimOrObject(claimValue);
+    }
+
+    if (claimValue != null && !claimValue.toString().trim().isEmpty()) {
+      return claimValue.toString().trim();
+    }
+
+    return email.split("@")[0];
+  }
+
+  private static boolean isValidEmail(String email) {
+    return email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+  }
+
   public static String getClaimOrObject(Object obj) {
     if (obj == null) {
       return "";
@@ -324,5 +361,25 @@ public final class SecurityUtil {
   public static boolean isBotW(Map<String, ?> claims) {
     Claim isBotClaim = (Claim) claims.get("isBot");
     return isBotClaim != null && Boolean.TRUE.equals(isBotClaim.asBoolean());
+  }
+
+  public static void validateEmailDomain(String email, List<String> allowedEmailDomains) {
+    if (allowedEmailDomains == null || allowedEmailDomains.isEmpty()) {
+      return;
+    }
+
+    if (email == null || !email.contains("@")) {
+      throw new IllegalArgumentException(
+          "Invalid email: email must be non-null and contain '@' symbol");
+    }
+
+    String domain = email.substring(email.indexOf("@") + 1).toLowerCase();
+
+    boolean allowed = allowedEmailDomains.stream().anyMatch(d -> d.toLowerCase().equals(domain));
+
+    if (!allowed) {
+      throw new AuthenticationException(
+          String.format("Authentication failed: domain '%s' not in allowed list", domain));
+    }
   }
 }

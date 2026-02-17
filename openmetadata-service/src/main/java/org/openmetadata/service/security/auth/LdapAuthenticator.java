@@ -13,9 +13,8 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.LDAP_MI
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIL_ENTRIES;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_RESET_TOKEN_EXPIRED;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_DISABLED_MESSAGE;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_NOT_ENABLED;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
+import static org.openmetadata.service.util.UserUtil.isAdminEmail;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -38,6 +37,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +49,8 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.LdapConfiguration;
@@ -60,6 +62,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -72,6 +75,7 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
@@ -154,28 +158,90 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   /**
-   * Check if the user exists in database by userName, if user exist, reassign roles for user according to it's ldap
-   * group else, create a new user and assign roles according to it's ldap group
+   * Gets an existing user by email or creates a new one following the email-first flow.
+   * This method follows the same pattern as OIDC and SAML handlers.
    */
-  private User checkAndCreateUser(String userDn, String email, String userName) throws IOException {
-    User finalUser;
+  private User getOrCreateLdapUser(String userDn, String email, String displayName)
+      throws IOException {
+    AuthorizerConfiguration authzConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
 
-    // Check if the user exists in OM Database
+    List<String> allowedDomains =
+        authzConfig.getAllowedEmailDomains() != null
+            ? new ArrayList<>(authzConfig.getAllowedEmailDomains())
+            : new ArrayList<>();
+    SecurityUtil.validateEmailDomain(email, allowedDomains);
+
     try {
-      User omUser =
-          userRepository.getByEmail(null, email, userRepository.getFields("id,name,email,roles"));
-      getRoleForLdap(userDn, omUser, Boolean.TRUE);
-      finalUser = omUser;
-    } catch (EntityNotFoundException ex) {
-      if (isSelfSignUpEnabled) {
-        finalUser = userRepository.create(null, getUserForLdap(userDn, email, userName));
-      } else {
-        throw new CustomExceptionMessage(
-            INTERNAL_SERVER_ERROR, SELF_SIGNUP_NOT_ENABLED, SELF_SIGNUP_DISABLED_MESSAGE);
+      User user =
+          userRepository.getByEmail(
+              null, email, new Fields(Set.of("id", "roles", "teams", "displayName", "isAdmin")));
+
+      boolean needsUpdate = false;
+
+      boolean shouldBeAdmin = isUserAdmin(email, user.getName());
+      LOG.info(
+          "LDAP login - Email: {}, Username: {}, Should be admin: {}, Current admin status: {}",
+          email,
+          user.getName(),
+          shouldBeAdmin,
+          user.getIsAdmin());
+
+      if (shouldBeAdmin && !Boolean.TRUE.equals(user.getIsAdmin())) {
+        LOG.info("Updating user {} to admin based on adminEmails/adminPrincipals", user.getName());
+        user.setIsAdmin(true);
+        needsUpdate = true;
       }
+
+      if (displayName != null && !displayName.equals(user.getDisplayName())) {
+        LOG.info(
+            "Updating displayName for user {} from '{}' to '{}'",
+            user.getName(),
+            user.getDisplayName(),
+            displayName);
+        user.setDisplayName(displayName);
+        needsUpdate = true;
+      }
+
+      getRoleForLdap(userDn, user, Boolean.TRUE);
+
+      if (needsUpdate) {
+        return UserUtil.addOrUpdateUser(user);
+      }
+
+      return user;
+    } catch (EntityNotFoundException e) {
+      LOG.debug("User not found by email {}, will create new user", email);
     }
-    checkAndApplyAdminPrincipals(finalUser);
-    return finalUser;
+
+    if (!isSelfSignUpEnabled) {
+      throw new AuthenticationException(
+          "User not registered. Contact administrator to create an account.");
+    }
+
+    String userName = UserUtil.generateUsernameFromEmail(email, this::usernameExists);
+    boolean isAdmin = isUserAdmin(email, userName);
+    LOG.info(
+        "Creating new LDAP user - Email: {}, Generated username: {}, Is admin: {}",
+        email,
+        userName,
+        isAdmin);
+
+    String domain = email.split("@")[1];
+    User newUser =
+        UserUtil.user(userName, domain, userName)
+            .withEmail(email)
+            .withDisplayName(displayName != null ? displayName : userName)
+            .withIsAdmin(isAdmin)
+            .withIsEmailVerified(true);
+
+    try {
+      getRoleForLdap(userDn, newUser, false);
+    } catch (JsonProcessingException ex) {
+      LOG.error(
+          "Failed to assign roles from LDAP for user {} due to {}", userName, ex.getMessage());
+    }
+
+    return UserUtil.addOrUpdateUser(newUser);
   }
 
   @Override
@@ -276,22 +342,24 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   @Override
   public User lookUserInProvider(String email, String pwd) throws TemplateException, IOException {
-    String userDN = getUserDnFromLdap(email);
+    LdapUserInfo ldapUserInfo = getLdapUserInfo(email);
 
-    if (!nullOrEmpty(userDN)) {
-      User dummy = getUserForLdap(email);
-      validatePassword(userDN, pwd, dummy);
-      return checkAndCreateUser(userDN, email, dummy.getName());
+    if (ldapUserInfo != null && !nullOrEmpty(ldapUserInfo.userDn)) {
+      User dummy = getUserForLdap(ldapUserInfo.email);
+      validatePassword(ldapUserInfo.userDn, pwd, dummy);
+
+      String normalizedEmail = ldapUserInfo.email.toLowerCase();
+      return getOrCreateLdapUser(ldapUserInfo.userDn, normalizedEmail, ldapUserInfo.displayName);
     }
 
     throw new CustomExceptionMessage(
         INTERNAL_SERVER_ERROR, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
   }
 
-  private String getUserDnFromLdap(String email) {
-    // Retry configuration (will be made configurable in future)
+  private record LdapUserInfo(String userDn, String email, String displayName) {}
+
+  private LdapUserInfo getLdapUserInfo(String email) {
     final int maxRetries = 3;
-    final int baseDelayMs = 500;
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -306,32 +374,64 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         "Unable to connect to authentication server after " + maxRetries + " attempts.");
   }
 
-  private String performLdapUserSearch(String email) {
+  private LdapUserInfo performLdapUserSearch(String email) {
+    AuthenticationConfiguration authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
+
+    String emailAttribute = authConfig.getEmailClaim();
+    if (nullOrEmpty(emailAttribute)) {
+      emailAttribute = ldapConfiguration.getMailAttributeName();
+    }
+    if (nullOrEmpty(emailAttribute)) {
+      emailAttribute = "mail";
+    }
+
+    String displayNameAttribute = authConfig.getDisplayNameClaim();
+    if (nullOrEmpty(displayNameAttribute)) {
+      displayNameAttribute = "displayName";
+    }
+
     try {
-      Filter emailFilter =
-          Filter.createEqualityFilter(ldapConfiguration.getMailAttributeName(), email);
+      Filter emailFilter = Filter.createEqualityFilter(emailAttribute, email);
       SearchRequest searchRequest =
           new SearchRequest(
               ldapConfiguration.getUserBaseDN(),
               SearchScope.SUB,
               emailFilter,
-              ldapConfiguration.getMailAttributeName());
+              emailAttribute,
+              displayNameAttribute);
       SearchResult result = ldapLookupConnectionPool.search(searchRequest);
-      // there has to be a unique entry for username and email in LDAP under the group
-      if (result.getSearchEntries().size() == 1) {
-        // Get the user using DN directly
-        SearchResultEntry searchResultEntry = result.getSearchEntries().get(0);
-        String userDN = searchResultEntry.getDN();
-        Attribute emailAttr =
-            searchResultEntry.getAttribute(ldapConfiguration.getMailAttributeName());
 
-        if (!CommonUtil.nullOrEmpty(userDN)
-            && emailAttr != null
-            && email.equalsIgnoreCase(emailAttr.getValue())) {
-          return userDN;
-        } else {
+      if (result.getSearchEntries().size() == 1) {
+        SearchResultEntry entry = result.getSearchEntries().get(0);
+        String userDN = entry.getDN();
+        Attribute emailAttr = entry.getAttribute(emailAttribute);
+
+        if (CommonUtil.nullOrEmpty(userDN) || emailAttr == null) {
           throw new CustomExceptionMessage(FORBIDDEN, INVALID_USER_OR_PASSWORD, LDAP_MISSING_ATTR);
         }
+
+        String ldapEmail = emailAttr.getValue();
+        if (!email.equalsIgnoreCase(ldapEmail)) {
+          throw new CustomExceptionMessage(FORBIDDEN, INVALID_USER_OR_PASSWORD, LDAP_MISSING_ATTR);
+        }
+
+        String displayName = null;
+        Attribute displayNameAttr = entry.getAttribute(displayNameAttribute);
+        if (displayNameAttr != null && !nullOrEmpty(displayNameAttr.getValue())) {
+          displayName = displayNameAttr.getValue();
+        }
+
+        if (nullOrEmpty(displayName)) {
+          displayName = ldapEmail.split("@")[0];
+        }
+
+        LOG.debug(
+            "LDAP user info extracted - DN: {}, email: {}, displayName: {}",
+            userDN,
+            ldapEmail,
+            displayName);
+
+        return new LdapUserInfo(userDN, ldapEmail, displayName);
       } else if (result.getSearchEntries().size() > 1) {
         throw new CustomExceptionMessage(
             INTERNAL_SERVER_ERROR, MULTIPLE_EMAIL_ENTRIES, MULTIPLE_EMAIL_ENTRIES);
@@ -343,7 +443,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
       ResultCode resultCode = ex.getResultCode();
       String errorMessage = ex.getMessage();
 
-      // Check if it's a connection/network error
       if (resultCode == ResultCode.CONNECT_ERROR
           || resultCode == ResultCode.SERVER_DOWN
           || resultCode == ResultCode.UNAVAILABLE
@@ -369,23 +468,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
             userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
         .withIsEmailVerified(false)
         .withAuthenticationMechanism(null);
-  }
-
-  private User getUserForLdap(String ldapUserDn, String email, String userName) {
-    User user =
-        UserUtil.getUser(
-                userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
-            .withIsEmailVerified(false)
-            .withAuthenticationMechanism(null);
-    try {
-      getRoleForLdap(ldapUserDn, user, false);
-    } catch (JsonProcessingException e) {
-      LOG.error(
-          "Failed to assign roles from LDAP to OpenMetadata for the user {} due to {}",
-          user.getName(),
-          e.getMessage());
-    }
-    return user;
   }
 
   /**
@@ -476,37 +558,31 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     }
   }
 
-  /**
-   * Check if user should be admin based on adminPrincipals configuration
-   */
-  private boolean checkAdminPrincipals(String userName) {
+  private boolean isUserAdmin(String email, String username) {
+    AuthorizerConfiguration authzConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
+    List<String> adminEmails =
+        authzConfig.getAdminEmails() != null
+            ? new ArrayList<>(authzConfig.getAdminEmails())
+            : new ArrayList<>();
+    if (isAdminEmail(email, adminEmails)) {
+      return true;
+    }
+    return getAdminPrincipals().contains(username);
+  }
+
+  private boolean usernameExists(String username) {
     try {
-      return SecurityConfigurationManager.getCurrentAuthzConfig()
-          .getAdminPrincipals()
-          .contains(userName);
-    } catch (Exception e) {
-      LOG.warn("Failed to check adminPrincipals for user {}: {}", userName, e.getMessage());
+      Entity.getEntityByName(Entity.USER, username, "id", Include.NON_DELETED);
+      return true;
+    } catch (EntityNotFoundException e) {
       return false;
     }
   }
 
-  /**
-   * Check and apply adminPrincipals configuration
-   */
-  private void checkAndApplyAdminPrincipals(User user) {
-    try {
-      boolean shouldBeAdminFromPrincipals = checkAdminPrincipals(user.getName());
-
-      if (shouldBeAdminFromPrincipals) {
-        user.setIsAdmin(true);
-        UserUtil.addOrUpdateUser(user);
-        LOG.info(
-            "LDAP user '{}' granted admin privileges via adminPrincipals configuration",
-            user.getName());
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to apply adminPrincipals for user {}: {}", user.getName(), e.getMessage());
-    }
+  private Set<String> getAdminPrincipals() {
+    AuthorizerConfiguration authzConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
+    Set<String> principals = authzConfig.getAdminPrincipals();
+    return principals != null ? new HashSet<>(principals) : new HashSet<>();
   }
 
   private List<EntityReference> getReassignRoles(

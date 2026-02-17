@@ -15,10 +15,13 @@ package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.SecurityUtil.extractDisplayNameFromClaim;
+import static org.openmetadata.service.security.SecurityUtil.extractEmailFromClaim;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.isBot;
 import static org.openmetadata.service.security.SecurityUtil.validateDomainEnforcement;
+import static org.openmetadata.service.security.SecurityUtil.validateEmailDomain;
 import static org.openmetadata.service.security.SecurityUtil.validatePrincipalClaimsMapping;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
@@ -43,6 +46,7 @@ import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.Provider;
 import java.net.URI;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
@@ -85,6 +89,10 @@ public class JwtFilter implements ContainerRequestFilter {
   private AuthProvider providerType;
   private boolean useRolesFromProvider = false;
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
+
+  private String emailClaim;
+  private String displayNameClaim;
+  private List<String> allowedEmailDomains;
 
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
@@ -132,6 +140,29 @@ public class JwtFilter implements ContainerRequestFilter {
     this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();
     this.useRolesFromProvider = authorizerConfiguration.getUseRolesFromProvider();
     this.tokenValidationAlgorithm = authenticationConfiguration.getTokenValidationAlgorithm();
+
+    this.emailClaim = authenticationConfiguration.getEmailClaim();
+    this.displayNameClaim = authenticationConfiguration.getDisplayNameClaim();
+    Set<String> emailDomainsSet = authorizerConfiguration.getAllowedEmailDomains();
+    this.allowedEmailDomains =
+        emailDomainsSet != null ? new ArrayList<>(emailDomainsSet) : new ArrayList<>();
+
+    logDeprecationWarnings(authenticationConfiguration);
+  }
+
+  private void logDeprecationWarnings(AuthenticationConfiguration config) {
+    if (config.getJwtPrincipalClaims() != null && !config.getJwtPrincipalClaims().isEmpty()) {
+      LOG.warn(
+          "DEPRECATED: 'jwtPrincipalClaims' configuration is deprecated. "
+              + "Use 'emailClaim' instead. This will be removed in a future version.");
+    }
+
+    if (config.getJwtPrincipalClaimsMapping() != null
+        && !config.getJwtPrincipalClaimsMapping().isEmpty()) {
+      LOG.warn(
+          "DEPRECATED: 'jwtPrincipalClaimsMapping' configuration is deprecated. "
+              + "Use 'emailClaim' and 'displayNameClaim' instead. This will be removed in a future version.");
+    }
   }
 
   @VisibleForTesting
@@ -144,6 +175,21 @@ public class JwtFilter implements ContainerRequestFilter {
     this.jwtPrincipalClaims = jwtPrincipalClaims;
     this.principalDomain = principalDomain;
     this.enforcePrincipalDomain = enforcePrincipalDomain;
+    this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      String emailClaim,
+      String displayNameClaim,
+      List<String> allowedEmailDomains) {
+    this.jwkProvider = jwkProvider;
+    this.emailClaim = emailClaim;
+    this.displayNameClaim = displayNameClaim;
+    this.allowedEmailDomains = allowedEmailDomains;
+    this.jwtPrincipalClaimsMapping = null;
+    this.jwtPrincipalClaims = new ArrayList<>();
     this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
   }
 
@@ -161,10 +207,24 @@ public class JwtFilter implements ContainerRequestFilter {
     LOG.debug("Token from header:{}", tokenFromHeader);
 
     Map<String, Claim> claims = validateJwtAndGetClaims(tokenFromHeader);
-    String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
-    String email =
-        findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
     boolean isBotUser = isBot(claims);
+
+    String userName;
+    String email;
+
+    if (shouldUseEmailFirstFlow(isBotUser)) {
+      email = extractEmailFromClaim(claims, emailClaim);
+      validateEmailDomain(email, allowedEmailDomains);
+      String displayName = extractDisplayNameFromClaim(claims, displayNameClaim, email);
+      userName = email.split("@")[0];
+      LOG.debug(
+          "Email-first flow: email={}, userName={}, displayName={}", email, userName, displayName);
+    } else {
+      userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
+      email =
+          findEmailFromClaims(
+              jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
+    }
 
     // Check for impersonation header - authorization will be checked later
     String impersonateUser = requestContext.getHeaderString("X-Impersonate-User");
@@ -210,19 +270,21 @@ public class JwtFilter implements ContainerRequestFilter {
     // the case where OMD generated the Token for the Client in case OM generated Token
     validateTokenIsNotUsedAfterLogout(tokenFromHeader);
 
-    // Validate Domain
-    validateDomainEnforcement(
-        jwtPrincipalClaimsMapping,
-        jwtPrincipalClaims,
-        claims,
-        principalDomain,
-        allowedDomains,
-        enforcePrincipalDomain);
+    boolean isBotUser = isBot(claims);
+    if (!shouldUseEmailFirstFlow(isBotUser)) {
+      validateDomainEnforcement(
+          jwtPrincipalClaimsMapping,
+          jwtPrincipalClaims,
+          claims,
+          principalDomain,
+          allowedDomains,
+          enforcePrincipalDomain);
+    }
 
     // Validate Bot token matches what was created in OM
     // Skip validation for impersonation tokens - they are generated dynamically and not stored in
     // cache
-    if (impersonatedBy == null && isBot(claims)) {
+    if (impersonatedBy == null && isBotUser) {
       validateBotToken(tokenFromHeader, userName);
     }
 
@@ -240,6 +302,19 @@ public class JwtFilter implements ContainerRequestFilter {
       }
     }
     return userRoles;
+  }
+
+  private boolean shouldUseEmailFirstFlow(boolean isBotUser) {
+    if (isBotUser) {
+      return false;
+    }
+    if (emailClaim == null || emailClaim.isEmpty()) {
+      return false;
+    }
+    if (jwtPrincipalClaimsMapping != null && !jwtPrincipalClaimsMapping.isEmpty()) {
+      return false;
+    }
+    return true;
   }
 
   @SneakyThrows
@@ -337,11 +412,23 @@ public class JwtFilter implements ContainerRequestFilter {
 
   public CatalogSecurityContext getCatalogSecurityContext(String token) {
     Map<String, Claim> claims = validateJwtAndGetClaims(token);
-    String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
-    String email =
-        findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
-    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
     boolean isBotUser = isBot(claims);
+
+    String userName;
+    String email;
+
+    if (shouldUseEmailFirstFlow(isBotUser)) {
+      email = extractEmailFromClaim(claims, emailClaim);
+      validateEmailDomain(email, allowedEmailDomains);
+      userName = email.split("@")[0];
+    } else {
+      userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
+      email =
+          findEmailFromClaims(
+              jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
+    }
+
+    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
     return new CatalogSecurityContext(
         catalogPrincipal,
         "https",
