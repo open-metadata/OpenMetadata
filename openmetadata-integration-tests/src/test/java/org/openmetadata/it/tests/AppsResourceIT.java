@@ -946,4 +946,56 @@ public class AppsResourceIT {
       }
     }
   }
+
+  @Test
+  void test_appBotImpersonation_requiresAdmin(TestNamespace ns) throws Exception {
+    HttpClient adminHttpClient = SdkClients.adminClient().getHttpClient();
+    HttpClient nonAdminHttpClient = SdkClients.user1Client().getHttpClient();
+    String appName = "nonAdminImpApp" + System.currentTimeMillis();
+
+    try {
+      CreateAppMarketPlaceDefinitionReq marketPlaceReq =
+          new CreateAppMarketPlaceDefinitionReq()
+              .withName(appName)
+              .withDisplayName("Non-Admin Impersonation App")
+              .withDescription("Test app that requires admin for impersonation")
+              .withFeatures("test features")
+              .withDeveloper("Test Developer")
+              .withDeveloperUrl("https://www.example.com")
+              .withPrivacyPolicyUrl("https://www.example.com/privacy")
+              .withSupportEmail("support@example.com")
+              .withClassName("org.openmetadata.service.resources.apps.TestApp")
+              .withAppType(AppType.Internal)
+              .withScheduleType(ScheduleType.Scheduled)
+              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+              .withAppConfiguration(new HashMap<>())
+              .withPermission(NativeAppPermission.All);
+
+      adminHttpClient.execute(
+          HttpMethod.POST, "/v1/apps/marketplace", marketPlaceReq, AppMarketPlaceDefinition.class);
+
+      CreateApp createApp =
+          new CreateApp()
+              .withName(appName)
+              .withAppConfiguration(new HashMap<>())
+              .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY))
+              .withAllowBotImpersonation(true);
+
+      Exception exception =
+          assertThrows(
+              Exception.class,
+              () -> nonAdminHttpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class),
+              "Non-admin should not be able to create app with bot impersonation enabled");
+      assertTrue(
+          exception.getMessage().contains("admin")
+              || exception.getMessage().contains("Authorization"),
+          "Error should mention admin or authorization: " + exception.getMessage());
+
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
 }
