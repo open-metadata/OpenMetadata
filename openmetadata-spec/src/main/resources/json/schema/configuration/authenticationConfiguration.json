@@ -90,8 +90,43 @@
     },
     "jwtTeamClaimMapping": {
       "title": "Jwt Team Claim Mapping",
-      "description": "JWT claim name that contains team/department information. For SAML SSO, this is the attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim name in the JWT token. The value from this claim will be used to automatically assign users to matching teams in OpenMetadata during login.",
-      "type": "string"
+      "description": "JWT claim name(s) that contain team/department information. For SAML SSO, this is the attribute name (e.g., 'department') from the SAML assertion. For JWT, this is the claim name in the JWT token. Can be a single string or an array of strings to extract teams from multiple claims (e.g., ['groups', 'department', 'division']). The values from these claims will be used to automatically assign users to matching teams in OpenMetadata during login.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      ]
+    },
+    "jwtUserAttributeMappings": {
+      "title": "Jwt User Attribute Mappings",
+      "description": "Map JWT/SAML claims to OpenMetadata user profile attributes for auto-populating user profiles from SSO provider data.",
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "description": "JWT claim for user's display name (e.g., 'name', 'displayName', 'full_name')."
+        },
+        "profilePicture": {
+          "type": "string",
+          "description": "JWT claim for profile picture URL (e.g., 'picture', 'avatar_url')."
+        },
+        "timezone": {
+          "type": "string",
+          "description": "JWT claim for user's timezone (e.g., 'zoneinfo', 'timezone')."
+        },
+        "description": {
+          "type": "string",
+          "description": "JWT claim for user biography (e.g., 'bio', 'about', 'jobTitle')."
+        }
+      },
+      "additionalProperties": false
     },
     "enableSelfSignup": {
       "title": "Enable Self Sign Up",
