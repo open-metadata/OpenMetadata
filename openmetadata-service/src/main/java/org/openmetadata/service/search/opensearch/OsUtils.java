@@ -40,9 +40,18 @@ import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
 import os.org.opensearch.client.opensearch.core.search.Hit;
+import os.org.opensearch.client.util.ApiTypeHelper;
 
 @Slf4j
 public class OsUtils {
+
+  public static SearchResponse<JsonData> searchWithLenientDeserialization(
+      OpenSearchClient client, SearchRequest request) throws IOException {
+    try (ApiTypeHelper.DisabledChecksHandle ignored =
+        ApiTypeHelper.DANGEROUS_disableRequiredPropertiesCheck(true)) {
+      return client.search(request, JsonData.class);
+    }
+  }
 
   public static Map<String, Object> jsonDataToMap(JsonData jsonData) {
     try {
@@ -139,8 +148,7 @@ public class OsUtils {
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     try {
-      return client.search(
-          searchRequestBuilder.build(), os.org.opensearch.client.json.JsonData.class);
+      return searchWithLenientDeserialization(client, searchRequestBuilder.build());
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -202,7 +210,7 @@ public class OsUtils {
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> searchResponse;
     try {
-      searchResponse = client.search(searchRequest, JsonData.class);
+      searchResponse = searchWithLenientDeserialization(client, searchRequest);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -326,7 +334,7 @@ public class OsUtils {
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> searchResponse;
     try {
-      searchResponse = client.search(searchRequest, JsonData.class);
+      searchResponse = searchWithLenientDeserialization(client, searchRequest);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -416,7 +424,7 @@ public class OsUtils {
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     try {
-      return client.search(searchRequestBuilder.build(), JsonData.class);
+      return searchWithLenientDeserialization(client, searchRequestBuilder.build());
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
