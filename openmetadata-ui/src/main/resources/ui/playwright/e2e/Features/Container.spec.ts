@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -24,7 +25,6 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // Grant clipboard permissions for copy link tests
 test.use({
@@ -133,34 +133,38 @@ test.describe('Container entity specific tests ', () => {
     );
   });
 
-  test('expand / collapse should not appear after updating nested fields for container', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({
-    page,
-  }) => {
-    await page.goto('/container/s3_storage_sample.departments.finance');
+  test(
+    'expand / collapse should not appear after updating nested fields for container',
+    PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
+    async ({ page }) => {
+      await page.goto('/container/s3_storage_sample.departments.finance');
 
-    await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page);
 
-    await assignTagToChildren({
-      page,
-      tag: 'PersonalData.Personal',
-      rowId: 'budget_executor',
-      entityEndpoint: 'containers',
-    });
+      await assignTagToChildren({
+        page,
+        tag: 'PersonalData.Personal',
+        rowId: 's3_storage_sample.departments.finance.budget_executor',
+        entityEndpoint: 'containers',
+      });
 
-    // Should not show expand icon for non-nested columns
-    expect(
-      page
-        .locator('[data-row-key="budget_executor"]')
-        .getByTestId('expand-icon')
-    ).not.toBeVisible();
+      // Should not show expand icon for non-nested columns
+      expect(
+        page
+          .locator(
+            '[data-row-key="s3_storage_sample.departments.finance.budget_executor"]'
+          )
+          .getByTestId('expand-icon')
+      ).not.toBeVisible();
 
-    await removeTagsFromChildren({
-      page,
-      tags: ['PersonalData.Personal'],
-      rowId: 'budget_executor',
-      entityEndpoint: 'containers',
-    });
-  });
+      await removeTagsFromChildren({
+        page,
+        tags: ['PersonalData.Personal'],
+        rowId: 's3_storage_sample.departments.finance.budget_executor',
+        entityEndpoint: 'containers',
+      });
+    }
+  );
 
   test('Copy column link button should copy the column URL to clipboard', async ({
     dataConsumerPage: page,
@@ -220,6 +224,10 @@ test.describe('Container entity specific tests ', () => {
     await expect(sidePanel).not.toBeVisible();
 
     // Verify URL does not contain the column part
-    await expect(page).toHaveURL(new RegExp(`/container/${container.entityResponseData?.['fullyQualifiedName']}$`));
+    await expect(page).toHaveURL(
+      new RegExp(
+        `/container/${container.entityResponseData?.['fullyQualifiedName']}$`
+      )
+    );
   });
 });

@@ -1219,8 +1219,9 @@ export interface Pipeline {
      */
     useStatistics?: boolean;
     /**
-     * Language to use for auto classification recognizers. Only recognizers that support this
-     * language will be used.
+     * Language to use for auto classification recognizers. Use 'any' to run all recognizers
+     * regardless of their configured language. For specific languages, only recognizers that
+     * support that language will be used.
      */
     classificationLanguage?: ClassificationLanguage;
     /**
@@ -2549,14 +2550,17 @@ export interface AppLimitsConfig {
 }
 
 /**
- * Language to use for auto classification recognizers. Only recognizers that support this
- * language will be used.
+ * Language to use for auto classification recognizers. Use 'any' to run all recognizers
+ * regardless of their configured language. For specific languages, only recognizers that
+ * support that language will be used.
  *
- * Supported languages for auto classification recognizers (ISO 639-1 codes)
+ * Supported languages for auto classification recognizers (ISO 639-1 codes). Use 'any' to
+ * apply all recognizers regardless of their configured language.
  */
 export enum ClassificationLanguage {
     AF = "af",
     Am = "am",
+    Any = "any",
     Ar = "ar",
     Az = "az",
     Be = "be",

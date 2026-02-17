@@ -1101,63 +1101,102 @@ public class WorkflowHandler {
   public boolean isWorkflowSuspended(String workflowName) {
     RepositoryService repositoryService = processEngine.getRepositoryService();
     String triggerWorkflowId = getTriggerWorkflowId(workflowName);
-    ProcessDefinition processDefinition =
+
+    // Get ALL latest versions of matching process definitions
+    List<ProcessDefinition> processDefinitions =
         repositoryService
             .createProcessDefinitionQuery()
             .processDefinitionKeyLike(triggerWorkflowId + "%")
             .latestVersion()
-            .singleResult();
+            .list(); // Use list() to handle both single and multiple
 
-    if (processDefinition == null) {
+    if (processDefinitions.isEmpty()) {
       throw new IllegalArgumentException(
           "Process Definition not found for workflow: " + workflowName);
     }
 
-    return processDefinition.isSuspended();
+    // Check if all are suspended
+    boolean allSuspended = processDefinitions.stream().allMatch(ProcessDefinition::isSuspended);
+    boolean allActive = processDefinitions.stream().noneMatch(ProcessDefinition::isSuspended);
+
+    if (!allSuspended && !allActive) {
+      LOG.warn(
+          "Workflow '{}' has inconsistent suspension state across {} process definitions",
+          workflowName,
+          processDefinitions.size());
+    }
+
+    return allSuspended;
   }
 
   public void suspendWorkflow(String workflowName) {
     RepositoryService repositoryService = processEngine.getRepositoryService();
-    if (isWorkflowSuspended(workflowName)) {
-      LOG.debug(String.format("Workflow '%s' is already suspended.", workflowName));
-    } else {
-      String triggerWorkflowId = getTriggerWorkflowId(workflowName);
-      ProcessDefinition processDefinition =
-          repositoryService
-              .createProcessDefinitionQuery()
-              .processDefinitionKeyLike(triggerWorkflowId + "%")
-              .latestVersion()
-              .singleResult();
+    String triggerWorkflowId = getTriggerWorkflowId(workflowName);
 
-      if (processDefinition != null) {
-        repositoryService.suspendProcessDefinitionByKey(processDefinition.getKey(), true, null);
-      } else {
-        throw new IllegalArgumentException(
-            "Process Definition not found for workflow: " + workflowName);
+    // Get ALL latest versions of matching process definitions
+    List<ProcessDefinition> processDefinitions =
+        repositoryService
+            .createProcessDefinitionQuery()
+            .processDefinitionKeyLike(triggerWorkflowId + "%")
+            .latestVersion()
+            .list();
+
+    if (processDefinitions.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Process Definition not found for workflow: " + workflowName);
+    }
+
+    // Check if all are already suspended
+    if (processDefinitions.stream().allMatch(ProcessDefinition::isSuspended)) {
+      LOG.debug("Workflow '{}' is already suspended.", workflowName);
+      return;
+    }
+
+    // Suspend each process definition that isn't already suspended
+    for (ProcessDefinition pd : processDefinitions) {
+      if (!pd.isSuspended()) {
+        // Use suspendProcessDefinitionById to suspend only this specific version
+        repositoryService.suspendProcessDefinitionById(pd.getId(), true, null);
+        LOG.debug("Suspended process definition: {} (version {})", pd.getKey(), pd.getVersion());
       }
     }
+
+    LOG.info("Successfully suspended workflow '{}'", workflowName);
   }
 
   public void resumeWorkflow(String workflowName) {
     RepositoryService repositoryService = processEngine.getRepositoryService();
-    if (!isWorkflowSuspended(workflowName)) {
-      LOG.debug(String.format("Workflow '%s' is already active.", workflowName));
-    } else {
-      String triggerWorkflowId = getTriggerWorkflowId(workflowName);
-      ProcessDefinition processDefinition =
-          repositoryService
-              .createProcessDefinitionQuery()
-              .processDefinitionKeyLike(triggerWorkflowId + "%")
-              .latestVersion()
-              .singleResult();
+    String triggerWorkflowId = getTriggerWorkflowId(workflowName);
 
-      if (processDefinition != null) {
-        repositoryService.activateProcessDefinitionByKey(processDefinition.getKey(), true, null);
-      } else {
-        throw new IllegalArgumentException(
-            "Process Definition not found for workflow: " + workflowName);
+    // Get ALL latest versions of matching process definitions
+    List<ProcessDefinition> processDefinitions =
+        repositoryService
+            .createProcessDefinitionQuery()
+            .processDefinitionKeyLike(triggerWorkflowId + "%")
+            .latestVersion()
+            .list();
+
+    if (processDefinitions.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Process Definition not found for workflow: " + workflowName);
+    }
+
+    // Check if all are already active
+    if (processDefinitions.stream().noneMatch(ProcessDefinition::isSuspended)) {
+      LOG.debug("Workflow '{}' is already active.", workflowName);
+      return;
+    }
+
+    // Resume each process definition that is suspended
+    for (ProcessDefinition pd : processDefinitions) {
+      if (pd.isSuspended()) {
+        // Use activateProcessDefinitionById to activate only this specific version
+        repositoryService.activateProcessDefinitionById(pd.getId(), true, null);
+        LOG.debug("Activated process definition: {} (version {})", pd.getKey(), pd.getVersion());
       }
     }
+
+    LOG.info("Successfully resumed workflow '{}'", workflowName);
   }
 
   public void terminateWorkflow(String workflowName) {

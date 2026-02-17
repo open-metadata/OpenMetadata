@@ -65,6 +65,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.sdk.api.lineage import Lineage
+from metadata.sdk.api.search import Search
 
 
 def _coerce_str(value: Any) -> str:
@@ -631,6 +632,170 @@ class TestSDKIntegration(unittest.TestCase):
                 self.assertNotIn(self.__class__.classification_tag_fqn, final_fqns)
             finally:
                 om.Tags.delete(replacement_tag.id)
+        finally:
+            om.Tables.delete(str(table.id.root), hard_delete=True)
+
+    # ------------------------------------------------------------------ #
+    #  Search with friendly dict filters
+    # ------------------------------------------------------------------ #
+    def test_search_with_dict_filters(self) -> None:
+        table = self._create_basic_table()
+        try:
+            time.sleep(2)
+            service_name = _coerce_str(self.__class__.service.fullyQualifiedName)
+            results = Search.search(
+                query="*",
+                index="table_search_index",
+                filters={"service.name": service_name},
+                size=20,
+            )
+            self.assertIsInstance(results, dict)
+            hits = results.get("hits", {}).get("hits", [])
+            self.assertGreater(len(hits), 0)
+        finally:
+            om.Tables.delete(str(table.id.root), hard_delete=True)
+
+    # ------------------------------------------------------------------ #
+    #  Regression: search_advanced must not return 405
+    # ------------------------------------------------------------------ #
+    def test_search_advanced(self) -> None:
+        table = self._create_basic_table()
+        try:
+            time.sleep(2)
+            service_name = _coerce_str(self.__class__.service.fullyQualifiedName)
+            results = Search.search_advanced(
+                {
+                    "query": {
+                        "bool": {
+                            "must": [{"match_all": {}}],
+                            "filter": [{"term": {"service.name": service_name}}],
+                        }
+                    }
+                }
+            )
+            self.assertIsInstance(results, dict)
+        finally:
+            om.Tables.delete(str(table.id.root), hard_delete=True)
+
+    # ------------------------------------------------------------------ #
+    #  Regression: delete_lineage must build EntitiesEdge, not pass kwargs
+    # ------------------------------------------------------------------ #
+    def test_delete_lineage(self) -> None:
+        source = self._create_basic_table(name=f"{self.test_table_name}_del_src")
+        target = self._create_basic_table(name=f"{self.test_table_name}_del_tgt")
+        try:
+            Lineage.add_lineage(
+                from_entity_id=source.id.root,
+                from_entity_type="table",
+                to_entity_id=target.id.root,
+                to_entity_type="table",
+            )
+
+            lineage_before = Lineage.get_entity_lineage(
+                Table, target.id.root, upstream_depth=1, downstream_depth=0
+            )
+            self.assertIsNotNone(lineage_before)
+            self.assertTrue(getattr(lineage_before, "upstreamEdges", None))
+
+            Lineage.delete_lineage(
+                from_entity=str(source.id.root),
+                from_entity_type="table",
+                to_entity=str(target.id.root),
+                to_entity_type="table",
+            )
+
+            lineage_after = Lineage.get_entity_lineage(
+                Table, target.id.root, upstream_depth=1, downstream_depth=0
+            )
+            upstream_after = getattr(lineage_after, "upstreamEdges", None) or []
+            self.assertEqual(len(upstream_after), 0)
+        finally:
+            om.Tables.delete(str(target.id.root), hard_delete=True)
+            om.Tables.delete(str(source.id.root), hard_delete=True)
+
+    # ------------------------------------------------------------------ #
+    #  Regression: custom properties with Pydantic UUID (table.id)
+    # ------------------------------------------------------------------ #
+    def test_custom_properties_with_pydantic_uuid(self) -> None:
+        table = self._create_basic_table()
+        try:
+            updated = (
+                om.Tables.update_custom_properties(table.id)
+                .with_property("department", "Data Engineering")
+                .execute()
+            )
+            self.assertIsNotNone(updated)
+            ext = getattr(updated, "extension", None)
+            self.assertIsNotNone(ext)
+            root = getattr(ext, "root", ext)
+            self.assertEqual(root.get("department"), "Data Engineering")
+
+            updated2 = (
+                om.Tables.update_custom_properties(table.id)
+                .with_property("department", "Analytics")
+                .with_property("priority", "high")
+                .execute()
+            )
+            ext2 = getattr(updated2, "extension", None)
+            root2 = getattr(ext2, "root", ext2)
+            self.assertEqual(root2.get("department"), "Analytics")
+            self.assertEqual(root2.get("priority"), "high")
+        finally:
+            om.Tables.delete(str(table.id.root), hard_delete=True)
+
+    # ------------------------------------------------------------------ #
+    #  Regression: get_versions with Pydantic UUID (table.id)
+    # ------------------------------------------------------------------ #
+    def test_get_versions_with_pydantic_uuid(self) -> None:
+        table = self._create_basic_table()
+        try:
+            modified = table.model_copy(deep=True)
+            modified.description = Markdown("Version tracking test")
+            om.Tables.update(modified)
+
+            versions = om.Tables.get_versions(table.id)
+            self.assertIsNotNone(versions)
+            self.assertGreater(len(versions), 0)
+
+            specific = om.Tables.get_specific_version(table.id, "0.1")
+            self.assertIsNotNone(specific)
+        finally:
+            om.Tables.delete(str(table.id.root), hard_delete=True)
+
+    # ------------------------------------------------------------------ #
+    #  Regression: CSV export should return clean string, no ERROR log
+    # ------------------------------------------------------------------ #
+    def test_csv_export_no_error_log(self) -> None:
+        import logging
+
+        table = self._create_basic_table()
+        try:
+            schema_fqn = _coerce_str(self.__class__.schema.fullyQualifiedName)
+
+            errors_captured: list[str] = []
+            handler = logging.Handler()
+            handler.emit = lambda record: (
+                errors_captured.append(record.getMessage())
+                if record.levelno >= logging.ERROR
+                and "json" in record.getMessage().lower()
+                else None
+            )
+
+            rest_logger = logging.getLogger("OMetaAPI")
+            rest_logger.addHandler(handler)
+            try:
+                exporter = om.DatabaseSchemas.export_csv(schema_fqn)
+                csv_content = exporter.execute()
+            finally:
+                rest_logger.removeHandler(handler)
+
+            self.assertIsInstance(csv_content, str)
+            self.assertTrue(csv_content.strip())
+            self.assertEqual(
+                errors_captured,
+                [],
+                f"Unexpected JSON decode ERROR logs: {errors_captured}",
+            )
         finally:
             om.Tables.delete(str(table.id.root), hard_delete=True)
 

@@ -223,6 +223,14 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - Use `assert x is None` instead of `self.assertIsNone(x)`
 - Use `assert "text" in string` instead of `self.assertIn("text", string)`
 
+### Testing Philosophy
+- **Test real behavior, not mock wiring** - if a test requires mocking 3+ classes just to verify a method call, it's testing the wrong thing
+- **Prefer integration tests** over heavily-mocked unit tests. This project has full integration test infrastructure (OpenMetadataApplicationTest, Docker containers, real OpenSearch). Use it.
+- **Mocks are for boundaries, not internals** - mock external services (HTTP clients, third-party APIs), not your own classes. If you're mocking static methods left and right to test internal plumbing, write an integration test instead.
+- **A test that mocks everything proves nothing** - it only verifies that your mocks are wired correctly, not that the system works
+- **Ask "what breaks if this test passes but the code is wrong?"** - if the answer is "nothing, because everything real is mocked out", delete the test and write a better one
+- **Test the outcome, not the implementation** - assert on observable results (API responses, database state, stats values) rather than verifying internal method calls with `verify()`
+
 ### Response Format
 - Provide clean code blocks without unnecessary explanations
 - Assume readers are experienced developers

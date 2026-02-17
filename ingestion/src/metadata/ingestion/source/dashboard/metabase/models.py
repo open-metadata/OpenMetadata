@@ -87,8 +87,13 @@ class DatasetQuery(BaseModel):
         stages = data.get("stages")
         if stages:
             for stage in stages:
-                if isinstance(stage, dict) and stage.get("native"):
+                if (
+                    isinstance(stage, dict)
+                    and stage.get("native")
+                    and stage.get("lib/type", "") in ("mbql.stage/native", "mbql/query")
+                ):
                     data["native"] = {"query": stage["native"]}
+                    data["type"] = "native"
                     break
         return data
 

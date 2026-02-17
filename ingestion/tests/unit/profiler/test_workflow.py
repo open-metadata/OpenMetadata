@@ -324,10 +324,15 @@ def test_filter_entities():
     "_validate_service_name",
     return_value=True,
 )
-def test_profile_def(mocked_method, *_):  # pylint: disable=unused-argument
+@patch("metadata.profiler.source.database.base.profiler_source.get_context_entities")
+def test_profile_def(
+    mock_context_entities, mocked_method, *_
+):  # pylint: disable=unused-argument
     """
     Validate the definitions of the profile in the JSON
     """
+    mock_context_entities.return_value = (None, None, None)
+
     profile_config = deepcopy(config)
     config_metrics = ["row_count", "min", "COUNT", "null_count"]
     config_metrics_label = ["rowCount", "min", "valuesCount", "nullCount"]
@@ -385,11 +390,15 @@ def test_profile_def(mocked_method, *_):  # pylint: disable=unused-argument
     "_validate_service_name",
     return_value=True,
 )
-def test_default_profile_def(mocked_method, *_):  # pylint: disable=unused-argument
+@patch("metadata.profiler.source.database.base.profiler_source.get_context_entities")
+def test_default_profile_def(
+    mock_context_entities, mocked_method, *_
+):  # pylint: disable=unused-argument
     """
     If no information is specified for the profiler, let's
     use the SimpleTableProfiler and SimpleProfiler
     """
+    mock_context_entities.return_value = (None, None, None)
 
     profile_workflow = ProfilerWorkflow.create(config)
     mocked_method.assert_called()
