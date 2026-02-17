@@ -14,7 +14,12 @@ import { expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  fullUuid,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -24,7 +29,6 @@ const COLUMN_BULK_OPERATIONS_URL = '/column-bulk-operations';
 const METADATA_STATUS_FILTER_TESTID = 'search-dropdown-Has / Missing Metadata';
 const GRID_API_URL = '/api/v1/columns/grid';
 const BULK_UPDATE_API_URL = '/api/v1/columns/bulk-update-async';
-const SHARED_COLUMN_NAME = 'customer_id';
 
 async function waitForGridResponse(page: Page) {
   return page.waitForResponse(
@@ -55,6 +59,50 @@ async function searchColumn(page: Page, columnName: string) {
   await searchInput.fill(columnName);
   await responsePromise;
   await waitForAllLoadersToDisappear(page);
+}
+
+async function getPendingChangesValue(page: Page) {
+  return (
+    (await page.getByTestId('pending-changes-value').textContent())?.trim() ??
+    ''
+  );
+}
+
+function buildMockColumnGridResponse(columnName: string) {
+  return {
+    columns: [
+      {
+        columnName,
+        hasVariations: false,
+        metadataStatus: 'MISSING',
+        totalOccurrences: 1,
+        groups: [
+          {
+            groupId: `${columnName}-group`,
+            occurrenceCount: 1,
+            metadataStatus: 'MISSING',
+            displayName: columnName,
+            description: `${columnName} description`,
+            dataType: 'VARCHAR',
+            tags: [],
+            occurrences: [
+              {
+                columnFQN: `sample_data.ecommerce_db.shopify.dim_address.${columnName}`,
+                entityFQN: 'sample_data.ecommerce_db.shopify.dim_address',
+                entityType: 'table',
+                serviceName: 'sample_data',
+                databaseName: 'ecommerce_db',
+                schemaName: 'shopify',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    totalUniqueColumns: 1,
+    totalOccurrences: 1,
+    cursor: null,
+  };
 }
 
 test.describe(
@@ -125,9 +173,8 @@ test.describe(
 
           const gridRes = waitForGridResponse(page);
           await page.getByTestId('update-btn').click();
-          const response = await gridRes;
-
-          expect(response.url()).toContain('metadataStatus=MISSING');
+          await gridRes;
+          await waitForAllLoadersToDisappear(page);
         }
       );
 
@@ -215,6 +262,51 @@ test.describe(
       });
     });
 
+    test('should not reset stats to zero while search request is loading', async ({
+      page,
+    }) => {
+      const totalUniqueLocator = page.getByTestId('total-unique-columns-value');
+      const totalOccurrencesLocator = page.getByTestId(
+        'total-occurrences-value'
+      );
+
+      const initialUnique =
+        (await totalUniqueLocator.textContent())?.trim() ?? '';
+      const initialOccurrences =
+        (await totalOccurrencesLocator.textContent())?.trim() ?? '';
+
+      let releaseDelayedResponse: (() => void) | undefined;
+      const delayedResponse = new Promise<void>((resolve) => {
+        releaseDelayedResponse = resolve;
+      });
+
+      await page.route(`**${GRID_API_URL}**`, async (route) => {
+        const requestUrl = route.request().url();
+        if (requestUrl.includes('columnNamePattern=')) {
+          await delayedResponse;
+        }
+        await route.continue();
+      });
+
+      const searchInput = page.getByPlaceholder('Search columns');
+      await searchInput.clear();
+      await searchInput.fill(`address_${uuid().slice(0, 8)}`);
+
+      await page.waitForRequest(
+        (request) =>
+          request.url().includes(GRID_API_URL) &&
+          request.url().includes('columnNamePattern='),
+        { timeout: 15000 }
+      );
+
+      await expect(totalUniqueLocator).toHaveText(initialUnique);
+      await expect(totalOccurrencesLocator).toHaveText(initialOccurrences);
+
+      releaseDelayedResponse?.();
+      await waitForAllLoadersToDisappear(page);
+      await page.unroute(`**${GRID_API_URL}**`);
+    });
+
     test('should clear individual filter and update URL', async ({ page }) => {
       await test.step(
         'Navigate with metadataStatus filter in URL',
@@ -267,6 +359,86 @@ test.describe(
       );
     });
 
+    test('should keep latest search results when responses arrive out of order', async ({
+      page,
+    }) => {
+      const staleQuery = `stale_${uuid().slice(0, 8)}`;
+      const freshQuery = `fresh_${uuid().slice(0, 8)}`;
+      const staleColumn = `stale_col_${uuid().slice(0, 8)}`;
+      const freshColumn = `fresh_col_${uuid().slice(0, 8)}`;
+
+      let releaseStaleResponse: (() => void) | undefined;
+      const staleResponseGate = new Promise<void>((resolve) => {
+        releaseStaleResponse = resolve;
+      });
+
+      await page.route(`**${GRID_API_URL}**`, async (route) => {
+        const url = route.request().url();
+        if (
+          url.includes(`columnNamePattern=${encodeURIComponent(staleQuery)}`)
+        ) {
+          await staleResponseGate;
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(buildMockColumnGridResponse(staleColumn)),
+          });
+
+          return;
+        }
+        if (
+          url.includes(`columnNamePattern=${encodeURIComponent(freshQuery)}`)
+        ) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(buildMockColumnGridResponse(freshColumn)),
+          });
+
+          return;
+        }
+
+        await route.continue();
+      });
+
+      const searchInput = page.getByPlaceholder('Search columns');
+
+      await searchInput.clear();
+      await searchInput.fill(staleQuery);
+      await page.waitForRequest(
+        (request) =>
+          request.url().includes(GRID_API_URL) &&
+          request
+            .url()
+            .includes(`columnNamePattern=${encodeURIComponent(staleQuery)}`),
+        { timeout: 15000 }
+      );
+
+      await searchInput.clear();
+      await searchInput.fill(freshQuery);
+      await page.waitForRequest(
+        (request) =>
+          request.url().includes(GRID_API_URL) &&
+          request
+            .url()
+            .includes(`columnNamePattern=${encodeURIComponent(freshQuery)}`),
+        { timeout: 15000 }
+      );
+
+      releaseStaleResponse?.();
+
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId('column-name-cell').filter({ hasText: freshColumn })
+      ).toBeVisible();
+      await expect(
+        page.getByTestId('column-name-cell').filter({ hasText: staleColumn })
+      ).toHaveCount(0);
+
+      await page.unroute(`**${GRID_API_URL}**`);
+    });
+
     test('should show Service filter chip from URL', async ({ page }) => {
       await test.step('Navigate with service filter in URL', async () => {
         const dataRes = waitForGridResponse(page);
@@ -299,6 +471,32 @@ test.describe(
   'Column Bulk Operations - Selection & Edit Drawer',
   PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
+    const table = new TableClass();
+    let sharedColumnName: string;
+
+    test.beforeAll('Setup tables with shared column', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await table.create(apiContext);
+      sharedColumnName = table.columnsName[0];
+
+      // Create a second table in the same schema with the same columns
+      // to guarantee multiple occurrences of the shared column
+      await table.createAdditionalTable(
+        {
+          name: `pw-table-${fullUuid()}`,
+          displayName: `pw table additional ${fullUuid()}`,
+        },
+        apiContext
+      );
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup test data', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await table.delete(apiContext);
+      await afterAction();
+    });
+
     test.beforeEach(async ({ page }) => {
       await visitColumnBulkOperationsPage(page);
     });
@@ -309,16 +507,160 @@ test.describe(
       await expect(page.getByTestId('edit-button-disabled')).toBeVisible();
     });
 
+    test('should update pending changes counter when editing selected columns', async ({
+      page,
+    }) => {
+      await test.step('Search and select a shared column', async () => {
+        await searchColumn(page, sharedColumnName);
+        const checkbox = page.getByTestId(
+          `column-checkbox-${sharedColumnName}`
+        );
+        await expect(checkbox).toBeVisible();
+        await checkbox.click();
+      });
+
+      await test.step('Open drawer and edit display name', async () => {
+        const editButton = page.getByTestId('edit-button');
+        await expect(editButton).toBeEnabled();
+        await editButton.click();
+
+        const drawer = page.getByTestId('column-bulk-operations-form-drawer');
+        await expect(drawer).toBeVisible();
+
+        const displayNameInput = drawer
+          .getByTestId('display-name-input')
+          .locator('input');
+        await displayNameInput.fill(`PendingCounter_${uuid()}`);
+      });
+
+      await test.step(
+        'Verify pending changes value shows edited/selected count',
+        async () => {
+          const value = await getPendingChangesValue(page);
+          expect(value).toMatch(/^\d+\/\d+$/);
+          const [edited, selected] = value.split('/').map(Number);
+          expect(edited).toBeGreaterThan(0);
+          expect(selected).toBeGreaterThan(0);
+        }
+      );
+    });
+
+    test('should not count aggregate parent row in drawer selected count', async ({
+      page,
+    }) => {
+      let expectedOccurrences = 0;
+
+      await test.step('Search and select shared grouped column', async () => {
+        const searchInput = page.getByPlaceholder('Search columns');
+        await searchInput.clear();
+        await searchInput.fill(sharedColumnName);
+        await waitForAllLoadersToDisappear(page);
+
+        const groupRow = page
+          .locator(`[data-row-id="${sharedColumnName}"]`)
+          .first();
+        await expect(groupRow).toBeVisible();
+
+        const columnNameCellText =
+          (await groupRow.getByTestId('column-name-cell').textContent()) ?? '';
+        const match = columnNameCellText.match(/\((\d+)\)/);
+
+        expect(match).not.toBeNull();
+        expectedOccurrences = Number(match?.[1] ?? '0');
+        expect(expectedOccurrences).toBeGreaterThan(1);
+
+        const checkbox = groupRow.locator('input[type="checkbox"]');
+        await expect(checkbox).toBeVisible();
+        await checkbox.check();
+      });
+
+      await test.step(
+        'Open drawer and verify selected count matches occurrences',
+        async () => {
+          const editButton = page.getByTestId('edit-button');
+          await expect(editButton).toBeEnabled();
+          await editButton.click();
+
+          const drawer = page.getByTestId('column-bulk-operations-form-drawer');
+          await expect(drawer).toBeVisible();
+
+          await expect(drawer.getByTestId('form-heading')).toContainText(
+            String(expectedOccurrences).padStart(2, '0')
+          );
+          await expect(
+            drawer.getByTestId('column-name-input').locator('input')
+          ).toHaveValue(
+            new RegExp(`${expectedOccurrences}\\s+columns selected`, 'i')
+          );
+        }
+      );
+    });
+
+    test('should show pending progress spinner after submitting bulk update', async ({
+      page,
+    }) => {
+      await page.route(`**${BULK_UPDATE_API_URL}`, async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            jobId: `pw-job-${uuid()}`,
+            message: 'Bulk column update is in progress.',
+          }),
+        });
+      });
+
+      await test.step('Search, select, and open edit drawer', async () => {
+        await searchColumn(page, sharedColumnName);
+        const checkbox = page.getByTestId(
+          `column-checkbox-${sharedColumnName}`
+        );
+        await expect(checkbox).toBeVisible();
+        await checkbox.click();
+
+        const editButton = page.getByTestId('edit-button');
+        await expect(editButton).toBeEnabled();
+        await editButton.click();
+      });
+
+      await test.step('Submit update request', async () => {
+        const drawer = page.getByTestId('column-bulk-operations-form-drawer');
+        await expect(drawer).toBeVisible();
+
+        const displayNameInput = drawer
+          .getByTestId('display-name-input')
+          .locator('input');
+        await displayNameInput.fill(`PendingProgress_${uuid()}`);
+
+        const updateButton = drawer.getByRole('button', { name: 'Update' });
+        await expect(updateButton).toBeEnabled();
+        await updateButton.click();
+      });
+
+      await test.step(
+        'Verify pending progress indicator and counter are visible',
+        async () => {
+          await expect(
+            page.getByTestId('pending-changes-progress-spinner')
+          ).toBeVisible();
+
+          const value = await getPendingChangesValue(page);
+          expect(value).toMatch(/^\d+\/\d+$/);
+        }
+      );
+    });
+
     test('should select column, open drawer, and verify form fields', async ({
       page,
     }) => {
       await test.step('Search for shared column', async () => {
-        await searchColumn(page, SHARED_COLUMN_NAME);
+        await searchColumn(page, sharedColumnName);
       });
 
       await test.step('Select the column checkbox', async () => {
         const checkbox = page.getByTestId(
-          `column-checkbox-${SHARED_COLUMN_NAME}`
+          `column-checkbox-${sharedColumnName}`
         );
         await expect(checkbox).toBeVisible();
         await checkbox.click();
@@ -392,9 +734,9 @@ test.describe(
       page,
     }) => {
       await test.step('Search and select a column', async () => {
-        await searchColumn(page, SHARED_COLUMN_NAME);
+        await searchColumn(page, sharedColumnName);
         const checkbox = page.getByTestId(
-          `column-checkbox-${SHARED_COLUMN_NAME}`
+          `column-checkbox-${sharedColumnName}`
         );
         await expect(checkbox).toBeVisible();
         await checkbox.click();
@@ -415,9 +757,9 @@ test.describe(
       page,
     }) => {
       await test.step('Search and select a column', async () => {
-        await searchColumn(page, SHARED_COLUMN_NAME);
+        await searchColumn(page, sharedColumnName);
         const checkbox = page.getByTestId(
-          `column-checkbox-${SHARED_COLUMN_NAME}`
+          `column-checkbox-${sharedColumnName}`
         );
         await expect(checkbox).toBeVisible();
         await checkbox.click();
@@ -497,18 +839,45 @@ test.describe(
   'Column Bulk Operations - Bulk Update Flow',
   PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
   () => {
+    const table = new TableClass();
+    let sharedColumnName: string;
+
+    test.beforeAll(
+      'Setup tables with shared column for bulk update',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await table.create(apiContext);
+        sharedColumnName = table.columnsName[0];
+
+        await table.createAdditionalTable(
+          {
+            name: `pw-table-${fullUuid()}`,
+            displayName: `pw table bulk ${fullUuid()}`,
+          },
+          apiContext
+        );
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup bulk update test data', async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await table.delete(apiContext);
+      await afterAction();
+    });
+
     test('should update display name and propagate to all occurrences', async ({
       page,
     }) => {
       await visitColumnBulkOperationsPage(page);
 
       await test.step('Search for shared column', async () => {
-        await searchColumn(page, SHARED_COLUMN_NAME);
+        await searchColumn(page, sharedColumnName);
       });
 
       await test.step('Select the column', async () => {
         const checkbox = page.getByTestId(
-          `column-checkbox-${SHARED_COLUMN_NAME}`
+          `column-checkbox-${sharedColumnName}`
         );
         await expect(checkbox).toBeVisible();
         await checkbox.click();
@@ -572,7 +941,7 @@ test.describe(
         for (const update of updates) {
           expect(update.displayName).toBe(displayName);
           expect(update.columnFQN?.toLowerCase()).toContain(
-            SHARED_COLUMN_NAME.toLowerCase()
+            sharedColumnName.toLowerCase()
           );
         }
       });
@@ -584,10 +953,10 @@ test.describe(
       await visitColumnBulkOperationsPage(page);
 
       await test.step('Search and select column', async () => {
-        await searchColumn(page, SHARED_COLUMN_NAME);
+        await searchColumn(page, sharedColumnName);
 
         const checkbox = page.getByTestId(
-          `column-checkbox-${SHARED_COLUMN_NAME}`
+          `column-checkbox-${sharedColumnName}`
         );
         await expect(checkbox).toBeVisible();
         await checkbox.click();

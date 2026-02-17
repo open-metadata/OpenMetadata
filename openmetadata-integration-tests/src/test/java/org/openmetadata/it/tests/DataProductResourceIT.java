@@ -2752,6 +2752,50 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
+  void test_removingAssetFromDataProductRemovesItFromOutputPorts(TestNamespace ns)
+      throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_remove_asset_output"))
+            .withDescription("Data product for asset removal output port cleanup test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "output_asset_1", domain);
+    Table table2 = createTestTable(ns, "output_asset_2", domain);
+
+    // Add both tables as assets of the data product
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference())));
+
+    // Add both tables as output ports
+    SdkClients.adminClient()
+        .dataProducts()
+        .outputPorts(dataProduct.getFullyQualifiedName())
+        .add(
+            new BulkAssets()
+                .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference())));
+
+    // Verify both are output ports
+    ResultList<Map<String, Object>> outputPorts = getOutputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(2, outputPorts.getPaging().getTotal());
+
+    // Remove table1 from data product assets
+    bulkRemoveAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+
+    // table1 should also be removed from output ports
+    outputPorts = getOutputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, outputPorts.getPaging().getTotal());
+    assertEquals(table2.getId(), getEntityId(outputPorts.getData().get(0)));
+  }
+
+  @Test
   void test_deletingAssetRemovesItFromPorts(TestNamespace ns) throws Exception {
     Domain domain = getOrCreateDomain(ns);
 

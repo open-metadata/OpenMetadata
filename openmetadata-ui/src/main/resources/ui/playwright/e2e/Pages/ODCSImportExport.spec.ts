@@ -2010,6 +2010,151 @@ version: "1.0.0"`;
 
   // OpenMetadata (OM) Format Export/Import Round Trip Tests
 
+  test('Create contract from UI, export OM format, import with merge, verify data', async ({
+    page,
+  }) => {
+    const table = new TableClass();
+    const { apiContext } = await getApiContext(page);
+    await table.create(apiContext);
+
+    try {
+      await test.step('Create contract from UI with SLA', async () => {
+        await navigateToContractTab(page, table);
+
+        await expect(page.getByTestId('add-contract-button')).toBeVisible();
+        await page.getByTestId('add-contract-button').click();
+        await expect(page.getByTestId('add-contract-menu')).toBeVisible();
+        await page.getByTestId('create-contract-button').click();
+        await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+        await page
+          .getByTestId('contract-name')
+          .fill('OM Merge Round Trip Contract');
+        await page.fill(
+          '.om-block-editor[contenteditable="true"]',
+          'Original contract description'
+        );
+
+        const contractCard = page.getByTestId('add-contract-card');
+        await contractCard.getByRole('tab', { name: 'SLA' }).click();
+
+        await page.getByTestId('refresh-frequency-interval-input').fill('12');
+        await page.getByTestId('refresh-frequency-unit-select').click();
+        await page
+          .locator('.refresh-frequency-unit-select [title=Hour]')
+          .click();
+
+        await page.getByTestId('max-latency-value-input').fill('3');
+        await page.getByTestId('max-latency-unit-select').click();
+        await page.locator('.max-latency-unit-select [title=Hour]').click();
+
+        const saveContractResponse = page.waitForResponse(
+          '/api/v1/dataContracts*'
+        );
+        await page.getByTestId('save-contract-btn').click();
+        await saveContractResponse;
+
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await expect(page.getByTestId('contract-title')).toBeVisible();
+        await expect(page.getByTestId('contract-title')).toContainText(
+          'OM Merge Round Trip Contract'
+        );
+        await expect(page.getByTestId('contract-sla-card')).toBeVisible({
+          timeout: 10000,
+        });
+      });
+
+      let modifiedYaml: string;
+      const fsModule = await import('fs');
+      const tempPath = `/tmp/om-merge-roundtrip-${Date.now()}.yaml`;
+
+      await test.step('Export as OM format and modify description', async () => {
+        const downloadPromise = page.waitForEvent('download');
+        await page.getByTestId('manage-contract-actions').click();
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+        await page.getByTestId('export-contract-button').click();
+
+        const download = await downloadPromise;
+        await download.saveAs(tempPath);
+
+        const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
+
+        expect(exportedYaml).toContain('name:');
+        expect(exportedYaml).toContain('sla:');
+        expect(exportedYaml).not.toContain('apiVersion: v3.1.0');
+
+        modifiedYaml = exportedYaml.replace(
+          'Original contract description',
+          'Description updated via OM merge import'
+        );
+      });
+
+      await test.step('Import modified OM YAML with merge option', async () => {
+        await page.getByTestId('manage-contract-actions').click();
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+        await page.getByTestId('import-openmetadata-contract-button').click();
+
+        await page.getByTestId('import-contract-modal').waitFor({
+          state: 'visible',
+          timeout: 10000,
+        });
+
+        const fileInput = page.getByTestId('file-upload-input');
+        await fileInput.setInputFiles({
+          name: 'om-merge-contract.yaml',
+          mimeType: 'application/yaml',
+          buffer: Buffer.from(modifiedYaml),
+        });
+
+        await page.getByTestId('file-info-card').waitFor({
+          state: 'visible',
+          timeout: 10000,
+        });
+
+        await expect(
+          page.getByTestId('existing-contract-warning')
+        ).toBeVisible();
+        await expect(
+          page.locator('input[type="radio"][value="merge"]')
+        ).toBeChecked();
+
+        const importButton = page.getByTestId('import-button');
+        await expect(importButton).toBeEnabled({ timeout: 15000 });
+        await importButton.click();
+
+        await toastNotification(page, 'Contract imported successfully');
+      });
+
+      await test.step('Verify merged contract preserves SLA and updates description', async () => {
+        await expect(page.getByTestId('contract-title')).toBeVisible();
+        await expect(page.getByTestId('contract-title')).toContainText(
+          'OM Merge Round Trip Contract'
+        );
+        await expect(page.getByTestId('contract-sla-card')).toBeVisible({
+          timeout: 10000,
+        });
+
+        const descriptionSection = page
+          .getByTestId('markdown-parser')
+          .first();
+        await expect(descriptionSection).toContainText(
+          'Description updated via OM merge import'
+        );
+      });
+
+      fsModule.unlinkSync(tempPath);
+    } finally {
+      await table.delete(apiContext);
+    }
+  });
+
   test('OM format export and import round trip - create, export, delete, reimport', async ({
     page,
   }) => {

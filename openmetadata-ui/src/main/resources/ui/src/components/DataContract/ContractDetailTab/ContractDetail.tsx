@@ -309,8 +309,16 @@ const ContractDetail: React.FC<{
     if (!contract) {
       return;
     }
-
-    downloadContractYamlFile(contract);
+    try {
+      downloadContractYamlFile(contract);
+      showSuccessToast(
+        t('message.entity-exported-successfully', {
+          entity: t('label.contract'),
+        })
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
   }, [contract]);
 
   const handleExportODCSContract = useCallback(async () => {

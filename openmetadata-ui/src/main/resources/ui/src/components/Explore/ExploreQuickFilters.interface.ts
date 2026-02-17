@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Aggregations } from '../../interface/search.interface';
@@ -29,4 +30,5 @@ export interface ExploreQuickFiltersProps {
   defaultQueryFilter?: Record<string, unknown>;
   showSelectedCounts?: boolean; // flag to show counts instead of labels for selected filters
   optionPageSize?: number;
+  additionalActions?: ReactNode;
 }

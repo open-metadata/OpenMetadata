@@ -246,6 +246,14 @@ CREATE TABLE IF NOT EXISTS learning_resource_entity (
   UNIQUE KEY fqnHash (fqnHash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- DELETE old workflow instances where status is null
+DELETE FROM workflow_instance_time_series
+WHERE JSON_EXTRACT(json, '$.status') IS NULL;
+
+-- DELETE old workflow instance state  where status is null
+DELETE FROM workflow_instance_state_time_series
+WHERE JSON_EXTRACT(json, '$.status') IS NULL;
+
 -- Widen entityLink generated column from VARCHAR(255) to TEXT
 -- The entity link from workflow variables can exceed 255 characters for deeply nested entities
 ALTER TABLE workflow_instance_time_series

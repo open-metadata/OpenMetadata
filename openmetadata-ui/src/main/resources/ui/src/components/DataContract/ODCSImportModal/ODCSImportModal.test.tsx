@@ -1866,6 +1866,72 @@ describe('ContractImportModal', () => {
         expect(mockOnSuccess).toHaveBeenCalledWith(mockImportedContract);
       });
     });
+
+    it('should convert termsOfUse from string to object in merge mode patch', async () => {
+      (updateContract as jest.Mock).mockResolvedValue(mockImportedContract);
+
+      const existingWithTerms: DataContract = {
+        ...mockExistingContract,
+        termsOfUse: { content: 'Original terms', inherited: true },
+      };
+
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          existingContract={existingWithTerms}
+          format="openmetadata"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const yamlWithStringTerms = `name: om-contract
+termsOfUse: Updated terms`;
+
+      const file = new File([yamlWithStringTerms], 'om-contract.yaml', {
+        type: 'application/x-yaml',
+      });
+
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+      });
+
+      const importButton = screen.getByRole('button', { name: 'Import' });
+
+      await act(async () => {
+        fireEvent.click(importButton);
+      });
+
+      await waitFor(() => {
+        expect(updateContract).toHaveBeenCalled();
+
+        const [, patchOps] = (updateContract as jest.Mock).mock.calls[0];
+
+        const termsOfUsePatch = patchOps.find(
+          (op: { path: string }) => op.path === '/termsOfUse/content'
+        );
+
+        expect(termsOfUsePatch).toBeDefined();
+        expect(termsOfUsePatch.value).toBe('Updated terms');
+
+        const noStringReplace = patchOps.every(
+          (op: { path: string; value: unknown }) =>
+            !(op.path === '/termsOfUse' && typeof op.value === 'string')
+        );
+
+        expect(noStringReplace).toBe(true);
+      });
+    });
   });
 
   describe('Modal Actions', () => {

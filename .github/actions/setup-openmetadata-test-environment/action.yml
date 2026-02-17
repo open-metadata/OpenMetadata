@@ -19,6 +19,10 @@ inputs:
     description: Ingestion dependency to pass to run_local_docker.sh
     required: false
     default: "mysql,elasticsearch,sample-data"
+  install-server:
+    description: Whether to install Java, Node, and the OpenMetadata server
+    required: false
+    default: "true"
 
 runs:
   using: composite
@@ -33,6 +37,7 @@ runs:
 
     # ---- Setup Java --------------------------------------------------------------
     - name: Setup JDK ${{ inputs.java-version }}
+      if: ${{ inputs.install-server == 'true' }}
       uses: actions/setup-java@v4
       with:
         java-version: ${{ inputs.java-version }}
@@ -41,11 +46,13 @@ runs:
 
     # ---- Setup Node --------------------------------------------------------------
     - name: Use Node.js ${{ inputs.npm-version }}
+      if: ${{ inputs.install-server == 'true' }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.npm-version }}
 
     - name: Install yarn
+      if: ${{ inputs.install-server == 'true' }}
       run: npm install -g yarn
       shell: bash
     # ------------------------------------------------------------------------------
@@ -56,23 +63,32 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+
     - name: Generate Models
       run: |
         python3 -m venv env
         source env/bin/activate
         sudo make install_antlr_cli
-        make install_dev generate
+        uv pip install "${{ github.workspace }}/ingestion[dev]"
+        make generate
       shell: bash
 
     - name: Install Python Dependencies
       run: |
         source env/bin/activate
-        make install_all install_test
+        uv pip install "setuptools<81"
+        uv pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
+        uv pip install "${{ github.workspace }}/ingestion[all]"
+        uv pip install "${{ github.workspace }}/ingestion[test]"
+        uv pip install nox
       shell: bash
     # ------------------------------------------------------------------------------
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
     - name: Start Server and Ingest Sample Data
+      if: ${{ inputs.install-server == 'true' }}
       uses: nick-fields/retry@v3.0.2
       env:
         INGESTION_DEPENDENCY: ${{ inputs.ingestion_dependency }}

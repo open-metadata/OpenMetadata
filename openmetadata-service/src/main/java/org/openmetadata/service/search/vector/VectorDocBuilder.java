@@ -359,15 +359,9 @@ public class VectorDocBuilder {
       Map<String, Object> doc, EntityInterface entity, String entityType) {
     if (entity instanceof Table table) {
       if (table.getColumns() != null) {
-        List<Map<String, String>> columns = new ArrayList<>();
-        for (Column col : table.getColumns()) {
-          Map<String, String> colMap = new HashMap<>();
-          colMap.put("name", col.getName());
-          colMap.put("dataType", col.getDataType() != null ? col.getDataType().value() : null);
-          colMap.put("description", col.getDescription());
-          columns.add(colMap);
-        }
-        doc.put("columns", columns);
+        List<String> columnNames =
+            table.getColumns().stream().map(Column::getName).collect(Collectors.toList());
+        doc.put("columns", columnNames);
       }
     } else if (entity instanceof GlossaryTerm glossaryTerm) {
       if (glossaryTerm.getSynonyms() != null) {

@@ -451,6 +451,11 @@ public class DistributedSearchIndexExecutor {
       workerLatch.await();
       LOG.info("All workers completed for job {}", jobId);
 
+      // Ensure job completion is checked after all workers finish.
+      // This handles the case where 0 partitions were created (e.g., all selected
+      // entity types have 0 records), so no partition completion ever triggers the check.
+      coordinator.checkAndUpdateJobCompletion(jobId);
+
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOG.warn("Execution interrupted for job {}", jobId);

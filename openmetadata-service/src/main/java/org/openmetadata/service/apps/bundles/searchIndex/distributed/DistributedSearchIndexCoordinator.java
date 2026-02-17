@@ -674,11 +674,12 @@ public class DistributedSearchIndexCoordinator {
   }
 
   /**
-   * Check if a job should be marked as complete and update its status.
+   * Check if a job should be marked as complete and update its status. This method is idempotent —
+   * if the job is already in a terminal state, it returns immediately.
    *
    * @param jobId The job ID
    */
-  private void checkAndUpdateJobCompletion(UUID jobId) {
+  public void checkAndUpdateJobCompletion(UUID jobId) {
     SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
 

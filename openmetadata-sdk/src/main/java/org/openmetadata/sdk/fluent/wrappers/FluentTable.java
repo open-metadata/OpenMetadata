@@ -5,8 +5,10 @@ import java.util.List;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 
 /**
@@ -18,11 +20,12 @@ import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
  *     .withDescription("Updated description")
  *     .addTags("PII", "Critical")
  *     .addColumn("new_column", "VARCHAR(100)")
- *     .save();
+ *     .save()
+ *     .get();
  * </pre>
  */
 public class FluentTable {
-  private final Table table;
+  private Table table;
   private final OpenMetadataClient client;
   private boolean modified = false;
 
@@ -86,13 +89,22 @@ public class FluentTable {
   }
 
   /**
-   * Set all tags (replaces existing).
+   * Set all tags (replaces existing) from tag FQN strings.
    */
   public FluentTable withTags(String... tagFQNs) {
     List<TagLabel> tags = new ArrayList<>();
     for (String tagFQN : tagFQNs) {
       tags.add(new TagLabel().withTagFQN(tagFQN).withSource(TagLabel.TagSource.CLASSIFICATION));
     }
+    table.setTags(tags);
+    modified = true;
+    return this;
+  }
+
+  /**
+   * Set all tags (replaces existing) from TagLabel list.
+   */
+  public FluentTable withTags(List<TagLabel> tags) {
     table.setTags(tags);
     modified = true;
     return this;
@@ -191,6 +203,59 @@ public class FluentTable {
   }
 
   /**
+   * Get the underlying table entity (alias for get()).
+   */
+  public Table getTable() {
+    return table;
+  }
+
+  /**
+   * Set owners on the table.
+   */
+  public FluentTable withOwners(List<EntityReference> owners) {
+    table.setOwners(owners);
+    modified = true;
+    return this;
+  }
+
+  /**
+   * Set domains on the table.
+   */
+  public FluentTable withDomains(List<EntityReference> domains) {
+    table.setDomains(domains);
+    modified = true;
+    return this;
+  }
+
+  /**
+   * Set data products on the table.
+   */
+  public FluentTable withDataProducts(List<EntityReference> dataProducts) {
+    table.setDataProducts(dataProducts);
+    modified = true;
+    return this;
+  }
+
+  /**
+   * Replace all columns on the table.
+   */
+  public FluentTable withColumns(List<Column> columns) {
+    table.setColumns(columns);
+    modified = true;
+    return this;
+  }
+
+  /**
+   * Delete this table.
+   */
+  public Tables.TableDeleter delete() {
+    if (table.getId() == null) {
+      throw new IllegalStateException("Table must have an ID to delete");
+    }
+    return new Tables.TableDeleter(client, table.getId().toString());
+  }
+
+  /**
    * Set custom extension data.
    */
   public FluentTable withExtension(Object extension) {
@@ -202,16 +267,18 @@ public class FluentTable {
   /**
    * Save the changes to the server.
    */
-  public Table save() {
+  public FluentTable save() {
     if (!modified) {
-      return table; // No changes to save
+      return this;
     }
 
     if (table.getId() == null) {
       throw new IllegalStateException("Table must have an ID to update");
     }
 
-    return client.tables().update(table.getId().toString(), table);
+    this.table = client.tables().update(table.getId().toString(), table);
+    modified = false;
+    return this;
   }
 
   /**

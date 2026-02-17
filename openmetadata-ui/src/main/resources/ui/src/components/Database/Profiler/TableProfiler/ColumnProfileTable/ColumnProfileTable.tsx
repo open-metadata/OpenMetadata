@@ -134,20 +134,29 @@ const ColumnProfileTable = () => {
         fixed: 'left',
         render: (_, record) => {
           return (
-            <Typography
-              className="break-word p-0"
-              sx={{
-                color: theme.palette.primary.main,
-                fontSize: theme.typography.pxToRem(14),
-                fontWeight: theme.typography.fontWeightMedium,
-                cursor: 'pointer',
-                '&:hover': { textDecoration: 'underline' },
-              }}
-              onClick={() =>
-                updateActiveColumnFqn(record.fullyQualifiedName || '')
-              }>
-              {getEntityName(record)}
-            </Typography>
+            <div
+              className="d-inline-flex flex-column hover-icon-group"
+              style={{ maxWidth: '75%' }}>
+              <div className="d-inline-flex items-start gap-1 flex-column">
+                <div className="d-inline-flex items-baseline">
+                  <Typography
+                    className="break-word p-0 d-block text-link-color"
+                    component="span"
+                    sx={{
+                      color: theme.palette.primary.main,
+                      fontSize: theme.typography.pxToRem(14),
+                      fontWeight: theme.typography.fontWeightMedium,
+                      cursor: 'pointer',
+                      '&:hover': { textDecoration: 'underline' },
+                    }}
+                    onClick={() =>
+                      updateActiveColumnFqn(record.fullyQualifiedName || '')
+                    }>
+                    {getEntityName(record)}
+                  </Typography>
+                </div>
+              </div>
+            </div>
           );
         },
         sorter: (col1, col2) => col1.name.localeCompare(col2.name),
@@ -437,7 +446,7 @@ const ColumnProfileTable = () => {
             emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
-          rowKey="name"
+          rowKey="fullyQualifiedName"
           scroll={{ x: true, y: 500 }}
           searchProps={searchProps}
         />
