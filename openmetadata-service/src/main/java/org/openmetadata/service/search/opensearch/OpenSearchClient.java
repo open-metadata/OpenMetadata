@@ -105,6 +105,8 @@ public class OpenSearchClient implements SearchClient {
   }
 
   public OpenSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
+    OsUtils.installLenientDeserializers();
+
     AwsConfiguration awsConfig = config != null ? config.getAws() : null;
     boolean useIamAuth = isAwsIamAuthEnabled(awsConfig);
 

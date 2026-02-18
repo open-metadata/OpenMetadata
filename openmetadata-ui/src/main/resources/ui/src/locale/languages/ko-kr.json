@@ -908,6 +908,8 @@
     "impact-score": "영향 점수",
     "impacted": "영향받은",
     "impacted-column-plural": "영향받은 열",
+    "impersonated-by": "Impersonated By",
+    "impersonated-by-with-colon": "Impersonated By:",
     "import": "가져오기",
     "import-contract": "계약 가져오기",
     "import-entity": "{{entity}} 가져오기",

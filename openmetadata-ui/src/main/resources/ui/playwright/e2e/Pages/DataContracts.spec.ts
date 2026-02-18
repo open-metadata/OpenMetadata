@@ -81,6 +81,7 @@ import {
   assignGlossaryTerm,
   assignTag,
   assignTier,
+  waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
@@ -1002,7 +1003,12 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
         await toastNotification(page, '"Contract" deleted successfully!');
 
-        await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+        // Wait for loaders to disappear and verify page is ready
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
+          timeout: 10000,
+        });
         await expect(page.getByTestId('add-contract-button')).toBeVisible();
       });
     }

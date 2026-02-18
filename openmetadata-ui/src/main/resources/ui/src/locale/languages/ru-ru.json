@@ -908,6 +908,8 @@
     "impact-score": "Оценка Влияния",
     "impacted": "Затронутый",
     "impacted-column-plural": "Затронутые столбцы",
+    "impersonated-by": "Impersonated By",
+    "impersonated-by-with-colon": "Impersonated By:",
     "import": "Импорт",
     "import-contract": "Импортировать контракт",
     "import-entity": "Импорт объекта «{{entity}}»",

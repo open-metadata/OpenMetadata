@@ -14,17 +14,6 @@ name: Maven Postgres Tests CI
 on:
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
-    paths-ignore:
-      - "openmetadata-service/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "openmetadata-dist/**"
-      - "openmetadata-clients/**"
-      - "openmetadata-sdk/**"
-      - "common/**"
-      - "pom.xml"
-      - "yarn.lock"
-      - "Makefile"
-      - "bootstrap/**"
 
 permissions:
   contents: read

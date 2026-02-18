@@ -908,6 +908,8 @@
     "impact-score": "影响分数",
     "impacted": "受影响的",
     "impacted-column-plural": "受影响的列",
+    "impersonated-by": "Impersonated By",
+    "impersonated-by-with-colon": "Impersonated By:",
     "import": "导入",
     "import-contract": "导入合同",
     "import-entity": "导入{{entity}}",
