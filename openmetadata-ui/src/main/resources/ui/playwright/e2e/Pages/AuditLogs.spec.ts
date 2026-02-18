@@ -17,7 +17,9 @@ import { settingClick } from '../../utils/sidebar';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 const navigateToAuditLogsPage = async (page: Page) => {
+  const logRequest=page.waitForResponse('/api/v1/audit/logs?*');
   await settingClick(page, GlobalSettingOptions.AUDIT_LOGS);
+  await logRequest;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
