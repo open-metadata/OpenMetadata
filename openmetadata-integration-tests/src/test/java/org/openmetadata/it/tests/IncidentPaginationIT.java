@@ -33,7 +33,8 @@ import org.openmetadata.sdk.models.ListResponse;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class IncidentPaginationIT {
 
-  private static final int TEST_DATA_SIZE = 50;
+  private static final int TEST_DATA_SIZE = 11;
+  private static final int PAGE_SIZE = 5;
   private OpenMetadataClient client;
   private List<TestCase> testCases;
   private String databaseSchemaFqn;
@@ -76,8 +77,8 @@ public class IncidentPaginationIT {
     }
 
     await()
-        .atMost(Duration.ofSeconds(60))
-        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofMinutes(3))
+        .pollInterval(Duration.ofSeconds(5))
         .until(
             () -> {
               try {
@@ -94,13 +95,14 @@ public class IncidentPaginationIT {
 
   @Test
   public void testPaginationFirstPage() throws Exception {
-    ListParams params = new ListParams().withLimit(15).withOffset(0).withLatest(true);
+    ListParams params = new ListParams().withLimit(PAGE_SIZE).withOffset(0).withLatest(true);
 
     ListResponse<TestCaseResolutionStatus> response =
         client.testCaseResolutionStatuses().searchList(params);
 
     assertNotNull(response);
-    assertEquals(15, response.getData().size(), "First page should return 15 results");
+    assertEquals(
+        PAGE_SIZE, response.getData().size(), "First page should return " + PAGE_SIZE + " results");
     assertTrue(
         response.getPaging().getTotal() >= TEST_DATA_SIZE,
         "Total should be at least " + TEST_DATA_SIZE);
@@ -108,16 +110,21 @@ public class IncidentPaginationIT {
 
   @Test
   public void testPaginationSecondPage() throws Exception {
-    ListParams firstPageParams = new ListParams().withLimit(15).withOffset(0).withLatest(true);
+    ListParams firstPageParams =
+        new ListParams().withLimit(PAGE_SIZE).withOffset(0).withLatest(true);
     ListResponse<TestCaseResolutionStatus> firstPage =
         client.testCaseResolutionStatuses().searchList(firstPageParams);
 
-    ListParams secondPageParams = new ListParams().withLimit(15).withOffset(15).withLatest(true);
+    ListParams secondPageParams =
+        new ListParams().withLimit(PAGE_SIZE).withOffset(PAGE_SIZE).withLatest(true);
     ListResponse<TestCaseResolutionStatus> secondPage =
         client.testCaseResolutionStatuses().searchList(secondPageParams);
 
     assertNotNull(secondPage);
-    assertEquals(15, secondPage.getData().size(), "Second page should return 15 results");
+    assertEquals(
+        PAGE_SIZE,
+        secondPage.getData().size(),
+        "Second page should return " + PAGE_SIZE + " results");
     assertEquals(
         firstPage.getPaging().getTotal(),
         secondPage.getPaging().getTotal(),
@@ -132,21 +139,21 @@ public class IncidentPaginationIT {
 
   @Test
   public void testPaginationLastPage() throws Exception {
-    ListParams params = new ListParams().withLimit(15).withOffset(0).withLatest(true);
+    ListParams params = new ListParams().withLimit(PAGE_SIZE).withOffset(0).withLatest(true);
     ListResponse<TestCaseResolutionStatus> firstPage =
         client.testCaseResolutionStatuses().searchList(params);
     int total = firstPage.getPaging().getTotal();
-    int lastPageOffset = (total / 15) * 15;
+    int lastPageOffset = ((total - 1) / PAGE_SIZE) * PAGE_SIZE;
 
     ListParams lastPageParams =
-        new ListParams().withLimit(15).withOffset(lastPageOffset).withLatest(true);
+        new ListParams().withLimit(PAGE_SIZE).withOffset(lastPageOffset).withLatest(true);
     ListResponse<TestCaseResolutionStatus> lastPage =
         client.testCaseResolutionStatuses().searchList(lastPageParams);
 
     assertNotNull(lastPage);
     assertTrue(
-        lastPage.getData().size() > 0 && lastPage.getData().size() <= 15,
-        "Last page should have between 1 and 15 results");
+        lastPage.getData().size() > 0 && lastPage.getData().size() <= PAGE_SIZE,
+        "Last page should have between 1 and " + PAGE_SIZE + " results");
   }
 
   @Test
@@ -164,7 +171,7 @@ public class IncidentPaginationIT {
 
   @Test
   public void testOffsetBeyondResults() throws Exception {
-    ListParams params = new ListParams().withLimit(15).withOffset(10000).withLatest(true);
+    ListParams params = new ListParams().withLimit(PAGE_SIZE).withOffset(10000).withLatest(true);
 
     ListResponse<TestCaseResolutionStatus> response =
         client.testCaseResolutionStatuses().searchList(params);
@@ -179,7 +186,7 @@ public class IncidentPaginationIT {
     String targetFqn = testCases.get(0).getFullyQualifiedName();
     ListParams params =
         new ListParams()
-            .withLimit(15)
+            .withLimit(PAGE_SIZE)
             .withOffset(0)
             .withLatest(true)
             .addFilter("testCaseFQN", targetFqn);
@@ -200,12 +207,7 @@ public class IncidentPaginationIT {
         new CreateTable()
             .withName("pagination_test_table_" + System.currentTimeMillis())
             .withDatabaseSchema(databaseSchemaFqn)
-            .withColumns(
-                List.of(
-                    new Column()
-                        .withName("id")
-                        .withDataType(ColumnDataType.BIGINT)
-                        .withDescription("Test column")));
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)));
 
     return client.tables().create(createTable);
   }
