@@ -18,6 +18,9 @@ import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 const navigateToAuditLogsPage = async (page: Page) => {
   await settingClick(page, GlobalSettingOptions.AUDIT_LOGS);
+  await page.waitForResponse((response) =>
+    response.url().includes('/api/v1/audit/logs')
+  );
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
@@ -382,6 +385,8 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
   test('should search audit logs', async ({ page }) => {
     await test.step('Enter search term and press Enter', async () => {
+     
+
       const searchInput = page.getByTestId('audit-log-search');
       await searchInput.fill('admin');
 
