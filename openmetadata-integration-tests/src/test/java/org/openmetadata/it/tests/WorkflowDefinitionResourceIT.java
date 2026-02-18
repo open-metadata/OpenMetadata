@@ -2280,7 +2280,7 @@ public class WorkflowDefinitionResourceIT {
             }
           ],
           "config": {
-            "storeStageStatus": true
+            "storeStageStatus": false
           }
         }
         """
@@ -2304,6 +2304,7 @@ public class WorkflowDefinitionResourceIT {
 
     // Trigger the workflow manually using SDK
     String workflowName = "MultiEntityPeriodicQuery";
+    waitForWorkflowDeployment(client, workflowName);
     client.workflowDefinitions().trigger(workflowName);
     LOG.debug("Workflow triggered successfully");
 
