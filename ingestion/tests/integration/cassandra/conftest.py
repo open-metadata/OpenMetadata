@@ -1,4 +1,5 @@
 import textwrap
+import uuid
 
 import pytest
 from cassandra.cluster import Cluster, DCAwareRoundRobinPolicy
@@ -52,10 +53,10 @@ def session(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def create_service_request(session, tmp_path_factory):
+def create_service_request(session):
     return CreateDatabaseServiceRequest.model_validate(
         {
-            "name": "docker_test_" + tmp_path_factory.mktemp("cassandra").name,
+            "name": f"docker_test_cassandra_{uuid.uuid4().hex[:8]}",
             "serviceType": DatabaseServiceType.Cassandra.value,
             "connection": {
                 "config": {

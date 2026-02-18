@@ -31,8 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # We'll test postgres and opensearch with a single python version to save time and resources
-        py-version: ['3.10']
+        py-version: ['3.10', '3.11']
     steps:
     - name: Free Disk Space (Ubuntu)
       uses: jlumbroso/free-disk-space@main

@@ -506,7 +506,7 @@ test.describe('User with different Roles', () => {
 
     await adminPage
       .locator('.ant-select-item-option-content')
-      .getByText('Application bot role')
+      .getByText('Application bot role', { exact: true })
       .click();
 
     await adminPage.getByTestId('user-profile-edit-roles-save-button').click();

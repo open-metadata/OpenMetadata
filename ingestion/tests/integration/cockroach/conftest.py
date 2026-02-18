@@ -1,5 +1,6 @@
 import os
 import textwrap
+import uuid
 
 import pytest
 from sqlalchemy import create_engine
@@ -18,17 +19,22 @@ from metadata.generated.schema.entity.services.databaseService import (
 
 
 @pytest.fixture(scope="module")
-def cockroach_container(tmp_path_factory):
+def cockroach_container():
     """
     Start a Cockroach container.
     """
     from testcontainers.cockroachdb import CockroachDBContainer
+    from testcontainers.core.config import testcontainers_config
+
+    old_max_tries = testcontainers_config.max_tries
+    testcontainers_config.max_tries = 240
 
     container = CockroachDBContainer(image="cockroachdb/cockroach:v23.1.0")
 
     with (
         try_bind(container, 26257, None) if not os.getenv("CI") else container
     ) as container:
+        testcontainers_config.max_tries = old_max_tries
         engine = create_engine(container.get_connection_url())
         engine.execute(
             textwrap.dedent(
@@ -49,9 +55,9 @@ def cockroach_container(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def create_service_request(cockroach_container, tmp_path_factory):
+def create_service_request(cockroach_container):
     return CreateDatabaseServiceRequest(
-        name="docker_test_" + tmp_path_factory.mktemp("cockroach").name,
+        name=f"docker_test_cockroach_{uuid.uuid4().hex[:8]}",
         serviceType=DatabaseServiceType.Cockroach,
         connection=DatabaseConnection(
             config=CockroachConnection(

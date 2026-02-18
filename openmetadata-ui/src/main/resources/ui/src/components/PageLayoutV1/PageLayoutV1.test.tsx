@@ -54,4 +54,90 @@ describe('PageLayoutV1', () => {
     expect(queryByTestId('left-panelV1')).not.toBeInTheDocument();
     expect(queryByTestId('right-panelV1')).not.toBeInTheDocument();
   });
+
+  it('Should render without fullHeight wrapper by default', () => {
+    const centerText = 'Center content';
+    const { container } = render(
+      <PageLayoutV1 pageTitle="Test Page">{centerText}</PageLayoutV1>
+    );
+
+    expect(container.querySelector('.page-layout-v1-vertical-scroll')).toBeInTheDocument();
+  });
+
+  it('Should render with fullHeight wrapper when fullHeight is true', () => {
+    const centerText = 'Center content';
+    const { container } = render(
+      <PageLayoutV1
+        fullHeight
+        mainContainerClassName="test-full-height"
+        pageTitle="Test Page">
+        {centerText}
+      </PageLayoutV1>
+    );
+
+    expect(container.querySelector('.test-full-height')).toBeInTheDocument();
+    expect(container.querySelector('.page-layout-v1-vertical-scroll')).toBeInTheDocument();
+  });
+
+  it('Should apply default height when fullHeight is true and no pageContainerStyle.height is provided', () => {
+    const centerText = 'Center content';
+    const { getByTestId } = render(
+      <PageLayoutV1 fullHeight pageTitle="Test Page">
+        {centerText}
+      </PageLayoutV1>
+    );
+
+    const pageLayout = getByTestId('page-layout-v1');
+
+    expect(pageLayout).toHaveStyle({ height: 'calc(100vh - 64px)' });
+    expect(pageLayout).toHaveStyle({ overflow: 'hidden' });
+  });
+
+  it('Should not override pageContainerStyle.height when fullHeight is true and height is already provided', () => {
+    const centerText = 'Center content';
+    const customHeight = '500px';
+    const { getByTestId } = render(
+      <PageLayoutV1
+        fullHeight
+        pageContainerStyle={{ height: customHeight }}
+        pageTitle="Test Page">
+        {centerText}
+      </PageLayoutV1>
+    );
+
+    const pageLayout = getByTestId('page-layout-v1');
+
+    expect(pageLayout).toHaveStyle({ height: customHeight });
+  });
+
+  it('Should not apply fullHeight styles when fullHeight is false', () => {
+    const centerText = 'Center content';
+    const { getByTestId } = render(
+      <PageLayoutV1 pageTitle="Test Page">{centerText}</PageLayoutV1>
+    );
+
+    const pageLayout = getByTestId('page-layout-v1');
+
+    expect(pageLayout).not.toHaveStyle({ height: 'calc(100vh - 64px)' });
+  });
+
+  it('Should merge custom pageContainerStyle with fullHeight styles', () => {
+    const centerText = 'Center content';
+    const { getByTestId } = render(
+      <PageLayoutV1
+        fullHeight
+        pageContainerStyle={{ backgroundColor: 'red' }}
+        pageTitle="Test Page">
+        {centerText}
+      </PageLayoutV1>
+    );
+
+    const pageLayout = getByTestId('page-layout-v1');
+
+    expect(pageLayout).toHaveStyle({
+      height: 'calc(100vh - 64px)',
+      overflow: 'hidden',
+      backgroundColor: 'red'
+    });
+  });
 });

@@ -17,7 +17,7 @@ export interface PatternRecognizer {
     /**
      * List of context words that can help boost confidence score
      */
-    context: string[];
+    context?: string[];
     /**
      * List of patterns
      */

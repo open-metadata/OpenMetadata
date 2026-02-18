@@ -1,4 +1,5 @@
 import os
+import uuid
 from datetime import datetime
 
 import pytest
@@ -44,9 +45,9 @@ def mongodbContainer(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def create_service_request(mongodbContainer, tmp_path_factory):
+def create_service_request(mongodbContainer):
     return CreateDatabaseServiceRequest(
-        name="docker_test_" + tmp_path_factory.mktemp("mongodb").name,
+        name=f"docker_test_mongodb_{uuid.uuid4().hex[:8]}",
         serviceType=DatabaseServiceType.MongoDB,
         connection=DatabaseConnection(
             config=MongoDBConnection(
