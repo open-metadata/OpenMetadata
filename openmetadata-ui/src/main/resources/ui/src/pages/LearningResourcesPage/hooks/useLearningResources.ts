@@ -85,10 +85,10 @@ function buildListParams(
   return {
     limit: pageSize,
     fields: FIELDS,
-    q: searchText || undefined,
+    search: searchText || undefined,
     category: filterState.category?.length ? filterState.category : undefined,
     pageId: filterState.context?.length ? filterState.context : undefined,
-    type: filterState.type?.length ? filterState.type : undefined,
+    resourceType: filterState.type?.length ? filterState.type : undefined,
     status: filterState.status?.length ? filterState.status : undefined,
     ...(hasCursor ? cursor : undefined),
   };
