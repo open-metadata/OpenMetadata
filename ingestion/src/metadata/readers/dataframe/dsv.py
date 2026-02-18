@@ -43,10 +43,6 @@ TSV_SEPARATOR = "\t"
 CSV_SEPARATOR = ","
 logger = ingestion_logger()
 
-# Set the limit to 1,000,000,000 bytes (approximately 1GB)
-# This allows the Python engine to read extremely large individual cells.
-csv.field_size_limit(1000000000)
-
 
 class DSVDataFrameReader(DataFrameReader):
     """
@@ -145,7 +141,6 @@ class DSVDataFrameReader(DataFrameReader):
                 compression=compression,
                 encoding_errors="ignore",
                 escapechar="\\",
-                engine="python",
             ) as reader:
                 for chunks in reader:
                     chunks = self._fix_malformed_quoted_chunk(
