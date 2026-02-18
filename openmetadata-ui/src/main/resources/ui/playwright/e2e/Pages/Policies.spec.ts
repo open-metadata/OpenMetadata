@@ -31,6 +31,7 @@ import {
   PolicyRulesType,
 } from '../../support/access-control/PoliciesClass';
 import {
+  closeFirstPopupAlert,
   descriptionBox,
   getApiContext,
   redirectToHomePage,
@@ -295,8 +296,7 @@ test.describe('Policy page should work properly', () => {
       );
 
       // Close the toast to prevent it from interfering with the next step
-      await page.getByTestId('alert-icon-close').click();
-      await page.getByTestId('alert-bar').waitFor({ state: 'detached' });
+      await closeFirstPopupAlert(page);
     });
 
     await test.step('Delete created policy', async () => {
