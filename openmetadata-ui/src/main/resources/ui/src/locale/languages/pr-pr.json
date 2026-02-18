@@ -908,6 +908,8 @@
     "impact-score": "Pontuação de Impacto",
     "impacted": "تحت تأثیر",
     "impacted-column-plural": "ستون‌های تحت تأثیر",
+    "impersonated-by": "Impersonated By",
+    "impersonated-by-with-colon": "Impersonated By:",
     "import": "وارد کردن",
     "import-contract": "وارد کردن قرارداد",
     "import-entity": "وارد کردن {{entity}}",

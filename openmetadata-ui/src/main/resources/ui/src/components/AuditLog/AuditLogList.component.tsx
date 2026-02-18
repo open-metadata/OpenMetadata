@@ -457,6 +457,21 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
             <Typography.Text className="event-type" data-testid="event-type">
               {eventType}
             </Typography.Text>
+            {log.impersonatedBy && (
+              <>
+                <Typography.Text className="event-separator">–</Typography.Text>
+                <Typography.Text
+                  className="impersonated-by"
+                  data-testid="impersonated-by">
+                  {t('label.impersonated-by-with-colon')}
+                </Typography.Text>{' '}
+                <Link
+                  className="user-link"
+                  to={getUserPath(log.impersonatedBy)}>
+                  {log.impersonatedBy}
+                </Link>
+              </>
+            )}
           </Space>
         </div>
         <div className="item-description">

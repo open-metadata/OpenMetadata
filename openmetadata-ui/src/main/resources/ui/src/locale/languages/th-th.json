@@ -908,6 +908,8 @@
     "impact-score": "คะแนนผลกระทบ",
     "impacted": "ได้รับผลกระทบ",
     "impacted-column-plural": "คอลัมน์ที่ได้รับผลกระทบ",
+    "impersonated-by": "Impersonated By",
+    "impersonated-by-with-colon": "Impersonated By:",
     "import": "นำเข้า",
     "import-contract": "นำเข้าสัญญา",
     "import-entity": "นำเข้า {{entity}}",
