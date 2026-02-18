@@ -386,8 +386,6 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
   test('should search audit logs', async ({ page }) => {
     await test.step('Enter search term and press Enter', async () => {
-     
-
       const searchInput = page.getByTestId('audit-log-search');
       await searchInput.fill('admin');
 
