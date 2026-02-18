@@ -293,6 +293,10 @@ test.describe('Policy page should work properly', () => {
         page,
         ERROR_MESSAGE_VALIDATION.lastRuleCannotBeRemoved
       );
+
+      // Close the toast to prevent it from interfering with the next step
+      await page.getByTestId('alert-icon-close').click();
+      await page.getByTestId('alert-bar').waitFor({ state: 'detached' });
     });
 
     await test.step('Delete created policy', async () => {
