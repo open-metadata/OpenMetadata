@@ -310,9 +310,11 @@ test.describe('Policy page should work properly', () => {
       await getElementWithPagination(page, policyElement, false);
 
       // Click on delete action button
-      await page
-        .locator(`[data-testid="delete-action-${UPDATED_POLICY_NAME}"]`)
-        .click({ force: true });
+      const deleteButton = page.locator(
+        `[data-testid="delete-action-${UPDATED_POLICY_NAME}"]`
+      );
+      await deleteButton.waitFor({ state: 'visible' });
+      await deleteButton.click();
 
       await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
