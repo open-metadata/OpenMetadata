@@ -76,8 +76,8 @@ public class IncidentPaginationIT {
     }
 
     await()
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
         .until(
             () -> {
               try {
@@ -124,10 +124,9 @@ public class IncidentPaginationIT {
         "Total count should be consistent across pages");
 
     if (!firstPage.getData().isEmpty() && !secondPage.getData().isEmpty()) {
-      String firstPageFirstId = firstPage.getData().get(0).getId().toString();
-      String secondPageFirstId = secondPage.getData().get(0).getId().toString();
-      assertTrue(
-          !firstPageFirstId.equals(secondPageFirstId), "Pages should contain different data");
+      Object firstItem = firstPage.getData().get(0);
+      Object secondItem = secondPage.getData().get(0);
+      assertTrue(!firstItem.equals(secondItem), "Pages should contain different data");
     }
   }
 

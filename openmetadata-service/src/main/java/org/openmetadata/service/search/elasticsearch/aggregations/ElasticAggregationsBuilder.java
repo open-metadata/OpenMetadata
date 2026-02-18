@@ -4,6 +4,7 @@ import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.json.JsonpMapper;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.openmetadata.service.search.SearchAggregationNode;
 
@@ -35,7 +36,7 @@ public class ElasticAggregationsBuilder {
     ElasticAggregations elasticAggregation = getAggregation(type);
     elasticAggregation.createAggregation(node);
 
-    Map<String, Aggregation> subAggregations = new HashMap<>();
+    Map<String, Aggregation> subAggregations = new LinkedHashMap<>();
     for (SearchAggregationNode child : node.getChildren()) {
       buildAggregation(child, elasticAggregation, subAggregations);
     }
@@ -53,7 +54,7 @@ public class ElasticAggregationsBuilder {
 
       if (elasticAggregation.getAggregationName() != null) {
         String aggName = elasticAggregation.getAggregationName();
-        Map<String, Aggregation> wrappedSubAggs = new HashMap<>(subAggregations);
+        Map<String, Aggregation> wrappedSubAggs = new LinkedHashMap<>(subAggregations);
         wrappedSubAggs.put(aggName + "_inner", elasticAggregation.getAggregation());
 
         finalAggregation =
