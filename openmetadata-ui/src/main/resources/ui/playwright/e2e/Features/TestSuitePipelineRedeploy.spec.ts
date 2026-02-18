@@ -69,11 +69,7 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await expect(page.getByRole('button', { name: 'Re Deploy' })).toBeEnabled();
 
-    const redeployResponse = page.waitForRequest(
-      (request) =>
-        request.url().includes('/api/v1/services/ingestionPipelines/deploy') &&
-        request.method() === 'POST'
-    );
+    const redeployResponse = page.waitForResponse('/api/v1/services/ingestionPipelines/deploy/*');
     await page.getByRole('button', { name: 'Re Deploy' }).click();
     await redeployResponse;
 

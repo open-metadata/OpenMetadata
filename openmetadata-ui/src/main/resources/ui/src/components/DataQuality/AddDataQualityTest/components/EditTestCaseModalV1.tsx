@@ -357,6 +357,13 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
         };
       }
 
+      if (param?.dataType === TestDataType.Boolean) {
+        return {
+          ...acc,
+          [curr.name || '']: curr.value === 'true',
+        };
+      }
+
       return {
         ...acc,
         [curr.name || '']: curr.value,

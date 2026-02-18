@@ -75,32 +75,6 @@ import { LearningResourceCard } from '../../components/Learning/LearningResource
 import { ResourcePlayerModal } from '../../components/Learning/ResourcePlayer/ResourcePlayerModal.component';
 import { LearningResourceForm } from './LearningResourceForm.component';
 
-import { styled } from '@mui/material/styles';
-
-const StyledPageLayout = styled(PageLayoutV1)(() => ({
-  '& .page-layout-v1-vertical-scroll.learning-resources-page-layout': {
-    overflow: 'hidden',
-    minHeight: 0,
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  '& .learning-resources-page-layout > .ant-row': {
-    flex: 1,
-    minHeight: 0,
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  '& .learning-resources-page-layout .ant-row .ant-col': {
-    flex: 'none',
-  },
-  '& .learning-resources-page-layout .ant-row .ant-col:last-child': {
-    minHeight: 0,
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-  },
-}));
-
 const getResourceTypeIcon = (type: string) => {
   const icons: Record<
     string,
@@ -465,12 +439,9 @@ export const LearningResourcesPage: React.FC = () => {
   );
 
   return (
-    <StyledPageLayout
+    <PageLayoutV1
+      fullHeight
       mainContainerClassName="learning-resources-page-layout"
-      pageContainerStyle={{
-        height: 'calc(100vh - 64px)',
-        overflow: 'hidden',
-      }}
       pageTitle={t('label.learning-resource')}>
       <Box
         data-testid="learning-resources-page"
@@ -753,6 +724,6 @@ export const LearningResourcesPage: React.FC = () => {
           />
         )}
       </Box>
-    </StyledPageLayout>
+    </PageLayoutV1>
   );
 };
