@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
@@ -106,19 +107,20 @@ public abstract class AbstractEventConsumer
         return;
       }
 
-      if (this.eventSubscription.getDestinations() == null
-          || this.eventSubscription.getDestinations().isEmpty()) {
-        LOG.error(
-            "EventSubscription {} has no destinations configured",
-            this.eventSubscription.getName());
-        return;
-      }
-
       EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
       this.offset = eventSubscriptionOffset.getCurrentOffset();
       this.startingOffset = eventSubscriptionOffset.getStartingOffset();
       this.alertMetrics = loadInitialMetrics();
       this.destinationMap = loadDestinationsMap(context);
+
+      // We do not log warning for custom alert type. eg: Reverse Metadata
+      if (this.destinationMap.isEmpty()
+          && this.eventSubscription.getAlertType() != CreateEventSubscription.AlertType.CUSTOM) {
+        LOG.warn(
+            "EventSubscription {} has no destinations configured",
+            this.eventSubscription.getName());
+      }
+
       this.doInit(context);
     } catch (Exception e) {
       LOG.error("Failed to initialize EventConsumer from JobDataMap", e);
@@ -204,6 +206,9 @@ public abstract class AbstractEventConsumer
 
   private Map<UUID, Destination<ChangeEvent>> loadDestinationsMap(JobExecutionContext context) {
     Map<UUID, Destination<ChangeEvent>> dMap = new HashMap<>();
+    if (eventSubscription.getDestinations() == null) {
+      return dMap;
+    }
     for (SubscriptionDestination subscriptionDest : eventSubscription.getDestinations()) {
       dMap.put(
           subscriptionDest.getId(), AlertFactory.getAlert(eventSubscription, subscriptionDest));

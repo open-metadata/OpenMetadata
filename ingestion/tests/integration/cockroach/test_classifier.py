@@ -1,4 +1,3 @@
-import sys
 from copy import deepcopy
 from logging import getLogger
 from time import sleep
@@ -12,9 +11,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificati
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
-
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
 
 logger = getLogger(__name__)
 
