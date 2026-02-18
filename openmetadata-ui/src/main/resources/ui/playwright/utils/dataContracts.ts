@@ -73,10 +73,19 @@ export const validateDataContractInsideBundleTestSuites = async (
 
   await page.waitForLoadState('networkidle');
 
+  const bundleSuitesResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testSuites/search/list') &&
+      response.request().method() === 'GET' &&
+      response.status() === 200
+  );
+
   await page
     .locator('.ant-radio-button-wrapper')
     .filter({ hasText: 'Bundle Suites' })
     .click();
+
+  await bundleSuitesResponse;
 
   await expect(page.getByTestId('test-suite-table')).toBeVisible();
 };

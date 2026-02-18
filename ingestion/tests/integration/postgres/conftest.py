@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 
 from _openmetadata_testutils.postgres.conftest import postgres_container
@@ -17,9 +19,9 @@ from metadata.generated.schema.entity.services.databaseService import (
 
 
 @pytest.fixture(scope="module")
-def create_service_request(postgres_container, tmp_path_factory):
+def create_service_request(postgres_container):
     return CreateDatabaseServiceRequest(
-        name="docker_test_" + tmp_path_factory.mktemp("postgres").name,
+        name=f"docker_test_postgres_{uuid.uuid4().hex[:8]}",
         serviceType=DatabaseServiceType.Postgres,
         connection=DatabaseConnection(
             config=PostgresConnection(
