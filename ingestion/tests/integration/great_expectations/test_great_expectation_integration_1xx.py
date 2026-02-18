@@ -116,6 +116,19 @@ class TestGreatExpectationIntegration1xx(TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up class by ingesting metadata"""
+        gx_base_dir = os.path.join(os.path.dirname(__file__), "gx")
+        gx_expectations_dir = os.path.join(gx_base_dir, "expectations")
+        gx_checkpoints_dir = os.path.join(gx_base_dir, "checkpoints")
+
+        for suite_name in ["users_query_suite.json", "orders_query_suite.json"]:
+            suite_file = os.path.join(gx_expectations_dir, suite_name)
+            if os.path.exists(suite_file):
+                os.remove(suite_file)
+
+        checkpoint_file = os.path.join(gx_checkpoints_dir, "multi_table_checkpoint.yml")
+        if os.path.exists(checkpoint_file):
+            os.remove(checkpoint_file)
+
         try:
             User.__table__.create(bind=cls.engine)
         except Exception as exc:
@@ -125,6 +138,10 @@ class TestGreatExpectationIntegration1xx(TestCase):
             Order.__table__.create(bind=cls.engine)
         except Exception as exc:
             LOGGER.warning(f"Table Already exists: {exc}")
+
+        cls.session.query(Order).delete()
+        cls.session.query(User).delete()
+        cls.session.commit()
 
         users_data = [
             User(
