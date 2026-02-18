@@ -809,7 +809,7 @@ export const fillRowDetails = async (
 
   await page
     .getByTestId('loader')
-    .waitFor({ state: 'detached' })
+    .waitFor({ state: 'detached' });
 
   const certRadioBtn = page.getByTestId(`radio-btn-${row.certification}`);
   await certRadioBtn.waitFor({ state: 'visible' });
