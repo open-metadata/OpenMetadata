@@ -29,6 +29,10 @@ import {
   toastNotification,
 } from '../../utils/common';
 import {
+  setAllSystemCertificationTagsDisabled,
+  setCertificationClassificationDisabled,
+} from '../../utils/certification';
+import {
   createColumnRowDetails,
   createColumnRowDetailsWithEncloseDot,
   createCustomPropertiesForEntity,
@@ -124,6 +128,8 @@ test.describe('Bulk Import Export', () => {
     await glossaryTerm.create(apiContext);
     await domain1.create(apiContext);
     await domain2.create(apiContext);
+    await setCertificationClassificationDisabled(apiContext, false);
+    await setAllSystemCertificationTagsDisabled(apiContext, false);
     await afterAction();
   });
 
@@ -543,12 +549,17 @@ test.describe('Bulk Import Export', () => {
         );
 
         await page.getByRole('button', { name: 'Next' }).click();
-        await page.waitForSelector('text=Import is in progress.', {
-          state: 'attached',
+
+        // The import may complete before the progress banner appears,
+        // so wait for either the banner or the final results, whichever comes first.
+        const progressBanner = page.locator('.message-banner-wrapper');
+        const resultsRow = page.getByTestId('processed-row');
+        await progressBanner.or(resultsRow).waitFor({
+          state: 'visible'
         });
-        await page.waitForSelector('text=Import is in progress.', {
-          state: 'detached',
-        });
+
+        // If the progress banner appeared, wait for it to go away.
+        await progressBanner.waitFor({ state: 'detached' });
 
         await validateImportStatus(page, {
           passed: '13',

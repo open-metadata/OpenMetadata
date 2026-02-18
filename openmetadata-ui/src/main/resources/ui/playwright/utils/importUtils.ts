@@ -807,6 +807,10 @@ export const fillRowDetails = async (
   await page.keyboard.press('Enter', { delay: 100 });
   await certificationResponse;
 
+  await page
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' })
+
   const certRadioBtn = page.getByTestId(`radio-btn-${row.certification}`);
   await certRadioBtn.waitFor({ state: 'visible' });
   await certRadioBtn.click();
