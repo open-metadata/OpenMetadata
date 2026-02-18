@@ -10,20 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.audit-log-raw-json {
-  code {
-    background-color: #f5f5f5;
-    border-radius: 4px;
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-    font-size: 12px;
-    padding: 2px 4px;
-    white-space: pre-wrap;
-    word-break: break-all;
-  }
-}
 
-.export-progress-container {
-  padding: 12px;
-  background-color: #f5f5f5;
-  border-radius: 6px;
-}
+import { DateFilterType } from 'Models';
+
+export const AUDIT_LOG_TIME_FILTER_RANGE: DateFilterType = {
+  yesterday: {
+    days: 1,
+    title: 'label.yesterday',
+  },
+  last7days: {
+    days: 7,
+    title: 'label.last-number-of-days',
+    titleData: {
+      numberOfDays: 7,
+    },
+  },
+  last30days: {
+    days: 30,
+    title: 'label.last-number-of-days',
+    titleData: {
+      numberOfDays: 30,
+    },
+  },
+};
