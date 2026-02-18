@@ -30,3 +30,4 @@ export const BULK_IMPORT_EXPORT_SQL_QUERY = `CREATE OR REPLACE PROCEDURE insert_
 END;$$;`;
 
 export const RDG_ACTIVE_CELL_SELECTOR = '.rdg-cell[aria-selected="true"]';
+export const MAX_COLUMN_NAVIGATION_RETRIES = 10;

@@ -12,7 +12,6 @@
 """
 Test how we create and update status in Ingestion Pipelines
 """
-import sys
 
 import pytest
 
@@ -28,109 +27,115 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.ingestion.api.status import TruncatedStackTraceError
 
-if sys.version_info < (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
 
+class TestOMetaIngestionPipelineAPI:
+    """
+    Ingestion Pipeline API integration tests.
+    Tests pipeline status creation and error handling.
 
-def test_create_ingestion_pipeline(workflow) -> None:
-    """We can create an ingestion pipeline"""
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    - workflow: MetadataWorkflow (module scope)
+    """
 
-    ingestion_pipeline: IngestionPipeline = workflow.ingestion_pipeline
-    assert ingestion_pipeline is not None
-    assert ingestion_pipeline.name.root == "ingestion"
+    def test_create_ingestion_pipeline(self, workflow):
+        """
+        We can create an ingestion pipeline
+        """
+        ingestion_pipeline: IngestionPipeline = workflow.ingestion_pipeline
+        assert ingestion_pipeline is not None
+        assert ingestion_pipeline.name.root == "ingestion"
 
+    def test_add_status(self, metadata, workflow):
+        """
+        We can add status to the ingestion pipeline
+        """
+        ingestion_pipeline: IngestionPipeline = workflow.ingestion_pipeline
+        assert ingestion_pipeline is not None
 
-def test_add_status(metadata, workflow) -> None:
-    """We can add status to the ingestion pipeline"""
+        ingestion_status = IngestionStatus(
+            [
+                StepSummary(
+                    name="source",
+                    failures=[
+                        StackTraceError(
+                            name="error",
+                            error="error",
+                            stackTrace="stackTrace",
+                        )
+                    ],
+                )
+            ]
+        )
 
-    ingestion_pipeline: IngestionPipeline = workflow.ingestion_pipeline
-    assert ingestion_pipeline is not None
+        pipeline_status: PipelineStatus = workflow._new_pipeline_status(
+            PipelineState.success
+        )
+        pipeline_status.status = ingestion_status
 
-    # We can send a status to the ingestion pipeline
-    ingestion_status = IngestionStatus(
-        [
-            StepSummary(
-                name="source",
-                failures=[
-                    StackTraceError(
-                        name="error",
-                        error="error",
-                        stackTrace="stackTrace",
-                    )
-                ],
-            )
-        ]
-    )
-
-    pipeline_status: PipelineStatus = workflow._new_pipeline_status(
-        PipelineState.success
-    )
-    pipeline_status.status = ingestion_status
-
-    # Gets properly created
-    metadata.create_or_update_pipeline_status(
-        ingestion_pipeline.fullyQualifiedName.root, pipeline_status
-    )
-
-    real_pipeline_status: PipelineStatus = metadata.get_pipeline_status(
-        ingestion_pipeline.fullyQualifiedName.root, workflow.run_id
-    )
-    assert real_pipeline_status.pipelineState == PipelineState.success
-
-    # If the status has too long names/errors it will fail
-    too_long_status = IngestionStatus(
-        [
-            StepSummary(
-                name="source",
-                failures=[
-                    StackTraceError(
-                        name="error",
-                        error="error" * 20_000_000,
-                        stackTrace="stackTrace",
-                    )
-                ],
-            )
-        ]
-    )
-
-    pipeline_status: PipelineStatus = workflow._new_pipeline_status(
-        PipelineState.success
-    )
-    pipeline_status.status = too_long_status
-
-    # We get a bad request error
-    with pytest.raises(Exception) as exc:
         metadata.create_or_update_pipeline_status(
             ingestion_pipeline.fullyQualifiedName.root, pipeline_status
         )
 
-    assert ("exceeds the maximum allowed" in str(exc.value)) or (
-        "Connection aborted." in str(exc.value)
-    )
+        real_pipeline_status: PipelineStatus = metadata.get_pipeline_status(
+            ingestion_pipeline.fullyQualifiedName.root, workflow.run_id
+        )
+        assert real_pipeline_status.pipelineState == PipelineState.success
 
-    # If we truncate the status it all runs good
-    truncated_long_status = IngestionStatus(
-        [
-            StepSummary(
-                name="source",
-                failures=[
-                    TruncatedStackTraceError(
-                        name="error",
-                        error="error" * 20_000_000,
-                        stackTrace="stackTrace",
-                    )
-                ],
+        too_long_status = IngestionStatus(
+            [
+                StepSummary(
+                    name="source",
+                    failures=[
+                        StackTraceError(
+                            name="error",
+                            error="error" * 20_000_000,
+                            stackTrace="stackTrace",
+                        )
+                    ],
+                )
+            ]
+        )
+
+        pipeline_status: PipelineStatus = workflow._new_pipeline_status(
+            PipelineState.success
+        )
+        pipeline_status.status = too_long_status
+
+        with pytest.raises(Exception) as exc:
+            metadata.create_or_update_pipeline_status(
+                ingestion_pipeline.fullyQualifiedName.root, pipeline_status
             )
-        ]
-    )
 
-    pipeline_status: PipelineStatus = workflow._new_pipeline_status(
-        PipelineState.success
-    )
-    pipeline_status.status = truncated_long_status
+        assert ("exceeds the maximum allowed" in str(exc.value)) or (
+            "Connection aborted." in str(exc.value)
+        )
 
-    res = metadata.create_or_update_pipeline_status(
-        ingestion_pipeline.fullyQualifiedName.root, pipeline_status
-    )
+        truncated_long_status = IngestionStatus(
+            [
+                StepSummary(
+                    name="source",
+                    failures=[
+                        TruncatedStackTraceError(
+                            name="error",
+                            error="error" * 20_000_000,
+                            stackTrace="stackTrace",
+                        )
+                    ],
+                )
+            ]
+        )
 
-    assert res["entityFullyQualifiedName"] == ingestion_pipeline.fullyQualifiedName.root
+        pipeline_status: PipelineStatus = workflow._new_pipeline_status(
+            PipelineState.success
+        )
+        pipeline_status.status = truncated_long_status
+
+        res = metadata.create_or_update_pipeline_status(
+            ingestion_pipeline.fullyQualifiedName.root, pipeline_status
+        )
+
+        assert (
+            res["entityFullyQualifiedName"]
+            == ingestion_pipeline.fullyQualifiedName.root
+        )

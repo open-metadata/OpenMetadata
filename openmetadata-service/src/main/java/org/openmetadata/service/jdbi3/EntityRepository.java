@@ -105,6 +105,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.URI;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -7944,12 +7945,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
           } catch (Exception e) {
             long entityDuration = System.nanoTime() - entityStartTime;
             entityLatenciesNanos.add(entityDuration);
-            recordEntityMetrics(entityType, entityDuration, 0, false);
-            failedRequests.add(
-                new BulkResponse()
-                    .withRequest(entity.getFullyQualifiedName())
-                    .withStatus(Status.BAD_REQUEST.getStatusCode())
-                    .withMessage(e.getMessage()));
+            if (isDuplicateKeyException(e)) {
+              LOG.debug(
+                  "Entity already exists (duplicate key), treating as success: {}",
+                  entity.getFullyQualifiedName());
+              recordEntityMetrics(entityType, entityDuration, 0, true);
+              successRequests.add(
+                  new BulkResponse()
+                      .withRequest(entity.getFullyQualifiedName())
+                      .withStatus(Status.OK.getStatusCode()));
+            } else {
+              recordEntityMetrics(entityType, entityDuration, 0, false);
+              failedRequests.add(
+                  new BulkResponse()
+                      .withRequest(entity.getFullyQualifiedName())
+                      .withStatus(Status.BAD_REQUEST.getStatusCode())
+                      .withMessage(e.getMessage()));
+            }
           }
         }
       }
@@ -8118,6 +8130,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public BulkOperationResult bulkCreateOrUpdateEntities(
       UriInfo uriInfo, List<T> entities, String userName, Map<String, T> existingByFqn) {
     return bulkCreateOrUpdateEntitiesSequential(uriInfo, entities, userName, existingByFqn);
+  }
+
+  private static boolean isDuplicateKeyException(Exception e) {
+    Throwable cause = e.getCause();
+    if (cause instanceof SQLException sqlEx) {
+      // MySQL: error code 1062 = ER_DUP_ENTRY
+      // PostgreSQL: SQL state "23505" = unique_violation
+      return sqlEx.getErrorCode() == 1062 || "23505".equals(sqlEx.getSQLState());
+    }
+    return false;
   }
 
   private void recordEntityMetrics(
