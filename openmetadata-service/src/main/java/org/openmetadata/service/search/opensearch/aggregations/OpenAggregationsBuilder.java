@@ -76,6 +76,7 @@ public class OpenAggregationsBuilder {
       case "filter" -> new OpenFilterAggregations(mapper);
       case "value_count" -> new OpenValueCountAggregations();
       case "cardinality" -> new OpenCardinalityAggregations();
+      case "stats_bucket" -> new OpenStatsBucketAggregations();
       case "nested" -> new OpenNestedAggregations();
       case "top_hits" -> new OpenTopHitsAggregations();
       default -> throw new IllegalArgumentException("Invalid aggregation type: " + aggregationType);

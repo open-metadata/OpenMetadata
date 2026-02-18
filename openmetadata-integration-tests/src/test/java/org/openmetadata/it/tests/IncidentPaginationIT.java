@@ -1,9 +1,11 @@
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
@@ -18,6 +20,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusDetails;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -38,15 +41,35 @@ public class IncidentPaginationIT {
     testCases = new ArrayList<>();
 
     Table table = createTestTable();
+    String testDefFqn =
+        client
+            .testDefinitions()
+            .list(new ListParams().withLimit(1))
+            .getData()
+            .get(0)
+            .getFullyQualifiedName();
 
     for (int i = 0; i < TEST_DATA_SIZE; i++) {
-      TestCase testCase = createTestCase(table, i);
+      TestCase testCase = createTestCase(table, i, testDefFqn);
       testCases.add(testCase);
-
       createIncidentStatus(testCase);
     }
 
-    Thread.sleep(2000);
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(
+            () -> {
+              try {
+                ListParams params =
+                    new ListParams().withLimit(TEST_DATA_SIZE + 10).withLatest(true);
+                ListResponse<TestCaseResolutionStatus> response =
+                    client.testCaseResolutionStatuses().searchList(params);
+                return response.getPaging().getTotal() >= TEST_DATA_SIZE;
+              } catch (Exception e) {
+                return false;
+              }
+            });
   }
 
   @Test
@@ -54,7 +77,7 @@ public class IncidentPaginationIT {
     ListParams params = new ListParams().withLimit(15).withOffset(0).withLatest(true);
 
     ListResponse<TestCaseResolutionStatus> response =
-        client.testCaseResolutionStatuses().list(params);
+        client.testCaseResolutionStatuses().searchList(params);
 
     assertNotNull(response);
     assertEquals(15, response.getData().size(), "First page should return 15 results");
@@ -67,11 +90,11 @@ public class IncidentPaginationIT {
   public void testPaginationSecondPage() throws Exception {
     ListParams firstPageParams = new ListParams().withLimit(15).withOffset(0).withLatest(true);
     ListResponse<TestCaseResolutionStatus> firstPage =
-        client.testCaseResolutionStatuses().list(firstPageParams);
+        client.testCaseResolutionStatuses().searchList(firstPageParams);
 
     ListParams secondPageParams = new ListParams().withLimit(15).withOffset(15).withLatest(true);
     ListResponse<TestCaseResolutionStatus> secondPage =
-        client.testCaseResolutionStatuses().list(secondPageParams);
+        client.testCaseResolutionStatuses().searchList(secondPageParams);
 
     assertNotNull(secondPage);
     assertEquals(15, secondPage.getData().size(), "Second page should return 15 results");
@@ -92,14 +115,14 @@ public class IncidentPaginationIT {
   public void testPaginationLastPage() throws Exception {
     ListParams params = new ListParams().withLimit(15).withOffset(0).withLatest(true);
     ListResponse<TestCaseResolutionStatus> firstPage =
-        client.testCaseResolutionStatuses().list(params);
+        client.testCaseResolutionStatuses().searchList(params);
     int total = firstPage.getPaging().getTotal();
     int lastPageOffset = (total / 15) * 15;
 
     ListParams lastPageParams =
         new ListParams().withLimit(15).withOffset(lastPageOffset).withLatest(true);
     ListResponse<TestCaseResolutionStatus> lastPage =
-        client.testCaseResolutionStatuses().list(lastPageParams);
+        client.testCaseResolutionStatuses().searchList(lastPageParams);
 
     assertNotNull(lastPage);
     assertTrue(
@@ -112,12 +135,12 @@ public class IncidentPaginationIT {
     ListParams params = new ListParams().withLatest(true);
 
     ListResponse<TestCaseResolutionStatus> response =
-        client.testCaseResolutionStatuses().list(params);
+        client.testCaseResolutionStatuses().searchList(params);
 
     assertNotNull(response);
     assertTrue(
-        response.getData().size() >= TEST_DATA_SIZE,
-        "Without pagination params should return all results");
+        response.getPaging().getTotal() >= TEST_DATA_SIZE,
+        "Total should be at least " + TEST_DATA_SIZE + " even without explicit pagination params");
   }
 
   @Test
@@ -125,11 +148,32 @@ public class IncidentPaginationIT {
     ListParams params = new ListParams().withLimit(15).withOffset(10000).withLatest(true);
 
     ListResponse<TestCaseResolutionStatus> response =
-        client.testCaseResolutionStatuses().list(params);
+        client.testCaseResolutionStatuses().searchList(params);
 
     assertNotNull(response);
     assertEquals(0, response.getData().size(), "Offset beyond results should return empty list");
     assertTrue(response.getPaging().getTotal() > 0, "Total should still be accurate");
+  }
+
+  @Test
+  public void testFilteredTotalCountIsExact() throws Exception {
+    String targetFqn = testCases.get(0).getFullyQualifiedName();
+    ListParams params =
+        new ListParams()
+            .withLimit(15)
+            .withOffset(0)
+            .withLatest(true)
+            .addFilter("testCaseFQN", targetFqn);
+
+    ListResponse<TestCaseResolutionStatus> response =
+        client.testCaseResolutionStatuses().searchList(params);
+
+    assertNotNull(response);
+    assertEquals(1, response.getData().size(), "Filter should return exactly 1 incident");
+    assertEquals(
+        1,
+        response.getPaging().getTotal(),
+        "Total count must reflect only the filtered group, not all groups");
   }
 
   private Table createTestTable() throws Exception {
@@ -148,15 +192,7 @@ public class IncidentPaginationIT {
     return client.tables().create(createTable);
   }
 
-  private TestCase createTestCase(Table table, int index) throws Exception {
-    String testDefFqn =
-        client
-            .testDefinitions()
-            .list(new ListParams().withLimit(1))
-            .getData()
-            .get(0)
-            .getFullyQualifiedName();
-
+  private TestCase createTestCase(Table table, int index, String testDefFqn) throws Exception {
     CreateTestCase createTestCase =
         new CreateTestCase()
             .withName("pagination_test_case_" + index)
@@ -173,7 +209,7 @@ public class IncidentPaginationIT {
             .withTestCaseReference(testCase.getFullyQualifiedName())
             .withSeverity(Severity.SEVERITY_2)
             .withTestCaseResolutionStatusDetails(
-                new org.openmetadata.schema.tests.type.TestCaseResolutionStatusDetails()
+                new TestCaseResolutionStatusDetails()
                     .withTestCaseFailureComment("Test incident for pagination testing"));
 
     client.testCaseResolutionStatuses().create(createStatus);

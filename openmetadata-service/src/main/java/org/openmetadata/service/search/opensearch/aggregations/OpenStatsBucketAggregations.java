@@ -1,17 +1,17 @@
-package org.openmetadata.service.search.elasticsearch.aggregations;
+package org.openmetadata.service.search.opensearch.aggregations;
 
-import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
-import es.co.elastic.clients.elasticsearch._types.aggregations.CardinalityAggregation;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
+import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
+import os.org.opensearch.client.opensearch._types.aggregations.StatsBucketAggregation;
 
 @Setter
 @Getter
-public class ElasticCardinalityAggregations implements ElasticAggregations {
-  static final String aggregationType = "cardinality";
+public class OpenStatsBucketAggregations implements OpenAggregations {
+  static final String aggregationType = "stats_bucket";
   private String aggregationName;
   private Aggregation aggregation;
   private Map<String, Aggregation> subAggregations = new HashMap<>();
@@ -20,9 +20,17 @@ public class ElasticCardinalityAggregations implements ElasticAggregations {
   public void createAggregation(SearchAggregationNode node) {
     Map<String, String> params = node.getValue();
     this.aggregationName = node.getName();
+    String bucketsPath = params.get("buckets_path");
     this.aggregation =
         Aggregation.of(
-            a -> a.cardinality(CardinalityAggregation.of(card -> card.field(params.get("field")))));
+            a ->
+                a.statsBucket(
+                    StatsBucketAggregation.of(sb -> sb.bucketsPath(b -> b.single(bucketsPath)))));
+  }
+
+  @Override
+  public Boolean isPipelineAggregation() {
+    return true;
   }
 
   @Override

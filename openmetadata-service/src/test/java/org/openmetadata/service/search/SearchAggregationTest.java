@@ -50,15 +50,15 @@ class SearchAggregationTest {
   }
 
   @Test
-  void testCardinalityCreatesCorrectNode() {
-    SearchAggregationNode node = SearchAggregation.cardinality("total_count", "testCase.id");
+  void testStatsBucketCreatesCorrectNode() {
+    SearchAggregationNode node =
+        SearchAggregation.statsBucket("total_bucket_count", "byTermsCount>max_timestamp");
 
     assertNotNull(node);
-    assertEquals("cardinality", node.getType());
-    assertEquals("total_count", node.getName());
+    assertEquals("stats_bucket", node.getType());
+    assertEquals("total_bucket_count", node.getName());
 
     Map<String, String> value = node.getValue();
-    assertEquals("testCase.id", value.get("field"));
-    assertEquals("3000", value.get("precision_threshold"));
+    assertEquals("byTermsCount>max_timestamp", value.get("buckets_path"));
   }
 }

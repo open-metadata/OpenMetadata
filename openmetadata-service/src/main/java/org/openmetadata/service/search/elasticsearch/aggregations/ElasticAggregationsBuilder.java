@@ -76,6 +76,7 @@ public class ElasticAggregationsBuilder {
       case "filter" -> new ElasticFilterAggregations(mapper);
       case "value_count" -> new ElasticValueCountAggregations();
       case "cardinality" -> new ElasticCardinalityAggregations();
+      case "stats_bucket" -> new ElasticStatsBucketAggregations();
       case "nested" -> new ElasticNestedAggregations();
       case "top_hits" -> new ElasticTopHitsAggregations();
       default -> throw new IllegalArgumentException("Invalid aggregation type: " + aggregationType);

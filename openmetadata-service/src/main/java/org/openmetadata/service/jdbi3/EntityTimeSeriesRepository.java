@@ -440,17 +440,18 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
           }
         });
 
-    // Extract total count from cardinality aggregation
     int totalCount = entityList.size();
-    try {
-      String cardinalityPath = "$.filter#total_count_wrapper.cardinality#total_count.value";
-      Optional<Integer> cardinalityValue =
-          JsonUtils.readJsonAtPath(jsonObjResults.toString(), cardinalityPath, Integer.class);
-      if (cardinalityValue.isPresent()) {
-        totalCount = cardinalityValue.get();
+    if (limit != null && limit > 0) {
+      try {
+        String statsBucketPath = "$.stats_bucket#total_bucket_count.count";
+        Optional<Integer> statsBucketCount =
+            JsonUtils.readJsonAtPath(jsonObjResults.toString(), statsBucketPath, Integer.class);
+        if (statsBucketCount.isPresent()) {
+          totalCount = statsBucketCount.get();
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed to extract stats_bucket total count, falling back to page size", e);
       }
-    } catch (Exception e) {
-      LOG.warn("Failed to extract cardinality total count, falling back to page size", e);
     }
 
     return new ResultList<>(entityList, offset, limit, totalCount);
@@ -509,10 +510,28 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
     root.addChild(termsAgg);
 
-    SearchAggregationNode filteredCount =
-        SearchAggregation.filter("total_count_wrapper", contentFilters);
-    filteredCount.addChild(SearchAggregation.cardinality("total_count", groupBy));
-    root.addChild(filteredCount);
+    if (limit != null && limit > 0) {
+      SearchAggregationNode termsCountAgg =
+          SearchAggregation.terms("byTermsCount", groupBy, MAX_AGGREGATE_SIZE);
+      termsCountAgg.addChild(SearchAggregation.max("max_timestamp", "timestamp"));
+
+      SearchAggregationNode countFilterAgg =
+          SearchAggregation.filter("with_content_filters", contentFilters);
+      countFilterAgg.addChild(SearchAggregation.max("max_matching_timestamp", "timestamp"));
+      countFilterAgg.addChild(SearchAggregation.valueCount("count", "timestamp"));
+      termsCountAgg.addChild(countFilterAgg);
+
+      termsCountAgg.addChild(
+          SearchAggregation.bucketSelector(
+              "filter_groups",
+              "if (params.matching_count == 0) return false; return params.latest_timestamp == params.matching_timestamp;",
+              "latest_timestamp,matching_count,matching_timestamp",
+              "max_timestamp,with_content_filters>count,with_content_filters>max_matching_timestamp"));
+
+      root.addChild(termsCountAgg);
+      root.addChild(
+          SearchAggregation.statsBucket("total_bucket_count", "byTermsCount>max_timestamp"));
+    }
 
     return SearchAggregation.fromTree(root);
   }

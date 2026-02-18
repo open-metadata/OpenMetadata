@@ -17,88 +17,113 @@ class EntityTimeSeriesRepositoryPaginationTest {
 
   @Test
   void testBuildAggregationIncludesBucketSortWhenLimitProvided() {
-    List<SearchAggregationNode> aggregations = buildTestAggregation(GROUP_BY, 15, 0);
+    List<SearchAggregationNode> termsChildren = buildByTermsChildren(GROUP_BY, 15, 0);
 
-    boolean hasBucketSort = aggregations.stream().anyMatch(n -> "bucket_sort".equals(n.getType()));
+    boolean hasBucketSort = termsChildren.stream().anyMatch(n -> "bucket_sort".equals(n.getType()));
     assertTrue(hasBucketSort, "Should include bucket_sort when limit > 0");
   }
 
   @Test
   void testBuildAggregationExcludesBucketSortWhenLimitNull() {
-    List<SearchAggregationNode> aggregations = buildTestAggregation(GROUP_BY, null, null);
+    List<SearchAggregationNode> termsChildren = buildByTermsChildren(GROUP_BY, null, null);
 
-    boolean hasBucketSort = aggregations.stream().anyMatch(n -> "bucket_sort".equals(n.getType()));
+    boolean hasBucketSort = termsChildren.stream().anyMatch(n -> "bucket_sort".equals(n.getType()));
     assertFalse(hasBucketSort, "Should exclude bucket_sort when limit is null");
   }
 
   @Test
   void testTermsSizeIsMaxAggregateSizeWhenPaginating() {
-    List<SearchAggregationNode> aggregations = buildTestAggregation(GROUP_BY, 15, 0);
+    List<SearchAggregationNode> rootNodes = buildRootNodes(GROUP_BY, 15, 0);
 
-    SearchAggregationNode termsNode =
-        aggregations.stream()
-            .filter(n -> "terms".equals(n.getType()))
+    SearchAggregationNode byTerms =
+        rootNodes.stream()
+            .filter(n -> "terms".equals(n.getType()) && "byTerms".equals(n.getName()))
             .findFirst()
-            .orElseThrow(() -> new AssertionError("terms aggregation not found"));
+            .orElseThrow(() -> new AssertionError("byTerms aggregation not found"));
     assertEquals(
         String.valueOf(MAX_AGGREGATE_SIZE),
-        termsNode.getValue().get("size"),
+        byTerms.getValue().get("size"),
         "Terms size should be MAX_AGGREGATE_SIZE when paginating");
   }
 
   @Test
   void testTermsSizeIsDefaultWhenNotPaginating() {
-    List<SearchAggregationNode> aggregations = buildTestAggregation(GROUP_BY, null, null);
+    List<SearchAggregationNode> rootNodes = buildRootNodes(GROUP_BY, null, null);
 
-    SearchAggregationNode termsNode =
-        aggregations.stream()
-            .filter(n -> "terms".equals(n.getType()))
+    SearchAggregationNode byTerms =
+        rootNodes.stream()
+            .filter(n -> "terms".equals(n.getType()) && "byTerms".equals(n.getName()))
             .findFirst()
-            .orElseThrow(() -> new AssertionError("terms aggregation not found"));
+            .orElseThrow(() -> new AssertionError("byTerms aggregation not found"));
     assertEquals(
-        "100", termsNode.getValue().get("size"), "Terms size should be 100 when not paginating");
+        "100", byTerms.getValue().get("size"), "Terms size should be 100 when not paginating");
   }
 
   @Test
-  void testCardinalityWrappedInFilterAggregation() {
-    List<SearchAggregationNode> aggregations = buildTestAggregation(GROUP_BY, 15, 0);
+  void testByTermsCountPresentWhenPaginating() {
+    List<SearchAggregationNode> rootNodes = buildRootNodes(GROUP_BY, 15, 0);
 
-    SearchAggregationNode filterWrapper =
-        aggregations.stream()
-            .filter(n -> "filter".equals(n.getType()) && "total_count_wrapper".equals(n.getName()))
+    SearchAggregationNode byTermsCount =
+        rootNodes.stream()
+            .filter(n -> "terms".equals(n.getType()) && "byTermsCount".equals(n.getName()))
             .findFirst()
-            .orElseThrow(() -> new AssertionError("filter#total_count_wrapper not found"));
+            .orElseThrow(() -> new AssertionError("byTermsCount aggregation not found"));
 
-    boolean hasCardinality =
-        filterWrapper.getChildren().stream().anyMatch(n -> "cardinality".equals(n.getType()));
-    assertTrue(hasCardinality, "Cardinality should be nested inside the filter wrapper");
+    boolean hasMaxTimestamp =
+        byTermsCount.getChildren().stream()
+            .anyMatch(n -> "max".equals(n.getType()) && "max_timestamp".equals(n.getName()));
+    assertTrue(hasMaxTimestamp, "byTermsCount should have max_timestamp child");
   }
 
   @Test
-  void testCardinalityWrappedInFilterWhenNotPaginating() {
-    List<SearchAggregationNode> aggregations = buildTestAggregation(GROUP_BY, null, null);
+  void testByTermsCountHasNoBucketSort() {
+    List<SearchAggregationNode> rootNodes = buildRootNodes(GROUP_BY, 15, 0);
 
-    SearchAggregationNode filterWrapper =
-        aggregations.stream()
-            .filter(n -> "filter".equals(n.getType()) && "total_count_wrapper".equals(n.getName()))
+    SearchAggregationNode byTermsCount =
+        rootNodes.stream()
+            .filter(n -> "terms".equals(n.getType()) && "byTermsCount".equals(n.getName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("byTermsCount aggregation not found"));
+
+    boolean hasBucketSort =
+        byTermsCount.getChildren().stream().anyMatch(n -> "bucket_sort".equals(n.getType()));
+    assertFalse(hasBucketSort, "byTermsCount must not have bucket_sort");
+  }
+
+  @Test
+  void testByTermsCountAbsentWhenNotPaginating() {
+    List<SearchAggregationNode> rootNodes = buildRootNodes(GROUP_BY, null, null);
+
+    boolean hasByTermsCount =
+        rootNodes.stream()
+            .anyMatch(n -> "terms".equals(n.getType()) && "byTermsCount".equals(n.getName()));
+    assertFalse(hasByTermsCount, "byTermsCount should not be present when not paginating");
+  }
+
+  @Test
+  void testStatsBucketPresentWhenPaginating() {
+    List<SearchAggregationNode> rootNodes = buildRootNodes(GROUP_BY, 15, 0);
+
+    SearchAggregationNode statsBucket =
+        rootNodes.stream()
+            .filter(
+                n -> "stats_bucket".equals(n.getType()) && "total_bucket_count".equals(n.getName()))
             .findFirst()
             .orElseThrow(
-                () ->
-                    new AssertionError(
-                        "filter#total_count_wrapper not found in non-paginated query"));
+                () -> new AssertionError("stats_bucket#total_bucket_count not found in root"));
 
-    boolean hasCardinality =
-        filterWrapper.getChildren().stream().anyMatch(n -> "cardinality".equals(n.getType()));
-    assertTrue(hasCardinality, "Cardinality should still be wrapped in filter when not paginating");
+    assertEquals(
+        "byTermsCount>max_timestamp",
+        statsBucket.getValue().get("buckets_path"),
+        "stats_bucket buckets_path should point to byTermsCount>max_timestamp");
   }
 
   @Test
-  void testCardinalityExtractionPath() {
-    String expectedPath = "$.filter#total_count_wrapper.cardinality#total_count.value";
-    assertEquals(
-        expectedPath,
-        "$.filter#total_count_wrapper.cardinality#total_count.value",
-        "Cardinality extraction path should traverse through the filter wrapper");
+  void testStatsBucketAbsentWhenNotPaginating() {
+    List<SearchAggregationNode> rootNodes = buildRootNodes(GROUP_BY, null, null);
+
+    boolean hasStatsBucket = rootNodes.stream().anyMatch(n -> "stats_bucket".equals(n.getType()));
+    assertFalse(hasStatsBucket, "stats_bucket should not be present when not paginating");
   }
 
   @Test
@@ -125,28 +150,51 @@ class EntityTimeSeriesRepositoryPaginationTest {
     assertEquals(25, effectiveOffset, "Offset should be preserved when provided");
   }
 
-  private List<SearchAggregationNode> buildTestAggregation(
+  private List<SearchAggregationNode> buildRootNodes(
       String groupBy, Integer limit, Integer offset) {
     int termsSize = (limit != null && limit > 0) ? MAX_AGGREGATE_SIZE : 100;
-    SearchAggregationNode termsAgg = SearchAggregation.terms("byTerms", groupBy, termsSize);
+    SearchAggregationNode byTerms = SearchAggregation.terms("byTerms", groupBy, termsSize);
 
-    SearchAggregationNode filteredCount =
-        SearchAggregation.filter("total_count_wrapper", "{\"match_all\": {}}");
-    filteredCount.addChild(SearchAggregation.cardinality("total_count", groupBy));
-
-    List<SearchAggregationNode> aggregations = new ArrayList<>();
-    aggregations.add(termsAgg);
-    aggregations.add(filteredCount);
+    List<SearchAggregationNode> rootNodes = new ArrayList<>();
+    rootNodes.add(byTerms);
 
     if (limit != null && limit > 0) {
       Integer effectiveLimit = calculateEffectiveLimit(limit, offset);
       Integer effectiveOffset = calculateEffectiveOffset(offset);
-      SearchAggregationNode bucketSort =
-          SearchAggregation.bucketSort("pagination", effectiveLimit, effectiveOffset);
-      aggregations.add(bucketSort);
+      byTerms.addChild(SearchAggregation.bucketSort("pagination", effectiveLimit, effectiveOffset));
+
+      SearchAggregationNode byTermsCount =
+          SearchAggregation.terms("byTermsCount", groupBy, MAX_AGGREGATE_SIZE);
+      byTermsCount.addChild(SearchAggregation.max("max_timestamp", "timestamp"));
+
+      SearchAggregationNode filterAgg =
+          SearchAggregation.filter("with_content_filters", "{\"match_all\": {}}");
+      filterAgg.addChild(SearchAggregation.max("max_matching_timestamp", "timestamp"));
+      filterAgg.addChild(SearchAggregation.valueCount("count", "timestamp"));
+      byTermsCount.addChild(filterAgg);
+
+      byTermsCount.addChild(
+          SearchAggregation.bucketSelector(
+              "filter_groups",
+              "if (params.matching_count == 0) return false; return params.latest_timestamp == params.matching_timestamp;",
+              "latest_timestamp,matching_count,matching_timestamp",
+              "max_timestamp,with_content_filters>count,with_content_filters>max_matching_timestamp"));
+
+      rootNodes.add(byTermsCount);
+      rootNodes.add(
+          SearchAggregation.statsBucket("total_bucket_count", "byTermsCount>max_timestamp"));
     }
 
-    return aggregations;
+    return rootNodes;
+  }
+
+  private List<SearchAggregationNode> buildByTermsChildren(
+      String groupBy, Integer limit, Integer offset) {
+    return buildRootNodes(groupBy, limit, offset).stream()
+        .filter(n -> "terms".equals(n.getType()) && "byTerms".equals(n.getName()))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("byTerms not found"))
+        .getChildren();
   }
 
   private Integer calculateEffectiveLimit(Integer limit, Integer offset) {

@@ -133,13 +133,12 @@ public class SearchAggregation {
   }
 
   /**
-   * Static builder method for cardinality aggregation.
+   * Static builder method for stats_bucket pipeline aggregation.
    */
-  public static SearchAggregationNode cardinality(String name, String field) {
+  public static SearchAggregationNode statsBucket(String name, String bucketsPath) {
     Map<String, String> value = new HashMap<>();
-    value.put("field", field);
-    value.put("precision_threshold", "3000");
-    return new SearchAggregationNode("cardinality", name, value);
+    value.put("buckets_path", bucketsPath);
+    return new SearchAggregationNode("stats_bucket", name, value);
   }
 
   /*
