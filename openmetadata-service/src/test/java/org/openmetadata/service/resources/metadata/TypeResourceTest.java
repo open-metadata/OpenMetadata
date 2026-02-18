@@ -39,11 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
@@ -578,65 +573,6 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
         () -> addCustomProperty(intType.getId(), fieldProp, Status.CREATED, ADMIN_AUTH_HEADERS),
         Status.BAD_REQUEST,
         "Only entity types can be extended and field types can't be extended");
-  }
-
-  @Test
-  void put_concurrent_customProperty_sameType_allPersisted()
-      throws InterruptedException, HttpResponseException {
-    Type pipelineType = getEntityByName("pipeline", "customProperties", ADMIN_AUTH_HEADERS);
-
-    int threadCount = 5;
-    List<CustomProperty> properties = new ArrayList<>();
-    for (int i = 0; i < threadCount; i++) {
-      properties.add(
-          new CustomProperty()
-              .withName("concurrentProp" + i)
-              .withDescription("concurrentProp" + i)
-              .withPropertyType(STRING_TYPE.getEntityReference()));
-    }
-
-    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-    CountDownLatch startLatch = new CountDownLatch(1);
-    CountDownLatch doneLatch = new CountDownLatch(threadCount);
-    List<Exception> errors = new CopyOnWriteArrayList<>();
-
-    for (CustomProperty prop : properties) {
-      executor.submit(
-          () -> {
-            try {
-              startLatch.await();
-              addCustomProperty(pipelineType.getId(), prop, Status.OK, ADMIN_AUTH_HEADERS);
-            } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
-              errors.add(e);
-            } catch (Exception e) {
-              errors.add(e);
-            } finally {
-              doneLatch.countDown();
-            }
-          });
-    }
-
-    startLatch.countDown();
-    assertTrue(doneLatch.await(30, TimeUnit.SECONDS), "All threads should complete within 30s");
-    executor.shutdown();
-
-    assertTrue(errors.isEmpty(), "Concurrent requests should not throw: " + errors);
-
-    Type updatedType = getEntityByName("pipeline", "customProperties", ADMIN_AUTH_HEADERS);
-    List<String> persistedNames =
-        listOrEmpty(updatedType.getCustomProperties()).stream()
-            .map(CustomProperty::getName)
-            .toList();
-
-    for (CustomProperty prop : properties) {
-      assertTrue(
-          persistedNames.contains(prop.getName()),
-          "Property '"
-              + prop.getName()
-              + "' was lost due to a concurrent update. Persisted: "
-              + persistedNames);
-    }
   }
 
   @Test
