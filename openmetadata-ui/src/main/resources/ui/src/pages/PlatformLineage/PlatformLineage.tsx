@@ -246,7 +246,9 @@ const PlatformLineage = () => {
           <Tooltip
             arrow
             placement="top"
-            title={t('label.export-as-type', { type: t('label.png') })}>
+            title={t('label.export-as-type', {
+              type: t('label.png-uppercase'),
+            })}>
             <StyledIconButton size="large" onClick={handleExport}>
               <DownloadIcon />
             </StyledIconButton>
