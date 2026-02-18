@@ -791,7 +791,6 @@ class DatalakeYieldTableNameTest(TestCase):
         from hashlib import md5
 
         table_name = "folder/" * 40 + "data.csv"  # ~288 chars
-        breakpoint()
         self.assertGreater(len(table_name), 256)
         expected_hash = md5(table_name.encode()).hexdigest()
 
