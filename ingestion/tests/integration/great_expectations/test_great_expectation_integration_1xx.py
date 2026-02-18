@@ -36,6 +36,8 @@ from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
+from ..conftest import _safe_delete
+
 Base = declarative_base()
 
 TEST_CASE_FQN = (
@@ -191,16 +193,17 @@ class TestGreatExpectationIntegration1xx(TestCase):
         Clean up
         """
 
-        service_id = str(
-            cls.metadata.get_by_name(entity=DatabaseService, fqn="test_sqlite").id.root
+        service_entity = cls.metadata.get_by_name(
+            entity=DatabaseService, fqn="test_sqlite"
         )
-
-        cls.metadata.delete(
-            entity=DatabaseService,
-            entity_id=service_id,
-            recursive=True,
-            hard_delete=True,
-        )
+        if service_entity:
+            _safe_delete(
+                cls.metadata,
+                entity=DatabaseService,
+                entity_id=service_entity.id,
+                recursive=True,
+                hard_delete=True,
+            )
 
         User.__table__.drop(bind=cls.engine)
         Order.__table__.drop(bind=cls.engine)
