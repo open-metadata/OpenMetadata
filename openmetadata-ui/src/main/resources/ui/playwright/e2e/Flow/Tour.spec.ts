@@ -64,12 +64,12 @@ const validateTourSteps = async (page: Page) => {
 
   await page.getByTestId('searchBox').fill('dim_a');
 
-  await Promise.all([
-    page.waitForResponse(
-      (res) => res.url().includes('/search/query') && res.status() === 200
-    ),
+  const [searchResponse] = await Promise.all([
+    page.waitForResponse((res) => res.url().includes('/search/query')),
     page.getByTestId('searchBox').press('Enter'),
   ]);
+
+  expect(searchResponse.status()).toBe(200);
 
   await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('4', {
     timeout: 1000,
