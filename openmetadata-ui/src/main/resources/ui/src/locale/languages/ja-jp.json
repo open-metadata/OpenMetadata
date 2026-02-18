@@ -908,6 +908,8 @@
     "impact-score": "影響スコア",
     "impacted": "影響を受けた",
     "impacted-column-plural": "影響を受けた列",
+    "impersonated-by": "Impersonated By",
+    "impersonated-by-with-colon": "Impersonated By:",
     "import": "インポート",
     "import-contract": "契約をインポート",
     "import-entity": "{{entity}} をインポート",

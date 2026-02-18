@@ -186,9 +186,8 @@ test.describe('Persona customize UI tab', async () => {
     test.slow();
 
     const personaListResponse = adminPage.waitForResponse(`/api/v1/personas?*`);
-    await adminPage.goBack();
+    await settingClick(adminPage, GlobalSettingOptions.PERSONA);
     await personaListResponse;
-    await adminPage.waitForLoadState('networkidle');
     await navigateToPersonaWithPagination(
       adminPage,
       navigationPersona.data.name,
@@ -438,14 +437,20 @@ test.describe('Persona customization', () => {
         await addButton.click();
 
         await expect(adminPage.getByTestId('tab-Custom Tab')).toBeVisible();
-        await expect(adminPage.getByText('Customize Custom Tab Widgets')).toBeVisible();
+        await expect(
+          adminPage.getByText('Customize Custom Tab Widgets')
+        ).toBeVisible();
 
         // Wait for dialog to close before interacting with grid layout
         await adminPage.getByRole('dialog').waitFor({ state: 'hidden' });
-        await adminPage.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
+        await adminPage
+          .locator('.ant-modal-wrap')
+          .waitFor({ state: 'detached' });
 
         // Get locator after dialog closes to avoid layout shift issues
-        const addWidgetButton = adminPage.getByTestId('ExtraWidget.EmptyWidgetPlaceholder').getByTestId('add-widget-button');
+        const addWidgetButton = adminPage
+          .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
+          .getByTestId('add-widget-button');
         await addWidgetButton.waitFor({ state: 'visible' });
         await expect(addWidgetButton).toBeEnabled();
         await addWidgetButton.click();
@@ -585,10 +590,14 @@ test.describe('Persona customization', () => {
         await addButton.click();
 
         await expect(adminPage.getByTestId('tab-Custom Tab')).toBeVisible();
-        await expect(adminPage.getByText('Customize Custom Tab Widgets')).toBeVisible();
+        await expect(
+          adminPage.getByText('Customize Custom Tab Widgets')
+        ).toBeVisible();
 
         // Get locator after dialog closes to avoid layout shift issues
-        const addWidgetButton = adminPage.getByTestId('ExtraWidget.EmptyWidgetPlaceholder').getByTestId('add-widget-button');
+        const addWidgetButton = adminPage
+          .getByTestId('ExtraWidget.EmptyWidgetPlaceholder')
+          .getByTestId('add-widget-button');
         await addWidgetButton.waitFor({ state: 'visible' });
         await expect(addWidgetButton).toBeEnabled();
         await addWidgetButton.click();

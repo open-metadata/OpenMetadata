@@ -9,7 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import os
-from unittest import TestCase, mock
+from unittest import mock
+
+import pytest
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -27,38 +29,56 @@ from metadata.utils.secrets.db_secrets_manager import DBSecretsManager
 from metadata.utils.singleton import Singleton
 
 
-class OMetaSecretManagerTest(TestCase):
-    metadata: OpenMetadata
-    aws_server_config: OpenMetadataConnection
-    local_server_config: OpenMetadataConnection
+@pytest.fixture
+def local_server_config():
+    """Configuration for local DB secrets manager."""
+    return OpenMetadataConnection(
+        hostPort="http://localhost:8585/api",
+        enableVersionValidation=False,
+    )
 
-    @classmethod
-    def setUp(cls) -> None:
-        Singleton.clear_all()
-        cls.local_server_config = OpenMetadataConnection(
-            hostPort="http://localhost:8585/api",
-            enableVersionValidation=False,
-        )
-        cls.aws_server_config = OpenMetadataConnection(
-            hostPort="http://localhost:8585/api",
-            secretsManagerProvider=SecretsManagerProvider.aws,
-            secretsManagerLoader=SecretsManagerClientLoader.noop,
-            enableVersionValidation=False,
-        )
 
-    def test_ometa_with_local_secret_manager(self):
-        self._init_local_secret_manager()
-        assert type(self.metadata.secrets_manager_client) is DBSecretsManager
-        assert type(self.metadata._auth_provider) is OpenMetadataAuthenticationProvider
+@pytest.fixture
+def aws_server_config():
+    """Configuration for AWS secrets manager."""
+    return OpenMetadataConnection(
+        hostPort="http://localhost:8585/api",
+        secretsManagerProvider=SecretsManagerProvider.aws,
+        secretsManagerLoader=SecretsManagerClientLoader.noop,
+        enableVersionValidation=False,
+    )
+
+
+@pytest.fixture(autouse=True)
+def cleanup_singleton():
+    """Clear singleton instances before each test."""
+    Singleton.clear_all()
+    yield
+    Singleton.clear_all()
+
+
+class TestOMetaSecretsManagerAPI:
+    """
+    Secrets Manager API integration tests.
+    Tests secrets manager initialization and configuration.
+
+    Uses fixtures:
+    - local_server_config: Config for local DB secrets manager
+    - aws_server_config: Config for AWS secrets manager
+    - cleanup_singleton: Auto-cleanup singleton instances
+    """
+
+    def test_ometa_with_local_secret_manager(self, local_server_config):
+        """Test initialization with local DB secrets manager."""
+        metadata = OpenMetadata(local_server_config)
+
+        assert type(metadata.secrets_manager_client) is DBSecretsManager
+        assert type(metadata._auth_provider) is OpenMetadataAuthenticationProvider
 
     @mock.patch.dict(os.environ, {"AWS_DEFAULT_REGION": "us-east-2"}, clear=True)
-    def test_ometa_with_aws_secret_manager(self):
-        self._init_aws_secret_manager()
-        assert type(self.metadata.secrets_manager_client) is AWSSecretsManager
-        assert type(self.metadata._auth_provider) is OpenMetadataAuthenticationProvider
+    def test_ometa_with_aws_secret_manager(self, aws_server_config):
+        """Test initialization with AWS secrets manager."""
+        metadata = OpenMetadata(aws_server_config)
 
-    def _init_local_secret_manager(self):
-        self.metadata = OpenMetadata(self.local_server_config)
-
-    def _init_aws_secret_manager(self):
-        self.metadata = OpenMetadata(self.aws_server_config)
+        assert type(metadata.secrets_manager_client) is AWSSecretsManager
+        assert type(metadata._auth_provider) is OpenMetadataAuthenticationProvider

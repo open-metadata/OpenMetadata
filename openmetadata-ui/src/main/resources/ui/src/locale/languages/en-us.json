@@ -908,6 +908,8 @@
     "impact-score": "Impact Score",
     "impacted": "Impacted",
     "impacted-column-plural": "Impacted Columns",
+    "impersonated-by": "Impersonated By",
+    "impersonated-by-with-colon": "Impersonated By:",
     "import": "Import",
     "import-contract": "Import Contract",
     "import-entity": "Import {{entity}}",

@@ -12,15 +12,11 @@
 """
 OpenMetadata high-level API Pipeline test
 """
-import uuid
 from datetime import datetime
-from unittest import TestCase
+
+import pytest
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
-from metadata.generated.schema.api.services.createPipelineService import (
-    CreatePipelineServiceRequest,
-)
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
@@ -28,223 +24,192 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
-    AirflowConnection,
-)
-from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
-    BackendConnection,
-)
-from metadata.generated.schema.entity.services.pipelineService import (
-    PipelineConnection,
-    PipelineService,
-    PipelineServiceType,
-)
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import datetime_to_ts
 
 
-class OMetaPipelineTest(TestCase):
+@pytest.fixture
+def pipeline_request(pipeline_service):
+    """Create pipeline request using the pipeline service from conftest."""
+    return CreatePipelineRequest(
+        name="test",
+        service=pipeline_service.fullyQualifiedName,
+    )
+
+
+@pytest.fixture
+def expected_fqn(pipeline_service):
+    """Expected fully qualified name for test pipeline."""
+    return f"{pipeline_service.name.root}.test"
+
+
+class TestOMetaPipelineAPI:
     """
-    Run this integration test with the local API available
-    Install the ingestion package before running the tests
+    Pipeline API integration tests.
+    Tests CRUD operations, versioning, entity references, and pipeline-specific features.
+
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    - pipeline_service: PipelineService (module scope)
+    - create_user: User factory (function scope)
+    - create_pipeline: Pipeline factory (function scope)
     """
 
-    service_entity_id = None
-
-    server_config = OpenMetadataConnection(
-        hostPort="http://localhost:8585/api",
-        authProvider="openmetadata",
-        securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-        ),
-    )
-    metadata = OpenMetadata(server_config)
-
-    assert metadata.health_check()
-
-    user = metadata.create_or_update(
-        data=CreateUserRequest(name="random-user", email="random@user.com"),
-    )
-    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
-
-    service = CreatePipelineServiceRequest(
-        name="test-service-pipeline",
-        serviceType=PipelineServiceType.Airflow,
-        connection=PipelineConnection(
-            config=AirflowConnection(
-                hostPort="http://localhost:8080",
-                connection=BackendConnection(),
-            ),
-        ),
-    )
-    service_type = "pipelineService"
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        Prepare ingredients
-        """
-        cls.service_entity = cls.metadata.create_or_update(data=cls.service)
-
-        cls.entity = Pipeline(
-            id=uuid.uuid4(),
-            name="test",
-            service=EntityReference(id=cls.service_entity.id, type="pipelineService"),
-            fullyQualifiedName="test-service-pipeline.test",
-        )
-
-        cls.create = CreatePipelineRequest(
-            name="test",
-            service=cls.service_entity.fullyQualifiedName,
-        )
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Clean up
-        """
-
-        service_id = str(
-            cls.metadata.get_by_name(
-                entity=PipelineService, fqn="test-service-pipeline"
-            ).id.root
-        )
-
-        cls.metadata.delete(
-            entity=PipelineService,
-            entity_id=service_id,
-            recursive=True,
-            hard_delete=True,
-        )
-
-    def test_create(self):
+    def test_create(
+        self,
+        metadata,
+        pipeline_service,
+        pipeline_request,
+        expected_fqn,
+        create_pipeline,
+    ):
         """
         We can create a Pipeline and we receive it back as Entity
         """
+        res = create_pipeline(pipeline_request)
 
-        res = self.metadata.create_or_update(data=self.create)
+        assert res.name.root == "test"
+        assert res.service.id == pipeline_service.id
+        assert res.owners is None
 
-        self.assertEqual(res.name, self.entity.name)
-        self.assertEqual(res.service.id, self.entity.service.id)
-        self.assertEqual(res.owners, EntityReferenceList(root=[]))
+        # Verify persistence by fetching from backend
+        fetched = metadata.get_by_name(entity=Pipeline, fqn=expected_fqn)
+        assert fetched is not None
+        assert fetched.id == res.id
 
-    def test_update(self):
+    def test_update(
+        self,
+        metadata,
+        pipeline_service,
+        pipeline_request,
+        create_user,
+        create_pipeline,
+    ):
         """
         Updating it properly changes its properties
         """
+        user = create_user()
+        owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
-        res_create = self.metadata.create_or_update(data=self.create)
+        # Create pipeline
+        res_create = create_pipeline(pipeline_request)
 
-        updated = self.create.model_dump(exclude_unset=True)
-        updated["owners"] = self.owners
+        # Update with owners
+        updated = pipeline_request.model_dump(exclude_unset=True)
+        updated["owners"] = owners
         updated_entity = CreatePipelineRequest(**updated)
 
-        res = self.metadata.create_or_update(data=updated_entity)
+        res = metadata.create_or_update(data=updated_entity)
 
-        # Same ID, updated algorithm
-        self.assertEqual(res.service.fullyQualifiedName, updated_entity.service.root)
-        self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owners.root[0].id, self.user.id)
+        # Verify update
+        assert (
+            res.service.fullyQualifiedName == pipeline_service.fullyQualifiedName.root
+        )
+        assert res_create.id == res.id
+        assert res.owners.root[0].id == user.id
 
-    def test_get_name(self):
+    def test_get_name(self, metadata, pipeline_request, expected_fqn, create_pipeline):
         """
         We can fetch a Pipeline by name and get it back as Entity
         """
+        created = create_pipeline(pipeline_request)
 
-        self.metadata.create_or_update(data=self.create)
+        res = metadata.get_by_name(entity=Pipeline, fqn=expected_fqn)
+        assert res.name.root == created.name.root
 
-        res = self.metadata.get_by_name(
-            entity=Pipeline, fqn=self.entity.fullyQualifiedName
-        )
-        self.assertEqual(res.name, self.entity.name)
-
-    def test_get_id(self):
+    def test_get_id(self, metadata, pipeline_request, expected_fqn, create_pipeline):
         """
         We can fetch a Pipeline by ID and get it back as Entity
         """
-
-        self.metadata.create_or_update(data=self.create)
+        create_pipeline(pipeline_request)
 
         # First pick up by name
-        res_name = self.metadata.get_by_name(
-            entity=Pipeline, fqn=self.entity.fullyQualifiedName
-        )
+        res_name = metadata.get_by_name(entity=Pipeline, fqn=expected_fqn)
         # Then fetch by ID
-        res = self.metadata.get_by_id(entity=Pipeline, entity_id=res_name.id)
+        res = metadata.get_by_id(entity=Pipeline, entity_id=res_name.id)
 
-        self.assertEqual(res_name.id, res.id)
+        assert res_name.id == res.id
 
-    def test_list(self):
+    def test_list(self, metadata, pipeline_request, create_pipeline):
         """
         We can list all our Pipelines
         """
+        created = create_pipeline(pipeline_request)
 
-        self.metadata.create_or_update(data=self.create)
+        res = metadata.list_entities(entity=Pipeline, limit=100)
 
-        res = self.metadata.list_entities(entity=Pipeline, limit=100)
+        # Fetch our test Pipeline. We have already inserted it, so we should find it
+        data = next(iter(ent for ent in res.entities if ent.name == created.name), None)
+        assert data is not None
 
-        # Fetch our test Database. We have already inserted it, so we should find it
-        data = next(
-            iter(ent for ent in res.entities if ent.name == self.entity.name), None
-        )
-        assert data
-
-    def test_delete(self):
+    def test_delete(self, metadata, pipeline_request, expected_fqn, create_pipeline):
         """
         We can delete a Pipeline by ID
         """
-
-        self.metadata.create_or_update(data=self.create)
-
-        # Find by name
-        res_name = self.metadata.get_by_name(
-            entity=Pipeline, fqn=self.entity.fullyQualifiedName
-        )
-        # Then fetch by ID
-        res_id = self.metadata.get_by_id(
-            entity=Pipeline, entity_id=str(res_name.id.root)
-        )
+        created = create_pipeline(pipeline_request)
 
         # Delete
-        self.metadata.delete(entity=Pipeline, entity_id=str(res_id.id.root))
+        metadata.delete(entity=Pipeline, entity_id=str(created.id.root))
 
-        # Then we should not find it
-        res = self.metadata.list_entities(entity=Pipeline)
-        assert not next(
-            iter(
-                ent
-                for ent in res.entities
-                if ent.fullyQualifiedName == self.entity.fullyQualifiedName
-            ),
-            None,
+        # Verify deletion - get_by_name should return None
+        deleted = metadata.get_by_name(entity=Pipeline, fqn=expected_fqn)
+        assert deleted is None
+
+    def test_list_versions(self, metadata, pipeline_request, create_pipeline):
+        """
+        Test listing pipeline entity versions
+        """
+        created = create_pipeline(pipeline_request)
+
+        res = metadata.get_list_entity_versions(
+            entity=Pipeline, entity_id=created.id.root
+        )
+        assert res is not None
+        assert len(res.versions) >= 1
+
+    def test_get_entity_version(self, metadata, pipeline_request, create_pipeline):
+        """
+        Test retrieving a specific pipeline entity version
+        """
+        created = create_pipeline(pipeline_request)
+
+        res = metadata.get_entity_version(
+            entity=Pipeline, entity_id=created.id.root, version=0.1
         )
 
-    def test_add_status(self):
+        # Check we get the correct version requested and the correct entity ID
+        assert res.version.root == 0.1
+        assert res.id == created.id
+
+    def test_get_entity_ref(self, metadata, pipeline_request, create_pipeline):
+        """
+        Test retrieving EntityReference for a pipeline
+        """
+        created = create_pipeline(pipeline_request)
+        entity_ref = metadata.get_entity_reference(
+            entity=Pipeline, fqn=created.fullyQualifiedName
+        )
+
+        assert created.id == entity_ref.id
+
+    def test_add_status(self, metadata, pipeline_service, create_pipeline):
         """
         We can add status data
         """
-
-        create_pipeline = CreatePipelineRequest(
+        create_pipeline_req = CreatePipelineRequest(
             name="pipeline-test",
-            service=self.service_entity.fullyQualifiedName,
+            service=pipeline_service.fullyQualifiedName,
             tasks=[
                 Task(name="task1"),
                 Task(name="task2"),
             ],
         )
 
-        pipeline: Pipeline = self.metadata.create_or_update(data=create_pipeline)
+        pipeline = create_pipeline(create_pipeline_req)
         execution_ts = datetime_to_ts(datetime.strptime("2021-03-07", "%Y-%m-%d"))
 
-        updated = self.metadata.add_pipeline_status(
+        updated = metadata.add_pipeline_status(
             fqn=pipeline.fullyQualifiedName.root,
             status=PipelineStatus(
                 timestamp=execution_ts,
@@ -259,45 +224,25 @@ class OMetaPipelineTest(TestCase):
         assert updated.pipelineStatus.timestamp.root == execution_ts
         assert len(updated.pipelineStatus.taskStatus) == 1
 
-        # Disabled as throwing an error regarding service key not present
-        # should be fixed in https://github.com/open-metadata/OpenMetadata/issues/5661
-        # # Check that we can update a given status properly
-        # updated = self.metadata.add_pipeline_status(
-        #     pipeline=pipeline,
-        #     status=PipelineStatus(
-        #         timestamp=execution_ts,
-        #         executionStatus=StatusType.Successful,
-        #         taskStatus=[
-        #             TaskStatus(name="task1", executionStatus=StatusType.Successful),
-        #             TaskStatus(name="task2", executionStatus=StatusType.Successful),
-        #         ],
-        #     ),
-        # )
-
-        # assert updated.pipelineStatus[0].executionDate.root == execution_ts
-        # assert len(updated.pipelineStatus[0].taskStatus) == 2
-
-        # # Cleanup
-        # self.metadata.delete(entity=Pipeline, entity_id=pipeline.id)
-
-    def test_add_pipeline_status_with_special_chars(self):
+    def test_add_pipeline_status_with_special_chars(
+        self, metadata, pipeline_service, create_pipeline
+    ):
         """
         Test adding pipeline status when pipeline name contains special characters
         """
-
-        create_pipeline = CreatePipelineRequest(
+        create_pipeline_req = CreatePipelineRequest(
             name="Pipeline/Name (test)",
-            service=self.service_entity.fullyQualifiedName,
+            service=pipeline_service.fullyQualifiedName,
             tasks=[
                 Task(name="task1"),
             ],
         )
 
-        pipeline: Pipeline = self.metadata.create_or_update(data=create_pipeline)
+        pipeline = create_pipeline(create_pipeline_req)
         execution_ts = datetime_to_ts(datetime.strptime("2021-03-07", "%Y-%m-%d"))
 
         # Add status using the pipeline's FQN directly - should not raise 404/500 error
-        updated = self.metadata.add_pipeline_status(
+        updated = metadata.add_pipeline_status(
             fqn=pipeline.fullyQualifiedName.root,
             status=PipelineStatus(
                 timestamp=execution_ts,
@@ -313,24 +258,23 @@ class OMetaPipelineTest(TestCase):
         assert updated.pipelineStatus.executionStatus == StatusType.Successful
         assert updated.pipelineStatus.timestamp.root == execution_ts
 
-    def test_add_tasks(self):
+    def test_add_tasks(self, metadata, pipeline_service, create_pipeline):
         """
         Check the add task logic
         """
-
-        create_pipeline = CreatePipelineRequest(
+        create_pipeline_req = CreatePipelineRequest(
             name="pipeline-test",
-            service=self.service_entity.fullyQualifiedName,
+            service=pipeline_service.fullyQualifiedName,
             tasks=[
                 Task(name="task1"),
                 Task(name="task2"),
             ],
         )
 
-        pipeline = self.metadata.create_or_update(data=create_pipeline)
+        pipeline = create_pipeline(create_pipeline_req)
 
         # Add new tasks
-        updated_pipeline = self.metadata.add_task_to_pipeline(
+        updated_pipeline = metadata.add_task_to_pipeline(
             pipeline,
             Task(name="task3"),
         )
@@ -338,7 +282,7 @@ class OMetaPipelineTest(TestCase):
         assert len(updated_pipeline.tasks) == 3
 
         # Update a task already added
-        updated_pipeline = self.metadata.add_task_to_pipeline(
+        updated_pipeline = metadata.add_task_to_pipeline(
             pipeline,
             Task(name="task3", displayName="TaskDisplay"),
         )
@@ -357,36 +301,33 @@ class OMetaPipelineTest(TestCase):
             Task(name="task3"),
             Task(name="task4"),
         ]
-        updated_pipeline = self.metadata.add_task_to_pipeline(pipeline, *new_tasks)
+        updated_pipeline = metadata.add_task_to_pipeline(pipeline, *new_tasks)
 
         assert len(updated_pipeline.tasks) == 4
 
-        # Cleanup
-        self.metadata.delete(entity=Pipeline, entity_id=pipeline.id)
-
-    def test_add_tasks_to_empty_pipeline(self):
+    def test_add_tasks_to_empty_pipeline(
+        self, metadata, pipeline_request, create_pipeline
+    ):
         """
         We can add tasks to a pipeline without tasks
         """
+        pipeline = create_pipeline(pipeline_request)
 
-        pipeline = self.metadata.create_or_update(data=self.create)
-
-        updated_pipeline = self.metadata.add_task_to_pipeline(
+        updated_pipeline = metadata.add_task_to_pipeline(
             pipeline,
             Task(name="task", displayName="TaskDisplay"),
         )
 
         assert len(updated_pipeline.tasks) == 1
 
-    def test_clean_tasks(self):
+    def test_clean_tasks(self, metadata, pipeline_service, create_pipeline):
         """
         Check that we can remove Pipeline tasks
         if they are not part of the list arg
         """
-
-        create_pipeline = CreatePipelineRequest(
+        create_pipeline_req = CreatePipelineRequest(
             name="pipeline-test",
-            service=self.service_entity.fullyQualifiedName,
+            service=pipeline_service.fullyQualifiedName,
             tasks=[
                 Task(name="task1"),
                 Task(name="task2"),
@@ -395,65 +336,15 @@ class OMetaPipelineTest(TestCase):
             ],
         )
 
-        pipeline = self.metadata.create_or_update(data=create_pipeline)
+        pipeline = create_pipeline(create_pipeline_req)
 
-        self.metadata.clean_pipeline_tasks(
-            pipeline=pipeline, task_ids=["task3", "task4"]
-        )
+        metadata.clean_pipeline_tasks(pipeline=pipeline, task_ids=["task3", "task4"])
 
-        updated_pipeline = self.metadata.get_by_name(
+        updated_pipeline = metadata.get_by_name(
             entity=Pipeline,
-            fqn="test-service-pipeline.pipeline-test",
+            fqn=pipeline.fullyQualifiedName.root,
             fields=["tasks"],
         )
 
         assert len(updated_pipeline.tasks) == 2
         assert {task.name for task in updated_pipeline.tasks} == {"task3", "task4"}
-
-        # Cleanup
-        self.metadata.delete(entity=Pipeline, entity_id=pipeline.id)
-
-    def test_list_versions(self):
-        """
-        test list pipeline entity versions
-        """
-        self.metadata.create_or_update(data=self.create)
-
-        # Find by name
-        res_name = self.metadata.get_by_name(
-            entity=Pipeline, fqn=self.entity.fullyQualifiedName
-        )
-
-        res = self.metadata.get_list_entity_versions(
-            entity=Pipeline, entity_id=res_name.id.root
-        )
-        assert res
-
-    def test_get_entity_version(self):
-        """
-        test get pipeline entity version
-        """
-        self.metadata.create_or_update(data=self.create)
-
-        # Find by name
-        res_name = self.metadata.get_by_name(
-            entity=Pipeline, fqn=self.entity.fullyQualifiedName
-        )
-        res = self.metadata.get_entity_version(
-            entity=Pipeline, entity_id=res_name.id.root, version=0.1
-        )
-
-        # check we get the correct version requested and the correct entity ID
-        assert res.version.root == 0.1
-        assert res.id == res_name.id
-
-    def test_get_entity_ref(self):
-        """
-        test get EntityReference
-        """
-        res = self.metadata.create_or_update(data=self.create)
-        entity_ref = self.metadata.get_entity_reference(
-            entity=Pipeline, fqn=res.fullyQualifiedName
-        )
-
-        assert res.id == entity_ref.id

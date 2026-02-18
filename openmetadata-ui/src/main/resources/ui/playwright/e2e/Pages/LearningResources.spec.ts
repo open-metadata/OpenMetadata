@@ -357,6 +357,216 @@ test.describe(
   }
 );
 
+async function applyLearningResourceFilter(
+  page: Page,
+  filterLabel: string,
+  optionKey: string
+) {
+  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
+  await expect(page.getByTestId('drop-down-menu')).toBeVisible();
+  const option = page.getByTestId(optionKey);
+  await expect(option).toBeVisible();
+  await option.click();
+
+  const filterResponse = page.waitForResponse(
+    (r) =>
+      r.url().includes('/api/v1/learning/resources') &&
+      r.request().method() === 'GET'
+  );
+  const updateBtn = page.getByTestId('update-btn');
+  await expect(updateBtn).toBeVisible();
+  await expect(updateBtn).toBeEnabled();
+  await updateBtn.click();
+
+  const response = await filterResponse;
+  await waitForAllLoadersToDisappear(page);
+
+  return response;
+}
+
+test.describe('Learning Resources - Search and Filters', () => {
+  const videoResource = new LearningResourceClass({
+    resourceType: 'Video',
+    categories: ['Discovery'],
+    contexts: [{ pageId: 'glossary' }],
+    status: 'Active',
+  });
+  const storylaneResource = new LearningResourceClass({
+    resourceType: 'Storylane',
+    categories: ['DataGovernance'],
+    contexts: [{ pageId: 'lineage' }],
+    status: 'Draft',
+  });
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await videoResource.create(apiContext);
+    await storylaneResource.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await videoResource.delete(apiContext);
+    await storylaneResource.delete(apiContext);
+    await afterAction();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await goToLearningResourcesAdmin(page);
+  });
+
+  test('should send correct search param to API when searching', async ({
+    page,
+  }) => {
+    const searchTerm = videoResource.data.name;
+
+    await test.step(
+      'Type search term and verify API receives search param',
+      async () => {
+        const searchResponse = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/learning/resources') &&
+            r.url().includes('search=') &&
+            r.request().method() === 'GET'
+        );
+
+        await page
+          .getByRole('textbox', { name: 'Search Resource' })
+          .fill(searchTerm);
+        const response = await searchResponse;
+        await waitForAllLoadersToDisappear(page);
+
+        expect(response.url()).toContain(
+          `search=${encodeURIComponent(searchTerm)}`
+        );
+      }
+    );
+
+    await test.step('Verify search result is shown in table', async () => {
+      await expect(
+        page.getByText(
+          videoResource.data.displayName ?? videoResource.data.name
+        )
+      ).toBeVisible();
+    });
+  });
+
+  test('should send correct resourceType param when filtering by type', async ({
+    page,
+  }) => {
+    await test.step(
+      'Apply Video type filter and verify API param',
+      async () => {
+        const response = await applyLearningResourceFilter(
+          page,
+          'Type',
+          'Video'
+        );
+        expect(response.url()).toContain('resourceType=Video');
+      }
+    );
+
+    await test.step('Verify filter chip is shown', async () => {
+      await expect(
+        page.locator('.filter-selection-chip').filter({ hasText: 'Video' })
+      ).toBeVisible();
+    });
+  });
+
+  test('should send correct category param when filtering by category', async ({
+    page,
+  }) => {
+    await test.step(
+      'Apply Discovery category filter and verify API param',
+      async () => {
+        const response = await applyLearningResourceFilter(
+          page,
+          'Categories',
+          'Discovery'
+        );
+        expect(response.url()).toContain('category=Discovery');
+      }
+    );
+
+    await test.step('Verify filter chip is shown', async () => {
+      await expect(page.getByTitle('Discovery')).toBeVisible();
+    });
+  });
+
+  test('should send correct pageId param when filtering by context', async ({
+    page,
+  }) => {
+    await test.step(
+      'Apply Glossary context filter and verify API param',
+      async () => {
+        const response = await applyLearningResourceFilter(
+          page,
+          'Context',
+          'glossary'
+        );
+        expect(response.url()).toContain('pageId=glossary');
+      }
+    );
+
+    await test.step('Verify filter chip is shown', async () => {
+      await expect(page.getByTitle('Glossary')).toBeVisible();
+    });
+  });
+
+  test('should send correct status param when filtering by status', async ({
+    page,
+  }) => {
+    await test.step(
+      'Apply Active status filter and verify API param',
+      async () => {
+        const response = await applyLearningResourceFilter(
+          page,
+          'Status',
+          'Active'
+        );
+        expect(response.url()).toContain('status=Active');
+      }
+    );
+
+    await test.step('Verify filter chip is shown', async () => {
+      await expect(page.getByTitle('Active')).toBeVisible();
+    });
+  });
+
+  test('should clear all filters and reload without filter params', async ({
+    page,
+  }) => {
+    await test.step('Apply a filter first', async () => {
+      await applyLearningResourceFilter(page, 'Type', 'Video');
+      await expect(page.getByTitle('Video')).toBeVisible();
+    });
+
+    await test.step('Clear all filters and verify clean API call', async () => {
+      const clearResponse = page.waitForResponse(
+        (r) =>
+          r.url().includes('/api/v1/learning/resources') &&
+          r.request().method() === 'GET'
+      );
+      await page.getByRole('button', { name: /clear all/i }).click();
+      const response = await clearResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      expect(response.url()).not.toContain('resourceType=');
+      expect(response.url()).not.toContain('category=');
+      expect(response.url()).not.toContain('pageId=');
+      expect(response.url()).not.toContain('status=');
+      expect(response.url()).not.toContain('search=');
+    });
+
+    await test.step('Verify filter chips are gone', async () => {
+      await expect(
+        page.locator('.filter-selection-container')
+      ).not.toBeVisible();
+    });
+  });
+});
+
 test.describe(
   'Learning Resources E2E Flow',
   { tag: ['@Flow', '@Platform'] },

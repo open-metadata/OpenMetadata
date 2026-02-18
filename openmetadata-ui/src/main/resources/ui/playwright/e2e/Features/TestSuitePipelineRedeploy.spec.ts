@@ -62,7 +62,7 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     const redeployResponse = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/services/ingestionPipelines/deploy') &&
+        response.url().includes('/api/v1/services/ingestionPipelines/deploy/*') &&
         response.request().method() === 'POST' &&
         response.status() === 200
     );
