@@ -464,29 +464,47 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       Integer offset,
       String sortField,
       String sortType) {
-    SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
-
-    int termsSize = (limit != null && limit > 0) ? MAX_AGGREGATE_SIZE : 100;
-    SearchAggregationNode termsAgg = SearchAggregation.terms("byTerms", groupBy, termsSize);
-
-    // Add latest_overall (replaces the old "latest" aggregation for parsing compatibility)
-    termsAgg.addChild(SearchAggregation.topHits("latest", 1, "timestamp", "desc"));
-
-    // Add max_timestamp for bucket selector
-    termsAgg.addChild(SearchAggregation.max("max_timestamp", "timestamp"));
-
-    // Get content filters using the new getFilterQuery method for filter aggregations
     String contentFilters = contentFilter.getFilterQuery(entityType);
 
-    // Create content filter aggregation
+    List<SearchAggregationNode> nodes =
+        buildAggregationNodes(
+            groupBy, contentFilters, limit, offset, sortField, sortType, MAX_AGGREGATE_SIZE);
+    SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
+    nodes.forEach(root::addChild);
+    return SearchAggregation.fromTree(root);
+  }
+
+  static List<SearchAggregationNode> buildAggregationNodes(
+      String groupBy,
+      String contentFilters,
+      Integer limit,
+      Integer offset,
+      String sortField,
+      String sortType,
+      int maxAggSize) {
+    List<SearchAggregationNode> rootNodes = new ArrayList<>();
+
+    // When paginating, use MAX_AGGREGATE_SIZE so bucket_sort has enough upstream buckets to slice
+    // from. Without this, a default size of 100 would make offset>100 always return empty results.
+    int termsSize = (limit != null && limit > 0) ? maxAggSize : 100;
+    SearchAggregationNode termsAgg = SearchAggregation.terms("byTerms", groupBy, termsSize);
+
+    // top_hits fetches the latest document per group — the actual entity we return to the caller.
+    termsAgg.addChild(SearchAggregation.topHits("latest", 1, "timestamp", "desc"));
+    // max_timestamp is the reference value for bucket_selector to compare against.
+    termsAgg.addChild(SearchAggregation.max("max_timestamp", "timestamp"));
+
+    // Re-apply content filters inside the bucket to find the latest document that also matches.
+    // This lets bucket_selector decide whether the group's latest doc satisfies the filters.
     SearchAggregationNode filterAgg =
         SearchAggregation.filter("with_content_filters", contentFilters);
     filterAgg.addChild(SearchAggregation.max("max_matching_timestamp", "timestamp"));
     filterAgg.addChild(SearchAggregation.valueCount("count", "timestamp"));
-
     termsAgg.addChild(filterAgg);
 
-    // Add bucket selector to filter buckets where latest timestamp equals matching timestamp
+    // Discard groups where the latest document does not match the content filters.
+    // The check "latest_timestamp == matching_timestamp" means the most recent doc passed the
+    // filter.
     termsAgg.addChild(
         SearchAggregation.bucketSelector(
             "filter_groups",
@@ -494,25 +512,25 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
             "latest_timestamp,matching_count,matching_timestamp",
             "max_timestamp,with_content_filters>count,with_content_filters>max_matching_timestamp"));
 
-    // Add bucket_sort for pagination if limit is provided
     if (limit != null && limit > 0) {
-      Integer effectiveLimit = Math.min(limit, MAX_AGGREGATE_SIZE);
+      // Slice the surviving buckets into pages. Must run after bucket_selector.
+      Integer effectiveLimit = Math.min(limit, maxAggSize);
       Integer effectiveOffset = offset != null ? offset : 0;
-
-      // Map sortField to aggregation field name
       String aggSortField = mapSortFieldToAggregationField(sortField);
       String aggSortOrder = sortType != null ? sortType.toLowerCase() : "desc";
-
       termsAgg.addChild(
           SearchAggregation.bucketSort(
               "pagination", effectiveLimit, effectiveOffset, aggSortField, aggSortOrder));
     }
 
-    root.addChild(termsAgg);
+    rootNodes.add(termsAgg);
 
     if (limit != null && limit > 0) {
+      // byTermsCount is a sibling of byTerms with identical filters but no top_hits and no
+      // bucket_sort. Its sole purpose is to count all post-filter groups so stats_bucket can
+      // compute an exact total — bypassing the pagination slice applied to byTerms.
       SearchAggregationNode termsCountAgg =
-          SearchAggregation.terms("byTermsCount", groupBy, MAX_AGGREGATE_SIZE);
+          SearchAggregation.terms("byTermsCount", groupBy, maxAggSize);
       termsCountAgg.addChild(SearchAggregation.max("max_timestamp", "timestamp"));
 
       SearchAggregationNode countFilterAgg =
@@ -528,19 +546,20 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
               "latest_timestamp,matching_count,matching_timestamp",
               "max_timestamp,with_content_filters>count,with_content_filters>max_matching_timestamp"));
 
-      root.addChild(termsCountAgg);
-      root.addChild(
+      rootNodes.add(termsCountAgg);
+      // stats_bucket counts how many buckets survived in byTermsCount, giving an exact total
+      // that reflects filters but not the pagination window.
+      rootNodes.add(
           SearchAggregation.statsBucket("total_bucket_count", "byTermsCount>max_timestamp"));
     }
 
-    return SearchAggregation.fromTree(root);
+    return rootNodes;
   }
 
-  private String mapSortFieldToAggregationField(String sortField) {
+  static String mapSortFieldToAggregationField(String sortField) {
     if (sortField == null) {
       return "max_timestamp";
     }
-    // Map timestamp-based fields to the max_timestamp aggregation
     return switch (sortField.toLowerCase()) {
       case "updatedat", "timestamp", "createdat" -> "max_timestamp";
       case "_key" -> "_key";

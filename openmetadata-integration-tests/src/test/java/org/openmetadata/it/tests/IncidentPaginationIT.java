@@ -13,14 +13,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
-import org.openmetadata.schema.tests.type.TestCaseResolutionStatusDetails;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -34,11 +36,29 @@ public class IncidentPaginationIT {
   private static final int TEST_DATA_SIZE = 50;
   private OpenMetadataClient client;
   private List<TestCase> testCases;
+  private String databaseSchemaFqn;
 
   @BeforeAll
   public void setup() throws Exception {
     client = SdkClients.adminClient();
     testCases = new ArrayList<>();
+
+    long ts = System.currentTimeMillis();
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName("pagination_test_db_" + ts)
+                    .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
+    databaseSchemaFqn =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName("pagination_test_schema_" + ts)
+                    .withDatabase(database.getFullyQualifiedName()))
+            .getFullyQualifiedName();
 
     Table table = createTestTable();
     String testDefFqn =
@@ -180,8 +200,7 @@ public class IncidentPaginationIT {
     CreateTable createTable =
         new CreateTable()
             .withName("pagination_test_table_" + System.currentTimeMillis())
-            .withDatabaseSchema(
-                SharedEntities.getDatabaseSchemaReferences().get(0).getFullyQualifiedName())
+            .withDatabaseSchema(databaseSchemaFqn)
             .withColumns(
                 List.of(
                     new Column()
@@ -205,12 +224,9 @@ public class IncidentPaginationIT {
   private void createIncidentStatus(TestCase testCase) throws Exception {
     CreateTestCaseResolutionStatus createStatus =
         new CreateTestCaseResolutionStatus()
-            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.NEW)
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
             .withTestCaseReference(testCase.getFullyQualifiedName())
-            .withSeverity(Severity.SEVERITY_2)
-            .withTestCaseResolutionStatusDetails(
-                new TestCaseResolutionStatusDetails()
-                    .withTestCaseFailureComment("Test incident for pagination testing"));
+            .withSeverity(Severity.Severity2);
 
     client.testCaseResolutionStatuses().create(createStatus);
   }
