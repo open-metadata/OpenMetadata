@@ -145,17 +145,17 @@ test('should show correct count for initial options', async ({ page }) => {
     // where we are fetching the tier options from tag API and
     // the count from aggregation API.
     // So we need to match the bucket count with the corresponding tier option.
-    for (const tier of tierList) {
+    for (const tierItem of tierList) {
       // Find the corresponding bucket for the tier
       const bucket = buckets.find(
         (item: { key: string }) =>
-          item.key.toLowerCase() === tier.fullyQualifiedName?.toLowerCase()
+          item.key.toLowerCase() === tierItem.fullyQualifiedName?.toLowerCase()
       );
       // Check if the tier in the dropdown has a corresponding bucket in elastic search response
       if (!isUndefined(bucket)) {
         await expect(
           page
-            .locator(`[data-menu-id$="-${tier.fullyQualifiedName}"]`)
+            .locator(`[data-menu-id$="-${tierItem.fullyQualifiedName}"]`)
             .getByTestId('filter-count')
         ).toHaveText(bucket.doc_count.toString());
       }
