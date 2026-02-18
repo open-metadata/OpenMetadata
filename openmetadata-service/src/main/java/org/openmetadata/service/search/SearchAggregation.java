@@ -33,9 +33,16 @@ public class SearchAggregation {
    * Static builder method for terms aggregation.
    */
   public static SearchAggregationNode terms(String name, String field) {
+    return terms(name, field, 100);
+  }
+
+  /**
+   * Static builder method for terms aggregation with explicit size.
+   */
+  public static SearchAggregationNode terms(String name, String field, int size) {
     Map<String, String> value = new HashMap<>();
     value.put("field", field);
-    value.put("size", "100");
+    value.put("size", String.valueOf(size));
     return new SearchAggregationNode("terms", name, value);
   }
 

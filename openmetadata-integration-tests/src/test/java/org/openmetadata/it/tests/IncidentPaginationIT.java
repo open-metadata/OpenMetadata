@@ -16,8 +16,8 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
-import org.openmetadata.schema.tests.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.Severity;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -136,7 +136,8 @@ public class IncidentPaginationIT {
     CreateTable createTable =
         new CreateTable()
             .withName("pagination_test_table_" + System.currentTimeMillis())
-            .withDatabaseSchema(SharedEntities.getDatabaseSchemaReferences().get(0).getFullyQualifiedName())
+            .withDatabaseSchema(
+                SharedEntities.getDatabaseSchemaReferences().get(0).getFullyQualifiedName())
             .withColumns(
                 List.of(
                     new Column()
@@ -149,15 +150,17 @@ public class IncidentPaginationIT {
 
   private TestCase createTestCase(Table table, int index) throws Exception {
     String testDefFqn =
-        client.testDefinitions().list(new ListParams().withLimit(1)).getData().get(0).getFullyQualifiedName();
+        client
+            .testDefinitions()
+            .list(new ListParams().withLimit(1))
+            .getData()
+            .get(0)
+            .getFullyQualifiedName();
 
     CreateTestCase createTestCase =
         new CreateTestCase()
             .withName("pagination_test_case_" + index)
-            .withEntityLink(
-                "<#E::table::"
-                    + table.getFullyQualifiedName()
-                    + "::columns::id>")
+            .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::id>")
             .withTestDefinition(testDefFqn);
 
     return client.testCases().create(createTestCase);

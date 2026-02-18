@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -41,6 +42,7 @@ import org.openmetadata.service.util.RestUtil;
 
 @Getter
 @Repository
+@Slf4j
 public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
   protected final String collectionPath;
   protected final EntityTimeSeriesDAO timeSeriesDao;
@@ -441,14 +443,14 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     // Extract total count from cardinality aggregation
     int totalCount = entityList.size();
     try {
-      String cardinalityPath = "$.cardinality#total_count.value";
+      String cardinalityPath = "$.filter#total_count_wrapper.cardinality#total_count.value";
       Optional<Integer> cardinalityValue =
           JsonUtils.readJsonAtPath(jsonObjResults.toString(), cardinalityPath, Integer.class);
       if (cardinalityValue.isPresent()) {
         totalCount = cardinalityValue.get();
       }
     } catch (Exception e) {
-      // Fall back to entityList.size() if cardinality extraction fails
+      LOG.warn("Failed to extract cardinality total count, falling back to page size", e);
     }
 
     return new ResultList<>(entityList, offset, limit, totalCount);
@@ -463,8 +465,8 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       String sortType) {
     SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
 
-    // Create terms aggregation by groupBy field
-    SearchAggregationNode termsAgg = SearchAggregation.terms("byTerms", groupBy);
+    int termsSize = (limit != null && limit > 0) ? MAX_AGGREGATE_SIZE : 100;
+    SearchAggregationNode termsAgg = SearchAggregation.terms("byTerms", groupBy, termsSize);
 
     // Add latest_overall (replaces the old "latest" aggregation for parsing compatibility)
     termsAgg.addChild(SearchAggregation.topHits("latest", 1, "timestamp", "desc"));
@@ -507,8 +509,10 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
     root.addChild(termsAgg);
 
-    // Add cardinality aggregation as sibling to termsAgg for total count
-    root.addChild(SearchAggregation.cardinality("total_count", groupBy));
+    SearchAggregationNode filteredCount =
+        SearchAggregation.filter("total_count_wrapper", contentFilters);
+    filteredCount.addChild(SearchAggregation.cardinality("total_count", groupBy));
+    root.addChild(filteredCount);
 
     return SearchAggregation.fromTree(root);
   }
