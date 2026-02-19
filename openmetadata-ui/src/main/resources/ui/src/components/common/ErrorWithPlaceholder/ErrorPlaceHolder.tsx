@@ -12,7 +12,7 @@
  */
 
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
-import CoreCreatePlaceHolder from '../MUICreate/CoreCreatePlaceHolder';
+import CoreCreatePlaceHolder from '../CoreCreate/CoreCreatePlaceHolder';
 import AssignErrorPlaceHolder from './AssignErrorPlaceHolder';
 import CreateErrorPlaceHolder from './CreateErrorPlaceHolder';
 import CustomNoDataPlaceHolder from './CustomNoDataPlaceHolder';
