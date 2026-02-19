@@ -333,8 +333,11 @@ public class DataAssetsWorkflow {
       this.executor = null;
     }
 
-    drainAndFlush(operationsQueue, contextData);
-    updateWorkflowStats(source.getName(), source.getStats());
+    try {
+      drainAndFlush(operationsQueue, contextData);
+    } finally {
+      updateWorkflowStats(source.getName(), source.getStats());
+    }
   }
 
   @SuppressWarnings("unchecked")
