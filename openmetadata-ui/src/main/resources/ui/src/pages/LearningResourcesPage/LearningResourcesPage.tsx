@@ -80,9 +80,7 @@ const getResourceTypeIcon = (type: string) => {
   const Icon = icons[type] ?? VideoIcon;
 
   return (
-    <div
-      className="d-flex items-center justify-center"
-      style={{ width: 32, height: 32, borderRadius: 4, flexShrink: 0 }}>
+    <div className="d-flex items-center justify-center">
       <Icon height={24} width={24} />
     </div>
   );
@@ -141,17 +139,8 @@ const ResourceRow = ({
           padding: '0 16px',
           borderBottom: '1px solid #EAECF0',
         }}>
-        <div
-          className="d-flex items-center gap-2"
-          style={{ flexWrap: 'nowrap', overflow: 'hidden', minWidth: 0 }}>
-          <div
-            className="d-flex items-center gap-2"
-            style={{
-              flexShrink: 1,
-              minWidth: 0,
-              overflow: 'hidden',
-              flexWrap: 'nowrap',
-            }}>
+        <div className="d-flex items-center gap-2 overflow-hidden flex-wrap-nowrap flex-shrink-1">
+          <div className="d-flex items-center gap-2 overflow-hidden flex-wrap-nowrap flex-shrink-1">
             {record.categories?.slice(0, MAX_VISIBLE_TAGS).map((cat) => (
               <Badge
                 color={CATEGORY_BADGE_COLORS[cat] ?? 'gray'}
@@ -180,9 +169,7 @@ const ResourceRow = ({
           padding: '0 16px',
           borderBottom: '1px solid #EAECF0',
         }}>
-        <div
-          className="d-flex items-center gap-2"
-          style={{ flexWrap: 'nowrap', overflow: 'hidden', minWidth: 0 }}>
+        <div className="d-flex items-center gap-2 flex-nowrap overflow-hidden">
           <div
             className="d-flex items-center gap-2"
             style={{
