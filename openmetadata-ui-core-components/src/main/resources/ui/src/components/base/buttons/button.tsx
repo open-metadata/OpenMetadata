@@ -173,6 +173,16 @@ export interface ButtonProps
     > {
   /** Slot name for react-aria component */
   slot?: AriaButtonProps["slot"];
+  /** Handler called when the button is pressed */
+  onPress?: AriaButtonProps["onPress"];
+  /** Handler called when a press interaction starts */
+  onPressStart?: AriaButtonProps["onPressStart"];
+  /** Handler called when a press interaction ends */
+  onPressEnd?: AriaButtonProps["onPressEnd"];
+  /** Handler called when the press state changes */
+  onPressChange?: AriaButtonProps["onPressChange"];
+  /** Handler called when a press is released over the target */
+  onPressUp?: AriaButtonProps["onPressUp"];
 }
 
 /**

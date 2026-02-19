@@ -1,4 +1,4 @@
-import type { FC, RefAttributes } from "react";
+import type { FC, HTMLAttributes, RefAttributes } from "react";
 import { DotsVertical } from "@untitledui/icons";
 import type {
     ButtonProps as AriaButtonProps,
@@ -149,12 +149,14 @@ const DropdownDotsButton = (props: AriaButtonProps & RefAttributes<HTMLButtonEle
     );
 };
 
+export type DropdownSectionHeaderProps = HTMLAttributes<HTMLElement> & RefAttributes<HTMLElement>;
+
 export const Dropdown = {
     Root: AriaMenuTrigger,
     Popover: DropdownPopover,
     Menu: DropdownMenu,
     Section: AriaMenuSection,
-    SectionHeader: AriaHeader,
+    SectionHeader: AriaHeader as FC<DropdownSectionHeaderProps>,
     Item: DropdownItem,
     Separator: DropdownSeparator,
     DotsButton: DropdownDotsButton,

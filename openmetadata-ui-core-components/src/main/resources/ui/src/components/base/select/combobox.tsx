@@ -1,4 +1,4 @@
-import type { FocusEventHandler, PointerEventHandler, RefAttributes, RefObject } from "react";
+import type { FocusEventHandler, PointerEventHandler, RefAttributes } from "react";
 import { useCallback, useContext, useRef, useState } from "react";
 import { SearchLg as SearchIcon } from "@untitledui/icons";
 import type { ComboBoxProps as AriaComboBoxProps, GroupProps as AriaGroupProps, ListBoxProps as AriaListBoxProps } from "react-aria-components";
@@ -18,14 +18,13 @@ interface ComboBoxProps extends Omit<AriaComboBoxProps<SelectItemType>, "childre
     children: AriaListBoxProps<SelectItemType>["children"];
 }
 
-interface ComboBoxValueProps extends AriaGroupProps {
+interface ComboBoxValueProps extends AriaGroupProps, RefAttributes<HTMLDivElement> {
     size: "sm" | "md";
     shortcut: boolean;
     placeholder?: string;
     shortcutClassName?: string;
     onFocus?: FocusEventHandler;
     onPointerEnter?: PointerEventHandler;
-    ref?: RefObject<HTMLDivElement | null>;
 }
 
 const ComboBoxValue = ({ size, shortcut, placeholder, shortcutClassName, ...otherProps }: ComboBoxValueProps) => {

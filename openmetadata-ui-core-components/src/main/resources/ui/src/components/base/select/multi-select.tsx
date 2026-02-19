@@ -1,4 +1,4 @@
-import type { FocusEventHandler, KeyboardEvent, PointerEventHandler, RefAttributes, RefObject } from "react";
+import type { FocusEventHandler, KeyboardEvent, PointerEventHandler, RefAttributes } from "react";
 import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { SearchLg } from "@untitledui/icons";
 import { FocusScope, useFilter, useFocusManager } from "react-aria";
@@ -17,14 +17,13 @@ import { useResizeObserver } from "@/hooks/use-resize-observer";
 import { cx } from "@/utils/cx";
 import { SelectItem } from "./select-item";
 
-interface ComboBoxValueProps extends AriaGroupProps {
+interface ComboBoxValueProps extends AriaGroupProps, RefAttributes<HTMLDivElement> {
     size: "sm" | "md";
     shortcut?: boolean;
     isDisabled?: boolean;
     placeholder?: string;
     shortcutClassName?: string;
     placeholderIcon?: IconComponentType | null;
-    ref?: RefObject<HTMLDivElement | null>;
     onFocus?: FocusEventHandler;
     onPointerEnter?: PointerEventHandler;
 }

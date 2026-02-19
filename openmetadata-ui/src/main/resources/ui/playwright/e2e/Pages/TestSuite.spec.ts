@@ -107,7 +107,7 @@ test('Logical TestSuite', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page, ownerPage
   await test.step('Domain Add, Update and Remove', async () => {
     await assignSingleSelectDomain(page, domain1.responseData);
     await assignSingleSelectDomain(page, domain2.responseData);
-    await removeSingleSelectDomain(page, domain2.responseData, false);
+    await removeSingleSelectDomain(page, domain2.responseData, true);
   });
 
   await test.step(

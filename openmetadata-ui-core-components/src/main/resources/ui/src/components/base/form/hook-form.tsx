@@ -64,7 +64,7 @@ export const FormField = <TFieldValues extends FieldValues = FieldValues, TName 
             value={{
                 id,
                 name: props.name,
-                control: control as UseControllerReturn<FieldValues, TName>,
+                control: control as unknown as UseControllerReturn<FieldValues, string>,
             }}
         >
             {children && (typeof children === "function" ? children(withValidationBehavior) : children)}

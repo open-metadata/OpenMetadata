@@ -40,9 +40,11 @@ const RangeCalendarTitle = ({ part }: { part: "start" | "end" }) => {
         timeZone: context.timeZone,
     });
 
-    return part === "start"
+    const text = part === "start"
         ? formatter.format(context.visibleRange.start.toDate(context.timeZone))
         : formatter.format(context.visibleRange.end.toDate(context.timeZone));
+
+    return <>{text}</>;
 };
 
 const MobilePresetButton = ({ value, children, ...props }: HTMLAttributes<HTMLButtonElement> & { value: { start: DateValue; end: DateValue } }) => {
