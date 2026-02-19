@@ -336,7 +336,7 @@ export const LearningResourcesPage: React.FC = () => {
 
   const filtersRow = (
     <div className="tw:shrink-0 tw:p-3">
-      <div className="d-flex items-center gap-3">
+      <div className="tw:flex tw:items-center tw:gap-3">
         {search}
         {quickFilters}
         <div className="tw:grow" />
