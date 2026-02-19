@@ -1,11 +1,15 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Objects;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,7 +18,10 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 
 class IngestionPipelineRepositoryTest {
 
@@ -31,6 +38,10 @@ class IngestionPipelineRepositoryTest {
             org.mockito.ArgumentMatchers.any(IngestionPipeline.class),
             org.mockito.ArgumentMatchers.any(IngestionPipeline.class)))
         .thenCallRealMethod();
+
+    SecretsManagerConfiguration smConfig = new SecretsManagerConfiguration();
+    smConfig.setSecretsManager(SecretsManagerProvider.DB);
+    SecretsManagerFactory.createSecretsManager(smConfig, "test");
   }
 
   @Test
@@ -217,6 +228,42 @@ class IngestionPipelineRepositoryTest {
     boolean hasChanged = repository.hasSourceConfigChanged(original, updated);
 
     assertTrue(hasChanged, "Null to non-null sourceConfig should indicate a change");
+  }
+
+  @Test
+  @DisplayName(
+      "buildIngestionPipelineDecrypted with null service should produce decrypted pipeline without service")
+  void testBuildIngestionPipelineDecrypted_NullServicePreserved() {
+    IngestionPipeline pipeline = createBasicPipeline();
+    pipeline.setService(null);
+
+    IngestionPipeline decrypted =
+        IngestionPipelineRepository.buildIngestionPipelineDecrypted(pipeline);
+
+    assertNull(
+        decrypted.getService(),
+        "Decrypted pipeline should have null service when original has null service."
+            + " This happens when the pipeline is loaded via findByName (service is a relationship"
+            + " field stripped before DB storage). deployPipelineBeforeUpdate must restore it.");
+  }
+
+  @Test
+  @DisplayName("buildIngestionPipelineDecrypted with service set should preserve it")
+  void testBuildIngestionPipelineDecrypted_ServicePreserved() {
+    UUID serviceId = UUID.randomUUID();
+    EntityReference serviceRef = new EntityReference();
+    serviceRef.setId(serviceId);
+    serviceRef.setName("OpenMetadata");
+    serviceRef.setType("metadataService");
+
+    IngestionPipeline pipeline = createBasicPipeline();
+    pipeline.setService(serviceRef);
+
+    IngestionPipeline decrypted =
+        IngestionPipelineRepository.buildIngestionPipelineDecrypted(pipeline);
+
+    assertNotNull(decrypted.getService());
+    assertEquals("OpenMetadata", decrypted.getService().getName());
   }
 
   private static IngestionPipeline createPipelineWithSchedule(String schedule) {

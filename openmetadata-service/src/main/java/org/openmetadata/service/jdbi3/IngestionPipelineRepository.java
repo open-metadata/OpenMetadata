@@ -283,6 +283,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   protected void deployPipelineBeforeUpdate(IngestionPipeline ingestionPipeline) {
     IngestionPipeline decrypted = buildIngestionPipelineDecrypted(ingestionPipeline);
 
+    // Restore service reference lost during JSON round-trip (service is a relationship,
+    // not stored in the entity JSON). Fall back to fetching from the relationships table.
+    if (decrypted.getService() == null) {
+      EntityReference serviceRef =
+          ingestionPipeline.getService() != null
+              ? ingestionPipeline.getService()
+              : getContainer(ingestionPipeline.getId());
+      decrypted.setService(serviceRef);
+    }
+
     OpenMetadataConnection openMetadataServerConnection =
         new org.openmetadata.service.util.OpenMetadataConnectionBuilder(
                 openMetadataApplicationConfig, decrypted)
