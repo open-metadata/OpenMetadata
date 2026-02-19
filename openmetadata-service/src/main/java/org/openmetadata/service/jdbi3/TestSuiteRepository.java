@@ -521,22 +521,18 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     List<UUID> suiteIds = testSuites.stream().map(TestSuite::getId).toList();
     Map<UUID, List<ResultSummary>> testCaseResultSummaryMap = batchGetResultSummary(suiteIds);
 
-    Map<UUID, TestSummary> testSummaryMap =
-        testCaseResultSummaryMap.entrySet().stream()
-            .collect(
-                Collectors.toMap(
-                    Map.Entry::getKey, entry -> computeSimpleSummary(entry.getValue())));
+    Map<UUID, TestSummary> testSummaryMap = new HashMap<>();
+    testCaseResultSummaryMap.forEach(
+        (id, results) -> testSummaryMap.put(id, computeSimpleSummary(results)));
 
     setFieldFromMap(true, testSuites, testSummaryMap, TestSuite::setSummary);
   }
 
   private TestSummary computeSimpleSummary(List<ResultSummary> results) {
-    Map<String, Integer> statusCounts =
-        results.stream()
-            .collect(
-                Collectors.groupingBy(
-                    r -> r.getStatus().toString(),
-                    Collectors.collectingAndThen(Collectors.counting(), Long::intValue)));
+    Map<String, Integer> statusCounts = new HashMap<>();
+    for (ResultSummary r : results) {
+      statusCounts.merge(r.getStatus().toString(), 1, Integer::sum);
+    }
     TestSummary summary = createTestSummary(statusCounts);
     summary.setTotal(results.size());
     return summary;
