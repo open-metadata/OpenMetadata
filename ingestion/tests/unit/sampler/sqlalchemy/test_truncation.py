@@ -24,7 +24,6 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.sampler.models import SampleConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 
@@ -103,54 +102,36 @@ class TestSQASamplerTruncation:
         sample_data = self.sampler.fetch_sample_data()
 
         body_idx = next(
-            i
-            for i, col in enumerate(sample_data.columns)
-            if str(col.root) == "body"
+            i for i, col in enumerate(sample_data.columns) if str(col.root) == "body"
         )
-        oversized_row = next(
-            row
-            for row in sample_data.rows
-            if row[1] == "oversized"
-        )
+        oversized_row = next(row for row in sample_data.rows if row[1] == "oversized")
         assert len(oversized_row[body_idx]) == SAMPLE_DATA_MAX_CELL_LENGTH
 
     def test_value_at_limit_is_not_truncated(self):
         sample_data = self.sampler.fetch_sample_data()
 
         body_idx = next(
-            i
-            for i, col in enumerate(sample_data.columns)
-            if str(col.root) == "body"
+            i for i, col in enumerate(sample_data.columns) if str(col.root) == "body"
         )
-        at_limit_row = next(
-            row for row in sample_data.rows if row[1] == "at_limit"
-        )
+        at_limit_row = next(row for row in sample_data.rows if row[1] == "at_limit")
         assert len(at_limit_row[body_idx]) == SAMPLE_DATA_MAX_CELL_LENGTH
 
     def test_small_value_is_unchanged(self):
         sample_data = self.sampler.fetch_sample_data()
 
         body_idx = next(
-            i
-            for i, col in enumerate(sample_data.columns)
-            if str(col.root) == "body"
+            i for i, col in enumerate(sample_data.columns) if str(col.root) == "body"
         )
-        small_row = next(
-            row for row in sample_data.rows if row[1] == "small"
-        )
+        small_row = next(row for row in sample_data.rows if row[1] == "small")
         assert small_row[body_idx] == "z" * 100
 
     def test_null_value_is_preserved(self):
         sample_data = self.sampler.fetch_sample_data()
 
         body_idx = next(
-            i
-            for i, col in enumerate(sample_data.columns)
-            if str(col.root) == "body"
+            i for i, col in enumerate(sample_data.columns) if str(col.root) == "body"
         )
-        null_row = next(
-            row for row in sample_data.rows if row[1] == "null_body"
-        )
+        null_row = next(row for row in sample_data.rows if row[1] == "null_body")
         assert null_row[body_idx] is None
 
     def test_user_query_truncates_oversized_cells(self):
