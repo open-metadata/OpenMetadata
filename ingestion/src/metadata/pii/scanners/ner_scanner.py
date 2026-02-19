@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel, ConfigDict
 
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.pii.algorithms.preprocessing import MAX_NLP_TEXT_LENGTH
 from metadata.pii.algorithms.presidio_utils import _load_spacy_model
 from metadata.pii.constants import PII, SPACY_EN_MODEL
 from metadata.pii.models import TagAndConfidence
@@ -117,7 +118,9 @@ class NERScanner(BaseScanner):
             lambda: StringAnalysis(score=0, appearances=0)
         )
 
-        str_sample_data_rows = [str(row) for row in data if row is not None]
+        str_sample_data_rows = [
+            str(row)[:MAX_NLP_TEXT_LENGTH] for row in data if row is not None
+        ]
         for row in str_sample_data_rows:
             try:
                 self.process_data(row=row, entities_score=entities_score)
