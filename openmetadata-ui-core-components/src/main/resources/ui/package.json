@@ -71,8 +71,6 @@
     "@material/material-color-utilities": "^0.3.0",
     "@react-aria/utils": "^3.33.0",
     "@react-stately/utils": "^3.11.0",
-    "@tailwindcss/typography": "^0.5.19",
-    "@tailwindcss/vite": "^4.1.18",
     "@untitledui/icons": "^0.0.21",
     "input-otp": "^1.4.2",
     "react-aria": "^3.46.0",
@@ -87,7 +85,13 @@
     "@mui/x-date-pickers": ">=8.0.0",
     "notistack": ">=3.0.0",
     "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
+    "react-dom": ">=18.0.0",
+    "@tailwindcss/typography": ">=0.5.0",
+    "@tailwindcss/vite": ">=4.0.0",
+    "tailwind-merge": ">=3.0.0",
+    "tailwindcss": ">=4.0.0",
+    "tailwindcss-animate": ">=1.0.0",
+    "tailwindcss-react-aria-components": ">=2.0.0"
   },
   "devDependencies": {
     "@emotion/react": "^11.14.0",
@@ -111,6 +115,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "storybook": "^8.6.15",
+    "@tailwindcss/typography": "^0.5.19",
+    "@tailwindcss/vite": "^4.1.18",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18",
     "tailwindcss-animate": "^1.0.7",
