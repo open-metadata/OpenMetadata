@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-.test-suite-description {
-  .description-inner-main-container {
-    padding-left: 0;
-    padding-right: 0;
-  }
+export const TEST_SUMMARY_CHART_MARGIN = {
+  top: 16,
+  bottom: 100,
+  right: 40,
+  left: 16,
+} as const;
 
-  .rich-text-editor-container {
-    padding-left: 0;
-  }
-}
+export const STATUS_DOT_RADIUS = 4;
+export const STATUS_DOT_SIZE = STATUS_DOT_RADIUS * 2;
+
+export const TOOLTIP_OFFSET_DEFAULT = -200;
+export const TOOLTIP_OFFSET_NEAR_EDGE = -20;
+export const TOOLTIP_EDGE_THRESHOLD = 200;

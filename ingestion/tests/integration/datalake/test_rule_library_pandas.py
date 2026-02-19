@@ -11,9 +11,7 @@
 """
 Integration tests for Rule Library Pandas Expression validator on Datalake (S3/MinIO)
 """
-import sys
 from copy import deepcopy
-from typing import List
 
 import pytest
 
@@ -31,10 +29,6 @@ from metadata.generated.schema.tests.testDefinition import (
 )
 from metadata.generated.schema.type.basic import Markdown, SqlQuery, TestCaseEntityName
 from metadata.workflow.data_quality import TestSuiteWorkflow
-
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
-
 
 BUCKET_NAME = "my-bucket"
 
@@ -153,9 +147,14 @@ class TestRuleLibraryPandas:
     ):
         """Run the rule library test suite with pandas expression tests."""
         workflow_config = deepcopy(RULE_LIBRARY_DATA_QUALITY_CONFIG)
+        service_name = ingestion_config["source"]["serviceName"]
+        workflow_config["source"]["serviceName"] = service_name
+        workflow_config["source"]["sourceConfig"]["config"][
+            "entityFullyQualifiedName"
+        ] = f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
         workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
             {
-                "serviceName": ingestion_config["source"]["serviceName"],
+                "serviceName": service_name,
                 "serviceConnection": ingestion_config["source"]["serviceConnection"],
             }
         ]
@@ -193,6 +192,7 @@ class TestRuleLibraryPandas:
         self,
         run_rule_library_test_suite,
         metadata,
+        datalake_service_name,
         test_case_name,
         expected_status,
     ):
@@ -204,13 +204,13 @@ class TestRuleLibraryPandas:
         3. The df.query() execution returns correct row counts
         4. Test case status is correctly determined based on row count (0 = success)
         """
-        test_cases: List[TestCase] = metadata.list_entities(
-            TestCase, fields=["*"], skip_on_failure=True
-        ).entities
-        test_case: TestCase = next(
-            (t for t in test_cases if t.name.root == test_case_name), None
+        table_fqn = f'{datalake_service_name}.default.{BUCKET_NAME}."users/users.csv"'
+        test_case: TestCase = metadata.get_by_name(
+            TestCase,
+            f"{table_fqn}.age.{test_case_name}",
+            fields=["*"],
+            nullable=False,
         )
-        assert test_case is not None, f"Test case {test_case_name} not found"
         assert test_case.testCaseResult is not None, "Test case result is None"
         assert (
             test_case.testCaseResult.testCaseStatus == expected_status
