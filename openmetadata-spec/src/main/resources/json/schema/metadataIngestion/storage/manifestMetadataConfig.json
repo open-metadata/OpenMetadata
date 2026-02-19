@@ -61,6 +61,12 @@
           "description": "Depth level in the storage path hierarchy where data files reside.",
           "type": "integer",
           "default": 0
+        },
+        "foldersOnly": {
+          "title": "Folders Only",
+          "description": "When true, ingests only the folder hierarchy without listing or ingesting files. Useful for visualizing storage structure without file-level metadata.",
+          "type": "boolean",
+          "default": false
         }
       },
       "required": [

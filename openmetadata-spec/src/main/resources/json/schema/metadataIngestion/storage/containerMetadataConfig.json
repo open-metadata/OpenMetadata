@@ -37,6 +37,12 @@
           "type": "integer",
           "default": 0
         },
+        "foldersOnly": {
+          "title": "Folders Only",
+          "description": "When true, ingests only the folder hierarchy without listing or ingesting files. Useful for visualizing storage structure without file-level metadata.",
+          "type": "boolean",
+          "default": false
+        },
         "separator": {
           "title": "Separator",
           "description": "For delimited files such as CSV, what is the separator being used?",

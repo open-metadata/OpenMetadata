@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """GCS object store extraction metadata"""
+
 import json
 import secrets
 import traceback
@@ -261,9 +262,11 @@ class GcsSource(StorageServiceSource):
                 return GCSContainerDetails(
                     name=metadata_entry.dataPath.strip(KEY_SEPARATOR),
                     prefix=prefix,
-                    creation_date=bucket_response.creation_date.isoformat()
-                    if bucket_response.creation_date
-                    else None,
+                    creation_date=(
+                        bucket_response.creation_date.isoformat()
+                        if bucket_response.creation_date
+                        else None
+                    ),
                     number_of_objects=self._fetch_metric(
                         bucket=bucket_response, metric=GCSMetric.NUMBER_OF_OBJECTS
                     ),
@@ -283,6 +286,54 @@ class GcsSource(StorageServiceSource):
                     ),
                 )
         return None
+
+    def _generate_structured_containers_by_depth_folders_only(
+        self,
+        bucket_response: GCSBucketResponse,
+        metadata_entry: MetadataEntry,
+        parent: Optional[EntityReference] = None,
+    ) -> Iterable[GCSContainerDetails]:
+        """
+        Generate folder containers at specified depth without including files.
+        """
+        try:
+            prefix = self._get_sample_file_prefix(metadata_entry=metadata_entry)
+            if prefix:
+                client = self.gcs_clients.storage_client.clients[
+                    bucket_response.project_id
+                ]
+                # TODO: Implement pagination for buckets with >1000 objects to ensure complete folder discovery
+                response = client.list_blobs(
+                    bucket_response.name,
+                    prefix=prefix,
+                    max_results=1000,
+                )
+                total_depth = metadata_entry.depth + len(prefix[:-1].split("/"))
+                candidate_keys = {
+                    "/".join(entry.name.split("/")[:total_depth]) + "/"
+                    for entry in response
+                    if entry and entry.name and len(entry.name.split("/")) > total_depth
+                }
+                for key in candidate_keys:
+                    prefix_path = key.strip(KEY_SEPARATOR)
+                    yield GCSContainerDetails(
+                        name=prefix_path.split(KEY_SEPARATOR)[-1],
+                        prefix=KEY_SEPARATOR + prefix_path,
+                        file_formats=[],
+                        data_model=None,
+                        parent=parent,
+                        fullPath=self._get_full_path(bucket_response.name, prefix_path),
+                        sourceUrl=self._get_object_source_url(
+                            bucket=bucket_response,
+                            prefix=prefix_path,
+                            is_file=False,
+                        ),
+                    )
+        except Exception as err:
+            logger.warning(
+                f"Error while generating folder-only containers by depth for {metadata_entry.dataPath} - {err}"
+            )
+            logger.debug(traceback.format_exc())
 
     def _generate_structured_containers_by_depth(
         self,
@@ -311,12 +362,12 @@ class GcsSource(StorageServiceSource):
                 for key in candidate_keys:
                     metadata_entry_copy = deepcopy(metadata_entry)
                     metadata_entry_copy.dataPath = key.strip(KEY_SEPARATOR)
-                    structured_container: Optional[
-                        GCSContainerDetails
-                    ] = self._generate_container_details(
-                        bucket_response=bucket_response,
-                        metadata_entry=metadata_entry_copy,
-                        parent=parent,
+                    structured_container: Optional[GCSContainerDetails] = (
+                        self._generate_container_details(
+                            bucket_response=bucket_response,
+                            metadata_entry=metadata_entry_copy,
+                            parent=parent,
+                        )
                     )
                     if structured_container:
                         yield structured_container
@@ -337,13 +388,33 @@ class GcsSource(StorageServiceSource):
                 f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
                 f"and generating structured container"
             )
-            if metadata_entry.depth == 0:
-                structured_container: Optional[
-                    GCSContainerDetails
-                ] = self._generate_container_details(
-                    bucket_response=bucket_response,
-                    metadata_entry=metadata_entry,
-                    parent=parent,
+            if metadata_entry.foldersOnly:
+                if metadata_entry.depth > 0:
+                    logger.info(
+                        f"Extracting folder hierarchy only from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
+                        f"with depth {metadata_entry.depth}"
+                    )
+                    yield from self._generate_structured_containers_by_depth_folders_only(
+                        bucket_response=bucket_response,
+                        metadata_entry=metadata_entry,
+                        parent=parent,
+                    )
+                else:
+                    logger.info(
+                        f"Extracting folder hierarchy only from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
+                    )
+                    yield from self._yield_folder_hierarchy(
+                        bucket_response=bucket_response,
+                        metadata_entry=metadata_entry,
+                        parent=parent,
+                    )
+            elif metadata_entry.depth == 0:
+                structured_container: Optional[GCSContainerDetails] = (
+                    self._generate_container_details(
+                        bucket_response=bucket_response,
+                        metadata_entry=metadata_entry,
+                        parent=parent,
+                    )
                 )
                 if structured_container:
                     yield structured_container
@@ -433,9 +504,11 @@ class GcsSource(StorageServiceSource):
         return GCSContainerDetails(
             name=bucket_response.name,
             prefix=KEY_SEPARATOR,
-            creation_date=bucket_response.creation_date.isoformat()
-            if bucket_response.creation_date
-            else None,
+            creation_date=(
+                bucket_response.creation_date.isoformat()
+                if bucket_response.creation_date
+                else None
+            ),
             number_of_objects=self._fetch_metric(
                 bucket=bucket_response, metric=GCSMetric.NUMBER_OF_OBJECTS
             ),
@@ -586,6 +659,39 @@ class GcsSource(StorageServiceSource):
             )
             sub_parent = EntityReference(id=container_entity.id.root, type="container")
 
+    def _yield_folder_hierarchy(
+        self,
+        bucket_response: GCSBucketResponse,
+        metadata_entry: MetadataEntry,
+        parent: Optional[EntityReference] = None,
+    ):
+        """
+        Yield only the folder hierarchy without listing individual files.
+        This is used when foldersOnly=True to visualize storage structure.
+        """
+        bucket_name = bucket_response.name
+        client = self.gcs_clients.storage_client.clients[bucket_response.project_id]
+        # TODO: Implement pagination for buckets with >1000 objects to ensure complete folder discovery
+        response = client.list_blobs(
+            bucket_name,
+            prefix=metadata_entry.dataPath,
+            max_results=1000,
+        )
+
+        folder_paths = set()
+        for entry in response:
+            if entry and entry.name:
+                path_parts = entry.name.strip(KEY_SEPARATOR).split(KEY_SEPARATOR)
+                for i in range(1, len(path_parts)):
+                    folder_path = KEY_SEPARATOR.join(path_parts[:i])
+                    folder_paths.add(folder_path)
+
+        for folder_path in sorted(folder_paths):
+            list_of_parent = folder_path.split(KEY_SEPARATOR)
+            yield from self._yield_parents_of_unstructured_container(
+                bucket_name, bucket_response.project_id, list_of_parent, parent
+            )
+
     def _yield_nested_unstructured_containers(
         self,
         bucket_response: GCSBucketResponse,
@@ -634,9 +740,11 @@ class GcsSource(StorageServiceSource):
                 size = self.get_size(bucket_name, bucket_response.project_id, key)
                 yield GCSContainerDetails(
                     name=list_of_parent[-1],
-                    prefix=KEY_SEPARATOR + parent_relative_path
-                    if parent_relative_path
-                    else KEY_SEPARATOR,
+                    prefix=(
+                        KEY_SEPARATOR + parent_relative_path
+                        if parent_relative_path
+                        else KEY_SEPARATOR
+                    ),
                     file_formats=[],
                     size=size,
                     container_fqn=container_fqn,
@@ -660,7 +768,16 @@ class GcsSource(StorageServiceSource):
         for metadata_entry in entries:
             if metadata_entry.structureFormat:
                 continue
-            if metadata_entry.unstructuredFormats:
+            if metadata_entry.foldersOnly:
+                logger.info(
+                    f"Extracting folder hierarchy only from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
+                )
+                yield from self._yield_folder_hierarchy(
+                    bucket_response=bucket_response,
+                    metadata_entry=metadata_entry,
+                    parent=parent,
+                )
+            elif metadata_entry.unstructuredFormats:
                 yield from self._yield_nested_unstructured_containers(
                     bucket_response=bucket_response,
                     metadata_entry=metadata_entry,
