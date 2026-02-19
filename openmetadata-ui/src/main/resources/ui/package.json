@@ -94,7 +94,7 @@
     "cookie-storage": "^6.1.0",
     "cronstrue": "^2.53.0",
     "crypto-random-string-with-promisify-polyfill": "^5.0.0",
-    "diff": "^5.0.0",
+    "diff": "^5.2.2",
     "dompurify": "^3.2.4",
     "elkjs": "^0.9.3",
     "eventemitter3": "^5.0.1",
@@ -113,7 +113,7 @@
     "notistack": "^3.0.2",
     "oidc-client": "^1.11.5",
     "process": "^0.11.10",
-    "qs": "6.14.1",
+    "qs": "6.14.2",
     "quill-mention": "^6.0.1",
     "quilljs-markdown": "^1.2.0",
     "rapidoc": "^9.3.8",
@@ -264,6 +264,7 @@
     "tar-fs": "2.1.4",
     "js-yaml": "4.1.1",
     "lodash": ">=4.17.23",
-    "lodash-es": ">=4.17.23"
+    "lodash-es": ">=4.17.23",
+    "markdown-it": ">=14.1.1"
   }
 }
