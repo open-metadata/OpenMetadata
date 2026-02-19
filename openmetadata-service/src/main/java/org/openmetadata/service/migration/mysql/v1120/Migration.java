@@ -7,22 +7,17 @@ import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixDa
 import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixDatabaseSchemaFqnHash;
 import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixStoredProcedureFqnHash;
 import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.fixTableFqnHash;
+import static org.openmetadata.service.migration.utils.v1120.MigrationUtil.updateClassificationAndRecognizers;
 
 import java.util.Map;
 import lombok.SneakyThrows;
-import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
 public class Migration extends MigrationProcessImpl {
-  private final org.openmetadata.service.migration.utils.v1110.MigrationUtil migrationUtil;
-
   public Migration(MigrationFile migrationFile) {
     super(migrationFile);
-    this.migrationUtil =
-        new org.openmetadata.service.migration.utils.v1110.MigrationUtil(
-            ConnectionType.MYSQL, migrationFile);
   }
 
   @Override
@@ -49,11 +44,20 @@ public class Migration extends MigrationProcessImpl {
   public Map<String, QueryStatus> runPostDDLScripts(boolean isForceMigration) {
     Map<String, QueryStatus> result = super.runPostDDLScripts(isForceMigration);
     result.putAll(
-        migrationUtil.setRecognizersForSensitiveTags(
-            "UPDATE tag SET json = JSON_SET(json, '$.recognizers', CAST(? AS JSON)) "
-                + "WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') = ?",
+        updateClassificationAndRecognizers(
+            "UPDATE classification SET json = JSON_MERGE_PATCH("
+                + "json, JSON_OBJECT("
+                + "'autoClassificationConfig', CAST(? AS JSON)"
+                + ")) WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') = ?",
+            "UPDATE tag SET json = JSON_MERGE_PATCH("
+                + "json, JSON_OBJECT("
+                + "'autoClassificationEnabled', CAST(? AS JSON), "
+                + "'autoClassificationPriority', CAST(? AS JSON), "
+                + "'recognizers', CAST(? AS JSON)"
+                + ")) WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') = ?",
             handle,
             migrationDAO,
+            getVersion(),
             isForceMigration));
     return result;
   }
