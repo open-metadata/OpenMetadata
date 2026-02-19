@@ -120,7 +120,7 @@ SAMPLE_DATA_DEFAULT_COUNT = 50
 
 # Max length for any individual cell value in sample data.
 # Prevents OOM when tables contain large TEXT/CLOB columns.
-SAMPLE_DATA_MAX_CELL_LENGTH = 50_000
+SAMPLE_DATA_MAX_CELL_LENGTH = 100_000
 
 ENTITY_REFERENCE_CLASS_MAP = {
     # Service Entities

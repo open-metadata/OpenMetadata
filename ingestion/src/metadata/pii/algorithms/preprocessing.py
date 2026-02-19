@@ -18,7 +18,7 @@ from metadata.utils.logger import pii_logger
 
 logger = pii_logger()
 
-MAX_NLP_TEXT_LENGTH = 50_000
+MAX_NLP_TEXT_LENGTH = 100_000
 
 
 # pylint: disable=too-many-return-statements
