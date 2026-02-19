@@ -108,27 +108,6 @@ public class EntityCompletionTracker {
     }
   }
 
-  private void promoteIfReady(String entityType) {
-    if (promotedEntities.add(entityType)) {
-      AtomicInteger failed = failedPartitions.get(entityType);
-      boolean success = (failed == null || failed.get() == 0);
-
-      LOG.info(
-          "Entity '{}' all partitions complete (success={}, failedPartitions={}, job {})",
-          entityType,
-          success,
-          failed != null ? failed.get() : 0,
-          jobId);
-
-      if (onEntityComplete != null) {
-        try {
-          onEntityComplete.accept(entityType, success);
-        } catch (Exception e) {
-          LOG.error("Error in entity completion callback for '{}' (job {})", entityType, jobId, e);
-        }
-      }
-    }
-  }
 
   /**
    * Check if an entity has already been promoted.
