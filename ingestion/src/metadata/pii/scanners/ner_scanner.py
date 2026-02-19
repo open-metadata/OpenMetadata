@@ -151,10 +151,14 @@ class NERScanner(BaseScanner):
         is_json, value = self.is_json_data(row)
         if is_json and isinstance(value, dict):
             for val in value.values():
-                self.process_data(row=str(val), entities_score=entities_score)
+                self.process_data(
+                    row=str(val)[:MAX_NLP_TEXT_LENGTH], entities_score=entities_score
+                )
         elif is_json and isinstance(value, list):
             for val in value:
-                self.process_data(row=str(val), entities_score=entities_score)
+                self.process_data(
+                    row=str(val)[:MAX_NLP_TEXT_LENGTH], entities_score=entities_score
+                )
         else:
             self.scan_value(value=row, entities_score=entities_score)
 
