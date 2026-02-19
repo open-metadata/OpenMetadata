@@ -75,7 +75,12 @@ TABLE_ENTITY = Table(
 )
 
 
-def _build_sampler(**kwargs):
+def _fetch_truncated_sample():
+    """Create sampler and fetch sample data inside the patch context.
+
+    The DatalakeSampler.raw_dataset property lazily calls get_dataframes() on
+    first access, so the patch must remain active through fetch_sample_data().
+    """
     with (
         patch.object(
             DatalakeSampler,
@@ -88,13 +93,13 @@ def _build_sampler(**kwargs):
         ),
         patch.object(DatalakeSampler, "get_client", return_value=Mock()),
     ):
-        return DatalakeSampler(
+        sampler = DatalakeSampler(
             service_connection_config=DatalakeConnection(configSource={}),
             ometa_client=None,
             entity=TABLE_ENTITY,
             sample_config=SampleConfig(),
-            **kwargs,
         )
+        return sampler.fetch_sample_data()
 
 
 class TestDatalakeSamplerTruncation:
@@ -105,8 +110,7 @@ class TestDatalakeSamplerTruncation:
         return_value=FakeConnection(),
     )
     def test_fetch_sample_data_truncates_oversized_cells(self, _):
-        sampler = _build_sampler()
-        sample_data = sampler.fetch_sample_data()
+        sample_data = _fetch_truncated_sample()
 
         for row in sample_data.rows:
             for cell in row:
@@ -118,15 +122,12 @@ class TestDatalakeSamplerTruncation:
         return_value=FakeConnection(),
     )
     def test_oversized_body_is_truncated_to_limit(self, _):
-        sampler = _build_sampler()
-        sample_data = sampler.fetch_sample_data()
+        sample_data = _fetch_truncated_sample()
 
         body_idx = next(
             i for i, col in enumerate(sample_data.columns) if str(col.root) == "body"
         )
-        oversized_row = next(
-            row for row in sample_data.rows if row[0] == "oversized"
-        )
+        oversized_row = next(row for row in sample_data.rows if row[0] == "oversized")
         assert len(oversized_row[body_idx]) == SAMPLE_DATA_MAX_CELL_LENGTH
 
     @patch(
@@ -134,15 +135,12 @@ class TestDatalakeSamplerTruncation:
         return_value=FakeConnection(),
     )
     def test_value_at_limit_is_not_truncated(self, _):
-        sampler = _build_sampler()
-        sample_data = sampler.fetch_sample_data()
+        sample_data = _fetch_truncated_sample()
 
         body_idx = next(
             i for i, col in enumerate(sample_data.columns) if str(col.root) == "body"
         )
-        at_limit_row = next(
-            row for row in sample_data.rows if row[0] == "at_limit"
-        )
+        at_limit_row = next(row for row in sample_data.rows if row[0] == "at_limit")
         assert len(at_limit_row[body_idx]) == SAMPLE_DATA_MAX_CELL_LENGTH
 
     @patch(
@@ -150,8 +148,7 @@ class TestDatalakeSamplerTruncation:
         return_value=FakeConnection(),
     )
     def test_small_value_is_unchanged(self, _):
-        sampler = _build_sampler()
-        sample_data = sampler.fetch_sample_data()
+        sample_data = _fetch_truncated_sample()
 
         body_idx = next(
             i for i, col in enumerate(sample_data.columns) if str(col.root) == "body"
