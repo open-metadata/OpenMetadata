@@ -108,7 +108,6 @@ public class EntityCompletionTracker {
     }
   }
 
-
   /**
    * Check if an entity has already been promoted.
    *
