@@ -494,27 +494,32 @@ public class MigrationUtil {
           EntityRepository.getEntitiesFromSeedData(
               CLASSIFICATION, ".*json/data/tags/piiTagsWithRecognizers.json$", LoadTags.class);
     } catch (IOException e) {
-      LOG.error("Failed to load tag data");
+      LOG.error("Failed to load tag data", e);
+      result.put(
+          "loadPiiTagsSeedData",
+          new QueryStatus(
+              QueryStatus.Status.FAILURE, "Failed to load PII seed data: " + e.getMessage()));
       return result;
     }
 
     for (LoadTags loadTags : loadTagsList) {
       String classification = loadTags.getCreateClassification().getName();
+      // Update Classification Config
+      Object[] args = {
+        JsonUtils.pojoToJson(loadTags.getCreateClassification().getAutoClassificationConfig()),
+        classification
+      };
+      Map<String, QueryStatus> res =
+          executeAndUpdate(
+              handle, migrationDAO, version, isForceMigration, classificationStatement, args);
+
+      result.putAll(res);
+
       for (CreateTag createTag : loadTags.getCreateTags()) {
-        // Update Classification Config
-        Object[] args = {
-          JsonUtils.pojoToJson(loadTags.getCreateClassification().getAutoClassificationConfig()),
-          classification
-        };
-        Map<String, QueryStatus> res =
-            executeAndUpdate(
-                handle, migrationDAO, version, isForceMigration, classificationStatement, args);
-
-        result.putAll(res);
-
+        Boolean autoClassificationEnabled = createTag.getAutoClassificationEnabled();
         // Update tags config
         Object[] tagArgs = {
-          createTag.getAutoClassificationEnabled() ? "true" : "false",
+          Boolean.TRUE.equals(autoClassificationEnabled) ? "true" : "false",
           createTag.getAutoClassificationPriority(),
           JsonUtils.pojoToJson(createTag.getRecognizers()),
           classification + "." + createTag.getName()
