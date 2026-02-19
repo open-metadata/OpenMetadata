@@ -385,9 +385,14 @@ export const LearningResourcesPage: React.FC = () => {
           </div>
 
           <Button
+            className="tw:hover:bg-blue-700 tw:text-white"
             color="primary"
             data-testid="create-resource"
-            iconLeading={Plus}
+            iconLeading={() => (
+              <span className="tw:text-white">
+                <Plus />
+              </span>
+            )}
             size="md"
             onClick={handleCreate}>
             {t('label.add-entity', {
