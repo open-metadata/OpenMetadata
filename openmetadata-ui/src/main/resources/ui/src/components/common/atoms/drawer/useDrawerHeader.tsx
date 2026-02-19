@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, IconButton, SxProps, Typography } from '@mui/material';
-import { defaultColors } from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
+import { SlideoutMenu } from '@openmetadata/ui-core-components';
 import { ReactNode, useMemo } from 'react';
 
 export interface DrawerHeaderConfig {
@@ -21,84 +19,31 @@ export interface DrawerHeaderConfig {
   showCloseButton?: boolean;
   onClose?: () => void;
   actions?: ReactNode;
-  sx?: SxProps;
 }
 
-/**
- * Drawer header atom with title, close button, and optional actions
- *
- * @description
- * Provides a consistent drawer header with title and close functionality.
- * Can be used standalone or composed with other drawer atoms.
- *
- * @param config.title - Title text or ReactNode to display
- * @param config.showCloseButton - Whether to show close button (default: true)
- * @param config.onClose - Callback when close button is clicked
- * @param config.actions - Optional actions to display in header
- * @param config.sx - Custom styles to apply to header container
- *
- * @example
- * ```typescript
- * const { drawerHeader } = useDrawerHeader({
- *   title: 'Add Domain',
- *   onClose: closeDrawer,
- *   actions: <Button size="small">Help</Button>
- * });
- *
- * return (
- *   <Drawer open={open}>
- *     {drawerHeader}
- *     <Box>Content</Box>
- *   </Drawer>
- * );
- * ```
- */
 export const useDrawerHeader = (config: DrawerHeaderConfig = {}) => {
-  const { title, showCloseButton = true, onClose, actions, sx = {} } = config;
+  const { title, showCloseButton = true, onClose, actions } = config;
 
   const drawerHeader = useMemo(
     () => (
-      <Box
-        sx={{
-          px: 6,
-          py: 4,
-          borderBottom: 1,
-          borderColor: 'divider',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          position: 'relative',
-          '& > *': {
-            position: 'relative',
-            zIndex: 1,
-          },
-          ...sx,
-        }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+      <SlideoutMenu.Header onClose={showCloseButton ? onClose : undefined}>
+        <div className="tw:flex tw:items-center tw:gap-2 tw:flex-1">
           {typeof title === 'string' ? (
-            <Typography data-testid="form-heading" variant="h6">
+            <h6
+              className="tw:text-lg tw:font-semibold"
+              data-testid="form-heading">
               {title}
-            </Typography>
+            </h6>
           ) : (
             title
           )}
-        </Box>
-
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {actions}
-          {showCloseButton && onClose && (
-            <IconButton
-              data-testid="drawer-close-icon"
-              size="medium"
-              sx={{ color: defaultColors.gray[700] }}
-              onClick={onClose}>
-              <XClose />
-            </IconButton>
-          )}
-        </Box>
-      </Box>
+        </div>
+        {actions && (
+          <div className="tw:flex tw:items-center tw:gap-1">{actions}</div>
+        )}
+      </SlideoutMenu.Header>
     ),
-    [title, showCloseButton, onClose, actions, sx]
+    [title, showCloseButton, onClose, actions]
   );
 
   return {

@@ -119,13 +119,13 @@ export const useFormDrawer = <T,>(config: FormDrawerConfig<T>) => {
       align: footerAlign,
       secondaryButton: {
         label: cancelLabel,
-        variant: 'text',
+        color: 'tertiary',
         testId: cancelTestId,
         onClick: () => closeRef.current(),
       },
       primaryButton: {
         label: submitLabel,
-        variant: 'contained',
+        color: 'primary',
         testId: submitTestId,
         loading: loading || isSubmitting,
         disabled: loading || isSubmitting,

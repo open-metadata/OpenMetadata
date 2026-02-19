@@ -18,7 +18,7 @@ import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
-import { DRAWER_HEADER_STYLING } from '../../constants/DomainsListPage.constants';
+
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -74,12 +74,8 @@ const DomainListPage = () => {
 
   const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
     title: t('label.add-entity', { entity: t('label.domain') }),
-    anchor: 'right',
     width: 670,
     closeOnEscape: false,
-    header: {
-      sx: DRAWER_HEADER_STYLING,
-    },
     onCancel: () => {
       form.resetFields();
     },

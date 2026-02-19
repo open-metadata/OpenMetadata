@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Box } from '@mui/material';
 import { useCallback, useMemo } from 'react';
 import { DrawerConfig, useDrawer } from './useDrawer';
 import { DrawerBodyConfig, useDrawerBody } from './useDrawerBody';
@@ -25,48 +24,6 @@ export interface CompositeDrawerConfig extends DrawerConfig {
   onBeforeClose?: () => void;
 }
 
-/**
- * Composite drawer hook that combines all drawer atoms
- *
- * @description
- * Higher-level hook that composes drawer atoms into a complete drawer.
- * Provides a fully configured drawer with header, body, and footer.
- *
- * @param config - Combined configuration for all drawer parts
- *
- * @example
- * ```typescript
- * const drawer = useCompositeDrawer({
- *   anchor: 'right',
- *   width: 600,
- *   header: {
- *     title: 'Edit User',
- *     onClose: handleClose
- *   },
- *   body: {
- *     children: <UserForm />,
- *     loading: isLoading
- *   },
- *   footer: {
- *     primaryButton: {
- *       label: 'Save',
- *       onClick: handleSave
- *     },
- *     secondaryButton: {
- *       label: 'Cancel',
- *       onClick: handleClose
- *     }
- *   }
- * });
- *
- * return (
- *   <>
- *     <Button onClick={drawer.openDrawer}>Open</Button>
- *     {drawer.compositeDrawer}
- *   </>
- * );
- * ```
- */
 export const useCompositeDrawer = (config: CompositeDrawerConfig = {}) => {
   const {
     header = {},
@@ -78,7 +35,6 @@ export const useCompositeDrawer = (config: CompositeDrawerConfig = {}) => {
 
   const baseDrawer = useDrawer(drawerConfig);
 
-  // Create a wrapped close function that calls onBeforeClose first
   const handleClose = useCallback(() => {
     onBeforeClose?.();
     if (header.onClose) {
@@ -97,11 +53,11 @@ export const useCompositeDrawer = (config: CompositeDrawerConfig = {}) => {
 
   const drawerContent = useMemo(
     () => (
-      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <>
         {drawerHeader}
         {drawerBody}
         {drawerFooter}
-      </Box>
+      </>
     ),
     [drawerHeader, drawerBody, drawerFooter]
   );
@@ -113,7 +69,6 @@ export const useCompositeDrawer = (config: CompositeDrawerConfig = {}) => {
     return <Component {...DrawerComponent.props} children={drawerContent} />;
   }, [baseDrawer.drawer, drawerContent]);
 
-  // Override closeDrawer to call onBeforeClose
   const closeDrawer = useCallback(() => {
     onBeforeClose?.();
     baseDrawer.closeDrawer();
@@ -121,7 +76,7 @@ export const useCompositeDrawer = (config: CompositeDrawerConfig = {}) => {
 
   return {
     ...baseDrawer,
-    closeDrawer, // Override with our version that calls onBeforeClose
+    closeDrawer,
     compositeDrawer,
     drawerHeader,
     drawerBody,
@@ -129,38 +84,6 @@ export const useCompositeDrawer = (config: CompositeDrawerConfig = {}) => {
   };
 };
 
-/**
- * Simplified composite drawer with render prop pattern
- *
- * @description
- * Alternative API using render props for more flexibility
- *
- * @example
- * ```typescript
- * const drawer = useCompositeDrawerWithRender({
- *   anchor: 'right',
- *   width: 500,
- *   render: ({ closeDrawer }) => ({
- *     header: {
- *       title: 'Settings',
- *       onClose: closeDrawer
- *     },
- *     body: {
- *       children: <SettingsForm />
- *     },
- *     footer: {
- *       primaryButton: {
- *         label: 'Apply',
- *         onClick: () => {
- *           applySettings();
- *           closeDrawer();
- *         }
- *       }
- *     }
- *   })
- * });
- * ```
- */
 export const useCompositeDrawerWithRender = (
   config: Omit<CompositeDrawerConfig, 'header' | 'body' | 'footer'> & {
     render: (actions: {
