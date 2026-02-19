@@ -14,7 +14,10 @@ import { Button, Col, Row, TablePaginationConfig } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { FilterValue, TableRowSelection } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
-import { isNil, map, startCase } from 'lodash';
+import capitalize from 'lodash/capitalize';
+import isNil from 'lodash/isNil';
+import map from 'lodash/map';
+import startCase from 'lodash/startCase';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAirflowStatus } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider';
@@ -110,8 +113,8 @@ export const IngestionPipelineList = ({
       await Promise.all(promises);
 
       showSuccessToast(
-        `${t('label.pipeline-plural')}  ${t('label.re-deploy')}  ${t(
-          'label.successfully-lowercase'
+        `${t('label.pipeline-plural')} ${t('label.re-deploy')} ${capitalize(
+          t('label.successfully-lowercase')
         )}`
       );
     } catch (error) {

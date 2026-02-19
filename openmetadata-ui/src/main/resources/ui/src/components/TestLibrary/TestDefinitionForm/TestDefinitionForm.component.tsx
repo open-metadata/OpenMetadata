@@ -229,17 +229,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           />
         </Form.Item>
 
-        <Form.Item
-          label={t('label.description')}
-          name="description"
-          rules={[
-            {
-              required: true,
-              message: t('message.field-text-is-required', {
-                fieldText: t('label.description'),
-              }),
-            },
-          ]}>
+        <Form.Item label={t('label.description')} name="description">
           <Input.TextArea
             placeholder={t('label.enter-entity-description', {
               entity: t('label.test-definition'),

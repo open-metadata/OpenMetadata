@@ -24,6 +24,7 @@ import {
   useState,
 } from 'react';
 import { useLocation } from 'react-router-dom';
+import { styled } from '@mui/material/styles';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import AlertBar from '../AlertBar/AlertBar';
@@ -39,6 +40,7 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   pageContainerStyle?: React.CSSProperties;
   rightPanelWidth?: number;
   leftPanelWidth?: number;
+  fullHeight?: boolean;
 }
 
 export const pageContainerStyles: CSSProperties = {
@@ -48,6 +50,32 @@ export const pageContainerStyles: CSSProperties = {
   marginRight: 0,
   overflow: 'hidden',
 };
+
+const FullHeightWrapper = styled('div')<{ $wrapperClassName?: string }>(
+  ({ $wrapperClassName }) => ({
+    [`& .page-layout-v1-vertical-scroll.${$wrapperClassName}`]: {
+      overflow: 'hidden',
+      minHeight: 0,
+      display: 'flex',
+      flexDirection: 'column',
+    },
+    [`& .${$wrapperClassName} > .ant-row`]: {
+      flex: 1,
+      minHeight: 0,
+      display: 'flex',
+      flexDirection: 'column',
+    },
+    [`& .${$wrapperClassName} .ant-row .ant-col`]: {
+      flex: 'none',
+    },
+    [`& .${$wrapperClassName} .ant-row .ant-col:last-child`]: {
+      minHeight: 0,
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+    },
+  })
+);
 
 const PageLayoutV1: FC<PageLayoutProp> = ({
   leftPanel,
@@ -60,6 +88,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   rightPanelWidth = 284,
   mainContainerClassName = '',
   pageContainerStyle = {},
+  fullHeight = false,
 }: PageLayoutProp) => {
   const { alert, resetAlert, isErrorTimeOut } = useAlertStore();
   const location = useLocation();
@@ -76,6 +105,18 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
       return '100%';
     }
   }, [leftPanel, rightPanel, leftPanelWidth, rightPanelWidth]);
+
+  const finalPageContainerStyle = useMemo(() => {
+    if (fullHeight && !pageContainerStyle.height) {
+      return {
+        height: 'calc(100vh - 64px)',
+        overflow: 'hidden',
+        ...pageContainerStyle,
+      };
+    }
+
+    return pageContainerStyle;
+  }, [fullHeight, pageContainerStyle]);
 
   useEffect(() => {
     if (prevPath !== location.pathname) {
@@ -97,13 +138,13 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     }, 3000);
   }, [location.pathname]);
 
-  return (
+  const content = (
     <Fragment>
       <DocumentTitle title={pageTitle} />
       <Row
         className={classNames('p-x-box', className)}
         data-testid="page-layout-v1"
-        style={{ ...pageContainerStyles, ...pageContainerStyle }}
+        style={{ ...pageContainerStyles, ...finalPageContainerStyle }}
         wrap={false}>
         {leftPanel && (
           <Col
@@ -144,6 +185,14 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         )}
       </Row>
     </Fragment>
+  );
+
+  return fullHeight ? (
+    <FullHeightWrapper $wrapperClassName={mainContainerClassName}>
+      {content}
+    </FullHeightWrapper>
+  ) : (
+    content
   );
 };
 
