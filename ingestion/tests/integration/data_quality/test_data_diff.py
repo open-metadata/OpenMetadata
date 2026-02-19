@@ -1,4 +1,3 @@
-import sys
 from datetime import datetime
 
 import pytest
@@ -33,12 +32,6 @@ from metadata.generated.schema.tests.basic import (
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
-
-if not sys.version_info >= (3, 9):
-    pytest.skip(
-        "requires python 3.9+ due to incompatibility with testcontainers",
-        allow_module_level=True,
-    )
 
 
 class TestParameters(BaseModel):
@@ -430,7 +423,7 @@ def test_happy_paths(
     workflow_config = {
         "source": {
             "type": "postgres",
-            "serviceName": "MyTestSuite",
+            "serviceName": f"MyTestSuite_{postgres_service.name.root}",
             "sourceConfig": {
                 "config": {
                     "type": TestSuiteConfigType.TestSuite.value,
@@ -575,7 +568,7 @@ def test_error_paths(
     workflow_config = {
         "source": {
             "type": "postgres",
-            "serviceName": "MyTestSuite",
+            "serviceName": f"MyTestSuite_{postgres_service.name.root}",
             "sourceConfig": {
                 "config": {
                     "type": TestSuiteConfigType.TestSuite.value,
