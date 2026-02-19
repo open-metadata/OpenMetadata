@@ -285,12 +285,22 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     );
   }, [lineageDirection, radioGroupOptions]);
 
+  // Column-level filter keys used for column_filter post-processing
+  const columnLevelFilterKeys = [
+    EntityFields.COLUMN,
+    EntityFields.TAG,
+    EntityFields.GLOSSARY_TERMS,
+  ];
+
   // Query filter for table data & search values
+  // Sends ALL filters to ES - both query_filter and column_filter need the same filters
+  // query_filter gets the right NODES, column_filter filters the EDGES within those nodes
   const queryFilter = useMemo(() => {
+    // Send ALL filters to query_filter (don't exclude column-level filters)
     const quickFilterQuery = getQuickFilterQuery(selectedQuickFilters);
     const mustClauses: QueryFieldInterface[] = [];
 
-    // Add quick filter conditions (e.g., service field conditions)
+    // Add quick filter conditions (e.g., service, column, tag, glossary)
     if (quickFilterQuery?.query?.bool?.must) {
       mustClauses.push(...quickFilterQuery.query.bool.must);
     }
@@ -308,6 +318,42 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
     return JSON.stringify(query);
   }, [selectedQuickFilters, searchValue]);
+
+  // Column filter for column-level lineage filtering (simple format)
+  // Only used when impactLevel is ColumnLevel for post-processing edges
+  // Format: "columnName:val1,columnName:val2,tag:PII,glossary:Term"
+  const columnFilterValue = useMemo(() => {
+    if (impactLevel !== EImpactLevel.ColumnLevel) {
+      return undefined;
+    }
+
+    const filters: string[] = [];
+
+    selectedQuickFilters.forEach((filter) => {
+      if (
+        columnLevelFilterKeys.includes(filter.key as EntityFields) &&
+        filter.value &&
+        filter.value.length > 0
+      ) {
+        filter.value.forEach((filterValue) => {
+          if (filter.key === EntityFields.COLUMN) {
+            filters.push(`columnName:${filterValue.key}`);
+          } else if (filter.key === EntityFields.TAG) {
+            filters.push(`tag:${filterValue.key}`);
+          } else if (filter.key === EntityFields.GLOSSARY_TERMS) {
+            filters.push(`glossary:${filterValue.key}`);
+          }
+        });
+      }
+    });
+
+    // Include search value as column name filter when in ColumnLevel mode
+    if (searchValue) {
+      filters.push(`columnName:${searchValue}`);
+    }
+
+    return filters.length > 0 ? filters.join(',') : undefined;
+  }, [impactLevel, selectedQuickFilters, searchValue]);
 
   // Define table columns
   const extraTableFilters = useMemo(() => {
@@ -370,6 +416,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           entityType,
           config: lineageConfig,
           queryFilter,
+          columnFilter: columnFilterValue,
         });
 
         const upstreamEdges = map(res.upstreamEdges ?? [], (edge) => edge);
@@ -401,6 +448,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           from: (currentPage - 1) * pageSize,
           size: pageSize,
           query_filter: queryFilter,
+          column_filter: columnFilterValue,
         });
 
         delete res.nodes[fqn];
@@ -437,12 +485,20 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     pageSize,
     impactLevel,
     lineageConfig,
+    columnFilterValue,
   ]);
 
   // Fetch Lineage data when dependencies change
   useEffect(() => {
     fetchNodes();
-  }, [nodeDepth, currentPage, impactLevel, pageSize, queryFilter]);
+  }, [
+    nodeDepth,
+    currentPage,
+    impactLevel,
+    pageSize,
+    queryFilter,
+    columnFilterValue,
+  ]);
 
   useEffect(() => {
     if (impactLevel === EImpactLevel.TableLevel) {
@@ -480,13 +536,20 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const cardHeader = useMemo(() => {
     return (
       <CustomControlsComponent
+        impactLevel={impactLevel}
         nodeDepthOptions={nodeDepthOptions}
         queryFilterNodeIds={filterNodeIds}
         searchValue={searchValue}
         onSearchValueChange={setSearchValue}
       />
     );
-  }, [searchValue, lineagePagingInfo, nodeDepthOptions, filterNodeIds]);
+  }, [
+    searchValue,
+    lineagePagingInfo,
+    nodeDepthOptions,
+    filterNodeIds,
+    impactLevel,
+  ]);
 
   // Render function for column names with search highlighting and popover
   const renderName = useCallback(
@@ -703,13 +766,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   // Initialize quick filters on component mount
   useEffect(() => {
-    const items =
-      impactLevel === EImpactLevel.TableLevel
-        ? LINEAGE_DROPDOWN_ITEMS
-        : LINEAGE_DROPDOWN_ITEMS.filter(
-            (item) =>
-              ![EntityFields.TAG, EntityFields.COLUMN].includes(item.key)
-          );
+    const items = LINEAGE_DROPDOWN_ITEMS;
     const updatedQuickFilters = items.map((selectedFilterItem) => {
       const originalFilterItem = selectedQuickFilters?.find(
         (filter) => filter.key === selectedFilterItem.key

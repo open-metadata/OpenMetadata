@@ -676,11 +676,12 @@ public class OSLineageGraphBuilder
 
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
-    // Check for column filtering requirements
+    boolean needsPathPreservation =
+        Boolean.TRUE.equals(request.getPreservePaths())
+            || hasNodeLevelFilters(request.getQueryFilter());
     boolean hasColumnFilter = !nullOrEmpty(request.getColumnFilter());
 
-    // Check cache if no column filtering needed
-    if (!hasColumnFilter) {
+    if (!needsPathPreservation && !hasColumnFilter) {
       java.util.Optional<SearchLineageResult> cached = checkEntityCountCache(request);
       if (cached.isPresent()) {
         LOG.debug(
@@ -691,16 +692,24 @@ public class OSLineageGraphBuilder
       }
     }
 
-    // Execute standard entity count query
-    SearchLineageResult result = searchLineageByEntityCountInternal(request);
+    SearchLineageResult result;
 
-    // Apply column filters if needed
+    if (needsPathPreservation) {
+      EntityCountLineageRequest unfilteredRequest =
+          JsonUtils.deepCopy(request, EntityCountLineageRequest.class)
+              .withQueryFilter(getStructuralFilterOnly(request.getQueryFilter()));
+      result = searchLineageByEntityCountInternal(unfilteredRequest);
+
+      result = applyInMemoryFiltersWithPathPreservationForEntityCount(result, request);
+    } else {
+      result = searchLineageByEntityCountInternal(request);
+    }
+
     if (hasColumnFilter) {
       result = applyColumnFiltering(result, convertToSearchLineageRequest(request));
     }
 
-    // Cache result if eligible (no column filtering)
-    if (!hasColumnFilter) {
+    if (!needsPathPreservation && !hasColumnFilter) {
       cacheEntityCountResult(request, result);
     }
 
@@ -1020,10 +1029,10 @@ public class OSLineageGraphBuilder
         }
       }
     } else if (request.getDirection() == LineageDirection.DOWNSTREAM) {
-      // Add downstream edges - entities that depend on our root entity
+      // Add downstream edges - include edges from any collected entity, not just root
       for (EsLineageData upstreamData : upstreamEntities) {
-        String rootFqnHash = FullyQualifiedName.buildHash(request.getFqn());
-        if (upstreamData.getFromEntity().getFqnHash().equals(rootFqnHash)) {
+        // Add edge if the fromEntity is in our collected set (root or intermediate nodes)
+        if (allCollectedFqns.contains(upstreamData.getFromEntity().getFullyQualifiedName())) {
           result
               .getDownstreamEdges()
               .putIfAbsent(upstreamData.getDocId(), upstreamData.withToEntity(currentEntity));
@@ -1217,14 +1226,10 @@ public class OSLineageGraphBuilder
 
   /**
    * Checks if column filter requires metadata (tags, glossary terms).
+   * Supports both ES query JSON format and legacy string format.
    */
   private boolean requiresMetadataFilter(String columnFilter) {
-    if (nullOrEmpty(columnFilter)) {
-      return false;
-    }
-
-    String lowerFilter = columnFilter.toLowerCase();
-    return lowerFilter.contains("tag:") || lowerFilter.contains("glossary:");
+    return ColumnFilterMatcher.requiresMetadataForFilter(columnFilter);
   }
 
   /**

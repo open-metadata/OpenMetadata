@@ -224,6 +224,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
   >([]);
+  const [columnFilter, setColumnFilter] = useState<string>('');
   const [entityType, setEntityType] = useState<EntityType>();
   const queryParams = new URLSearchParams(location.search);
   const isFullScreen = queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
@@ -281,7 +282,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       const dqLineageResp = await getDataQualityLineage(
         fqn,
         config,
-        queryFilter
+        queryFilter,
+        columnFilter
       );
       setDataQualityLineage(dqLineageResp);
     } catch {
@@ -414,6 +416,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         setInit(false);
         const res = await getPlatformLineage({
           config,
+          queryFilter,
+          columnFilter,
           view,
         });
 
@@ -465,6 +469,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           entityType,
           config,
           queryFilter,
+          columnFilter,
         });
         setLineageData(res);
 
@@ -493,7 +498,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         setLoading(false);
       }
     },
-    [queryFilter, entityFqn]
+    [queryFilter, columnFilter, entityFqn]
   );
 
   const onPlatformViewChange = useCallback(
@@ -523,9 +528,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       entityFqn,
       entityType ?? '',
       lineageConfig,
-      queryFilter
+      queryFilter,
+      columnFilter
     );
-  }, [entityType, entityFqn, lineageConfig, queryFilter]);
+  }, [entityType, entityFqn, lineageConfig, queryFilter, columnFilter]);
 
   const onExportClick = useCallback(
     (
@@ -576,6 +582,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             pipelineViewMode: lineageConfig.pipelineViewMode,
           }, // load only one level of child nodes
           queryFilter,
+          columnFilter,
           direction,
         });
 
@@ -1045,6 +1052,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         entityType: parentNode.data.node.entityType,
         config,
         queryFilter,
+        columnFilter,
         from,
         direction,
       });
@@ -1881,6 +1889,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onColumnEdgeRemove,
       selectedQuickFilters,
       setSelectedQuickFilters,
+      columnFilter,
+      setColumnFilter,
       onLineageConfigUpdate,
       onLineageEditClick,
       onAddPipelineClick,
@@ -1934,6 +1944,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onColumnMouseLeave,
     selectedQuickFilters,
     setSelectedQuickFilters,
+    columnFilter,
+    setColumnFilter,
     onNodesChange,
     onEdgesChange,
     onZoomUpdate,
