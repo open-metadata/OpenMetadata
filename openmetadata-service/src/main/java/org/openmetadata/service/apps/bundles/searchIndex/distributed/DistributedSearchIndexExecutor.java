@@ -684,6 +684,11 @@ public class DistributedSearchIndexExecutor {
           LOG.info("Reclaimed {} stale partitions for job {}", reclaimed, jobId);
         }
 
+        if (entityTracker != null) {
+          List<SearchIndexPartition> allPartitions = coordinator.getPartitions(jobId, null);
+          entityTracker.reconcileFromDatabase(allPartitions);
+        }
+
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         break;

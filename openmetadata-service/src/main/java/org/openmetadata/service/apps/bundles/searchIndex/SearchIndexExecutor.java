@@ -913,20 +913,18 @@ public class SearchIndexExecutor implements AutoCloseable {
       return;
     }
 
-    // Check if already promoted (avoid double promotion)
-    if (promotedEntities.contains(entityType)) {
+    if (!promotedEntities.add(entityType)) {
       LOG.debug("Entity '{}' already promoted, skipping.", entityType);
       return;
     }
 
-    // Determine success based on whether there were any batch failures
     AtomicInteger failures = entityBatchFailures.get(entityType);
     boolean entitySuccess = failures == null || failures.get() == 0;
 
-    // Build entity context and promote
     Optional<String> stagedIndexOpt = recreateContext.getStagedIndex(entityType);
     if (stagedIndexOpt.isEmpty()) {
       LOG.debug("No staged index found for entity '{}', skipping promotion.", entityType);
+      promotedEntities.remove(entityType);
       return;
     }
 
@@ -938,7 +936,6 @@ public class SearchIndexExecutor implements AutoCloseable {
           entitySuccess,
           stagedIndexOpt.get());
       defaultHandler.promoteEntityIndex(entityContext, entitySuccess);
-      promotedEntities.add(entityType);
     }
   }
 

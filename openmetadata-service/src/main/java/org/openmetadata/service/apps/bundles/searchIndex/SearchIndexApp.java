@@ -92,7 +92,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private DistributedSearchIndexExecutor distributedExecutor;
   private ReindexContext recreateContext;
   private RecreateIndexHandler recreateIndexHandler;
-  private BulkSink searchIndexSink;
+  private volatile BulkSink searchIndexSink;
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -814,9 +814,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void handleExecutionException(Exception ex) {
-    if (searchIndexSink != null) {
+    BulkSink sink = searchIndexSink;
+    if (sink != null) {
+      searchIndexSink = null;
       try {
-        searchIndexSink.close();
+        sink.close();
       } catch (Exception e) {
         LOG.error("Error closing search index sink", e);
       }
@@ -886,9 +888,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
           new SuccessContext().withAdditionalProperty("stats", jobData.getStats());
 
       try {
+        SearchIndexJob distributedJob =
+            distributedExecutor != null ? distributedExecutor.getJobWithFreshStats() : null;
         String jobIdStr =
-            distributedExecutor != null
-                ? distributedExecutor.getJobWithFreshStats().getId().toString()
+            distributedJob != null
+                ? distributedJob.getId().toString()
                 : getApp().getId().toString();
         int failureCount = collectionDAO.searchIndexFailureDAO().countByJobId(jobIdStr);
         if (failureCount > 0) {
@@ -952,9 +956,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
       sendUpdates(jobExecutionContext, true);
     }
 
-    if (searchIndexSink != null) {
+    BulkSink sink = searchIndexSink;
+    if (sink != null) {
+      searchIndexSink = null;
       try {
-        searchIndexSink.close();
+        sink.close();
       } catch (Exception e) {
         LOG.error("Error closing search index sink", e);
       }

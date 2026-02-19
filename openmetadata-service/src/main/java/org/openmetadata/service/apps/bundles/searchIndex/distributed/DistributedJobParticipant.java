@@ -335,6 +335,11 @@ public class DistributedJobParticipant implements Managed {
 
         } catch (Exception e) {
           LOG.error("Error processing partition {}", partition.getId(), e);
+          try {
+            coordinator.failPartition(partition.getId(), e.getMessage());
+          } catch (Exception fe) {
+            LOG.error("Failed to mark partition {} as failed", partition.getId(), fe);
+          }
         }
       }
 
