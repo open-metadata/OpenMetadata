@@ -19,6 +19,7 @@ import {
 } from '../../../src/generated/entity/data/dashboardDataModel';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -60,7 +61,7 @@ export class DashboardDataModelClass extends EntityClass {
   entityResponseData: DashboardDataModel = {} as DashboardDataModel;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.DataModel);
+    super(EntityTypeEndpoint.DataModel, EntityType.DASHBOARD_DATA_MODEL);
 
     this.dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
     this.projectName = `pw-project-${uuid()}`;

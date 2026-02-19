@@ -19,6 +19,7 @@ import {
 } from '../../../src/generated/entity/data/topic';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -58,7 +59,7 @@ export class TopicClass extends EntityClass {
   entityResponseData: Topic = {} as Topic;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.Topic);
+    super(EntityTypeEndpoint.Topic, EntityType.TOPIC);
     this.type = 'Topic';
     this.childrenTabId = 'schema';
     this.serviceCategory = SERVICE_TYPE.Messaging;

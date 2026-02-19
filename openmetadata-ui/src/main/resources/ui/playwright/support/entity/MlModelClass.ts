@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -24,7 +25,7 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class MlModelClass extends EntityClass {
-  private mlModelName: string;
+  private readonly mlModelName: string;
   service: {
     name: string;
     serviceType: string;
@@ -52,7 +53,7 @@ export class MlModelClass extends EntityClass {
     {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.MlModel);
+    super(EntityTypeEndpoint.MlModel, EntityType.MLMODEL);
     this.type = 'MlModel';
     this.childrenTabId = 'features';
     this.serviceCategory = SERVICE_TYPE.MLModels;

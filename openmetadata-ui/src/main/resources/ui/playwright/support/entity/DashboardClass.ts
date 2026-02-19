@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -24,9 +25,9 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class DashboardClass extends EntityClass {
-  private dashboardName: string;
-  private dashboardDataModelName: string;
-  private projectName: string;
+  private readonly dashboardName: string;
+  private readonly dashboardDataModelName: string;
+  private readonly projectName: string;
   service: {
     name: string;
     serviceType: string;
@@ -68,7 +69,7 @@ export class DashboardClass extends EntityClass {
   chartsResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(name?: string, dataModelType = 'SupersetDataModel') {
-    super(EntityTypeEndpoint.Dashboard);
+    super(EntityTypeEndpoint.Dashboard, EntityType.DASHBOARD);
     this.type = 'Dashboard';
     this.serviceCategory = SERVICE_TYPE.Dashboard;
     this.serviceType = ServiceTypes.DASHBOARD_SERVICES;

@@ -12,13 +12,14 @@
  */
 
 export const CP_BASE_VALUES = {
-  string: 'gsdgfsdg',
-  email: 'admin@open-metadata.org',
-  markdown: '<p>HEre</p><p>new desc</p>',
+  string: 'Some Sample String',
+  email: 'admin@Open-Metadata.org',
+  markdown:
+    '<p>HEre</p><p>New Description</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>',
   sqlQuery: 'Select * from TABLE',
   duration: 'P1Y3M4D1H3M4S',
   hyperlinkCp: {
-    url: 'https://open-metadata.org',
+    url: 'https://Test-Link.org',
     displayText: 'Test Link',
   },
   integer: 65,
@@ -50,21 +51,37 @@ export const CP_BASE_VALUES = {
 };
 
 export const CP_PARTIAL_SEARCH_VALUES = {
-  string: 'gsd',
+  string: 'me sample st',
   email: 'open-metadata',
-  markdown: 'HEre',
-  sqlQuery: 'Select',
-  duration: 'P1Y',
+  markdown: 'ew descr',
+  sqlQuery: 'select',
+  duration: 'y3m4d1h',
   dateTimeCp: '025 21:5',
   timeCp: '5:04:0',
+  enum: 'ion 1',
+  hyperlinkCp: {
+    url: 'test-link',
+    displayText: 'st lin',
+  },
 };
 
 export const CP_RANGE_VALUES = {
   integer: { start: 60, end: 70 },
   number: { start: 50, end: 60 },
+  timestamp: { start: 1358694736340, end: 1358694736350 },
   dateCp: { start: '01-12-2025', end: '31-12-2025' },
   dateTimeCp: { start: '01-12-2025 00:00:00', end: '31-12-2025 23:59:59' },
   timeCp: { start: '00:00:00', end: '23:59:59' },
+  timeInterval: {
+    start: {
+      start: 5555555555550,
+      end: 5555555555560,
+    },
+    end: {
+      start: 3435345345350,
+      end: 3435345345360,
+    },
+  },
 };
 
 export const MULTISELECT_OPERATORS = [

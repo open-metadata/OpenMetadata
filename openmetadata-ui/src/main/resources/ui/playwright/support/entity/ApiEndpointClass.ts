@@ -19,6 +19,7 @@ import {
 } from '../../../src/generated/entity/data/apiEndpoint';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -71,7 +72,7 @@ export class ApiEndpointClass extends EntityClass {
   entityResponseData: APIEndpoint = {} as APIEndpoint;
 
   constructor(name?: string, apiEndpointName?: string) {
-    super(EntityTypeEndpoint.API_ENDPOINT);
+    super(EntityTypeEndpoint.API_ENDPOINT, EntityType.API_ENDPOINT);
 
     this.serviceName = name ?? `pw-api-service-${uuid()}`;
     this.apiCollectionName = `pw-api-collection-${uuid()}`;

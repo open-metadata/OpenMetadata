@@ -19,6 +19,7 @@ import {
 } from '../../../src/generated/entity/data/searchIndex';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -58,7 +59,7 @@ export class SearchIndexClass extends EntityClass {
   entityResponseData: SearchIndex = {} as SearchIndex;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.SearchIndex);
+    super(EntityTypeEndpoint.SearchIndex, EntityType.SEARCH_INDEX);
 
     this.service = {
       name: name ?? `pw-search-service-${uuid()}`,

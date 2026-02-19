@@ -19,6 +19,7 @@ import {
 } from '../../../src/generated/entity/data/file';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -71,7 +72,7 @@ export class FileClass extends EntityClass {
   entityResponseData: File = {} as File;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.File);
+    super(EntityTypeEndpoint.File, EntityType.FILE);
     this.service.name = name ?? this.service.name;
     this.type = 'File';
     this.serviceCategory = SERVICE_TYPE.DriveService;

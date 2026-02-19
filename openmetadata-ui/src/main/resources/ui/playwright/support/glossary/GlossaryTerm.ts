@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
+import { EntityType } from '../../enum/entity.enum';
 import { getRandomLastName, uuid, visitGlossaryPage } from '../../utils/common';
 import { EntityTypeEndpoint } from '../entity/Entity.interface';
 import { EntityClass } from '../entity/EntityClass';
@@ -31,7 +32,7 @@ export class GlossaryTerm extends EntityClass {
     {} as GlossaryTermResponseDataType;
 
   constructor(glossary?: Glossary, parent?: string, name?: string) {
-    super(EntityTypeEndpoint.GlossaryTerm);
+    super(EntityTypeEndpoint.GlossaryTerm, EntityType.GLOSSARY_TERM);
 
     this.randomName = getRandomLastName();
     const id1 = uuid();
@@ -104,6 +105,7 @@ export class GlossaryTerm extends EntityClass {
     });
 
     this.responseData = await response.json();
+    this.entityResponseData = await response.json();
 
     return await response.json();
   }
@@ -120,6 +122,7 @@ export class GlossaryTerm extends EntityClass {
     );
 
     this.responseData = await response.json();
+    this.entityResponseData = await response.json();
 
     return await response.json();
   }

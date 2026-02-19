@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
@@ -60,7 +61,7 @@ export class DatabaseSchemaClass extends EntityClass {
     {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.DatabaseSchema);
+    super(EntityTypeEndpoint.DatabaseSchema, EntityType.DATABASE_SCHEMA);
     this.service.name = name ?? this.service.name;
     this.type = 'Database Schema';
     this.serviceType = ServiceTypes.DATABASE_SERVICES;

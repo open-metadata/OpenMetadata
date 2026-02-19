@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -24,7 +25,7 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class PipelineClass extends EntityClass {
-  private pipelineName: string;
+  private readonly pipelineName: string;
   service: {
     name: string;
     serviceType: string;
@@ -53,7 +54,7 @@ export class PipelineClass extends EntityClass {
   ingestionPipelineResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(name?: string) {
-    super(EntityTypeEndpoint.Pipeline);
+    super(EntityTypeEndpoint.Pipeline, EntityType.PIPELINE);
     this.type = 'Pipeline';
     this.childrenTabId = 'tasks';
     this.serviceCategory = SERVICE_TYPE.Pipeline;

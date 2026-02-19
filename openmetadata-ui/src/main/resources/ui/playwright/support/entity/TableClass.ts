@@ -13,13 +13,10 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import {
-  Column,
-  DataType,
-  Table,
-} from '../../../src/generated/entity/data/table';
+import { Column, DataType } from '../../../src/generated/entity/data/table';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import { EntityType } from '../../enum/entity.enum';
 import { fullUuid, uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -68,7 +65,8 @@ export class TableClass extends EntityClass {
     {} as ResponseDataWithServiceType;
   schemaResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
-  entityResponseData: Table = {} as Table;
+  entityResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
   testSuiteResponseData: ResponseDataType = {} as ResponseDataType;
   testSuitePipelineResponseData: ResponseDataType[] = [];
   testCasesResponseData: ResponseDataType[] = [];
@@ -80,7 +78,7 @@ export class TableClass extends EntityClass {
     tableType?: string,
     service?: Record<string, unknown>
   ) {
-    super(EntityTypeEndpoint.Table);
+    super(EntityTypeEndpoint.Table, EntityType.TABLE);
     this.serviceCategory = SERVICE_TYPE.Database;
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
     this.type = 'Table';
@@ -307,7 +305,7 @@ export class TableClass extends EntityClass {
   }
 
   set(entityData: {
-    entity: Table;
+    entity: ResponseDataWithServiceType;
     service: ResponseDataType;
     database: ResponseDataWithServiceType;
     schema: ResponseDataWithServiceType;
