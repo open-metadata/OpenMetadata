@@ -40,11 +40,11 @@ public class LongStatementsUtil {
       handle.execute(queryTemplate, args);
       migrationDAO.upsertServerMigrationSQL(version, truncatedQuery, hash(truncatedQuery));
       result.put(
-          queryTemplate,
+          truncatedQuery,
           new QueryStatus(QueryStatus.Status.SUCCESS, "Successfully Executed Query"));
     } catch (Exception e) {
       String message = String.format("Failed to run sql: [%s] due to [%s]", queryTemplate, e);
-      result.put(queryTemplate, new QueryStatus(QueryStatus.Status.FAILURE, message));
+      result.put(truncatedQuery, new QueryStatus(QueryStatus.Status.FAILURE, message));
       if (!isForceMigration) {
         throw new RuntimeException(message, e);
       }
