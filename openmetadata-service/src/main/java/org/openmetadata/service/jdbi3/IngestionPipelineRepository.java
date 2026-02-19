@@ -290,6 +290,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           ingestionPipeline.getService() != null
               ? ingestionPipeline.getService()
               : getContainer(ingestionPipeline.getId());
+      if (serviceRef == null) {
+        throw new IllegalStateException(
+            String.format(
+                "Cannot deploy pipeline '%s': no service reference found. "
+                    + "The pipeline may have a broken service relationship.",
+                ingestionPipeline.getName()));
+      }
       decrypted.setService(serviceRef);
     }
 
