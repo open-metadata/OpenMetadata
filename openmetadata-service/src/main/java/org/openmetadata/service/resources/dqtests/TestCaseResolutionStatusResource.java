@@ -474,7 +474,11 @@ public class TestCaseResolutionStatusResource
           searchListFilter,
           "testCase.fullyQualifiedName.keyword", // Group by test case to get latest status per test
           // case
-          null);
+          null,
+          limit,
+          offset,
+          defaultSortField,
+          sortType);
     } else {
       return repository.listFromSearchWithOffset(
           new Fields(null), searchListFilter, limit, offset, searchSortFilter, null, null);

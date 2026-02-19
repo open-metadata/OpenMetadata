@@ -264,7 +264,7 @@ public class TestCaseResultResource
           String entityFQN,
       @Parameter(
               description =
-                  "Get the latest test case result for each test case -- requires `testSuiteId`. Offset and limit are ignored",
+                  "Get the latest test case result for each test case -- requires `testSuiteId`",
               schema =
                   @Schema(
                       type = "boolean",
@@ -339,6 +339,10 @@ public class TestCaseResultResource
           searchListFilter,
           "testCaseFQN.keyword",
           q,
+          limit,
+          offset,
+          "timestamp",
+          "desc",
           authRequests,
           AuthorizationLogic.ANY);
     }
