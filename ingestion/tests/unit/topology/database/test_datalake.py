@@ -716,3 +716,87 @@ class DatalakeGCSUnitTest(TestCase):
             list(self.datalake_source.get_database_schema_names())
             == EXPECTED_GCS_SCHEMA
         )
+
+
+class DatalakeYieldTableNameTest(TestCase):
+    """
+    Tests for yield_table table name length handling.
+    Mocks fetch_dataframe_first_chunk and DataFrameColumnParser so only the
+    CreateTableRequest name/displayName logic is exercised.
+    """
+
+    @patch(
+        "metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"
+    )
+    def setUp(self, _test_connection):
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
+        self.source = DatalakeSource.create(
+            mock_datalake_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        self.source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.source.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.source.context.get().__dict__["database_schema"] = "my_bucket"
+
+    def _yield_table_request(self, table_name):
+        """
+        Calls yield_table with mocked dataframe fetch.
+        Returns the CreateTableRequest from the Either right, or None.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from metadata.generated.schema.entity.data.table import TableType
+
+        mock_df = MagicMock()
+        mock_column_parser = MagicMock()
+        mock_column_parser.get_columns.return_value = [
+            Column(name="id", dataType="INT", dataTypeDisplay="INT")
+        ]
+
+        with (
+            patch(
+                "metadata.ingestion.source.database.datalake.metadata.fetch_dataframe_first_chunk",
+                return_value=(iter([mock_df]), None),
+            ),
+            patch(
+                "metadata.ingestion.source.database.datalake.metadata.DataFrameColumnParser.create",
+                return_value=mock_column_parser,
+            ),
+            patch(
+                "metadata.ingestion.source.database.datalake.metadata.fqn.build",
+                return_value="local_datalake.default.my_bucket",
+            ),
+        ):
+            results = list(
+                self.source.yield_table((table_name, TableType.Regular, None))
+            )
+
+        rights = [r.right for r in results if r.right is not None]
+        return rights[0] if rights else None
+
+    def test_yield_table_name_within_limit(self):
+        """name <= 256 chars: name unchanged, displayName is None."""
+        table_name = "folder1/folder2/data.csv"
+
+        request = self._yield_table_request(table_name)
+
+        self.assertIsNotNone(request)
+        self.assertEqual(request.name.root, table_name)
+        self.assertIsNone(request.displayName)
+
+    def test_yield_table_name_exceeds_limit(self):
+        """name > 256 chars: name is MD5 hash (32 chars), displayName holds full original."""
+        from hashlib import md5
+
+        table_name = "folder/" * 40 + "data.csv"  # ~288 chars
+        self.assertGreater(len(table_name), 256)
+        expected_hash = md5(table_name.encode()).hexdigest()
+
+        request = self._yield_table_request(table_name)
+
+        self.assertIsNotNone(request)
+        self.assertEqual(request.name.root, expected_hash)
+        self.assertEqual(len(request.name.root), 32)
+        self.assertEqual(request.displayName, table_name)

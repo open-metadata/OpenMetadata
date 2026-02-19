@@ -555,22 +555,17 @@ const AuditLogList: FC<AuditLogListProps> = ({ logs, isLoading }) => {
 
   return (
     <div className="audit-log-list-container" data-testid="audit-log-list">
-      <div
-        className="audit-log-list-header"
-        data-testid="audit-log-list-header">
-        <Typography.Text className="header-text">
-          {t('message.events-matching-search-query')}
-        </Typography.Text>
-      </div>
       <div className="audit-log-list">
-        {logs.map((log, index) => (
-          <AuditLogListItem
-            key={log.id?.toString() ?? log.changeEventId ?? index.toString()}
-            log={log}
-          />
-        ))}
+        {
+          logs.map((log, index) => (
+            <AuditLogListItem
+              key={log.id?.toString() ?? log.changeEventId ?? index.toString()}
+              log={log}
+            />
+          ))
+        }
       </div>
-    </div>
+    </div >
   );
 };
 

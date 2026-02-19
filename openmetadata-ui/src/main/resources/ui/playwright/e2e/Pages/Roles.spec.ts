@@ -38,7 +38,6 @@ const errorMessageValidation = {
   lastPolicyCannotBeRemoved: 'At least one policy is required in a role',
 };
 
-
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -80,18 +79,18 @@ test('Roles page should work properly', async ({ page }) => {
     await expect(descriptionField).toBeVisible();
     await descriptionField.fill(description);
 
-    // Select the policies - wait for dropdown to open
+    // Select the policies - search and select from dropdown
     const policiesDropdown = page.locator('[data-testid="policies"]');
     await expect(policiesDropdown).toBeVisible();
     await policiesDropdown.click();
-
-    // Wait for dropdown options to be visible before clicking
+    await policiesDropdown.locator('input').fill('Data');
     const dataConsumerOption = page
       .locator('.ant-select-dropdown:visible')
       .locator('[title="Data Consumer Policy"]');
     await expect(dataConsumerOption).toBeVisible();
     await dataConsumerOption.click();
 
+    await policiesDropdown.locator('input').fill('Data');
     const dataStewardOption = page
       .locator('.ant-select-dropdown:visible')
       .locator('[title="Data Steward Policy"]');
@@ -171,17 +170,13 @@ test('Roles page should work properly', async ({ page }) => {
     await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
     await expect(page.getByRole('cell', { name: 'No data' })).toBeVisible();
 
-    // Navigating to roles tab to verify the added role
-    const breadcrumbLink = page
-      .locator('[data-testid="breadcrumb-link"]')
-      .first();
-    await expect(breadcrumbLink).toBeVisible();
-    await breadcrumbLink.click();
-
-    // Wait for roles list to load
+    // Navigate to roles list page to verify the added role
+    await settingClick(page, GlobalSettingOptions.ROLES);
     await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
 
-    const roleLocator = page.getByRole('link', { name: roleName });
+    const roleLocator = page.locator(
+      `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
+    );
     await getElementWithPagination(page, roleLocator, false);
 
     // Wait for plus-more-count button to be visible before clicking
@@ -249,7 +244,9 @@ test('Roles page should work properly', async ({ page }) => {
     await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
 
     // Edit description
-    const roleLocator = page.getByRole('link', { name: roleName });
+    const roleLocator = page.locator(
+      `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
+    );
     await getElementWithPagination(page, roleLocator);
 
     // Wait for role details page to load
@@ -530,7 +527,6 @@ test('Delete role action from manage button options', async ({ page }) => {
   await role.create(apiContext, policies);
 
   await page.reload();
-
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',

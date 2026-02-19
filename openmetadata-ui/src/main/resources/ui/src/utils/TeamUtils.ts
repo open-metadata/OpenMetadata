@@ -14,6 +14,7 @@
 import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
 import { ReactComponent as MsTeamsIcon } from '../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../assets/svg/slack.svg';
+import { ReactComponent as WebhookIcon } from '../assets/svg/webhook.svg';
 import { SUBSCRIPTION_WEBHOOK } from '../constants/Teams.constants';
 import { TeamType } from '../generated/entity/teams/team';
 import { t } from './i18next/LocalUtil';
@@ -40,6 +41,9 @@ export const getWebhookIcon = (item: SUBSCRIPTION_WEBHOOK): SvgComponent => {
 
     case SUBSCRIPTION_WEBHOOK.G_CHAT:
       return GChatIcon;
+
+    case SUBSCRIPTION_WEBHOOK.GENERIC:
+      return WebhookIcon;
 
     default:
       return MsTeamsIcon;

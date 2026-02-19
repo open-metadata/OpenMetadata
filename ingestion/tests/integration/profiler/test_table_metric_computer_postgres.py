@@ -13,7 +13,6 @@
 Integration tests for PostgresTableMetricComputer against a real PostgreSQL database.
 """
 
-import sys
 from unittest.mock import Mock
 
 import pytest
@@ -27,10 +26,6 @@ from metadata.profiler.orm.functions.table_metric_computer import (
     PostgresTableMetricComputer,
 )
 from metadata.profiler.processor.runner import QueryRunner
-
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
-
 
 Base = declarative_base()
 

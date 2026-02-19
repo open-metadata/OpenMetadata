@@ -9,8 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """mlflow integration tests"""
+import logging
 import os
-import sys
+import time
 from urllib.parse import urlparse
 
 import mlflow
@@ -47,14 +48,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.workflow.metadata import MetadataWorkflow
 
+from ....integration_base import generate_name
+
 MODEL_HYPERPARAMS = {
     "alpha": {"name": "alpha", "value": "0.5", "description": None},
     "l1_ratio": {"name": "l1_ratio", "value": "1.0", "description": None},
 }
 
 MODEL_NAME = "ElasticnetWineModel"
-
-SERVICE_NAME = "docker_test_mlflow"
 
 
 def eval_metrics(actual, pred):
@@ -69,22 +70,37 @@ def create_data(mlflow_environment):
     mlflow_uri = f"http://localhost:{mlflow_environment.mlflow_configs.exposed_port}"
     mlflow.set_tracking_uri(mlflow_uri)
 
-    os.environ["AWS_ACCESS_KEY_ID"] = "minio"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "password"
-    os.environ[
-        "MLFLOW_S3_ENDPOINT_URL"
-    ] = f"http://localhost:{mlflow_environment.minio_configs.exposed_port}"
+    minio_endpoint = f"http://localhost:{mlflow_environment.minio_configs.exposed_port}"
+    os.environ["AWS_ACCESS_KEY_ID"] = mlflow_environment.minio_configs.access_key
+    os.environ["AWS_SECRET_ACCESS_KEY"] = mlflow_environment.minio_configs.secret_key
+    os.environ["MLFLOW_S3_ENDPOINT_URL"] = minio_endpoint
+    os.environ["MLFLOW_BOTO_CLIENT_ADDRESSING_STYLE"] = "path"
+
+    # Reset boto3's cached default session so it picks up the MinIO env vars above.
+    # Earlier tests (e.g. test_ometa_secrets_manager) may have created DEFAULT_SESSION
+    # which caches credentials from ~/.aws/credentials — sending real AWS creds to MinIO
+    # instead of "minio"/"password", causing InvalidAccessKeyId.
+    import boto3
+
+    boto3.DEFAULT_SESSION = None
+
+    # Verify MinIO is reachable before proceeding (may be slow under Docker load)
+    import requests
+
+    for _ in range(15):
+        try:
+            requests.get(f"{minio_endpoint}/minio/health/live", timeout=5)
+            break
+        except Exception:
+            time.sleep(2)
 
     np.random.seed(40)
 
-    # Read the wine-quality csv file from the URL
     csv_url = "https://raw.githubusercontent.com/open-metadata/openmetadata-demo/main/resources/winequality-red.csv"
     data = pd.read_csv(csv_url, sep=";")
 
-    # Split the data into training and test sets. (0.75, 0.25) split.
     train, test = train_test_split(data)
 
-    # The predicted column is "quality" which is a scalar from [3, 9]
     train_x = train.drop(["quality"], axis=1)
     test_x = test.drop(["quality"], axis=1)
     train_y = train[["quality"]]
@@ -111,26 +127,34 @@ def create_data(mlflow_environment):
 
         tracking_url_type_store = urlparse(mlflow.get_tracking_uri()).scheme
 
-        # Model registry does not work with file store
-        if tracking_url_type_store != "file":
-            # Register the model
-            # There are other ways to use the Model Registry, which depends on the use case,
-            # please refer to the doc for more information:
-            # https://mlflow.org/docs/latest/model-registry.html#api-workflow
-            mlflow.sklearn.log_model(
-                lr,
-                "model",
-                registered_model_name=MODEL_NAME,
-                signature=signature,
-            )
-        else:
-            mlflow.sklearn.log_model(lr, "model")
+        for attempt in range(5):
+            try:
+                if tracking_url_type_store != "file":
+                    mlflow.sklearn.log_model(
+                        lr,
+                        "model",
+                        registered_model_name=MODEL_NAME,
+                        signature=signature,
+                    )
+                else:
+                    mlflow.sklearn.log_model(lr, "model")
+                break
+            except Exception:
+                if attempt < 4:
+                    logging.getLogger(__name__).warning(
+                        "Retry %d/5: S3 upload failed, retrying...", attempt + 1
+                    )
+                    time.sleep(5 * (attempt + 1))
+                else:
+                    raise
 
 
 @pytest.fixture(scope="module")
 def service(metadata, mlflow_environment):
+    service_name = generate_name()
+
     service = CreateMlModelServiceRequest(
-        name=SERVICE_NAME,
+        name=service_name,
         serviceType=MlModelServiceType.Mlflow,
         connection=MlModelConnection(
             config=MlflowConnection(
@@ -161,19 +185,16 @@ def ingest_mlflow(metadata, service, create_data):
 
     metadata_ingestion = MetadataWorkflow.create(workflow_config)
     metadata_ingestion.execute()
+    metadata_ingestion.raise_from_status()
     return
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 9),
-    reason="testcontainers Network feature requires python3.9 or higher",
-)
-def test_mlflow(ingest_mlflow, metadata):
+def test_mlflow(ingest_mlflow, metadata, service):
     ml_models = metadata.list_all_entities(entity=MlModel)
 
     # Check we only get the same amount of models we should have ingested
     filtered_ml_models = [
-        ml_model for ml_model in ml_models if ml_model.service.name == SERVICE_NAME
+        ml_model for ml_model in ml_models if ml_model.service.name == service.name.root
     ]
 
     assert len(filtered_ml_models) == 1

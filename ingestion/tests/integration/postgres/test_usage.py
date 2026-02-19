@@ -1,5 +1,3 @@
-import sys
-
 import pytest
 
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -9,9 +7,6 @@ from metadata.generated.schema.metadataIngestion.databaseServiceQueryUsagePipeli
 from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.usage import UsageWorkflow
-
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
 
 
 @pytest.fixture()

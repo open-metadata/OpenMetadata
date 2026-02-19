@@ -115,7 +115,16 @@ class TestSQAProfiler(TestCase):
                     f"Profiler workflow failed for {type(container).__name__} with error {e}"
                 )
 
-        tables: List[Table] = self.metadata.list_all_entities(Table)
+        tables: List[Table] = []
+        for container in self.container_builder.containers:
+            service_name = type(container).__name__
+            cfg = json.loads(container.get_config())
+            db_name = cfg.get("database") or cfg.get("databaseSchema", "default")
+            tables.extend(
+                self.metadata.list_all_entities(
+                    Table, params={"database": f"{service_name}.{db_name}"}
+                )
+            )
         for table in tables:
             if table.name.root != "users":
                 continue
@@ -168,9 +177,18 @@ class TestSQAProfiler(TestCase):
             except Exception as e:
                 self.fail(f"Profiler workflow failed for {service_name} with error {e}")
 
-        tables: List[Table] = self.metadata.list_all_entities(Table)
+        tables: List[Table] = []
+        for container in self.container_builder.containers:
+            sn = type(container).__name__
+            cfg = json.loads(container.get_config())
+            db_name = cfg.get("database") or cfg.get("databaseSchema", "default")
+            tables.extend(
+                self.metadata.list_all_entities(
+                    Table, params={"database": f"{sn}.{db_name}"}
+                )
+            )
         for table in tables:
-            if table.service.name not in service_names or table.name.root != "users":
+            if table.name.root != "users":
                 continue
             table = self.metadata.get_latest_table_profile(table.fullyQualifiedName)
             columns = table.columns
