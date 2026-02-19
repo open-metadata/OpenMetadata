@@ -10,24 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Button,
-  Chip,
-  IconButton,
-  Paper,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Tooltip,
-  Typography,
-  useTheme,
-} from '@mui/material';
-import { defaultColors } from '@openmetadata/ui-core-components';
+import { Badge, Button, ButtonUtility } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import { DateTime } from 'luxon';
@@ -71,9 +54,19 @@ import {
 } from './hooks/useLearningResourceFilters';
 import { useLearningResources } from './hooks/useLearningResources';
 
+import { BadgeColors } from '@openmetadata/ui-core-components/dist/types/src/components/base/badges/badge-types';
 import { LearningResourceCard } from '../../components/Learning/LearningResourceCard/LearningResourceCard.component';
 import { ResourcePlayerModal } from '../../components/Learning/ResourcePlayer/ResourcePlayerModal.component';
 import { LearningResourceForm } from './LearningResourceForm.component';
+
+const CATEGORY_BADGE_COLORS: Record<string, BadgeColors> = {
+  Discovery: 'blue',
+  Administration: 'blue-light',
+  DataGovernance: 'indigo',
+  DataQuality: 'orange',
+  Observability: 'orange',
+  AI: 'purple',
+};
 
 const getResourceTypeIcon = (type: string) => {
   const icons: Record<
@@ -87,30 +80,12 @@ const getResourceTypeIcon = (type: string) => {
   const Icon = icons[type] ?? VideoIcon;
 
   return (
-    <Box
-      sx={{
-        width: 32,
-        height: 32,
-        borderRadius: 0.5,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-      }}>
+    <div
+      className="d-flex items-center justify-center"
+      style={{ width: 32, height: 32, borderRadius: 4, flexShrink: 0 }}>
       <Icon height={24} width={24} />
-    </Box>
+    </div>
   );
-};
-
-const getCategoryColors = (category: string) => {
-  const info =
-    LEARNING_CATEGORIES[category as keyof typeof LEARNING_CATEGORIES];
-
-  return {
-    bg: info?.bgColor,
-    border: info?.borderColor,
-    color: info?.color,
-  };
 };
 
 const ResourceRow = ({
@@ -125,236 +100,161 @@ const ResourceRow = ({
   handleDelete: (record: LearningResource) => void;
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
 
   return (
-    <TableRow
+    <tr
       key={record.id}
-      sx={{
-        cursor: 'pointer',
-        height: '54px !important',
-        '& .MuiTableCell-root': {
-          paddingTop: 0,
-          paddingBottom: 0,
-        },
-      }}
+      style={{ cursor: 'pointer', height: 54 }}
       onClick={() => handlePreview(record)}>
       {/* Name */}
-      <TableCell
-        sx={{
+      <td
+        style={{
           maxWidth: 360,
           overflow: 'hidden',
+          paddingTop: 0,
+          paddingBottom: 0,
+          padding: '0 16px',
+          borderBottom: '1px solid #EAECF0',
         }}>
-        <Stack
-          alignItems="center"
-          direction="row"
-          spacing={1}
-          sx={{ minWidth: 0 }}>
+        <div className="d-flex items-center gap-2" style={{ minWidth: 0 }}>
           {getResourceTypeIcon(record.resourceType)}
-          <Typography
-            noWrap
-            sx={{
-              fontSize: theme.typography.body2.fontSize,
-              fontWeight: theme.typography.fontWeightMedium,
+          <span
+            className="text-sm font-medium"
+            style={{
               overflow: 'hidden',
               textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
               minWidth: 0,
             }}
             title={record.displayName || record.name}>
             {record.displayName || record.name}
-          </Typography>
-        </Stack>
-      </TableCell>
+          </span>
+        </div>
+      </td>
 
       {/* Categories */}
-      <TableCell sx={{ overflow: 'hidden' }}>
-        <Stack
-          direction="row"
-          spacing={0.75}
-          sx={{
-            flexWrap: 'nowrap',
-            overflow: 'hidden',
-            alignItems: 'center',
-            minWidth: 0,
-          }}>
-          <Box
-            sx={{
+      <td
+        style={{
+          overflow: 'hidden',
+          paddingTop: 0,
+          paddingBottom: 0,
+          padding: '0 16px',
+          borderBottom: '1px solid #EAECF0',
+        }}>
+        <div
+          className="d-flex items-center gap-2"
+          style={{ flexWrap: 'nowrap', overflow: 'hidden', minWidth: 0 }}>
+          <div
+            className="d-flex items-center gap-2"
+            style={{
               flexShrink: 1,
               minWidth: 0,
               overflow: 'hidden',
-              display: 'flex',
               flexWrap: 'nowrap',
-              gap: theme.spacing(1.5),
-              alignItems: 'center',
             }}>
-            {record.categories?.slice(0, MAX_VISIBLE_TAGS).map((cat) => {
-              const c = getCategoryColors(cat);
-
-              return (
-                <Chip
-                  key={cat}
-                  label={LEARNING_CATEGORIES[cat]?.label ?? cat}
-                  size="small"
-                  sx={{
-                    flexShrink: 1,
-                    minWidth: 0,
-                    maxWidth: '100%',
-                    borderRadius: '6px',
-                    bgcolor: c.bg,
-                    border: `1px solid ${c.border}`,
-                    color: c.color,
-                    '& .MuiChip-label': {
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    },
-                  }}
-                />
-              );
-            })}
-          </Box>
+            {record.categories?.slice(0, MAX_VISIBLE_TAGS).map((cat) => (
+              <Badge
+                color={CATEGORY_BADGE_COLORS[cat] ?? 'gray'}
+                key={cat}
+                size="sm"
+                type="color">
+                {LEARNING_CATEGORIES[cat as keyof typeof LEARNING_CATEGORIES]
+                  ?.label ?? cat}
+              </Badge>
+            ))}
+          </div>
           {record.categories && record.categories.length > MAX_VISIBLE_TAGS && (
-            <Chip
-              label={`+${record.categories.length - MAX_VISIBLE_TAGS}`}
-              size="small"
-              sx={{
-                flexShrink: 0,
-                borderRadius: '6px',
-                backgroundColor:
-                  'var(--Component-colors-Utility-Brand-utility-brand-50, #EFF8FF)',
-                color: theme.palette.primary.main,
-                border: 'none',
-              }}
-            />
+            <Badge color="brand" size="sm" type="color">
+              {`+${record.categories.length - MAX_VISIBLE_TAGS}`}
+            </Badge>
           )}
-        </Stack>
-      </TableCell>
+        </div>
+      </td>
 
       {/* Context */}
-      <TableCell sx={{ overflow: 'hidden' }}>
-        <Stack
-          direction="row"
-          spacing={0.75}
-          sx={{
-            flexWrap: 'nowrap',
-            overflow: 'hidden',
-            alignItems: 'center',
-            minWidth: 0,
-          }}>
-          <Box
-            sx={{
+      <td
+        style={{
+          overflow: 'hidden',
+          paddingTop: 0,
+          paddingBottom: 0,
+          padding: '0 16px',
+          borderBottom: '1px solid #EAECF0',
+        }}>
+        <div
+          className="d-flex items-center gap-2"
+          style={{ flexWrap: 'nowrap', overflow: 'hidden', minWidth: 0 }}>
+          <div
+            className="d-flex items-center gap-2"
+            style={{
               flexShrink: 1,
               minWidth: 0,
               overflow: 'hidden',
-              display: 'flex',
               flexWrap: 'nowrap',
-              gap: theme.spacing(1.5),
-              alignItems: 'center',
             }}>
             {record.contexts?.slice(0, MAX_VISIBLE_CONTEXTS).map((ctx, i) => (
-              <Chip
-                key={ctx.pageId ?? i}
-                label={
-                  PAGE_IDS.find((p) => p.value === ctx.pageId)?.label ??
-                  ctx.pageId
-                }
-                size="small"
-                sx={{
-                  flexShrink: 1,
-                  minWidth: 0,
-                  maxWidth: '100%',
-                  borderRadius: '6px',
-                  border: `1px solid ${theme.palette.grey[200]}`,
-                  backgroundColor: theme.palette.grey[50],
-                  padding: theme.spacing(0.25, 0.75),
-                  color: theme.palette.grey[700],
-                  '& .MuiChip-label': {
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  },
-                }}
-              />
+              <Badge color="gray" key={ctx.pageId ?? i} size="sm" type="color">
+                {PAGE_IDS.find((p) => p.value === ctx.pageId)?.label ??
+                  ctx.pageId}
+              </Badge>
             ))}
-          </Box>
+          </div>
           {record.contexts && record.contexts.length > MAX_VISIBLE_CONTEXTS && (
-            <Chip
-              label={`+${record.contexts.length - MAX_VISIBLE_CONTEXTS}`}
-              size="small"
-              sx={{
-                flexShrink: 0,
-                borderRadius: '6px',
-                border: `1px solid ${theme.palette.grey[200]}`,
-                backgroundColor: theme.palette.grey[50],
-                padding: theme.spacing(0.25, 0.75),
-                color: theme.palette.grey[700],
-              }}
-            />
+            <Badge color="gray" size="sm" type="color">
+              {`+${record.contexts.length - MAX_VISIBLE_CONTEXTS}`}
+            </Badge>
           )}
-        </Stack>
-      </TableCell>
+        </div>
+      </td>
 
       {/* Updated */}
-      <TableCell>
-        <Typography
-          component="span"
-          sx={{
-            color: theme.palette.grey[600],
-            fontSize: theme.typography.body2.fontSize,
-          }}>
+      <td
+        style={{
+          paddingTop: 0,
+          paddingBottom: 0,
+          padding: '0 16px',
+          borderBottom: '1px solid #EAECF0',
+        }}>
+        <span className="text-sm" style={{ color: '#667085' }}>
           {record.updatedAt
             ? DateTime.fromMillis(record.updatedAt).toFormat('LLL d, yyyy')
             : '-'}
-        </Typography>
-      </TableCell>
+        </span>
+      </td>
 
       {/* Actions */}
-      <TableCell onClick={(e) => e.stopPropagation()}>
-        <Box sx={{ display: 'flex', gap: '10px' }}>
-          <Tooltip title={t('label.edit')}>
-            <IconButton
-              data-testid={`edit-${record.name}`}
-              size="small"
-              sx={{
-                borderRadius: '4px',
-                padding: theme.spacing(1),
-                border: `1px solid ${theme.palette.grey[200]}`,
-                bgcolor: 'common.white',
-                '&:hover': {
-                  bgcolor: 'common.white',
-                },
-              }}
-              onClick={() => handleEdit(record)}>
-              <IconEdit height={14} width={14} />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title={t('label.delete')}>
-            <IconButton
-              data-testid={`delete-${record.name}`}
-              size="small"
-              sx={{
-                borderRadius: '4px',
-                border: `1px solid ${theme.palette.grey[200]}`,
-                padding: theme.spacing(1),
-                bgcolor: 'common.white',
-                '&:hover': {
-                  bgcolor: 'common.white',
-                },
-              }}
-              onClick={() => handleDelete(record)}>
-              <Trash01 size={14} />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      </TableCell>
-    </TableRow>
+      <td
+        style={{
+          paddingTop: 0,
+          paddingBottom: 0,
+          padding: '0 16px',
+          borderBottom: '1px solid #EAECF0',
+        }}
+        onClick={(e) => e.stopPropagation()}>
+        <div className="d-flex items-center gap-2">
+          <ButtonUtility
+            color="secondary"
+            data-testid={`edit-${record.name}`}
+            icon={<IconEdit height={14} width={14} />}
+            size="xs"
+            tooltip={t('label.edit')}
+            onClick={() => handleEdit(record)}
+          />
+          <ButtonUtility
+            color="secondary"
+            data-testid={`delete-${record.name}`}
+            icon={<Trash01 size={14} />}
+            size="xs"
+            tooltip={t('label.delete')}
+            onClick={() => handleDelete(record)}
+          />
+        </div>
+      </td>
+    </tr>
   );
 };
 
 export const LearningResourcesPage: React.FC = () => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const [searchText, setSearchText] = useState('');
   const [filterState, setFilterState] = useState<LearningResourceFilterState>(
     {}
@@ -443,190 +343,139 @@ export const LearningResourcesPage: React.FC = () => {
       fullHeight
       mainContainerClassName="learning-resources-page-layout"
       pageTitle={t('label.learning-resource')}>
-      <Box
+      <div
         data-testid="learning-resources-page"
-        sx={{
+        style={{
           display: 'flex',
           flexDirection: 'column',
           height: '100%',
           minHeight: 0,
           overflow: 'hidden',
         }}>
-        <Box sx={{ flexShrink: 0, marginBottom: theme.spacing(2) }}>
+        <div style={{ flexShrink: 0, marginBottom: 16 }}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Box>
+        </div>
 
         {/* Header */}
-        <Box
-          sx={{
+        <div
+          style={{
             flexShrink: 0,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginTop: theme.spacing(1),
-            padding: theme.spacing(6),
-            mb: 2,
-            bgcolor: 'background.paper',
-            boxShadow: 1,
-            borderRadius: 1,
-            border: `1px solid ${defaultColors.blueGray[100]}`,
+            marginTop: 8,
+            padding: 24,
+            marginBottom: 16,
+            background: '#fff',
+            boxShadow: '0 1px 2px 0 rgba(16,24,40,0.06)',
+            borderRadius: 8,
+            border: '1px solid #E2E8F0',
           }}>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: theme.spacing(2 / 3),
-            }}>
-            <Typography
-              sx={{
-                color: theme.palette.grey[900],
-                fontFamily: theme.typography.fontFamily,
-                fontSize: theme.typography.body1.fontSize,
-                fontWeight: 600,
-                lineHeight: theme.typography.body1.lineHeight,
-              }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span
+              className="font-semibold text-md"
+              style={{ color: '#101828' }}>
               {t('label.learning-resource')}
-            </Typography>
-            <Typography
-              sx={{
-                color: theme.palette.grey[600],
-                fontFamily: theme.typography.fontFamily,
-                fontSize: theme.typography.body2.fontSize,
-                fontWeight: 400,
-                lineHeight: theme.typography.body2.lineHeight,
-              }}>
+            </span>
+            <span
+              className="text-sm"
+              style={{ color: '#667085', fontWeight: 400 }}>
               {t('message.learning-resources-management-description')}
-            </Typography>
-          </Box>
+            </span>
+          </div>
 
           <Button
+            color="primary"
             data-testid="create-resource"
-            startIcon={
-              <Plus style={{ fontSize: theme.typography.pxToRem(16) }} />
-            }
-            sx={{
-              fontSize: theme.typography.body2.fontSize,
-              fontWeight: theme.typography.fontWeightMedium,
-              color: defaultColors.white,
-              borderRadius: '8px',
-              border: `1px solid ${defaultColors.blue[600]}`,
-              background: defaultColors.blue[600],
-              padding: theme.spacing(2, 3.5),
-              '&:hover': {
-                background: defaultColors.blue[600],
-                color: defaultColors.white,
-              },
-            }}
-            variant="text"
+            iconLeading={Plus}
+            size="md"
             onClick={handleCreate}>
             {t('label.add-entity', {
               entity: t('label.resource'),
             })}
           </Button>
-        </Box>
+        </div>
 
         {/* Table / Card Container */}
-        <Paper
-          elevation={0}
-          sx={{
+        <div
+          style={{
             flex: 1,
             minHeight: 0,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            marginTop: theme.spacing(2.5),
-            borderRadius: '12px',
-            border: `1px solid ${defaultColors.blueGray[100]}`,
+            marginTop: 10,
+            borderRadius: 12,
+            border: '1px solid #E2E8F0',
           }}>
           {/* Filters */}
-          <Box
-            sx={{
-              flexShrink: 0,
-              p: 3,
-            }}>
-            <Stack alignItems="center" direction="row" spacing={2}>
+          <div style={{ flexShrink: 0, padding: 12 }}>
+            <div className="d-flex items-center gap-3">
               {search}
               {quickFilters}
-              <Box flexGrow={1} />
+              <div style={{ flexGrow: 1 }} />
               {viewToggle}
-            </Stack>
+            </div>
             {filterSelectionDisplay}
-          </Box>
+          </div>
 
           {/* Table View */}
           {view === 'table' && (
             <>
-              <TableContainer
-                sx={{
-                  flex: 1,
-                  minHeight: 0,
-                  overflow: 'auto',
-                  borderRadius: 0, // Ensure no border radius here either
-                }}>
-                <Table stickyHeader size="small" sx={{ tableLayout: 'fixed' }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell
-                        sx={{
-                          fontWeight: 600,
-                          bgcolor: 'grey.50',
-                          maxWidth: 360,
-                          width: 360,
-                        }}>
-                        {t('label.content-name')}
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          fontWeight: 600,
-                          bgcolor: 'grey.50',
-                          width: 220,
-                          minWidth: 220,
-                        }}>
-                        {t('label.category-plural')}
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          fontWeight: 600,
-                          bgcolor: 'grey.50',
-                          width: 220,
-                          minWidth: 220,
-                        }}>
-                        {t('label.context')}
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          fontWeight: 600,
-                          bgcolor: 'grey.50',
-                          width: 140,
-                          minWidth: 140,
-                        }}>
-                        {t('label.updated-at')}
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          fontWeight: 600,
-                          bgcolor: 'grey.50',
-                          width: 80,
-                          minWidth: 80,
-                        }}>
-                        {t('label.action-plural')}
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
+              <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                <table
+                  style={{
+                    width: '100%',
+                    tableLayout: 'fixed',
+                    borderCollapse: 'collapse',
+                  }}>
+                  <thead>
+                    <tr>
+                      {[
+                        { label: t('label.content-name'), width: 360 },
+                        { label: t('label.category-plural'), width: 220 },
+                        { label: t('label.context'), width: 220 },
+                        { label: t('label.updated-at'), width: 140 },
+                        { label: t('label.action-plural'), width: 80 },
+                      ].map((col) => (
+                        <th
+                          className="text-xs font-semibold"
+                          key={col.label}
+                          style={{
+                            background: '#F9FAFB',
+                            width: col.width,
+                            minWidth: col.width,
+                            padding: '8px 16px',
+                            textAlign: 'left',
+                            color: '#475467',
+                            position: 'sticky',
+                            top: 0,
+                            zIndex: 1,
+                            borderBottom: '1px solid #EAECF0',
+                          }}>
+                          {col.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
 
-                  <TableBody data-testid="learning-resources-table-body">
+                  <tbody data-testid="learning-resources-table-body">
                     {isLoading ? (
-                      <TableRow>
-                        <TableCell align="center" colSpan={5}>
+                      <tr>
+                        <td
+                          colSpan={5}
+                          style={{ textAlign: 'center', padding: 16 }}>
                           <Loader />
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     ) : isEmpty(resources) ? (
-                      <TableRow>
-                        <TableCell align="center" colSpan={5}>
+                      <tr>
+                        <td
+                          colSpan={5}
+                          style={{ textAlign: 'center', padding: 16 }}>
                           {t('server.no-records-found')}
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     ) : (
                       resources.map((record) => (
                         <ResourceRow
@@ -638,37 +487,37 @@ export const LearningResourcesPage: React.FC = () => {
                         />
                       ))
                     )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                  </tbody>
+                </table>
+              </div>
 
-              <Box
-                sx={{
+              <div
+                style={{
                   flexShrink: 0,
-                  p: 2,
+                  padding: 16,
                   display: 'flex',
                   justifyContent: 'center',
                   boxShadow:
                     '0 -13px 16px -4px rgba(10, 13, 18, 0.04), 0 -4px 6px -2px rgba(10, 13, 18, 0.03)',
                 }}>
                 <NextPrevious {...paginationData} />
-              </Box>
+              </div>
             </>
           )}
 
           {/* Card View */}
           {view === 'card' && (
             <>
-              <Box sx={{ p: 3, overflow: 'auto' }}>
+              <div style={{ padding: 12, overflow: 'auto' }}>
                 {isLoading ? (
                   <Loader />
                 ) : (
-                  <Box
-                    sx={{
+                  <div
+                    style={{
                       display: 'grid',
                       gridTemplateColumns:
                         'repeat(auto-fill, minmax(280px,1fr))',
-                      gap: 2,
+                      gap: 16,
                     }}>
                     {resources.map((r) => (
                       <LearningResourceCard
@@ -677,23 +526,23 @@ export const LearningResourcesPage: React.FC = () => {
                         onClick={handlePreview}
                       />
                     ))}
-                  </Box>
+                  </div>
                 )}
-              </Box>
+              </div>
 
-              <Box
-                sx={{
-                  p: 2,
+              <div
+                style={{
+                  padding: 16,
                   display: 'flex',
                   justifyContent: 'center',
                   boxShadow:
                     '0 -13px 16px -4px rgba(10, 13, 18, 0.04), 0 -4px 6px -2px rgba(10, 13, 18, 0.03)',
                 }}>
                 <NextPrevious {...paginationData} />
-              </Box>
+              </div>
             </>
           )}
-        </Paper>
+        </div>
 
         {isFormOpen && (
           <LearningResourceForm
@@ -723,7 +572,7 @@ export const LearningResourcesPage: React.FC = () => {
             onDelete={handleDeleteConfirm}
           />
         )}
-      </Box>
+      </div>
     </PageLayoutV1>
   );
 };
