@@ -10,53 +10,55 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Button, ButtonUtility } from '@openmetadata/ui-core-components';
+import type { BadgeColors } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Button,
+  ButtonUtility,
+  Table,
+  TableCard,
+} from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
-import { isEmpty } from 'lodash';
 import { DateTime } from 'luxon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import type { Key } from 'react-aria-components';
+import { useTranslation } from 'react-i18next';
 
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as StoryLaneIcon } from '../../assets/svg/ic_storylane.svg';
 import { ReactComponent as VideoIcon } from '../../assets/svg/ic_video.svg';
 
+import { useSearch } from '../../components/common/atoms/navigation/useSearch';
+import { useViewToggle } from '../../components/common/atoms/navigation/useViewToggle';
 import { DeleteModalMUI } from '../../components/common/DeleteModal/DeleteModalMUI';
 import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { LEARNING_CATEGORIES } from '../../components/Learning/Learning.interface';
+import { LearningResourceCard } from '../../components/Learning/LearningResourceCard/LearningResourceCard.component';
+import { ResourcePlayerModal } from '../../components/Learning/ResourcePlayer/ResourcePlayerModal.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-
-import { useTranslation } from 'react-i18next';
-import { useSearch } from '../../components/common/atoms/navigation/useSearch';
-import { useViewToggle } from '../../components/common/atoms/navigation/useViewToggle';
 
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
-
-import { LEARNING_CATEGORIES } from '../../components/Learning/Learning.interface';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   MAX_VISIBLE_CONTEXTS,
   MAX_VISIBLE_TAGS,
   PAGE_IDS,
 } from '../../constants/Learning.constants';
 
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { getSettingPath } from '../../utils/RouterUtils';
-
 import { LearningResource } from '../../rest/learningResourceAPI';
+import { getSettingPath } from '../../utils/RouterUtils';
 import { useLearningResourceActions } from './hooks/useLearningResourceActions';
 import {
   LearningResourceFilterState,
   useLearningResourceFilters,
 } from './hooks/useLearningResourceFilters';
 import { useLearningResources } from './hooks/useLearningResources';
-
-import { BadgeColors } from '@openmetadata/ui-core-components/dist/types/src/components/base/badges/badge-types';
-import { LearningResourceCard } from '../../components/Learning/LearningResourceCard/LearningResourceCard.component';
-import { ResourcePlayerModal } from '../../components/Learning/ResourcePlayer/ResourcePlayerModal.component';
 import { LearningResourceForm } from './LearningResourceForm.component';
 
 const CATEGORY_BADGE_COLORS: Record<string, BadgeColors> = {
@@ -67,6 +69,8 @@ const CATEGORY_BADGE_COLORS: Record<string, BadgeColors> = {
   Observability: 'orange',
   AI: 'purple',
 };
+
+type TableColumn = { id: string; label: string; className?: string };
 
 const getResourceTypeIcon = (type: string) => {
   const icons: Record<
@@ -80,163 +84,9 @@ const getResourceTypeIcon = (type: string) => {
   const Icon = icons[type] ?? VideoIcon;
 
   return (
-    <div className="d-flex items-center justify-center">
+    <div className="tw:flex tw:items-center tw:justify-center tw:w-8 tw:h-8 tw:rounded tw:shrink-0">
       <Icon height={24} width={24} />
     </div>
-  );
-};
-
-const ResourceRow = ({
-  record,
-  handlePreview,
-  handleEdit,
-  handleDelete,
-}: {
-  record: LearningResource;
-  handlePreview: (record: LearningResource) => void;
-  handleEdit: (record: LearningResource) => void;
-  handleDelete: (record: LearningResource) => void;
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <tr
-      key={record.id}
-      style={{ cursor: 'pointer', height: 54 }}
-      onClick={() => handlePreview(record)}>
-      {/* Name */}
-      <td
-        style={{
-          maxWidth: 360,
-          overflow: 'hidden',
-          paddingTop: 0,
-          paddingBottom: 0,
-          padding: '0 16px',
-          borderBottom: '1px solid #EAECF0',
-        }}>
-        <div className="d-flex items-center gap-2" style={{ minWidth: 0 }}>
-          {getResourceTypeIcon(record.resourceType)}
-          <span
-            className="text-sm font-medium"
-            style={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              minWidth: 0,
-            }}
-            title={record.displayName || record.name}>
-            {record.displayName || record.name}
-          </span>
-        </div>
-      </td>
-
-      {/* Categories */}
-      <td
-        style={{
-          overflow: 'hidden',
-          paddingTop: 0,
-          paddingBottom: 0,
-          padding: '0 16px',
-          borderBottom: '1px solid #EAECF0',
-        }}>
-        <div className="d-flex items-center gap-2 overflow-hidden flex-wrap-nowrap flex-shrink-1">
-          <div className="d-flex items-center gap-2 overflow-hidden flex-wrap-nowrap flex-shrink-1">
-            {record.categories?.slice(0, MAX_VISIBLE_TAGS).map((cat) => (
-              <Badge
-                color={CATEGORY_BADGE_COLORS[cat] ?? 'gray'}
-                key={cat}
-                size="sm"
-                type="color">
-                {LEARNING_CATEGORIES[cat as keyof typeof LEARNING_CATEGORIES]
-                  ?.label ?? cat}
-              </Badge>
-            ))}
-          </div>
-          {record.categories && record.categories.length > MAX_VISIBLE_TAGS && (
-            <Badge color="brand" size="sm" type="color">
-              {`+${record.categories.length - MAX_VISIBLE_TAGS}`}
-            </Badge>
-          )}
-        </div>
-      </td>
-
-      {/* Context */}
-      <td
-        style={{
-          overflow: 'hidden',
-          paddingTop: 0,
-          paddingBottom: 0,
-          padding: '0 16px',
-          borderBottom: '1px solid #EAECF0',
-        }}>
-        <div className="d-flex items-center gap-2 flex-nowrap overflow-hidden">
-          <div
-            className="d-flex items-center gap-2"
-            style={{
-              flexShrink: 1,
-              minWidth: 0,
-              overflow: 'hidden',
-              flexWrap: 'nowrap',
-            }}>
-            {record.contexts?.slice(0, MAX_VISIBLE_CONTEXTS).map((ctx, i) => (
-              <Badge color="gray" key={ctx.pageId ?? i} size="sm" type="color">
-                {PAGE_IDS.find((p) => p.value === ctx.pageId)?.label ??
-                  ctx.pageId}
-              </Badge>
-            ))}
-          </div>
-          {record.contexts && record.contexts.length > MAX_VISIBLE_CONTEXTS && (
-            <Badge color="gray" size="sm" type="color">
-              {`+${record.contexts.length - MAX_VISIBLE_CONTEXTS}`}
-            </Badge>
-          )}
-        </div>
-      </td>
-
-      {/* Updated */}
-      <td
-        style={{
-          paddingTop: 0,
-          paddingBottom: 0,
-          padding: '0 16px',
-          borderBottom: '1px solid #EAECF0',
-        }}>
-        <span className="text-sm" style={{ color: '#667085' }}>
-          {record.updatedAt
-            ? DateTime.fromMillis(record.updatedAt).toFormat('LLL d, yyyy')
-            : '-'}
-        </span>
-      </td>
-
-      {/* Actions */}
-      <td
-        style={{
-          paddingTop: 0,
-          paddingBottom: 0,
-          padding: '0 16px',
-          borderBottom: '1px solid #EAECF0',
-        }}
-        onClick={(e) => e.stopPropagation()}>
-        <div className="d-flex items-center gap-2">
-          <ButtonUtility
-            color="secondary"
-            data-testid={`edit-${record.name}`}
-            icon={<IconEdit height={14} width={14} />}
-            size="xs"
-            tooltip={t('label.edit')}
-            onClick={() => handleEdit(record)}
-          />
-          <ButtonUtility
-            color="secondary"
-            data-testid={`delete-${record.name}`}
-            icon={<Trash01 size={14} />}
-            size="xs"
-            tooltip={t('label.delete')}
-            onClick={() => handleDelete(record)}
-          />
-        </div>
-      </td>
-    </tr>
   );
 };
 
@@ -325,61 +175,210 @@ export const LearningResourcesPage: React.FC = () => {
     [paging.total, pageSize, currentPage, isLoading, handlePageSizeChange]
   );
 
+  const columns = useMemo<TableColumn[]>(
+    () => [
+      {
+        id: 'name',
+        label: t('label.content-name'),
+        className: 'tw:min-w-0 tw:w-[35%]',
+      },
+      {
+        id: 'categories',
+        label: t('label.category-plural'),
+        className: 'tw:min-w-0 tw:w-[22%]',
+      },
+      {
+        id: 'context',
+        label: t('label.context'),
+        className: 'tw:min-w-0 tw:w-[22%]',
+      },
+      {
+        id: 'updatedAt',
+        label: t('label.updated-at'),
+        className: 'tw:min-w-0 tw:w-[14%]',
+      },
+      {
+        id: 'actions',
+        label: t('label.action-plural'),
+        className: 'tw:w-[7%] tw:shrink-0',
+      },
+    ],
+    [t]
+  );
+
+  const handleRowAction = useCallback(
+    (key: Key) => {
+      const resource = resources.find((r) => r.id === String(key));
+      if (resource) {
+        handlePreview(resource);
+      }
+    },
+    [resources, handlePreview]
+  );
+
+  const renderCell = useCallback(
+    (colId: string, record: LearningResource) => {
+      switch (colId) {
+        case 'name':
+          return (
+            <Table.Cell>
+              <div className="tw:flex tw:items-center tw:gap-2 tw:overflow-hidden tw:min-w-0">
+                {getResourceTypeIcon(record.resourceType)}
+                <span
+                  className="tw:truncate tw:min-w-0 tw:text-sm tw:font-medium tw:text-primary"
+                  title={record.displayName || record.name}>
+                  {record.displayName || record.name}
+                </span>
+              </div>
+            </Table.Cell>
+          );
+
+        case 'categories':
+          return (
+            <Table.Cell>
+              <div className="tw:flex tw:items-center tw:gap-2 tw:overflow-hidden tw:flex-nowrap tw:min-w-0">
+                <div className="tw:flex tw:items-center tw:gap-2 tw:overflow-hidden tw:shrink tw:min-w-0 tw:flex-nowrap">
+                  {record.categories?.slice(0, MAX_VISIBLE_TAGS).map((cat) => (
+                    <Badge
+                      color={CATEGORY_BADGE_COLORS[cat] ?? 'gray'}
+                      key={cat}
+                      size="sm"
+                      type="color">
+                      {LEARNING_CATEGORIES[
+                        cat as keyof typeof LEARNING_CATEGORIES
+                      ]?.label ?? cat}
+                    </Badge>
+                  ))}
+                </div>
+                {record.categories &&
+                  record.categories.length > MAX_VISIBLE_TAGS && (
+                    <Badge color="brand" size="sm" type="color">
+                      {`+${record.categories.length - MAX_VISIBLE_TAGS}`}
+                    </Badge>
+                  )}
+              </div>
+            </Table.Cell>
+          );
+
+        case 'context':
+          return (
+            <Table.Cell>
+              <div className="tw:flex tw:items-center tw:gap-2 tw:overflow-hidden tw:flex-nowrap tw:min-w-0">
+                <div className="tw:flex tw:items-center tw:gap-2 tw:overflow-hidden tw:shrink tw:min-w-0 tw:flex-nowrap">
+                  {record.contexts
+                    ?.slice(0, MAX_VISIBLE_CONTEXTS)
+                    .map((ctx, i) => (
+                      <Badge
+                        color="gray"
+                        key={ctx.pageId ?? i}
+                        size="sm"
+                        type="color">
+                        {PAGE_IDS.find((p) => p.value === ctx.pageId)?.label ??
+                          ctx.pageId}
+                      </Badge>
+                    ))}
+                </div>
+                {record.contexts &&
+                  record.contexts.length > MAX_VISIBLE_CONTEXTS && (
+                    <Badge color="gray" size="sm" type="color">
+                      {`+${record.contexts.length - MAX_VISIBLE_CONTEXTS}`}
+                    </Badge>
+                  )}
+              </div>
+            </Table.Cell>
+          );
+
+        case 'updatedAt':
+          return (
+            <Table.Cell>
+              <span className="tw:text-sm tw:text-quaternary">
+                {record.updatedAt
+                  ? DateTime.fromMillis(record.updatedAt).toFormat(
+                      'LLL d, yyyy'
+                    )
+                  : '-'}
+              </span>
+            </Table.Cell>
+          );
+
+        case 'actions':
+          return (
+            <Table.Cell>
+              <div
+                className="tw:flex tw:items-center tw:gap-2"
+                onClick={(e) => e.stopPropagation()}>
+                <ButtonUtility
+                  color="secondary"
+                  data-testid={`edit-${record.name}`}
+                  icon={<IconEdit height={14} width={14} />}
+                  size="xs"
+                  tooltip={t('label.edit')}
+                  onClick={() => handleEdit(record)}
+                />
+                <ButtonUtility
+                  color="secondary"
+                  data-testid={`delete-${record.name}`}
+                  icon={<Trash01 size={14} />}
+                  size="xs"
+                  tooltip={t('label.delete')}
+                  onClick={() => handleDelete(record)}
+                />
+              </div>
+            </Table.Cell>
+          );
+
+        default:
+          return <Table.Cell />;
+      }
+    },
+    [t, handleEdit, handleDelete]
+  );
+
+  const filtersRow = (
+    <div className="tw:shrink-0 tw:p-3">
+      <div className="d-flex items-center gap-3">
+        {search}
+        {quickFilters}
+        <div className="tw:grow" />
+        {viewToggle}
+      </div>
+      {filterSelectionDisplay}
+    </div>
+  );
+
+  const paginationRow = (
+    <div className="tw:shrink-0 tw:p-4 tw:flex tw:justify-center">
+      <NextPrevious {...paginationData} />
+    </div>
+  );
+
   return (
     <PageLayoutV1
       fullHeight
       mainContainerClassName="learning-resources-page-layout"
       pageTitle={t('label.learning-resource')}>
       <div
-        data-testid="learning-resources-page"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          minHeight: 0,
-          overflow: 'hidden',
-        }}>
-        <div style={{ flexShrink: 0, marginBottom: 16 }}>
+        className="tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:overflow-hidden"
+        data-testid="learning-resources-page">
+        <div className="tw:shrink-0 tw:mb-4">
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </div>
 
         {/* Header */}
-        <div
-          style={{
-            flexShrink: 0,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: 8,
-            padding: 24,
-            marginBottom: 16,
-            background: '#fff',
-            boxShadow: '0 1px 2px 0 rgba(16,24,40,0.06)',
-            borderRadius: 8,
-            border: '1px solid #E2E8F0',
-          }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span
-              className="font-semibold text-md"
-              style={{ color: '#101828' }}>
+        <div className="tw:shrink-0 tw:flex tw:justify-between tw:items-center tw:mt-2 tw:p-6 tw:mb-4 tw:bg-primary tw:shadow-xs tw:rounded-lg tw:border tw:border-secondary">
+          <div className="tw:flex tw:flex-col tw:gap-1">
+            <span className="tw:font-semibold tw:text-md tw:text-primary">
               {t('label.learning-resource')}
             </span>
-            <span
-              className="text-sm"
-              style={{ color: '#667085', fontWeight: 400 }}>
+            <span className="tw:text-sm tw:text-quaternary">
               {t('message.learning-resources-management-description')}
             </span>
           </div>
 
           <Button
-            className="tw:hover:bg-blue-700 tw:text-white"
             color="primary"
             data-testid="create-resource"
-            iconLeading={() => (
-              <span className="tw:text-white">
-                <Plus />
-              </span>
-            )}
+            iconLeading={Plus}
             size="md"
             onClick={handleCreate}>
             {t('label.add-entity', {
@@ -388,153 +387,82 @@ export const LearningResourcesPage: React.FC = () => {
           </Button>
         </div>
 
-        {/* Table / Card Container */}
-        <div
-          style={{
-            flex: 1,
-            minHeight: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            marginTop: 10,
-            borderRadius: 12,
-            border: '1px solid #E2E8F0',
-          }}>
-          {/* Filters */}
-          <div style={{ flexShrink: 0, padding: 12 }}>
-            <div className="d-flex items-center gap-3">
-              {search}
-              {quickFilters}
-              <div style={{ flexGrow: 1 }} />
-              {viewToggle}
-            </div>
-            {filterSelectionDisplay}
-          </div>
+        {/* Table View */}
+        {view === 'table' && (
+          <TableCard.Root
+            className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col"
+            size="sm">
+            {filtersRow}
 
-          {/* Table View */}
-          {view === 'table' && (
-            <>
-              <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-                <table
-                  style={{
-                    width: '100%',
-                    tableLayout: 'fixed',
-                    borderCollapse: 'collapse',
-                  }}>
-                  <thead>
-                    <tr>
-                      {[
-                        { label: t('label.content-name'), width: 360 },
-                        { label: t('label.category-plural'), width: 220 },
-                        { label: t('label.context'), width: 220 },
-                        { label: t('label.updated-at'), width: 140 },
-                        { label: t('label.action-plural'), width: 80 },
-                      ].map((col) => (
-                        <th
-                          className="text-xs font-semibold"
-                          key={col.label}
-                          style={{
-                            background: '#F9FAFB',
-                            width: col.width,
-                            minWidth: col.width,
-                            padding: '8px 16px',
-                            textAlign: 'left',
-                            color: '#475467',
-                            position: 'sticky',
-                            top: 0,
-                            zIndex: 1,
-                            borderBottom: '1px solid #EAECF0',
-                          }}>
-                          {col.label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
+            <div className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:w-full">
+              <Table
+                aria-label={t('label.learning-resource')}
+                className="tw:table-fixed tw:w-full"
+                onRowAction={handleRowAction}>
+                <Table.Header columns={columns}>
+                  {(col) => (
+                    <Table.Head
+                      className={col.className}
+                      id={col.id}
+                      label={col.label}
+                    />
+                  )}
+                </Table.Header>
 
-                  <tbody data-testid="learning-resources-table-body">
-                    {isLoading ? (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          style={{ textAlign: 'center', padding: 16 }}>
-                          <Loader />
-                        </td>
-                      </tr>
-                    ) : isEmpty(resources) ? (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          style={{ textAlign: 'center', padding: 16 }}>
-                          {t('server.no-records-found')}
-                        </td>
-                      </tr>
+                <Table.Body
+                  data-testid="learning-resources-table-body"
+                  items={isLoading ? [] : resources}
+                  renderEmptyState={() =>
+                    isLoading ? (
+                      <div className="tw:flex tw:justify-center tw:p-4">
+                        <Loader />
+                      </div>
                     ) : (
-                      resources.map((record) => (
-                        <ResourceRow
-                          handleDelete={handleDelete}
-                          handleEdit={handleEdit}
-                          handlePreview={handlePreview}
-                          key={record.id}
-                          record={record}
-                        />
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      <div className="tw:p-4 tw:text-center tw:text-sm tw:text-tertiary">
+                        {t('server.no-records-found')}
+                      </div>
+                    )
+                  }>
+                  {(record) => (
+                    <Table.Row
+                      className="tw:cursor-pointer"
+                      columns={columns}
+                      id={record.id}>
+                      {(col) => renderCell(col.id, record)}
+                    </Table.Row>
+                  )}
+                </Table.Body>
+              </Table>
+            </div>
 
-              <div
-                style={{
-                  flexShrink: 0,
-                  padding: 16,
-                  display: 'flex',
-                  justifyContent: 'center',
-                  boxShadow:
-                    '0 -13px 16px -4px rgba(10, 13, 18, 0.04), 0 -4px 6px -2px rgba(10, 13, 18, 0.03)',
-                }}>
-                <NextPrevious {...paginationData} />
-              </div>
-            </>
-          )}
+            {paginationRow}
+          </TableCard.Root>
+        )}
 
-          {/* Card View */}
-          {view === 'card' && (
-            <>
-              <div style={{ padding: 12, overflow: 'auto' }}>
-                {isLoading ? (
-                  <Loader />
-                ) : (
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns:
-                        'repeat(auto-fill, minmax(280px,1fr))',
-                      gap: 16,
-                    }}>
-                    {resources.map((r) => (
-                      <LearningResourceCard
-                        key={r.id}
-                        resource={r}
-                        onClick={handlePreview}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+        {/* Card View */}
+        {view === 'card' && (
+          <div className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:mt-2.5 tw:rounded-xl tw:border tw:border-secondary tw:overflow-hidden tw:bg-primary">
+            {filtersRow}
 
-              <div
-                style={{
-                  padding: 16,
-                  display: 'flex',
-                  justifyContent: 'center',
-                  boxShadow:
-                    '0 -13px 16px -4px rgba(10, 13, 18, 0.04), 0 -4px 6px -2px rgba(10, 13, 18, 0.03)',
-                }}>
-                <NextPrevious {...paginationData} />
-              </div>
-            </>
-          )}
-        </div>
+            <div className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:p-3">
+              {isLoading ? (
+                <Loader />
+              ) : (
+                <div className="tw:grid tw:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] tw:gap-4">
+                  {resources.map((r) => (
+                    <LearningResourceCard
+                      key={r.id}
+                      resource={r}
+                      onClick={handlePreview}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {paginationRow}
+          </div>
+        )}
 
         {isFormOpen && (
           <LearningResourceForm
