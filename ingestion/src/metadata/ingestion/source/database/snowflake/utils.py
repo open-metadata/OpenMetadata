@@ -644,7 +644,7 @@ def get_table_ddl(
     Gets the Table DDL
     """
     schema = schema or self.default_schema_name
-    table_name = f'"{schema}.{table_name}"' if schema else f'"{table_name}"'
+    table_name = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
     cursor = connection.execute(SNOWFLAKE_GET_TABLE_DDL.format(table_name=table_name))
     try:
         result = cursor.fetchone()
