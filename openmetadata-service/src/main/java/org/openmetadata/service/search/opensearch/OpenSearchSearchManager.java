@@ -184,7 +184,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
       }
     }
-    return Response.status(OK).entity(response.toJsonString()).build();
+    return Response.status(OK).entity(OsUtils.toJsonStringLenient(response)).build();
   }
 
   @Override
@@ -222,7 +222,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
       }
     }
-    return Response.status(OK).entity(response.toJsonString()).build();
+    return Response.status(OK).entity(OsUtils.toJsonStringLenient(response)).build();
   }
 
   @Override
@@ -588,7 +588,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
           nlqService.cacheQuery(request.getQuery(), transformedQuery);
         }
 
-        return Response.status(Response.Status.OK).entity(response.toJsonString()).build();
+        return Response.status(Response.Status.OK)
+            .entity(OsUtils.toJsonStringLenient(response))
+            .build();
       } catch (Exception e) {
         LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
         return fallbackToBasicSearch(request, subjectContext);
@@ -654,7 +656,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         }
       }
 
-      String responseJson = response.toJsonString();
+      String responseJson = OsUtils.toJsonStringLenient(response);
       LOG.debug("Direct query search completed successfully");
       return Response.status(Response.Status.OK).entity(responseJson).build();
     } catch (Exception e) {
@@ -741,7 +743,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     SearchResponse<JsonData> searchResponse = performLineageSearchForDQ(fqn, queryFilter, deleted);
     Optional<List> optionalDocs =
         JsonUtils.readJsonAtPath(
-            searchResponse.toJsonString(), "$.hits.hits[*]._source", List.class);
+            OsUtils.toJsonStringLenient(searchResponse), "$.hits.hits[*]._source", List.class);
 
     if (optionalDocs.isPresent()) {
       List<Map<String, Object>> docs = (List<Map<String, Object>>) optionalDocs.get();
@@ -1219,7 +1221,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       }
 
       if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
-        return Response.status(OK).entity(searchResponse.toJsonString()).build();
+        return Response.status(OK).entity(OsUtils.toJsonStringLenient(searchResponse)).build();
       } else {
         List<?> response = buildSearchHierarchy(request, searchResponse, clusterAlias);
         return Response.status(OK).entity(response).build();
@@ -1515,7 +1517,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         }
       }
 
-      return Response.status(Response.Status.OK).entity(searchResponse.toJsonString()).build();
+      return Response.status(Response.Status.OK)
+          .entity(OsUtils.toJsonStringLenient(searchResponse))
+          .build();
     } catch (Exception e) {
       LOG.error("Error in fallback search: {}", e.getMessage(), e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
