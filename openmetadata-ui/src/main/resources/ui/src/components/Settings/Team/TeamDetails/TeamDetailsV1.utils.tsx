@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Team } from '../../../../generated/entity/teams/team';
+import { Include } from '../../../../generated/type/include';
+import { getTeams } from '../../../../rest/teamsAPI';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { TeamsPageTab, TeamTab } from './team.interface';
 
@@ -62,5 +65,31 @@ export const getTabs = (
     return [tabs.users, tabs.assets, ...commonTabs];
   }
 
-  return [tabs.teams, tabs.users, ...commonTabs];
+  return [tabs.teams, tabs.users, tabs.assets, ...commonTabs];
+};
+
+/**
+ * Recursively collect all descendant team IDs from a team.
+ * Used by the Assets tab to build a query filter for displaying assets.
+ *
+ * @param team - Team to collect descendants from
+ * @returns Array of team IDs including the team itself and all descendants
+ */
+export const collectAllTeamIds = async (team: Team): Promise<string[]> => {
+  const teamIds: string[] = [team.id];
+
+  if (team.childrenCount && team.childrenCount > 0) {
+    const { data: childTeams } = await getTeams({
+      parentTeam: team.name,
+      include: Include.NonDeleted,
+      fields: [TabSpecificField.CHILDREN_COUNT],
+    });
+
+    const childResults = await Promise.all(
+      childTeams.map((child) => collectAllTeamIds(child))
+    );
+    childResults.forEach((ids) => teamIds.push(...ids));
+  }
+
+  return teamIds;
 };

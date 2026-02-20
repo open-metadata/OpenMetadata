@@ -69,6 +69,10 @@ def get_inspector_details(
     # TODO support OAuth 2.0 scopes
     new_service_connection = deepcopy(service_connection)
     kwargs = {}
+
+    if new_service_connection.usageLocation:
+        kwargs["location"] = new_service_connection.usageLocation
+
     if isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues):
         new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(
             database_name

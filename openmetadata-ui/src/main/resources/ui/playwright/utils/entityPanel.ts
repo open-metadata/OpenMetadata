@@ -14,11 +14,22 @@ import { expect, Page } from '@playwright/test';
 import { redirectToExplorePage } from './common';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
+import { waitForAllLoadersToDisappear } from './entity';
+import { EntityClass } from '../support/entity/EntityClass';
+
+export const getEntityFqn = (
+  entityInstance: EntityClass
+): string | undefined => {
+  return (
+    entityInstance as { entityResponseData?: { fullyQualifiedName?: string } }
+  ).entityResponseData?.fullyQualifiedName;
+};
 
 export const openEntitySummaryPanel = async (
   page: Page,
   entityName: string,
-  endpoint?: string
+  endpoint?: string,
+  fullyQualifiedName?: string
 ) => {
   if (
     endpoint &&
@@ -52,16 +63,19 @@ export const openEntitySummaryPanel = async (
   expect(searchResponse.status()).toBe(200);
 
   await page.getByTestId('searchBox').press('Enter');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
+
+  if (fullyQualifiedName) {
+    const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
+    await cardByFqn.waitFor({ state: 'visible' });
+    return;
+  }
 
   const entityCard = page
     .locator('[data-testid="table-data-card"]')
     .filter({ hasText: entityName })
     .first();
 
-  // Only click if the card is visible (search results may be on explore page)
   const isCardVisible = await entityCard.isVisible().catch(() => false);
   if (isCardVisible) {
     await entityCard.click();
@@ -76,9 +90,7 @@ export async function navigateToExploreAndSelectTable(
 ) {
   await redirectToExplorePage(page);
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   const permissionsResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/permissions')

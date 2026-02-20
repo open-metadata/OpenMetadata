@@ -8,7 +8,7 @@
 - [Data Quality](#data-quality)
 - [Incident Manager](#incident-manager)
 - [Profiler](#profiler)
-- [Rules Library](#rules-library)
+- [Test Library](#test-library)
 - [Alerts & Notifications](#alerts-notifications)
 
 ---
@@ -467,40 +467,40 @@
 
 ---
 
-<div id="rules-library"></div>
+<div id="test-library"></div>
 
-## Rules Library
+## Test Library
 
 <details open>
-<summary>📄 <b>RulesLibrary.spec.ts</b> (14 tests, 30 scenarios)</summary>
+<summary>📄 <b>TestLibrary.spec.ts</b> (14 tests, 30 scenarios)</summary>
 
-> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/RulesLibrary.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/RulesLibrary.spec.ts)
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/TestLibrary.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/TestLibrary.spec.ts)
 
-### Rules Library
+### Test Library
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Rules Library** - should navigate to Rules Library page | Navigate to Rules Library page |
-| 2 | **Rules Library** - should display test definitions table with columns | Display test definitions table with columns |
-| 3 | **Rules Library** - should display system test definitions | Display system test definitions |
-| 4 | **Rules Library** - should create, edit, and delete a test definition | Create, edit, and delete a test definition |
+| 1 | **Test Library** - should navigate to Test Library page | Navigate to Test Library page |
+| 2 | **Test Library** - should display test definitions table with columns | Display test definitions table with columns |
+| 3 | **Test Library** - should display system test definitions | Display system test definitions |
+| 4 | **Test Library** - should create, edit, and delete a test definition | Create, edit, and delete a test definition |
 | | ↳ *Create a new test definition* | |
 | | ↳ *Edit Test Definition* | |
 | | ↳ *should enable/disable test definition* | |
 | | ↳ *should delete a test definition* | |
-| 5 | **Rules Library** - should validate required fields in create form | Validate required fields in create form |
-| 6 | **Rules Library** - should cancel form and close drawer | Cancel form and close drawer |
-| 7 | **Rules Library** - should display pagination when test definitions exceed page size | Display pagination when test definitions exceed page size |
-| 8 | **Rules Library** - should display test platform badges correctly | Display test platform badges correctly |
-| 9 | **Rules Library** - should not show edit and delete buttons for system test definitions | Not show edit and delete buttons for system test definitions |
-| 10 | **Rules Library** - should allow enabling/disabling system test definitions | Allow enabling/disabling system test definitions |
-| 11 | **Rules Library** - should disable toggle for external test definitions | Disable toggle for external test definitions |
-| 12 | **Rules Library** - should handle external test definitions with read-only fields | Handle external test definitions with read-only fields |
+| 5 | **Test Library** - should validate required fields in create form | Validate required fields in create form |
+| 6 | **Test Library** - should cancel form and close drawer | Cancel form and close drawer |
+| 7 | **Test Library** - should display pagination when test definitions exceed page size | Display pagination when test definitions exceed page size |
+| 8 | **Test Library** - should display test platform badges correctly | Display test platform badges correctly |
+| 9 | **Test Library** - should not show edit and delete buttons for system test definitions | Not show edit and delete buttons for system test definitions |
+| 10 | **Test Library** - should allow enabling/disabling system test definitions | Allow enabling/disabling system test definitions |
+| 11 | **Test Library** - should disable toggle for external test definitions | Disable toggle for external test definitions |
+| 12 | **Test Library** - should handle external test definitions with read-only fields | Handle external test definitions with read-only fields |
 | | ↳ *Create external test definition* | |
 | | ↳ *Verify fields are read-only in edit mode* | |
 | | ↳ *Verify allowed fields can be edited* | |
 | | ↳ *Delete external test definition* | |
-| 13 | **Rules Library** - should handle supported services field correctly | Handle supported services field correctly |
+| 13 | **Test Library** - should handle supported services field correctly | Handle supported services field correctly |
 | | ↳ *Create test definition with specific supported services* | |
 | | ↳ *Verify supported services are saved correctly* | |
 | | ↳ *Verify test definition appears when filtering by supported services* | |
@@ -508,7 +508,7 @@
 | | ↳ *Verify updated supported services are persisted* | |
 | | ↳ *Clear all supported services (should apply to all services)* | |
 | | ↳ *Delete test definition* | |
-| 14 | **Rules Library** - should maintain page on edit and reset to first page on delete | Maintain page on edit and reset to first page on delete |
+| 14 | **Test Library** - should maintain page on edit and reset to first page on delete | Maintain page on edit and reset to first page on delete |
 | | ↳ *Create a test definition starting with "z"* | |
 | | ↳ *Change page size to 25* | |
 | | ↳ *Navigate until we find our test definition or reach last page* | |

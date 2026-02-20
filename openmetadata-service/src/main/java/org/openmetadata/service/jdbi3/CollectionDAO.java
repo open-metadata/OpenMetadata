@@ -1429,6 +1429,9 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id")
     void deleteAll(@BindUUID("id") UUID id);
+
+    @SqlUpdate("DELETE FROM entity_extension WHERE id IN (<ids>)")
+    void deleteAllBatch(@BindList("ids") List<String> ids);
   }
 
   class EntityVersionPair {
@@ -1800,6 +1803,16 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity);
 
     @SqlQuery(
+        "SELECT COUNT(*) FROM entity_relationship "
+            + "WHERE fromId = :fromId AND toId = :toId AND fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation")
+    int existsRelationship(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
         "SELECT fromId, COUNT(toId) FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
             + "GROUP BY fromId")
@@ -2125,6 +2138,40 @@ public interface CollectionDAO {
     void deleteTo(
         @BindUUID("toId") UUID toId,
         @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE toId IN (<toIds>) "
+            + "AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity")
+    void deleteToMany(
+        @BindList("toIds") List<String> toIds,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Bind("fromEntity") String fromEntity);
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE toId IN (<toIds>) "
+            + "AND toEntity = :toEntity AND relation = :relation")
+    void deleteToMany(
+        @BindList("toIds") List<String> toIds,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE fromId IN (<fromIds>) "
+            + "AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity")
+    void deleteFromMany(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE fromId IN (<fromIds>) "
+            + "AND fromEntity = :fromEntity AND relation = :relation")
+    void deleteFromMany(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation);
 
     // Optimized deleteAll implementation that splits OR query for better performance
@@ -4919,6 +4966,9 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where targetFQNHash = :targetFQNHash")
     void deleteTagsByTarget(@BindFQN("targetFQNHash") String targetFQNHash);
 
+    @SqlUpdate("DELETE FROM tag_usage WHERE targetFQNHash IN (<targetFQNHashes>)")
+    void deleteTagsByTargets(@BindListFQN("targetFQNHashes") List<String> targetFQNs);
+
     @SqlUpdate(
         "DELETE FROM tag_usage where tagFQNHash = :tagFqnHash AND targetFQNHash LIKE :targetFQNHash")
     void deleteTagsByTagAndTargetEntity(
@@ -5237,6 +5287,63 @@ public interface CollectionDAO {
           reasons,
           appliedBys,
           metadataList);
+    }
+
+    /**
+     * Apply multiple tags in batch to multiple targets. Each entry in the map represents
+     * a target FQN and its associated tags.
+     */
+    default void applyTagsBatchMultiTarget(Map<String, List<TagLabel>> tagsByTarget) {
+      if (tagsByTarget == null || tagsByTarget.isEmpty()) {
+        return;
+      }
+
+      List<Integer> sources = new ArrayList<>();
+      List<String> tagFQNs = new ArrayList<>();
+      List<String> tagFQNHashes = new ArrayList<>();
+      List<String> targetFQNHashes = new ArrayList<>();
+      List<Integer> labelTypes = new ArrayList<>();
+      List<Integer> states = new ArrayList<>();
+      List<String> reasons = new ArrayList<>();
+      List<String> appliedBys = new ArrayList<>();
+      List<String> metadataList = new ArrayList<>();
+
+      for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
+        String targetFQN = entry.getKey();
+        List<TagLabel> tagLabels = entry.getValue();
+        if (tagLabels == null || tagLabels.isEmpty()) {
+          continue;
+        }
+
+        String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
+        for (TagLabel tagLabel : tagLabels) {
+          if (tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
+            continue;
+          }
+          sources.add(tagLabel.getSource().ordinal());
+          tagFQNs.add(tagLabel.getTagFQN());
+          tagFQNHashes.add(FullyQualifiedName.buildHash(tagLabel.getTagFQN()));
+          targetFQNHashes.add(targetFQNHash);
+          labelTypes.add(tagLabel.getLabelType().ordinal());
+          states.add(tagLabel.getState().ordinal());
+          reasons.add(tagLabel.getReason());
+          appliedBys.add(tagLabel.getAppliedBy());
+          metadataList.add(JsonUtils.pojoToJson(tagLabel.getMetadata()));
+        }
+      }
+
+      if (!sources.isEmpty()) {
+        applyTagsBatchInternal(
+            sources,
+            tagFQNs,
+            tagFQNHashes,
+            targetFQNHashes,
+            labelTypes,
+            states,
+            reasons,
+            appliedBys,
+            metadataList);
+      }
     }
 
     @Transaction
@@ -6302,6 +6409,15 @@ public interface CollectionDAO {
         value = "INSERT INTO change_event (json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
     void insert(@Bind("json") String json);
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value = "INSERT INTO change_event (json) VALUES (:json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value = "INSERT INTO change_event (json) VALUES (:json :: jsonb)",
+        connectionType = POSTGRES)
+    void insertBatch(@Bind("json") List<String> jsons);
 
     @SqlUpdate("DELETE FROM change_event WHERE entityType = :entityType")
     void deleteAll(@Bind("entityType") String entityType);

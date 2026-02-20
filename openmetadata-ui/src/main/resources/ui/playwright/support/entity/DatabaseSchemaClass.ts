@@ -152,13 +152,18 @@ export class DatabaseSchemaClass extends EntityClass {
     await page.getByTestId(this.database.name).click();
     await databaseResponse;
 
-    // Wait for database schema to be visible
-    await page.getByTestId(this.entity.name).waitFor({ state: 'visible' });
+    // Wait for page to fully load after navigation
+    await page.waitForLoadState('networkidle');
+
+    // Target schema specifically within the table container to avoid clicking breadcrumbs or other elements
+    const schemaLocator = page.getByTestId(this.entity.name);
+
+    await schemaLocator.waitFor({ state: 'visible' });
 
     const databaseSchemaResponse = page.waitForResponse(
       `/api/v1/databaseSchemas/name/*${this.entity.name}?*`
     );
-    await page.getByTestId(this.entity.name).click();
+    await schemaLocator.click();
     await databaseSchemaResponse;
   }
 

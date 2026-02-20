@@ -7,9 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.Response;
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -787,7 +787,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     IngestionPipeline pipeline = createTestSuitePipeline(client, ns, testSuite);
     putPipelineStatus(client, pipeline, PipelineStatusType.SUCCESS);
 
-    try (RestClient searchClient = TestSuiteBootstrap.createSearchClient()) {
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
       Awaitility.await("pipeline completion updates test suite and search index")
           .atMost(Duration.ofSeconds(30))
           .pollInterval(Duration.ofSeconds(2))
@@ -884,27 +884,28 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
 
     // List all test suites (including empty)
     Map<String, String> allParams = new HashMap<>();
-    allParams.put("limit", "100");
+    allParams.put("limit", "1000000");
     ListResponse<TestSuite> allSuites = listTestSuites(allParams);
-    long allCount = allSuites.getData().size();
+    List<UUID> allSuiteIds = allSuites.getData().stream().map(TestSuite::getId).toList();
+    assertTrue(allSuiteIds.contains(nonEmptySuite.getId()));
+    assertTrue(allSuiteIds.contains(emptySuite.getId()));
 
-    // List non-empty test suites only
+    // List non-empty test suites only and verify the two suites created in this test.
+    // Avoid asserting global list contents since other tests mutate suites concurrently in CI.
     Map<String, String> nonEmptyParams = new HashMap<>();
     nonEmptyParams.put("includeEmptyTestSuites", "false");
-    nonEmptyParams.put("limit", "100");
-    ListResponse<TestSuite> nonEmptySuites = listTestSuites(nonEmptyParams);
-    long nonEmptyCount = nonEmptySuites.getData().size();
-
-    // Verify that non-empty count is less than or equal to all count
-    assertTrue(nonEmptyCount <= allCount);
-
-    // Verify all returned suites in non-empty list have test cases
-    for (TestSuite suite : nonEmptySuites.getData()) {
-      TestSuite detailed = client.testSuites().get(suite.getId().toString(), "tests");
-      if (detailed.getTests() != null) {
-        assertFalse(detailed.getTests().isEmpty());
-      }
-    }
+    nonEmptyParams.put("limit", "1000000");
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              ListResponse<TestSuite> nonEmptySuites = listTestSuites(nonEmptyParams);
+              List<UUID> nonEmptySuiteIds =
+                  nonEmptySuites.getData().stream().map(TestSuite::getId).toList();
+              assertTrue(nonEmptySuiteIds.contains(nonEmptySuite.getId()));
+              assertFalse(nonEmptySuiteIds.contains(emptySuite.getId()));
+            });
   }
 
   // ===================================================================
@@ -1130,12 +1131,12 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     return "openmetadata_test_suite_search_index";
   }
 
-  private void refreshTestSuiteSearchIndex(RestClient searchClient) throws Exception {
+  private void refreshTestSuiteSearchIndex(Rest5Client searchClient) throws Exception {
     Request request = new Request("POST", "/" + getTestSuiteSearchIndexName() + "/_refresh");
     searchClient.performRequest(request);
   }
 
-  private String queryTestSuiteSearchIndex(RestClient searchClient, UUID testSuiteId)
+  private String queryTestSuiteSearchIndex(Rest5Client searchClient, UUID testSuiteId)
       throws Exception {
     refreshTestSuiteSearchIndex(searchClient);
 
@@ -1158,7 +1159,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     request.setJsonEntity(query);
     Response response = searchClient.performRequest(request);
 
-    assertEquals(200, response.getStatusLine().getStatusCode());
+    assertEquals(200, response.getStatusCode());
     return new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
   }
 }

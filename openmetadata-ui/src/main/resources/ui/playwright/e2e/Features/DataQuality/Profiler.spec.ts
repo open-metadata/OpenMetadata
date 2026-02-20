@@ -15,13 +15,13 @@ import {
   DOMAIN_TAGS,
   PLAYWRIGHT_INGESTION_TAG_OBJ,
 } from '../../../constant/config';
+import { ResponseDataType } from '../../../support/entity/Entity.interface';
 import { TableClass } from '../../../support/entity/TableClass';
 import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
-import { ResponseDataType } from '../../../support/entity/Entity.interface';
 import { test } from '../../fixtures/pages';
 
 const table = new TableClass();
@@ -91,7 +91,9 @@ const validateProfilerAccessForRole = async (
     '/api/v1/tables/*/columnProfile?*'
   );
   await page
-    .locator(`[data-row-key="${tableInstance.entity.columns[1].name}"]`)
+    .locator(
+      `[data-row-key="${tableInstance.entityResponseData.columns[1].fullyQualifiedName}"]`
+    )
     .getByText(tableInstance.entity.columns[1].name)
     .click();
   await getProfilerInfo;

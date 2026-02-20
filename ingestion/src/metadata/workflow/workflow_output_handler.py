@@ -204,6 +204,9 @@ class WorkflowOutputHandler:
                 else "N/A"
             )
 
+        if not summary_table["Context"]:
+            return
+
         # Build alignment list: left for Context, right for all numeric/time columns
         col_align = ["left"] + ["right"] * (len(summary_table) - 1)
 

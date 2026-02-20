@@ -16,7 +16,7 @@ Validate query parser logic
 from unittest import TestCase
 
 import pytest
-from collate_sqllineage.core.models import Column
+from collate_sqllineage.core.models import Column, Location, Table
 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.models import Dialect
@@ -420,3 +420,240 @@ END $$"""
             LineageParser.clean_raw_query(query_or_replace),
             None,
         )
+
+    # -------------------------------------------------------------------------
+    # Snowflake Stage Lineage Tests
+    # -------------------------------------------------------------------------
+
+    def test_clean_raw_query_copy_into_table_from_stage(self):
+        """
+        Validate COPY INTO table FROM @stage queries are NOT filtered out.
+        These provide lineage from Snowflake stages to tables.
+        """
+        queries = [
+            "COPY INTO wine_quality FROM @demo FILE_FORMAT = wine_csv_format;",
+            "COPY INTO my_table FROM @my_stage",
+            "COPY INTO db.schema.table FROM @external_stage FILE_FORMAT = (TYPE = CSV)",
+            "copy into target_table from @s3_stage/path/to/files",
+            "COPY INTO my_table FROM @my_db.my_schema.my_stage FILE_FORMAT=(TYPE=CSV)",
+        ]
+
+        for query in queries:
+            result = LineageParser.clean_raw_query(query)
+            self.assertIsNotNone(
+                result,
+                f"COPY INTO table FROM @stage should NOT be filtered: {query}",
+            )
+
+    def test_clean_raw_query_copy_into_stage_from_table(self):
+        """
+        Validate COPY INTO @stage FROM table (unload) queries are NOT filtered out.
+        These provide lineage from tables to Snowflake stages.
+        """
+        queries = [
+            "COPY INTO @my_stage FROM my_table",
+            "COPY INTO @db.schema.stage FROM (SELECT * FROM t)",
+            "copy into @stage/path FROM table1",
+            "COPY INTO @~/ FROM my_table FILE_FORMAT = (TYPE = CSV COMPRESSION = GZIP)",
+            "COPY INTO @~/staged FROM sales_data",
+            "COPY INTO @my_stage/daily/2024/ FROM reporting.public.daily_metrics",
+            "COPY INTO @external_stage/path/ FROM (SELECT col1, col2 FROM db.schema.source_table WHERE id > 100)",
+        ]
+
+        for query in queries:
+            result = LineageParser.clean_raw_query(query)
+            self.assertIsNotNone(
+                result,
+                f"COPY INTO @stage FROM table should NOT be filtered: {query}",
+            )
+
+    def test_clean_raw_query_generic_copy_filtered(self):
+        """
+        Validate generic COPY statements (e.g. PostgreSQL) are still filtered out.
+        """
+        queries = [
+            "COPY my_table FROM '/path/to/file.csv'",
+            "COPY users FROM '/tmp/data.csv' WITH CSV HEADER",
+            "COPY table_name FROM STDIN",
+            "COPY orders FROM 's3://bucket/file.csv'",
+            "COPY my_table TO '/path/to/file.csv'",
+            "COPY (SELECT * FROM users) TO '/tmp/output.csv'",
+        ]
+
+        for query in queries:
+            result = LineageParser.clean_raw_query(query)
+            self.assertIsNone(
+                result,
+                f"Generic COPY statement should be filtered: {query}",
+            )
+
+    def test_copy_into_table_from_stage_lineage(self):
+        """
+        Validate COPY INTO table FROM @stage produces correct lineage:
+        - Source should be a Location (the stage)
+        - Target should be a Table
+        """
+        query = "COPY INTO wine_quality FROM @demo FILE_FORMAT = wine_csv_format;"
+        parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+
+        self.assertEqual(len(parser.source_tables), 1)
+        self.assertEqual(len(parser.target_tables), 1)
+        self.assertIsInstance(parser.source_tables[0], Location)
+        self.assertIsInstance(parser.target_tables[0], Table)
+        self.assertEqual(str(parser.source_tables[0]), "<default>.demo")
+        self.assertEqual(str(parser.target_tables[0]), "<default>.wine_quality")
+
+    def test_copy_into_stage_from_table_lineage(self):
+        """
+        Validate COPY INTO @stage FROM table produces correct lineage:
+        - Source should be a Table
+        - Target should be a Location (the stage)
+        """
+        query = "COPY INTO @my_stage FROM my_table"
+        parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+
+        self.assertEqual(len(parser.source_tables), 1)
+        self.assertEqual(len(parser.target_tables), 1)
+        self.assertIsInstance(parser.source_tables[0], Table)
+        self.assertIsInstance(parser.target_tables[0], Location)
+        self.assertEqual(str(parser.source_tables[0]), "<default>.my_table")
+        self.assertEqual(str(parser.target_tables[0]), "<default>.my_stage")
+
+    def test_copy_into_stage_from_select_lineage(self):
+        """
+        Validate COPY INTO @stage FROM (SELECT ...) produces correct lineage:
+        - Source should be the underlying Table from the SELECT
+        - Target should be a Location (the stage)
+        """
+        query = "COPY INTO @db.schema.my_stage FROM (SELECT col1, col2 FROM my_table)"
+        parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+
+        self.assertEqual(len(parser.source_tables), 1)
+        self.assertEqual(len(parser.target_tables), 1)
+        self.assertIsInstance(parser.source_tables[0], Table)
+        self.assertIsInstance(parser.target_tables[0], Location)
+        self.assertEqual(str(parser.source_tables[0]), "<default>.my_table")
+        self.assertEqual(str(parser.target_tables[0]), "db.schema.my_stage")
+
+    def test_copy_into_fully_qualified_stage_lineage(self):
+        """
+        Validate COPY INTO table FROM @db.schema.stage with fully qualified stage name.
+        """
+        query = (
+            "COPY INTO my_table FROM @my_db.my_schema.my_stage FILE_FORMAT=(TYPE=CSV)"
+        )
+        parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+
+        self.assertEqual(len(parser.source_tables), 1)
+        self.assertEqual(len(parser.target_tables), 1)
+        self.assertIsInstance(parser.source_tables[0], Location)
+        self.assertIsInstance(parser.target_tables[0], Table)
+        self.assertEqual(str(parser.source_tables[0]), "my_db.my_schema.my_stage")
+        self.assertEqual(str(parser.target_tables[0]), "<default>.my_table")
+
+    def test_copy_into_stage_with_path_lineage(self):
+        """
+        Validate COPY INTO @stage/path/to/data queries produce Location targets.
+        """
+        query = "COPY INTO @my_stage/daily/2024/ FROM reporting.public.daily_metrics"
+        parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+
+        self.assertEqual(len(parser.source_tables), 1)
+        self.assertEqual(len(parser.target_tables), 1)
+        self.assertIsInstance(parser.source_tables[0], Table)
+        self.assertIsInstance(parser.target_tables[0], Location)
+        self.assertEqual(str(parser.source_tables[0]), "reporting.public.daily_metrics")
+
+    def test_copy_into_case_insensitivity(self):
+        """
+        Validate that COPY INTO stage queries work with mixed case.
+        """
+        query = "copy INTO @MY_STAGE from MY_TABLE"
+        parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+
+        self.assertEqual(len(parser.source_tables), 1)
+        self.assertEqual(len(parser.target_tables), 1)
+        self.assertIsInstance(parser.source_tables[0], Table)
+        self.assertIsInstance(parser.target_tables[0], Location)
+
+    def test_clean_table_name_location_at_symbol_removal(self):
+        """
+        Validate clean_table_name removes leading @ from Location raw_name.
+        Note: The Location class already strips @ internally, so this tests
+        the defensive logic in clean_table_name.
+        """
+        loc = Location("@STAGE_01")
+        self.assertEqual(loc.raw_name, "STAGE_01")
+
+        cleaned = LineageParser.clean_table_name(loc)
+        self.assertIsInstance(cleaned, Location)
+        self.assertEqual(cleaned.raw_name, "STAGE_01")
+
+    def test_clean_table_name_preserves_location_schema(self):
+        """
+        Validate clean_table_name preserves schema info on Location objects.
+        """
+        loc = Location("@DB.SCHEMA.STAGE_01")
+        cleaned = LineageParser.clean_table_name(loc)
+        self.assertIsInstance(cleaned, Location)
+        self.assertEqual(cleaned.raw_name, "STAGE_01")
+        self.assertEqual(str(cleaned.schema), "db.schema")
+
+    def test_clean_table_name_table_unchanged(self):
+        """
+        Validate clean_table_name still works for regular Table objects.
+        """
+        table = Table("my_table")
+        cleaned = LineageParser.clean_table_name(table)
+        self.assertIsInstance(cleaned, Table)
+        self.assertEqual(cleaned.raw_name, "my_table")
+
+    def test_clean_table_name_bracketed_location(self):
+        """
+        Validate clean_table_name handles bracketed Location names.
+        """
+        loc = Location("[STAGE_01]")
+        cleaned = LineageParser.clean_table_name(loc)
+        self.assertIsInstance(cleaned, Location)
+        self.assertEqual(cleaned.raw_name, "STAGE_01")
+
+    def test_retrieve_tables_with_location(self):
+        """
+        Validate retrieve_tables includes Location objects in the result.
+        """
+        query = "COPY INTO my_table FROM @my_stage"
+        parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+
+        locations = [t for t in parser.source_tables if isinstance(t, Location)]
+        tables = [t for t in parser.target_tables if isinstance(t, Table)]
+        self.assertEqual(len(locations), 1)
+        self.assertEqual(len(tables), 1)
+
+    def test_involved_tables_with_stage_lineage(self):
+        """
+        Validate involved_tables includes both Table and Location for stage queries.
+        """
+        query = "COPY INTO my_table FROM @my_stage"
+        parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+
+        involved = parser.involved_tables
+        self.assertIsNotNone(involved)
+        self.assertEqual(len(involved), 2)
+
+        type_names = {type(t).__name__ for t in involved}
+        self.assertIn("Table", type_names)
+        self.assertIn("Location", type_names)
+
+    def test_standard_copy_query_no_lineage(self):
+        """
+        Validate standard COPY query without stage produces no lineage.
+        """
+        query = """COPY MY_TABLE col1,col2,col3
+        FROM 's3://bucket/schema/table.csv'
+        WITH CREDENTIALS ''
+        REGION 'US-east-2'
+        """
+        parser = LineageParser(query)
+        self.assertEqual(parser.source_tables, [])
+        self.assertEqual(parser.target_tables, [])
+        self.assertEqual(parser.column_lineage, [])

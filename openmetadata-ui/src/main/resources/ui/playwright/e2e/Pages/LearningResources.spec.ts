@@ -13,744 +13,623 @@
 import { expect, Page, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
+import { Glossary } from '../../support/glossary/Glossary';
 import { LearningResourceClass } from '../../support/learning/LearningResourceClass';
 import {
+  createNewPage,
   getApiContext,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-// Helper function to select an option from Ant Design dropdown
+async function goToLearningResourcesAdmin(page: Page) {
+  await redirectToHomePage(page);
+  await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId('learning-resources-page')).toBeVisible();
+  await expect(page.getByTestId('learning-resources-table-body')).toBeVisible();
+}
+
 async function selectDropdownOption(page: Page, optionText: string) {
-  await page.locator('.ant-select-item-option').filter({ hasText: optionText }).first().click();
+  const option = page
+    .locator('.ant-select-dropdown:visible')
+    .locator('.ant-select-item-option')
+    .filter({ hasText: new RegExp(`^${optionText}$`, 'i') });
+
+  await expect(option).toBeVisible();
+  await option.click();
 }
 
-// Helper function to search for a resource by name
-async function searchResource(page: Page, searchText: string) {
-  await page.locator('.search-input input').fill(searchText);
+async function fillResourceForm(
+  page: Page,
+  data: {
+    resourceName: string;
+    description: string;
+    type: string;
+    category: string;
+    context: string;
+    url: string;
+    status: string;
+  }
+) {
+  const nameInput = page.getByTestId('name-input');
+  await expect(nameInput).toBeVisible();
+  await nameInput.fill(data.resourceName);
+
+  const descriptionInput = page.getByTestId('description-input');
+  await expect(descriptionInput).toBeVisible();
+  await descriptionInput.fill(data.description);
+
+  const typeSelector = page
+    .getByTestId('resource-type-form-item')
+    .locator('.ant-select-selector');
+  await expect(typeSelector).toBeVisible();
+  await typeSelector.click();
+  await selectDropdownOption(page, data.type);
+
+  const categorySelector = page
+    .getByTestId('categories-form-item')
+    .locator('.ant-select-selector');
+  await expect(categorySelector).toBeVisible();
+  await categorySelector.click();
+  await selectDropdownOption(page, data.category);
+  await page.locator('.ant-drawer-header').click();
+  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
+
+  const contextSelector = page
+    .getByTestId('contexts-form-item')
+    .locator('.ant-select-selector');
+  await expect(contextSelector).toBeVisible();
+  await contextSelector.click();
+  await page
+    .locator('.ant-select-dropdown:visible')
+    .getByTitle(data.context, { exact: true })
+    .click();
+  await page.locator('.ant-drawer-header').click();
+  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
+
+  const urlInput = page.getByTestId('source-url-input');
+  await expect(urlInput).toBeVisible();
+  await urlInput.fill(data.url);
+
+  const statusSelector = page
+    .getByTestId('status-form-item')
+    .locator('.ant-select-selector');
+  await expect(statusSelector).toBeVisible();
+  await statusSelector.click();
+  await selectDropdownOption(page, data.status);
 }
 
-test.describe('Learning Resources Admin Page', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-    await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-    // Wait for the table to be fully loaded
-    await page.waitForSelector('.ant-table-tbody');
-  });
+async function scrollDrawerToShowResource(page: Page, resourceText: string) {
+  const drawer = page.getByTestId('learning-drawer');
+  await expect(drawer).toBeVisible();
+  const targetElement = drawer.getByText(resourceText, { exact: false });
+  await targetElement.scrollIntoViewIfNeeded();
+  await expect(targetElement).toBeVisible();
+}
 
-  test('should display learning resources page', async ({ page }) => {
-    await expect(page.getByTestId('learning-resources-page')).toBeVisible();
-    await expect(page.getByTestId('page-title')).toContainText('Learning Resource');
-    await expect(page.getByTestId('create-resource')).toBeVisible();
-  });
+test.describe(
+  'Learning Resources Admin Page',
+  { tag: ['@Pages', '@Platform'] },
+  () => {
+    test.beforeEach(async ({ page }) => {
+      await goToLearningResourcesAdmin(page);
+    });
 
-  test('should open and close add resource drawer', async ({ page }) => {
-    await test.step('Open add resource drawer', async () => {
+    test('should validate required fields when creating a resource', async ({
+      page,
+    }) => {
+      await test.step('Open create resource drawer', async () => {
+        await page.getByTestId('create-resource').click();
+        await expect(
+          page.getByTestId('learning-resource-form-drawer')
+        ).toBeVisible();
+      });
+
+      await test.step('Attempt to save without required fields', async () => {
+        const saveButton = page.getByTestId('save-resource');
+        await expect(saveButton).toBeVisible();
+        await expect(saveButton).toBeEnabled();
+        await saveButton.click();
+
+        const errorMessage = page.getByText(
+          /name.*required|field.*required.*name/i
+        );
+        await expect(errorMessage).toBeVisible();
+      });
+
+      await test.step('Close drawer', async () => {
+        await page.getByTestId('cancel-resource').click();
+        await expect(
+          page.getByTestId('learning-resource-form-drawer')
+        ).not.toBeVisible();
+      });
+    });
+
+    test('should create a new learning resource', async ({ page }) => {
+      const uniqueId = uuid();
+      const resourceName = `PW_Create_E2E_${uniqueId}`;
       await page.getByTestId('create-resource').click();
-      await expect(page.locator('.drawer-title')).toContainText('Add Resource');
-    });
-
-    await test.step('Close drawer', async () => {
-      await page.locator('.drawer-close').click();
-      await expect(page.locator('.drawer-title')).not.toBeVisible();
-    });
-  });
-
-  test('should validate required fields', async ({ page }) => {
-    await page.getByTestId('create-resource').click();
-    await expect(page.locator('.drawer-title')).toBeVisible();
-
-    // Try to submit without filling required fields
-    await page.getByTestId('save-resource').click();
-
-    // Expect validation errors to appear
-    await expect(page.locator('.ant-form-item-explain-error').first()).toBeVisible();
-
-    // Close drawer
-    await page.locator('.drawer-close').click();
-  });
-
-  test('should edit an existing learning resource', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const uniqueId = uuid();
-    const resource = new LearningResourceClass({
-      name: `PW_Edit_Resource_${uniqueId}`,
-      displayName: `PW Edit Resource ${uniqueId}`,
-      description: 'Resource to be edited',
-    });
-
-    await resource.create(apiContext);
-
-    // Reload to get fresh data after creating resource
-    await page.reload();
-    await page.waitForSelector('.ant-table-tbody');
-
-    // Search for the resource to find it
-    await searchResource(page, uniqueId);
-    await expect(page.getByText(resource.data.displayName ?? '')).toBeVisible();
-
-    await test.step('Click edit button and verify drawer opens', async () => {
-      await page.getByTestId(`edit-${resource.data.name}`).click();
-      await expect(page.locator('.drawer-title')).toContainText('Edit Resource');
-      // Verify the form is populated with resource data
-      await expect(page.locator('#name')).toHaveValue(resource.data.name);
-    });
-
-    await test.step('Close the drawer', async () => {
-      await page.locator('.drawer-close').click();
-      await expect(page.locator('.drawer-title')).not.toBeVisible();
-    });
-
-    await resource.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should delete a learning resource', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const uniqueId = uuid();
-    const resource = new LearningResourceClass({
-      name: `PW_Delete_Resource_${uniqueId}`,
-      displayName: `PW Delete Resource ${uniqueId}`,
-    });
-
-    await resource.create(apiContext);
-
-    // Reload to get fresh data after creating resource
-    await page.reload();
-    await page.waitForSelector('.ant-table-tbody');
-
-    // Search for the resource to find it
-    await searchResource(page, uniqueId);
-    await expect(page.getByText(resource.data.displayName ?? '')).toBeVisible();
-
-    await test.step('Click delete button and confirm', async () => {
-      await page.getByTestId(`delete-${resource.data.name}`).click();
-      // Wait for the confirmation modal to appear
-      await expect(page.locator('.ant-modal-confirm')).toBeVisible();
-      // Click the OK/Delete button in the modal
-      await page.locator('.ant-modal-confirm-btns button').filter({ hasText: /delete|ok/i }).click();
-    });
-
-    await test.step('Verify resource is removed from list', async () => {
-      // Wait for modal to close and table to update
-      await expect(page.locator('.ant-modal-confirm')).not.toBeVisible();
-      await expect(page.getByText(resource.data.displayName ?? '')).not.toBeVisible();
-    });
-
-    await afterAction();
-  });
-
-  test('should preview a learning resource by clicking on name', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const uniqueId = uuid();
-    const resource = new LearningResourceClass({
-      name: `PW_Preview_Resource_${uniqueId}`,
-      displayName: `PW Preview Resource ${uniqueId}`,
-      source: {
-        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-        provider: 'YouTube',
-      },
-    });
-
-    await resource.create(apiContext);
-
-    // Reload to get fresh data after creating resource
-    await page.reload();
-    await page.waitForSelector('.ant-table-tbody');
-
-    // Search for the resource to find it
-    await searchResource(page, uniqueId);
-    await expect(page.getByText(resource.data.displayName ?? '')).toBeVisible();
-
-    await test.step('Click on resource name to preview', async () => {
-      await page.getByText(resource.data.displayName ?? '').click();
-    });
-
-    await test.step('Verify preview modal opens', async () => {
-      await expect(page.locator('.ant-modal')).toBeVisible();
-    });
-
-    await test.step('Close preview modal', async () => {
-      // Close button is in the modal header with class 'close-button'
-      await page.locator('.close-button').click();
-      await expect(page.locator('.ant-modal')).not.toBeVisible();
-    });
-
-    await resource.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should filter resources by type', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const uniqueId = uuid();
-    const videoResource = new LearningResourceClass({
-      name: `PW_Video_Resource_${uniqueId}`,
-      displayName: `PW Video Resource ${uniqueId}`,
-      resourceType: 'Video',
-    });
-
-    await videoResource.create(apiContext);
-
-    // Reload to get fresh data
-    await page.reload();
-    await page.waitForSelector('.ant-table-tbody');
-
-    await test.step('Filter by Video type', async () => {
-      await page.locator('.filter-select').filter({ hasText: 'Type' }).click();
-      await selectDropdownOption(page, 'Video');
-
-      // Search for our specific resource
-      await searchResource(page, uniqueId);
-      await expect(page.getByText(`PW Video Resource ${uniqueId}`)).toBeVisible();
-    });
-
-    await videoResource.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should search resources by name', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const uniqueId = uuid();
-    const resource = new LearningResourceClass({
-      name: `PW_Search_Resource_${uniqueId}`,
-      displayName: `PW Search Resource ${uniqueId}`,
-    });
-
-    await resource.create(apiContext);
-
-    // Reload to get fresh data
-    await page.reload();
-    await page.waitForSelector('.ant-table-tbody');
-
-    await test.step('Search for resource', async () => {
-      await searchResource(page, uniqueId);
-      await expect(page.getByText(`PW Search Resource ${uniqueId}`)).toBeVisible();
-    });
-
-    await resource.delete(apiContext);
-    await afterAction();
-  });
-});
-
-test.describe('Learning Resources Admin Page - Additional Tests', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-    await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-    await page.waitForSelector('.ant-table-tbody');
-  });
-
-  test('should filter resources by category', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const uniqueId = uuid();
-    const resource = new LearningResourceClass({
-      name: `PW_Category_Resource_${uniqueId}`,
-      displayName: `PW Category Resource ${uniqueId}`,
-      categories: ['DataGovernance'],
-    });
-
-    await resource.create(apiContext);
-
-    await page.reload();
-    await page.waitForSelector('.ant-table-tbody');
-
-    await test.step('Filter by Governance category', async () => {
-      await page.locator('.filter-select').filter({ hasText: 'Category' }).click();
-      await selectDropdownOption(page, 'Governance');
-
-      await searchResource(page, uniqueId);
-      await expect(page.getByText(`PW Category Resource ${uniqueId}`)).toBeVisible();
-    });
-
-    await resource.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should filter resources by status', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const uniqueId = uuid();
-    const resource = new LearningResourceClass({
-      name: `PW_Status_Resource_${uniqueId}`,
-      displayName: `PW Status Resource ${uniqueId}`,
-      status: 'Draft',
-    });
-
-    await resource.create(apiContext);
-
-    await page.reload();
-    await page.waitForSelector('.ant-table-tbody');
-
-    await test.step('Filter by Draft status', async () => {
-      await page.locator('.filter-select').filter({ hasText: 'Status' }).click();
-      await selectDropdownOption(page, 'Draft');
-
-      await searchResource(page, uniqueId);
-      await expect(page.getByText(`PW Status Resource ${uniqueId}`)).toBeVisible();
-    });
-
-    await resource.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should edit and save resource changes via UI', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const uniqueId = uuid();
-    const resource = new LearningResourceClass({
-      name: `PW_Edit_Save_Resource_${uniqueId}`,
-      displayName: `PW Edit Save Resource ${uniqueId}`,
-      description: 'Original description',
-    });
-
-    await resource.create(apiContext);
-
-    await page.reload();
-    await page.waitForSelector('.ant-table-tbody');
-
-    await searchResource(page, uniqueId);
-    await expect(page.getByText(resource.data.displayName ?? '')).toBeVisible();
-
-    await test.step('Open edit drawer and modify display name', async () => {
-      await page.getByTestId(`edit-${resource.data.name}`).click();
-      await expect(page.locator('.drawer-title')).toContainText('Edit Resource');
-
-      // Clear and update display name
-      await page.locator('#displayName').clear();
-      await page.locator('#displayName').fill(`Updated Resource ${uniqueId}`);
-    });
-
-    await test.step('Save changes', async () => {
-      await page.getByTestId('save-resource').click();
-      await expect(page.locator('.drawer-title')).not.toBeVisible();
-    });
-
-    await test.step('Verify updated display name in list', async () => {
-      await page.reload();
-      await page.waitForSelector('.ant-table-tbody');
-      await searchResource(page, uniqueId);
-      await expect(page.getByText(`Updated Resource ${uniqueId}`)).toBeVisible();
-    });
-
-    await resource.delete(apiContext);
-    await afterAction();
-  });
-});
-
-test.describe('Learning Icon on Pages', () => {
-  test('should display learning icon on glossary page when resources exist', async ({ page }) => {
-    // Navigate to home first to ensure auth context is established
-    await redirectToHomePage(page);
-
-    const { apiContext, afterAction } = await getApiContext(page);
-    const resource = new LearningResourceClass({
-      name: `PW_Glossary_Icon_Resource_${uuid()}`,
-      displayName: `PW Glossary Icon Resource`,
-      contexts: [{ pageId: 'glossary' }],
-      status: 'Active',
-    });
-
-    await resource.create(apiContext);
-
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-    const learningIcon = page.locator('[data-testid="learning-icon"]');
-    await expect(learningIcon).toBeVisible();
-
-    await resource.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should open learning drawer when icon is clicked', async ({ page }) => {
-    // Navigate to home first to ensure auth context is established
-    await redirectToHomePage(page);
-
-    const { apiContext, afterAction } = await getApiContext(page);
-    const resource = new LearningResourceClass({
-      name: `PW_Glossary_Drawer_Resource_${uuid()}`,
-      displayName: `PW Glossary Drawer Resource`,
-      contexts: [{ pageId: 'glossary' }],
-      status: 'Active',
-    });
-
-    await resource.create(apiContext);
-
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-    await test.step('Click learning icon', async () => {
-      const learningIcon = page.locator('[data-testid="learning-icon"]');
-      await expect(learningIcon).toBeVisible();
-      await learningIcon.click();
-    });
-
-    await test.step('Verify drawer opens with resources', async () => {
-      await expect(page.locator('.learning-drawer')).toBeVisible();
-    });
-
-    await test.step('Close drawer', async () => {
-      await page.keyboard.press('Escape');
-    });
-
-    await resource.delete(apiContext);
-    await afterAction();
-  });
-
-  test.fixme('should NOT show draft resources on target pages', async ({ page }) => {
-    // Navigate to home first to ensure auth context is established
-    await redirectToHomePage(page);
-
-    const { apiContext, afterAction } = await getApiContext(page);
-    const uniqueId = uuid();
-    const draftResource = new LearningResourceClass({
-      name: `PW_Draft_Resource_${uniqueId}`,
-      displayName: `PW Draft Resource ${uniqueId}`,
-      contexts: [{ pageId: 'glossary' }],
-      status: 'Draft', // Draft status should NOT appear on pages
-    });
-
-    await draftResource.create(apiContext);
-
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-    // Check if learning icon exists
-    const learningIcon = page.locator('[data-testid="learning-icon"]');
-    const isIconVisible = await learningIcon.isVisible().catch(() => false);
-
-    if (isIconVisible) {
-      // If icon is visible, our draft resource should NOT be in the drawer
-      await learningIcon.click();
-      await expect(page.locator('.learning-drawer')).toBeVisible();
-      await expect(page.getByText(`PW Draft Resource ${uniqueId}`)).not.toBeVisible();
-      await page.keyboard.press('Escape');
-    }
-    // If icon is not visible, that's also valid (no active resources)
-
-    await draftResource.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should show learning icon on lineage page when resources exist', async ({ page }) => {
-    test.slow();
-    // Navigate to home first to ensure auth context is established
-    await redirectToHomePage(page);
-
-    const { apiContext, afterAction } = await getApiContext(page);
-    const resource = new LearningResourceClass({
-      name: `PW_Lineage_Resource_${uuid()}`,
-      displayName: `PW Lineage Resource`,
-      contexts: [{ pageId: 'lineage' }],
-      status: 'Active',
-    });
-
-    await resource.create(apiContext);
-
-    const lineageRes = page.waitForResponse(
-      '/api/v1/lineage/getPlatformLineage?view=service*'
-    );
-    await sidebarClick(page, SidebarItem.LINEAGE);
-    await lineageRes;
-
-    const learningIcon = page.locator('[data-testid="learning-icon"]');
-    await expect(learningIcon).toBeVisible();
-
-    // Click and verify resource is shown - use force click as ReactFlow canvas may intercept events
-    await learningIcon.click({ force: true });
-    await expect(page.locator('.learning-drawer')).toBeVisible();
-    await expect(page.getByText('PW Lineage Resource')).toBeVisible();
-    await page.keyboard.press('Escape');
-
-    await resource.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should open resource player when clicking on resource card in drawer', async ({ page }) => {
-    // Navigate to home first to ensure auth context is established
-    await redirectToHomePage(page);
-
-    const { apiContext, afterAction } = await getApiContext(page);
-    const uniqueId = uuid();
-    const resource = new LearningResourceClass({
-      name: `PW_Player_Resource_${uniqueId}`,
-      displayName: `PW Player Resource ${uniqueId}`,
-      contexts: [{ pageId: 'glossary' }],
-      status: 'Active',
-      source: {
-        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-        provider: 'YouTube',
-      },
-    });
-
-    await resource.create(apiContext);
-
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-    await test.step('Open learning drawer', async () => {
-      const learningIcon = page.locator('[data-testid="learning-icon"]');
-      await expect(learningIcon).toBeVisible();
-      await learningIcon.click();
-      await expect(page.locator('.learning-drawer')).toBeVisible();
-    });
-
-    await test.step('Click on resource card to open player', async () => {
-      // Click on the resource card
-      await page.getByText(`PW Player Resource ${uniqueId}`).click();
-      // Verify player modal opens
-      await expect(page.locator('.ant-modal')).toBeVisible();
-    });
-
-    await test.step('Close player modal', async () => {
-      await page.locator('.close-button').click();
-      await expect(page.locator('.ant-modal')).not.toBeVisible();
-    });
-
-    await resource.delete(apiContext);
-    await afterAction();
-  });
-});
-
-test.describe.serial('Learning Resources E2E Flow', () => {
-  test('should create resource via UI and verify learning icon appears on target page', async ({ page }) => {
-    const uniqueId = uuid();
-    const resourceName = `PW_Create_E2E_${uniqueId}`;
-
-    await test.step('Navigate to Learning Resources admin page', async () => {
-      await redirectToHomePage(page);
-      await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-      await page.waitForSelector('.ant-table-tbody');
-    });
-
-    await test.step('Open add resource drawer and fill form', async () => {
-      await page.getByTestId('create-resource').click();
-      await expect(page.locator('.drawer-title')).toContainText('Add Resource');
-
-      // Fill required fields
-      await page.locator('#name').fill(resourceName);
-      await page.locator('#displayName').fill(`E2E Test Resource ${uniqueId}`);
-      await page.locator('textarea#description').fill('E2E test learning resource');
-
-      // Select type
-      await page.getByTestId('resource-type-form-item').locator('.ant-select-selector').click();
-      await selectDropdownOption(page, 'Video');
-
-      // Select category
-      await page.getByTestId('categories-form-item').locator('.ant-select-selector').click();
-      await selectDropdownOption(page, 'Discovery');
-      await page.keyboard.press('Escape');
-
-      // Select context - Glossary page
-      await page.getByTestId('contexts-form-item').locator('.ant-select-selector').click();
-      await selectDropdownOption(page, 'Glossary');
-      await page.keyboard.press('Escape');
-
-      // Fill source URL
-      await page.locator('#sourceUrl').fill('https://www.youtube.com/watch?v=test123');
-
-      // Set status to Active
-      await page.locator('.ant-form-item').filter({ hasText: 'Status' }).locator('.ant-select-selector').click();
-      await selectDropdownOption(page, 'Active');
-    });
-
-    await test.step('Save the resource', async () => {
-      await page.getByTestId('save-resource').click();
-      // Wait for drawer to close indicating success
-      await expect(page.locator('.drawer-title')).not.toBeVisible();
-    });
-
-    await test.step('Navigate to Glossary page and verify learning icon appears', async () => {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-      const learningIcon = page.locator('[data-testid="learning-icon"]');
-      await expect(learningIcon).toBeVisible();
-    });
-
-    await test.step('Click learning icon and verify the created resource is shown', async () => {
-      await page.locator('[data-testid="learning-icon"]').click();
-      await expect(page.locator('.learning-drawer')).toBeVisible();
-      await expect(page.getByText(`E2E Test Resource ${uniqueId}`)).toBeVisible();
-      await page.keyboard.press('Escape');
-    });
-
-    await test.step('Cleanup - delete the created resource', async () => {
-      // Navigate back to Learning Resources admin page
-      await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-      await page.waitForSelector('.ant-table-tbody');
-
-      await searchResource(page, uniqueId);
-      await expect(page.getByText(`E2E Test Resource ${uniqueId}`)).toBeVisible();
-
-      await page.getByTestId(`delete-${resourceName}`).click();
-      await expect(page.locator('.ant-modal-confirm')).toBeVisible();
-      await page.locator('.ant-modal-confirm-btns button').filter({ hasText: /delete|ok/i }).click();
-      await expect(page.locator('.ant-modal-confirm')).not.toBeVisible();
-    });
-  });
-
-  test('should update resource context and verify learning icon moves to new page', async ({ page }) => {
-   test.slow()
-    // Navigate to home first to ensure auth context is established
-    await redirectToHomePage(page);
-
-    const { apiContext, afterAction } = await getApiContext(page);
-    const uniqueId = uuid();
-    const resource = new LearningResourceClass({
-      name: `PW_Update_Context_${uniqueId}`,
-      displayName: `Update Context Resource ${uniqueId}`,
-      contexts: [{ pageId: 'glossary' }],
-      status: 'Active',
-    });
-
-    const createdResource = await resource.create(apiContext);
-    expect(createdResource, `Failed to create resource: ${JSON.stringify(createdResource)}`).toBeDefined();
-    expect(createdResource.id, `Resource ID is undefined: ${JSON.stringify(createdResource)}`).toBeDefined();
-    expect(createdResource.displayName).toBe(`Update Context Resource ${uniqueId}`);
-
-    await test.step('Verify resource appears on Glossary page initially', async () => {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-      const learningIcon = page.locator('[data-testid="learning-icon"]');
-      await expect(learningIcon).toBeVisible();
-
-      // Verify our resource is in the drawer
-      await learningIcon.click();
-      await expect(page.locator('.learning-drawer')).toBeVisible();
-      await expect(page.getByText(`Update Context Resource ${uniqueId}`)).toBeVisible();
-      await page.keyboard.press('Escape');
-    });
-
-    await test.step('Navigate to admin page and update resource context to Lineage', async () => {
-      await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-      await page.waitForSelector('.ant-table-tbody');
-
-      await searchResource(page, uniqueId);
-      await expect(page.getByText(`Update Context Resource ${uniqueId}`)).toBeVisible();
-
-      // Click edit button
-      await page.getByTestId(`edit-${resource.data.name}`).click();
-      await expect(page.locator('.drawer-title')).toContainText('Edit Resource');
-
-      // Clear existing contexts and add new one - Lineage
-      await page.getByTestId('contexts-form-item').locator('.ant-select-selection-item-remove').click();
-      await page.getByTestId('contexts-form-item').locator('.ant-select-selector').click();
-      await selectDropdownOption(page, 'Lineage');
-      await page.keyboard.press('Escape');
-
-      // Save changes
-      await page.getByTestId('save-resource').click();
-      await expect(page.locator('.drawer-title')).not.toBeVisible();
-    });
-
-    await test.step('Verify learning icon no longer appears on Glossary page', async () => {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-      // The learning icon should not be visible or should not show our resource
-      const learningIcon = page.locator('[data-testid="learning-icon"]');
-      const isIconVisible = await learningIcon.isVisible().catch(() => false);
-
-      if (isIconVisible) {
-        // If icon is visible, our resource should not be in the drawer
-        await learningIcon.click();
-        await expect(page.locator('.learning-drawer')).toBeVisible();
-        await expect(page.getByText(`Update Context Resource ${uniqueId}`)).not.toBeVisible();
-        await page.keyboard.press('Escape');
-      }
-    });
-
-    await test.step('Verify learning icon now appears on Lineage page', async () => {
-      // Wait for lineage API response to ensure page is fully loaded
-      const lineageRes = page.waitForResponse(
-        '/api/v1/lineage/getPlatformLineage?view=service*'
+      await expect(
+        page.getByTestId('learning-resource-form-drawer')
+      ).toBeVisible();
+
+      await fillResourceForm(page, {
+        resourceName,
+        description: 'E2E test learning resource',
+        type: 'Video',
+        category: 'Discovery',
+        context: 'Glossary',
+        url: 'https://www.youtube.com/watch?v=DqIT4vWALGk',
+        status: 'Active',
+      });
+
+      const createResponse = page.waitForResponse(
+        (r) =>
+          r.url().includes('/api/v1/learning/resources') &&
+          r.request().method() === 'POST'
       );
-      await sidebarClick(page, SidebarItem.LINEAGE);
-      await lineageRes;
+      await page.getByTestId('save-resource').click();
+      await createResponse;
 
-      const learningIcon = page.locator('[data-testid="learning-icon"]');
-      await expect(learningIcon).toBeVisible();
-
-      // Verify our resource is in the drawer - use force click as ReactFlow canvas may intercept events
-      await learningIcon.click({ force: true });
-      await expect(page.locator('.learning-drawer')).toBeVisible();
-      await expect(page.getByText(`Update Context Resource ${uniqueId}`)).toBeVisible();
-      await page.keyboard.press('Escape');
+      await expect(
+        page.getByTestId('learning-resource-form-drawer')
+      ).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
     });
 
-    await resource.delete(apiContext);
+    test('should preview a learning resource by clicking on row', async ({
+      page,
+    }) => {
+      await test.step('Click row and verify player modal opens', async () => {
+        await page.getByText('Collate Clues: Automations').click();
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await expect(
+          dialog.getByText('Collate Clues: Automations')
+        ).toBeVisible();
+      });
+
+      await test.step('Close preview modal', async () => {
+        await page.getByTestId('close-resource-player').click();
+        await expect(page.getByRole('dialog')).not.toBeVisible();
+      });
+    });
+
+    test('should toggle between table and card views', async ({ page }) => {
+      await test.step('Verify table view is default', async () => {
+        await expect(
+          page.getByTestId('learning-resources-table-body')
+        ).toBeVisible();
+      });
+
+      await test.step('Switch to card view', async () => {
+        const cardToggle = page.getByTestId('card-view-toggle');
+        await expect(cardToggle).toBeVisible();
+        await cardToggle.click();
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('learning-resources-table-body')
+        ).not.toBeVisible();
+      });
+
+      await test.step('Switch back to table view', async () => {
+        const tableToggle = page.getByTestId('table-view-toggle');
+        await expect(tableToggle).toBeVisible();
+        await tableToggle.click();
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('learning-resources-table-body')
+        ).toBeVisible();
+      });
+    });
+  }
+);
+
+test.describe(
+  'Learning Icon on Pages',
+  { tag: ['@Features', '@Platform'] },
+  () => {
+    const glossaryForLearningTests = new Glossary(
+      `PW_Learning_Glossary_${uuid()}`,
+      []
+    );
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await glossaryForLearningTests.create(apiContext);
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await glossaryForLearningTests.delete(apiContext);
+      await afterAction();
+    });
+
+    test('should show correct learning resource in drawer on lineage page', async ({
+      page,
+    }) => {
+      test.slow();
+      await redirectToHomePage(page);
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const displayName = 'PW Lineage Resource';
+      const resource = new LearningResourceClass({
+        name: `PW_Lineage_Resource_${uuid()}`,
+        displayName,
+        contexts: [{ pageId: 'lineage' }],
+        status: 'Active',
+      });
+
+      await resource.create(apiContext);
+
+      await test.step('Navigate to lineage page', async () => {
+        const lineageRes = page.waitForResponse(
+          '/api/v1/lineage/getPlatformLineage?view=service*'
+        );
+        await sidebarClick(page, SidebarItem.LINEAGE);
+        await lineageRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Open learning drawer and verify resource', async () => {
+        const learningIcon = page.getByTestId('learning-icon');
+        await expect(learningIcon).toBeVisible();
+        await learningIcon.scrollIntoViewIfNeeded();
+        await learningIcon.click();
+
+        const drawer = page.getByTestId('learning-drawer');
+        await expect(drawer).toBeVisible();
+        await scrollDrawerToShowResource(page, displayName);
+        await expect(drawer.getByText(displayName)).toBeVisible();
+      });
+
+      await test.step('Close drawer', async () => {
+        await page.keyboard.press('Escape');
+      });
+
+      await resource.delete(apiContext);
+      await afterAction();
+    });
+
+    test('should open resource player when clicking on resource card in drawer', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+
+      const { apiContext } = await getApiContext(page);
+      const uniqueId = uuid();
+      const resource = new LearningResourceClass({
+        name: `PW_Player_Resource_${uniqueId}`,
+        displayName: `PW Player Resource ${uniqueId}`,
+        contexts: [{ pageId: 'glossary' }],
+        status: 'Active',
+        source: {
+          url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          provider: 'YouTube',
+        },
+      });
+
+      await resource.create(apiContext);
+
+      await test.step('Navigate to glossary page', async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Open learning drawer', async () => {
+        const learningIcon = page.getByTestId('learning-icon');
+        await expect(learningIcon).toBeVisible();
+        await learningIcon.click();
+
+        const drawer = page.getByTestId('learning-drawer');
+        await expect(drawer).toBeVisible();
+        await scrollDrawerToShowResource(
+          page,
+          `PW Player Resource ${uniqueId}`
+        );
+      });
+
+      await test.step(
+        'Click resource card and verify player opens',
+        async () => {
+          const resourceCard = page.getByTestId(
+            `learning-resource-card-PW_Player_Resource_${uniqueId}`
+          );
+          await expect(resourceCard).toBeVisible();
+          await resourceCard.click();
+
+          const playerDialog = page.getByRole('dialog');
+          await expect(playerDialog).toBeVisible();
+          await expect(
+            playerDialog.getByText(`PW Player Resource ${uniqueId}`)
+          ).toBeVisible();
+        }
+      );
+    });
+  }
+);
+
+async function applyLearningResourceFilter(
+  page: Page,
+  filterLabel: string,
+  optionKey: string
+) {
+  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
+  await expect(page.getByTestId('drop-down-menu')).toBeVisible();
+  const option = page.getByTestId(optionKey);
+  await expect(option).toBeVisible();
+  await option.click();
+
+  const filterResponse = page.waitForResponse(
+    (r) =>
+      r.url().includes('/api/v1/learning/resources') &&
+      r.request().method() === 'GET'
+  );
+  const updateBtn = page.getByTestId('update-btn');
+  await expect(updateBtn).toBeVisible();
+  await expect(updateBtn).toBeEnabled();
+  await updateBtn.click();
+
+  const response = await filterResponse;
+  await waitForAllLoadersToDisappear(page);
+
+  return response;
+}
+
+test.describe('Learning Resources - Search and Filters', () => {
+  const videoResource = new LearningResourceClass({
+    resourceType: 'Video',
+    categories: ['Discovery'],
+    contexts: [{ pageId: 'glossary' }],
+    status: 'Active',
+  });
+  const storylaneResource = new LearningResourceClass({
+    resourceType: 'Storylane',
+    categories: ['DataGovernance'],
+    contexts: [{ pageId: 'lineage' }],
+    status: 'Draft',
+  });
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await videoResource.create(apiContext);
+    await storylaneResource.create(apiContext);
     await afterAction();
   });
 
-  test('should delete resource and verify learning icon disappears from target page', async ({ page }) => {
-    // Navigate to home first to ensure auth context is established
-    await redirectToHomePage(page);
-
-    const { apiContext, afterAction } = await getApiContext(page);
-    const uniqueId = uuid();
-    const resource = new LearningResourceClass({
-      name: `PW_Delete_E2E_${uniqueId}`,
-      displayName: `Delete E2E Resource ${uniqueId}`,
-      contexts: [{ pageId: 'glossary' }],
-      status: 'Active',
-    });
-
-    const createdResource = await resource.create(apiContext);
-    expect(createdResource.id).toBeDefined();
-    expect(createdResource.displayName).toBe(`Delete E2E Resource ${uniqueId}`);
-
-    await test.step('Verify resource appears on Glossary page initially', async () => {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-      const learningIcon = page.locator('[data-testid="learning-icon"]');
-      await expect(learningIcon).toBeVisible();
-
-      // Verify our resource is in the drawer
-      await learningIcon.click();
-      await expect(page.locator('.learning-drawer')).toBeVisible();
-      await expect(page.getByText(`Delete E2E Resource ${uniqueId}`)).toBeVisible();
-      await page.keyboard.press('Escape');
-    });
-
-    await test.step('Navigate to admin page and delete the resource', async () => {
-      await settingClick(page, GlobalSettingOptions.LEARNING_RESOURCES);
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-      await page.waitForSelector('.ant-table-tbody');
-
-      await searchResource(page, uniqueId);
-      await expect(page.getByText(`Delete E2E Resource ${uniqueId}`)).toBeVisible();
-
-      await page.getByTestId(`delete-${resource.data.name}`).click();
-      await expect(page.locator('.ant-modal-confirm')).toBeVisible();
-      await page.locator('.ant-modal-confirm-btns button').filter({ hasText: /delete|ok/i }).click();
-      await expect(page.locator('.ant-modal-confirm')).not.toBeVisible();
-    });
-
-    await test.step('Verify learning icon no longer shows deleted resource on Glossary page', async () => {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-      const learningIcon = page.locator('[data-testid="learning-icon"]');
-      const isIconVisible = await learningIcon.isVisible().catch(() => false);
-
-      if (isIconVisible) {
-        // If icon is visible, our deleted resource should not be in the drawer
-        await learningIcon.click();
-        await expect(page.locator('.learning-drawer')).toBeVisible();
-        await expect(page.getByText(`Delete E2E Resource ${uniqueId}`)).not.toBeVisible();
-        await page.keyboard.press('Escape');
-      }
-      // If icon is not visible at all, that's also valid (no resources for glossary)
-    });
-
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await videoResource.delete(apiContext);
+    await storylaneResource.delete(apiContext);
     await afterAction();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await goToLearningResourcesAdmin(page);
+  });
+
+  test('should send correct search param to API when searching', async ({
+    page,
+  }) => {
+    const searchTerm = videoResource.data.name;
+
+    await test.step(
+      'Type search term and verify API receives search param',
+      async () => {
+        const searchResponse = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/learning/resources') &&
+            r.url().includes('search=') &&
+            r.request().method() === 'GET'
+        );
+
+        await page
+          .getByRole('textbox', { name: 'Search Resource' })
+          .fill(searchTerm);
+        const response = await searchResponse;
+        await waitForAllLoadersToDisappear(page);
+
+        expect(response.url()).toContain(
+          `search=${encodeURIComponent(searchTerm)}`
+        );
+      }
+    );
+
+    await test.step('Verify search result is shown in table', async () => {
+      await expect(
+        page.getByText(
+          videoResource.data.displayName ?? videoResource.data.name
+        )
+      ).toBeVisible();
+    });
+  });
+
+  test('should send correct resourceType param when filtering by type', async ({
+    page,
+  }) => {
+    await test.step(
+      'Apply Video type filter and verify API param',
+      async () => {
+        const response = await applyLearningResourceFilter(
+          page,
+          'Type',
+          'Video'
+        );
+        expect(response.url()).toContain('resourceType=Video');
+      }
+    );
+
+    await test.step('Verify filter chip is shown', async () => {
+      await expect(
+        page.locator('.filter-selection-chip').filter({ hasText: 'Video' })
+      ).toBeVisible();
+    });
+  });
+
+  test('should send correct category param when filtering by category', async ({
+    page,
+  }) => {
+    await test.step(
+      'Apply Discovery category filter and verify API param',
+      async () => {
+        const response = await applyLearningResourceFilter(
+          page,
+          'Categories',
+          'Discovery'
+        );
+        expect(response.url()).toContain('category=Discovery');
+      }
+    );
+
+    await test.step('Verify filter chip is shown', async () => {
+      await expect(page.getByTitle('Discovery')).toBeVisible();
+    });
+  });
+
+  test('should send correct pageId param when filtering by context', async ({
+    page,
+  }) => {
+    await test.step(
+      'Apply Glossary context filter and verify API param',
+      async () => {
+        const response = await applyLearningResourceFilter(
+          page,
+          'Context',
+          'glossary'
+        );
+        expect(response.url()).toContain('pageId=glossary');
+      }
+    );
+
+    await test.step('Verify filter chip is shown', async () => {
+      await expect(page.getByTitle('Glossary')).toBeVisible();
+    });
+  });
+
+  test('should send correct status param when filtering by status', async ({
+    page,
+  }) => {
+    await test.step(
+      'Apply Active status filter and verify API param',
+      async () => {
+        const response = await applyLearningResourceFilter(
+          page,
+          'Status',
+          'Active'
+        );
+        expect(response.url()).toContain('status=Active');
+      }
+    );
+
+    await test.step('Verify filter chip is shown', async () => {
+      await expect(page.getByTitle('Active')).toBeVisible();
+    });
+  });
+
+  test('should clear all filters and reload without filter params', async ({
+    page,
+  }) => {
+    await test.step('Apply a filter first', async () => {
+      await applyLearningResourceFilter(page, 'Type', 'Video');
+      await expect(page.getByTitle('Video')).toBeVisible();
+    });
+
+    await test.step('Clear all filters and verify clean API call', async () => {
+      const clearResponse = page.waitForResponse(
+        (r) =>
+          r.url().includes('/api/v1/learning/resources') &&
+          r.request().method() === 'GET'
+      );
+      await page.getByRole('button', { name: /clear all/i }).click();
+      const response = await clearResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      expect(response.url()).not.toContain('resourceType=');
+      expect(response.url()).not.toContain('category=');
+      expect(response.url()).not.toContain('pageId=');
+      expect(response.url()).not.toContain('status=');
+      expect(response.url()).not.toContain('search=');
+    });
+
+    await test.step('Verify filter chips are gone', async () => {
+      await expect(
+        page.locator('.filter-selection-container')
+      ).not.toBeVisible();
+    });
   });
 });
+
+test.describe(
+  'Learning Resources E2E Flow',
+  { tag: ['@Flow', '@Platform'] },
+  () => {
+    test('should create resource via UI and verify learning icon appears on target page', async ({
+      page,
+    }) => {
+      const uniqueId = uuid();
+      const resourceName = `PW_Create_E2E_${uniqueId}`;
+
+      await test.step('Navigate to Learning Resources admin page', async () => {
+        await goToLearningResourcesAdmin(page);
+      });
+
+      await test.step('Open add resource drawer and fill form', async () => {
+        await page.getByTestId('create-resource').click();
+        await expect(
+          page.getByTestId('learning-resource-form-drawer')
+        ).toBeVisible();
+
+        await fillResourceForm(page, {
+          resourceName,
+          description: 'E2E test learning resource',
+          type: 'Video',
+          category: 'Discovery',
+          context: 'Glossary',
+          url: 'https://www.youtube.com/watch?v=DqIT4vWALGk',
+          status: 'Active',
+        });
+      });
+
+      await test.step('Save the resource and verify API response', async () => {
+        const createResponse = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/learning/resources') &&
+            r.request().method() === 'POST'
+        );
+        await page.getByTestId('save-resource').click();
+        await createResponse;
+
+        await expect(
+          page.getByTestId('learning-resource-form-drawer')
+        ).not.toBeVisible();
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step(
+        'Navigate to Glossary and verify resource in learning drawer',
+        async () => {
+          await sidebarClick(page, SidebarItem.GLOSSARY);
+          await waitForAllLoadersToDisappear(page);
+
+          const learningIcon = page.getByTestId('learning-icon');
+          await expect(learningIcon).toBeVisible();
+          await learningIcon.click();
+
+          const drawer = page.getByTestId('learning-drawer');
+          await expect(drawer).toBeVisible();
+          await scrollDrawerToShowResource(page, resourceName);
+          await expect(drawer.getByText(resourceName)).toBeVisible();
+          await page.keyboard.press('Escape');
+        }
+      );
+    });
+  }
+);

@@ -24,10 +24,13 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.type.basic import Uuid
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import profiler_logger
+from metadata.utils.lru_cache import SkipNoneLRUCache
 
 logger = profiler_logger()
+database_entities_cache = SkipNoneLRUCache(capacity=4096)
 
 PARSING_TIMEOUT = 10
 
@@ -107,38 +110,54 @@ def set_cache(cache: defaultdict, key: str, value):
         cache = cache[key_]
 
 
+@database_entities_cache.wrap(lambda id_, metadata: f"DatabaseSchema(id={id_.root!r})")
+def _get_schema_cached(
+    entity_id: Uuid, metadata: OpenMetadata
+) -> Optional[DatabaseSchema]:
+    """Cache schema lookups by id"""
+    return metadata.get_by_id(
+        entity=DatabaseSchema,
+        entity_id=entity_id,
+        fields=["databaseSchemaProfilerConfig"],
+    )
+
+
+@database_entities_cache.wrap(lambda id_, metadata: f"Database(id={id_.root!r})")
+def _get_database_cached(entity_id: Uuid, metadata: OpenMetadata) -> Optional[Database]:
+    """Cache database lookups by id"""
+    return metadata.get_by_id(
+        entity=Database,
+        entity_id=entity_id,
+        fields=["databaseProfilerConfig"],
+    )
+
+
+@database_entities_cache.wrap(lambda id_, metadata: f"DatabaseService(id={id_.root!r})")
+def _get_service_cached(
+    entity_id: Uuid, metadata: OpenMetadata
+) -> Optional[DatabaseService]:
+    """Cache database service lookups by id"""
+    return metadata.get_by_id(
+        entity=DatabaseService,
+        entity_id=entity_id,
+    )
+
+
 def get_context_entities(
     entity: Table, metadata: OpenMetadata
-) -> Tuple[DatabaseSchema, Database, DatabaseService]:
+) -> Tuple[Optional[DatabaseSchema], Optional[Database], Optional[DatabaseService]]:
     """Based on the table, get all the parent entities"""
     schema_entity = None
     database_entity = None
     db_service = None
 
     if entity.databaseSchema:
-        schema_entity_list = metadata.es_search_from_fqn(
-            entity_type=DatabaseSchema,
-            fqn_search_string=entity.databaseSchema.fullyQualifiedName,
-            fields="databaseSchemaProfilerConfig",
-        )
-        if schema_entity_list:
-            schema_entity = schema_entity_list[0]
+        schema_entity = _get_schema_cached(entity.databaseSchema.id, metadata)
 
     if entity.database:
-        database_entity_list = metadata.es_search_from_fqn(
-            entity_type=Database,
-            fqn_search_string=entity.database.fullyQualifiedName,
-            fields="databaseProfilerConfig",
-        )
-        if database_entity_list:
-            database_entity = database_entity_list[0]
+        database_entity = _get_database_cached(entity.database.id, metadata)
 
     if entity.service:
-        db_service_list = metadata.es_search_from_fqn(
-            entity_type=DatabaseService,
-            fqn_search_string=entity.service.fullyQualifiedName,
-        )
-        if db_service_list:
-            db_service = db_service_list[0]
+        db_service = _get_service_cached(entity.service.id, metadata)
 
     return schema_entity, database_entity, db_service

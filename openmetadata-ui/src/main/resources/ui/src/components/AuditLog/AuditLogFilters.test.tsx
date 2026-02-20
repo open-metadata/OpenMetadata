@@ -18,7 +18,9 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { DateRangeObject } from 'Models';
 import { AuditLogActiveFilter } from '../../types/auditLogs.interface';
+import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import AuditLogFilters from './AuditLogFilters.component';
 
 const mockOnFiltersChange = jest.fn();
@@ -28,148 +30,167 @@ const defaultProps = {
   onFiltersChange: mockOnFiltersChange,
 };
 
-jest.mock('../../rest/miscAPI', () => ({
-  searchData: jest.fn().mockResolvedValue({
-    data: {
-      hits: {
-        hits: [
-          {
-            _source: {
-              id: 'user-1',
-              name: 'test_user',
-              displayName: 'Test User',
-              email: 'test@example.com',
-              entityType: 'user',
-            },
-          },
-          {
-            _source: {
-              id: 'user-2',
-              name: 'admin_user',
-              displayName: 'Admin User',
-              email: 'admin@example.com',
-              entityType: 'user',
-            },
-          },
-        ],
-        total: { value: 2 },
+let capturedHandleDateRangeChange: (dateRange: DateRangeObject) => void;
+
+jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({
+        handleDateRangeChange,
+      }: {
+        handleDateRangeChange: (dateRange: DateRangeObject) => void;
+      }) => {
+        capturedHandleDateRangeChange = handleDateRangeChange;
+
+        return (
+          <div data-testid="date-picker-menu">
+            <button
+              data-testid="time-preset-trigger"
+              onClick={() =>
+                handleDateRangeChange({
+                  startTs: Date.now() - 86400000,
+                  endTs: Date.now(),
+                  key: 'yesterday',
+                  title: 'Yesterday',
+                })
+              }>
+              Yesterday
+            </button>
+          </div>
+        );
+      }
+    )
+);
+
+const capturedOnChange: Record<
+  string,
+  (values: SearchDropdownOption[], key: string) => void
+> = {};
+const capturedOnGetInitialOptions: Record<string, (key: string) => void> = {};
+
+jest.mock('../SearchDropdown/SearchDropdown', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({
+        label,
+        searchKey,
+        onChange,
+        selectedKeys,
+        onGetInitialOptions,
+      }: {
+        label: string;
+        searchKey: string;
+        onChange: (values: SearchDropdownOption[], key: string) => void;
+        selectedKeys: SearchDropdownOption[];
+        onGetInitialOptions: (key: string) => void;
+      }) => {
+        capturedOnChange[searchKey] = onChange;
+        capturedOnGetInitialOptions[searchKey] = onGetInitialOptions;
+
+        return (
+          <div data-testid={`${searchKey}-filter`}>
+            <span data-testid={`${searchKey}-label`}>{label}</span>
+            <span data-testid={`${searchKey}-selected-count`}>
+              {selectedKeys?.length ?? 0}
+            </span>
+            <button
+              data-testid={`${searchKey}-open`}
+              onClick={() =>
+                onGetInitialOptions && onGetInitialOptions(searchKey)
+              }>
+              Open
+            </button>
+          </div>
+        );
+      }
+    )
+);
+
+const mockSearchQuery = jest.fn().mockResolvedValue({
+  hits: {
+    hits: [
+      {
+        _source: {
+          id: 'user-1',
+          name: 'test_user',
+          displayName: 'Test User',
+        },
       },
-    },
-  }),
+    ],
+    total: { value: 1 },
+  },
+});
+
+jest.mock('../../rest/searchAPI', () => ({
+  searchQuery: (...args: unknown[]) => mockSearchQuery(...args),
 }));
 
 jest.mock('../../rest/botsAPI', () => ({
   getBots: jest.fn().mockResolvedValue({
     data: [
-      { id: 'bot-1', name: 'ingestion-bot', displayName: 'Ingestion Bot' },
-      { id: 'bot-2', name: 'lineage-bot', displayName: 'Lineage Bot' },
+      {
+        id: 'bot-1',
+        name: 'ingestion-bot',
+        displayName: 'Ingestion Bot',
+      },
     ],
-    paging: { total: 2 },
+    paging: { total: 1 },
   }),
 }));
 
-jest.mock('../common/ProfilePicture/ProfilePicture', () =>
-  jest.fn().mockImplementation(({ name, displayName }) => (
-    <div data-name={name} data-testid="filter-profile-picture">
-      {displayName || name}
-    </div>
-  ))
-);
-
-jest.mock('../../utils/TableUtils', () => ({
-  getEntityIcon: jest
+jest.mock('../../utils/APIUtils', () => ({
+  formatUsersResponse: jest
     .fn()
-    .mockImplementation((entityType: string) => (
-      <span data-testid={`entity-icon-${entityType}`} />
-    )),
+    .mockImplementation((hits: { _source: unknown }[]) =>
+      hits.map((h) => h._source)
+    ),
+}));
+
+jest.mock('../../utils/EntityUtils', () => ({
+  getEntityName: jest
+    .fn()
+    .mockImplementation(
+      (entity: { displayName?: string; name?: string }) =>
+        entity.displayName || entity.name
+    ),
 }));
 
 describe('AuditLogFilters', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    Object.keys(capturedOnChange).forEach((k) => delete capturedOnChange[k]);
+    Object.keys(capturedOnGetInitialOptions).forEach(
+      (k) => delete capturedOnGetInitialOptions[k]
+    );
   });
 
-  it('should render the Filters button', async () => {
+  it('should render the time picker and all filter dropdowns', async () => {
     await act(async () => {
       render(<AuditLogFilters {...defaultProps} />);
     });
 
-    expect(screen.getByTestId('filters-dropdown')).toBeInTheDocument();
-    expect(screen.getByText('label.filter-plural')).toBeInTheDocument();
+    expect(screen.getByTestId('audit-log-filters')).toBeInTheDocument();
+    expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
+    expect(screen.getByTestId('user-filter')).toBeInTheDocument();
+    expect(screen.getByTestId('bot-filter')).toBeInTheDocument();
+    expect(screen.getByTestId('entityType-filter')).toBeInTheDocument();
   });
 
-  it('should open popover and show filter categories when Filters button is clicked', async () => {
+  it('should call onFiltersChange when a time preset is selected', async () => {
     await act(async () => {
       render(<AuditLogFilters {...defaultProps} />);
     });
 
-    const filtersButton = screen.getByTestId('filters-dropdown');
-
+    const now = Date.now();
     await act(async () => {
-      fireEvent.click(filtersButton);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('label.filter-audit-logs')).toBeInTheDocument();
-      expect(screen.getByText('label.time')).toBeInTheDocument();
-      expect(screen.getByText('label.user')).toBeInTheDocument();
-      expect(screen.getByText('label.bot')).toBeInTheDocument();
-      expect(screen.getByText('label.entity-type')).toBeInTheDocument();
-    });
-  });
-
-  it('should show time filter options when Time category is selected', async () => {
-    await act(async () => {
-      render(<AuditLogFilters {...defaultProps} />);
-    });
-
-    const filtersButton = screen.getByTestId('filters-dropdown');
-
-    await act(async () => {
-      fireEvent.click(filtersButton);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('label.time')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('label.time'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('Yesterday')).toBeInTheDocument();
-      expect(screen.getByText('Last 7 Days')).toBeInTheDocument();
-      expect(screen.getByText('Last 30 Days')).toBeInTheDocument();
-      expect(screen.getByText('label.custom-range')).toBeInTheDocument();
-    });
-  });
-
-  it('should call onFiltersChange when a time filter option is selected', async () => {
-    await act(async () => {
-      render(<AuditLogFilters {...defaultProps} />);
-    });
-
-    const filtersButton = screen.getByTestId('filters-dropdown');
-
-    await act(async () => {
-      fireEvent.click(filtersButton);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('label.time')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('label.time'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('Yesterday')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Yesterday'));
+      capturedHandleDateRangeChange({
+        startTs: now - 86400000,
+        endTs: now,
+        key: 'yesterday',
+        title: 'Yesterday',
+      });
     });
 
     expect(mockOnFiltersChange).toHaveBeenCalledWith(
@@ -178,7 +199,8 @@ describe('AuditLogFilters', () => {
           category: 'time',
           value: expect.objectContaining({
             key: 'yesterday',
-            label: 'Yesterday',
+            startTs: expect.any(Number),
+            endTs: expect.any(Number),
           }),
         }),
       ]),
@@ -189,30 +211,36 @@ describe('AuditLogFilters', () => {
     );
   });
 
-  it('should show entity type options when Entity Type category is selected', async () => {
+  it('should call onFiltersChange when a custom time range is selected', async () => {
     await act(async () => {
       render(<AuditLogFilters {...defaultProps} />);
     });
 
-    const filtersButton = screen.getByTestId('filters-dropdown');
+    const startTs = 1700000000000;
+    const endTs = 1700086400000;
 
     await act(async () => {
-      fireEvent.click(filtersButton);
+      capturedHandleDateRangeChange({
+        startTs,
+        endTs,
+        key: 'customRange',
+        title: '2023-11-14 -> 2023-11-15',
+      });
     });
 
-    await waitFor(() => {
-      expect(screen.getByText('label.entity-type')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('label.entity-type'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('Table')).toBeInTheDocument();
-      expect(screen.getByText('Dashboard')).toBeInTheDocument();
-      expect(screen.getByText('Pipeline')).toBeInTheDocument();
-    });
+    expect(mockOnFiltersChange).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: 'time',
+          value: expect.objectContaining({
+            key: 'customRange',
+            startTs,
+            endTs,
+          }),
+        }),
+      ]),
+      expect.objectContaining({ startTs, endTs })
+    );
   });
 
   it('should call onFiltersChange when an entity type is selected', async () => {
@@ -220,26 +248,11 @@ describe('AuditLogFilters', () => {
       render(<AuditLogFilters {...defaultProps} />);
     });
 
-    const filtersButton = screen.getByTestId('filters-dropdown');
-
     await act(async () => {
-      fireEvent.click(filtersButton);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('label.entity-type')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('label.entity-type'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('Table')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Table'));
+      capturedOnChange['entityType'](
+        [{ key: 'table', label: 'Table' }],
+        'entityType'
+      );
     });
 
     expect(mockOnFiltersChange).toHaveBeenCalledWith(
@@ -247,6 +260,7 @@ describe('AuditLogFilters', () => {
         expect.objectContaining({
           category: 'entityType',
           value: expect.objectContaining({
+            key: 'table',
             label: 'Table',
             value: 'table',
           }),
@@ -258,124 +272,25 @@ describe('AuditLogFilters', () => {
     );
   });
 
-  it('should render active filter tags', async () => {
-    const activeFilters: AuditLogActiveFilter[] = [
-      {
-        category: 'time',
-        categoryLabel: 'Time',
-        value: { key: 'yesterday', label: 'Yesterday', value: 'yesterday' },
-      },
-      {
-        category: 'entityType',
-        categoryLabel: 'Entity Type',
-        value: { key: 'table', label: 'Table', value: 'table' },
-      },
-    ];
-
-    await act(async () => {
-      render(
-        <AuditLogFilters {...defaultProps} activeFilters={activeFilters} />
-      );
-    });
-
-    expect(screen.getByTestId('active-filter-time')).toBeInTheDocument();
-    expect(screen.getByTestId('active-filter-entityType')).toBeInTheDocument();
-    expect(screen.getByText('Time:')).toBeInTheDocument();
-    expect(screen.getByText('Yesterday')).toBeInTheDocument();
-    expect(screen.getByText('Entity Type:')).toBeInTheDocument();
-    expect(screen.getByText('Table')).toBeInTheDocument();
-  });
-
-  it('should remove filter when close icon is clicked on filter tag', async () => {
-    const activeFilters: AuditLogActiveFilter[] = [
-      {
-        category: 'time',
-        categoryLabel: 'Time',
-        value: { key: 'yesterday', label: 'Yesterday', value: 'yesterday' },
-      },
-    ];
-
-    await act(async () => {
-      render(
-        <AuditLogFilters {...defaultProps} activeFilters={activeFilters} />
-      );
-    });
-
-    const filterTag = screen.getByTestId('active-filter-time');
-    const closeIcon = filterTag.querySelector('.anticon-close');
-
-    expect(closeIcon).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(closeIcon!);
-    });
-
-    expect(mockOnFiltersChange).toHaveBeenCalledWith([], {});
-  });
-
-  it('should show Back button in value selector and navigate back to categories', async () => {
+  it('should show selected count for user and bot filters', async () => {
     await act(async () => {
       render(<AuditLogFilters {...defaultProps} />);
     });
 
-    const filtersButton = screen.getByTestId('filters-dropdown');
-
-    await act(async () => {
-      fireEvent.click(filtersButton);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('label.time')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('label.time'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('label.back')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('label.back'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('label.time')).toBeInTheDocument();
-      expect(screen.getByText('label.user')).toBeInTheDocument();
-    });
+    expect(screen.getByTestId('user-selected-count')).toHaveTextContent('0');
+    expect(screen.getByTestId('bot-selected-count')).toHaveTextContent('0');
   });
 
-  it('should show search input for user category', async () => {
-    await act(async () => {
-      render(<AuditLogFilters {...defaultProps} />);
-    });
-
-    const filtersButton = screen.getByTestId('filters-dropdown');
-
-    await act(async () => {
-      fireEvent.click(filtersButton);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('label.user')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('label.user'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText('label.search')).toBeInTheDocument();
-    });
-  });
-
-  it('should show "Active" tag for categories with active filters', async () => {
+  it('should replace existing time filter when a new preset is selected', async () => {
     const activeFilters: AuditLogActiveFilter[] = [
       {
         category: 'time',
         categoryLabel: 'Time',
-        value: { key: 'yesterday', label: 'Yesterday', value: 'yesterday' },
+        value: {
+          key: 'yesterday',
+          label: 'Yesterday',
+          value: 'yesterday',
+        },
       },
     ];
 
@@ -385,232 +300,142 @@ describe('AuditLogFilters', () => {
       );
     });
 
-    const filtersButton = screen.getByTestId('filters-dropdown');
-
+    const now = Date.now();
     await act(async () => {
-      fireEvent.click(filtersButton);
+      capturedHandleDateRangeChange({
+        startTs: now - 7 * 86400000,
+        endTs: now,
+        key: 'last7days',
+        title: 'Last 7 Days',
+      });
     });
 
-    await waitFor(() => {
-      expect(screen.getByText('label.active')).toBeInTheDocument();
-    });
-  });
-
-  it('should replace existing filter in same category when new value is selected', async () => {
-    const activeFilters: AuditLogActiveFilter[] = [
-      {
-        category: 'time',
-        categoryLabel: 'Time',
-        value: { key: 'yesterday', label: 'Yesterday', value: 'yesterday' },
-      },
-    ];
-
-    await act(async () => {
-      render(
-        <AuditLogFilters {...defaultProps} activeFilters={activeFilters} />
-      );
-    });
-
-    const filtersButton = screen.getByTestId('filters-dropdown');
-
-    await act(async () => {
-      fireEvent.click(filtersButton);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('label.time')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('label.time'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('Last 7 Days')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('Last 7 Days'));
-    });
-
-    expect(mockOnFiltersChange).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          category: 'time',
-          value: expect.objectContaining({
-            key: 'last7days',
-            label: 'Last 7 Days',
-          }),
-        }),
-      ]),
-      expect.any(Object)
-    );
-
-    // Should only have one time filter (replaced, not added)
-    const call = mockOnFiltersChange.mock.calls[0];
-    const filters = call[0];
-    const timeFilters = filters.filter(
+    const calls = mockOnFiltersChange.mock.calls;
+    const lastCall = calls[calls.length - 1];
+    const timeFilters = lastCall[0].filter(
       (f: AuditLogActiveFilter) => f.category === 'time'
     );
 
     expect(timeFilters).toHaveLength(1);
+    expect(timeFilters[0].value.key).toBe('last7days');
   });
 
-  it('should show custom range picker when Custom Range is clicked', async () => {
-    await act(async () => {
-      render(<AuditLogFilters {...defaultProps} />);
-    });
-
-    const filtersButton = screen.getByTestId('filters-dropdown');
-
-    await act(async () => {
-      fireEvent.click(filtersButton);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('label.time')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('label.time'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('label.custom-range')).toBeInTheDocument();
-    });
+  it('should handle multiple filters from different categories', async () => {
+    const now = Date.now();
+    const activeFilters: AuditLogActiveFilter[] = [
+      {
+        category: 'time',
+        categoryLabel: 'Time',
+        value: {
+          key: 'yesterday',
+          label: 'Yesterday',
+          value: 'yesterday',
+          startTs: now - 86400000,
+          endTs: now,
+        },
+      },
+    ];
 
     await act(async () => {
-      fireEvent.click(screen.getByText('label.custom-range'));
-    });
-
-    await waitFor(() => {
-      expect(
-        screen.getByTestId('custom-date-range-picker')
-      ).toBeInTheDocument();
-    });
-  });
-
-  it('should display profile pictures for user options', async () => {
-    await act(async () => {
-      render(<AuditLogFilters {...defaultProps} />);
-    });
-
-    const filtersButton = screen.getByTestId('filters-dropdown');
-
-    await act(async () => {
-      fireEvent.click(filtersButton);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('label.user')).toBeInTheDocument();
+      render(
+        <AuditLogFilters {...defaultProps} activeFilters={activeFilters} />
+      );
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('label.user'));
-    });
-
-    await waitFor(() => {
-      const profilePictures = screen.getAllByTestId('filter-profile-picture');
-
-      expect(profilePictures.length).toBeGreaterThan(0);
-    });
-  });
-
-  it('should display bot icons for bot options', async () => {
-    await act(async () => {
-      render(<AuditLogFilters {...defaultProps} />);
-    });
-
-    const filtersButton = screen.getByTestId('filters-dropdown');
-
-    await act(async () => {
-      fireEvent.click(filtersButton);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('label.bot')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('label.bot'));
-    });
-
-    await waitFor(() => {
-      const botAvatars = document.querySelectorAll('.ant-avatar');
-
-      expect(botAvatars.length).toBeGreaterThan(0);
-    });
-  });
-
-  it('should call onFiltersChange when a bot is selected', async () => {
-    await act(async () => {
-      render(<AuditLogFilters {...defaultProps} />);
-    });
-
-    const filtersButton = screen.getByTestId('filters-dropdown');
-
-    await act(async () => {
-      fireEvent.click(filtersButton);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('label.bot')).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText('label.bot'));
-    });
-
-    await waitFor(() => {
-      expect(screen.getAllByText('Lineage Bot').length).toBeGreaterThan(0);
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getAllByText('Lineage Bot')[0]);
+      capturedOnChange['entityType'](
+        [{ key: 'table', label: 'Table' }],
+        'entityType'
+      );
     });
 
     expect(mockOnFiltersChange).toHaveBeenCalledWith(
       expect.arrayContaining([
-        expect.objectContaining({
-          category: 'bot',
-          value: expect.objectContaining({
-            label: 'Lineage Bot',
-            value: 'lineage-bot',
-          }),
-        }),
+        expect.objectContaining({ category: 'time' }),
+        expect.objectContaining({ category: 'entityType' }),
       ]),
       expect.objectContaining({
-        userName: 'lineage-bot',
-        actorType: 'BOT',
+        startTs: expect.any(Number),
+        endTs: expect.any(Number),
+        entityType: 'table',
       })
     );
   });
 
-  it('should call onFiltersChange when a user is selected', async () => {
+  it('should fetch users when user dropdown is opened', async () => {
     await act(async () => {
       render(<AuditLogFilters {...defaultProps} />);
     });
 
-    const filtersButton = screen.getByTestId('filters-dropdown');
-
     await act(async () => {
-      fireEvent.click(filtersButton);
+      fireEvent.click(screen.getByTestId('user-open'));
     });
 
     await waitFor(() => {
-      expect(screen.getByText('label.user')).toBeInTheDocument();
+      expect(mockSearchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: '',
+          pageNumber: 1,
+          pageSize: 10,
+          searchIndex: 'user_search_index',
+          queryFilter: expect.objectContaining({
+            query: expect.objectContaining({
+              bool: expect.objectContaining({
+                must: expect.arrayContaining([
+                  expect.objectContaining({
+                    term: { isBot: 'false' },
+                  }),
+                ]),
+              }),
+            }),
+          }),
+        })
+      );
+    });
+  });
+
+  it('should fetch bots when bot dropdown is opened', async () => {
+    await act(async () => {
+      render(<AuditLogFilters {...defaultProps} />);
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('label.user'));
+      fireEvent.click(screen.getByTestId('bot-open'));
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText('Admin User').length).toBeGreaterThan(0);
+      expect(mockSearchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: '',
+          pageNumber: 1,
+          pageSize: 10,
+          searchIndex: 'user_search_index',
+          queryFilter: expect.objectContaining({
+            query: expect.objectContaining({
+              bool: expect.objectContaining({
+                must: expect.arrayContaining([
+                  expect.objectContaining({
+                    term: { isBot: 'true' },
+                  }),
+                ]),
+              }),
+            }),
+          }),
+        })
+      );
+    });
+  });
+
+  it('should call onFiltersChange with user filter and actorType USER', async () => {
+    await act(async () => {
+      render(<AuditLogFilters {...defaultProps} />);
     });
 
     await act(async () => {
-      fireEvent.click(screen.getAllByText('Admin User')[0]);
+      capturedOnChange['user'](
+        [{ key: 'test_user', label: 'Test User' }],
+        'user'
+      );
     });
 
     expect(mockOnFiltersChange).toHaveBeenCalledWith(
@@ -618,40 +443,78 @@ describe('AuditLogFilters', () => {
         expect.objectContaining({
           category: 'user',
           value: expect.objectContaining({
-            label: 'Admin User',
-            value: 'admin_user',
+            value: 'test_user',
           }),
         }),
       ]),
       expect.objectContaining({
-        userName: 'admin_user',
+        userName: 'test_user',
         actorType: 'USER',
       })
     );
   });
 
-  it('should display entity type icons for entity type options', async () => {
+  it('should call onFiltersChange with bot filter and actorType BOT', async () => {
     await act(async () => {
       render(<AuditLogFilters {...defaultProps} />);
     });
 
-    const filtersButton = screen.getByTestId('filters-dropdown');
+    await act(async () => {
+      capturedOnChange['bot'](
+        [{ key: 'ingestion-bot', label: 'Ingestion Bot' }],
+        'bot'
+      );
+    });
+
+    expect(mockOnFiltersChange).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: 'bot',
+          value: expect.objectContaining({
+            value: 'ingestion-bot',
+          }),
+        }),
+      ]),
+      expect.objectContaining({
+        userName: 'ingestion-bot',
+        actorType: 'BOT',
+      })
+    );
+  });
+
+  it('should ensure user and bot filters result in correct actor params', async () => {
+    await act(async () => {
+      render(<AuditLogFilters {...defaultProps} />);
+    });
 
     await act(async () => {
-      fireEvent.click(filtersButton);
+      capturedOnChange['user'](
+        [{ key: 'test_user', label: 'Test User' }],
+        'user'
+      );
     });
 
-    await waitFor(() => {
-      expect(screen.getByText('label.entity-type')).toBeInTheDocument();
+    const userCall =
+      mockOnFiltersChange.mock.calls[mockOnFiltersChange.mock.calls.length - 1];
+
+    expect(userCall[1]).toMatchObject({
+      userName: 'test_user',
+      actorType: 'USER',
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('label.entity-type'));
+      capturedOnChange['bot'](
+        [{ key: 'ingestion-bot', label: 'Ingestion Bot' }],
+        'bot'
+      );
     });
 
-    await waitFor(() => {
-      expect(screen.getByText('Table')).toBeInTheDocument();
-      expect(screen.getByTestId('entity-icon-table')).toBeInTheDocument();
+    const botCall =
+      mockOnFiltersChange.mock.calls[mockOnFiltersChange.mock.calls.length - 1];
+
+    expect(botCall[1]).toMatchObject({
+      userName: 'ingestion-bot',
+      actorType: 'BOT',
     });
   });
 });

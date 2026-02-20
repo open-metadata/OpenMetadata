@@ -239,6 +239,6 @@
       "type": "string"
     }
   },
-  "required": ["name", "description", "testPlatforms"],
+  "required": ["name", "testPlatforms"],
   "additionalProperties": false
 }

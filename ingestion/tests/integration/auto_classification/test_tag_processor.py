@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from dirty_equals import Contains, HasAttributes, IsInstance
 
@@ -32,9 +34,9 @@ from metadata.workflow.metadata import MetadataWorkflow
 
 
 @pytest.fixture(scope="module")
-def create_service_request(postgres_container: PostgresConnection, tmp_path_factory):
+def create_service_request(postgres_container: PostgresConnection):
     return CreateDatabaseServiceRequest(
-        name="docker_test_" + tmp_path_factory.mktemp("postgres").name,
+        name=f"docker_test_postgres_{uuid.uuid4().hex[:8]}",
         serviceType=DatabaseServiceType.Postgres,
         connection=DatabaseConnection(
             config=PostgresConnection(

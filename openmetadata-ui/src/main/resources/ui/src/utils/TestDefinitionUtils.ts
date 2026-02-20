@@ -28,3 +28,12 @@ export const isExternalTestDefinition = (
 
   return !testDefinition.testPlatforms.includes(TestPlatform.OpenMetadata);
 };
+
+export const mapUrlValueToOption = (
+  value: string,
+  options?: Array<{ key: string; label: string }>
+): { key: string; label: string } => {
+  const option = options?.find((opt) => opt.key === value);
+
+  return { key: value, label: option?.label || value };
+};

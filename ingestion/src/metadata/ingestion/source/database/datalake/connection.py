@@ -35,12 +35,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.datalake.clients.azure_blob import (
-    DatalakeAzureBlobClient,
-)
 from metadata.ingestion.source.database.datalake.clients.base import DatalakeBaseClient
-from metadata.ingestion.source.database.datalake.clients.gcs import DatalakeGcsClient
-from metadata.ingestion.source.database.datalake.clients.s3 import DatalakeS3Client
 from metadata.utils.constants import THREE_MIN
 
 
@@ -48,14 +43,27 @@ class DatalakeConnection(BaseConnection[DatalakeConnectionConfig, DatalakeBaseCl
     def _get_client(self) -> DatalakeBaseClient:
         """
         Return the appropriate Datalake client based on configSource.
+        Lazy imports ensure only required cloud provider dependencies are loaded.
         """
         connection = self.service_connection
 
         if isinstance(connection.configSource, S3Config):
+            from metadata.ingestion.source.database.datalake.clients.s3 import (
+                DatalakeS3Client,
+            )
+
             return DatalakeS3Client.from_config(connection.configSource)
         elif isinstance(connection.configSource, GCSConfig):
+            from metadata.ingestion.source.database.datalake.clients.gcs import (
+                DatalakeGcsClient,
+            )
+
             return DatalakeGcsClient.from_config(connection.configSource)
         elif isinstance(connection.configSource, AzureConfig):
+            from metadata.ingestion.source.database.datalake.clients.azure_blob import (
+                DatalakeAzureBlobClient,
+            )
+
             return DatalakeAzureBlobClient.from_config(connection.configSource)
         else:
             msg = f"Config not implemented for type {type(connection.configSource)}: {connection.configSource}"

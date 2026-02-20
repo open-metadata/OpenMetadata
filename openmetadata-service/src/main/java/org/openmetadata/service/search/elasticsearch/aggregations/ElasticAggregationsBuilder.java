@@ -4,6 +4,7 @@ import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.json.JsonpMapper;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.openmetadata.service.search.SearchAggregationNode;
 
@@ -35,7 +36,7 @@ public class ElasticAggregationsBuilder {
     ElasticAggregations elasticAggregation = getAggregation(type);
     elasticAggregation.createAggregation(node);
 
-    Map<String, Aggregation> subAggregations = new HashMap<>();
+    Map<String, Aggregation> subAggregations = new LinkedHashMap<>();
     for (SearchAggregationNode child : node.getChildren()) {
       buildAggregation(child, elasticAggregation, subAggregations);
     }
@@ -53,7 +54,7 @@ public class ElasticAggregationsBuilder {
 
       if (elasticAggregation.getAggregationName() != null) {
         String aggName = elasticAggregation.getAggregationName();
-        Map<String, Aggregation> wrappedSubAggs = new HashMap<>(subAggregations);
+        Map<String, Aggregation> wrappedSubAggs = new LinkedHashMap<>(subAggregations);
         wrappedSubAggs.put(aggName + "_inner", elasticAggregation.getAggregation());
 
         finalAggregation =
@@ -67,6 +68,7 @@ public class ElasticAggregationsBuilder {
   private ElasticAggregations getAggregation(String aggregationType) {
     return switch (aggregationType) {
       case "bucket_selector" -> new ElasticBucketSelectorAggregations();
+      case "bucket_sort" -> new ElasticBucketSortAggregations();
       case "date_histogram" -> new ElasticDateHistogramAggregations();
       case "terms" -> new ElasticTermsAggregations();
       case "avg" -> new ElasticAvgAggregations();
@@ -75,6 +77,7 @@ public class ElasticAggregationsBuilder {
       case "filter" -> new ElasticFilterAggregations(mapper);
       case "value_count" -> new ElasticValueCountAggregations();
       case "cardinality" -> new ElasticCardinalityAggregations();
+      case "stats_bucket" -> new ElasticStatsBucketAggregations();
       case "nested" -> new ElasticNestedAggregations();
       case "top_hits" -> new ElasticTopHitsAggregations();
       default -> throw new IllegalArgumentException("Invalid aggregation type: " + aggregationType);

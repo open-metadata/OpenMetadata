@@ -10,250 +10,170 @@
 #  limitations under the License.
 
 """
-OpenMetadata high-level API Chart test
+OpenMetadata high-level API Topic test
 """
-import uuid
-from unittest import TestCase
+import pytest
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
-from metadata.generated.schema.api.services.createMessagingService import (
-    CreateMessagingServiceRequest,
-)
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.topic import Topic
-from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
-    KafkaConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.messagingService import (
-    MessagingConnection,
-    MessagingService,
-    MessagingServiceType,
-)
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
-class OMetaTopicTest(TestCase):
+@pytest.fixture
+def topic_request(messaging_service):
+    """Create topic request using the messaging service from conftest."""
+    return CreateTopicRequest(
+        name="test",
+        service=messaging_service.fullyQualifiedName,
+        partitions=2,
+    )
+
+
+@pytest.fixture
+def expected_fqn(messaging_service):
+    """Expected fully qualified name for test topic."""
+    return f"{messaging_service.name.root}.test"
+
+
+class TestOMetaTopicAPI:
     """
-    Run this integration test with the local API available
-    Install the ingestion package before running the tests
+    Topic API integration tests.
+    Tests CRUD operations, versioning, and entity references.
+
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    - messaging_service: MessagingService (module scope)
+    - create_user: User factory (function scope)
+    - create_topic: Topic factory (function scope)
     """
 
-    service_entity_id = None
-
-    server_config = OpenMetadataConnection(
-        hostPort="http://localhost:8585/api",
-        authProvider="openmetadata",
-        securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-        ),
-    )
-    metadata = OpenMetadata(server_config)
-
-    assert metadata.health_check()
-
-    user = metadata.create_or_update(
-        data=CreateUserRequest(name="random-user", email="random@user.com"),
-    )
-    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
-
-    service = CreateMessagingServiceRequest(
-        name="test-service-topic",
-        serviceType=MessagingServiceType.Kafka,
-        connection=MessagingConnection(
-            config=KafkaConnection(bootstrapServers="localhost:9092")
-        ),
-    )
-    service_type = "messagingService"
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        Prepare ingredients
-        """
-        cls.service_entity = cls.metadata.create_or_update(data=cls.service)
-
-        cls.entity = Topic(
-            id=uuid.uuid4(),
-            name="test",
-            service=EntityReference(id=cls.service_entity.id, type="messagingService"),
-            fullyQualifiedName="test-service-topic.test",
-            partitions=2,
-        )
-
-        cls.create = CreateTopicRequest(
-            name="test",
-            service=cls.service_entity.fullyQualifiedName,
-            partitions=2,
-        )
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Clean up
-        """
-
-        service_id = str(
-            cls.metadata.get_by_name(
-                entity=MessagingService, fqn="test-service-topic"
-            ).id.root
-        )
-
-        cls.metadata.delete(
-            entity=MessagingService,
-            entity_id=service_id,
-            recursive=True,
-            hard_delete=True,
-        )
-
-    def test_create(self):
+    def test_create(
+        self, metadata, messaging_service, topic_request, expected_fqn, create_topic
+    ):
         """
         We can create a Topic and we receive it back as Entity
         """
+        res = create_topic(topic_request)
 
-        res = self.metadata.create_or_update(data=self.create)
+        assert res.name.root == "test"
+        assert res.service.id == messaging_service.id
+        assert res.owners is None
 
-        self.assertEqual(res.name, self.entity.name)
-        self.assertEqual(res.service.id, self.entity.service.id)
-        self.assertIsNone(res.owners)
+        # Verify persistence by fetching from backend
+        fetched = metadata.get_by_name(entity=Topic, fqn=expected_fqn)
+        assert fetched is not None
+        assert fetched.id == res.id
 
-    def test_update(self):
+    def test_update(
+        self,
+        metadata,
+        messaging_service,
+        topic_request,
+        create_user,
+        create_topic,
+    ):
         """
         Updating it properly changes its properties
         """
+        user = create_user()
+        owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
-        res_create = self.metadata.create_or_update(data=self.create)
+        # Create topic
+        res_create = create_topic(topic_request)
 
-        updated = self.create.model_dump(exclude_unset=True)
-        updated["owners"] = self.owners
+        # Update with owners
+        updated = topic_request.model_dump(exclude_unset=True)
+        updated["owners"] = owners
         updated_entity = CreateTopicRequest(**updated)
 
-        res = self.metadata.create_or_update(data=updated_entity)
+        res = metadata.create_or_update(data=updated_entity)
 
-        # Same ID, updated algorithm
-        self.assertEqual(res.service.fullyQualifiedName, updated_entity.service.root)
-        self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owners.root[0].id, self.user.id)
+        # Verify update
+        assert (
+            res.service.fullyQualifiedName == messaging_service.fullyQualifiedName.root
+        )
+        assert res_create.id == res.id
+        assert res.owners.root[0].id == user.id
 
-    def test_get_name(self):
+    def test_get_name(self, metadata, topic_request, expected_fqn, create_topic):
         """
         We can fetch a Topic by name and get it back as Entity
         """
+        created = create_topic(topic_request)
 
-        self.metadata.create_or_update(data=self.create)
+        res = metadata.get_by_name(entity=Topic, fqn=expected_fqn)
+        assert res.name.root == created.name.root
 
-        res = self.metadata.get_by_name(
-            entity=Topic, fqn=self.entity.fullyQualifiedName
-        )
-        self.assertEqual(res.name, self.entity.name)
-
-    def test_get_id(self):
+    def test_get_id(self, metadata, topic_request, expected_fqn, create_topic):
         """
         We can fetch a Topic by ID and get it back as Entity
         """
-
-        self.metadata.create_or_update(data=self.create)
+        create_topic(topic_request)
 
         # First pick up by name
-        res_name = self.metadata.get_by_name(
-            entity=Topic, fqn=self.entity.fullyQualifiedName
-        )
+        res_name = metadata.get_by_name(entity=Topic, fqn=expected_fqn)
         # Then fetch by ID
-        res = self.metadata.get_by_id(entity=Topic, entity_id=res_name.id)
+        res = metadata.get_by_id(entity=Topic, entity_id=res_name.id)
 
-        self.assertEqual(res_name.id, res.id)
+        assert res_name.id == res.id
 
-    def test_list(self):
+    def test_list(self, metadata, topic_request, create_topic):
         """
         We can list all our Topics
         """
+        created = create_topic(topic_request)
 
-        self.metadata.create_or_update(data=self.create)
+        res = metadata.list_entities(entity=Topic, limit=100)
 
-        res = self.metadata.list_entities(entity=Topic, limit=100)
+        # Fetch our test Topic. We have already inserted it, so we should find it
+        data = next(iter(ent for ent in res.entities if ent.name == created.name), None)
+        assert data is not None
 
-        # Fetch our test Database. We have already inserted it, so we should find it
-        data = next(
-            iter(ent for ent in res.entities if ent.name == self.entity.name), None
-        )
-        assert data
-
-    def test_delete(self):
+    def test_delete(self, metadata, topic_request, expected_fqn, create_topic):
         """
         We can delete a Topic by ID
         """
-
-        self.metadata.create_or_update(data=self.create)
-
-        # Find by name
-        res_name = self.metadata.get_by_name(
-            entity=Topic, fqn=self.entity.fullyQualifiedName
-        )
-        # Then fetch by ID
-        res_id = self.metadata.get_by_id(entity=Topic, entity_id=str(res_name.id.root))
+        created = create_topic(topic_request)
 
         # Delete
-        self.metadata.delete(entity=Topic, entity_id=str(res_id.id.root))
+        metadata.delete(entity=Topic, entity_id=str(created.id.root))
 
-        # Then we should not find it
-        res = self.metadata.list_entities(entity=Topic)
-        assert not next(
-            iter(
-                ent
-                for ent in res.entities
-                if ent.fullyQualifiedName == self.entity.fullyQualifiedName
-            ),
-            None,
-        )
+        # Verify deletion - get_by_name should return None
+        deleted = metadata.get_by_name(entity=Topic, fqn=expected_fqn)
+        assert deleted is None
 
-    def test_list_versions(self):
+    def test_list_versions(self, metadata, topic_request, create_topic):
         """
-        test list topic entity versions
+        Test listing topic entity versions
         """
-        self.metadata.create_or_update(data=self.create)
+        created = create_topic(topic_request)
 
-        # Find by name
-        res_name = self.metadata.get_by_name(
-            entity=Topic, fqn=self.entity.fullyQualifiedName
-        )
+        res = metadata.get_list_entity_versions(entity=Topic, entity_id=created.id.root)
+        assert res is not None
+        assert len(res.versions) >= 1
 
-        res = self.metadata.get_list_entity_versions(
-            entity=Topic, entity_id=res_name.id.root
-        )
-        assert res
-
-    def test_get_entity_version(self):
+    def test_get_entity_version(self, metadata, topic_request, create_topic):
         """
-        test get topic entity version
+        Test retrieving a specific topic entity version
         """
-        self.metadata.create_or_update(data=self.create)
+        created = create_topic(topic_request)
 
-        # Find by name
-        res_name = self.metadata.get_by_name(
-            entity=Topic, fqn=self.entity.fullyQualifiedName
-        )
-        res = self.metadata.get_entity_version(
-            entity=Topic, entity_id=res_name.id.root, version=0.1
+        res = metadata.get_entity_version(
+            entity=Topic, entity_id=created.id.root, version=0.1
         )
 
-        # check we get the correct version requested and the correct entity ID
+        # Check we get the correct version requested and the correct entity ID
         assert res.version.root == 0.1
-        assert res.id == res_name.id
+        assert res.id == created.id
 
-    def test_get_entity_ref(self):
+    def test_get_entity_ref(self, metadata, topic_request, create_topic):
         """
-        test get EntityReference
+        Test retrieving EntityReference for a topic
         """
-        res = self.metadata.create_or_update(data=self.create)
-        entity_ref = self.metadata.get_entity_reference(
-            entity=Topic, fqn=res.fullyQualifiedName
+        created = create_topic(topic_request)
+        entity_ref = metadata.get_entity_reference(
+            entity=Topic, fqn=created.fullyQualifiedName
         )
 
-        assert res.id == entity_ref.id
+        assert created.id == entity_ref.id

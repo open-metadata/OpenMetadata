@@ -103,7 +103,11 @@ public class SearchMetadataTool implements McpTool {
       if (limitObj instanceof Number number) {
         size = number.intValue();
       } else if (limitObj instanceof String string) {
-        size = Integer.parseInt(string);
+        try {
+          size = Integer.parseInt(string);
+        } catch (NumberFormatException e) {
+          size = 10;
+        }
       }
     }
 
@@ -113,7 +117,11 @@ public class SearchMetadataTool implements McpTool {
       if (limitObj instanceof Number number) {
         from = number.intValue();
       } else if (limitObj instanceof String string) {
-        from = Integer.parseInt(string);
+        try {
+          from = Integer.parseInt(string);
+        } catch (NumberFormatException e) {
+          from = 0;
+        }
       }
     }
 

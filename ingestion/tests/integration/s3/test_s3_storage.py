@@ -9,18 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """S3 integration tests"""
-import sys
-
-import pytest
 
 from metadata.generated.schema.entity.data.container import Container, FileFormat
 from metadata.generated.schema.entity.services.storageService import StorageService
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 9),
-    reason="testcontainers Network feature requires python3.9 or higher",
-)
 def test_s3_ingestion(metadata, ingest_s3_storage, service_name):
     """Test the ingestion is working as expected"""
 

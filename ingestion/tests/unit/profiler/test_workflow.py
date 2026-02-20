@@ -114,6 +114,10 @@ class User(Base):
 
 
 @patch.object(
+    ProfilerWorkflow,
+    "test_connection",
+)
+@patch.object(
     SQAProfilerInterface,
     "table",
     new_callable=lambda: User,
@@ -299,6 +303,7 @@ def test_filter_entities():
     assert len(fetcher._filter_entities(all_tables)) == 1
 
 
+@patch.object(ProfilerWorkflow, "test_connection")
 @patch.object(
     base,
     "get_orm_database",
@@ -319,10 +324,15 @@ def test_filter_entities():
     "_validate_service_name",
     return_value=True,
 )
-def test_profile_def(mocked_method, *_):  # pylint: disable=unused-argument
+@patch("metadata.profiler.source.database.base.profiler_source.get_context_entities")
+def test_profile_def(
+    mock_context_entities, mocked_method, *_
+):  # pylint: disable=unused-argument
     """
     Validate the definitions of the profile in the JSON
     """
+    mock_context_entities.return_value = (None, None, None)
+
     profile_config = deepcopy(config)
     config_metrics = ["row_count", "min", "COUNT", "null_count"]
     config_metrics_label = ["rowCount", "min", "valuesCount", "nullCount"]
@@ -359,6 +369,7 @@ def test_profile_def(mocked_method, *_):  # pylint: disable=unused-argument
     assert config_metrics_label == profiler_obj_metrics
 
 
+@patch.object(ProfilerWorkflow, "test_connection")
 @patch.object(
     base,
     "get_orm_database",
@@ -379,11 +390,15 @@ def test_profile_def(mocked_method, *_):  # pylint: disable=unused-argument
     "_validate_service_name",
     return_value=True,
 )
-def test_default_profile_def(mocked_method, *_):  # pylint: disable=unused-argument
+@patch("metadata.profiler.source.database.base.profiler_source.get_context_entities")
+def test_default_profile_def(
+    mock_context_entities, mocked_method, *_
+):  # pylint: disable=unused-argument
     """
     If no information is specified for the profiler, let's
     use the SimpleTableProfiler and SimpleProfiler
     """
+    mock_context_entities.return_value = (None, None, None)
 
     profile_workflow = ProfilerWorkflow.create(config)
     mocked_method.assert_called()
@@ -410,7 +425,13 @@ def test_default_profile_def(mocked_method, *_):  # pylint: disable=unused-argum
     )
 
 
-def test_service_name_validation_raised():
+@patch.object(ProfilerWorkflow, "test_connection")
+@patch.object(
+    OpenMetadataSource,
+    "_validate_service_name",
+    return_value=None,
+)
+def test_service_name_validation_raised(*_):
     """Test the service name validation for the profiler
     workflow is raised correctly
     """

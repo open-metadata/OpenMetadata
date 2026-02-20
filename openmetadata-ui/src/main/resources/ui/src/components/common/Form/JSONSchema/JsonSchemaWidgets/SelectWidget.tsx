@@ -62,6 +62,7 @@ const SelectWidget: FC<WidgetProps> = (props) => {
 
         return (
           <Select.Option
+            data-key={option.value}
             data-testid={`select-option-${option.label}`}
             key={option.value}
             labelValue={String(displayLabel)}

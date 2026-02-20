@@ -48,6 +48,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -66,6 +67,7 @@ class SamlAuthServletHandlerTest {
 
   @Mock private AuthenticationConfiguration authConfig;
   @Mock private AuthorizerConfiguration authorizerConfig;
+  @Mock private SamlSSOClientConfig samlConfig;
   @Mock private HttpServletRequest request;
   @Mock private HttpServletResponse response;
   @Mock private HttpSession session;
@@ -85,6 +87,8 @@ class SamlAuthServletHandlerTest {
   void setUp() throws Exception {
     // Setup authentication config
     when(authConfig.getEnableSelfSignup()).thenReturn(true);
+    when(authConfig.getSamlConfiguration()).thenReturn(samlConfig);
+    when(samlConfig.getSamlDisplayNameAttributes()).thenReturn(null);
 
     // Setup authorizer config with admin principals
     adminPrincipals.add("admin");
@@ -368,5 +372,67 @@ class SamlAuthServletHandlerTest {
     assertNotNull(handler1);
     assertNotNull(handler2);
     assertEquals(handler1, handler2); // Should be the same instance
+  }
+
+  @Test
+  void testMapToStandardClaimNameWithAzureAdUrnExtraction() throws Exception {
+    java.lang.reflect.Method method =
+        SamlAuthServletHandler.class.getDeclaredMethod("mapToStandardClaimName", String.class);
+    method.setAccessible(true);
+
+    String givenNameResult =
+        (String)
+            method.invoke(
+                handler, "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname");
+    assertEquals("given_name", givenNameResult);
+
+    String surnameResult =
+        (String)
+            method.invoke(handler, "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname");
+    assertEquals("family_name", surnameResult);
+
+    String displayNameResult =
+        (String) method.invoke(handler, "http://schemas.microsoft.com/identity/claims/displayname");
+    assertEquals("name", displayNameResult);
+  }
+
+  @Test
+  void testMapToStandardClaimNameWithShortNames() throws Exception {
+    java.lang.reflect.Method method =
+        SamlAuthServletHandler.class.getDeclaredMethod("mapToStandardClaimName", String.class);
+    method.setAccessible(true);
+
+    assertEquals("given_name", method.invoke(handler, "givenname"));
+    assertEquals("given_name", method.invoke(handler, "firstName"));
+    assertEquals("family_name", method.invoke(handler, "familyname"));
+    assertEquals("family_name", method.invoke(handler, "lastName"));
+    assertEquals("family_name", method.invoke(handler, "surname"));
+    assertEquals("name", method.invoke(handler, "displayname"));
+  }
+
+  @Test
+  void testMapToStandardClaimNameCaseInsensitive() throws Exception {
+    java.lang.reflect.Method method =
+        SamlAuthServletHandler.class.getDeclaredMethod("mapToStandardClaimName", String.class);
+    method.setAccessible(true);
+
+    assertEquals("given_name", method.invoke(handler, "GivenName"));
+    assertEquals("given_name", method.invoke(handler, "GIVENNAME"));
+    assertEquals("family_name", method.invoke(handler, "FamilyName"));
+    assertEquals("family_name", method.invoke(handler, "SURNAME"));
+  }
+
+  @Test
+  void testMapToStandardClaimNameWithUnknownAttribute() throws Exception {
+    java.lang.reflect.Method method =
+        SamlAuthServletHandler.class.getDeclaredMethod("mapToStandardClaimName", String.class);
+    method.setAccessible(true);
+
+    String customResult =
+        (String) method.invoke(handler, "http://custom.com/claims/customAttribute");
+    assertEquals("customattribute", customResult);
+
+    String unknownResult = (String) method.invoke(handler, "unknownClaim");
+    assertEquals("unknownclaim", unknownResult);
   }
 }

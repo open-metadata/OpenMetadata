@@ -558,6 +558,51 @@ class BigqueryUnitTest(TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
 
+    @patch("metadata.utils.credentials.auth.default")
+    def test_usage_location_passed_to_client_and_engine(self, mock_auth_default):
+        """
+        Test usageLocation is correctly passed to BigQuery client and added to engine URL
+        """
+        from google.auth.credentials import Credentials
+
+        from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+            BigQueryConnection,
+        )
+        from metadata.ingestion.source.database.bigquery.helper import (
+            get_inspector_details,
+        )
+
+        mock_credentials = Mock(spec=Credentials)
+        mock_auth_default.return_value = (mock_credentials, "test-project")
+
+        config_with_location = deepcopy(
+            mock_bq_config["source"]["serviceConnection"]["config"]
+        )
+        config_with_location["usageLocation"] = "eu"
+
+        service_connection = BigQueryConnection.model_validate(config_with_location)
+
+        result = get_inspector_details(
+            database_name="test-project", service_connection=service_connection
+        )
+        assert "location=eu" in str(result.engine.url)
+        assert result.client._location == "eu"
+
+        config_without_location = deepcopy(
+            mock_bq_config["source"]["serviceConnection"]["config"]
+        )
+        config_without_location["usageLocation"] = None
+
+        service_connection_null = BigQueryConnection.model_validate(
+            config_without_location
+        )
+
+        result_null = get_inspector_details(
+            database_name="test-project", service_connection=service_connection_null
+        )
+        assert "location=eu" not in str(result_null.engine.url)
+        assert result_null.client._location is None
+
 
 class BigqueryLineageSourceTest(TestCase):
     """

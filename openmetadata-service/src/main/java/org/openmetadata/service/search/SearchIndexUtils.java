@@ -168,18 +168,15 @@ public final class SearchIndexUtils {
             if ((keys.size() > 1) && (agg.containsKey(keys.get(1)))) {
               // If the current node in the aggregation tree does not have further buckets
               // but contains the next level of aggregation, it means we are in the nested
-              // aggregation
+              // aggregation. Nested aggregations are structural and don't produce bucket
+              // keys, so we pass dimensions through unchanged.
               traverseAggregationResults(
-                  agg,
-                  reportData,
-                  nodeData,
-                  keys.subList(1, keys.size()),
-                  metric,
-                  dimensions.subList(1, dimensions.size()));
+                  agg, reportData, nodeData, keys.subList(1, keys.size()), metric, dimensions);
+            } else {
+              // If the current node in the aggregation tree does not have further bucket
+              // it means we are in the leaf of the metric aggregation. We'll add the metric
+              handleLeafMetricsAggregation(agg, reportData, nodeData, metric);
             }
-            // If the current node in the aggregation tree does not have further bucket
-            // it means we are in the leaf of the metric aggregation. We'll add the metric
-            handleLeafMetricsAggregation(agg, reportData, nodeData, metric);
           } else {
             buckets
                 .get()

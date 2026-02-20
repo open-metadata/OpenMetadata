@@ -167,24 +167,20 @@ class QlikSenseUnitTest(TestCase):
     QlikSense Unit Testtest_dbt
     """
 
-    def __init__(self, methodName) -> None:
-        with patch.object(
-            QlikSenseClient, "get_dashboard_for_test_connection", return_value=None
-        ):
-            super().__init__(methodName)
-            # test_connection.return_value = False
-            self.config = OpenMetadataWorkflowConfig.model_validate(
-                mock_qliksense_config
-            )
-            self.qliksense = QliksenseSource.create(
-                mock_qliksense_config["source"],
-                OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
-            )
-            self.qliksense.context.get().__dict__[
-                "dashboard_service"
-            ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
-            print(self.qliksense.topology)
-            print(self.qliksense.context.get().__dict__)
+    @patch(
+        "metadata.ingestion.source.dashboard.qliksense.metadata.QliksenseSource.test_connection"
+    )
+    def __init__(self, methodName, test_connection) -> None:
+        super().__init__(methodName)
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_qliksense_config)
+        self.qliksense = QliksenseSource.create(
+            mock_qliksense_config["source"],
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
+        )
+        self.qliksense.context.get().__dict__[
+            "dashboard_service"
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     @pytest.mark.order(1)
     def test_dashboard(self):
