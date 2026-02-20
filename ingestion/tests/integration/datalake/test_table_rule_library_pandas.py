@@ -11,7 +11,6 @@
 """
 Integration tests for Table Rule Library Pandas Expression validator on Datalake (S3/MinIO)
 """
-import sys
 from copy import deepcopy
 from typing import List
 
@@ -31,9 +30,7 @@ from metadata.generated.schema.tests.testDefinition import (
 from metadata.generated.schema.type.basic import Markdown, SqlQuery, TestCaseEntityName
 from metadata.workflow.data_quality import TestSuiteWorkflow
 
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
-
+from ..integration_base import generate_name
 
 BUCKET_NAME = "my-bucket"
 
@@ -45,9 +42,10 @@ def table_rule_library_pandas_test_definition(metadata) -> TestDefinition:
     For Pandas sources, the 'sqlExpression' field contains a pandas query()
     expression. This is a table-level validator so it doesn't use column_name.
     """
+    test_def_name = TestCaseEntityName(generate_name().root)
     test_def = metadata.create_or_update(
         CreateTestDefinitionRequest(
-            name=TestCaseEntityName("tableRuleLibrarySqlExpressionValidator"),
+            name=test_def_name,
             description=Markdown(
                 root="Table-level rule library test definition for pandas query expression validation"
             ),
@@ -136,21 +134,27 @@ class TestTableRuleLibraryPandas:
     ):
         """Run the table-level rule library test suite with pandas expression tests."""
         workflow_config = deepcopy(TABLE_RULE_LIBRARY_DATA_QUALITY_CONFIG)
+        service_name = ingestion_config["source"]["serviceName"]
+        workflow_config["source"]["serviceName"] = service_name
+        workflow_config["source"]["sourceConfig"]["config"][
+            "entityFullyQualifiedName"
+        ] = f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
         workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
             {
-                "serviceName": ingestion_config["source"]["serviceName"],
+                "serviceName": service_name,
                 "serviceConnection": ingestion_config["source"]["serviceConnection"],
             }
         ]
+        test_def_name = table_rule_library_pandas_test_definition.name.root
         workflow_config["processor"]["config"]["testCases"] = [
             {
                 "name": "table_rule_library_age_greater_than_35",
-                "testDefinitionName": "tableRuleLibrarySqlExpressionValidator",
+                "testDefinitionName": test_def_name,
                 "parameterValues": [{"name": "minAge", "value": "35"}],
             },
             {
                 "name": "table_rule_library_age_greater_than_100",
-                "testDefinitionName": "tableRuleLibrarySqlExpressionValidator",
+                "testDefinitionName": test_def_name,
                 "parameterValues": [{"name": "minAge", "value": "100"}],
             },
         ]
@@ -171,6 +175,7 @@ class TestTableRuleLibraryPandas:
         self,
         run_table_rule_library_test_suite,
         metadata,
+        datalake_service_name,
         test_case_name,
         expected_status,
     ):
@@ -182,8 +187,12 @@ class TestTableRuleLibraryPandas:
         3. The df.query() execution returns correct row counts
         4. Test case status is correctly determined based on row count (0 = success)
         """
+        table_fqn = f'{datalake_service_name}.default.{BUCKET_NAME}."users/users.csv"'
         test_cases: List[TestCase] = metadata.list_entities(
-            TestCase, fields=["*"], skip_on_failure=True
+            TestCase,
+            fields=["*"],
+            skip_on_failure=True,
+            params={"entityLink": f"<#E::table::{table_fqn}>"},
         ).entities
         test_case: TestCase = next(
             (t for t in test_cases if t.name.root == test_case_name), None

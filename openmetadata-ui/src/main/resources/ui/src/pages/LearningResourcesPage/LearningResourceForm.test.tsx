@@ -32,10 +32,6 @@ jest.mock('../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../components/common/RichTextEditor/RichTextEditor', () =>
-  jest.fn().mockImplementation(() => <div data-testid="rich-text-editor" />)
-);
-
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -147,11 +143,10 @@ describe('LearningResourceForm', () => {
     });
 
     expect(screen.getByText('label.name')).toBeInTheDocument();
-    expect(screen.getByText('label.display-name')).toBeInTheDocument();
     expect(screen.getByText('label.description')).toBeInTheDocument();
     expect(screen.getByText('label.type')).toBeInTheDocument();
     expect(screen.getByText('label.category-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.page-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.context')).toBeInTheDocument();
     expect(screen.getByText('label.source-url')).toBeInTheDocument();
     expect(screen.getByText('label.source-provider')).toBeInTheDocument();
     expect(screen.getByText('label.duration')).toBeInTheDocument();
@@ -198,15 +193,5 @@ describe('LearningResourceForm', () => {
     });
 
     expect(mockProps.onClose).toHaveBeenCalled();
-  });
-
-  it('should show RichTextEditor for Article type', async () => {
-    await act(async () => {
-      render(<LearningResourceForm {...mockProps} />);
-    });
-
-    // By default, resourceType is 'Article' so RichTextEditor should be shown
-    expect(screen.getByText('label.embedded-content')).toBeInTheDocument();
-    expect(screen.getByTestId('rich-text-editor')).toBeInTheDocument();
   });
 });

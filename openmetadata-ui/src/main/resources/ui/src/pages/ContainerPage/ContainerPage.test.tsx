@@ -212,6 +212,14 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 
 jest.mock('../../utils/StringsUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
+  getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
+  stringToHTML: jest.fn().mockImplementation((str) => str),
+  getErrorText: jest
+    .fn()
+    .mockImplementation(
+      (error: Error, defaultMessage: string) =>
+        error?.message || defaultMessage || 'Error'
+    ),
 }));
 
 jest.mock('../../utils/TableUtils', () => {

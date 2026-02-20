@@ -20,8 +20,10 @@ interface AssetSelectionDrawerProps {
   type?: AssetsOfEntity;
   queryFilter?: QueryFilterInterface;
   emptyPlaceHolderText?: string;
+  infoBannerText?: string;
   onSave?: () => void;
   onCancel: () => void;
+  title?: string;
 }
 
 export const AssetSelectionDrawer = ({
@@ -30,8 +32,10 @@ export const AssetSelectionDrawer = ({
   type = AssetsOfEntity.GLOSSARY,
   queryFilter,
   emptyPlaceHolderText,
+  infoBannerText,
   onSave,
   onCancel,
+  title,
 }: AssetSelectionDrawerProps) => {
   return useAssetSelectionDrawer({
     entityFqn,
@@ -39,7 +43,9 @@ export const AssetSelectionDrawer = ({
     type,
     queryFilter,
     emptyPlaceHolderText,
+    infoBannerText,
     onSave,
     onCancel,
+    title,
   });
 };

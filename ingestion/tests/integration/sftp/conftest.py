@@ -12,7 +12,6 @@
 SFTP integration test fixtures
 """
 import os
-import sys
 import tempfile
 import uuid
 from dataclasses import dataclass
@@ -20,16 +19,8 @@ from typing import Optional
 
 import pytest
 import yaml
-
-# HACK: This test is only possible for Python3.9 or higher.
-if sys.version_info >= (3, 9):
-    from testcontainers.core.container import DockerContainer
-    from testcontainers.core.waiting_utils import wait_for_logs
-else:
-    from unittest.mock import MagicMock
-
-    DockerContainer = MagicMock()
-    wait_for_logs = MagicMock()
+from testcontainers.core.container import DockerContainer
+from testcontainers.core.waiting_utils import wait_for_logs
 
 from _openmetadata_testutils.ometa import OM_JWT, int_admin_ometa
 from metadata.generated.schema.entity.services.driveService import DriveService
@@ -677,7 +668,7 @@ def service_name():
     return f"sftp_test_{uuid.uuid4().hex[:8]}"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def sftp_container():
     """Create and start SFTP container"""
     config = SftpContainerConfig(

@@ -229,10 +229,8 @@ export const TestSuites = () => {
           subTab === DataQualitySubTabs.TABLE_SUITES
             ? TestSuiteType.basic
             : TestSuiteType.logical,
-        sortField: 'testCaseResultSummary.timestamp',
+        sortField: 'lastResultTimestamp',
         sortType: SORT_ORDER.DESC,
-        sortNestedPath: 'testCaseResultSummary',
-        sortNestedMode: ['max'],
       });
       setTestSuites(result.data);
       handlePagingChange(result.paging);

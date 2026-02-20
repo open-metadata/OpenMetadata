@@ -10,42 +10,17 @@
 #  limitations under the License.
 
 name: Maven Postgres Tests CI
+# Disabled: Integration tests (openmetadata-integration-tests) now cover the same ground
+# with full Testcontainers-based PostgreSQL testing.
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "openmetadata-service/**"
-      - "openmetadata-ui/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "openmetadata-dist/**"
-      - "openmetadata-clients/**"
-      - "openmetadata-sdk/**"
-      - "common/**"
-      - "pom.xml"
-      - "yarn.lock"
-      - "Makefile"
-      - "bootstrap/**"
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
-    paths:
-      - "openmetadata-service/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "openmetadata-dist/**"
-      - "openmetadata-clients/**"
-      - "openmetadata-sdk/**"
-      - "common/**"
-      - "pom.xml"
-      - "yarn.lock"
-      - "Makefile"
-      - "bootstrap/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
   checks: write
 
-concurrency: 
+concurrency:
   group: maven-build-postgres-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 jobs:
@@ -94,7 +69,7 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
- 
+
       - name: Set up JDK 21
         if: steps.cache-output.outputs.exit-code == 0
         uses: actions/setup-java@v4

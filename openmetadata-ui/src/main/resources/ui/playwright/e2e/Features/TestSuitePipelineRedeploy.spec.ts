@@ -15,6 +15,7 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -22,7 +23,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const table1 = new TableClass();
 const table2 = new TableClass();
 
-test.describe('Bulk Re-Deploy pipelines ', () => {
+test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.slow();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -33,15 +34,6 @@ test.describe('Bulk Re-Deploy pipelines ', () => {
 
     await table1.createTestSuiteAndPipelines(apiContext);
     await table2.createTestSuiteAndPipelines(apiContext);
-
-    await afterAction();
-  });
-
-  test.afterAll('Clean up', async ({ browser }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
-
-    await table1.delete(apiContext);
-    await table2.delete(apiContext);
 
     await afterAction();
   });
@@ -68,17 +60,18 @@ test.describe('Bulk Re-Deploy pipelines ', () => {
 
     await expect(page.getByRole('button', { name: 'Re Deploy' })).toBeEnabled();
 
-    const redeployResponse = page.waitForRequest(
-      (request) =>
-        request.url().includes('/api/v1/services/ingestionPipelines/deploy') &&
-        request.method() === 'POST'
+    const redeployResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/services/ingestionPipelines/deploy') &&
+        response.request().method() === 'POST' &&
+        response.status() === 200
     );
     await page.getByRole('button', { name: 'Re Deploy' }).click();
     await redeployResponse;
 
-    await expect(
-      page.getByText('Pipelines Re Deploy Successfully')
-    ).toBeVisible();
+    await expect(page.getByTestId('alert-bar')).toHaveText(
+      /Pipelines Re Deploy Successfully/i
+    );
   });
 
   // TODO: Add test to verify the re-deployed pipelines for Database, Dashboard and other entities

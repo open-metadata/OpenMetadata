@@ -52,7 +52,8 @@ from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS,
     UNITY_CATALOG_GET_ALL_TABLE_TAGS,
     UNITY_CATALOG_GET_CATALOGS_TAGS,
-    UNITY_CATALOG_SQL_STATEMENT_TEST,
+    UNITY_CATALOG_TEST_COLUMN_LINEAGE,
+    UNITY_CATALOG_TEST_TABLE_LINEAGE,
 )
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.db_utils import get_host_from_host_port
@@ -187,17 +188,18 @@ def test_connection(
                 ).replace(";", " limit 1;")
             )
 
+    def test_lineage_tables(engine: Engine):
+        with engine.connect() as conn:
+            conn.execute(UNITY_CATALOG_TEST_TABLE_LINEAGE).fetchone()
+            conn.execute(UNITY_CATALOG_TEST_COLUMN_LINEAGE).fetchone()
+
     test_fn = {
         "CheckAccess": connection.catalogs.list,
         "GetDatabases": partial(get_catalogs, connection, table_obj),
         "GetSchemas": partial(get_schemas, connection, table_obj),
         "GetTables": partial(get_tables, connection, table_obj),
         "GetViews": partial(get_tables, connection, table_obj),
-        "GetQueries": partial(
-            test_database_query,
-            engine=engine,
-            statement=UNITY_CATALOG_SQL_STATEMENT_TEST,
-        ),
+        "GetQueries": partial(test_lineage_tables, engine),
         "GetTags": partial(get_tags, service_connection, table_obj),
     }
 

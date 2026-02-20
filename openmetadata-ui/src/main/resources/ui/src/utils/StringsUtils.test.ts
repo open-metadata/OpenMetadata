@@ -34,6 +34,7 @@ import {
   getEncodedFqn,
   jsonToCSV,
   ordinalize,
+  removeAttachmentsWithoutUrl,
   replaceCallback,
 } from './StringsUtils';
 
@@ -188,6 +189,68 @@ describe('StringsUtils', () => {
 
     it('should return "101st" for 101', () => {
       expect(ordinalize(101)).toBe('101st');
+    });
+  });
+
+  describe('removeAttachmentsWithoutUrl', () => {
+    it('should remove attachment divs without data-url attribute', () => {
+      const htmlString =
+        '<p>Hello</p><div data-type="file-attachment">No URL</div><p>World</p>';
+      const result = removeAttachmentsWithoutUrl(htmlString);
+
+      expect(result).toBe('<p>Hello</p><p>World</p>');
+    });
+
+    it('should keep attachment divs with data-url attribute', () => {
+      const htmlString =
+        '<p>Hello</p><div data-type="file-attachment" data-url="https://example.com/file.pdf">With URL</div><p>World</p>';
+      const result = removeAttachmentsWithoutUrl(htmlString);
+
+      expect(result).toBe(
+        '<p>Hello</p><div data-type="file-attachment" data-url="https://example.com/file.pdf">With URL</div><p>World</p>'
+      );
+    });
+
+    it('should remove only attachments without url when mixed', () => {
+      const htmlString =
+        '<div data-type="file-attachment" data-url="https://example.com/file1.pdf">Keep</div>' +
+        '<div data-type="file-attachment">Remove</div>' +
+        '<div data-type="file-attachment" data-url="https://example.com/file2.pdf">Keep</div>';
+      const result = removeAttachmentsWithoutUrl(htmlString);
+
+      expect(result).toBe(
+        '<div data-type="file-attachment" data-url="https://example.com/file1.pdf">Keep</div>' +
+          '<div data-type="file-attachment" data-url="https://example.com/file2.pdf">Keep</div>'
+      );
+    });
+
+    it('should return the same html when no attachments are present', () => {
+      const htmlString = '<p>Hello World</p><span>No attachments here</span>';
+      const result = removeAttachmentsWithoutUrl(htmlString);
+
+      expect(result).toBe('<p>Hello World</p><span>No attachments here</span>');
+    });
+
+    it('should handle empty string', () => {
+      const result = removeAttachmentsWithoutUrl('');
+
+      expect(result).toBe('');
+    });
+
+    it('should remove attachment with empty data-url attribute', () => {
+      const htmlString =
+        '<div data-type="file-attachment" data-url="">Empty URL</div>';
+      const result = removeAttachmentsWithoutUrl(htmlString);
+
+      expect(result).toBe('');
+    });
+
+    it('should not affect other divs without file-attachment type', () => {
+      const htmlString =
+        '<div class="regular">Keep this</div><div data-type="file-attachment">Remove</div>';
+      const result = removeAttachmentsWithoutUrl(htmlString);
+
+      expect(result).toBe('<div class="regular">Keep this</div>');
     });
   });
 });

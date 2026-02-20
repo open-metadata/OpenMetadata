@@ -294,6 +294,37 @@ export const clearFieldError = (
 };
 
 /**
+ * Provider-specific JWT principal claims defaults
+ * These are known-good claims that work with each provider
+ * Order matters - first matching claim is used for user identification
+ */
+const PROVIDER_JWT_PRINCIPAL_CLAIMS: Record<string, string[]> = {
+  [AuthProvider.Google]: ['email', 'preferred_username', 'sub'],
+  [AuthProvider.Azure]: ['preferred_username', 'email', 'upn', 'sub'],
+  [AuthProvider.Okta]: ['email', 'preferred_username', 'sub'],
+  [AuthProvider.Auth0]: ['email', 'name', 'sub'],
+  [AuthProvider.AwsCognito]: ['email', 'cognito:username', 'sub'],
+  [AuthProvider.CustomOidc]: ['email', 'preferred_username', 'sub'],
+  [AuthProvider.LDAP]: ['email', 'preferred_username', 'sub'],
+  [AuthProvider.Saml]: ['email', 'preferred_username', 'sub'],
+};
+
+/**
+ * Gets provider-specific JWT principal claims
+ * @param provider - The authentication provider
+ * @returns Array of claim names in priority order
+ */
+const getProviderJwtClaims = (provider: AuthProvider): string[] => {
+  return (
+    PROVIDER_JWT_PRINCIPAL_CLAIMS[provider] || [
+      'email',
+      'preferred_username',
+      'sub',
+    ]
+  );
+};
+
+/**
  * Gets default configuration values based on the selected provider
  * @param provider - The authentication provider
  * @param clientType - The client type (Public or Confidential)
@@ -324,7 +355,7 @@ export const getDefaultsForProvider = (
     callbackUrl: '',
     publicKeyUrls: [],
     tokenValidationAlgorithm: 'RS256',
-    jwtPrincipalClaims: [],
+    jwtPrincipalClaims: getProviderJwtClaims(provider),
     jwtPrincipalClaimsMapping: [],
     // Always include authority and publicKeyUrls for Google (required by backend)
     ...(isGoogle
@@ -340,8 +371,6 @@ export const getDefaultsForProvider = (
           publicKeyUrls: [],
           clientId: '',
           tokenValidationAlgorithm: 'RS256',
-          jwtPrincipalClaims: [],
-          jwtPrincipalClaimsMapping: [],
           samlConfiguration: {
             debugMode: false,
             idp: {
@@ -732,6 +761,7 @@ export const populateSamlIdpAuthority = (authConfig: SamlAuthConfig): void => {
 
 /**
  * Populates SAML SP callback URLs from root callbackUrl
+ * Only populates if the fields are empty (doesn't overwrite existing values from database)
  * @param authConfig - SAML authentication configuration
  */
 export const populateSamlSpCallback = (authConfig: SamlAuthConfig): void => {
@@ -739,8 +769,16 @@ export const populateSamlSpCallback = (authConfig: SamlAuthConfig): void => {
     return;
   }
 
-  authConfig.samlConfiguration.sp.callback = authConfig.callbackUrl;
-  authConfig.samlConfiguration.sp.acs = authConfig.callbackUrl;
+  // Only set callback if it's empty (don't overwrite existing database values)
+  if (!authConfig.samlConfiguration.sp.callback) {
+    authConfig.samlConfiguration.sp.callback = authConfig.callbackUrl;
+  }
+
+  // Only set acs if it's empty (don't overwrite existing database values)
+  // This preserves old URLs like /api/v1/saml/acs for existing users
+  if (!authConfig.samlConfiguration.sp.acs) {
+    authConfig.samlConfiguration.sp.acs = authConfig.callbackUrl;
+  }
 };
 
 /**

@@ -9,7 +9,7 @@ openmetadata:
     # Database configuration (using local PostgreSQL via host machine)
     database:
       host: host.docker.internal
-      port: 5433
+      port: 5432
       driverClass: org.postgresql.Driver
       dbScheme: postgresql
       auth:

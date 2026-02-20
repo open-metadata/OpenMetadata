@@ -52,6 +52,7 @@ const SchemaEditor = ({
   onFocus,
   refreshEditor,
 }: SchemaEditorProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<CodeMirror | null>(null);
   const { t } = useTranslation();
   const defaultOptions = {
@@ -72,8 +73,8 @@ const SchemaEditor = ({
   const [internalValue, setInternalValue] = useState<string>(
     getSchemaEditorValue(value)
   );
-  // Store the CodeMirror editor instance
   const editorInstance = useRef<Editor | null>(null);
+  const wasHiddenRef = useRef(false);
   const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
 
   const handleEditorInputBeforeChange = (
@@ -93,6 +94,17 @@ const SchemaEditor = ({
     }
   };
 
+  const refreshAndResetScroll = useCallback(() => {
+    if (!editorInstance.current) {
+      return;
+    }
+    editorInstance.current.scrollTo(0, 0);
+    editorInstance.current.refresh();
+    requestAnimationFrame(() => {
+      editorInstance.current?.scrollTo(0, 0);
+    });
+  }, []);
+
   const editorWillUnmount = useCallback(() => {
     if (editorInstance.current) {
       const editorWrapper = editorInstance.current.getWrapperElement();
@@ -109,22 +121,52 @@ const SchemaEditor = ({
     setInternalValue(getSchemaEditorValue(value));
   }, [value]);
 
+  // Auto-detect display:none → visible transitions (e.g. Ant Design tab switches).
+  // When a parent sets display:none, boundingClientRect collapses to 0.
+  // When it becomes visible again, we refresh CodeMirror and reset scroll.
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        const isHidden = entry.boundingClientRect.height === 0;
+
+        if (isHidden) {
+          wasHiddenRef.current = true;
+        } else if (wasHiddenRef.current) {
+          wasHiddenRef.current = false;
+          refreshAndResetScroll();
+        }
+      },
+      { threshold: 0 }
+    );
+
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, [refreshAndResetScroll]);
+
+  // Explicit refresh via prop (kept for backwards compatibility).
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
     if (refreshEditor) {
-      // CodeMirror can't measure its container if hidden (e.g., in an inactive tab with display: none).
-      // When the tab becomes visible, the browser may not have finished layout/reflow when this runs.
-      // Delaying refresh by 50ms ensures the editor is visible and DOM is ready for CodeMirror to re-render.
-      // This is a common workaround for editors inside tabbed interfaces.
-      setTimeout(() => {
-        editorInstance.current?.refresh();
+      timer = setTimeout(() => {
+        refreshAndResetScroll();
       }, 50);
     }
-  }, [refreshEditor]);
+
+    return () => clearTimeout(timer);
+  }, [refreshEditor, refreshAndResetScroll]);
 
   return (
     <div
       className={classNames('schema-editor-container relative', className)}
-      data-testid="code-mirror-container">
+      data-testid="code-mirror-container"
+      ref={containerRef}>
       {showCopyButton && (
         <div className="query-editor-button">
           <Tooltip
@@ -135,7 +177,7 @@ const SchemaEditor = ({
               className="query-editor-copy-button"
               data-testid="query-copy-button"
               icon={<Icon component={CopyIcon} />}
-              onClick={onCopyToClipBoard}
+              onClick={() => onCopyToClipBoard(internalValue)}
             />
           </Tooltip>
         </div>

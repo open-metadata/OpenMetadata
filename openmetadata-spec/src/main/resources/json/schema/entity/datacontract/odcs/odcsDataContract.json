@@ -267,6 +267,13 @@
         "items": {
           "description": "Array element schema.",
           "$ref": "#/definitions/odcsSchemaElement"
+        },
+        "quality": {
+          "description": "Quality rules for this schema element.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odcsQualityRule"
+          }
         }
       },
       "required": ["name"],

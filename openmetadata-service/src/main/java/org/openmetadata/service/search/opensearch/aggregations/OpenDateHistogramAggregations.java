@@ -16,23 +16,23 @@ public class OpenDateHistogramAggregations implements OpenAggregations {
   private String aggregationName;
   private Aggregation aggregation;
   private Map<String, Aggregation> subAggregations = new HashMap<>();
+  private String field;
+  private CalendarInterval calendarInterval;
 
   @Override
   public void createAggregation(SearchAggregationNode node) {
     Map<String, String> params = node.getValue();
     this.aggregationName = node.getName();
 
-    String field = params.get("field");
-    String calendarInterval = params.get("calendar_interval");
+    this.field = params.get("field");
+    this.calendarInterval = mapCalendarInterval(params.get("calendar_interval"));
 
     this.aggregation =
         Aggregation.of(
             a ->
                 a.dateHistogram(
                     DateHistogramAggregation.of(
-                        dh ->
-                            dh.field(field)
-                                .calendarInterval(mapCalendarInterval(calendarInterval)))));
+                        dh -> dh.field(field).calendarInterval(calendarInterval))));
   }
 
   private CalendarInterval mapCalendarInterval(String interval) {
@@ -51,5 +51,17 @@ public class OpenDateHistogramAggregations implements OpenAggregations {
   @Override
   public void setSubAggregations(Map<String, Aggregation> subAggregations) {
     this.subAggregations = subAggregations;
+    this.aggregation =
+        Aggregation.of(
+            a ->
+                a.dateHistogram(
+                        DateHistogramAggregation.of(
+                            dh -> dh.field(field).calendarInterval(calendarInterval)))
+                    .aggregations(subAggregations));
+  }
+
+  @Override
+  public Boolean supportsSubAggregationsNatively() {
+    return true;
   }
 }

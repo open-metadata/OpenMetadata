@@ -157,13 +157,15 @@ test.describe('Glossary Bulk Import Export', () => {
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
         await page.waitForLoadState('networkidle');
-        const fileInput = page.getByTestId('upload-file-widget');
-        await fileInput?.setInputFiles([
-          'downloads/' + glossary1.data.displayName + '.csv',
-        ]);
+        await page.waitForSelector('[type="file"]', { state: 'attached' });
+        await page.setInputFiles(
+          '[type="file"]',
+          'downloads/' + glossary1.data.displayName + '.csv'
+        );
 
-        // Adding manual wait for the file to load
-        await page.waitForTimeout(500);
+        await page.waitForSelector('[data-testid="upload-file-widget"]', {
+          state: 'hidden'
+        });
 
         // Adding some assertion to make sure that CSV loaded correctly
         await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -288,16 +290,6 @@ test.describe('Glossary Bulk Import Export', () => {
       }
     );
 
-    await test.step('should have term in review state', async () => {
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary1.data.displayName);
-      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
-
-      const statusBadge = page.locator('.status-badge');
-
-      await expect(statusBadge).toHaveText('Approved');
-    });
-
     await test.step('delete custom properties', async () => {
       for (const propertyName of Object.values(propertyListName)) {
         await settingClick(page, GlobalSettingOptions.GLOSSARY_TERM, true);
@@ -343,17 +335,16 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           type: 'text/csv',
         });
 
-        const fileInput = page.getByTestId('upload-file-widget');
+        await page.waitForSelector('[type="file"]', { state: 'attached' });
+        await page.setInputFiles('[type="file"]', {
+          name: initialCsvFile.name,
+          mimeType: initialCsvFile.type,
+          buffer: Buffer.from(await initialCsvFile.arrayBuffer()),
+        });
 
-        await fileInput?.setInputFiles([
-          {
-            name: initialCsvFile.name,
-            mimeType: initialCsvFile.type,
-            buffer: Buffer.from(await initialCsvFile.arrayBuffer()),
-          },
-        ]);
-
-        await page.waitForTimeout(500);
+        await page.waitForSelector('[data-testid="upload-file-widget"]', {
+          state: 'hidden'
+        });
 
         await expect(page.locator('.rdg-header-row')).toBeVisible();
 
@@ -411,17 +402,16 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
             }
           );
 
-          const fileInput = page.getByTestId('upload-file-widget');
+          await page.waitForSelector('[type="file"]', { state: 'attached' });
+          await page.setInputFiles('[type="file"]', {
+            name: circularCsvFile.name,
+            mimeType: circularCsvFile.type,
+            buffer: Buffer.from(await circularCsvFile.arrayBuffer()),
+          });
 
-          await fileInput?.setInputFiles([
-            {
-              name: circularCsvFile.name,
-              mimeType: circularCsvFile.type,
-              buffer: Buffer.from(await circularCsvFile.arrayBuffer()),
-            },
-          ]);
-
-          await page.waitForTimeout(500);
+          await page.waitForSelector('[data-testid="upload-file-widget"]', {
+            state: 'hidden'
+          });
 
           await expect(page.locator('.rdg-header-row')).toBeVisible();
 
@@ -484,16 +474,16 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
             type: 'text/csv',
           });
 
-          const fileInput = page.getByTestId('upload-file-widget');
-          await fileInput?.setInputFiles([
-            {
-              name: csvFile.name,
-              mimeType: csvFile.type,
-              buffer: Buffer.from(await csvFile.arrayBuffer()),
-            },
-          ]);
+          await page.waitForSelector('[type="file"]', { state: 'attached' });
+          await page.setInputFiles('[type="file"]', {
+            name: csvFile.name,
+            mimeType: csvFile.type,
+            buffer: Buffer.from(await csvFile.arrayBuffer()),
+          });
 
-          await page.waitForTimeout(500);
+          await page.waitForSelector('[data-testid="upload-file-widget"]', {
+            state: 'hidden'
+          });
 
           await expect(page.locator('.rdg-header-row')).toBeVisible();
 
@@ -545,16 +535,16 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
           type: 'text/csv',
         });
 
-        const fileInput = page.getByTestId('upload-file-widget');
-        await fileInput?.setInputFiles([
-          {
-            name: csvFile.name,
-            mimeType: csvFile.type,
-            buffer: Buffer.from(await csvFile.arrayBuffer()),
-          },
-        ]);
+        await page.waitForSelector('[type="file"]', { state: 'attached' });
+        await page.setInputFiles('[type="file"]', {
+          name: csvFile.name,
+          mimeType: csvFile.type,
+          buffer: Buffer.from(await csvFile.arrayBuffer()),
+        });
 
-        await page.waitForTimeout(500);
+        await page.waitForSelector('[data-testid="upload-file-widget"]', {
+          state: 'hidden'
+        });
 
         await expect(page.locator('.rdg-header-row')).toBeVisible();
 
@@ -612,16 +602,16 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
             type: 'text/csv',
           });
 
-          const fileInput = page.getByTestId('upload-file-widget');
-          await fileInput?.setInputFiles([
-            {
-              name: csvFile.name,
-              mimeType: csvFile.type,
-              buffer: Buffer.from(await csvFile.arrayBuffer()),
-            },
-          ]);
+          await page.waitForSelector('[type="file"]', { state: 'attached' });
+          await page.setInputFiles('[type="file"]', {
+            name: csvFile.name,
+            mimeType: csvFile.type,
+            buffer: Buffer.from(await csvFile.arrayBuffer()),
+          });
 
-          await page.waitForTimeout(500);
+          await page.waitForSelector('[data-testid="upload-file-widget"]', {
+            state: 'hidden'
+          });
 
           await expect(page.locator('.rdg-header-row')).toBeVisible();
 

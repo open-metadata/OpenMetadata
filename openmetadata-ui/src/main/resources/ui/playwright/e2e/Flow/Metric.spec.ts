@@ -28,6 +28,7 @@ import {
   updateUnitOfMeasurement,
 } from '../../utils/metric';
 import { sidebarClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 const metric1 = new MetricClass();
 const metric2 = new MetricClass();
@@ -45,7 +46,7 @@ const test = base.extend<{ page: Page }>({
   },
 });
 
-test.describe('Metric Entity Special Test Cases', () => {
+test.describe('Metric Entity Special Test Cases', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {

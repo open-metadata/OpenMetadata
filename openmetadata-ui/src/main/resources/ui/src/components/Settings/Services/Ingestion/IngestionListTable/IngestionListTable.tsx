@@ -486,7 +486,7 @@ function IngestionListTable({
           }}
           pagination={false}
           rowKey="fullyQualifiedName"
-          scroll={{ x: 1300 }}
+          scroll={data.length > 0 ? { x: 1300 } : undefined}
           size="small"
           {...extraTableProps}
         />

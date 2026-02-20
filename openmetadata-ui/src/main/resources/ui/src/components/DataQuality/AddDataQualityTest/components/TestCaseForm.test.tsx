@@ -25,6 +25,7 @@ import {
   TagSource,
 } from '../../../../generated/type/tagLabel';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
+import { MOCK_TEST_CASE_WITH_BOOLEAN_PARAM } from '../../../../mocks/TestSuite.mock';
 import { getListTestDefinitions } from '../../../../rest/testAPI';
 import TestCaseForm from './TestCaseForm';
 
@@ -496,5 +497,47 @@ describe('TestCaseForm', () => {
 
     // Verify that the tags field has the expected data-testid
     expect(tagsField).toHaveAttribute('data-testid', 'tags-selector');
+  });
+
+  it('should not crash when array parameter has invalid JSON value', async () => {
+    const invalidJsonTestCase = {
+      name: MOCK_TEST_CASE_WITH_BOOLEAN_PARAM.name,
+      entityLink: MOCK_TEST_CASE_WITH_BOOLEAN_PARAM.entityLink,
+      testDefinition:
+        MOCK_TEST_CASE_WITH_BOOLEAN_PARAM.testDefinition.fullyQualifiedName,
+      parameterValues: [
+        { name: 'allowedValues', value: 'not-valid-json' },
+        { name: 'matchEnum', value: 'false' },
+      ],
+    };
+
+    await act(async () => {
+      render(
+        <TestCaseForm {...mockProps} initialValue={invalidJsonTestCase} />
+      );
+    });
+
+    // Form renders without crashing despite invalid JSON
+    expect(await screen.findByTestId('test-case-form')).toBeInTheDocument();
+  });
+
+  it('should not crash when array parameter has valid JSON array value', async () => {
+    const validArrayTestCase = {
+      name: MOCK_TEST_CASE_WITH_BOOLEAN_PARAM.name,
+      entityLink: MOCK_TEST_CASE_WITH_BOOLEAN_PARAM.entityLink,
+      testDefinition:
+        MOCK_TEST_CASE_WITH_BOOLEAN_PARAM.testDefinition.fullyQualifiedName,
+      parameterValues: [
+        { name: 'allowedValues', value: '["active","inactive","pending"]' },
+        { name: 'matchEnum', value: 'false' },
+      ],
+    };
+
+    await act(async () => {
+      render(<TestCaseForm {...mockProps} initialValue={validArrayTestCase} />);
+    });
+
+    // Form renders without crashing despite valid JSON array parameters
+    expect(await screen.findByTestId('test-case-form')).toBeInTheDocument();
   });
 });

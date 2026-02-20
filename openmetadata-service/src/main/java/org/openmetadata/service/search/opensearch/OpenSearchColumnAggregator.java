@@ -15,6 +15,7 @@ package org.openmetadata.service.search.opensearch;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -345,6 +346,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
 
     addEntityTypeFilter(boolBuilder, request);
     addServiceFilter(boolBuilder, request);
+    addServiceTypeFilter(boolBuilder, request);
     addDatabaseFilter(boolBuilder, request);
     addSchemaFilter(boolBuilder, request);
     addDomainFilter(boolBuilder, request);
@@ -373,6 +375,15 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
                       t ->
                           t.field("service.name.keyword")
                               .value(FieldValue.of(request.getServiceName())))));
+    }
+  }
+
+  private void addServiceTypeFilter(
+      BoolQuery.Builder boolBuilder, ColumnAggregationRequest request) {
+    if (request.getServiceTypes() != null && !request.getServiceTypes().isEmpty()) {
+      List<FieldValue> values = request.getServiceTypes().stream().map(FieldValue::of).toList();
+      boolBuilder.filter(
+          Query.of(q -> q.terms(t -> t.field("serviceType").terms(tv -> tv.value(values)))));
     }
   }
 
@@ -533,8 +544,8 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     Map<String, Aggregation> subAggs = new HashMap<>();
     subAggs.put("sample_docs", topHitsAgg);
 
-    Map<String, String> afterKey =
-        request.getCursor() != null ? decodeCursor(request.getCursor()) : null;
+    Map<String, FieldValue> afterKey =
+        request.getCursor() != null ? decodeCursorAsFieldValues(request.getCursor()) : null;
 
     Aggregation compositeAgg =
         Aggregation.of(
@@ -574,7 +585,8 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     }
 
     for (CompositeBucket bucket : compositeAgg.buckets().array()) {
-      String columnName = bucket.key().get("column_name").to(String.class);
+      FieldValue fieldValue = bucket.key().get("column_name");
+      String columnName = fieldValue != null ? fieldValue.stringValue() : null;
 
       if (!bucket.aggregations().containsKey("sample_docs")) {
         continue;
@@ -762,16 +774,32 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     return encodeCursor(compositeAgg.afterKey());
   }
 
-  private String encodeCursor(Map<String, JsonData> afterKey) {
+  private String encodeCursor(Map<String, FieldValue> afterKey) {
     try {
       Map<String, String> stringMap = new HashMap<>();
-      for (Map.Entry<String, JsonData> entry : afterKey.entrySet()) {
-        stringMap.put(entry.getKey(), entry.getValue().to(String.class));
+      for (Map.Entry<String, FieldValue> entry : afterKey.entrySet()) {
+        FieldValue fv = entry.getValue();
+        stringMap.put(entry.getKey(), fv != null ? fv.stringValue() : null);
       }
       String json = JsonUtils.pojoToJson(stringMap);
       return Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
     } catch (Exception e) {
       LOG.error("Failed to encode cursor", e);
+      return null;
+    }
+  }
+
+  private Map<String, FieldValue> decodeCursorAsFieldValues(String cursor) {
+    try {
+      String json = new String(Base64.getDecoder().decode(cursor), StandardCharsets.UTF_8);
+      Map<String, String> stringMap = JsonUtils.readValue(json, new TypeReference<>() {});
+      Map<String, FieldValue> result = new HashMap<>();
+      for (Map.Entry<String, String> entry : stringMap.entrySet()) {
+        result.put(entry.getKey(), FieldValue.of(entry.getValue()));
+      }
+      return result;
+    } catch (Exception e) {
+      LOG.error("Failed to decode cursor", e);
       return null;
     }
   }

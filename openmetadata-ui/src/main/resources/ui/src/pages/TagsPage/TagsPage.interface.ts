@@ -15,12 +15,8 @@ import { FormInstance } from 'antd';
 import { LoadingState } from 'Models';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import { CreateTag } from '../../generated/api/classification/createTag';
-import {
-  AutoClassificationConfig,
-  Classification,
-} from '../../generated/entity/classification/classification';
+import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
-import { EntityReference } from '../../generated/entity/type';
 
 export type DeleteTagDetailsType = {
   id: string;
@@ -35,26 +31,12 @@ export type DeleteTagsType = {
   state: boolean;
 };
 
-export interface SubmitProps {
-  name: string;
-  description: string;
-  displayName: string;
-  mutuallyExclusive?: boolean;
-  iconURL?: string;
-  color?: string;
-  owners?: EntityReference[];
-  domains?: EntityReference[] | string[];
-  autoClassificationConfigs: AutoClassificationConfig | null;
-  autoClassificationEnabled?: boolean;
-  autoClassificationPriority?: number;
-}
-
 export interface RenameFormProps {
-  formRef: FormInstance<SubmitProps>;
+  formRef: FormInstance<Classification | Tag | undefined>;
   isEditing: boolean;
   isTier: boolean;
-  initialValues?: Tag;
-  onSubmit: (value: CreateClassification) => Promise<void>;
+  initialValues?: Classification | Tag;
+  onSubmit: (value: CreateClassification | CreateTag) => Promise<void>;
   showMutuallyExclusive?: boolean;
   isClassification?: boolean;
   data?: Classification[];

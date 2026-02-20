@@ -24,7 +24,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 
-import { isEmpty, isEqual, snakeCase } from 'lodash';
+import { isArray, isEmpty, isEqual, snakeCase } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,6 +60,7 @@ import {
 import { getServiceTypeForTestDefinition } from '../../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
+import { isValidJSONString } from '../../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -213,19 +214,39 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   };
 
   const getParamsValue = () => {
-    return initialValue?.parameterValues?.reduce(
-      (acc, curr) => ({
-        ...acc,
-        [curr.name || '']:
-          getSelectedTestDefinition()?.parameterDefinition?.[0].dataType ===
-          TestDataType.Array
-            ? (JSON.parse(curr?.value || '[]') as string[]).map((val) => ({
+    return initialValue?.parameterValues?.reduce((acc, curr) => {
+      const param = getSelectedTestDefinition()?.parameterDefinition?.find(
+        (definition) => definition.name === curr.name
+      );
+
+      if (
+        param?.dataType === TestDataType.Array &&
+        isValidJSONString(curr?.value)
+      ) {
+        const value = JSON.parse(curr?.value || '[]');
+
+        return {
+          ...acc,
+          [curr.name || '']: isArray(value)
+            ? value.map((val: string) => ({
                 value: val,
               }))
-            : curr?.value,
-      }),
-      {}
-    );
+            : value,
+        };
+      }
+
+      if (param?.dataType === TestDataType.Boolean) {
+        return {
+          ...acc,
+          [curr.name || '']: curr?.value === 'true',
+        };
+      }
+
+      return {
+        ...acc,
+        [curr.name || '']: curr?.value,
+      };
+    }, {});
   };
 
   const handleValueChange: FormProps['onValuesChange'] = (value) => {

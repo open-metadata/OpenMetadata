@@ -1,3 +1,4 @@
+import uuid
 from typing import cast
 
 import pytest
@@ -28,21 +29,18 @@ __all__ = [
 ]
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="package")
 def mysql_container():
     with try_bind(MySqlContainer("mysql:8"), 3306, 3307) as container:
         yield container
 
 
 @pytest.fixture(scope="module")
-def ingest_mysql_service(
-    mysql_container: MySqlContainer, metadata: OpenMetadata, tmp_path_factory
-):
+def ingest_mysql_service(mysql_container: MySqlContainer, metadata: OpenMetadata):
     workflow_config = {
         "source": {
             "type": "mysql",
-            "serviceName": "integration_test_mysql_"
-            + tmp_path_factory.mktemp("mysql").name.split("/")[-1],
+            "serviceName": f"integration_test_mysql_{uuid.uuid4().hex[:8]}",
             "serviceConnection": {
                 "config": {
                     "type": "Mysql",
@@ -81,9 +79,9 @@ def ingest_mysql_service(
 
 
 @pytest.fixture(scope="module")
-def create_service_request(tmp_path_factory, postgres_container):
+def create_service_request(postgres_container):
     return CreateDatabaseServiceRequest(
-        name="docker_test_" + tmp_path_factory.mktemp("postgres").name,
+        name=f"docker_test_postgres_{uuid.uuid4().hex[:8]}",
         serviceType=DatabaseServiceType.Postgres,
         connection=DatabaseConnection(
             config=PostgresConnection(

@@ -2,7 +2,7 @@
 
 # Platform
 
-> **12 Components** | **78 Files** | **1574 Tests** | **2221 Scenarios** 🚀
+> **12 Components** | **79 Files** | **1611 Tests** | **2258 Scenarios** 🚀
 
 ## Table of Contents
 - [Other](#other)
@@ -686,25 +686,6 @@
 </details>
 
 <details open>
-<summary>📄 <b>CSVImportWithQuotesAndCommas.spec.ts</b> (2 tests, 5 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts)
-
-### CSV Import with Commas and Quotes - All Entity Types
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **CSV Import with Commas and Quotes - All Entity Types** - Glossary: Import CSV with commas and quotes in fields | Glossary: Import CSV with commas and quotes in fields |
-| | ↳ *Create glossary for quote and comma test* | |
-| | ↳ *Import CSV with fields containing both commas and quotes* | |
-| 2 | **CSV Import with Commas and Quotes - All Entity Types** - Export and re-import CSV with commas and quotes | Export and re-import CSV with commas and quotes |
-| | ↳ *Create glossary and import data with quotes and commas* | |
-| | ↳ *Export CSV and verify it contains properly escaped quotes* | |
-| | ↳ *Re-import the exported CSV* | |
-
-</details>
-
-<details open>
 <summary>📄 <b>auth.setup.ts</b> (1 tests, 1 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/auth.setup.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts)
@@ -830,6 +811,22 @@
 </details>
 
 <details open>
+<summary>📄 <b>CSVImportWithQuotesAndCommas.spec.ts</b> (1 tests, 3 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts)
+
+### CSV Import with Commas and Quotes - All Entity Types
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **CSV Import with Commas and Quotes - All Entity Types** - Create glossary with CSV, export it, create new glossary and import exported data | Create glossary with CSV, export it, create new glossary and import exported data |
+| | ↳ *Create glossary and import CSV with quotes and commas* | |
+| | ↳ *Export CSV and verify it contains properly escaped quotes* | |
+| | ↳ *Create new glossary and import exported CSV* | |
+
+</details>
+
+<details open>
 <summary>📄 <b>HealthCheck.spec.ts</b> (1 tests, 1 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/HealthCheck.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/HealthCheck.spec.ts)
@@ -911,7 +908,7 @@
 | 21 | **Api Endpoint** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 22 | **Api Endpoint** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 23 | **Api Endpoint** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 24 | **Api Endpoint** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 24 | **Api Endpoint** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -965,7 +962,7 @@
 | 23 | **Table** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 24 | **Table** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 25 | **Table** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 26 | **Table** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 26 | **Table** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -996,7 +993,7 @@
 | 12 | **Stored Procedure** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 13 | **Stored Procedure** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 14 | **Stored Procedure** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 15 | **Stored Procedure** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 15 | **Stored Procedure** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1023,7 +1020,7 @@
 | 14 | **Dashboard** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 15 | **Dashboard** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 16 | **Dashboard** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 17 | **Dashboard** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 17 | **Dashboard** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1074,7 +1071,7 @@
 | 21 | **Pipeline** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 22 | **Pipeline** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 23 | **Pipeline** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 24 | **Pipeline** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 24 | **Pipeline** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1125,7 +1122,7 @@
 | 21 | **Topic** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 22 | **Topic** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 23 | **Topic** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 24 | **Topic** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 24 | **Topic** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1176,7 +1173,7 @@
 | 21 | **Ml Model** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 22 | **Ml Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 23 | **Ml Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 24 | **Ml Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 24 | **Ml Model** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1202,7 +1199,7 @@
 | 13 | **Container** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 14 | **Container** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 15 | **Container** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 16 | **Container** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 16 | **Container** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1253,7 +1250,7 @@
 | 21 | **Search Index** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 22 | **Search Index** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 23 | **Search Index** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 24 | **Search Index** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 24 | **Search Index** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1306,7 +1303,7 @@
 | 23 | **Dashboard Data Model** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 24 | **Dashboard Data Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 25 | **Dashboard Data Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 26 | **Dashboard Data Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 26 | **Dashboard Data Model** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1331,7 +1328,7 @@
 | 12 | **Metric** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 13 | **Metric** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 14 | **Metric** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 15 | **Metric** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 15 | **Metric** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1356,7 +1353,7 @@
 | 12 | **Chart** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 13 | **Chart** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 14 | **Chart** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 15 | **Chart** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 15 | **Chart** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -2001,7 +1998,7 @@
 | 7 | **Api Collection** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
 | 8 | **Api Collection** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
 | 9 | **Api Collection** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 10 | **Api Collection** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
+| 10 | **Api Collection** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -2127,7 +2124,7 @@
 | 8 | **Database** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
 | 9 | **Database** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
 | 10 | **Database** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 11 | **Database** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
+| 11 | **Database** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -2148,7 +2145,7 @@
 | 8 | **Database Schema** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
 | 9 | **Database Schema** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
 | 10 | **Database Schema** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 11 | **Database Schema** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
+| 11 | **Database Schema** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -2214,7 +2211,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>ColumnBulkOperations.spec.ts</b> (78 tests, 78 scenarios)</summary>
+<summary>📄 <b>ColumnBulkOperations.spec.ts</b> (79 tests, 79 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/ColumnBulkOperations.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ColumnBulkOperations.spec.ts)
 
@@ -2224,15 +2221,16 @@
 |---|-----------|-------------|
 | 1 | **Column Bulk Operations Page** - should load the page with stats cards | Load the page with stats cards |
 | 2 | **Column Bulk Operations Page** - should display column grid with data | Display column grid with data |
+| 3 | **Column Bulk Operations Page** - should show no results message when filters match nothing | Show no results message when filters match nothing |
 
 ### Column Bulk Operations - Metadata Status Filters
 
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Column Bulk Operations - Metadata Status Filters** - should filter by MISSING metadata status | Filter by MISSING metadata status |
-| 2 | **Column Bulk Operations - Metadata Status Filters** - should filter by INCOMPLETE metadata status | Filter by INCOMPLETE metadata status |
-| 3 | **Column Bulk Operations - Metadata Status Filters** - should filter by INCONSISTENT metadata status | Filter by INCONSISTENT metadata status |
-| 4 | **Column Bulk Operations - Metadata Status Filters** - should filter by COMPLETE metadata status | Filter by COMPLETE metadata status |
+| 2 | **Column Bulk Operations - Metadata Status Filters** - should filter by Has Description metadata status | Filter by Has Description metadata status |
+| 3 | **Column Bulk Operations - Metadata Status Filters** - should filter by Has Tags metadata status | Filter by Has Tags metadata status |
+| 4 | **Column Bulk Operations - Metadata Status Filters** - should filter by Has Glossary metadata status | Filter by Has Glossary metadata status |
 | 5 | **Column Bulk Operations - Metadata Status Filters** - should make API call when filtering by metadata status | Make API call when filtering by metadata status |
 
 ### Column Bulk Operations - Domain Filters
@@ -2332,12 +2330,6 @@
 | 1 | **Column Bulk Operations - URL State Persistence** - should restore filters from URL on page load | Restore filters from URL on page load |
 | 2 | **Column Bulk Operations - URL State Persistence** - should persist search query in URL | Persist search query in URL |
 
-### Column Bulk Operations - Empty State
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Empty State** - should show no results message when filters match nothing | Show no results message when filters match nothing |
-
 ### Column Bulk Operations - Edit Drawer Title
 
 | # | Test Case | Description |
@@ -2355,7 +2347,8 @@
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Column Bulk Operations - Service Filter** - should have filter bar with search and filter options | Have filter bar with search and filter options |
+| 1 | **Column Bulk Operations - Service Filter** - should show Service filter chip when Service filter is applied from URL | Show Service filter chip when Service filter is applied from URL |
+| 2 | **Column Bulk Operations - Service Filter** - should have filter bar with search and filter options | Have filter bar with search and filter options |
 
 ### Column Bulk Operations - Cross Entity Type Support
 
@@ -2632,7 +2625,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>EntitySummaryPanel.spec.ts</b> (16 tests, 16 scenarios)</summary>
+<summary>📄 <b>EntitySummaryPanel.spec.ts</b> (18 tests, 18 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/EntitySummaryPanel.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/EntitySummaryPanel.spec.ts)
 
@@ -2656,6 +2649,13 @@
 | 14 | **Entity Summary Panel** - should display tags section | Display tags section |
 | 15 | **Entity Summary Panel** - should navigate between tabs | Navigate between tabs |
 | 16 | **Entity Summary Panel** - should display description section | Display description section |
+
+### Entity Title Section - Edit Display Name
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Entity Title Section - Edit Display Name** - should edit display name from entity summary panel | Edit display name from entity summary panel |
+| 2 | **Entity Title Section - Edit Display Name** - should cancel edit display name modal | Cancel edit display name modal |
 
 </details>
 
@@ -4062,7 +4062,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>OnlineUsers.spec.ts</b> (6 tests, 6 scenarios)</summary>
+<summary>📄 <b>OnlineUsers.spec.ts</b> (7 tests, 8 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/OnlineUsers.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OnlineUsers.spec.ts)
 
@@ -4076,6 +4076,9 @@
 | 4 | **Online Users Feature** - Should filter users by time window | Filter users by time window |
 | 5 | **Online Users Feature** - Non-admin users should not see Online Users page | Non-admin users should not see Online Users page |
 | 6 | **Online Users Feature** - Should show correct last activity format | Show correct last activity format |
+| 7 | **Online Users Feature** - Should show user displayName in online users table | Show user displayName in online users table |
+| | ↳ *Visit Explore Page as New User* | |
+| | ↳ *Verify Online User as Admin* | |
 
 </details>
 
@@ -4141,6 +4144,19 @@
 
 </details>
 
+<details open>
+<summary>📄 <b>UserCreationWithPersona.spec.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/UserCreationWithPersona.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/UserCreationWithPersona.spec.ts)
+
+### Create user with persona
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Create user with persona** - Create user with persona and verify on profile | Create user with persona and verify on profile |
+
+</details>
+
 
 ---
 
@@ -4149,7 +4165,7 @@
 ## SSO
 
 <details open>
-<summary>📄 <b>SSOConfiguration.spec.ts</b> (10 tests, 10 scenarios)</summary>
+<summary>📄 <b>SSOConfiguration.spec.ts</b> (43 tests, 43 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts)
 
@@ -4167,6 +4183,39 @@
 | 8 | **SSO Configuration Tests** - should show correct fields when selecting Google provider | Show correct fields when selecting Google provider |
 | 9 | **SSO Configuration Tests** - should show correct fields when selecting Auth0 provider | Show correct fields when selecting Auth0 provider |
 | 10 | **SSO Configuration Tests** - should show correct fields when selecting Okta provider | Show correct fields when selecting Okta provider |
+| 11 | **SSO Configuration Tests** - should show OIDC Callback URL as readonly for Google provider | Show OIDC Callback URL as readonly for Google provider |
+| 12 | **SSO Configuration Tests** - should show OIDC Callback URL as readonly for Auth0 provider | Show OIDC Callback URL as readonly for Auth0 provider |
+| 13 | **SSO Configuration Tests** - should show OIDC Callback URL as readonly for Okta provider | Show OIDC Callback URL as readonly for Okta provider |
+| 14 | **SSO Configuration Tests** - should show OIDC Callback URL as readonly for Azure AD provider | Show OIDC Callback URL as readonly for Azure AD provider |
+| 15 | **SSO Configuration Tests** - should show SAML SP Entity ID and ACS URL as readonly | Show SAML SP Entity ID and ACS URL as readonly |
+| 16 | **SSO Configuration Tests** - should display advanced config collapse for OIDC provider | Display advanced config collapse for OIDC provider |
+| 17 | **SSO Configuration Tests** - should show advanced fields when advanced config is expanded | Show advanced fields when advanced config is expanded |
+| 18 | **SSO Configuration Tests** - should hide publicKeyUrls field for confidential OIDC providers | Hide publicKeyUrls field for confidential OIDC providers |
+| 19 | **SSO Configuration Tests** - should hide serverUrl field for OIDC providers | Hide serverUrl field for OIDC providers |
+| 20 | **SSO Configuration Tests** - should hide preferredJwsAlgorithm and responseType for OIDC providers | Hide preferredJwsAlgorithm and responseType for OIDC providers |
+| 21 | **SSO Configuration Tests** - should hide tokenValidationAlgorithm for OIDC providers | Hide tokenValidationAlgorithm for OIDC providers |
+| 22 | **SSO Configuration Tests** - should hide jwtPrincipalClaims for LDAP provider | Hide jwtPrincipalClaims for LDAP provider |
+| 23 | **SSO Configuration Tests** - should hide jwtPrincipalClaims for SAML provider | Hide jwtPrincipalClaims for SAML provider |
+| 24 | **SSO Configuration Tests** - should hide publicKeyUrls for SAML provider | Hide publicKeyUrls for SAML provider |
+| 25 | **SSO Configuration Tests** - should hide publicKeyUrls for LDAP provider | Hide publicKeyUrls for LDAP provider |
+| 26 | **SSO Configuration Tests** - should hide SAML SP callback URL field | Hide SAML SP callback URL field |
+| 27 | **SSO Configuration Tests** - should hide clientAuthenticationMethod for Auth0 provider | Hide clientAuthenticationMethod for Auth0 provider |
+| 28 | **SSO Configuration Tests** - should show clientAuthenticationMethod for Okta provider | Show clientAuthenticationMethod for Okta provider |
+| 29 | **SSO Configuration Tests** - should hide tenant field for Auth0 provider | Hide tenant field for Auth0 provider |
+| 30 | **SSO Configuration Tests** - should show tenant field for Azure provider | Show tenant field for Azure provider |
+| 31 | **SSO Configuration Tests** - should collapse advanced config by default | Collapse advanced config by default |
+| 32 | **SSO Configuration Tests** - should expand and collapse advanced config when clicked | Expand and collapse advanced config when clicked |
+| 33 | **SSO Configuration Tests** - should add new mapping when Add button is clicked | Add new mapping when Add button is clicked |
+| 34 | **SSO Configuration Tests** - should allow entering LDAP group DN | Allow entering LDAP group DN |
+| 35 | **SSO Configuration Tests** - should allow selecting roles from dropdown | Allow selecting roles from dropdown |
+| 36 | **SSO Configuration Tests** - should allow removing a mapping | Allow removing a mapping |
+| 37 | **SSO Configuration Tests** - should show duplicate error when same LDAP group is added twice | Show duplicate error when same LDAP group is added twice |
+| 38 | **SSO Configuration Tests** - should clear duplicate error when one entry is changed | Clear duplicate error when one entry is changed |
+| 39 | **SSO Configuration Tests** - should allow adding multiple unique mappings | Allow adding multiple unique mappings |
+| 40 | **SSO Configuration Tests** - should maintain mapping when clearing LDAP group input | Maintain mapping when clearing LDAP group input |
+| 41 | **SSO Configuration Tests** - should handle case-insensitive duplicate detection | Handle case-insensitive duplicate detection |
+| 42 | **SSO Configuration Tests** - should handle whitespace in duplicate detection | Handle whitespace in duplicate detection |
+| 43 | **SSO Configuration Tests** - should not display role mapping widget for non-LDAP providers | Not display role mapping widget for non-LDAP providers |
 
 </details>
 

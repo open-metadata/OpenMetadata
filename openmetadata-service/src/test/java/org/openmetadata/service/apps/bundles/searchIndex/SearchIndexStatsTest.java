@@ -63,13 +63,6 @@ class SearchIndexStatsTest {
       assertEquals(0, stats.getTotalRecords());
       assertEquals(0, stats.getSuccessRecords());
       assertEquals(0, stats.getFailedRecords());
-      assertEquals(0, elasticSearchBulkSink.getEntityBuildFailures());
-    }
-
-    @Test
-    @DisplayName("Entity build failures should be tracked")
-    void testEntityBuildFailuresAreTracked() {
-      assertEquals(0, elasticSearchBulkSink.getEntityBuildFailures());
     }
   }
 

@@ -78,20 +78,25 @@ public class PaginationIT {
       createdIds.add(table.getId());
     }
 
-    // Test with different page sizes
-    testPaginationForEntityType(client, "table", createdIds, 3);
-    testPaginationForEntityType(client, "table", createdIds, 5);
-    testPaginationForEntityType(client, "table", createdIds, 7);
+    // Test with different page sizes, filtered to this test's schema
+    String schemaFqn = schema.getFullyQualifiedName();
+    testPaginationForEntityType(client, "table", createdIds, 3, schemaFqn);
+    testPaginationForEntityType(client, "table", createdIds, 5, schemaFqn);
+    testPaginationForEntityType(client, "table", createdIds, 7, schemaFqn);
   }
 
-  /**
-   * Generic pagination test that works for any entity type.
-   */
   private void testPaginationForEntityType(
-      OpenMetadataClient client, String entityType, List<UUID> expectedIds, int limit) {
+      OpenMetadataClient client,
+      String entityType,
+      List<UUID> expectedIds,
+      int limit,
+      String databaseSchemaFqn) {
 
     ListParams params = new ListParams();
     params.setLimit(limit);
+    if (databaseSchemaFqn != null) {
+      params.setDatabaseSchema(databaseSchemaFqn);
+    }
 
     // === FORWARD PAGINATION ===
     Set<UUID> seenIds = new HashSet<>();
@@ -164,6 +169,9 @@ public class PaginationIT {
         params = new ListParams();
         params.setLimit(limit);
         params.setBefore(beforeCursor);
+        if (databaseSchemaFqn != null) {
+          params.setDatabaseSchema(databaseSchemaFqn);
+        }
 
         ListResponse<?> page = listByType(client, entityType, params);
 

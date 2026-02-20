@@ -34,15 +34,11 @@ from metadata.ingestion.source.database.databricks.client import (
     API_TIMEOUT,
     DatabricksClient,
 )
-from metadata.ingestion.source.database.unitycatalog.models import (
-    LineageColumnStreams,
-    LineageTableStreams,
-)
+from metadata.ingestion.source.database.unitycatalog.models import LineageTableStreams
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 TABLE_LINEAGE_PATH = "/lineage-tracking/table-lineage"
-COLUMN_LINEAGE_PATH = "/lineage-tracking/column-lineage/get"
 TABLES_PATH = "/unity-catalog/tables"
 
 
@@ -83,12 +79,22 @@ class UnityCatalogClient(DatabricksClient):
             logger.debug(
                 f"Fetching table lineage from Databricks API for: {table_name}"
             )
-            response = self.client.get(
+            raw_response = self.client.get(
                 f"{self.base_url}{TABLE_LINEAGE_PATH}",
                 headers=self.headers,
                 data=json.dumps(data),
                 timeout=API_TIMEOUT,
-            ).json()
+            )
+            try:
+                response = raw_response.json()
+            except json.JSONDecodeError as json_err:
+                logger.error(
+                    f"Failed to parse JSON response for table lineage {table_name}. "
+                    f"Status code: {raw_response.status_code}, "
+                    f"Raw response: {raw_response.text}"
+                )
+                raise json_err
+
             if response:
                 return LineageTableStreams(**response)
 
@@ -99,39 +105,6 @@ class UnityCatalogClient(DatabricksClient):
             logger.debug(traceback.format_exc())
 
         return LineageTableStreams()
-
-    def get_column_lineage(
-        self, table_name: str, column_name: str
-    ) -> LineageColumnStreams:
-        """
-        Method returns column lineage details
-        """
-        try:
-            data = {
-                "table_name": table_name,
-                "column_name": column_name,
-            }
-
-            logger.debug(
-                f"Fetching column lineage from Databricks API for: {table_name}.{column_name}"
-            )
-            response = self.client.get(
-                f"{self.base_url}{COLUMN_LINEAGE_PATH}",
-                headers=self.headers,
-                data=json.dumps(data),
-                timeout=API_TIMEOUT,
-            ).json()
-
-            if response:
-                return LineageColumnStreams(**response)
-
-        except Exception as exc:
-            logger.error(
-                f"Unexpected error while fetching column lineage for {table_name}.{column_name}: {exc}"
-            )
-            logger.debug(traceback.format_exc())
-
-        return LineageColumnStreams()
 
     def get_owner_info(self, full_table_name: str) -> str:
         """

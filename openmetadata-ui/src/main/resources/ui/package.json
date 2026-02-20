@@ -88,13 +88,13 @@
     "antd": "4.24.16",
     "antlr4": "4.9.2",
     "autoprefixer": "^10.0.0",
-    "axios": "1.12.0",
+    "axios": "1.13.5",
     "classnames": "^2.3.1",
     "codemirror": "^5.65.16",
     "cookie-storage": "^6.1.0",
     "cronstrue": "^2.53.0",
     "crypto-random-string-with-promisify-polyfill": "^5.0.0",
-    "diff": "^5.0.0",
+    "diff": "^5.2.2",
     "dompurify": "^3.2.4",
     "elkjs": "^0.9.3",
     "eventemitter3": "^5.0.1",
@@ -113,7 +113,7 @@
     "notistack": "^3.0.2",
     "oidc-client": "^1.11.5",
     "process": "^0.11.10",
-    "qs": "6.14.1",
+    "qs": "6.14.2",
     "quill-mention": "^6.0.1",
     "quilljs-markdown": "^1.2.0",
     "rapidoc": "^9.3.8",
@@ -247,7 +247,7 @@
     "prosemirror-transform": "1.7.0",
     "prosemirror-view": "1.28.2",
     "ws": "8.17.1",
-    "axios": "1.12.0",
+    "axios": "1.13.5",
     "micromatch": "4.0.8",
     "minimatch": "3.0.5",
     "semver": "7.5.2",
@@ -263,6 +263,8 @@
     "form-data": "3.0.4",
     "tar-fs": "2.1.4",
     "js-yaml": "4.1.1",
-    "lodash": ">=4.17.23"
+    "lodash": ">=4.17.23",
+    "lodash-es": ">=4.17.23",
+    "markdown-it": ">=14.1.1"
   }
 }

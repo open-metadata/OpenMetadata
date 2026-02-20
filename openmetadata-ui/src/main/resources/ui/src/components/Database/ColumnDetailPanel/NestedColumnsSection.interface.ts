@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/table';
 
 export interface NestedColumnsSectionProps {
   columns: Column[];
+  entityType?: EntityType;
   onColumnClick: (column: Column) => void;
 }

@@ -91,7 +91,9 @@ test.describe.serial('Persona operations', () => {
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   });
 
-  test('Persona creation should work properly', async ({ page }) => {
+  test('Persona creation should work properly with breadcrumb navigation', async ({
+    page,
+  }) => {
     await page.getByTestId('add-persona-button').click();
 
     await validateFormNameFieldInput({
@@ -146,6 +148,39 @@ test.describe.serial('Persona operations', () => {
     await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, true);
 
     await personaResponse;
+
+    await expect(page).toHaveURL(/.*#customize-ui/);
+
+    // Click on Governance category
+    await page.locator('.setting-card-item[data-testid="governance"]').click();
+
+    // Check URL hash
+    await expect(page).toHaveURL(/.*#customize-ui.governance/);
+    await expect(page.getByTestId('inactive-link')).toHaveText('Governance');
+
+    // Click Persona Name (2nd item)
+    await page
+      .getByRole('link', {
+        name: PERSONA_DETAILS.displayName,
+        exact: true,
+      })
+      .click();
+
+    // Verify redirect
+    await expect(page).toHaveURL(/.*#customize-ui/);
+    await expect(page).not.toHaveURL(/.*.governance/);
+
+    // Test from Users tab
+    await page.getByRole('tab', { name: 'Users' }).click();
+    await expect(page).toHaveURL(/.*#users/);
+
+    await page
+      .getByRole('link', {
+        name: PERSONA_DETAILS.displayName,
+        exact: true,
+      })
+      .click();
+    await expect(page).toHaveURL(/.*#customize-ui/);
 
     await page.getByRole('tab', { name: 'Users' }).click();
 
