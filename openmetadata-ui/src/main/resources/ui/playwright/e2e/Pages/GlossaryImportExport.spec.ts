@@ -297,7 +297,7 @@ test.describe('Glossary Bulk Import Export', () => {
 
       const statusBadge = page.locator('.status-badge');
 
-      await expect(statusBadge).toHaveText('Approved');
+      await expect(statusBadge).toHaveText('In Review');
     });
 
     await test.step('delete custom properties', async () => {
