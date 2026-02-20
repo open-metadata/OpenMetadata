@@ -300,21 +300,48 @@ public class DistributedJobStatsAggregator {
     }
     stats.setReaderStats(readerStats);
 
-    StepStats sinkStats = new StepStats();
-    sinkStats.setTotalRecords(safeToInt(job.getProcessedRecords()));
+    // Process stats - building search index documents from entities
+    StepStats processStats = new StepStats();
     if (serverStatsAggr != null) {
-      sinkStats.setSuccessRecords(safeToInt(serverStatsAggr.sinkSuccess()));
-      // Include entityBuildFailures in sinkFailed - they occur during sink processing
-      // when Entity.buildSearchIndex() fails before sending to bulk processor
-      sinkStats.setFailedRecords(
-          safeToInt(serverStatsAggr.sinkFailed() + serverStatsAggr.entityBuildFailures()));
-      sinkStats.setWarningRecords(safeToInt(serverStatsAggr.sinkWarnings()));
+      long processTotal = serverStatsAggr.processSuccess() + serverStatsAggr.processFailed();
+      processStats.setTotalRecords(safeToInt(processTotal));
+      processStats.setSuccessRecords(safeToInt(serverStatsAggr.processSuccess()));
+      processStats.setFailedRecords(safeToInt(serverStatsAggr.processFailed()));
     } else {
+      // Fallback: assume all read records were processed successfully
+      processStats.setTotalRecords(safeToInt(job.getProcessedRecords()));
+      processStats.setSuccessRecords(safeToInt(job.getProcessedRecords()));
+      processStats.setFailedRecords(0);
+    }
+    stats.setProcessStats(processStats);
+
+    // Sink stats - writing to search index (only includes successfully processed docs)
+    StepStats sinkStats = new StepStats();
+    if (serverStatsAggr != null) {
+      long sinkTotal = serverStatsAggr.sinkSuccess() + serverStatsAggr.sinkFailed();
+      sinkStats.setTotalRecords(safeToInt(sinkTotal));
+      sinkStats.setSuccessRecords(safeToInt(serverStatsAggr.sinkSuccess()));
+      sinkStats.setFailedRecords(safeToInt(serverStatsAggr.sinkFailed()));
+    } else {
+      sinkStats.setTotalRecords(safeToInt(job.getProcessedRecords()));
       sinkStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
       sinkStats.setFailedRecords(safeToInt(job.getFailedRecords()));
-      sinkStats.setWarningRecords(0);
     }
     stats.setSinkStats(sinkStats);
+
+    // Vector stats - generating and indexing vector embeddings
+    StepStats vectorStats = new StepStats();
+    if (serverStatsAggr != null) {
+      long vectorTotal = serverStatsAggr.vectorSuccess() + serverStatsAggr.vectorFailed();
+      vectorStats.setTotalRecords(safeToInt(vectorTotal));
+      vectorStats.setSuccessRecords(safeToInt(serverStatsAggr.vectorSuccess()));
+      vectorStats.setFailedRecords(safeToInt(serverStatsAggr.vectorFailed()));
+    } else {
+      vectorStats.setTotalRecords(0);
+      vectorStats.setSuccessRecords(0);
+      vectorStats.setFailedRecords(0);
+    }
+    stats.setVectorStats(vectorStats);
 
     return stats;
   }

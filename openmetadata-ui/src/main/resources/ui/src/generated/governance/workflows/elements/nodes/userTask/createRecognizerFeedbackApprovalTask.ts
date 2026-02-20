@@ -65,6 +65,7 @@ export interface Assignees {
 }
 
 export interface InputNamespaceMap {
+    recognizerFeedback: string;
     relatedEntity:      string;
     triggeringObjectId: string;
     updatedBy:          string;

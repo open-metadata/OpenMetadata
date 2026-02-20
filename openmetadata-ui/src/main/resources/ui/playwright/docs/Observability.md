@@ -2,13 +2,13 @@
 
 # Observability
 
-> **5 Components** | **19 Files** | **114 Tests** | **202 Scenarios** 🚀
+> **5 Components** | **19 Files** | **116 Tests** | **258 Scenarios** 🚀
 
 ## Table of Contents
 - [Data Quality](#data-quality)
 - [Incident Manager](#incident-manager)
 - [Profiler](#profiler)
-- [Rules Library](#rules-library)
+- [Test Library](#test-library)
 - [Alerts & Notifications](#alerts-notifications)
 
 ---
@@ -156,7 +156,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>TableLevelTests.spec.ts</b> (9 tests, 11 scenarios)</summary>
+<summary>📄 <b>TableLevelTests.spec.ts</b> (9 tests, 27 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts)
 
@@ -168,19 +168,43 @@
 | | ↳ *Create* | |
 | | ↳ *Edit* | |
 | | ↳ *Delete* | |
-| 2 | **Table Level Data Quality Test Cases** - Table Row Count To Equal | Table Row Count To Equal |
-| 3 | **Table Level Data Quality Test Cases** - Table Column Count To Be Between | Table Column Count To Be Between |
-| 4 | **Table Level Data Quality Test Cases** - Table Column Count To Equal | Table Column Count To Equal |
-| 5 | **Table Level Data Quality Test Cases** - Table Column Name To Exist | Table Column Name To Exist |
-| 6 | **Table Level Data Quality Test Cases** - Table Column To Match Set | Table Column To Match Set |
-| 7 | **Table Level Data Quality Test Cases** - Table Difference | Table Difference |
-| 8 | **Table Level Data Quality Test Cases** - Custom SQL Query | Custom SQL Query |
-| 9 | **Table Level Data Quality Test Cases** - Table Row Inserted Count To Be Between | Table Row Inserted Count To Be Between |
+| 2 | **Table Level Data Quality Test Cases** - Table Row Count To Equal | Table Row Count To Equal test case  Creates a `tableRowCountToEqual` test with an exact row count value; verifies visibility in the Data Quality tab, edits the value, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableRowCountToEqual`, set exact row count value. 3. Submit and verify in Data Quality tab; then edit the value; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 3 | **Table Level Data Quality Test Cases** - Table Column Count To Be Between | Table Column Count To Be Between test case  Creates a `tableColumnCountToBeBetween` test with min and max column count values; verifies visibility in the Data Quality tab, edits the threshold values, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableColumnCountToBeBetween`, set min and max values. 3. Submit and verify in Data Quality tab; then edit threshold values; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 4 | **Table Level Data Quality Test Cases** - Table Column Count To Equal | Table Column Count To Equal test case  Creates a `tableColumnCountToEqual` test with an exact column count value; verifies visibility in the Data Quality tab, edits the value, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableColumnCountToEqual`, set exact column count value. 3. Submit and verify in Data Quality tab; then edit the value; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 5 | **Table Level Data Quality Test Cases** - Table Column Name To Exist | Table Column Name To Exist test case  Creates a `tableColumnNameToExist` test to verify a column exists; verifies visibility in the Data Quality tab, edits the column name, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableColumnNameToExist`, set column name. 3. Submit and verify in Data Quality tab; then edit the column name; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 6 | **Table Level Data Quality Test Cases** - Table Column To Match Set | Table Column To Match Set test case  Creates a `tableColumnToMatchSet` test to verify columns match expected set; verifies visibility in the Data Quality tab, edits the column names, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableColumnToMatchSet`, set column names array. 3. Submit and verify in Data Quality tab; then edit the column names; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 7 | **Table Level Data Quality Test Cases** - Table Difference | Table Difference test case  Creates a `tableDiff` test by selecting a second table, setting key columns, use columns, and threshold; verifies visibility in the Data Quality tab, edits to add more columns, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableDiff`, pick Table 2 and its key columns; define Table 1 key/use columns and threshold. 3. Submit and verify in Data Quality tab; then edit to add additional key/use columns; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 8 | **Table Level Data Quality Test Cases** - Custom SQL Query | Custom SQL Query test case  Creates a `tableCustomSQLQuery` test with SQL in CodeMirror, selects strategy and threshold; verifies, edits display name, SQL and strategy, updates threshold, and deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select `tableCustomSQLQuery`, input SQL, choose strategy (ROWS/COUNT), set threshold. 3. Submit and verify in Data Quality tab; then edit display name, SQL and strategy; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
+| 9 | **Table Level Data Quality Test Cases** - Table Row Inserted Count To Be Between | Table Row Inserted Count To Be Between test case  Creates a `tableRowInsertedCountToBeBetween` test with min and max inserted row count values; verifies visibility in the Data Quality tab, edits the threshold values, and finally deletes the test case. Steps 1. Navigate to entity → Data Observability → Table Profile. 2. Open Test Case form, select type `tableRowInsertedCountToBeBetween`, set min and max values. 3. Submit and verify in Data Quality tab; then edit threshold values; delete at the end. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Delete* | |
 
 </details>
 
 <details open>
-<summary>📄 <b>DataQuality.spec.ts</b> (5 tests, 5 scenarios)</summary>
+<summary>📄 <b>DataQuality.spec.ts</b> (5 tests, 17 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/DataQuality.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/DataQuality.spec.ts)
 
@@ -188,11 +212,27 @@
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Data Quality** - Table test case | Table test case |
-| 2 | **Data Quality** - Column test case | Column test case |
+| 1 | **Data Quality** - Table test case | Table test case  Creates, edits, and deletes a table-level test case with tags and glossary terms. Verifies incident breadcrumb navigation and test case property changes. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Redirect to IncidentPage and verify breadcrumb* | |
+| | ↳ *Delete* | |
+| 2 | **Data Quality** - Column test case | Column test case  Creates, edits, and deletes a column-level test case with tags and glossary terms. Validates parameter changes and property persistence. |
+| | ↳ *Create* | |
+| | ↳ *Edit* | |
+| | ↳ *Redirect to IncidentPage and verify breadcrumb* | |
+| | ↳ *Delete* | |
 | 3 | **Data Quality** - TestCase with Array params value | TestCase with Array params value |
+| | ↳ *Array params value should be visible while editing the test case* | |
+| | ↳ *Validate patch request for edit test case* | |
+| | ↳ *Update test case display name from Data Quality page* | |
 | 4 | **Data Quality** - TestCase filters | TestCase filters |
 | 5 | **Data Quality** - Pagination functionality in test cases list | Pagination functionality in test cases list |
+| | ↳ *Verify pagination controls are visible* | |
+| | ↳ *Verify first page state* | |
+| | ↳ *Navigate to next page* | |
+| | ↳ *Navigate back to previous page* | |
+| | ↳ *Test page size dropdown* | |
 
 </details>
 
@@ -350,7 +390,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>IncidentManager.spec.ts</b> (5 tests, 5 scenarios)</summary>
+<summary>📄 <b>IncidentManager.spec.ts</b> (5 tests, 18 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/IncidentManager.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/IncidentManager.spec.ts)
 
@@ -358,11 +398,27 @@
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Incident Manager** - Complete Incident lifecycle with table owner | Complete Incident lifecycle with table owner |
-| 2 | **Incident Manager** - Resolving incident & re-run pipeline | Resolving incident & re-run pipeline |
-| 3 | **Incident Manager** - Rerunning pipeline for an open incident | Rerunning pipeline for an open incident |
-| 4 | **Incident Manager** - Validate Incident Tab in Entity details page | Validate Incident Tab in Entity details page |
-| 5 | **Incident Manager** - Verify filters in Incident Manager's page | Filters in Incident Manager's page |
+| 1 | **Incident Manager** - Complete Incident lifecycle with table owner | Complete incident lifecycle with table owner  Claims table ownership, acknowledges a failed test case, assigns and reassigns the incident, validates notifications for mentions, and resolves the incident. |
+| | ↳ *Claim ownership of table* | |
+| | ↳ *Acknowledge table test case's failure* | |
+| | ↳ *Assign incident to user* | |
+| | ↳ *Re-assign incident to user* | |
+| | ↳ *Verify that notifications correctly display mentions for the incident manager* | |
+| | ↳ *Re-assign incident from test case page's header* | |
+| | ↳ *Resolve incident* | |
+| 2 | **Incident Manager** - Resolving incident & re-run pipeline | Resolve incident and rerun pipeline  Resolves a failed incident from the list page, confirms closed status, and reruns the TestSuite pipeline to re-evaluate incident state. |
+| | ↳ *Acknowledge table test case's failure* | |
+| | ↳ *Resolve task from incident list page* | |
+| | ↳ *Task should be closed* | |
+| | ↳ *Re-run pipeline* | |
+| | ↳ *Verify open and closed task* | |
+| 3 | **Incident Manager** - Rerunning pipeline for an open incident | Rerun pipeline for open incident  Acknowledges and assigns an open incident, reruns pipeline, and validates status reflects Assigned. |
+| | ↳ *Ack incident and verify open task* | |
+| | ↳ *Assign incident to user* | |
+| | ↳ *Re-run pipeline* | |
+| | ↳ *Verify incident's status on DQ page* | |
+| 4 | **Incident Manager** - Validate Incident Tab in Entity details page | Validate Incident tab in entity page  Verifies incidents list within entity details, lineage incident counts, and navigation back to tab. |
+| 5 | **Incident Manager** - Verify filters in Incident Manager's page | Verify filters in Incident Manager page  Tests Assignee, Status, Test Case, and Date filters and confirms list updates accordingly. |
 
 </details>
 
@@ -411,35 +467,53 @@
 
 ---
 
-<div id="rules-library"></div>
+<div id="test-library"></div>
 
-## Rules Library
+## Test Library
 
 <details open>
-<summary>📄 <b>RulesLibrary.spec.ts</b> (12 tests, 15 scenarios)</summary>
+<summary>📄 <b>TestLibrary.spec.ts</b> (14 tests, 30 scenarios)</summary>
 
-> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/RulesLibrary.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/RulesLibrary.spec.ts)
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/TestLibrary.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/TestLibrary.spec.ts)
 
-### Rules Library
+### Test Library
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Rules Library** - should navigate to Rules Library page | Navigate to Rules Library page |
-| 2 | **Rules Library** - should display test definitions table with columns | Display test definitions table with columns |
-| 3 | **Rules Library** - should display system test definitions | Display system test definitions |
-| 4 | **Rules Library** - should create, edit, and delete a test definition | Create, edit, and delete a test definition |
+| 1 | **Test Library** - should navigate to Test Library page | Navigate to Test Library page |
+| 2 | **Test Library** - should display test definitions table with columns | Display test definitions table with columns |
+| 3 | **Test Library** - should display system test definitions | Display system test definitions |
+| 4 | **Test Library** - should create, edit, and delete a test definition | Create, edit, and delete a test definition |
 | | ↳ *Create a new test definition* | |
 | | ↳ *Edit Test Definition* | |
 | | ↳ *should enable/disable test definition* | |
 | | ↳ *should delete a test definition* | |
-| 5 | **Rules Library** - should validate required fields in create form | Validate required fields in create form |
-| 6 | **Rules Library** - should cancel form and close drawer | Cancel form and close drawer |
-| 7 | **Rules Library** - should display pagination when test definitions exceed page size | Display pagination when test definitions exceed page size |
-| 8 | **Rules Library** - should search and filter test definitions | Search and filter test definitions |
-| 9 | **Rules Library** - should display test platform badges correctly | Display test platform badges correctly |
-| 10 | **Rules Library** - should not show edit and delete buttons for system test definitions | Not show edit and delete buttons for system test definitions |
-| 11 | **Rules Library** - should allow enabling/disabling system test definitions | Allow enabling/disabling system test definitions |
-| 12 | **Rules Library** - should display correct provider type for test definitions | Display correct provider type for test definitions |
+| 5 | **Test Library** - should validate required fields in create form | Validate required fields in create form |
+| 6 | **Test Library** - should cancel form and close drawer | Cancel form and close drawer |
+| 7 | **Test Library** - should display pagination when test definitions exceed page size | Display pagination when test definitions exceed page size |
+| 8 | **Test Library** - should display test platform badges correctly | Display test platform badges correctly |
+| 9 | **Test Library** - should not show edit and delete buttons for system test definitions | Not show edit and delete buttons for system test definitions |
+| 10 | **Test Library** - should allow enabling/disabling system test definitions | Allow enabling/disabling system test definitions |
+| 11 | **Test Library** - should disable toggle for external test definitions | Disable toggle for external test definitions |
+| 12 | **Test Library** - should handle external test definitions with read-only fields | Handle external test definitions with read-only fields |
+| | ↳ *Create external test definition* | |
+| | ↳ *Verify fields are read-only in edit mode* | |
+| | ↳ *Verify allowed fields can be edited* | |
+| | ↳ *Delete external test definition* | |
+| 13 | **Test Library** - should handle supported services field correctly | Handle supported services field correctly |
+| | ↳ *Create test definition with specific supported services* | |
+| | ↳ *Verify supported services are saved correctly* | |
+| | ↳ *Verify test definition appears when filtering by supported services* | |
+| | ↳ *Edit and change supported services* | |
+| | ↳ *Verify updated supported services are persisted* | |
+| | ↳ *Clear all supported services (should apply to all services)* | |
+| | ↳ *Delete test definition* | |
+| 14 | **Test Library** - should maintain page on edit and reset to first page on delete | Maintain page on edit and reset to first page on delete |
+| | ↳ *Create a test definition starting with "z"* | |
+| | ↳ *Change page size to 25* | |
+| | ↳ *Navigate until we find our test definition or reach last page* | |
+| | ↳ *Edit the test definition and verify we stay on the same page* | |
+| | ↳ *Delete the test definition and verify redirect to first page* | |
 
 </details>
 

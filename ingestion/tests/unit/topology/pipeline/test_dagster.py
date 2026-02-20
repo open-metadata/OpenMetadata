@@ -340,6 +340,41 @@ class TestAssetKey(TestCase):
         self.assertEqual(asset_key.to_string(), "my_table")
 
 
+class TestAssetKeyNormalization(TestCase):
+    """Test AssetKey normalization with prefix stripping"""
+
+    def test_normalize_no_strip(self):
+        """Test normalization with strip_prefix=0 returns same key"""
+        asset_key = AssetKey(path=["project", "env", "schema", "table"])
+        normalized = asset_key.normalize(strip_prefix=0)
+        assert normalized.path == ["project", "env", "schema", "table"]
+
+    def test_normalize_strip_two_segments(self):
+        """Test stripping first 2 segments"""
+        asset_key = AssetKey(path=["project", "env", "schema", "table"])
+        normalized = asset_key.normalize(strip_prefix=2)
+        assert normalized.path == ["schema", "table"]
+        assert normalized.to_string() == "schema.table"
+
+    def test_normalize_strip_one_segment(self):
+        """Test stripping first segment"""
+        asset_key = AssetKey(path=["project", "db", "schema", "table"])
+        normalized = asset_key.normalize(strip_prefix=1)
+        assert normalized.path == ["db", "schema", "table"]
+
+    def test_normalize_strip_more_than_length(self):
+        """Test stripping more segments than available returns original"""
+        asset_key = AssetKey(path=["schema", "table"])
+        normalized = asset_key.normalize(strip_prefix=5)
+        assert normalized.path == ["schema", "table"]
+
+    def test_normalize_negative_strip(self):
+        """Test negative strip_prefix returns original"""
+        asset_key = AssetKey(path=["schema", "table"])
+        normalized = asset_key.normalize(strip_prefix=-1)
+        assert normalized.path == ["schema", "table"]
+
+
 class TestTableResolutionResult(TestCase):
     """Test TableResolutionResult model"""
 
@@ -620,3 +655,47 @@ class TestDagsterLineageHelpers(TestCase):
         self.assertEqual(result["database"], "my_database")
         self.assertEqual(result["schema"], "my_schema")
         self.assertEqual(result["table"], "my_table")
+
+
+class TestDagsterSourceWithStripping(TestCase):
+    """Test DagsterSource with asset key prefix stripping"""
+
+    @patch(
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
+    @patch("dagster_graphql.DagsterGraphQLClient")
+    def test_dagster_source_with_strip_prefix(self, graphql_client, test_connection):
+        """Test DagsterSource correctly loads stripAssetKeyPrefixLength config"""
+        test_connection.return_value = False
+        graphql_client.return_value = False
+
+        config = {
+            "source": {
+                "type": "dagster",
+                "serviceName": "dagster_test",
+                "serviceConnection": {
+                    "config": {
+                        "type": "Dagster",
+                        "host": "http://localhost:3000",
+                        "stripAssetKeyPrefixLength": 2,
+                    }
+                },
+                "sourceConfig": {"config": {"type": "PipelineMetadata"}},
+            },
+            "sink": {"type": "metadata-rest", "config": {}},
+            "workflowConfig": {
+                "openMetadataServerConfig": {
+                    "hostPort": "http://localhost:8585/api",
+                    "authProvider": "openmetadata",
+                    "securityConfig": {"jwtToken": "token"},
+                }
+            },
+        }
+
+        workflow_config = OpenMetadataWorkflowConfig.model_validate(config)
+        dagster_source = DagsterSource.create(
+            config["source"],
+            workflow_config.workflowConfig.openMetadataServerConfig,
+        )
+
+        assert dagster_source.strip_asset_key_prefix_length == 2

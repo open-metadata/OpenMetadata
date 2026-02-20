@@ -29,10 +29,13 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -53,6 +56,8 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
 
   {
     supportsImportExport = true;
+    supportsBatchImport = true;
+    supportsRecursiveImport = true; // Glossary supports recursive import with hierarchical terms
   }
 
   private Glossary lastCreatedGlossary;
@@ -898,11 +903,22 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     String csvContent = buildGlossaryTermsCsv(glossary.getFullyQualifiedName(), ns);
 
     // Step 3: Import CSV using SYNC method (now also creates version history!)
+    CsvImportResult importResult = null;
     try {
       String result =
           client.glossaries().importCsv(glossary.getFullyQualifiedName(), csvContent, false);
       assertNotNull(result, "Import should return result");
-      // Result is a JSON string of CsvImportResult
+
+      importResult = JsonUtils.readValue(result, CsvImportResult.class);
+      assertNotNull(importResult, "Should parse CsvImportResult from response");
+      assertEquals(ApiStatus.SUCCESS, importResult.getStatus(), "Import should succeed");
+      // numberOfRowsProcessed = header row (1) + 3 data rows = 4
+      assertEquals(
+          4, importResult.getNumberOfRowsProcessed(), "Should process 4 rows (header + 3 data)");
+      assertEquals(
+          4, importResult.getNumberOfRowsPassed(), "All 4 rows should pass (header + 3 data)");
+      assertEquals(0, importResult.getNumberOfRowsFailed(), "No rows should fail");
+      assertFalse(importResult.getDryRun(), "Should not be a dry run");
     } catch (Exception e) {
       fail("CSV import failed: " + e.getMessage());
     }
@@ -946,16 +962,14 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
 
     // Step 9: Verify glossary terms were actually created
     try {
-      // Get all glossary terms and filter by glossary
-      List<org.openmetadata.schema.entity.data.GlossaryTerm> allTerms =
-          client.glossaryTerms().list().getData();
-
-      // Filter terms belonging to this glossary
       List<org.openmetadata.schema.entity.data.GlossaryTerm> terms =
-          allTerms.stream()
-              .filter(
-                  t -> t.getGlossary() != null && glossary.getId().equals(t.getGlossary().getId()))
-              .toList();
+          client
+              .glossaryTerms()
+              .list(
+                  new org.openmetadata.sdk.models.ListParams()
+                      .addFilter("glossary", glossary.getId().toString())
+                      .setLimit(100))
+              .getData();
 
       assertNotNull(terms, "Glossary terms should be returned");
       assertEquals(3, terms.size(), "Should have imported 3 glossary terms");
@@ -1285,6 +1299,187 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
       assertEquals(
           approvedTerm.getFullyQualifiedName(),
           createdTerm.getRelatedTerms().getFirst().getFullyQualifiedName());
+    }
+  }
+
+  // ===================================================================
+  // CSV IMPORT/EXPORT SUPPORT
+  // ===================================================================
+
+  protected String generateValidCsvData(TestNamespace ns, List<Glossary> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return null;
+    }
+
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n");
+
+    for (Glossary glossary : entities) {
+      // Generate sample glossary terms for this glossary
+      csv.append(escapeCSVValue("")).append(","); // parent - root level
+      csv.append(escapeCSVValue("term_" + ns.shortPrefix())).append(",");
+      csv.append(escapeCSVValue("Sample Term")).append(",");
+      csv.append(escapeCSVValue("Sample description for glossary term")).append(",");
+      csv.append(escapeCSVValue("synonym1,synonym2")).append(",");
+      csv.append(escapeCSVValue("")).append(","); // relatedTerms
+      csv.append(escapeCSVValue("")).append(","); // references
+      csv.append(escapeCSVValue(formatTagsForCsv(null))).append(","); // tags
+      csv.append(escapeCSVValue("")).append(","); // reviewers
+      csv.append(escapeCSVValue(formatOwnersForCsv(glossary.getOwners()))).append(",");
+      csv.append(escapeCSVValue("Approved")).append(","); // glossaryStatus
+      csv.append(escapeCSVValue("#FF5733")).append(","); // color
+      csv.append(escapeCSVValue("")).append(","); // iconURL
+      csv.append(escapeCSVValue(formatExtensionForCsv(null))); // extension
+      csv.append("\n");
+    }
+
+    return csv.toString();
+  }
+
+  protected String generateInvalidCsvData(TestNamespace ns) {
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n");
+    // Missing required name field
+    csv.append(",,Term,Description,,,,,,,,,\n");
+    // Invalid glossary status
+    csv.append(",invalid_term,,,,,,,,INVALID_STATUS,,,\n");
+    return csv.toString();
+  }
+
+  protected List<String> getRequiredCsvHeaders() {
+    return List.of("name*");
+  }
+
+  protected List<String> getAllCsvHeaders() {
+    return List.of(
+        "parent",
+        "name*",
+        "displayName",
+        "description",
+        "synonyms",
+        "relatedTerms",
+        "references",
+        "tags",
+        "reviewers",
+        "owner",
+        "glossaryStatus",
+        "color",
+        "iconURL",
+        "extension");
+  }
+
+  private String formatOwnersForCsv(List<org.openmetadata.schema.type.EntityReference> owners) {
+    if (owners == null || owners.isEmpty()) {
+      return "";
+    }
+    return owners.stream()
+        .map(
+            owner -> {
+              String prefix = "user";
+              if ("team".equals(owner.getType())) {
+                prefix = "team";
+              }
+              return prefix + ";" + owner.getName();
+            })
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatTagsForCsv(List<org.openmetadata.schema.type.TagLabel> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return "";
+    }
+    return tags.stream()
+        .map(org.openmetadata.schema.type.TagLabel::getTagFQN)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatExtensionForCsv(Object extension) {
+    if (extension == null) {
+      return "";
+    }
+    return extension.toString();
+  }
+
+  private String escapeCSVValue(String value) {
+    if (value == null) {
+      return "";
+    }
+    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+      return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+    return value;
+  }
+
+  @Override
+  protected void validateCsvDataPersistence(
+      List<Glossary> originalEntities, String csvData, CsvImportResult result) {
+    super.validateCsvDataPersistence(originalEntities, csvData, result);
+
+    if (result.getStatus() != ApiStatus.SUCCESS) {
+      return;
+    }
+
+    if (originalEntities != null) {
+      for (Glossary originalEntity : originalEntities) {
+        Glossary updatedEntity =
+            getEntityByNameWithFields(originalEntity.getName(), "owners,tags,reviewers");
+        assertNotNull(
+            updatedEntity,
+            "Glossary " + originalEntity.getName() + " should exist after CSV import");
+
+        validateGlossaryFieldsAfterImport(originalEntity, updatedEntity);
+      }
+    }
+  }
+
+  private void validateGlossaryFieldsAfterImport(Glossary original, Glossary imported) {
+    assertEquals(original.getName(), imported.getName(), "Glossary name should match");
+
+    if (original.getDisplayName() != null) {
+      assertEquals(
+          original.getDisplayName(),
+          imported.getDisplayName(),
+          "Glossary displayName should be preserved");
+    }
+
+    if (original.getDescription() != null) {
+      assertEquals(
+          original.getDescription(),
+          imported.getDescription(),
+          "Glossary description should be preserved");
+    }
+
+    if (original.getMutuallyExclusive() != null) {
+      assertEquals(
+          original.getMutuallyExclusive(),
+          imported.getMutuallyExclusive(),
+          "Glossary mutuallyExclusive flag should be preserved");
+    }
+
+    if (original.getOwners() != null && !original.getOwners().isEmpty()) {
+      assertNotNull(imported.getOwners(), "Glossary owners should be preserved");
+      assertEquals(
+          original.getOwners().size(),
+          imported.getOwners().size(),
+          "Glossary owner count should match");
+    }
+
+    if (original.getTags() != null && !original.getTags().isEmpty()) {
+      assertNotNull(imported.getTags(), "Glossary tags should be preserved");
+      assertEquals(
+          original.getTags().size(), imported.getTags().size(), "Glossary tag count should match");
+    }
+
+    if (original.getReviewers() != null && !original.getReviewers().isEmpty()) {
+      assertNotNull(imported.getReviewers(), "Glossary reviewers should be preserved");
+      assertEquals(
+          original.getReviewers().size(),
+          imported.getReviewers().size(),
+          "Glossary reviewer count should match");
     }
   }
 }

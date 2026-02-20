@@ -21,7 +21,11 @@ public class OpenSearchMostActiveUsersAggregator
 
   @Override
   protected Long getMaxValue(Aggregate key) {
-    return key != null && key.isMax() ? (long) key.max().value() : null;
+    if (key != null && key.isMax()) {
+      Double maxValue = key.max().value();
+      return maxValue != null ? maxValue.longValue() : null;
+    }
+    return null;
   }
 
   @Override

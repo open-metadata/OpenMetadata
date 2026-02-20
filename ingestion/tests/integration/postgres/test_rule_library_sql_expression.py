@@ -11,7 +11,6 @@
 """
 Integration tests for Rule Library SQL Expression validator
 """
-import sys
 from dataclasses import dataclass
 from typing import List
 
@@ -40,9 +39,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
-
+from ..integration_base import generate_name
 
 NUMERIC_DATA_TYPES = [
     DataType.INT,
@@ -63,12 +60,12 @@ def rule_library_test_definition(
 ) -> TestDefinition:
     """Create a rule library test definition for SQL expression validation.
 
-    The test definition name must match the module name for the validator to be imported
-    correctly. The sqlExpression uses Jinja2 templating for parameter substitution.
+    The sqlExpression uses Jinja2 templating for parameter substitution.
     """
+    test_def_name = TestCaseEntityName(generate_name().root)
     test_def = metadata.create_or_update(
         CreateTestDefinitionRequest(
-            name=TestCaseEntityName("columnRuleLibrarySqlExpressionValidator"),
+            name=test_def_name,
             description=Markdown(
                 root="Rule library test definition for custom SQL expression validation"
             ),
@@ -141,7 +138,7 @@ class RuleLibraryTestParameter:
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
             test_case_definition=TestCaseDefinition(
                 name="rule_library_customer_ids_greater_than_zero",
-                testDefinitionName="columnRuleLibrarySqlExpressionValidator",
+                testDefinitionName="{test_def_name}",
                 columnName="customer_id",
                 parameterValues=[{"name": "minValue", "value": "0"}],
             ),
@@ -151,7 +148,7 @@ class RuleLibraryTestParameter:
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
             test_case_definition=TestCaseDefinition(
                 name="rule_library_customer_ids_greater_than_max",
-                testDefinitionName="columnRuleLibrarySqlExpressionValidator",
+                testDefinitionName="{test_def_name}",
                 columnName="customer_id",
                 parameterValues=[{"name": "minValue", "value": "99999"}],
             ),
@@ -160,9 +157,12 @@ class RuleLibraryTestParameter:
     ],
     ids=lambda x: x.test_case_definition.name,
 )
-def rule_library_parameters(request, db_service):
+def rule_library_parameters(request, db_service, rule_library_test_definition):
     request.param.entity_fqn = request.param.entity_fqn.format(
         database_service_fqn=db_service.fullyQualifiedName.root
+    )
+    request.param.test_case_definition.testDefinitionName = (
+        rule_library_test_definition.name.root
     )
     return request.param
 

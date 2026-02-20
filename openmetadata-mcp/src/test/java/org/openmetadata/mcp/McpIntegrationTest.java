@@ -28,6 +28,7 @@ import okhttp3.sse.EventSources;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
@@ -620,6 +621,7 @@ public class McpIntegrationTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Tag("load")
   void testConcurrentStreamableHttpConnections() throws Exception {
     int numberOfConnections = 500;
     CountDownLatch startLatch = new CountDownLatch(1);
@@ -742,6 +744,7 @@ public class McpIntegrationTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Tag("load")
   void testConcurrentToolCalls() throws Exception {
     int numberOfCalls = 100;
     CountDownLatch startLatch = new CountDownLatch(1);
@@ -838,6 +841,7 @@ public class McpIntegrationTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Tag("load")
   void testComprehensiveMcpToolsLoadTest() throws Exception {
     // Test configuration: 10,000 total requests with 500 concurrent connections
     int totalRequests = 10000;

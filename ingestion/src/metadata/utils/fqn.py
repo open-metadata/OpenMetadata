@@ -405,11 +405,16 @@ def _(
         )
 
     if not entity and service_name and container_name:
-        fqn = (
-            _build(service_name, parent_container, container_name, quote=False)
-            if parent_container
-            else _build(service_name, container_name)
-        )
+        if parent_container:
+            # Check if parent_container already starts with service_name
+            if parent_container.startswith(f"{service_name}."):
+                fqn = _build(parent_container, container_name, quote=False)
+            else:
+                fqn = _build(
+                    service_name, parent_container, container_name, quote=False
+                )
+        else:
+            fqn = _build(service_name, container_name)
         return [fqn] if fetch_multiple_entities else fqn
     if entity and fetch_multiple_entities:
         return [str(container.fullyQualifiedName.root) for container in entity]
@@ -898,9 +903,13 @@ def search_container_from_es(
         )
 
     if parent_container:
-        fqn_search_string = _build(
-            service_name or "*", parent_container, container_name, quote=False
-        )
+        # Check if parent_container already starts with service_name
+        if service_name and parent_container.startswith(f"{service_name}."):
+            fqn_search_string = _build(parent_container, container_name, quote=False)
+        else:
+            fqn_search_string = _build(
+                service_name or "*", parent_container, container_name, quote=False
+            )
     else:
         fqn_search_string = _build(service_name or "*", container_name)
 

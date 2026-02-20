@@ -1,16 +1,13 @@
-import sys
+from copy import deepcopy
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.generated.schema.entity.data.table import ColumnProfile
 from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
-
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
 
 
 @pytest.fixture(scope="module")
@@ -20,8 +17,9 @@ def prepare_postgres(postgres_container):
         "CREATE TABLE financial_transactions (id SERIAL PRIMARY KEY, amount MONEY);",
         "INSERT INTO financial_transactions (amount) VALUES (100.00), (200.00), (300.00), (400.00), (500.00);",
     ]
-    for stmt in sql:
-        engine.execute(stmt)
+    with engine.begin() as conn:
+        for stmt in sql:
+            conn.execute(text(stmt))
 
 
 @pytest.fixture(scope="module")
@@ -33,7 +31,11 @@ def run_profiler(
     profiler_config,
 ):
     search_cache.clear()
-    run_workflow(MetadataWorkflow, ingestion_config)
+    config = deepcopy(ingestion_config)
+    config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
+        "excludes": ["information_schema"]
+    }
+    run_workflow(MetadataWorkflow, config)
     run_workflow(ProfilerWorkflow, profiler_config)
 
 

@@ -14,12 +14,20 @@
 import { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
+const testUser = new UserClass();
+
 test.describe('Online Users Feature', () => {
-  test.slow(true);
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await testUser.create(apiContext);
+    await afterAction();
+  });
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
@@ -181,7 +189,7 @@ test.describe('Online Users Feature', () => {
       state: 'detached',
     });
     // Check various time formats in the Last Activity column
-    const activityCells = page.locator('tbody tr td:nth-child(2)');
+    const activityCells = page.locator('tbody tr td:nth-child(3)');
     const count = await activityCells.count();
 
     // If no users are online within the time window, that's ok - just skip
@@ -199,5 +207,49 @@ test.describe('Online Users Feature', () => {
       // Should contain either "Online now" or time format like "51 minutes ago"
       expect(text).toMatch(/(Online now|\d+\s+(minutes?|hours?|days?)\s+ago)/);
     }
+  });
+
+  test('Should show user displayName in online users table', async ({
+    browser,
+    page,
+  }) => {
+    await test.step('Visit Explore Page as New User', async () => {
+      const userPage = await browser.newPage();
+      await testUser.login(userPage);
+      await redirectToHomePage(userPage);
+
+      // 1 step - go to explore page using new user
+      await sidebarClick(userPage, SidebarItem.EXPLORE);
+      await userPage.waitForLoadState('networkidle');
+
+      await userPage.close();
+    });
+
+    await test.step('Verify Online User as Admin', async () => {
+      const displayName = testUser.responseData.displayName;
+
+      // 2 step - go to online user page and check that user display name should present
+      await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      // Search for the user to ensure it is visible in the list
+      const searchResponse = page.waitForResponse(
+        '/api/v1/search/query?q=*&index=*&from=0&size=*'
+      );
+      await page.getByTestId('searchbar').fill(displayName);
+      await searchResponse;
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(
+        page.getByRole('cell', { name: displayName }).first()
+      ).toBeVisible();
+    });
   });
 });

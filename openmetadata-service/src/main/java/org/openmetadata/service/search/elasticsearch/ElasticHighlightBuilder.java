@@ -2,30 +2,30 @@ package org.openmetadata.service.search.elasticsearch;
 
 import es.co.elastic.clients.elasticsearch.core.search.Highlight;
 import es.co.elastic.clients.elasticsearch.core.search.HighlightField;
-import java.util.HashMap;
+import es.co.elastic.clients.util.NamedValue;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class ElasticHighlightBuilder {
-  private final Map<String, HighlightField> fields = new HashMap<>();
+  private final List<NamedValue<HighlightField>> fields = new ArrayList<>();
   private String preTag;
   private String postTag;
 
   public ElasticHighlightBuilder() {}
 
   public ElasticHighlightBuilder field(String name) {
-    this.fields.put(name, HighlightField.of(h -> h));
+    this.fields.add(NamedValue.of(name, HighlightField.of(h -> h)));
     return this;
   }
 
   public ElasticHighlightBuilder field(String name, int fragmentSize) {
-    this.fields.put(name, HighlightField.of(h -> h.fragmentSize(fragmentSize)));
+    this.fields.add(NamedValue.of(name, HighlightField.of(h -> h.fragmentSize(fragmentSize))));
     return this;
   }
 
   public ElasticHighlightBuilder fields(List<String> fieldNames) {
     for (String fieldName : fieldNames) {
-      this.fields.put(fieldName, HighlightField.of(h -> h));
+      this.fields.add(NamedValue.of(fieldName, HighlightField.of(h -> h)));
     }
     return this;
   }

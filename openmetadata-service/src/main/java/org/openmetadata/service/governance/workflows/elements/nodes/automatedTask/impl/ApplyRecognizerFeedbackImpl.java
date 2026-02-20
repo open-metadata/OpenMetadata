@@ -1,14 +1,12 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
-import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import java.util.Map;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -33,11 +31,11 @@ public class ApplyRecognizerFeedbackImpl implements JavaDelegate {
       Map<String, String> inputNamespaceMap =
           JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
 
-      UUID feedbackId =
-          UUID.fromString(
-              (String)
-                  varHandler.getNamespacedVariable(
-                      GLOBAL_NAMESPACE, TRIGGERING_OBJECT_ID_VARIABLE));
+      String feedbackJson =
+          (String)
+              varHandler.getNamespacedVariable(
+                  inputNamespaceMap.get(RECOGNIZER_FEEDBACK), RECOGNIZER_FEEDBACK);
+      RecognizerFeedback feedback = JsonUtils.readValue(feedbackJson, RecognizerFeedback.class);
 
       String updatedByNamespace = (String) inputNamespaceMap.get(UPDATED_BY_VARIABLE);
       String reviewedBy = "governance-bot";
@@ -51,12 +49,11 @@ public class ApplyRecognizerFeedbackImpl implements JavaDelegate {
 
       RecognizerFeedbackRepository repo =
           new RecognizerFeedbackRepository(Entity.getCollectionDAO());
-      RecognizerFeedback feedback = repo.get(feedbackId);
       repo.applyFeedback(feedback, reviewedBy);
 
       LOG.info(
           "Applied RecognizerFeedback {} for {} on {} by {}",
-          feedbackId,
+          feedback.getId(),
           feedback.getTagFQN(),
           feedback.getEntityLink(),
           reviewedBy);

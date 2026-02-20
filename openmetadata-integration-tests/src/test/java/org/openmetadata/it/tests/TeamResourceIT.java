@@ -33,10 +33,12 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -54,6 +56,9 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
 
   {
     supportsImportExport = true;
+    supportsBatchImport = true;
+    supportsRecursiveImport =
+        true; // Team supports recursive import with hierarchical relationships
   }
 
   private static final Profile PROFILE =
@@ -1054,6 +1059,235 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
           e.getMessage().contains("Circular reference detected")
               || e.getMessage().contains("participates in a loop"),
           "Expected circular dependency error but got: " + e.getMessage());
+    }
+  }
+
+  // ===================================================================
+  // CSV IMPORT/EXPORT SUPPORT
+  // ===================================================================
+
+  protected String generateValidCsvData(TestNamespace ns, List<Team> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return null;
+    }
+
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies\n");
+
+    for (Team team : entities) {
+      csv.append(escapeCSVValue(team.getName())).append(",");
+      csv.append(escapeCSVValue(team.getDisplayName())).append(",");
+      csv.append(escapeCSVValue(team.getDescription())).append(",");
+      csv.append(
+              escapeCSVValue(team.getTeamType() != null ? team.getTeamType().toString() : "Group"))
+          .append(",");
+      csv.append(escapeCSVValue(formatParentsForCsv(team.getParents()))).append(",");
+      csv.append(escapeCSVValue(formatOwnersForCsv(team.getOwners()))).append(",");
+      csv.append(
+              escapeCSVValue(
+                  team.getIsJoinable() != null ? team.getIsJoinable().toString() : "false"))
+          .append(",");
+      csv.append(escapeCSVValue(formatDefaultRolesForCsv(team.getDefaultRoles()))).append(",");
+      csv.append(escapeCSVValue(formatPoliciesForCsv(team.getPolicies())));
+      csv.append("\n");
+    }
+
+    return csv.toString();
+  }
+
+  protected String generateInvalidCsvData(TestNamespace ns) {
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies\n");
+    // Row 1: Missing required name field
+    csv.append(",Test Team,Description,Group,Organization,,false,,\n");
+    // Row 2: Missing required teamType field
+    csv.append("invalid_team,Invalid Team,Description,,Organization,,false,,\n");
+    // Row 3: Missing required parents field
+    csv.append("invalid_team2,Invalid Team 2,Description,Group,,,false,,\n");
+    // Row 4: Invalid teamType value
+    csv.append("invalid_team3,Invalid Team 3,Description,InvalidType,Organization,,false,,\n");
+    return csv.toString();
+  }
+
+  protected List<String> getRequiredCsvHeaders() {
+    return List.of("name", "teamType", "parents");
+  }
+
+  protected List<String> getAllCsvHeaders() {
+    return List.of(
+        "name*",
+        "displayName",
+        "description",
+        "teamType*",
+        "parents*",
+        "Owner",
+        "isJoinable",
+        "defaultRoles",
+        "policies");
+  }
+
+  protected boolean validateCsvRow(String[] row, List<String> headers) {
+    if (row.length != headers.size()) {
+      return false;
+    }
+
+    int nameIndex = headers.indexOf("name");
+    int teamTypeIndex = headers.indexOf("teamType");
+    int parentsIndex = headers.indexOf("parents");
+
+    if (nameIndex >= 0 && (row[nameIndex] == null || row[nameIndex].trim().isEmpty())) {
+      return false;
+    }
+
+    if (teamTypeIndex >= 0 && (row[teamTypeIndex] == null || row[teamTypeIndex].trim().isEmpty())) {
+      return false;
+    }
+
+    if (parentsIndex >= 0 && (row[parentsIndex] == null || row[parentsIndex].trim().isEmpty())) {
+      return false;
+    }
+
+    // Validate team type
+    if (teamTypeIndex >= 0 && !row[teamTypeIndex].trim().isEmpty()) {
+      String teamType = row[teamTypeIndex].trim();
+      if (!teamType.equals("Group")
+          && !teamType.equals("Department")
+          && !teamType.equals("Division")
+          && !teamType.equals("BusinessUnit")) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private String formatParentsForCsv(List<EntityReference> parents) {
+    if (parents == null || parents.isEmpty()) {
+      return "Organization"; // Default parent
+    }
+    return parents.stream()
+        .map(EntityReference::getName)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("Organization");
+  }
+
+  private String formatOwnersForCsv(List<EntityReference> owners) {
+    if (owners == null || owners.isEmpty()) {
+      return "";
+    }
+    return owners.stream().map(EntityReference::getName).reduce((a, b) -> a + ";" + b).orElse("");
+  }
+
+  private String formatDefaultRolesForCsv(List<EntityReference> defaultRoles) {
+    if (defaultRoles == null || defaultRoles.isEmpty()) {
+      return "";
+    }
+    return defaultRoles.stream()
+        .map(EntityReference::getName)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatPoliciesForCsv(List<EntityReference> policies) {
+    if (policies == null || policies.isEmpty()) {
+      return "";
+    }
+    return policies.stream().map(EntityReference::getName).reduce((a, b) -> a + ";" + b).orElse("");
+  }
+
+  private String escapeCSVValue(String value) {
+    if (value == null) {
+      return "";
+    }
+    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+      return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+    return value;
+  }
+
+  @Override
+  protected void validateCsvDataPersistence(
+      List<Team> originalEntities, String csvData, CsvImportResult result) {
+    super.validateCsvDataPersistence(originalEntities, csvData, result);
+
+    if (result.getStatus() != ApiStatus.SUCCESS) {
+      return;
+    }
+
+    if (originalEntities != null) {
+      for (Team originalEntity : originalEntities) {
+        Team updatedEntity =
+            getEntityByNameWithFields(
+                originalEntity.getName(), "parents,owners,defaultRoles,policies");
+        assertNotNull(
+            updatedEntity, "Team " + originalEntity.getName() + " should exist after CSV import");
+
+        validateTeamFieldsAfterImport(originalEntity, updatedEntity);
+      }
+    }
+  }
+
+  private void validateTeamFieldsAfterImport(Team original, Team imported) {
+    assertEquals(original.getName(), imported.getName(), "Team name should match");
+    assertEquals(original.getTeamType(), imported.getTeamType(), "Team type should match");
+
+    if (original.getDisplayName() != null) {
+      assertEquals(
+          original.getDisplayName(),
+          imported.getDisplayName(),
+          "Team displayName should be preserved");
+    }
+
+    if (original.getDescription() != null) {
+      assertEquals(
+          original.getDescription(),
+          imported.getDescription(),
+          "Team description should be preserved");
+    }
+
+    if (original.getIsJoinable() != null) {
+      assertEquals(
+          original.getIsJoinable(),
+          imported.getIsJoinable(),
+          "Team isJoinable flag should be preserved");
+    }
+
+    if (original.getParents() != null && !original.getParents().isEmpty()) {
+      assertNotNull(imported.getParents(), "Team parents should be preserved");
+      assertEquals(
+          original.getParents().size(),
+          imported.getParents().size(),
+          "Team parent count should match");
+      assertEquals(
+          original.getParents().get(0).getId(),
+          imported.getParents().get(0).getId(),
+          "Team parent should match");
+    }
+
+    if (original.getOwners() != null && !original.getOwners().isEmpty()) {
+      assertNotNull(imported.getOwners(), "Team owners should be preserved");
+      assertEquals(
+          original.getOwners().size(),
+          imported.getOwners().size(),
+          "Team owner count should match");
+    }
+
+    if (original.getDefaultRoles() != null && !original.getDefaultRoles().isEmpty()) {
+      assertNotNull(imported.getDefaultRoles(), "Team default roles should be preserved");
+      assertEquals(
+          original.getDefaultRoles().size(),
+          imported.getDefaultRoles().size(),
+          "Team default roles count should match");
+    }
+
+    if (original.getPolicies() != null && !original.getPolicies().isEmpty()) {
+      assertNotNull(imported.getPolicies(), "Team policies should be preserved");
+      assertEquals(
+          original.getPolicies().size(),
+          imported.getPolicies().size(),
+          "Team policies count should match");
     }
   }
 }

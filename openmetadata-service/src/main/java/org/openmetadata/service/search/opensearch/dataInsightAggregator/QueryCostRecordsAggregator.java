@@ -53,7 +53,12 @@ public class QueryCostRecordsAggregator {
                                 s ->
                                     s.inline(
                                         i ->
-                                            i.lang("painless")
+                                            i.lang(
+                                                    l ->
+                                                        l.builtin(
+                                                            os.org.opensearch.client.opensearch
+                                                                ._types.BuiltinScriptLanguage
+                                                                .Painless))
                                                 .source(
                                                     "params.total_duration / params.total_count"))))));
 
@@ -138,7 +143,8 @@ public class QueryCostRecordsAggregator {
       }
       var totalCountAgg = bucket.aggregations().get("total_count");
       if (totalCountAgg != null && totalCountAgg.isSum()) {
-        totalCount = (long) totalCountAgg.sum().value();
+        Double countValue = totalCountAgg.sum().value();
+        totalCount = countValue != null ? countValue.longValue() : 0L;
       }
       var totalDurationAgg = bucket.aggregations().get("total_duration");
       if (totalDurationAgg != null && totalDurationAgg.isSum()) {
@@ -199,14 +205,16 @@ public class QueryCostRecordsAggregator {
 
     var overallTotalsAgg = response.aggregations().get("overall_totals");
     if (overallTotalsAgg != null && overallTotalsAgg.isStats()) {
-      totalCostSum = overallTotalsAgg.stats().sum();
-      minCost = overallTotalsAgg.stats().min();
-      maxCost = overallTotalsAgg.stats().max();
-      avgCost = overallTotalsAgg.stats().avg();
+      var stats = overallTotalsAgg.stats();
+      totalCostSum = stats.sum();
+      minCost = stats.min() != null ? stats.min() : 0;
+      maxCost = stats.max() != null ? stats.max() : 0;
+      avgCost = stats.avg() != null ? stats.avg() : 0;
     }
     var totalExecCountAgg = response.aggregations().get("total_execution_count");
     if (totalExecCountAgg != null && totalExecCountAgg.isSum()) {
-      totalExecCount = (int) totalExecCountAgg.sum().value();
+      Double countValue = totalExecCountAgg.sum().value();
+      totalExecCount = countValue != null ? countValue.intValue() : 0;
     }
 
     OverallStats overallStats =

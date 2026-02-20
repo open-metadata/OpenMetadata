@@ -1,12 +1,5 @@
-import sys
-
-import pytest
-
 from metadata.generated.schema.entity.data.table import Constraint, Table
 from metadata.workflow.metadata import MetadataWorkflow
-
-if not sys.version_info >= (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
 
 
 def test_ingest_metadata(

@@ -494,7 +494,7 @@ class Db2SSLManagerTest(TestCase):
         self.assertIsNone(ssl_manager)
 
     def test_setup_ssl_with_ca_certificate(self):
-        """Test SSL setup with CA certificate only"""
+        """Test SSL setup with CA certificate only - params go to connectionOptions"""
         from metadata.generated.schema.entity.services.connections.database.db2Connection import (
             Db2Connection,
         )
@@ -511,24 +511,24 @@ class Db2SSLManagerTest(TestCase):
         ssl_manager = SSLManager(ca=SecretStr("CA cert"))
         updated_connection = ssl_manager.setup_ssl(connection)
 
-        self.assertIsNotNone(updated_connection.connectionArguments)
+        self.assertIsNotNone(updated_connection.connectionOptions)
         self.assertEqual(
-            updated_connection.connectionArguments.root.get("SECURITY"), "SSL"
+            updated_connection.connectionOptions.root.get("SECURITY"), "SSL"
         )
         self.assertIsNotNone(
-            updated_connection.connectionArguments.root.get("SSLServerCertificate")
+            updated_connection.connectionOptions.root.get("SSLServerCertificate")
         )
         self.assertIsNone(
-            updated_connection.connectionArguments.root.get("SSLClientKeystoredb")
+            updated_connection.connectionOptions.root.get("SSLClientKeystoredb")
         )
         self.assertIsNone(
-            updated_connection.connectionArguments.root.get("SSLClientKeystash")
+            updated_connection.connectionOptions.root.get("SSLClientKeystash")
         )
 
         ssl_manager.cleanup_temp_files()
 
     def test_setup_ssl_with_all_certificates(self):
-        """Test SSL setup with all certificates (mutual TLS)"""
+        """Test SSL setup with all certificates (mutual TLS) - params go to connectionOptions"""
         from metadata.generated.schema.entity.services.connections.database.db2Connection import (
             Db2Connection,
         )
@@ -547,24 +547,24 @@ class Db2SSLManagerTest(TestCase):
         )
         updated_connection = ssl_manager.setup_ssl(connection)
 
-        self.assertIsNotNone(updated_connection.connectionArguments)
+        self.assertIsNotNone(updated_connection.connectionOptions)
         self.assertEqual(
-            updated_connection.connectionArguments.root.get("SECURITY"), "SSL"
+            updated_connection.connectionOptions.root.get("SECURITY"), "SSL"
         )
         self.assertIsNotNone(
-            updated_connection.connectionArguments.root.get("SSLServerCertificate")
+            updated_connection.connectionOptions.root.get("SSLServerCertificate")
         )
         self.assertIsNotNone(
-            updated_connection.connectionArguments.root.get("SSLClientKeystoredb")
+            updated_connection.connectionOptions.root.get("SSLClientKeystoredb")
         )
         self.assertIsNotNone(
-            updated_connection.connectionArguments.root.get("SSLClientKeystash")
+            updated_connection.connectionOptions.root.get("SSLClientKeystash")
         )
 
         ssl_manager.cleanup_temp_files()
 
     def test_setup_ssl_with_disabled_mode(self):
-        """Test SSL setup when sslMode is disabled"""
+        """Test SSL setup when sslMode is disabled - no SSL params added"""
         from metadata.generated.schema.entity.services.connections.database.db2Connection import (
             Db2Connection,
         )
@@ -581,16 +581,16 @@ class Db2SSLManagerTest(TestCase):
         ssl_manager = SSLManager(ca=SecretStr("CA cert"))
         updated_connection = ssl_manager.setup_ssl(connection)
 
-        self.assertIsNotNone(updated_connection.connectionArguments)
-        self.assertIsNone(updated_connection.connectionArguments.root.get("SECURITY"))
+        self.assertIsNotNone(updated_connection.connectionOptions)
+        self.assertIsNone(updated_connection.connectionOptions.root.get("SECURITY"))
         self.assertIsNone(
-            updated_connection.connectionArguments.root.get("SSLServerCertificate")
+            updated_connection.connectionOptions.root.get("SSLServerCertificate")
         )
 
         ssl_manager.cleanup_temp_files()
 
     def test_setup_ssl_verify_ca_mode(self):
-        """Test SSL setup with verify-ca mode"""
+        """Test SSL setup with verify-ca mode - params go to connectionOptions"""
         from metadata.generated.schema.entity.services.connections.database.db2Connection import (
             Db2Connection,
         )
@@ -612,10 +612,10 @@ class Db2SSLManagerTest(TestCase):
         updated_connection = ssl_manager.setup_ssl(connection)
 
         self.assertEqual(
-            updated_connection.connectionArguments.root.get("SECURITY"), "SSL"
+            updated_connection.connectionOptions.root.get("SECURITY"), "SSL"
         )
         self.assertIsNotNone(
-            updated_connection.connectionArguments.root.get("SSLServerCertificate")
+            updated_connection.connectionOptions.root.get("SSLServerCertificate")
         )
 
         ssl_manager.cleanup_temp_files()

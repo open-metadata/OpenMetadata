@@ -150,6 +150,13 @@
       "description": "Get logs from the Library in debug mode",
       "type": "boolean",
       "default": false
+    },
+    "samlDisplayNameAttributes": {
+      "description": "Ordered list of SAML attribute names to check for display name. First available attribute wins. Defaults to common OIDC/SAML attribute names.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "additionalProperties": false,

@@ -2,7 +2,7 @@
 
 # Platform
 
-> **12 Components** | **78 Files** | **1574 Tests** | **2099 Scenarios** 🚀
+> **12 Components** | **79 Files** | **1611 Tests** | **2258 Scenarios** 🚀
 
 ## Table of Contents
 - [Other](#other)
@@ -230,7 +230,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>InputOutputPorts.spec.ts</b> (30 tests, 40 scenarios)</summary>
+<summary>📄 <b>InputOutputPorts.spec.ts</b> (30 tests, 142 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/InputOutputPorts.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/InputOutputPorts.spec.ts)
 
@@ -239,13 +239,41 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Input Output Ports** - Tab renders with empty state when no ports exist | Tab renders with empty state when no ports exist |
+| | ↳ *Create data product via API* | |
+| | ↳ *Navigate to data product* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify empty states* | |
+| | ↳ *Verify lineage section shows zero counts* | |
+| | ↳ *Cleanup* | |
 | 2 | **Input Output Ports** - Tab displays correct port counts | Tab displays correct port counts |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to data product ports tab* | |
+| | ↳ *Verify port counts* | |
+| | ↳ *Cleanup* | |
 | 3 | **Input Output Ports** - Lineage section is collapsed by default | Lineage section is collapsed by default |
+| | ↳ *Create data product via API* | |
+| | ↳ *Navigate to data product* | |
+| | ↳ *Verify lineage is collapsed* | |
+| | ↳ *Cleanup* | |
 | 4 | **Input Output Ports** - Add single input port | Add single input port |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Add input port* | |
+| | ↳ *Verify port was added* | |
+| | ↳ *Cleanup* | |
 | 5 | **Input Output Ports** - Add single output port | Add single output port |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Add output port* | |
+| | ↳ *Verify port was added* | |
+| | ↳ *Cleanup* | |
 | 6 | **Input Output Ports** - Add multiple input ports at once | Add multiple input ports at once |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Add multiple input ports* | |
+| | ↳ *Verify both ports were added* | |
+| | ↳ *Cleanup* | |
 | 7 | **Input Output Ports** - Add different entity types as ports | Add different entity types as ports |
-| 8 | **Input Output Ports** - Cancel adding port | Cancel adding port |
 | | ↳ *Setup* | |
 | | ↳ *Navigate to ports tab* | |
 | | ↳ *Add table as input port* | |
@@ -253,33 +281,135 @@
 | | ↳ *Add dashboard as output port* | |
 | | ↳ *Verify different entity types are shown* | |
 | | ↳ *Cleanup* | |
+| 8 | **Input Output Ports** - Cancel adding port | Cancel adding port |
+| | ↳ *Setup* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Open and cancel input port drawer* | |
+| | ↳ *Verify empty state still shown* | |
+| | ↳ *Cleanup* | |
 | 9 | **Input Output Ports** - Input ports list displays entity cards | Input ports list displays entity cards |
+| | ↳ *Create data product with input ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify input ports list* | |
+| | ↳ *Cleanup* | |
 | 10 | **Input Output Ports** - Output ports list displays entity cards | Output ports list displays entity cards |
+| | ↳ *Create data product with output ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify output ports list* | |
+| | ↳ *Cleanup* | |
 | 11 | **Input Output Ports** - Port action dropdown visible with EditAll permission | Port action dropdown visible with EditAll permission |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify action dropdown is visible* | |
+| | ↳ *Cleanup* | |
 | 12 | **Input Output Ports** - Remove single input port | Remove single input port |
-| 13 | **Input Output Ports** - Remove single output port | Remove single output port |
 | | ↳ *Create data product with input ports via API* | |
 | | ↳ *Navigate to ports tab* | |
 | | ↳ *Remove first input port* | |
 | | ↳ *Verify port was removed* | |
 | | ↳ *Cleanup* | |
+| 13 | **Input Output Ports** - Remove single output port | Remove single output port |
+| | ↳ *Create data product with output ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Remove first output port* | |
+| | ↳ *Verify port was removed* | |
+| | ↳ *Cleanup* | |
 | 14 | **Input Output Ports** - Cancel port removal | Cancel port removal |
+| | ↳ *Create data product with input port via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Open and cancel removal dialog* | |
+| | ↳ *Verify port still exists* | |
+| | ↳ *Cleanup* | |
 | 15 | **Input Output Ports** - Remove last port shows empty state | Remove last port shows empty state |
+| | ↳ *Create data product with single input port via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Remove the only input port* | |
+| | ↳ *Verify empty state appears* | |
+| | ↳ *Cleanup* | |
 | 16 | **Input Output Ports** - Lineage loads on expand | Lineage loads on expand |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Expand lineage section* | |
+| | ↳ *Verify lineage view is visible* | |
+| | ↳ *Cleanup* | |
 | 17 | **Input Output Ports** - Lineage displays data product center node | Lineage displays data product center node |
+| | ↳ *Create data product with ports via API* | |
+| | ↳ *Navigate to ports tab and expand lineage* | |
+| | ↳ *Verify data product node is visible* | |
+| | ↳ *Cleanup* | |
 | 18 | **Input Output Ports** - Lineage displays input and output ports | Lineage displays input and output ports |
+| | ↳ *Create data product with input and output ports* | |
+| | ↳ *Navigate to ports tab and expand lineage* | |
+| | ↳ *Verify input port nodes are visible* | |
+| | ↳ *Verify output port nodes are visible* | |
+| | ↳ *Cleanup* | |
 | 19 | **Input Output Ports** - Lineage with only input ports | Lineage with only input ports |
+| | ↳ *Create data product with only input ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Verify only input port is shown* | |
+| | ↳ *Cleanup* | |
 | 20 | **Input Output Ports** - Lineage with only output ports | Lineage with only output ports |
+| | ↳ *Create data product with only output ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Verify only output port is shown* | |
+| | ↳ *Cleanup* | |
 | 21 | **Input Output Ports** - Lineage controls work | Lineage controls work |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Verify ReactFlow controls are visible* | |
+| | ↳ *Cleanup* | |
 | 22 | **Input Output Ports** - Lineage section collapse/expand | Lineage section collapse/expand |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify initially collapsed* | |
+| | ↳ *Expand lineage* | |
+| | ↳ *Collapse lineage* | |
+| | ↳ *Cleanup* | |
 | 23 | **Input Output Ports** - Input ports section collapse/expand | Input ports section collapse/expand |
+| | ↳ *Create data product with input port* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify initially expanded* | |
+| | ↳ *Collapse input ports section* | |
+| | ↳ *Expand input ports section* | |
+| | ↳ *Cleanup* | |
 | 24 | **Input Output Ports** - Output ports section collapse/expand | Output ports section collapse/expand |
+| | ↳ *Create data product with output port* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify initially expanded* | |
+| | ↳ *Collapse output ports section* | |
+| | ↳ *Expand output ports section* | |
+| | ↳ *Cleanup* | |
 | 25 | **Input Output Ports** - Multiple sections can be collapsed independently | Multiple sections can be collapsed independently |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Collapse input ports only* | |
+| | ↳ *Expand lineage while keeping input collapsed* | |
+| | ↳ *Cleanup* | |
 | 26 | **Input Output Ports** - Toggle fullscreen mode | Toggle fullscreen mode |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter fullscreen mode* | |
+| | ↳ *Cleanup* | |
 | 27 | **Input Output Ports** - Exit fullscreen with button | Exit fullscreen with button |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter and exit fullscreen mode* | |
+| | ↳ *Cleanup* | |
 | 28 | **Input Output Ports** - Exit fullscreen with Escape key | Exit fullscreen with Escape key |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter fullscreen and exit with Escape* | |
+| | ↳ *Cleanup* | |
 | 29 | **Input Output Ports** - Fullscreen lineage is interactive | Fullscreen lineage is interactive |
+| | ↳ *Create data product with ports* | |
+| | ↳ *Navigate and expand lineage* | |
+| | ↳ *Enter fullscreen and verify controls* | |
+| | ↳ *Cleanup* | |
 | 30 | **Input Output Ports** - Input ports list pagination | Input ports list pagination |
+| | ↳ *Create data product with many input ports via API* | |
+| | ↳ *Navigate to ports tab* | |
+| | ↳ *Verify ports list displays* | |
+| | ↳ *Cleanup* | |
 
 </details>
 
@@ -556,25 +686,6 @@
 </details>
 
 <details open>
-<summary>📄 <b>CSVImportWithQuotesAndCommas.spec.ts</b> (2 tests, 5 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts)
-
-### CSV Import with Commas and Quotes - All Entity Types
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **CSV Import with Commas and Quotes - All Entity Types** - Glossary: Import CSV with commas and quotes in fields | Glossary: Import CSV with commas and quotes in fields |
-| | ↳ *Create glossary for quote and comma test* | |
-| | ↳ *Import CSV with fields containing both commas and quotes* | |
-| 2 | **CSV Import with Commas and Quotes - All Entity Types** - Export and re-import CSV with commas and quotes | Export and re-import CSV with commas and quotes |
-| | ↳ *Create glossary and import data with quotes and commas* | |
-| | ↳ *Export CSV and verify it contains properly escaped quotes* | |
-| | ↳ *Re-import the exported CSV* | |
-
-</details>
-
-<details open>
 <summary>📄 <b>auth.setup.ts</b> (1 tests, 1 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/auth.setup.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts)
@@ -700,6 +811,22 @@
 </details>
 
 <details open>
+<summary>📄 <b>CSVImportWithQuotesAndCommas.spec.ts</b> (1 tests, 3 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts)
+
+### CSV Import with Commas and Quotes - All Entity Types
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **CSV Import with Commas and Quotes - All Entity Types** - Create glossary with CSV, export it, create new glossary and import exported data | Create glossary with CSV, export it, create new glossary and import exported data |
+| | ↳ *Create glossary and import CSV with quotes and commas* | |
+| | ↳ *Export CSV and verify it contains properly escaped quotes* | |
+| | ↳ *Create new glossary and import exported CSV* | |
+
+</details>
+
+<details open>
 <summary>📄 <b>HealthCheck.spec.ts</b> (1 tests, 1 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/HealthCheck.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/HealthCheck.spec.ts)
@@ -781,7 +908,7 @@
 | 21 | **Api Endpoint** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 22 | **Api Endpoint** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 23 | **Api Endpoint** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 24 | **Api Endpoint** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 24 | **Api Endpoint** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -835,7 +962,7 @@
 | 23 | **Table** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 24 | **Table** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 25 | **Table** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 26 | **Table** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 26 | **Table** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -866,7 +993,7 @@
 | 12 | **Stored Procedure** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 13 | **Stored Procedure** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 14 | **Stored Procedure** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 15 | **Stored Procedure** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 15 | **Stored Procedure** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -893,7 +1020,7 @@
 | 14 | **Dashboard** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 15 | **Dashboard** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 16 | **Dashboard** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 17 | **Dashboard** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 17 | **Dashboard** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -944,7 +1071,7 @@
 | 21 | **Pipeline** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 22 | **Pipeline** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 23 | **Pipeline** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 24 | **Pipeline** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 24 | **Pipeline** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -995,7 +1122,7 @@
 | 21 | **Topic** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 22 | **Topic** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 23 | **Topic** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 24 | **Topic** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 24 | **Topic** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1046,7 +1173,7 @@
 | 21 | **Ml Model** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 22 | **Ml Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 23 | **Ml Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 24 | **Ml Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 24 | **Ml Model** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1072,7 +1199,7 @@
 | 13 | **Container** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 14 | **Container** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 15 | **Container** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 16 | **Container** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 16 | **Container** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1123,7 +1250,7 @@
 | 21 | **Search Index** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 22 | **Search Index** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 23 | **Search Index** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 24 | **Search Index** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 24 | **Search Index** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1176,7 +1303,7 @@
 | 23 | **Dashboard Data Model** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 24 | **Dashboard Data Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 25 | **Dashboard Data Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 26 | **Dashboard Data Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 26 | **Dashboard Data Model** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1201,7 +1328,7 @@
 | 12 | **Metric** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 13 | **Metric** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 14 | **Metric** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 15 | **Metric** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 15 | **Metric** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1226,7 +1353,7 @@
 | 12 | **Chart** - Inactive Announcement create & delete | Tests inactive announcement management  Tests creating an inactive announcement and then deleting it |
 | 13 | **Chart** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 14 | **Chart** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
-| 15 | **Chart** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| 15 | **Chart** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
 | | ↳ *Set ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property* | |
 | | ↳ *Update ${...} Custom Property in Right Panel* | |
@@ -1839,7 +1966,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>ServiceEntity.spec.ts</b> (140 tests, 140 scenarios)</summary>
+<summary>📄 <b>ServiceEntity.spec.ts</b> (140 tests, 158 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/ServiceEntity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ServiceEntity.spec.ts)
 
@@ -1847,211 +1974,244 @@
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Api Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Api Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Api Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Api Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Api Service** - Update description | Update description |
-| 6 | **Api Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Api Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Api Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Api Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Api Service** - Update displayName | Update displayName |
+| 1 | **Api Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Api Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Api Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Api Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Api Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Api Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Api Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Api Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Api Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Api Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Api Collection
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Api Collection** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Api Collection** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Api Collection** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Api Collection** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Api Collection** - Update description | Update description |
-| 6 | **Api Collection** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Api Collection** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Api Collection** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Api Collection** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Api Collection** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
-| 11 | **Api Collection** - Update displayName | Update displayName |
+| 1 | **Api Collection** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Api Collection** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Api Collection** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Api Collection** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Api Collection** - Update description | Tests description updates  Edits the service description |
+| 6 | **Api Collection** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Api Collection** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Api Collection** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Api Collection** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Api Collection** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
+| 11 | **Api Collection** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Database Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Database Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Database Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Database Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Database Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Database Service** - Update description | Update description |
-| 6 | **Database Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Database Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Database Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Database Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Database Service** - Follow & Un-follow entity for Database Entity | Follow & Un-follow entity for Database Entity |
-| 11 | **Database Service** - Update displayName | Update displayName |
+| 1 | **Database Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Database Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Database Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Database Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Database Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Database Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Database Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Database Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Database Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Database Service** - Follow & Un-follow entity for Database Entity | Tests follow and unfollow actions  Follows the service and then unfollows it to verify state changes |
+| 11 | **Database Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Dashboard Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Dashboard Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Dashboard Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Dashboard Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Dashboard Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Dashboard Service** - Update description | Update description |
-| 6 | **Dashboard Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Dashboard Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Dashboard Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Dashboard Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Dashboard Service** - Update displayName | Update displayName |
+| 1 | **Dashboard Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Dashboard Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Dashboard Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Dashboard Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Dashboard Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Dashboard Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Dashboard Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Dashboard Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Dashboard Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Dashboard Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Messaging Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Messaging Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Messaging Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Messaging Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Messaging Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Messaging Service** - Update description | Update description |
-| 6 | **Messaging Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Messaging Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Messaging Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Messaging Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Messaging Service** - Update displayName | Update displayName |
+| 1 | **Messaging Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Messaging Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Messaging Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Messaging Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Messaging Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Messaging Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Messaging Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Messaging Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Messaging Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Messaging Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Mlmodel Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Mlmodel Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Mlmodel Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Mlmodel Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Mlmodel Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Mlmodel Service** - Update description | Update description |
-| 6 | **Mlmodel Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Mlmodel Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Mlmodel Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Mlmodel Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Mlmodel Service** - Update displayName | Update displayName |
+| 1 | **Mlmodel Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Mlmodel Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Mlmodel Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Mlmodel Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Mlmodel Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Mlmodel Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Mlmodel Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Mlmodel Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Mlmodel Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Mlmodel Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Pipeline Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Pipeline Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Pipeline Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Pipeline Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Pipeline Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Pipeline Service** - Update description | Update description |
-| 6 | **Pipeline Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Pipeline Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Pipeline Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Pipeline Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Pipeline Service** - Update displayName | Update displayName |
+| 1 | **Pipeline Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Pipeline Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Pipeline Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Pipeline Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Pipeline Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Pipeline Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Pipeline Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Pipeline Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Pipeline Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Pipeline Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Search Index Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Search Index Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Search Index Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Search Index Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Search Index Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Search Index Service** - Update description | Update description |
-| 6 | **Search Index Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Search Index Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Search Index Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Search Index Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Search Index Service** - Update displayName | Update displayName |
+| 1 | **Search Index Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Search Index Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Search Index Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Search Index Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Search Index Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Search Index Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Search Index Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Search Index Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Search Index Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Search Index Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Storage Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Storage Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Storage Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Storage Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Storage Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Storage Service** - Update description | Update description |
-| 6 | **Storage Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Storage Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Storage Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Storage Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Storage Service** - Update displayName | Update displayName |
+| 1 | **Storage Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Storage Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Storage Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Storage Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Storage Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Storage Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Storage Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Storage Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Storage Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Storage Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Database
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Database** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Database** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Database** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Database** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Database** - Certification Add Remove | Certification Add Remove |
-| 6 | **Database** - Update description | Update description |
-| 7 | **Database** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 8 | **Database** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 9 | **Database** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 10 | **Database** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 11 | **Database** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
-| 12 | **Database** - Follow & Un-follow entity for Database Entity | Follow & Un-follow entity for Database Entity |
-| 13 | **Database** - Update displayName | Update displayName |
+| 1 | **Database** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Database** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Database** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Database** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Database** - Certification Add Remove | Tests certification lifecycle  Adds a certification to the service, updates it, and removes it |
+| 6 | **Database** - Update description | Tests description updates  Edits the service description |
+| 7 | **Database** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 8 | **Database** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 9 | **Database** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 10 | **Database** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 11 | **Database** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
+| 12 | **Database** - Follow & Un-follow entity for Database Entity | Tests follow and unfollow actions  Follows the service and then unfollows it to verify state changes |
+| 13 | **Database** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Database Schema
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Database Schema** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Database Schema** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Database Schema** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Database Schema** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Database Schema** - Certification Add Remove | Certification Add Remove |
-| 6 | **Database Schema** - Update description | Update description |
-| 7 | **Database Schema** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 8 | **Database Schema** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 9 | **Database Schema** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 10 | **Database Schema** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 11 | **Database Schema** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
-| 12 | **Database Schema** - Follow & Un-follow entity for Database Entity | Follow & Un-follow entity for Database Entity |
-| 13 | **Database Schema** - Update displayName | Update displayName |
+| 1 | **Database Schema** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Database Schema** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Database Schema** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Database Schema** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Database Schema** - Certification Add Remove | Tests certification lifecycle  Adds a certification to the service, updates it, and removes it |
+| 6 | **Database Schema** - Update description | Tests description updates  Edits the service description |
+| 7 | **Database Schema** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 8 | **Database Schema** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 9 | **Database Schema** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 10 | **Database Schema** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 11 | **Database Schema** - Set & Update table-cp, hyperlink-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property in Right Panel* | |
+| 12 | **Database Schema** - Follow & Un-follow entity for Database Entity | Tests follow and unfollow actions  Follows the service and then unfollows it to verify state changes |
+| 13 | **Database Schema** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Drive Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Drive Service** - Domain Add, Update and Remove | Domain Add, Update and Remove |
-| 2 | **Drive Service** - User as Owner Add, Update and Remove | User as Owner Add, Update and Remove |
-| 3 | **Drive Service** - Team as Owner Add, Update and Remove | Team as Owner Add, Update and Remove |
-| 4 | **Drive Service** - Tier Add, Update and Remove | Tier Add, Update and Remove |
-| 5 | **Drive Service** - Update description | Update description |
-| 6 | **Drive Service** - Tag Add, Update and Remove | Tag Add, Update and Remove |
-| 7 | **Drive Service** - Glossary Term Add, Update and Remove | Glossary Term Add, Update and Remove |
-| 8 | **Drive Service** - Announcement create, edit & delete | Announcement create, edit & delete |
-| 9 | **Drive Service** - Inactive Announcement create & delete | Inactive Announcement create & delete |
-| 10 | **Drive Service** - Update displayName | Update displayName |
+| 1 | **Drive Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Drive Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Drive Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Drive Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Drive Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Drive Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Drive Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Drive Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Drive Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Drive Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
 
 ### Standalone Tests
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | Delete Api Service | Delete Api Service |
-| 2 | Delete Api Collection | Delete Api Collection |
-| 3 | Delete Database Service | Delete Database Service |
-| 4 | Delete Dashboard Service | Delete Dashboard Service |
-| 5 | Delete Messaging Service | Delete Messaging Service |
-| 6 | Delete Mlmodel Service | Delete Mlmodel Service |
-| 7 | Delete Pipeline Service | Delete Pipeline Service |
-| 8 | Delete Search Index Service | Delete Search Index Service |
-| 9 | Delete Storage Service | Delete Storage Service |
-| 10 | Delete Database | Delete Database |
-| 11 | Delete Database Schema | Delete Database Schema |
-| 12 | Delete Drive Service | Delete Drive Service |
+| 1 | Delete Api Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 2 | Delete Api Collection | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 3 | Delete Database Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 4 | Delete Dashboard Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 5 | Delete Messaging Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 6 | Delete Mlmodel Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 7 | Delete Pipeline Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 8 | Delete Search Index Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 9 | Delete Storage Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 10 | Delete Database | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 11 | Delete Database Schema | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 12 | Delete Drive Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 
 </details>
 
 <details open>
-<summary>📄 <b>ColumnBulkOperations.spec.ts</b> (78 tests, 78 scenarios)</summary>
+<summary>📄 <b>ColumnBulkOperations.spec.ts</b> (79 tests, 79 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/ColumnBulkOperations.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ColumnBulkOperations.spec.ts)
 
@@ -2061,15 +2221,16 @@
 |---|-----------|-------------|
 | 1 | **Column Bulk Operations Page** - should load the page with stats cards | Load the page with stats cards |
 | 2 | **Column Bulk Operations Page** - should display column grid with data | Display column grid with data |
+| 3 | **Column Bulk Operations Page** - should show no results message when filters match nothing | Show no results message when filters match nothing |
 
 ### Column Bulk Operations - Metadata Status Filters
 
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Column Bulk Operations - Metadata Status Filters** - should filter by MISSING metadata status | Filter by MISSING metadata status |
-| 2 | **Column Bulk Operations - Metadata Status Filters** - should filter by INCOMPLETE metadata status | Filter by INCOMPLETE metadata status |
-| 3 | **Column Bulk Operations - Metadata Status Filters** - should filter by INCONSISTENT metadata status | Filter by INCONSISTENT metadata status |
-| 4 | **Column Bulk Operations - Metadata Status Filters** - should filter by COMPLETE metadata status | Filter by COMPLETE metadata status |
+| 2 | **Column Bulk Operations - Metadata Status Filters** - should filter by Has Description metadata status | Filter by Has Description metadata status |
+| 3 | **Column Bulk Operations - Metadata Status Filters** - should filter by Has Tags metadata status | Filter by Has Tags metadata status |
+| 4 | **Column Bulk Operations - Metadata Status Filters** - should filter by Has Glossary metadata status | Filter by Has Glossary metadata status |
 | 5 | **Column Bulk Operations - Metadata Status Filters** - should make API call when filtering by metadata status | Make API call when filtering by metadata status |
 
 ### Column Bulk Operations - Domain Filters
@@ -2169,12 +2330,6 @@
 | 1 | **Column Bulk Operations - URL State Persistence** - should restore filters from URL on page load | Restore filters from URL on page load |
 | 2 | **Column Bulk Operations - URL State Persistence** - should persist search query in URL | Persist search query in URL |
 
-### Column Bulk Operations - Empty State
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Column Bulk Operations - Empty State** - should show no results message when filters match nothing | Show no results message when filters match nothing |
-
 ### Column Bulk Operations - Edit Drawer Title
 
 | # | Test Case | Description |
@@ -2192,7 +2347,8 @@
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Column Bulk Operations - Service Filter** - should have filter bar with search and filter options | Have filter bar with search and filter options |
+| 1 | **Column Bulk Operations - Service Filter** - should show Service filter chip when Service filter is applied from URL | Show Service filter chip when Service filter is applied from URL |
+| 2 | **Column Bulk Operations - Service Filter** - should have filter bar with search and filter options | Have filter bar with search and filter options |
 
 ### Column Bulk Operations - Cross Entity Type Support
 
@@ -2286,7 +2442,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>RightEntityPanelFlow.spec.ts</b> (46 tests, 46 scenarios)</summary>
+<summary>📄 <b>RightEntityPanelFlow.spec.ts</b> (46 tests, 48 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts)
 
@@ -2310,6 +2466,9 @@
 | 14 | **Right Entity Panel - Admin User Flow** - Admin - Schema Tab - View Schema | Admin - Schema Tab - View Schema |
 | 15 | **Right Entity Panel - Admin User Flow** - Lineage Tab - No Lineage | Lineage Tab - No Lineage |
 | 16 | **Right Entity Panel - Admin User Flow** - Lineage Tab - With Upstream and Downstream | Lineage Tab - With Upstream and Downstream |
+| | ↳ *Create lineage connections* | |
+| | ↳ *Verify overview tab lineage* | |
+| | ↳ *Verify lineage tab content* | |
 | 17 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - No Test Cases | Data Quality Tab - No Test Cases |
 | 18 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - Incidents Empty State | Data Quality Tab - Incidents Empty State |
 | 19 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - With Test Cases | Data Quality Tab - With Test Cases |
@@ -2466,7 +2625,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>EntitySummaryPanel.spec.ts</b> (16 tests, 16 scenarios)</summary>
+<summary>📄 <b>EntitySummaryPanel.spec.ts</b> (18 tests, 18 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/EntitySummaryPanel.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/EntitySummaryPanel.spec.ts)
 
@@ -2490,6 +2649,13 @@
 | 14 | **Entity Summary Panel** - should display tags section | Display tags section |
 | 15 | **Entity Summary Panel** - should navigate between tabs | Navigate between tabs |
 | 16 | **Entity Summary Panel** - should display description section | Display description section |
+
+### Entity Title Section - Edit Display Name
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Entity Title Section - Edit Display Name** - should edit display name from entity summary panel | Edit display name from entity summary panel |
+| 2 | **Entity Title Section - Edit Display Name** - should cancel edit display name modal | Cancel edit display name modal |
 
 </details>
 
@@ -3896,7 +4062,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>OnlineUsers.spec.ts</b> (6 tests, 6 scenarios)</summary>
+<summary>📄 <b>OnlineUsers.spec.ts</b> (7 tests, 8 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/OnlineUsers.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OnlineUsers.spec.ts)
 
@@ -3910,6 +4076,9 @@
 | 4 | **Online Users Feature** - Should filter users by time window | Filter users by time window |
 | 5 | **Online Users Feature** - Non-admin users should not see Online Users page | Non-admin users should not see Online Users page |
 | 6 | **Online Users Feature** - Should show correct last activity format | Show correct last activity format |
+| 7 | **Online Users Feature** - Should show user displayName in online users table | Show user displayName in online users table |
+| | ↳ *Visit Explore Page as New User* | |
+| | ↳ *Verify Online User as Admin* | |
 
 </details>
 
@@ -3975,6 +4144,19 @@
 
 </details>
 
+<details open>
+<summary>📄 <b>UserCreationWithPersona.spec.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/UserCreationWithPersona.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/UserCreationWithPersona.spec.ts)
+
+### Create user with persona
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Create user with persona** - Create user with persona and verify on profile | Create user with persona and verify on profile |
+
+</details>
+
 
 ---
 
@@ -3983,7 +4165,7 @@
 ## SSO
 
 <details open>
-<summary>📄 <b>SSOConfiguration.spec.ts</b> (10 tests, 10 scenarios)</summary>
+<summary>📄 <b>SSOConfiguration.spec.ts</b> (43 tests, 43 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts)
 
@@ -4001,6 +4183,39 @@
 | 8 | **SSO Configuration Tests** - should show correct fields when selecting Google provider | Show correct fields when selecting Google provider |
 | 9 | **SSO Configuration Tests** - should show correct fields when selecting Auth0 provider | Show correct fields when selecting Auth0 provider |
 | 10 | **SSO Configuration Tests** - should show correct fields when selecting Okta provider | Show correct fields when selecting Okta provider |
+| 11 | **SSO Configuration Tests** - should show OIDC Callback URL as readonly for Google provider | Show OIDC Callback URL as readonly for Google provider |
+| 12 | **SSO Configuration Tests** - should show OIDC Callback URL as readonly for Auth0 provider | Show OIDC Callback URL as readonly for Auth0 provider |
+| 13 | **SSO Configuration Tests** - should show OIDC Callback URL as readonly for Okta provider | Show OIDC Callback URL as readonly for Okta provider |
+| 14 | **SSO Configuration Tests** - should show OIDC Callback URL as readonly for Azure AD provider | Show OIDC Callback URL as readonly for Azure AD provider |
+| 15 | **SSO Configuration Tests** - should show SAML SP Entity ID and ACS URL as readonly | Show SAML SP Entity ID and ACS URL as readonly |
+| 16 | **SSO Configuration Tests** - should display advanced config collapse for OIDC provider | Display advanced config collapse for OIDC provider |
+| 17 | **SSO Configuration Tests** - should show advanced fields when advanced config is expanded | Show advanced fields when advanced config is expanded |
+| 18 | **SSO Configuration Tests** - should hide publicKeyUrls field for confidential OIDC providers | Hide publicKeyUrls field for confidential OIDC providers |
+| 19 | **SSO Configuration Tests** - should hide serverUrl field for OIDC providers | Hide serverUrl field for OIDC providers |
+| 20 | **SSO Configuration Tests** - should hide preferredJwsAlgorithm and responseType for OIDC providers | Hide preferredJwsAlgorithm and responseType for OIDC providers |
+| 21 | **SSO Configuration Tests** - should hide tokenValidationAlgorithm for OIDC providers | Hide tokenValidationAlgorithm for OIDC providers |
+| 22 | **SSO Configuration Tests** - should hide jwtPrincipalClaims for LDAP provider | Hide jwtPrincipalClaims for LDAP provider |
+| 23 | **SSO Configuration Tests** - should hide jwtPrincipalClaims for SAML provider | Hide jwtPrincipalClaims for SAML provider |
+| 24 | **SSO Configuration Tests** - should hide publicKeyUrls for SAML provider | Hide publicKeyUrls for SAML provider |
+| 25 | **SSO Configuration Tests** - should hide publicKeyUrls for LDAP provider | Hide publicKeyUrls for LDAP provider |
+| 26 | **SSO Configuration Tests** - should hide SAML SP callback URL field | Hide SAML SP callback URL field |
+| 27 | **SSO Configuration Tests** - should hide clientAuthenticationMethod for Auth0 provider | Hide clientAuthenticationMethod for Auth0 provider |
+| 28 | **SSO Configuration Tests** - should show clientAuthenticationMethod for Okta provider | Show clientAuthenticationMethod for Okta provider |
+| 29 | **SSO Configuration Tests** - should hide tenant field for Auth0 provider | Hide tenant field for Auth0 provider |
+| 30 | **SSO Configuration Tests** - should show tenant field for Azure provider | Show tenant field for Azure provider |
+| 31 | **SSO Configuration Tests** - should collapse advanced config by default | Collapse advanced config by default |
+| 32 | **SSO Configuration Tests** - should expand and collapse advanced config when clicked | Expand and collapse advanced config when clicked |
+| 33 | **SSO Configuration Tests** - should add new mapping when Add button is clicked | Add new mapping when Add button is clicked |
+| 34 | **SSO Configuration Tests** - should allow entering LDAP group DN | Allow entering LDAP group DN |
+| 35 | **SSO Configuration Tests** - should allow selecting roles from dropdown | Allow selecting roles from dropdown |
+| 36 | **SSO Configuration Tests** - should allow removing a mapping | Allow removing a mapping |
+| 37 | **SSO Configuration Tests** - should show duplicate error when same LDAP group is added twice | Show duplicate error when same LDAP group is added twice |
+| 38 | **SSO Configuration Tests** - should clear duplicate error when one entry is changed | Clear duplicate error when one entry is changed |
+| 39 | **SSO Configuration Tests** - should allow adding multiple unique mappings | Allow adding multiple unique mappings |
+| 40 | **SSO Configuration Tests** - should maintain mapping when clearing LDAP group input | Maintain mapping when clearing LDAP group input |
+| 41 | **SSO Configuration Tests** - should handle case-insensitive duplicate detection | Handle case-insensitive duplicate detection |
+| 42 | **SSO Configuration Tests** - should handle whitespace in duplicate detection | Handle whitespace in duplicate detection |
+| 43 | **SSO Configuration Tests** - should not display role mapping widget for non-LDAP providers | Not display role mapping widget for non-LDAP providers |
 
 </details>
 
