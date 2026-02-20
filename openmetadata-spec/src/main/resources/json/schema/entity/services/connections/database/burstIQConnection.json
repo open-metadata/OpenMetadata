@@ -1,0 +1,65 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/burstIQConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BurstIQConnection",
+  "description": "BurstIQ LifeGraph Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.BurstIQConnection",
+  "definitions": {
+    "burstIQType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["BurstIQ"],
+      "default": "BurstIQ"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/burstIQType",
+      "default": "BurstIQ"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to BurstIQ. This user should have privileges to read all the metadata in BurstIQ LifeGraph.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to BurstIQ.",
+      "type": "string",
+      "format": "password"
+    },
+    "realmName": {
+      "title": "Realm Name",
+      "description": "BurstIQ Keycloak realm name (e.g., 'ems' from https://auth.burstiq.com/realms/ems).",
+      "type": "string"
+    },
+    "biqSdzName": {
+      "title": "BurstIQ SDZ Name",
+      "description": "BurstIQ Secure Data Zone (SDZ) name for API requests.",
+      "type": "string"
+    },
+    "biqCustomerName": {
+      "title": "BurstIQ Customer Name",
+      "description": "BurstIQ customer name for API requests.",
+      "type": "string"
+    },
+    "tableFilterPattern": {
+      "title": "Table Filter Pattern",
+      "description": "Regex to only include/exclude dictionaries (tables) that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsLineageExtraction": {
+      "title": "Supports Lineage Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["username", "password", "realmName", "biqSdzName", "biqCustomerName"]
+}

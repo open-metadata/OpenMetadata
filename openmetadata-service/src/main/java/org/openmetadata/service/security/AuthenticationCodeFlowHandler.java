@@ -750,9 +750,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
     String userName = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
     String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
+    String displayName = SecurityUtil.extractDisplayNameFromClaims(claims);
 
     String redirectUri = (String) httpSession.getAttribute(SESSION_REDIRECT_URI);
-    User user = getOrCreateOidcUser(userName, email, claims);
+    User user = getOrCreateOidcUser(userName, email, displayName, claims);
     Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
     // Store user info in session for logout audit
     httpSession.setAttribute(SESSION_USER_ID, user.getId().toString());
@@ -769,7 +770,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     response.sendRedirect(url);
   }
 
-  private User getOrCreateOidcUser(String userName, String email, Map<String, Object> claims) {
+  private User getOrCreateOidcUser(
+      String userName, String email, String displayName, Map<String, Object> claims) {
     // Extract teams from claims if configured (supports array claims like groups)
     List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
 
@@ -782,9 +784,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       boolean needsUpdate = false;
 
       LOG.info(
-          "OIDC login - Username: {}, Email: {}, Should be admin: {}, Current admin status: {}",
+          "OIDC login - Username: {}, Email: {}, DisplayName: {}, Should be admin: {}, Current admin status: {}",
           userName,
           email,
+          displayName,
           shouldBeAdmin,
           user.getIsAdmin());
       LOG.info("Admin principals list: {}", getAdminPrincipals());
@@ -792,6 +795,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       if (shouldBeAdmin && !Boolean.TRUE.equals(user.getIsAdmin())) {
         LOG.info("Updating user {} to admin based on adminPrincipals", userName);
         user.setIsAdmin(true);
+        needsUpdate = true;
+      }
+
+      // Update display name only if user doesn't already have one set
+      if (!nullOrEmpty(displayName) && nullOrEmpty(user.getDisplayName())) {
+        LOG.info("Setting display name for user {} to '{}'", userName, displayName);
+        user.setDisplayName(displayName);
         needsUpdate = true;
       }
 
@@ -810,12 +820,21 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
     if (authenticationConfiguration.getEnableSelfSignup()) {
       boolean isAdmin = getAdminPrincipals().contains(userName);
-      LOG.info("Creating new OIDC user - Username: {}, Should be admin: {}", userName, isAdmin);
+      LOG.info(
+          "Creating new OIDC user - Username: {}, DisplayName: {}, Should be admin: {}",
+          userName,
+          displayName,
+          isAdmin);
       LOG.info("Admin principals list: {}", getAdminPrincipals());
 
       String domain = email.split("@")[1];
       User newUser =
           UserUtil.user(userName, domain, userName).withIsAdmin(isAdmin).withIsEmailVerified(true);
+
+      // Set display name if provided from SSO claims
+      if (!nullOrEmpty(displayName)) {
+        newUser.withDisplayName(displayName);
+      }
 
       // Assign teams from claims if provided
       UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);

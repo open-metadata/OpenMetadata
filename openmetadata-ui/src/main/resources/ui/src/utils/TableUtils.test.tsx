@@ -27,6 +27,7 @@ import {
   getEntityIcon,
   getExpandAllKeysToDepth,
   getHighlightedRowClassName,
+  getNestedSectionTitle,
   getParentKeysToExpand,
   getSafeExpandAllKeys,
   getSchemaDepth,
@@ -808,33 +809,51 @@ describe('TableUtils', () => {
 
   describe('Schema Performance Functions', () => {
     // Mock field structure for testing
-    type MockField = { name?: string; children?: MockField[] };
+    type MockField = {
+      name?: string;
+      fullyQualifiedName?: string;
+      children?: MockField[];
+    };
 
     const mockNestedFields: MockField[] = [
       {
         name: 'level1_field1',
+        fullyQualifiedName: 'level1_field1',
         children: [
           {
             name: 'level2_field1',
-            children: [{ name: 'level3_field1' }, { name: 'level3_field2' }],
+            fullyQualifiedName: 'level2_field1',
+            children: [
+              { name: 'level3_field1', fullyQualifiedName: 'level3_field1' },
+              { name: 'level3_field2', fullyQualifiedName: 'level3_field2' },
+            ],
           },
           {
             name: 'level2_field2',
-            children: [{ name: 'level3_field3' }],
+            fullyQualifiedName: 'level2_field2',
+            children: [
+              { name: 'level3_field3', fullyQualifiedName: 'level3_field3' },
+            ],
           },
         ],
       },
       {
         name: 'level1_field2',
+        fullyQualifiedName: 'level1_field2',
         children: [
           {
             name: 'level2_field3',
-            children: [{ name: 'level3_field4' }, { name: 'level3_field5' }],
+            fullyQualifiedName: 'level2_field3',
+            children: [
+              { name: 'level3_field4', fullyQualifiedName: 'level3_field4' },
+              { name: 'level3_field5', fullyQualifiedName: 'level3_field5' },
+            ],
           },
         ],
       },
       {
         name: 'level1_field3',
+        fullyQualifiedName: 'level1_field3',
       },
     ];
 
@@ -2442,5 +2461,36 @@ describe('getColumnOptionsFromTableColumn', () => {
     const result = getColumnOptionsFromTableColumn(columns);
 
     expect(result).toEqual([{ label: 'column1', value: 'column1' }]);
+  });
+});
+
+describe('getNestedSectionTitle', () => {
+  it('should return schema-field-plural for TOPIC', () => {
+    expect(getNestedSectionTitle(EntityType.TOPIC)).toBe(
+      'label.schema-field-plural'
+    );
+  });
+
+  it('should return schema-field-plural for API_ENDPOINT', () => {
+    expect(getNestedSectionTitle(EntityType.API_ENDPOINT)).toBe(
+      'label.schema-field-plural'
+    );
+  });
+
+  it('should return field-plural for SEARCH_INDEX', () => {
+    expect(getNestedSectionTitle(EntityType.SEARCH_INDEX)).toBe(
+      'label.field-plural'
+    );
+  });
+
+  it.each([
+    EntityType.TABLE,
+    EntityType.DASHBOARD_DATA_MODEL,
+    EntityType.CONTAINER,
+    undefined,
+  ])('should return nested-column-plural for %s', (entityType) => {
+    expect(getNestedSectionTitle(entityType)).toBe(
+      'label.nested-column-plural'
+    );
   });
 });

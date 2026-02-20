@@ -7,9 +7,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -542,6 +548,65 @@ public class TypeResourceIT {
     assertTrue(hasProp2, "Type should have second hyperlink custom property");
   }
 
+  @Test
+  void test_concurrentCustomPropertyAdditions(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Type pipelineType = getTypeByName(client, "pipeline");
+
+    int threadCount = 5;
+    List<CustomProperty> properties = new ArrayList<>();
+    for (int i = 0; i < threadCount; i++) {
+      CustomProperty prop = new CustomProperty();
+      prop.setName(ns.prefix("concurrentProp" + i));
+      prop.setDescription("Concurrent property " + i);
+      prop.setPropertyType(STRING_TYPE.getEntityReference());
+      properties.add(prop);
+    }
+
+    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch doneLatch = new CountDownLatch(threadCount);
+    List<Exception> errors = new CopyOnWriteArrayList<>();
+
+    for (CustomProperty prop : properties) {
+      executor.submit(
+          () -> {
+            try {
+              startLatch.await();
+              addCustomProperty(client, pipelineType.getId(), prop);
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              errors.add(e);
+            } catch (Exception e) {
+              errors.add(e);
+            } finally {
+              doneLatch.countDown();
+            }
+          });
+    }
+
+    startLatch.countDown();
+    assertTrue(doneLatch.await(30, TimeUnit.SECONDS), "All threads should complete within 30s");
+    executor.shutdown();
+
+    assertTrue(errors.isEmpty(), "Concurrent requests should not throw: " + errors);
+
+    Type updatedType = getTypeByName(client, "pipeline", "customProperties");
+    List<String> persistedNames =
+        updatedType.getCustomProperties() != null
+            ? updatedType.getCustomProperties().stream().map(CustomProperty::getName).toList()
+            : List.of();
+
+    for (CustomProperty prop : properties) {
+      assertTrue(
+          persistedNames.contains(prop.getName()),
+          "Property '"
+              + prop.getName()
+              + "' was lost due to a concurrent update. Persisted: "
+              + persistedNames);
+    }
+  }
+
   private static Type createType(OpenMetadataClient client, CreateType createRequest)
       throws Exception {
     return client
@@ -562,6 +627,16 @@ public class TypeResourceIT {
         client
             .getHttpClient()
             .executeForString(HttpMethod.GET, "/v1/metadata/types/name/" + name, null);
+    return OBJECT_MAPPER.readValue(response, Type.class);
+  }
+
+  private static Type getTypeByName(OpenMetadataClient client, String name, String fields)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/metadata/types/name/" + name + "?fields=" + fields, null);
     return OBJECT_MAPPER.readValue(response, Type.class);
   }
 

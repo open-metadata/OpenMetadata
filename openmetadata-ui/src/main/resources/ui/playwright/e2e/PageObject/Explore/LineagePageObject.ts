@@ -12,6 +12,7 @@
  */
 
 import { expect, Locator } from '@playwright/test';
+import { RightPanelBase } from './OverviewPageObject';
 import { RightPanelPageObject } from './RightPanelPageObject';
 
 /**
@@ -19,20 +20,17 @@ import { RightPanelPageObject } from './RightPanelPageObject';
  *
  * Handles lineage visualization, navigation, and interaction
  */
-export class LineagePageObject {
-  private readonly rightPanel: RightPanelPageObject;
-
+export class LineagePageObject extends RightPanelBase {
   // ============ PRIVATE LOCATORS (scoped to container) ============
   private readonly container: Locator;
   private readonly upstreamButton: Locator;
   private readonly downstreamButton: Locator;
   private readonly nodes: Locator;
   private readonly edges: Locator;
-  constructor(rightPanel: RightPanelPageObject) {
-    this.rightPanel = rightPanel;
 
-    // Base container - scoped to right panel summary panel
-    this.container = this.rightPanel.getSummaryPanel().locator('.lineage-tab-content');
+  constructor(rightPanel: RightPanelPageObject) {
+    super(rightPanel);
+    this.container = this.getSummaryPanel().locator('.lineage-tab-content');
     this.upstreamButton = this.container.locator('[data-testid="upstream-button-text"]');
     this.downstreamButton = this.container.locator('[data-testid="downstream-button-text"]');
     this.nodes = this.container.locator('.lineage-node, [data-testid*="lineage-node"]');
@@ -47,8 +45,17 @@ export class LineagePageObject {
    */
   async navigateToLineageTab(): Promise<LineagePageObject> {
     await this.rightPanel.navigateToTab('lineage');
-    await this.rightPanel.waitForLoadersToDisappear();
+    await this.waitForLoadersToDisappear();
     return this;
+  }
+
+  /**
+   * Reusable assertion: navigate to Lineage tab and assert tab + lineage controls visible.
+   */
+  async assertContent(): Promise<void> {
+    await this.navigateToLineageTab();
+    await this.shouldBeVisible();
+    await this.shouldShowLineageControls();
   }
 
   // ============ ACTION METHODS (Fluent Interface) ============
@@ -59,7 +66,7 @@ export class LineagePageObject {
    */
   async clickUpstreamButton(): Promise<LineagePageObject> {
     await this.upstreamButton.click();
-    await this.rightPanel.waitForLoadersToDisappear();
+    await this.waitForLoadersToDisappear();
     return this;
   }
 
@@ -69,7 +76,7 @@ export class LineagePageObject {
    */
   async clickDownstreamButton(): Promise<LineagePageObject> {
     await this.downstreamButton.click();
-    await this.rightPanel.waitForLoadersToDisappear();
+    await this.waitForLoadersToDisappear();
     return this;
   }
 
@@ -166,5 +173,16 @@ export class LineagePageObject {
     if (count === 0) {
       throw new Error('Should show lineage connections but shows none');
     }
+  }
+
+  /**
+   * Assert internal fields of the Lineage tab (upstream/downstream controls).
+   * Call after navigating to Lineage tab (e.g. from assertTabInternalFieldsByAssetType).
+   */
+  async assertInternalFields(assetType?: string): Promise<void> {
+    const tabLabel = 'Lineage';
+    const prefix = assetType ? `[Asset: ${assetType}] [Tab: ${tabLabel}] ` : '';
+    await expect(this.upstreamButton, `${prefix}Missing: upstream control`).toBeVisible();
+    await expect(this.downstreamButton, `${prefix}Missing: downstream control`).toBeVisible();
   }
 }

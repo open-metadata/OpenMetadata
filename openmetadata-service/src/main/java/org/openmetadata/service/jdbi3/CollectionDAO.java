@@ -5289,6 +5289,63 @@ public interface CollectionDAO {
           metadataList);
     }
 
+    /**
+     * Apply multiple tags in batch to multiple targets. Each entry in the map represents
+     * a target FQN and its associated tags.
+     */
+    default void applyTagsBatchMultiTarget(Map<String, List<TagLabel>> tagsByTarget) {
+      if (tagsByTarget == null || tagsByTarget.isEmpty()) {
+        return;
+      }
+
+      List<Integer> sources = new ArrayList<>();
+      List<String> tagFQNs = new ArrayList<>();
+      List<String> tagFQNHashes = new ArrayList<>();
+      List<String> targetFQNHashes = new ArrayList<>();
+      List<Integer> labelTypes = new ArrayList<>();
+      List<Integer> states = new ArrayList<>();
+      List<String> reasons = new ArrayList<>();
+      List<String> appliedBys = new ArrayList<>();
+      List<String> metadataList = new ArrayList<>();
+
+      for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
+        String targetFQN = entry.getKey();
+        List<TagLabel> tagLabels = entry.getValue();
+        if (tagLabels == null || tagLabels.isEmpty()) {
+          continue;
+        }
+
+        String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
+        for (TagLabel tagLabel : tagLabels) {
+          if (tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
+            continue;
+          }
+          sources.add(tagLabel.getSource().ordinal());
+          tagFQNs.add(tagLabel.getTagFQN());
+          tagFQNHashes.add(FullyQualifiedName.buildHash(tagLabel.getTagFQN()));
+          targetFQNHashes.add(targetFQNHash);
+          labelTypes.add(tagLabel.getLabelType().ordinal());
+          states.add(tagLabel.getState().ordinal());
+          reasons.add(tagLabel.getReason());
+          appliedBys.add(tagLabel.getAppliedBy());
+          metadataList.add(JsonUtils.pojoToJson(tagLabel.getMetadata()));
+        }
+      }
+
+      if (!sources.isEmpty()) {
+        applyTagsBatchInternal(
+            sources,
+            tagFQNs,
+            tagFQNHashes,
+            targetFQNHashes,
+            labelTypes,
+            states,
+            reasons,
+            appliedBys,
+            metadataList);
+      }
+    }
+
     @Transaction
     @ConnectionAwareSqlBatch(
         value =
@@ -6353,7 +6410,13 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void insert(@Bind("json") String json);
 
-    @SqlBatch("INSERT INTO change_event (json) VALUES (:json)")
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value = "INSERT INTO change_event (json) VALUES (:json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value = "INSERT INTO change_event (json) VALUES (:json :: jsonb)",
+        connectionType = POSTGRES)
     void insertBatch(@Bind("json") List<String> jsons);
 
     @SqlUpdate("DELETE FROM change_event WHERE entityType = :entityType")

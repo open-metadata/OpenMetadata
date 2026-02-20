@@ -57,13 +57,12 @@ test.describe('Custom properties without custom property config', () => {
   propertiesList.forEach((property) => {
     test.describe(`Add update and delete ${property} custom properties`, () => {
       Object.values(CUSTOM_PROPERTIES_ENTITIES).forEach(async (entity) => {
-        // Using Date.now() to generate property names in a way that new property will always be
-        // added after existing properties to avoid conflicts due to parallel test executions
-        const propertyName = `pwcp${Date.now()}test${entity.name}`;
-
         test(`Add ${property} custom property for ${entity.name}`, async ({
           page,
         }) => {
+          // Using Date.now() to generate property names in a way that new property will always be
+          // added after existing properties to avoid conflicts due to parallel test executions
+          const propertyName = `pwcp${Date.now()}test${entity.name}`;
           await settingClick(
             page,
             entity.entityApiType as SettingOptionsType,

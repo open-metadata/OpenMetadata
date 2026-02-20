@@ -163,6 +163,7 @@ const SchemaTable = () => {
     data: table,
     onThreadLinkSelect,
     openColumnDetailPanel,
+    setDisplayedColumns,
   } = useGenericContext<TableType>();
 
   useFqnDeepLink({
@@ -367,7 +368,7 @@ const SchemaTable = () => {
         newColumns = updateColumnInNestedStructure(
           newColumns,
           updatedCol.fullyQualifiedName ?? '',
-          cleanUpdate as Column
+          cleanUpdate
         );
       });
 
@@ -658,9 +659,10 @@ const SchemaTable = () => {
     () => [
       {
         title: (
-          <div
-            className="d-flex items-center cursor-pointer"
+          <Button
+            className="d-flex items-center cursor-pointer bg-transparent border-none p-0 h-auto hover:bg-transparent"
             data-testid="name-column-header"
+            type="text"
             onClick={handleColumnHeaderSortToggle}>
             <span
               className={sortBy === 'name' ? 'text-primary font-medium' : ''}>
@@ -677,7 +679,7 @@ const SchemaTable = () => {
               }}
               width={8}
             />
-          </div>
+          </Button>
         ),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
@@ -691,8 +693,10 @@ const SchemaTable = () => {
           const { displayName } = record;
 
           return (
-            <div className="d-inline-flex flex-column hover-icon-group w-max-90">
-              <div className="d-inline-flex items-center gap-2">
+            <div
+              className="d-inline-flex flex-column hover-icon-group"
+              style={{ maxWidth: '80%' }}>
+              <div className="d-inline-flex items-start gap-1 flex-column">
                 <div className="d-inline-flex items-baseline">
                   {prepareConstraintIcon({
                     columnName: name,
@@ -888,6 +892,11 @@ const SchemaTable = () => {
       getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName')
     );
   }, [tableColumns]);
+
+  // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
+  useEffect(() => {
+    setDisplayedColumns(tableColumns);
+  }, [tableColumns, setDisplayedColumns]);
 
   const searchProps = useMemo(
     () => ({

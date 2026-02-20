@@ -148,16 +148,16 @@ function FileColumnsTable() {
           const { displayName } = record;
 
           return (
-            <div className="d-inline-flex flex-column hover-icon-group w-max-90">
+            <div
+              className="d-inline-flex flex-column hover-icon-group"
+              style={{ maxWidth: '80%' }}>
               <div className="d-inline-flex items-baseline">
                 {prepareConstraintIcon({
                   columnName: name,
                   columnConstraint: record.constraint,
                 })}
                 <Typography.Text
-                  className={classNames('m-b-0 d-block break-word', {
-                    'text-grey-600': !isEmpty(displayName),
-                  })}
+                  className={classNames('m-b-0 d-block break-word')}
                   data-testid="column-name">
                   {name}
                 </Typography.Text>

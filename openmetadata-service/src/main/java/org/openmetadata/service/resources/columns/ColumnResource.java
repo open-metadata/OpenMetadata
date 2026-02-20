@@ -572,7 +572,17 @@ public class ColumnResource {
             WebsocketNotificationHandler.sendBulkAssetsOperationStartedNotification(
                 jobId, securityContext);
             BulkOperationResult result =
-                repository.bulkUpdateColumns(uriInfo, securityContext, request);
+                repository.bulkUpdateColumns(
+                    uriInfo,
+                    securityContext,
+                    request,
+                    (processed, total) ->
+                        WebsocketNotificationHandler.sendBulkAssetsOperationProgressNotification(
+                            jobId,
+                            securityContext,
+                            processed,
+                            total,
+                            "Bulk column update is in progress."));
             WebsocketNotificationHandler.sendBulkAssetsOperationCompleteNotification(
                 jobId, securityContext, result);
           } catch (Exception e) {

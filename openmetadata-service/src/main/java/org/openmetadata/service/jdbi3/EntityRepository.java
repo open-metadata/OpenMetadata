@@ -105,6 +105,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.URI;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -119,6 +120,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -3345,11 +3347,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void applyColumnTags(List<Column> columns) {
-    // Add column level tags by adding tag to column relationship
+    if (columns == null || columns.isEmpty()) {
+      return;
+    }
+    Map<String, List<TagLabel>> tagsByTarget = new LinkedHashMap<>();
+    collectColumnTags(columns, tagsByTarget);
+    applyTagsBatchWithRdf(tagsByTarget);
+  }
+
+  protected void applyTagsBatchWithRdf(Map<String, List<TagLabel>> tagsByTarget) {
+    if (tagsByTarget == null || tagsByTarget.isEmpty()) {
+      return;
+    }
+    daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(tagsByTarget);
+
+    for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
+      String targetFQN = entry.getKey();
+      for (TagLabel tagLabel : entry.getValue()) {
+        if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
+          org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
+        }
+      }
+    }
+  }
+
+  protected void collectColumnTags(List<Column> columns, Map<String, List<TagLabel>> tagsByTarget) {
+    if (columns == null || columns.isEmpty()) {
+      return;
+    }
     for (Column column : columns) {
-      applyTags(column.getTags(), column.getFullyQualifiedName());
+      List<TagLabel> tags = column.getTags();
+      if (tags != null && !tags.isEmpty()) {
+        tagsByTarget.put(column.getFullyQualifiedName(), new ArrayList<>(tags));
+      }
       if (column.getChildren() != null) {
-        applyColumnTags(column.getChildren());
+        collectColumnTags(column.getChildren(), tagsByTarget);
       }
     }
   }
@@ -6642,13 +6674,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public static void validateColumn(Table table, String columnName, Boolean caseSensitive) {
     if (Boolean.FALSE.equals(caseSensitive)) {
       boolean validColumn =
-          table.getColumns().stream().anyMatch(col -> col.getName().equalsIgnoreCase(columnName));
+          table.getColumns().stream()
+              .filter(Objects::nonNull)
+              .anyMatch(col -> col.getName().equalsIgnoreCase(columnName));
       if (!validColumn && !columnName.equalsIgnoreCase("all")) {
         throw new IllegalArgumentException("Invalid column name " + columnName);
       }
     } else {
       boolean validColumn =
-          table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
+          table.getColumns().stream()
+              .filter(Objects::nonNull)
+              .anyMatch(col -> col.getName().equals(columnName));
       if (!validColumn && !columnName.equalsIgnoreCase("all")) {
         throw new IllegalArgumentException("Invalid column name " + columnName);
       }
@@ -7909,12 +7945,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
           } catch (Exception e) {
             long entityDuration = System.nanoTime() - entityStartTime;
             entityLatenciesNanos.add(entityDuration);
-            recordEntityMetrics(entityType, entityDuration, 0, false);
-            failedRequests.add(
-                new BulkResponse()
-                    .withRequest(entity.getFullyQualifiedName())
-                    .withStatus(Status.BAD_REQUEST.getStatusCode())
-                    .withMessage(e.getMessage()));
+            if (isDuplicateKeyException(e)) {
+              LOG.debug(
+                  "Entity already exists (duplicate key), treating as success: {}",
+                  entity.getFullyQualifiedName());
+              recordEntityMetrics(entityType, entityDuration, 0, true);
+              successRequests.add(
+                  new BulkResponse()
+                      .withRequest(entity.getFullyQualifiedName())
+                      .withStatus(Status.OK.getStatusCode()));
+            } else {
+              recordEntityMetrics(entityType, entityDuration, 0, false);
+              failedRequests.add(
+                  new BulkResponse()
+                      .withRequest(entity.getFullyQualifiedName())
+                      .withStatus(Status.BAD_REQUEST.getStatusCode())
+                      .withMessage(e.getMessage()));
+            }
           }
         }
       }
@@ -8083,6 +8130,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public BulkOperationResult bulkCreateOrUpdateEntities(
       UriInfo uriInfo, List<T> entities, String userName, Map<String, T> existingByFqn) {
     return bulkCreateOrUpdateEntitiesSequential(uriInfo, entities, userName, existingByFqn);
+  }
+
+  private static boolean isDuplicateKeyException(Exception e) {
+    Throwable cause = e.getCause();
+    if (cause instanceof SQLException sqlEx) {
+      // MySQL: error code 1062 = ER_DUP_ENTRY
+      // PostgreSQL: SQL state "23505" = unique_violation
+      return sqlEx.getErrorCode() == 1062 || "23505".equals(sqlEx.getSQLState());
+    }
+    return false;
   }
 
   private void recordEntityMetrics(

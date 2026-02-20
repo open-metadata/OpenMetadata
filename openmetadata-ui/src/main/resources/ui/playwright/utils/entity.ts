@@ -164,11 +164,17 @@ export const addOwnerWithoutValidation = async ({
 }) => {
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
-    const userListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=&index=user_search_index&*'
-    );
-    await page.getByRole('tab', { name: type }).click();
-    await userListResponse;
+    const usersTab = page.getByRole('tab', { name: type });
+    const isTabAlreadySelected =
+      (await usersTab.getAttribute('aria-selected')) === 'true';
+
+    if (!isTabAlreadySelected) {
+      const userListResponse = page.waitForResponse(
+        '/api/v1/search/query?q=&index=user_search_index&*'
+      );
+      await usersTab.click();
+      await userListResponse;
+    }
   }
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -586,14 +592,15 @@ export const updateDescription = async (
   validationContainerTestId = 'asset-description-container',
   endpoint?: EntityTypeEndpoint
 ) => {
-  const editButton = page.locator('[data-testid="edit-description"]');
-  if (await editButton.isVisible()) {
+  const editDescriptionButton = page.getByTestId('edit-description');
+  const editButton = page.getByTestId('edit-button');
+
+  try {
+    await expect(editDescriptionButton).toBeVisible();
+    await editDescriptionButton.click();
+  } catch {
+    await expect(editButton).toBeVisible();
     await editButton.click();
-  } else {
-    // Fallback for ML Model which uses 'edit-button'
-    const fallbackButton = page.getByTestId('edit-button');
-    await expect(fallbackButton).toBeVisible();
-    await fallbackButton.click();
   }
 
   // Wait for description box to be visible and ready
@@ -723,17 +730,16 @@ export const assignTag = async (
   parentId = 'KnowledgePanel.Tags',
   tagFqn?: string
 ) => {
-  await page
+  const tagButton = page
     .getByTestId(parentId)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .first()
-    .click();
+    .first();
 
-  // Wait for the form to be visible and stable
-  await page.locator('#tagsForm_tags').waitFor({
-    state: 'visible',
-  });
+  await expect(tagButton).toBeVisible();
+  await tagButton.click();
+
+  await expect(page.locator('#tagsForm_tags')).toBeVisible();
 
   const searchTags = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`

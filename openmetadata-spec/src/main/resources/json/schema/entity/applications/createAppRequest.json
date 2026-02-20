@@ -50,6 +50,11 @@
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline. It will be defined at runtime based on the Ingestion Agent of the service.",
       "$ref": "../../type/entityReference.json"
+    },
+    "allowBotImpersonation": {
+      "description": "When true, the bot created for this application will have allowImpersonation enabled, allowing it to act on behalf of users.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

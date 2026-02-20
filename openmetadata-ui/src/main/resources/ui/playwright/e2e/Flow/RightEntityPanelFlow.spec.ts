@@ -91,6 +91,7 @@ test.beforeAll('Setup shared test data', async ({ browser }) => {
 });
 
 test.describe('Right Entity Panel - Admin User Flow', () => {
+  test.slow(true);
   test.beforeAll('Setup lineage test entities', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await Promise.all([
@@ -181,28 +182,27 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       const editButtonAfterDelete =
         ownersSectionAfterDelete.getByTestId('edit-owners');
-      if (await editButtonAfterDelete.isVisible()) {
-        await editButtonAfterDelete.click();
+      await editButtonAfterDelete.waitFor({ state: 'visible' });
+      await editButtonAfterDelete.click();
 
-        const popoverAfterDelete = adminPage.getByTestId('select-owner-tabs');
+      const popoverAfterDelete = adminPage.getByTestId('select-owner-tabs');
 
-        await expect(popoverAfterDelete).toBeVisible();
+      await expect(popoverAfterDelete).toBeVisible();
 
-        await adminPage.getByRole('tab', { name: 'Users' }).click();
+      await adminPage.getByRole('tab', { name: 'Users' }).click();
 
-        const deletedUserItem = await verifyDeletedEntityNotVisible(
-          adminPage,
-          deletedUserDisplayName,
-          'owner-select-users-search-bar',
-          'user'
-        );
+      const deletedUserItem = await verifyDeletedEntityNotVisible(
+        adminPage,
+        deletedUserDisplayName,
+        'owner-select-users-search-bar',
+        'user'
+      );
 
-        await expect(deletedUserItem).not.toBeVisible();
+      await expect(deletedUserItem).not.toBeVisible();
 
-        await adminPage.waitForSelector('.ant-list-empty-text', {
-          state: 'visible',
-        });
-      }
+      await adminPage
+        .locator('.ant-list-empty-text')
+        .waitFor({ state: 'visible' });
     } finally {
       await afterAction();
     }
@@ -258,28 +258,27 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       const editButtonAfterDelete =
         ownersSectionAfterDelete.getByTestId('edit-owners');
-      if (await editButtonAfterDelete.isVisible()) {
-        await editButtonAfterDelete.click();
+      await editButtonAfterDelete.waitFor({ state: 'visible' });
+      await editButtonAfterDelete.click();
 
-        const popoverAfterDelete = adminPage.getByTestId('select-owner-tabs');
+      const popoverAfterDelete = adminPage.getByTestId('select-owner-tabs');
 
-        await expect(popoverAfterDelete).toBeVisible();
+      await expect(popoverAfterDelete).toBeVisible();
 
-        await adminPage.getByRole('tab', { name: 'Teams' }).click();
+      await adminPage.getByRole('tab', { name: 'Teams' }).click();
 
-        const deletedTeamItem = await verifyDeletedEntityNotVisible(
-          adminPage,
-          deletedTeamDisplayName,
-          'owner-select-teams-search-bar',
-          'team'
-        );
+      const deletedTeamItem = await verifyDeletedEntityNotVisible(
+        adminPage,
+        deletedTeamDisplayName,
+        'owner-select-teams-search-bar',
+        'team'
+      );
 
-        await expect(deletedTeamItem).not.toBeVisible();
+      await expect(deletedTeamItem).not.toBeVisible();
 
-        await adminPage.waitForSelector('.ant-list-empty-text', {
-          state: 'visible',
-        });
-      }
+      await adminPage
+        .locator('.ant-list-empty-text')
+        .waitFor({ state: 'visible' });
     } finally {
       await afterAction();
     }
@@ -420,9 +419,8 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await expect(deletedTagItem).not.toBeVisible();
 
       const cancelBtn = adminPage.getByRole('button', { name: 'Cancel' });
-      if (await cancelBtn.isVisible()) {
-        await cancelBtn.click();
-      }
+      await cancelBtn.waitFor({ state: 'visible' });
+      await cancelBtn.click();
     } finally {
       await testClassification.delete(apiContext);
       await afterAction();
@@ -529,9 +527,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(deletedTermItem).not.toBeVisible();
 
-      await adminPage.waitForSelector('.ant-list-empty-text', {
-        state: 'visible',
-      });
+      await adminPage
+        .locator('.ant-list-empty-text')
+        .waitFor({ state: 'visible' });
       const cancelBtn = adminPage.getByRole('button', { name: 'Cancel' });
       await cancelBtn.click();
     } finally {
@@ -637,54 +635,60 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     await expect(tierSectionAfterRemove.getByText('Tier1')).not.toBeVisible();
   });
 
-  test('Admin - Overview Tab - Domains Section - Add and Update', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({
-    adminPage,
-  }) => {
-    const summaryPanel = adminPage.locator('.entity-summary-panel-container');
-    const domainsSection = summaryPanel.locator('.domains-section');
+  test(
+    'Admin - Overview Tab - Domains Section - Add and Update',
+    PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
+    async ({ adminPage }) => {
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const domainsSection = summaryPanel.locator('.domains-section');
 
-    await domainsSection.waitFor({ state: 'visible' });
+      await domainsSection.waitFor({ state: 'visible' });
 
-    await editDomain(adminPage, 'TestDomain');
+      await editDomain(adminPage, 'TestDomain');
 
-    await expect(
-      adminPage.getByText(/Domains updated successfully/i)
-    ).toBeVisible();
-  });
+      await expect(
+        adminPage.getByText(/Domains updated successfully/i)
+      ).toBeVisible();
+    }
+  );
 
-  test('Admin - Overview Tab - Remove Domain', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ adminPage }) => {
-    await editDomain(adminPage, 'TestDomain');
+  test(
+    'Admin - Overview Tab - Remove Domain',
+    PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
+    async ({ adminPage }) => {
+      await editDomain(adminPage, 'TestDomain');
 
-    await expect(
-      adminPage.getByText(/Domains updated successfully/i)
-    ).toBeVisible();
+      await expect(
+        adminPage.getByText(/Domains updated successfully/i)
+      ).toBeVisible();
 
-    const summaryPanel = adminPage.locator('.entity-summary-panel-container');
-    const domainsSection = summaryPanel.locator('.domains-section');
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const domainsSection = summaryPanel.locator('.domains-section');
 
-    await expect(domainsSection.getByText('TestDomain')).toBeVisible();
+      await expect(domainsSection.getByText('TestDomain')).toBeVisible();
 
-    await removeDomainFromPanel(adminPage, 'TestDomain');
+      await removeDomainFromPanel(adminPage, 'TestDomain');
 
-    await expect(
-      adminPage.getByText(/Domains updated successfully/i)
-    ).toBeVisible();
+      await expect(
+        adminPage.getByText(/Domains updated successfully/i)
+      ).toBeVisible();
 
-    await navigateToExploreAndSelectTable(
-      adminPage,
-      adminTestEntity.entityResponseData.name
-    );
+      await navigateToExploreAndSelectTable(
+        adminPage,
+        adminTestEntity.entityResponseData.name
+      );
 
-    const summaryPanelAfterRemove = adminPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const domainsSectionAfterRemove =
-      summaryPanelAfterRemove.locator('.domains-section');
+      const summaryPanelAfterRemove = adminPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const domainsSectionAfterRemove =
+        summaryPanelAfterRemove.locator('.domains-section');
 
-    await expect(
-      domainsSectionAfterRemove.getByText('TestDomain')
-    ).not.toBeVisible();
-  });
+      await expect(
+        domainsSectionAfterRemove.getByText('TestDomain')
+      ).not.toBeVisible();
+    }
+  );
 
   test('Admin - Schema Tab - View Schema', async ({ adminPage }) => {
     const schemaTab = adminPage.getByTestId('schema-tab');
@@ -738,13 +742,10 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     // Wait for lineage section to be in stable state
     await lineageSection.waitFor({ state: 'visible' });
 
-    // Check if "no lineage connections found" text is present in the overview
     const noLineageText = summaryPanel.locator(
       'text=/no lineage connections found/i'
     );
-    if (await noLineageText.isVisible()) {
-      await expect(noLineageText).toBeVisible();
-    }
+    await expect(noLineageText).toBeVisible();
 
     const lineageTab = summaryPanel.getByRole('menuitem', {
       name: /lineage/i,
@@ -823,33 +824,33 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         '[data-testid="upstream-lineage"]'
       );
 
-      if (await lineageSection.isVisible()) {
-        const upstreamText = summaryPanel.getByText(/upstream:/i);
-        const downstreamText = summaryPanel.getByText(/downstream:/i);
+      await expect(lineageSection).toBeVisible();
 
-        await expect(upstreamText).toBeVisible();
-        await expect(downstreamText).toBeVisible();
+      const upstreamText = summaryPanel.getByText(/upstream:/i);
+      const downstreamText = summaryPanel.getByText(/downstream:/i);
 
-        const upstreamCountElement = summaryPanel.locator(
-          '[data-testid="upstream-count"]'
-        );
-        const downstreamCountElement = summaryPanel.locator(
-          '[data-testid="downstream-count"]'
-        );
+      await expect(upstreamText).toBeVisible();
+      await expect(downstreamText).toBeVisible();
 
-        await expect(upstreamCountElement).toHaveText('1');
-        await expect(downstreamCountElement).toHaveText('1');
+      const upstreamCountElement = summaryPanel.locator(
+        '[data-testid="upstream-count"]'
+      );
+      const downstreamCountElement = summaryPanel.locator(
+        '[data-testid="downstream-count"]'
+      );
 
-        await lineageSection.click();
-        await adminPage.waitForURL(/.*\/lineage$/);
+      await expect(upstreamCountElement).toHaveText('1');
+      await expect(downstreamCountElement).toHaveText('1');
 
-        expect(adminPage.url()).toContain('/lineage');
+      await lineageSection.click();
+      await adminPage.waitForURL(/.*\/lineage$/);
 
-        await navigateToExploreAndSelectTable(
-          adminPage,
-          adminTestEntity.entityResponseData.name
-        );
-      }
+      expect(adminPage.url()).toContain('/lineage');
+
+      await navigateToExploreAndSelectTable(
+        adminPage,
+        adminTestEntity.entityResponseData.name
+      );
     });
 
     await test.step('Verify lineage tab content', async () => {
@@ -996,8 +997,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       const testCase2 = await adminTestEntity.createTestCase(apiContext, {
         name: `pw_test_case_failed_${uuid()}`,
-        entityLink: `<#E::table::${adminTestEntity.entityResponseData?.['fullyQualifiedName']
-          }::columns::${(adminTestEntity.entity?.columns as Column[])[0].name}>`,
+        entityLink: `<#E::table::${
+          adminTestEntity.entityResponseData?.['fullyQualifiedName']
+        }::columns::${(adminTestEntity.entity?.columns as Column[])[0].name}>`,
         testDefinition: 'columnValueLengthsToBeBetween',
         parameterValues: [
           { name: 'minLength', value: 3 },
@@ -1271,16 +1273,15 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await expect(incidentCardsSection).toBeVisible();
 
       const incidentCards = incidentCardsSection.locator('.test-case-card');
-      const cardCount = await incidentCards.count();
 
-      if (cardCount > 0) {
-        const firstIncidentCard = incidentCards.first();
-        const assigneeSection = firstIncidentCard
-          .locator('.test-case-detail-item')
-          .filter({ hasText: /assignee/i });
+      await expect(incidentCards.first()).toBeVisible();
 
-        await expect(assigneeSection).toBeVisible();
-      }
+      const firstIncidentCard = incidentCards.first();
+      const assigneeSection = firstIncidentCard
+        .locator('.test-case-detail-item')
+        .filter({ hasText: /assignee/i });
+
+      await expect(assigneeSection).toBeVisible();
     } finally {
       await afterAction();
     }
@@ -1331,12 +1332,12 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       const tabContent = summaryPanel.locator('.data-quality-tab-container');
 
-      // Click on test case card link
       const testCaseLink = tabContent
         .locator(`.test-case-name[data-testid="test-case-${testCase.name}"]`)
         .first();
 
-      // Verify link has correct href
+      await testCaseLink.waitFor({ state: 'visible' });
+
       const href = await testCaseLink.getAttribute('href');
 
       expect(href).toContain('test-case');
@@ -1907,306 +1908,295 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
       name: /custom propert/i,
     });
 
-    if (await cpTab.isVisible()) {
-      await cpTab.click();
-      await dataStewardPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    await cpTab.waitFor({ state: 'visible' });
+    await cpTab.click();
+    await dataStewardPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
+    const tabContent = dataStewardPage.locator(
+      '.custom-properties-section-container'
+    );
+
+    await expect(tabContent).toBeVisible();
+
+    if (await tabContent.isVisible()) {
+      const propertyCards = tabContent.locator(
+        '[data-testid^="custom-property-"]'
+      );
+
+      await expect(propertyCards.first()).toBeVisible();
+    }
+  });
+});
+
+test.describe(
+  'Right Entity Panel - Data Consumer User Flow',
+  PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ,
+  () => {
+    test.beforeEach(
+      'Navigate to explore page',
+      async ({ dataConsumerPage }) => {
+        await navigateToExploreAndSelectTable(
+          dataConsumerPage,
+          dataConsumerTestEntity.entity.name
+        );
+      }
+    );
+
+    test('Data Consumer - Overview Tab - Description Section - Add and Update', async ({
+      dataConsumerPage,
+    }) => {
+      const summaryPanel = dataConsumerPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const descriptionSection = summaryPanel.locator('.description-section');
+
+      await expect(descriptionSection).toBeVisible();
+
+      await updateDescription(
+        dataConsumerPage,
+        'Data Consumer updated description',
+        false,
+        ''
+      );
+
+      await expect(
+        dataConsumerPage.getByTestId('markdown-editor')
+      ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.getByText(/Description updated successfully/)
+      ).toBeVisible();
+    });
+
+    test('Data Consumer - Overview Tab - Owners Section - View Owners', async ({
+      dataConsumerPage,
+    }) => {
+      const summaryPanel = dataConsumerPage.locator(
+        '.entity-summary-panel-container'
+      );
+      await waitForAllLoadersToDisappear(dataConsumerPage, 'loader');
+      const ownersSection = summaryPanel.locator('.owners-section');
+
+      await expect(ownersSection).toBeVisible();
+    });
+
+    test('Data Consumer - Overview Tab - Tier Section - Add and Update', async ({
+      dataConsumerPage,
+    }) => {
+      const summaryPanel = dataConsumerPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const tierSection = summaryPanel.locator('.tier-section');
+
+      await expect(tierSection).toBeVisible();
+
+      await assignTierToPanel(dataConsumerPage, 'Tier3');
+
+      await expect(
+        dataConsumerPage.getByText(/Tier updated successfully/i)
+      ).toBeVisible();
+    });
+
+    test('Data Consumer - Overview Tab - Tags Section - Add and Update', async ({
+      dataConsumerPage,
+    }) => {
+      const testTagDisplayName = sharedTestTag.getTagDisplayName();
+
+      const summaryPanel = dataConsumerPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const tagsSection = summaryPanel.locator('.tags-section');
+
+      await expect(tagsSection).toBeVisible();
+
+      await editTags(dataConsumerPage, testTagDisplayName);
+
+      await expect(
+        dataConsumerPage.getByText(/Tags updated successfully/i)
+      ).toBeVisible();
+    });
+
+    test('Data Consumer - Overview Tab - Glossary Terms Section - Add and Update', async ({
+      dataConsumerPage,
+    }) => {
+      const summaryPanel = dataConsumerPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const glossarySection = summaryPanel.locator('.glossary-terms-section');
+
+      await expect(glossarySection).toBeVisible();
+
+      const termDisplayName = sharedTestGlossaryTerm.getTermDisplayName();
+      await editGlossaryTerms(dataConsumerPage, termDisplayName);
+
+      await expect(
+        dataConsumerPage.getByText(/Glossary terms updated successfully/i)
+      ).toBeVisible();
+    });
+
+    test('Data Consumer - Overview Tab - Should NOT have permissions for Domains & Data Products', async ({
+      dataConsumerPage,
+    }) => {
+      const summaryPanel = dataConsumerPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const domainsSection = summaryPanel.locator('.domains-section');
+
+      await expect(domainsSection).toBeVisible();
+      await expect(summaryPanel.getByTestId('add-domain')).not.toBeVisible();
+
+      await expect(
+        summaryPanel.getByTestId('edit-data-products')
+      ).not.toBeVisible();
+    });
+
+    test('Data Consumer - Schema Tab - View Schema', async ({
+      dataConsumerPage,
+    }) => {
+      await navigateToEntityPanelTab(dataConsumerPage, 'schema');
+
+      const tabContent = dataConsumerPage.locator(
+        '[data-testid="entity-details-section"]'
+      );
+
+      await expect(tabContent).toBeVisible();
+
+      for (const child of dataConsumerTestEntity.children as Column[]) {
+        const fieldCard = dataConsumerPage.locator(
+          `[data-testid="field-card-${child.name}"]`
+        );
+
+        await expect(fieldCard).toBeVisible();
+
+        const dataTypeBadge = fieldCard.locator(
+          `[data-testid="data-type-text-${child.dataType}"]`
+        );
+
+        await expect(dataTypeBadge).toBeVisible();
+
+        const fieldName = fieldCard.locator(
+          `[data-testid="field-name-${child.name}"]`
+        );
+
+        await expect(fieldName).toHaveText(child.name);
+
+        const fieldDescription = fieldCard.locator(
+          `[data-testid="field-description-${child.name}"]`
+        );
+
+        await expect(fieldDescription).toBeVisible();
+        await expect(fieldDescription).toContainText(child.description ?? '');
+      }
+    });
+
+    test('Data Consumer - Lineage Tab - No Lineage', async ({
+      dataConsumerPage,
+    }) => {
+      await navigateToEntityPanelTab(dataConsumerPage, 'lineage');
+
+      const summaryPanel = dataConsumerPage.locator(
+        '.entity-summary-panel-container'
+      );
       const tabContent = summaryPanel.locator(
         '.entity-summary-panel-tab-content'
       );
 
       await expect(tabContent).toBeVisible();
 
-      // Verify custom properties container is visible (if custom properties exist from Admin test)
-      const customPropertiesContainer =
-        dataStewardPage.getByTestId('custom_properties');
+      // When there's no lineage, verify empty state
+      await expect(
+        dataConsumerPage.getByText(/Lineage not found/i)
+      ).toBeVisible();
+    });
 
-      // Custom properties should be visible if they were created by Admin
-      if (await customPropertiesContainer.isVisible()) {
-        await expect(customPropertiesContainer).toBeVisible();
-
-        // Verify at least one custom property card is displayed
-        const propertyCards = customPropertiesContainer.locator(
-          '[data-testid^="custom-property-"]'
-        );
-        const cardCount = await propertyCards.count();
-
-        if (cardCount > 0) {
-          const firstCard = propertyCards.first();
-
-          await expect(firstCard).toBeVisible();
-
-          // Verify property name and value elements exist
-          await expect(firstCard.locator('.property-name')).toBeVisible();
-          await expect(firstCard.locator('.property-value')).toBeVisible();
-        }
-      }
-    }
-  });
-});
-
-test.describe('Right Entity Panel - Data Consumer User Flow', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
-  test.beforeEach('Navigate to explore page', async ({ dataConsumerPage }) => {
-    await navigateToExploreAndSelectTable(
+    test('Data Consumer - Data Quality Tab - No Test Cases', async ({
       dataConsumerPage,
-      dataConsumerTestEntity.entity.name
-    );
-  });
+    }) => {
+      await navigateToEntityPanelTab(dataConsumerPage, 'data quality');
 
-  test('Data Consumer - Overview Tab - Description Section - Add and Update', async ({
-    dataConsumerPage,
-  }) => {
-    const summaryPanel = dataConsumerPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const descriptionSection = summaryPanel.locator('.description-section');
-
-    await expect(descriptionSection).toBeVisible();
-
-    await updateDescription(
-      dataConsumerPage,
-      'Data Consumer updated description',
-      false,
-      ''
-    );
-
-    await expect(
-      dataConsumerPage.getByTestId('markdown-editor')
-    ).not.toBeVisible();
-    await expect(
-      dataConsumerPage.getByText(/Description updated successfully/)
-    ).toBeVisible();
-  });
-
-  test('Data Consumer - Overview Tab - Owners Section - View Owners', async ({
-    dataConsumerPage,
-  }) => {
-    const summaryPanel = dataConsumerPage.locator(
-      '.entity-summary-panel-container'
-    );
-    await waitForAllLoadersToDisappear(dataConsumerPage, 'loader');
-    const ownersSection = summaryPanel.locator('.owners-section');
-
-    await expect(ownersSection).toBeVisible();
-  });
-
-  test('Data Consumer - Overview Tab - Tier Section - Add and Update', async ({
-    dataConsumerPage,
-  }) => {
-    const summaryPanel = dataConsumerPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const tierSection = summaryPanel.locator('.tier-section');
-
-    await expect(tierSection).toBeVisible();
-
-    await assignTierToPanel(dataConsumerPage, 'Tier3');
-
-    await expect(
-      dataConsumerPage.getByText(/Tier updated successfully/i)
-    ).toBeVisible();
-  });
-
-  test('Data Consumer - Overview Tab - Tags Section - Add and Update', async ({
-    dataConsumerPage,
-  }) => {
-    const testTagDisplayName = sharedTestTag.getTagDisplayName();
-
-    const summaryPanel = dataConsumerPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const tagsSection = summaryPanel.locator('.tags-section');
-
-    await expect(tagsSection).toBeVisible();
-
-    await editTags(dataConsumerPage, testTagDisplayName);
-
-    await expect(
-      dataConsumerPage.getByText(/Tags updated successfully/i)
-    ).toBeVisible();
-  });
-
-  test('Data Consumer - Overview Tab - Glossary Terms Section - Add and Update', async ({
-    dataConsumerPage,
-  }) => {
-    const summaryPanel = dataConsumerPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const glossarySection = summaryPanel.locator('.glossary-terms-section');
-
-    await expect(glossarySection).toBeVisible();
-
-    const termDisplayName = sharedTestGlossaryTerm.getTermDisplayName();
-    await editGlossaryTerms(dataConsumerPage, termDisplayName);
-
-    await expect(
-      dataConsumerPage.getByText(/Glossary terms updated successfully/i)
-    ).toBeVisible();
-  });
-
-  test('Data Consumer - Overview Tab - Should NOT have permissions for Domains & Data Products', async ({
-    dataConsumerPage,
-  }) => {
-    const summaryPanel = dataConsumerPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const domainsSection = summaryPanel.locator('.domains-section');
-
-    await expect(domainsSection).toBeVisible();
-    await expect(summaryPanel.getByTestId('add-domain')).not.toBeVisible();
-
-    await expect(
-      summaryPanel.getByTestId('edit-data-products')
-    ).not.toBeVisible();
-  });
-
-  test('Data Consumer - Schema Tab - View Schema', async ({
-    dataConsumerPage,
-  }) => {
-    await navigateToEntityPanelTab(dataConsumerPage, 'schema');
-
-    const tabContent = dataConsumerPage.locator(
-      '[data-testid="entity-details-section"]'
-    );
-
-    await expect(tabContent).toBeVisible();
-
-    for (const child of dataConsumerTestEntity.children as Column[]) {
-      const fieldCard = dataConsumerPage.locator(
-        `[data-testid="field-card-${child.name}"]`
-      );
-
-      await expect(fieldCard).toBeVisible();
-
-      const dataTypeBadge = fieldCard.locator(
-        `[data-testid="data-type-text-${child.dataType}"]`
-      );
-
-      await expect(dataTypeBadge).toBeVisible();
-
-      const fieldName = fieldCard.locator(
-        `[data-testid="field-name-${child.name}"]`
-      );
-
-      await expect(fieldName).toHaveText(child.name);
-
-      const fieldDescription = fieldCard.locator(
-        `[data-testid="field-description-${child.name}"]`
-      );
-
-      await expect(fieldDescription).toBeVisible();
-      await expect(fieldDescription).toContainText(child.description ?? '');
-    }
-  });
-
-  test('Data Consumer - Lineage Tab - No Lineage', async ({
-    dataConsumerPage,
-  }) => {
-    await navigateToEntityPanelTab(dataConsumerPage, 'lineage');
-
-    const summaryPanel = dataConsumerPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const tabContent = summaryPanel.locator(
-      '.entity-summary-panel-tab-content'
-    );
-
-    await expect(tabContent).toBeVisible();
-
-    // When there's no lineage, verify empty state
-    await expect(
-      dataConsumerPage.getByText(/Lineage not found/i)
-    ).toBeVisible();
-  });
-
-  test('Data Consumer - Data Quality Tab - No Test Cases', async ({
-    dataConsumerPage,
-  }) => {
-    await navigateToEntityPanelTab(dataConsumerPage, 'data quality');
-
-    const summaryPanel = dataConsumerPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const tabContent = summaryPanel.locator('.data-quality-tab-container');
-
-    await expect(tabContent).toBeVisible();
-
-    // Verify empty state message
-    await expect(
-      dataConsumerPage.getByText(
-        /No data quality results found.*Schedule or run tests to see results/i
-      )
-    ).toBeVisible();
-  });
-
-  test('Data Consumer - Data Quality Tab - Incidents Empty State', async ({
-    dataConsumerPage,
-  }) => {
-    await navigateToEntityPanelTab(dataConsumerPage, 'data quality');
-
-    const summaryPanel = dataConsumerPage.locator(
-      '.entity-summary-panel-container'
-    );
-    const tabContent = summaryPanel.locator('.data-quality-tab-container');
-
-    await expect(tabContent).toBeVisible();
-
-    // Verify empty state message
-    await expect(
-      dataConsumerPage.getByText(
-        /No data quality results found.*Schedule or run tests to see results/i
-      )
-    ).toBeVisible();
-  });
-
-  // The test is failing and we have unreliable assertions
-  // needs refactoring @harsh-vador
-  test.fixme(
-    'Data Consumer - Custom Properties Tab - View Custom Properties',
-    async ({ dataConsumerPage }) => {
       const summaryPanel = dataConsumerPage.locator(
         '.entity-summary-panel-container'
       );
-      const cpTab = summaryPanel.getByRole('menuitem', {
-        name: /custom propert/i,
-      });
+      const tabContent = summaryPanel.locator('.data-quality-tab-container');
 
-      if (await cpTab.isVisible()) {
-        await navigateToEntityPanelTab(dataConsumerPage, 'custom property');
+      await expect(tabContent).toBeVisible();
 
-        const tabContent = summaryPanel.locator(
-          '.entity-summary-panel-tab-content'
+      // Verify empty state message
+      await expect(
+        dataConsumerPage.getByText(
+          /No data quality results found.*Schedule or run tests to see results/i
+        )
+      ).toBeVisible();
+    });
+
+    test('Data Consumer - Data Quality Tab - Incidents Empty State', async ({
+      dataConsumerPage,
+    }) => {
+      await navigateToEntityPanelTab(dataConsumerPage, 'data quality');
+
+      const summaryPanel = dataConsumerPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const tabContent = summaryPanel.locator('.data-quality-tab-container');
+
+      await expect(tabContent).toBeVisible();
+
+      // Verify empty state message
+      await expect(
+        dataConsumerPage.getByText(
+          /No data quality results found.*Schedule or run tests to see results/i
+        )
+      ).toBeVisible();
+    });
+
+    // The test is failing and we have unreliable assertions
+    // needs refactoring @harsh-vador
+    test.fixme(
+      'Data Consumer - Custom Properties Tab - View Custom Properties',
+      async ({ dataConsumerPage }) => {
+        const summaryPanel = dataConsumerPage.locator(
+          '.entity-summary-panel-container'
         );
+        const cpTab = summaryPanel.getByRole('menuitem', {
+          name: /custom propert/i,
+        });
 
-        await expect(tabContent).toBeVisible();
+        if (await cpTab.isVisible()) {
+          await navigateToEntityPanelTab(dataConsumerPage, 'custom property');
 
-        // Verify custom properties container is visible (if custom properties exist from Admin test)
-        const customPropertiesContainer =
-          dataConsumerPage.getByTestId('custom_properties');
-
-        // Custom properties should be visible if they were created by Admin
-        if (await customPropertiesContainer.isVisible()) {
-          await expect(customPropertiesContainer).toBeVisible();
-
-          // Verify at least one custom property card is displayed
-          const propertyCards = customPropertiesContainer.locator(
-            '[data-testid^="custom-property-"]'
+          const tabContent = summaryPanel.locator(
+            '.entity-summary-panel-tab-content'
           );
-          const cardCount = await propertyCards.count();
 
-          if (cardCount > 0) {
-            const firstCard = propertyCards.first();
+          await expect(tabContent).toBeVisible();
 
-            await expect(firstCard).toBeVisible();
+          // Verify custom properties container is visible (if custom properties exist from Admin test)
+          const customPropertiesContainer =
+            dataConsumerPage.getByTestId('custom_properties');
 
-            // Verify property name and value elements exist
-            await expect(firstCard.locator('.property-name')).toBeVisible();
-            await expect(firstCard.locator('.property-value')).toBeVisible();
+          // Custom properties should be visible if they were created by Admin
+          if (await customPropertiesContainer.isVisible()) {
+            await expect(customPropertiesContainer).toBeVisible();
+
+            // Verify at least one custom property card is displayed
+            const propertyCards = customPropertiesContainer.locator(
+              '[data-testid^="custom-property-"]'
+            );
+            const cardCount = await propertyCards.count();
+
+            if (cardCount > 0) {
+              const firstCard = propertyCards.first();
+
+              await expect(firstCard).toBeVisible();
+
+              // Verify property name and value elements exist
+              await expect(firstCard.locator('.property-name')).toBeVisible();
+              await expect(firstCard.locator('.property-value')).toBeVisible();
+            }
           }
         }
       }
-    }
-  );
-});
+    );
+  }
+);

@@ -73,8 +73,6 @@ def run_classifier(
     ingestion_config,
     sampling_only_classifier_config,
     create_test_data,
-    request,
-    caplog,
 ):
     _run_classifier_with_retry(
         run_workflow,
