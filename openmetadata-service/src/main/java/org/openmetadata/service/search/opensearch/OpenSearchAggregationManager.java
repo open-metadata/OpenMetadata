@@ -190,7 +190,9 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
           RequestLatencyContext.endSearchOperation(searchTimerSample);
         }
       }
-      return Response.status(Response.Status.OK).entity(searchResponse.toJsonString()).build();
+      return Response.status(Response.Status.OK)
+          .entity(OsUtils.toJsonStringLenient(searchResponse))
+          .build();
     } catch (Exception e) {
       LOG.error("Failed to execute aggregation", e);
       throw new IOException("Failed to execute aggregation: " + e.getMessage(), e);
@@ -241,7 +243,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         }
       }
 
-      String response = searchResponse.toJsonString();
+      String response = OsUtils.toJsonStringLenient(searchResponse);
       JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
       Optional<JsonObject> aggregationResults =
           Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
@@ -327,7 +329,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         }
       }
 
-      String response = searchResponse.toJsonString();
+      String response = OsUtils.toJsonStringLenient(searchResponse);
       JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
       Optional<JsonObject> aggregationResults =
           Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
@@ -411,7 +413,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         }
       }
 
-      String response = searchResponse.toJsonString();
+      String response = OsUtils.toJsonStringLenient(searchResponse);
       JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
       return jsonResponse.getJsonObject("aggregations");
     } catch (Exception e) {
@@ -507,8 +509,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
 
       LOG.info("Entity type counts query for index '{}' (resolved: '{}')", index, resolvedIndex);
 
-      // Serialize response
-      String jsonResponse = searchResponse.toJsonString();
+      String jsonResponse = OsUtils.toJsonStringLenient(searchResponse);
       return Response.status(Response.Status.OK).entity(jsonResponse).build();
 
     } catch (Exception e) {

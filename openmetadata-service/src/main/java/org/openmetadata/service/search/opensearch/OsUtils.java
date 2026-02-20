@@ -152,6 +152,13 @@ public class OsUtils {
     }
   }
 
+  public static String toJsonStringLenient(SearchResponse<JsonData> response) {
+    try (ApiTypeHelper.DisabledChecksHandle ignored =
+        ApiTypeHelper.DANGEROUS_disableRequiredPropertiesCheck(true)) {
+      return response.toJsonString();
+    }
+  }
+
   public static Map<String, Object> jsonDataToMap(JsonData jsonData) {
     try {
       // Convert JsonData to JSON string, then parse it with Jackson
