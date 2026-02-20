@@ -9,9 +9,9 @@
   "rules": [
     {
       "name": "ApplicationBotRule-Allow",
-      "description" : "Allow ingestion bots to read data entities",
+      "description" : "Allow application bots to perform operations on data entities including triggering agents",
       "resources" : ["All"],
-      "operations": ["Create", "EditAll", "ViewAll", "Delete"],
+      "operations": ["Create", "EditAll", "ViewAll", "Delete", "Trigger"],
       "effect": "allow"
     },
     {

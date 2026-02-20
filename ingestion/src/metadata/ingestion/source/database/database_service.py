@@ -68,8 +68,9 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils import fqn
 from metadata.utils.execution_time_tracker import calculate_execution_time
-from metadata.utils.filters import filter_by_schema
+from metadata.utils.filters import filter_by_schema, filter_by_stored_procedure
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.owner_utils import get_owner_from_config
 from metadata.utils.tag_utils import get_tag_label
 
 logger = ingestion_logger()
@@ -550,9 +551,11 @@ class DatabaseServiceSource(
             )
             if filter_by_schema(
                 self.source_config.databaseFilterPattern,
-                database_fqn
-                if self.source_config.useFqnForFiltering
-                else database_name,
+                (
+                    database_fqn
+                    if self.source_config.useFqnForFiltering
+                    else database_name
+                ),
             ):
                 if add_to_status:
                     self.status.filter(database_fqn, "Database Filtered Out")
@@ -579,12 +582,146 @@ class DatabaseServiceSource(
                 continue
             yield schema_fqn if return_fqn else schema_name
 
+    def is_stored_procedure_filtered(self, stored_procedure_name: str) -> bool:
+        """
+        Check if a stored procedure should be filtered based on the filter pattern.
+        """
+        stored_procedure_fqn = fqn.build(
+            self.metadata,
+            entity_type=StoredProcedure,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
+            procedure_name=stored_procedure_name,
+        )
+
+        if filter_by_stored_procedure(
+            getattr(self.source_config, "storedProcedureFilterPattern", None),
+            (
+                stored_procedure_fqn
+                if self.source_config.useFqnForFiltering
+                else stored_procedure_name
+            ),
+        ):
+            logger.debug(f"Stored Procedure {stored_procedure_fqn} filtered out")
+            return True
+        return False
+
+    def get_database_owner_ref(
+        self, database_name: str
+    ) -> Optional[EntityReferenceList]:
+        """
+        Get owner for database entity using ownerConfig.
+
+        Resolution order:
+        1. ownerConfig (with topology-based configuration)
+
+        Args:
+            database_name: Name of the database
+
+        Returns:
+            EntityReferenceList with owner or None
+        """
+        try:
+            # Priority 1: Use ownerConfig if configured
+            if (
+                hasattr(self.source_config, "ownerConfig")
+                and self.source_config.ownerConfig
+            ):
+                owner_ref = get_owner_from_config(
+                    metadata=self.metadata,
+                    owner_config=self.source_config.ownerConfig,
+                    entity_type="database",
+                    entity_name=database_name,
+                    parent_owner=None,  # Database is top level
+                )
+                if owner_ref:
+                    return owner_ref
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error processing owner for database {database_name}: {exc}"
+            )
+
+        return None
+
+    def get_schema_owner_ref(self, schema_name: str) -> Optional[EntityReferenceList]:
+        """
+        Get owner for schema entity using ownerConfig.
+
+        Resolution order:
+        1. ownerConfig (with topology-based configuration and inheritance)
+
+        Args:
+            schema_name: Name of the schema
+
+        Returns:
+            EntityReferenceList with owner or None
+        """
+        try:
+            # Read database_owner directly from context
+            parent_owner = getattr(self.context.get(), "database_owner", None)
+
+            schema_fqn = f"{self.context.get().database}.{schema_name}"
+
+            if (
+                hasattr(self.source_config, "ownerConfig")
+                and self.source_config.ownerConfig
+            ):
+                owner_ref = get_owner_from_config(
+                    metadata=self.metadata,
+                    owner_config=self.source_config.ownerConfig,
+                    entity_type="databaseSchema",
+                    entity_name=schema_fqn,
+                    parent_owner=parent_owner,
+                )
+                if owner_ref and owner_ref.root:
+                    return owner_ref
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing owner for schema {schema_name}: {exc}")
+
+        return None
+
     @calculate_execution_time()
     def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
         """
-        Method to process the table owners
+        Get owner for table entity using ownerConfig.
+
+        Resolution order:
+        1. ownerConfig (with topology-based configuration and inheritance)
+        2. Source system owner (if includeOwners is enabled)
+
+        Args:
+            table_name: Name of the table
+
+        Returns:
+            EntityReferenceList with owner or None
         """
         try:
+            # Prioritize schema_owner, fallback to database_owner for inheritance
+            parent_owner = getattr(self.context.get(), "schema_owner", None)
+            if not parent_owner:
+                parent_owner = getattr(self.context.get(), "database_owner", None)
+
+            table_fqn = f"{self.context.get().database}.{self.context.get().database_schema}.{table_name}"
+
+            if (
+                hasattr(self.source_config, "ownerConfig")
+                and self.source_config.ownerConfig
+            ):
+                owner_ref = get_owner_from_config(
+                    metadata=self.metadata,
+                    owner_config=self.source_config.ownerConfig,
+                    entity_type="table",
+                    entity_name=table_fqn,
+                    parent_owner=parent_owner,
+                )
+                if owner_ref and owner_ref.root:
+                    return owner_ref
+
             if self.source_config.includeOwners and hasattr(
                 self.inspector, "get_table_owner"
             ):

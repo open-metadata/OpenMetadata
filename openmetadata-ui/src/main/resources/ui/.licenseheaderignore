@@ -83,3 +83,6 @@ src/generated/antlr
 
 # env
 ".env"
+
+# Code quality ignore
+".codeqlignore"

@@ -43,17 +43,6 @@ public class Auth0Validator {
         return domainValidation;
       }
 
-      // Validate against OIDC discovery document for public clients too
-      String discoveryUri = authority + AUTH0_WELL_KNOWN_PATH;
-      OidcClientConfig publicClientConfig =
-          new OidcClientConfig().withId(authConfig.getClientId()).withDiscoveryUri(discoveryUri);
-
-      FieldError discoveryCheck =
-          discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, publicClientConfig);
-      if (discoveryCheck != null) {
-        return discoveryCheck;
-      }
-
       FieldError clientIdValidation = validatePublicClientId(authority, authConfig.getClientId());
       if (clientIdValidation != null) {
         return clientIdValidation;
@@ -210,11 +199,13 @@ public class Auth0Validator {
           String error = errorResponse.path("error").asText();
           String errorDescription = errorResponse.path("error_description").asText();
 
-          if ("invalid_client".equals(error)
-              || "unauthorized_client".equals(error)
-              || "access_denied".equals(error)) {
+          if ("invalid_client".equals(error) || "unauthorized_client".equals(error)) {
             return ValidationErrorBuilder.createFieldError(
                 ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET, "Invalid client secret");
+          } else if ("access_denied".equals(error)) {
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+                "Access denied: " + errorDescription);
           } else {
             return ValidationErrorBuilder.createFieldError(
                 ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,
@@ -263,20 +254,20 @@ public class Auth0Validator {
         return null; // Success - Auth0 client ID validated
       } else if (responseCode == 400 || responseCode == 404) {
         return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+            ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID,
             "Invalid Auth0 client ID. Client does not exist or is not properly configured.");
       } else {
         // Warning case - treat as success since format appears valid
         LOG.warn("Could not fully validate Auth0 client ID. HTTP response: {}", responseCode);
         return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID, "Could not validate client Id");
+            ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID, "Could not validate client Id");
       }
 
     } catch (Exception e) {
       // Warning case - treat as success since format appears valid
       LOG.warn("Auth0 client ID validation warning: {}", e.getMessage());
       return ValidationErrorBuilder.createFieldError(
-          ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+          ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID,
           "Auth0 client ID validation warning: {}" + e.getMessage());
     }
   }
@@ -285,10 +276,11 @@ public class Auth0Validator {
       AuthenticationConfiguration authConfig, String auth0Domain) {
     try {
       List<String> publicKeyUrls = authConfig.getPublicKeyUrls();
+      // Skip validation if publicKeyUrls is empty - it's auto-populated for confidential clients
       if (publicKeyUrls == null || publicKeyUrls.isEmpty()) {
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
-            "Public key URLs are required for Auth0 clients");
+        LOG.debug(
+            "publicKeyUrls is empty, skipping validation (auto-populated for confidential clients)");
+        return null;
       }
 
       String expectedJwksUrl = auth0Domain + "/.well-known/jwks.json";

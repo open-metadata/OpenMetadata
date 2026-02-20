@@ -23,7 +23,7 @@ const MUITextField: FC<MUITextFieldProps> = ({
   value,
   onChange,
   variant,
-  size = 'medium',
+  size = 'small',
   ...props
 }) => {
   const handleChange = useCallback(

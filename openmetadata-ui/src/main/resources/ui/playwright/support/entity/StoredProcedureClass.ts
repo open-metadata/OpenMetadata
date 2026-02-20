@@ -24,39 +24,40 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class StoredProcedureClass extends EntityClass {
-  service = {
-    name: `pw-database-service-${uuid()}`,
-    serviceType: 'Mysql',
+  service: {
+    name: string;
+    serviceType: string;
     connection: {
       config: {
-        type: 'Mysql',
-        scheme: 'mysql+pymysql',
-        username: 'username',
+        type: string;
+        scheme: string;
+        username: string;
         authType: {
-          password: 'password',
-        },
-        hostPort: 'mysql:3306',
-        supportsMetadataExtraction: true,
-        supportsDBTExtraction: true,
-        supportsProfiler: true,
-        supportsQueryComment: true,
-      },
-    },
+          password: string;
+        };
+        hostPort: string;
+        supportsMetadataExtraction: boolean;
+        supportsDBTExtraction: boolean;
+        supportsProfiler: boolean;
+        supportsQueryComment: boolean;
+      };
+    };
   };
-  database = {
-    name: `pw-database-${uuid()}`,
-    service: this.service.name,
+  database: {
+    name: string;
+    service: string;
   };
-  schema = {
-    name: `pw-database-schema-${uuid()}`,
-    database: `${this.service.name}.${this.database.name}`,
+  schema: {
+    name: string;
+    database: string;
   };
-  entity = {
-    name: `pw-stored-procedure-${uuid()}`,
-    databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
+  entity: {
+    name: string;
+    databaseSchema: string;
+    description: string;
     storedProcedureCode: {
-      code: 'CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\nRETURNS VARCHAR NOT NULL\nLANGUAGE SQL\nAS\n$$\nBEGIN\n  RETURN message;\nEND;\n$$\n;',
-    },
+      code: string;
+    };
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -69,7 +70,46 @@ export class StoredProcedureClass extends EntityClass {
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.StoreProcedure);
-    this.service.name = name ?? this.service.name;
+
+    this.service = {
+      name: name ?? `pw-database-service-${uuid()}`,
+      serviceType: 'Mysql',
+      connection: {
+        config: {
+          type: 'Mysql',
+          scheme: 'mysql+pymysql',
+          username: 'username',
+          authType: {
+            password: 'password',
+          },
+          hostPort: 'mysql:3306',
+          supportsMetadataExtraction: true,
+          supportsDBTExtraction: true,
+          supportsProfiler: true,
+          supportsQueryComment: true,
+        },
+      },
+    };
+
+    this.database = {
+      name: `pw-database-${uuid()}`,
+      service: this.service.name,
+    };
+
+    this.schema = {
+      name: `pw-database-schema-${uuid()}`,
+      database: `${this.service.name}.${this.database.name}`,
+    };
+
+    this.entity = {
+      name: `pw-stored-procedure-${uuid()}`,
+      description: `Description for pw-stored-procedure-${uuid()}`,
+      databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
+      storedProcedureCode: {
+        code: 'CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\nRETURNS VARCHAR NOT NULL\nLANGUAGE SQL\nAS\n$$\nBEGIN\n  RETURN message;\nEND;\n$$\n;',
+      },
+    };
+
     this.serviceCategory = SERVICE_TYPE.Database;
     this.type = 'Store Procedure';
     this.serviceType = ServiceTypes.DATABASE_SERVICES;
@@ -143,11 +183,25 @@ export class StoredProcedureClass extends EntityClass {
     };
   }
 
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+    database: ResponseDataWithServiceType;
+    schema: ResponseDataWithServiceType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+    this.databaseResponseData = data.database;
+    this.schemaResponseData = data.schema;
+  }
+
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
+      dataTestId: `${
+        this.entityResponseData.service.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 

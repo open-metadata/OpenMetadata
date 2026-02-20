@@ -72,6 +72,20 @@ class Status(BaseModel):
             else:
                 self.records.append(log_name)
 
+    def scanned_all(self, record: Any) -> None:
+        """
+        Clean up the status results we want to show.
+
+        We allow to not consider specific records that
+        are not worth keeping record of.
+        """
+        record = [get_log_name(r) for r in record if get_log_name(r)]
+        if record:
+            if isinstance(record, (PatchRequest, PatchedEntity)):
+                self.updated_records.extend(record)
+            else:
+                self.records.extend(record)
+
     def updated(self, record: Any) -> None:
         if log_name := get_log_name(record):
             self.updated_records.append(log_name)

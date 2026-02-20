@@ -51,82 +51,110 @@ jest.mock('../../../../hooks/paging/usePaging', () => ({
   }),
 }));
 
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => jest.fn(),
+jest.mock(
+  '../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: jest.fn().mockImplementation(() => ({
+      isFetchingStatus: false,
+      isAirflowAvailable: true,
+      fetchAirflowStatus: jest.fn(),
+      platform: PIPELINE_SERVICE_PLATFORM,
+    })),
+  })
+);
+
+jest.mock('../../../utils/CommonUtils', () => ({
+  getServiceLogo: jest.fn().mockReturnValue('Pipeline Service'),
 }));
 
-import { getServices, searchService } from '../../../../rest/serviceAPI';
+const mockSearchService = jest.fn();
+jest.mock('../../../rest/serviceAPI', () => ({
+  getServices: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockGetServicesData)),
+  searchService: jest.fn().mockImplementation(() => mockSearchService()),
+}));
 
-const mockGetServices = getServices as jest.MockedFunction<typeof getServices>;
-const mockSearchService = searchService as jest.MockedFunction<typeof searchService>;
+jest.mock('../../../utils/StringsUtils', () => ({
+  ...jest.requireActual('../../../utils/StringsUtils'),
+  stringToHTML: jest.fn((text) => text),
+}));
 
-describe('Services Component - Logo Display', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+jest.mock('../../../utils/EntityUtils', () => {
+  const actual = jest.requireActual('../../../utils/EntityUtils');
 
-  const mockServices = [
+  return {
+    ...actual,
+    getEntityName: jest.fn().mockReturnValue('Glue'),
+    highlightSearchText: jest.fn((text) => text),
+  };
+});
+
+jest.mock('../../../utils/PermissionsUtils', () => ({
+  checkPermission: jest.fn().mockReturnValue(true),
+}));
+
+jest.mock('../../../utils/ServiceUtils', () => ({
+  getOptionalFields: jest.fn(),
+  getSearchIndexFromService: jest.fn(),
+  getResourceEntityFromServiceCategory: jest.fn(),
+  getServiceTypesFromServiceCategory: jest.fn(),
+}));
+
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+  return () => <div data-testid="error-placeholder">ErrorPlaceHolder</div>;
+});
+
+jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(() => <p>OwnerLabel</p>),
+}));
+
+jest.mock('../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue([
     {
-      id: '1',
-      name: 'custom-db-1',
-      displayName: 'Custom Database 1',
-      serviceType: 'CustomDatabase',
-      fullyQualifiedName: 'custom-db-1',
-      description: 'Test custom database',
-      logoUrl: 'https://example.com/custom-db-logo.png',
-      deleted: false,
-      href: '/services/databaseServices/custom-db-1',
+      title: 'label.owner-plural',
+      dataIndex: 'owners',
+      key: 'owners',
+      width: 180,
+      render: () => <div>OwnerLabel</div>,
     },
-    {
-      id: '2',
-      name: 'custom-pipeline-1',
-      displayName: 'Custom Pipeline 1',
-      serviceType: 'CustomPipeline',
-      fullyQualifiedName: 'custom-pipeline-1',
-      description: 'Test custom pipeline',
-      logoUrl: 'https://example.com/custom-pipeline-logo.svg',
-      deleted: false,
-      href: '/services/pipelineServices/custom-pipeline-1',
-    },
-    {
-      id: '3',
-      name: 'custom-dashboard-1',
-      displayName: 'Custom Dashboard 1',
-      serviceType: 'CustomDashboard',
-      fullyQualifiedName: 'custom-dashboard-1',
-      description: 'Test custom dashboard',
-      logoUrl: null, // No custom logo
-      deleted: false,
-      href: '/services/dashboardServices/custom-dashboard-1',
-    },
-    {
-      id: '4',
-      name: 'mysql-service',
-      displayName: 'MySQL Service',
-      serviceType: 'Mysql',
-      fullyQualifiedName: 'mysql-service',
-      description: 'Standard MySQL service',
-      logoUrl: undefined, // No custom logo
-      deleted: false,
-      href: '/services/databaseServices/mysql-service',
-    },
-  ];
+  ]),
+  descriptionTableObject: jest.fn().mockImplementation(() => []),
+}));
 
-  describe('Service List View', () => {
-    it('should display custom logos in service list', async () => {
-      mockGetServices.mockResolvedValue({
-        data: mockServices,
-        paging: { total: 4, offset: 0, limit: 10 },
-      });
+jest.mock('../../common/ListView/ListView.component', () => ({
+  ListView: jest.fn().mockImplementation(({ cardRenderer, tableProps }) => (
+    <div data-testid="mocked-list-view">
+      <div data-testid="card-renderer-container">
+        {cardRenderer({
+          ...mockService,
+          description: isDescription ? 'test description' : '',
+        })}
+      </div>
+      <div data-testid="table-props-container">
+        {tableProps.columns.map(
+          (column: ColumnsType[0], key: string) =>
+            column.render && (
+              <>
+                <div key={key}>{column.title as string}</div>
+                <div key={key}>
+                  {column.render(column.title, column, 1) as ReactNode}
+                </div>
+              </>
+            )
+        )}
+      </div>
+    </div>
+  )),
+}));
 
-      await act(async () => {
-        render(
-          <MemoryRouter>
-            <Services serviceName={ServiceCategory.DATABASE_SERVICES} />
-          </MemoryRouter>
-        );
-      });
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="RichTextPreviewer">RichTextPreviewer</div>
+    );
+});
 
       await waitFor(() => {
         expect(screen.getByTestId('services-container')).toBeInTheDocument();

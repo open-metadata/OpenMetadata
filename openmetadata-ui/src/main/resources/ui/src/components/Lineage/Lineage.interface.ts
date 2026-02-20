@@ -19,6 +19,7 @@ import {
   SearchSourceAlias,
   TableSearchSource,
 } from '../../interface/search.interface';
+import { FormattedDatabaseServiceType } from '../../utils/EntityUtils.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 
 export interface LineageProps {
@@ -28,11 +29,12 @@ export interface LineageProps {
   isFullScreen?: boolean;
   entity?: SourceType;
   isPlatformLineage?: boolean;
+  platformHeader?: React.ReactNode;
 }
 
 export interface EntityLineageResponse {
-  entity: EntityReference;
-  nodes?: EntityReference[];
+  entity: LineageEntityReference;
+  nodes?: LineageEntityReference[];
   edges?: EdgeDetails[];
   downstreamEdges?: EdgeDetails[];
   upstreamEdges?: EdgeDetails[];
@@ -64,10 +66,11 @@ export interface ColumnLevelLineageNode
   > {
   fromEntity: EdgeFromToData;
   toEntity: EdgeFromToData;
+  fromColumn?: string;
+  toColumn?: string;
   pipeline?: EntityReference;
   source?: string;
   sqlQuery?: string;
-  column?: ColumnLineage;
   description?: string;
   pipelineEntityType?: EntityType.PIPELINE | EntityType.STORED_PROCEDURE;
   docId?: string;
@@ -108,9 +111,11 @@ export interface LineageEntityReference extends EntityReference {
     parentId?: string;
     childrenLength?: number;
   };
+  nodeDepth?: number;
   upstreamExpandPerformed?: boolean;
   downstreamExpandPerformed?: boolean;
   direction?: LineageDirection;
+  serviceType?: FormattedDatabaseServiceType;
 }
 
 export type LineageNode = SearchSourceAlias & {

@@ -32,20 +32,14 @@ class PipelineTask(BaseModel):
     full_refresh: Optional[bool] = None
 
 
-class DBJobTask(BaseModel):
-    name: Optional[str] = Field(None, alias="task_key")
-    description: Optional[str] = None
-    depends_on: Optional[List[DependentTask]] = None
-    pipeline_task: Optional[PipelineTask] = None
-    notebook_task: Optional[Dict[str, Any]] = None
-    spark_python_task: Optional[Dict[str, Any]] = None
-
-
 class DBTasks(BaseModel):
     name: Optional[str] = Field(None, alias="task_key")
     description: Optional[str] = None
     depends_on: Optional[List[DependentTask]] = None
     run_page_url: Optional[str] = None
+    pipeline_task: Optional[PipelineTask] = None
+    notebook_task: Optional[Dict[str, Any]] = None
+    spark_python_task: Optional[Dict[str, Any]] = None
 
 
 class DBSettings(BaseModel):
@@ -55,7 +49,7 @@ class DBSettings(BaseModel):
     description: Optional[str] = None
     schedule: Optional[DBRunSchedule] = None
     task_type: Optional[str] = Field(None, alias="format")
-    tasks: Optional[List[DBJobTask]] = None
+    tasks: Optional[List[DBTasks]] = None
 
 
 class DataBrickPipelineDetails(BaseModel):

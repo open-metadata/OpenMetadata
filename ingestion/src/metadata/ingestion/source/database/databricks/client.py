@@ -14,6 +14,7 @@ Client to interact with databricks apis
 import base64
 import json
 import traceback
+from collections import defaultdict
 from datetime import timedelta
 from typing import Iterable, List, Optional, Tuple, Union
 
@@ -73,11 +74,11 @@ class DatabricksClient:
         }
         self.api_timeout = self.config.connectionTimeout or 120
         self._job_table_lineage_executed: bool = False
-        self.job_table_lineage: dict[str, list[dict[str, str]]] = {}
+        self.job_table_lineage: dict[str, list[dict[str, str]]] = defaultdict(list)
         self._job_column_lineage_executed: bool = False
         self.job_column_lineage: dict[
             str, dict[Tuple[str, str], list[Tuple[str, str]]]
-        ] = {}
+        ] = defaultdict(lambda: defaultdict(list))
         self.engine = engine
         self.client = requests
 
@@ -96,12 +97,23 @@ class DatabricksClient:
 
     def test_lineage_query(self) -> None:
         try:
+            lookback_days = getattr(self.config, "lineageLookBackDays", 90)
             with self.engine.connect() as connection:
                 test_table_lineage = connection.execute(
-                    text(DATABRICKS_GET_TABLE_LINEAGE_FOR_JOB + " LIMIT 1")
+                    text(
+                        DATABRICKS_GET_TABLE_LINEAGE_FOR_JOB.format(
+                            lookback_days=lookback_days
+                        )
+                        + " LIMIT 1"
+                    )
                 )
                 test_column_lineage = connection.execute(
-                    text(DATABRICKS_GET_COLUMN_LINEAGE_FOR_JOB + " LIMIT 1")
+                    text(
+                        DATABRICKS_GET_COLUMN_LINEAGE_FOR_JOB.format(
+                            lookback_days=lookback_days
+                        )
+                        + " LIMIT 1"
+                    )
                 )
                 # Check if queries executed successfully by fetching results
                 table_result = test_table_lineage.fetchone()
@@ -270,14 +282,19 @@ class DatabricksClient:
 
     def get_table_lineage(self, job_id: str) -> List[dict[str, str]]:
         """
-        Method returns table lineage for a job by the specified job_id
+        Method returns table lineage for a job by the specified job_id.
+        On first call, eagerly fetches ALL job lineage in bulk for optimal performance.
         """
         try:
             if not self._job_table_lineage_executed:
-                logger.debug("Executing cache_lineage...")
+                logger.info(
+                    "First lineage request detected - performing bulk lineage fetch for all jobs"
+                )
                 self.cache_lineage()
 
-            return self.job_table_lineage.get(str(job_id))
+            # Return cached lineage for this specific job
+            return self.job_table_lineage.get(str(job_id), [])
+
         except Exception as exc:
             logger.debug(
                 f"Error getting table lineage for job {job_id} due to {traceback.format_exc()}"
@@ -296,7 +313,8 @@ class DatabricksClient:
                 logger.debug("Job column lineage not found. Executing cache_lineage...")
                 self.cache_lineage()
 
-            return self.job_column_lineage.get(str(job_id), {}).get(TableKey)
+            return self.job_column_lineage.get(str(job_id), {}).get(TableKey, [])
+
         except Exception as exc:
             logger.debug(
                 f"Error getting column lineage for table {TableKey} due to {traceback.format_exc()}"
@@ -320,57 +338,52 @@ class DatabricksClient:
 
     def cache_lineage(self):
         """
-        Method caches table and column lineage for a job by the specified job_id
+        Method caches table and column lineage for ALL jobs.
         """
-        logger.info(f"Caching table lineage")
-        table_lineage = self.run_lineage_query(DATABRICKS_GET_TABLE_LINEAGE_FOR_JOB)
-        if table_lineage:
-            for row in table_lineage:
-                try:
-                    if row.job_id not in self.job_table_lineage:
-                        self.job_table_lineage[row.job_id] = []
-                    self.job_table_lineage[row.job_id].append(
-                        {
-                            "source_table_full_name": row.source_table_full_name,
-                            "target_table_full_name": row.target_table_full_name,
-                        }
-                    )
-                except Exception as exc:
-                    logger.debug(
-                        f"Error parsing row: {row} due to {traceback.format_exc()}"
-                    )
-                    continue
+        lookback_days = getattr(self.config, "lineageLookBackDays", 90)
+        logger.info(f"Caching table lineage (lookback: {lookback_days} days)")
+        table_lineage = self.run_lineage_query(
+            DATABRICKS_GET_TABLE_LINEAGE_FOR_JOB.format(lookback_days=lookback_days)
+        )
+        for row in table_lineage or []:
+            try:
+                self.job_table_lineage[row.job_id].append(
+                    {
+                        "source_table_full_name": row.source_table_full_name,
+                        "target_table_full_name": row.target_table_full_name,
+                    }
+                )
+            except Exception as exc:
+                logger.debug(
+                    f"Error parsing row: {row} due to {traceback.format_exc()}"
+                )
+                continue
         self._job_table_lineage_executed = True
 
         # Not every job has column lineage, so we need to check if the job exists in the column_lineage table
         # we will cache the column lineage for jobs that have column lineage
-        logger.info("Caching column lineage")
-        column_lineage = self.run_lineage_query(DATABRICKS_GET_COLUMN_LINEAGE_FOR_JOB)
-        if column_lineage:
-            for row in column_lineage:
-                try:
-                    table_key = (
-                        row.source_table_full_name,
-                        row.target_table_full_name,
-                    )
-                    column_pair = (
-                        row.source_column_name,
-                        row.target_column_name,
-                    )
+        logger.info(f"Caching column lineage (lookback: {lookback_days} days)")
+        column_lineage = self.run_lineage_query(
+            DATABRICKS_GET_COLUMN_LINEAGE_FOR_JOB.format(lookback_days=lookback_days)
+        )
+        for row in column_lineage or []:
+            try:
+                table_key = (
+                    row.source_table_full_name,
+                    row.target_table_full_name,
+                )
+                column_pair = (
+                    row.source_column_name,
+                    row.target_column_name,
+                )
 
-                    if row.job_id not in self.job_column_lineage:
-                        self.job_column_lineage[row.job_id] = {}
+                self.job_column_lineage[row.job_id][table_key].append(column_pair)
 
-                    if table_key not in self.job_column_lineage[row.job_id]:
-                        self.job_column_lineage[row.job_id][table_key] = []
-
-                    self.job_column_lineage[row.job_id][table_key].append(column_pair)
-
-                except Exception as exc:
-                    logger.debug(
-                        f"Error parsing row: {row} due to {traceback.format_exc()}"
-                    )
-                    continue
+            except Exception as exc:
+                logger.debug(
+                    f"Error parsing row: {row} due to {traceback.format_exc()}"
+                )
+                continue
         self._job_column_lineage_executed = True
         logger.debug("Table and column lineage caching completed.")
 

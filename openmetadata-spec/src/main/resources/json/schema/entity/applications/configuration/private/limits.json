@@ -12,7 +12,8 @@
       "description": "The action and its limit.",
       "type": "object",
       "additionalProperties": {
-        "type": "integer",
+        "type": "number",
+        "existingJavaType": "java.math.BigDecimal",
         "description": "Limit for the named action."
       }
     }
@@ -25,13 +26,12 @@
     },
     "billingCycleStart": {
       "title": "Cycle Start",
-      "description": "The start of this limit cycle.",
+      "description": "The start of this limit cycle. DEPRECATED: Use central billingCycleStart from LimitsConfiguration in openmetadata.yaml",
       "$ref": "../../../../type/basic.json#/definitions/date"
     }
   },
   "additionalProperties": false,
   "required": [
-    "actions",
-    "billingCycleStart"
+    "actions"
   ]
 }

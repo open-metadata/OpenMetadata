@@ -163,20 +163,6 @@ export const useAsyncTreeSelect = <T = unknown,>(
     []
   );
 
-  // Utility function to determine if a node should lazy load
-  const shouldNodeLazyLoad = useCallback(
-    (node: TreeNode<T> | null, componentLazyLoad: boolean): boolean => {
-      if (!node) {
-        return componentLazyLoad;
-      }
-
-      return (
-        node.lazyLoad !== false && (node.lazyLoad === true || componentLazyLoad)
-      );
-    },
-    []
-  );
-
   // Handle node expansion
   const handleNodeExpansion = useCallback(
     (nodeId: string) => {

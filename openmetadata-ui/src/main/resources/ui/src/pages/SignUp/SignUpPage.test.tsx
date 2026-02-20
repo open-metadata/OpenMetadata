@@ -206,7 +206,6 @@ describe('SignUp page', () => {
     render(<SignUp />);
 
     const usernameInput = screen.getByTestId('username-label');
-    usernameInput.parentElement?.parentElement;
 
     expect(usernameInput.parentElement).toHaveClass('ant-form-item-hidden');
   });

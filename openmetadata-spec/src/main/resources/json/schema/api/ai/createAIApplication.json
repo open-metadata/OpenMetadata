@@ -1,0 +1,140 @@
+{
+  "$id": "https://open-metadata.org/schema/api/ai/createAIApplication.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateAIApplicationRequest",
+  "description": "Create AI Application entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.ai.CreateAIApplication",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+
+  "properties": {
+    "name": {
+      "description": "Name that identifies this AI application.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this AI application.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the AI application. What it does and how it is used.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "applicationType": {
+      "description": "Type of AI application",
+      "$ref": "../../entity/ai/aiApplication.json#/definitions/applicationType"
+    },
+    "developmentStage": {
+      "description": "Development stage of the AI application",
+      "$ref": "../../entity/ai/aiApplication.json#/definitions/developmentStage"
+    },
+    "modelConfigurations": {
+      "description": "Multiple LLM models this application can use for different purposes",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/ai/aiApplication.json#/definitions/modelConfiguration"
+      }
+    },
+    "primaryModel": {
+      "description": "Primary/default LLM model used by this application",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "promptTemplates": {
+      "description": "Prompt templates used by this application",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tools": {
+      "description": "MCP tools or other tools available to this application",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "dataSources": {
+      "description": "Data sources the application can access",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "knowledgeBases": {
+      "description": "Knowledge bases or vector stores the application uses",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "upstreamApplications": {
+      "description": "Other AI applications this application depends on",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "downstreamApplications": {
+      "description": "AI applications that depend on this application",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "framework": {
+      "description": "Framework used to build the application",
+      "$ref": "../../entity/ai/aiApplication.json#/definitions/frameworkInfo"
+    },
+    "governanceMetadata": {
+      "description": "Governance and compliance metadata",
+      "$ref": "../../entity/ai/aiApplication.json#/definitions/governanceMetadata"
+    },
+    "biasMetrics": {
+      "description": "Bias evaluation metrics",
+      "$ref": "../../entity/ai/aiApplication.json#/definitions/biasMetrics"
+    },
+    "performanceMetrics": {
+      "description": "Runtime performance metrics",
+      "$ref": "../../entity/ai/aiApplication.json#/definitions/performanceMetrics"
+    },
+    "qualityMetrics": {
+      "description": "Quality metrics for responses",
+      "$ref": "../../entity/ai/aiApplication.json#/definitions/qualityMetrics"
+    },
+    "safetyMetrics": {
+      "description": "Safety metrics",
+      "$ref": "../../entity/ai/aiApplication.json#/definitions/safetyMetrics"
+    },
+    "testSuites": {
+      "description": "Test suites for validating this AI application",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "sourceCode": {
+      "description": "Link to source code repository",
+      "type": "string"
+    },
+    "deploymentUrl": {
+      "description": "Production deployment endpoint",
+      "type": "string"
+    },
+    "documentation": {
+      "description": "Link to external documentation",
+      "type": "string"
+    },
+    "tags": {
+      "description": "Tags for this AI Application",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owners": {
+      "description": "Owners of this AI Application",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domains" : {
+      "description": "Fully qualified names of the domains the AI Application belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    }
+  },
+  "required": ["name", "applicationType"],
+  "additionalProperties": false
+}

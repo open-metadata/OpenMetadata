@@ -78,7 +78,9 @@ class SalesforceSource(DatabaseServiceSource):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.root.config
+        self.service_connection: SalesforceConnection = (
+            self.config.serviceConnection.root.config
+        )
         self.ssl_manager: SSLManager = check_ssl_and_init(self.service_connection)
         if self.ssl_manager:
             self.service_connection = self.ssl_manager.setup_ssl(
@@ -160,41 +162,51 @@ class SalesforceSource(DatabaseServiceSource):
         Fetches them up using the context information and
         the inspector set when preparing the db.
 
+        Priority:
+        1. sobjectNames (array) - if specified, iterate over these
+        2. All objects from describe()
+
+        tableFilterPattern is applied in ALL cases.
+
         :return: tables or views, depending on config
         """
         schema_name = self.context.get().database_schema
 
         try:
-            if self.service_connection.sobjectName:
-                table_name = self.standardize_table_name(
-                    schema_name, self.service_connection.sobjectName
-                )
-                yield table_name, TableType.Regular
+            if self.service_connection.sobjectNames:
+                object_names = list(self.service_connection.sobjectNames)
+
             else:
-                for salesforce_object in self.client.describe()["sobjects"]:
-                    table_name = salesforce_object["name"]
-                    table_name = self.standardize_table_name(schema_name, table_name)
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                        schema_name=self.context.get().database_schema,
-                        table_name=table_name,
-                    )
-                    if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern,
+                object_names = [
+                    salesforce_object["name"]
+                    for salesforce_object in self.client.describe()["sobjects"]
+                ]
+
+            for table_name in object_names:
+                table_name = self.standardize_table_name(schema_name, table_name)
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
+                    table_name=table_name,
+                )
+                if filter_by_table(
+                    self.config.sourceConfig.config.tableFilterPattern,
+                    (
                         table_fqn
                         if self.config.sourceConfig.config.useFqnForFiltering
-                        else table_name,
-                    ):
-                        self.status.filter(
-                            table_fqn,
-                            "Table Filtered Out",
-                        )
-                        continue
+                        else table_name
+                    ),
+                ):
+                    self.status.filter(
+                        table_fqn,
+                        "Table Filtered Out",
+                    )
+                    continue
 
-                    yield table_name, TableType.Regular
+                yield table_name, TableType.Regular
         except Exception as exc:
             self.status.failed(
                 StackTraceError(
@@ -204,9 +216,7 @@ class SalesforceSource(DatabaseServiceSource):
                 )
             )
 
-    def get_table_description(
-        self, table_name: str, object_label: Optional[str]
-    ) -> Optional[str]:
+    def get_table_description(self, table_name: str) -> Optional[str]:
         """
         Method to get the table description for salesforce with Tooling API
         """
@@ -229,7 +239,7 @@ class SalesforceSource(DatabaseServiceSource):
             logger.warning(
                 f"Unable to get description with Tooling API for table [{table_name}]: {exc}"
             )
-        return table_description if table_description else object_label
+        return table_description
 
     def get_table_column_description(self, table_name: str) -> Optional[List]:
         """
@@ -238,7 +248,7 @@ class SalesforceSource(DatabaseServiceSource):
         all_column_description = None
         try:
             result = self.client.toolingexecute(
-                f"query/?q=SELECT+Description+FROM+FieldDefinition+WHERE+"
+                f"query/?q=SELECT+Description, QualifiedApiName+FROM+FieldDefinition+WHERE+"
                 f"EntityDefinition.QualifiedApiName='{table_name}'"
             )
             all_column_description = result["records"]
@@ -271,10 +281,9 @@ class SalesforceSource(DatabaseServiceSource):
             columns = self.get_columns(table_name, salesforce_objects.get("fields", []))
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
+                displayName=salesforce_objects.get("label"),
                 tableType=table_type,
-                description=self.get_table_description(
-                    table_name, salesforce_objects.get("label")
-                ),
+                description=self.get_table_description(table_name),
                 columns=columns,
                 tableConstraints=table_constraints,
                 databaseSchema=FullyQualifiedEntityName(
@@ -313,7 +322,7 @@ class SalesforceSource(DatabaseServiceSource):
             for item in all_column_description:
                 try:
                     if item.get("Description") is not None:
-                        column_name = item["attributes"]["url"].split(".")[-1]
+                        column_name = item["QualifiedApiName"]
                         column_description_mapping.update(
                             {column_name: item["Description"]}
                         )
@@ -329,14 +338,13 @@ class SalesforceSource(DatabaseServiceSource):
                 col_constraint = Constraint.NOT_NULL
             if column["unique"]:
                 col_constraint = Constraint.UNIQUE
-            if column_description_mapping.get(column["name"]):
-                column_description = column_description_mapping[column["name"]]
-            else:
-                column_description = column["label"]
+
+            column_description = column_description_mapping.get(column["name"])
 
             columns.append(
                 Column(
                     name=column["name"],
+                    displayName=column["label"],
                     description=column_description,
                     dataType=self.column_type(column["type"].upper()),
                     dataTypeDisplay=column["type"],

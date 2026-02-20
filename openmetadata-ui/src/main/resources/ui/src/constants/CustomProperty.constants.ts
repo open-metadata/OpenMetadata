@@ -27,6 +27,7 @@ import { ReactComponent as TableIcon } from '../assets/svg/customproperties/tabl
 import { ReactComponent as TimeIntervalIcon } from '../assets/svg/customproperties/time-interval.svg';
 import { ReactComponent as TimeIcon } from '../assets/svg/customproperties/time.svg';
 import { ReactComponent as TimestampIcon } from '../assets/svg/customproperties/timestamp.svg';
+import { ReactComponent as HyperlinkIcon } from '../assets/svg/link.svg';
 
 export const PROPERTY_TYPES_WITH_FORMAT = ['date-cp', 'dateTime-cp', 'time-cp'];
 
@@ -163,6 +164,10 @@ export const SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING = {
   'HH:mm:ss': 'HH:mm:ss',
 };
 
+export const SUPPORTED_DATE_TIME_FORMATS_LUXON_FORMAT_MAPPING = {
+  yyyyDDD: 'yyyyo',
+};
+
 export const DEFAULT_TIME_FORMAT = 'HH:mm:ss';
 export const DEFAULT_DATE_FORMAT = 'yyyy-MM-dd';
 export const DEFAULT_DATE_TIME_FORMAT = 'yyyy-MM-dd HH:mm:ss';
@@ -175,6 +180,8 @@ export const SUPPORTED_FORMAT_MAP = {
 
 export const TABLE_TYPE_CUSTOM_PROPERTY = 'table-cp';
 
+export const HYPERLINK_TYPE_CUSTOM_PROPERTY = 'hyperlink-cp';
+
 export const CUSTOM_PROPERTIES_ICON_MAP = {
   'date-cp': DateIcon,
   'dateTime-cp': DateTimeIcon,
@@ -183,6 +190,7 @@ export const CUSTOM_PROPERTIES_ICON_MAP = {
   entityReference: EntityReferenceIcon,
   entityReferenceList: EntityReferenceListIcon,
   enum: EnumIcon,
+  'hyperlink-cp': HyperlinkIcon,
   integer: IntegerIcon,
   markdown: MarkDownIcon,
   number: NumberIcon,

@@ -81,7 +81,8 @@ export const showNotistackError = (
       return;
     }
   } else {
-    errorMessage = fallbackText ?? i18n.t('server.unexpected-error');
+    errorMessage = (fallbackText ??
+      i18n.t('server.unexpected-error')) as string;
   }
 
   enqueueSnackbar(
@@ -96,7 +97,7 @@ export const showNotistackError = (
         'data-testid': 'alert-bar',
       },
       action: closeSnackbar
-        ? (snackbarId) =>
+        ? (snackbarId: string | number) =>
             React.createElement(CloseButton, {
               closeSnackbar: () => closeSnackbar(snackbarId),
             })
@@ -126,7 +127,7 @@ export const showNotistackSuccess = (
         'data-testid': 'alert-bar',
       },
       action: closeSnackbar
-        ? (snackbarId) =>
+        ? (snackbarId: string | number) =>
             React.createElement(CloseButton, {
               closeSnackbar: () => closeSnackbar(snackbarId),
             })
@@ -156,7 +157,7 @@ export const showNotistackInfo = (
         'data-testid': 'alert-bar',
       },
       action: closeSnackbar
-        ? (snackbarId) =>
+        ? (snackbarId: string | number) =>
             React.createElement(CloseButton, {
               closeSnackbar: () => closeSnackbar(snackbarId),
             })
@@ -186,7 +187,7 @@ export const showNotistackWarning = (
         'data-testid': 'alert-bar',
       },
       action: closeSnackbar
-        ? (snackbarId) =>
+        ? (snackbarId: string | number) =>
             React.createElement(CloseButton, {
               closeSnackbar: () => closeSnackbar(snackbarId),
             })

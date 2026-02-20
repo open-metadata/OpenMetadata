@@ -114,6 +114,10 @@ public final class CatalogExceptionMessage {
     return entityNotFound(entityType, id.toString());
   }
 
+  public static String entityNameAlreadyExists(String entityType, String name) {
+    return String.format("%s with name '%s' already exists.", entityType, name);
+  }
+
   public static String readOnlyAttribute(String entityType, String attribute) {
     return String.format("%s attribute %s can't be modified", entityType, attribute);
   }

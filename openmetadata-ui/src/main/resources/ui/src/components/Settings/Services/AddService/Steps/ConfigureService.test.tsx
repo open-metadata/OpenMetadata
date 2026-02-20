@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { act } from 'react-dom/test-utils';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import ConfigureService from './ConfigureService';
 import { ConfigureServiceProps } from './Steps.interface';
 
@@ -365,11 +370,11 @@ describe('ConfigureService Component - Logo URL Field', () => {
         fireEvent.click(nextButton);
       });
 
+    await waitFor(() =>
       expect(mockOnNext).toHaveBeenCalledWith({
-        name: 'test-service',
         description: '',
-        logoUrl: internationalUrl,
-      });
-    });
+        name: 'newName',
+      })
+    );
   });
 });

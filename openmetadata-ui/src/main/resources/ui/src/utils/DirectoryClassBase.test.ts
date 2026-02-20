@@ -75,6 +75,7 @@ jest.mock('./CustomizePage/CustomizePageUtils', () => ({
       [EntityTabs.CHILDREN]: 'Children',
       [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
       [EntityTabs.LINEAGE]: 'Lineage',
+      [EntityTabs.CONTRACT]: 'Contract',
       [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
     };
 
@@ -188,7 +189,7 @@ describe('DirectoryClassBase', () => {
     it('should return correct tab configuration', () => {
       const result = directoryClass.getDirectoryDetailPageTabsIds();
 
-      expect(result).toHaveLength(4);
+      expect(result).toHaveLength(5);
       expect(result[0]).toEqual({
         id: EntityTabs.CHILDREN,
         name: EntityTabs.CHILDREN,
@@ -211,6 +212,13 @@ describe('DirectoryClassBase', () => {
         editable: false,
       });
       expect(result[3]).toEqual({
+        id: EntityTabs.CONTRACT,
+        name: EntityTabs.CONTRACT,
+        displayName: 'Contract',
+        layout: [],
+        editable: false,
+      });
+      expect(result[4]).toEqual({
         id: EntityTabs.CUSTOM_PROPERTIES,
         name: EntityTabs.CUSTOM_PROPERTIES,
         displayName: 'Custom Properties',

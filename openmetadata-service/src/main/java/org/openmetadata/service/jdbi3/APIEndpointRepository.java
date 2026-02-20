@@ -22,12 +22,15 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -52,6 +55,7 @@ import org.openmetadata.service.resources.apis.APIEndpointResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
@@ -145,6 +149,51 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   }
 
   @Override
+  public void storeEntities(List<APIEndpoint> entities) {
+    List<APIEndpoint> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (APIEndpoint apiEndpoint : entities) {
+      EntityReference apiCollection = apiEndpoint.getApiCollection();
+      apiEndpoint.withApiCollection(null);
+
+      List<Field> requestFieldsWithTags = null;
+      if (apiEndpoint.getRequestSchema() != null) {
+        requestFieldsWithTags = apiEndpoint.getRequestSchema().getSchemaFields();
+        apiEndpoint.getRequestSchema().setSchemaFields(cloneWithoutTags(requestFieldsWithTags));
+        apiEndpoint.getRequestSchema().getSchemaFields().forEach(field -> field.setTags(null));
+      }
+
+      List<Field> responseFieldsWithTags = null;
+      if (apiEndpoint.getResponseSchema() != null) {
+        responseFieldsWithTags = apiEndpoint.getResponseSchema().getSchemaFields();
+        apiEndpoint.getResponseSchema().setSchemaFields(cloneWithoutTags(responseFieldsWithTags));
+        apiEndpoint.getResponseSchema().getSchemaFields().forEach(field -> field.setTags(null));
+      }
+
+      String jsonCopy = gson.toJson(apiEndpoint);
+      entitiesToStore.add(gson.fromJson(jsonCopy, APIEndpoint.class));
+
+      if (requestFieldsWithTags != null) {
+        apiEndpoint.getRequestSchema().withSchemaFields(requestFieldsWithTags);
+      }
+      if (responseFieldsWithTags != null) {
+        apiEndpoint.getResponseSchema().withSchemaFields(responseFieldsWithTags);
+      }
+      apiEndpoint.withApiCollection(apiCollection);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<APIEndpoint> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(APIEndpoint::getId).toList();
+    deleteToMany(ids, Entity.API_ENDPOINT, Relationship.CONTAINS, Entity.API_COLLECTION);
+  }
+
+  @Override
   public void storeRelationships(APIEndpoint apiEndpoint) {
     EntityReference apiCollection = apiEndpoint.getApiCollection();
     addRelationship(
@@ -156,7 +205,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   }
 
   @Override
-  public void setFields(APIEndpoint apiEndpoint, Fields fields) {
+  public void setFields(APIEndpoint apiEndpoint, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(apiEndpoint);
     if (apiEndpoint.getRequestSchema() != null) {
       populateEntityFieldTags(
@@ -191,7 +240,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
     for (APIEndpoint endpoint : apiEndpoints) {
       endpoint.setTags(
-          addDerivedTags(
+          addDerivedTagsGracefully(
               tagsMap.getOrDefault(endpoint.getFullyQualifiedName(), Collections.emptyList())));
     }
 
@@ -490,7 +539,13 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
             listOrEmpty(updated.getResponseSchema().getSchemaFields()),
             EntityUtil.schemaFieldMatch);
       }
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
     }
 
     private void updateSchemaFields(

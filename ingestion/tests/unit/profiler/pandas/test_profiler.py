@@ -51,6 +51,7 @@ from metadata.profiler.metrics.core import MetricTypes, add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import MissingMetricException, Profiler
 from metadata.profiler.processor.default import DefaultProfiler
+from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
 Base = declarative_base()
@@ -174,11 +175,17 @@ class ProfilerTest(TestCase):
         with (
             patch.object(
                 DatalakeSampler,
-                "raw_dataset",
-                new_callable=lambda: [
-                    cls.df1,
-                    pd.concat([cls.df2, pd.DataFrame(index=cls.df1.index)]),
-                ],
+                "get_dataframes",
+                return_value=DatalakeColumnWrapper(
+                    dataframes=lambda: iter(
+                        [
+                            cls.df1,
+                            pd.concat([cls.df2, pd.DataFrame(index=cls.df1.index)]),
+                        ]
+                    ),
+                    columns=None,
+                    raw_data=None,
+                ),
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
@@ -240,7 +247,7 @@ class ProfilerTest(TestCase):
             maxLength=None,
             mean=31.0,
             sum=124.0,
-            stddev=0.816496580927726,
+            stddev=0.7071067811865476,
             variance=None,
             median=31.0,
             firstQuartile=30.5,

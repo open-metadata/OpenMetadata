@@ -23,12 +23,15 @@ from metadata.data_quality.validations.runtime_param_setter.param_setter import 
     RuntimeParameterSetter,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.importer import import_test_case_class
 
 if TYPE_CHECKING:
-    from pandas import DataFrame
+    from metadata.data_quality.interface.pandas.pandas_test_suite_interface import (
+        PandasRunner,
+    )
 
 
 class TestCaseImporter:
@@ -37,8 +40,11 @@ class TestCaseImporter:
         test_type: str,
         runner_type: str,
         test_definition: str,
+        validator_class: str,
     ) -> Type[BaseTestValidator]:
-        return import_test_case_class(test_type, runner_type, test_definition)
+        return import_test_case_class(
+            test_type, runner_type, test_definition, validator_class
+        )
 
 
 class SourceType(Enum):
@@ -51,15 +57,16 @@ class ValidatorBuilder(TestCaseImporter):
 
     def __init__(
         self,
-        runner: Union[QueryRunner, "DataFrame"],
+        runner: Union[QueryRunner, "PandasRunner"],
         test_case: TestCase,
+        test_definition: TestDefinition,
         source_type: SourceType,
         entity_type: str,
     ) -> None:
         """Builder object for SQA validators. This builder is used to create a validator object
 
         Args:
-            runner (QueryRunner): The runner object
+            runner (Union[QueryRunner, PandasRunner]): The runner object
             test_case (TestCase): The test case object
             source_type (SourceType): The source type
             entity_type (str): one of COLUMN or TABLE -- fetched from the test definition
@@ -72,7 +79,8 @@ class ValidatorBuilder(TestCaseImporter):
         ] = super().import_test_case_validator(
             entity_type,
             source_type.value,
-            self.test_case.testDefinition.fullyQualifiedName,
+            test_definition.fullyQualifiedName.root,  # type: ignore
+            test_definition.validatorClass,
         )
         self.reset()
 

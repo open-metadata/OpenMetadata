@@ -604,4 +604,63 @@ describe('SpreadsheetVersion', () => {
       screen.getByTestId('data-assets-version-header')
     ).toBeInTheDocument();
   });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    it('should render custom properties tab when ViewCustomFields is true', async () => {
+      const permissionsWithViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: true,
+      };
+
+      renderSpreadsheetVersion({
+        entityPermissions: permissionsWithViewCustomFields,
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      });
+
+      const customPropertiesTab = screen.getByRole('tab', { name: /custom/i });
+
+      expect(customPropertiesTab).toBeInTheDocument();
+    });
+
+    it('should render custom properties tab when ViewCustomFields is false', async () => {
+      const permissionsWithoutViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: false,
+      };
+
+      renderSpreadsheetVersion({
+        entityPermissions: permissionsWithoutViewCustomFields,
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      });
+
+      const customPropertiesTab = screen.getByRole('tab', { name: /custom/i });
+
+      expect(customPropertiesTab).toBeInTheDocument();
+    });
+
+    it('should render custom properties tab when ViewCustomFields is undefined', async () => {
+      const permissionsWithUndefinedViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+      };
+      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
+
+      renderSpreadsheetVersion({
+        entityPermissions: permissionsWithUndefinedViewCustomFields,
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      });
+
+      const customPropertiesTab = screen.getByRole('tab', { name: /custom/i });
+
+      expect(customPropertiesTab).toBeInTheDocument();
+    });
+  });
 });

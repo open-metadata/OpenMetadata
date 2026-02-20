@@ -1,6 +1,6 @@
 # Metric
 
-Track the health of your data assets with metrics.
+Define and catalog standardized metrics across your organization.
 
 
 $$section

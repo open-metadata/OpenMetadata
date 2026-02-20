@@ -21,6 +21,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TeamDetailsV1 from '../../components/Settings/Team/TeamDetails/TeamDetailsV1';
+import { collectAllTeamIds } from '../../components/Settings/Team/TeamDetails/TeamDetailsV1.utils';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -36,7 +37,7 @@ import { Team } from '../../generated/entity/teams/team';
 import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import {
   createTeam,
   deleteUserFromTeam,
@@ -49,6 +50,7 @@ import { updateUserDetail } from '../../rest/userAPI';
 import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import { getTermQuery } from '../../utils/SearchUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
@@ -65,9 +67,13 @@ const TeamsPage = () => {
   const [showDeletedTeam, setShowDeletedTeam] = useState<boolean>(false);
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
 
+  const [isTeamBasicDataLoading, setIsTeamBasicDataLoading] =
+    useState<boolean>(true);
+
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [assets, setAssets] = useState<number>(0);
+  const [allTeamIds, setAllTeamIds] = useState<string[]>([]);
   const [parentTeams, setParentTeams] = useState<Team[]>([]);
   const { updateCurrentUser } = useApplicationStore();
 
@@ -104,10 +110,11 @@ const TeamsPage = () => {
   };
 
   const fetchAllTeamsBasicDetails = async (parentTeam?: string) => {
+    setIsTeamBasicDataLoading(true);
     try {
       const { data } = await getTeams({
         parentTeam: parentTeam ?? 'organization',
-        include: Include.All,
+        include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
       });
 
       const modifiedTeams: Team[] = data.map((team) => ({
@@ -120,6 +127,8 @@ const TeamsPage = () => {
       setFetchAllTeamAdvancedDetails(true);
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
+    } finally {
+      setIsTeamBasicDataLoading(false);
     }
   };
 
@@ -133,7 +142,7 @@ const TeamsPage = () => {
     try {
       const { data } = await getTeams({
         parentTeam: parentTeam ?? 'organization',
-        include: Include.All,
+        include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
         fields: [
           TabSpecificField.USER_COUNT,
           TabSpecificField.CHILDREN_COUNT,
@@ -187,22 +196,32 @@ const TeamsPage = () => {
     }
   };
 
+
+
   const fetchAssets = async (selectedTeam: Team) => {
-    if (selectedTeam.id && selectedTeam.teamType === TeamType.Group) {
+    if (selectedTeam.id && selectedTeam.teamType !== TeamType.Organization) {
+      setAllTeamIds([selectedTeam.id]);
       try {
-        const res = await searchData(
-          ``,
-          0,
-          0,
-          `owners.id:${selectedTeam.id}`,
-          '',
-          '',
-          SearchIndex.ALL
-        );
-        const total = res?.data?.hits?.total.value ?? 0;
+        const teamIds = await collectAllTeamIds(selectedTeam);
+
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 0,
+          pageSize: 0,
+          queryFilter: getTermQuery({ 'owners.id': teamIds }, 'should', 1),
+          searchIndex: SearchIndex.ALL,
+        });
+        const total = res?.hits?.total.value ?? 0;
+        setAllTeamIds(teamIds);
         setAssets(total);
-      } catch {
-        // Error
+      } catch (error) {
+        setAssets(0);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.team-plural-lowercase'),
+          })
+        );
       }
     }
   };
@@ -237,6 +256,7 @@ const TeamsPage = () => {
       const data = await getTeamByName(name, {
         fields: [
           TabSpecificField.USERS,
+          TabSpecificField.USER_COUNT,
           TabSpecificField.DEFAULT_ROLES,
           TabSpecificField.POLICIES,
           TabSpecificField.CHILDREN_COUNT,
@@ -478,8 +498,16 @@ const TeamsPage = () => {
   }, [fqn]);
 
   useEffect(() => {
+    setAllTeamIds([]);
+    setAssets(0);
     init();
   }, [fqn]);
+
+  useEffect(() => {
+    if (hasViewPermission && fqn) {
+      fetchAllTeamsBasicDetails(fqn);
+    }
+  }, [showDeletedTeam]);
 
   useEffect(() => {
     if (isFetchAllTeamAdvancedDetails && fqn) {
@@ -516,6 +544,7 @@ const TeamsPage = () => {
     <PageLayoutV1 pageTitle={t('label.team-plural')}>
       <TeamDetailsV1
         afterDeleteAction={afterDeleteAction}
+        allTeamIds={allTeamIds}
         assetsCount={assets}
         childTeams={childTeams}
         currentTeam={selectedTeam}
@@ -526,6 +555,7 @@ const TeamsPage = () => {
         handleLeaveTeamClick={handleLeaveTeamClick}
         isFetchingAdvancedDetails={isFetchingAdvancedDetails}
         isFetchingAllTeamAdvancedDetails={isFetchAllTeamAdvancedDetails}
+        isTeamBasicDataLoading={isTeamBasicDataLoading}
         isTeamMemberLoading={isDataLoading}
         parentTeams={parentTeams}
         removeUserFromTeam={removeUserFromTeam}

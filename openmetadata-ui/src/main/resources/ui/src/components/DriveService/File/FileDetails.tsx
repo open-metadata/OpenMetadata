@@ -48,7 +48,10 @@ import {
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
 import fileClassBase from '../../../utils/FileClassBase';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -92,10 +95,12 @@ function FileDetails({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.OVERVIEW } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedFileFQN } = useFqn();
+
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.File);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
+
+  const { entityFqn: decodedFileFQN } = useFqn({ type: EntityType.FILE });
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -252,6 +257,7 @@ function FileDetails({
     editAllPermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -277,6 +283,10 @@ function FileDetails({
         getPrioritizedEditPermission(filePermissions, Operation.EditLineage) &&
         !deleted,
       viewAllPermission: filePermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        filePermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [filePermissions, deleted]
   );
@@ -315,12 +325,13 @@ function FileDetails({
         <CustomPropertyTable<EntityType.FILE>
           entityType={EntityType.FILE}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
       activeTab,
       feedCount,
       labelMap: tabLabelMap,
+      fileDetails,
     });
 
     return getDetailsTabWithNewLabel(
@@ -349,6 +360,7 @@ function FileDetails({
     editLineagePermission,
     editAllPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(
     async (newCertification?: Tag) => {
@@ -379,10 +391,7 @@ function FileDetails({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.file'),
-      })}>
+    <PageLayoutV1 pageTitle={entityName}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

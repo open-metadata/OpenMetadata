@@ -74,7 +74,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
     - table2: The table path for the second service (only schema and table name)
     - keyColumns: If not defined, construct the key columns based on primary key or unique constraint.
     - extraColumns: If not defined, construct the extra columns as all columns except the key columns.
-    - whereClause: Exrtact where clause based on partitioning and user input
+    - whereClause: Extract where clause based on partitioning and user input
     """
 
     def __init__(

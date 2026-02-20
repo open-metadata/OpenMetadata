@@ -56,15 +56,15 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       execution.setVariable(
           assigneesVarNameExpr.getValue(execution).toString(), JsonUtils.pojoToJson(assignees));
 
-      // Set the hasAssignees variable for the ExclusiveGateway to route correctly
-      // This MUST be explicitly true or false, never null
       boolean hasAssignees = !assignees.isEmpty();
       execution.setVariable("hasAssignees", hasAssignees);
 
       LOG.debug(
-          "Set hasAssignees={} for process instance {}",
+          "[Process: {}] ✓ Set hasAssignees={}, assignees count: {}, flow will {}",
+          execution.getProcessInstanceId(),
           hasAssignees,
-          execution.getProcessInstanceId());
+          assignees.size(),
+          hasAssignees ? "create USER TASK" : "AUTO-APPROVE");
     } catch (Exception exc) {
       LOG.error(
           String.format(

@@ -73,6 +73,8 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             result_limit=self.config.sourceConfig.config.resultLimit,
             filters=self.get_filters(),
             time_column_name=get_postgres_time_column_name(engine=self.engine),
+            query_statement_source=self.service_connection.queryStatementSource
+            or "pg_stat_statements",
         )
 
     # pylint: disable=no-member

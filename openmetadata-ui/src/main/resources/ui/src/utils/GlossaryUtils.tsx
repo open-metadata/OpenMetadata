@@ -38,12 +38,14 @@ import {
   TermReference,
 } from '../generated/entity/data/glossaryTerm';
 import { Domain } from '../generated/entity/domains/domain';
+import { Thread } from '../generated/entity/feed/thread';
 import { User } from '../generated/entity/teams/user';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { calculatePercentageFromValue } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
 import Fqn from './Fqn';
+import i18n from './i18next/LocalUtil';
 import { getGlossaryPath } from './RouterUtils';
 
 export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
@@ -137,6 +139,7 @@ export const StatusClass = {
   [EntityStatus.Rejected]: StatusType.Failure,
   [EntityStatus.Deprecated]: StatusType.Deprecated,
   [EntityStatus.InReview]: StatusType.InReview,
+  [EntityStatus.Unprocessed]: StatusType.Unprocessed,
 };
 
 export const StatusFilters = Object.values(EntityStatus)
@@ -349,7 +352,7 @@ export const filterTreeNodeOptions = (
         if (!isMatching) {
           acc.push({
             ...node,
-            children: filteredChildren as GlossaryTerm[],
+            children: filteredChildren,
           });
         }
 
@@ -467,7 +470,7 @@ export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
 export const permissionForApproveOrReject = (
   record: ModifiedGlossaryTerm,
   currentUser: User,
-  termTaskThreads: Record<string, Array<any>>
+  termTaskThreads: Record<string, Thread[]>
 ) => {
   const entityLink = getGlossaryEntityLink(record.fullyQualifiedName ?? '');
   const taskThread = termTaskThreads[entityLink]?.find(
@@ -480,7 +483,7 @@ export const permissionForApproveOrReject = (
 
   return {
     permission: taskThread && isReviewer,
-    taskId: taskThread?.task?.id,
+    taskId: taskThread?.task?.id ?? '',
   };
 };
 
@@ -497,15 +500,6 @@ export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
     />
   );
 };
-
-export const getAllExpandableKeys = (terms: ModifiedGlossary[]): string[] => {
-  const keys: string[] = [];
-
-  processTerms(terms, keys);
-
-  return keys;
-};
-
 const processTerms = (termList: ModifiedGlossary[], keys: string[]) => {
   termList.forEach((term) => {
     if (
@@ -519,4 +513,33 @@ const processTerms = (termList: ModifiedGlossary[], keys: string[]) => {
       }
     }
   });
+};
+
+export const getAllExpandableKeys = (terms: ModifiedGlossary[]): string[] => {
+  const keys: string[] = [];
+
+  processTerms(terms, keys);
+
+  return keys;
+};
+
+export const validateReferenceURL = (url: string): boolean => {
+  if (!url) {
+    return true;
+  }
+
+  return url.startsWith('http://') || url.startsWith('https://');
+};
+
+export const referenceURLValidator = (
+  _: unknown,
+  value: string
+): Promise<void> => {
+  if (validateReferenceURL(value)) {
+    return Promise.resolve();
+  }
+
+  return Promise.reject(
+    new Error(i18n.t('message.url-must-start-with-http-or-https'))
+  );
 };

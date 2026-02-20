@@ -15,15 +15,17 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Space, Tooltip } from 'antd';
 import { DataNode } from 'antd/lib/tree';
 import { groupBy, isUndefined, map, toLower } from 'lodash';
+import React from 'react';
 import { MenuOptions } from '../constants/execution.constants';
 import {
   PipelineStatus,
   StatusType,
   Task,
+  TaskStatus,
 } from '../generated/entity/data/pipeline';
-import { formatDateTime } from './date-time/DateTimeUtils';
+import { formatDateTime, formatDuration } from './date-time/DateTimeUtils';
+import { t } from './i18next/LocalUtil';
 import { getStatusBadgeIcon } from './PipelineDetailsUtils';
-
 interface StatusIndicatorInterface {
   status: StatusType;
 }
@@ -35,6 +37,9 @@ export interface ViewDataInterface {
   executionStatus?: StatusType;
   type?: string;
   key: number;
+  startTime?: number;
+  endTime?: number;
+  duration?: string;
 }
 
 export const StatusIndicator = ({ status }: StatusIndicatorInterface) => (
@@ -74,7 +79,12 @@ export const getTableViewData = (
 
   const viewData: Array<ViewDataInterface> = [];
   executions?.map((execution) => {
-    execution.taskStatus?.map((execute) => {
+    execution.taskStatus?.map((execute: TaskStatus) => {
+      const startTime = execute.startTime;
+      const endTime = execute.endTime;
+      const duration =
+        startTime && endTime ? formatDuration(endTime - startTime) : '--';
+
       viewData.push({
         name: execute.name,
         status: execute.executionStatus,
@@ -82,6 +92,9 @@ export const getTableViewData = (
         executionStatus: execute.executionStatus,
         type: '--',
         key: execution.timestamp,
+        startTime,
+        endTime,
+        duration,
       });
     });
   });
@@ -125,9 +138,9 @@ export const buildCompleteTree = (
   data: Task[],
   viewElements: {
     key: string;
-    value: any;
+    value: React.ReactNode;
   }[],
-  icon: any,
+  icon: React.ReactNode | null,
   key: string,
   parentKey: string
 ) => {
@@ -182,40 +195,60 @@ export const getTreeData = (
   const treeLabelList: DataNode[] = [];
 
   // map execution element to task name
-  const viewElements = map(viewData, (value, key) => ({
-    key,
-    value: (
-      <Row gutter={16} key={key}>
-        <Col>
-          <div className="execution-node-container">
-            {value.map((status) => (
-              <Tooltip
-                key={`${status.timestamp}-${status.executionStatus}`}
-                placement="top"
-                title={
-                  <Space direction="vertical">
-                    <div>{status.timestamp}</div>
-                    <div>{status.executionStatus}</div>
-                  </Space>
-                }>
-                <Icon
-                  alt="result"
-                  className="align-middle"
-                  component={getStatusBadgeIcon(status.executionStatus)}
-                  // by default, color is set to inherit for Icon in ANTD, so we need to set it to transparent
-                  style={{ fontSize: '24px', color: 'transparent' }}
-                />
-              </Tooltip>
-            ))}
-          </div>
-        </Col>
-      </Row>
-    ),
-  }));
+  const viewElements = map(
+    viewData,
+    (value: ViewDataInterface[], key: string) => ({
+      key,
+      value: (
+        <Row gutter={16} key={key}>
+          <Col>
+            <div className="execution-node-container">
+              {value.map((status: ViewDataInterface) => (
+                <Tooltip
+                  key={`${status.timestamp}-${status.executionStatus}`}
+                  placement="top"
+                  title={
+                    <Space direction="vertical">
+                      <div>{status.timestamp}</div>
+                      <div>{status.executionStatus}</div>
+                      {status.startTime && (
+                        <div>
+                          {t('label.start-entity', { entity: t('label.time') })}
+                          :{formatDateTime(status.startTime)}
+                        </div>
+                      )}
+                      {status.endTime && (
+                        <div>
+                          {t('label.end-entity', { entity: t('label.time') })}:
+                          {formatDateTime(status.endTime)}
+                        </div>
+                      )}
+                      {status.duration && status.duration !== '--' && (
+                        <div>
+                          {t('label.duration')}: {status.duration}
+                        </div>
+                      )}
+                    </Space>
+                  }>
+                  <Icon
+                    alt="result"
+                    className="align-middle"
+                    component={getStatusBadgeIcon(status.executionStatus)}
+                    // by default, color is set to inherit for Icon in ANTD, so we need to set it to transparent
+                    style={{ fontSize: '24px', color: 'transparent' }}
+                  />
+                </Tooltip>
+              ))}
+            </div>
+          </Col>
+        </Row>
+      ),
+    })
+  );
 
   const labelElements: { key: string; value: string }[] = [];
 
-  viewElements.forEach((value) => {
+  viewElements.forEach((value: { key: string; value: React.ReactNode }) => {
     const object = { key: value.key, value: value.key };
     labelElements.push(object);
   });

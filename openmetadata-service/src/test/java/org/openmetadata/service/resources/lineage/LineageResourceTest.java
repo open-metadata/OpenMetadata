@@ -60,6 +60,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
@@ -69,6 +70,7 @@ import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
@@ -98,6 +100,7 @@ import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.mlmodels.MlModelResourceTest;
+import org.openmetadata.service.resources.services.APIServiceResourceTest;
 import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
@@ -1029,6 +1032,155 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     deleteEdge(TABLES.get(3), TABLES.get(4));
     deleteEdge(TABLES.get(5), TABLES.get(6));
     deleteEdge(TABLES.get(6), TABLES.get(7));
+  }
+
+  @Order(14)
+  @Test
+  void test_platformLineageAllViews() throws IOException {
+    // Test platform lineage with all view types to ensure cluster alias is not duplicated
+    // This test verifies the fix for double cluster alias appending issue
+    //
+
+    // Verify cluster alias is configured in test environment
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    assertNotNull(clusterAlias, "Cluster alias should be configured in test environment");
+    assertEquals("openmetadata", clusterAlias, "Expected cluster alias to be 'openmetadata'");
+
+    // Create lineage relationships
+    addEdge(TABLES.get(0), TABLES.get(1));
+    addEdge(TABLES.get(1), TABLES.get(2));
+
+    // Test 1: Service view
+    // Service view works even with the bug because "service" is not a valid entity type,
+    // so the transformation is skipped
+    WebTarget serviceViewTarget =
+        getResource("lineage/getPlatformLineage")
+            .queryParam("view", "service")
+            .queryParam("includeDeleted", false);
+
+    SearchLineageResult serviceViewResult =
+        TestUtils.get(serviceViewTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(serviceViewResult, "Service view should return a valid response");
+    assertNotNull(serviceViewResult.getNodes(), "Service view should have nodes");
+    assertNotNull(serviceViewResult.getUpstreamEdges(), "Service view should have upstream edges");
+    assertNotNull(
+        serviceViewResult.getDownstreamEdges(), "Service view should have downstream edges");
+
+    // Test 2: Domain view
+    // Without the fix, this would fail with:
+    // "index_not_found_exception: no such index [openmetadata_openmetadata_domain_search_index]"
+    WebTarget domainViewTarget =
+        getResource("lineage/getPlatformLineage")
+            .queryParam("view", "domain")
+            .queryParam("includeDeleted", false);
+
+    SearchLineageResult domainViewResult =
+        TestUtils.get(domainViewTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(domainViewResult, "Domain view should return a valid response");
+    assertNotNull(domainViewResult.getNodes(), "Domain view should have nodes");
+    assertNotNull(domainViewResult.getUpstreamEdges(), "Domain view should have upstream edges");
+    assertNotNull(
+        domainViewResult.getDownstreamEdges(), "Domain view should have downstream edges");
+
+    // Test 3: DataProduct view
+    // Without the fix, this would fail with:
+    // "index_not_found_exception: no such index
+    // [openmetadata_openmetadata_data_product_search_index]"
+    WebTarget dataProductViewTarget =
+        getResource("lineage/getPlatformLineage")
+            .queryParam("view", "dataProduct")
+            .queryParam("includeDeleted", false);
+
+    SearchLineageResult dataProductViewResult =
+        TestUtils.get(dataProductViewTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(dataProductViewResult, "DataProduct view should return a valid response");
+    assertNotNull(dataProductViewResult.getNodes(), "DataProduct view should have nodes");
+    assertNotNull(
+        dataProductViewResult.getUpstreamEdges(), "DataProduct view should have upstream edges");
+    assertNotNull(
+        dataProductViewResult.getDownstreamEdges(),
+        "DataProduct view should have downstream edges");
+
+    // Test 4: All view
+    WebTarget allViewTarget =
+        getResource("lineage/getPlatformLineage")
+            .queryParam("view", "all")
+            .queryParam("includeDeleted", false);
+
+    SearchLineageResult allViewResult =
+        TestUtils.get(allViewTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(allViewResult, "All view should return a valid response");
+    assertNotNull(allViewResult.getNodes(), "All view should have nodes");
+    assertNotNull(allViewResult.getUpstreamEdges(), "All view should have upstream edges");
+    assertNotNull(allViewResult.getDownstreamEdges(), "All view should have downstream edges");
+
+    // Clean up
+    deleteEdge(TABLES.get(0), TABLES.get(1));
+    deleteEdge(TABLES.get(1), TABLES.get(2));
+  }
+
+  @Order(15)
+  @Test
+  void test_searchLineageForServiceEntity(TestInfo test) throws IOException {
+    // Test that lineage search works correctly for service entities (apiService, databaseService)
+
+    // Create an API service
+    APIServiceResourceTest apiServiceResourceTest = new APIServiceResourceTest();
+    CreateApiService createApiService =
+        apiServiceResourceTest
+            .createRequest(test)
+            .withName("test_lineage_api_service")
+            .withServiceType(CreateApiService.ApiServiceType.Rest)
+            .withConnection(TestUtils.API_SERVICE_CONNECTION);
+
+    ApiService apiService =
+        apiServiceResourceTest.createEntity(createApiService, ADMIN_AUTH_HEADERS);
+
+    // Test searching lineage for the API service entity
+    WebTarget target = getResource("lineage/getLineage");
+    target = target.queryParam("fqn", apiService.getFullyQualifiedName());
+    target = target.queryParam("type", "apiService");
+    target = target.queryParam("upstreamDepth", 0);
+    target = target.queryParam("downstreamDepth", 0);
+
+    SearchLineageResult result =
+        TestUtils.get(target, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Verify the API service was found in search
+    assertNotNull(result, "Search lineage result should not be null");
+    assertNotNull(result.getNodes(), "Nodes map should not be null");
+    assertEquals(1, result.getNodes().size(), "Should find exactly one node");
+    assertTrue(
+        result.getNodes().containsKey(apiService.getFullyQualifiedName()),
+        "Should contain the API service in nodes");
+
+    // Verify the node information
+    NodeInformation nodeInfo = result.getNodes().get(apiService.getFullyQualifiedName());
+    assertNotNull(nodeInfo, "Node information should not be null");
+    assertEquals(
+        "apiService", nodeInfo.getEntity().get("entityType"), "Entity type should be apiService");
+
+    // Test with includeDeleted=false (the original issue scenario)
+    WebTarget targetWithDeletedFalse = getResource("lineage/getLineage");
+    targetWithDeletedFalse =
+        targetWithDeletedFalse.queryParam("fqn", apiService.getFullyQualifiedName());
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("type", "apiService");
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("upstreamDepth", 0);
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("downstreamDepth", 0);
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("includeDeleted", false);
+
+    SearchLineageResult resultWithDeleted =
+        TestUtils.get(targetWithDeletedFalse, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Verify the API service is still found with includeDeleted=false
+    assertNotNull(resultWithDeleted, "Result with includeDeleted=false should not be null");
+    assertEquals(
+        1,
+        resultWithDeleted.getNodes().size(),
+        "Should still find the API service with includeDeleted=false");
+
+    // Cleanup
+    apiServiceResourceTest.deleteEntity(apiService.getId(), ADMIN_AUTH_HEADERS);
   }
 
   public Edge getEdge(Table from, Table to) {

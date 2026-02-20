@@ -13,7 +13,6 @@
 
 import { Page, test as base } from '@playwright/test';
 import { EntityClass } from '../../../support/entity/EntityClass';
-import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, uuid } from '../../../utils/common';
@@ -77,11 +76,10 @@ Object.entries(entityConfig).forEach(([, config]) => {
   const entityType = entity.getType();
 
   test.describe(`${entityType} Permissions`, () => {
-    const customPropertyName = `pw${entityType}CustomProperty${uuid()}`;
+    const customPropertyName = `pw${entityType.replace(/\s+/g, '')}CustomProperty${uuid()}`;
 
     test.beforeAll('Setup entity', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
 
       // Create custom property for this entity type
@@ -97,6 +95,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
 
     test.afterAll('Cleanup entity', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+
       await entity.delete(apiContext);
       await afterAction();
     });

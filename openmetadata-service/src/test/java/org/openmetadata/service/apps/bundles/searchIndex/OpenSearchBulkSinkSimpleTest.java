@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.lenient;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,14 +16,13 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
-import os.org.opensearch.client.RestHighLevelClient;
 
 @ExtendWith(MockitoExtension.class)
 class OpenSearchBulkSinkSimpleTest {
 
   @Mock private SearchRepository searchRepository;
   @Mock private OpenSearchClient searchClient;
-  @Mock private RestHighLevelClient restHighLevelClient;
+  @Mock private os.org.opensearch.client.opensearch.OpenSearchClient restHighLevelClient;
   @Mock private IndexMapping indexMapping;
 
   private OpenSearchBulkSink openSearchBulkSink;
@@ -30,7 +30,7 @@ class OpenSearchBulkSinkSimpleTest {
   @BeforeEach
   void setUp() {
     lenient().when(searchRepository.getSearchClient()).thenReturn(searchClient);
-    lenient().when(searchClient.getClient()).thenReturn(restHighLevelClient);
+    lenient().when(searchClient.getNewClient()).thenReturn(restHighLevelClient);
     lenient().when(searchRepository.getClusterAlias()).thenReturn("default");
     lenient().when(indexMapping.getIndexName("default")).thenReturn("test_index");
     lenient().when(searchRepository.getIndexMapping("table")).thenReturn(indexMapping);
@@ -84,21 +84,14 @@ class OpenSearchBulkSinkSimpleTest {
 
   @Test
   void testIsVectorEmbeddingEnabledForEntity() {
-    // Test default implementation returns false
-    boolean result = openSearchBulkSink.isVectorEmbeddingEnabledForEntity("table");
-    assertEquals(false, result);
-
-    result = openSearchBulkSink.isVectorEmbeddingEnabledForEntity("user");
-    assertEquals(false, result);
-
-    result = openSearchBulkSink.isVectorEmbeddingEnabledForEntity("dashboard");
-    assertEquals(false, result);
+    assertEquals(false, openSearchBulkSink.isVectorEmbeddingEnabledForEntity("table"));
+    assertEquals(false, openSearchBulkSink.isVectorEmbeddingEnabledForEntity("user"));
+    assertEquals(false, openSearchBulkSink.isVectorEmbeddingEnabledForEntity("dashboard"));
   }
 
   @Test
-  void testAddEntityToVectorIndex() {
-    // Test default implementation does nothing (no exception thrown)
-    // This should not throw any exception as the default implementation is empty
-    openSearchBulkSink.addEntityToVectorIndex(null, null, true, null);
+  void testAddEntitiesToVectorIndexBatch() {
+    openSearchBulkSink.addEntitiesToVectorIndexBatch(
+        null, Collections.emptyList(), true, null, null);
   }
 }

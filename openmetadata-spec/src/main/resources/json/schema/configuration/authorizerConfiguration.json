@@ -7,14 +7,17 @@
   "javaType": "org.openmetadata.schema.api.security.AuthorizerConfiguration",
   "properties": {
     "className": {
+      "title": "Class Name",
       "description": "Class Name for authorizer.",
       "type": "string"
     },
     "containerRequestFilter": {
+      "title": "Container Request Filter",
       "description": "Filter for the request authorization.",
       "type": "string"
     },
     "adminPrincipals": {
+      "title": "Admin Principals",
       "description": "List of unique admin principals.",
       "type": "array",
       "items": {
@@ -23,6 +26,7 @@
       "uniqueItems": true
     },
     "botPrincipals": {
+      "title": "Bot Principals",
       "description": "**@Deprecated** List of unique bot principals",
       "type": "array",
       "items": {
@@ -32,6 +36,7 @@
       "default": null
     },
     "testPrincipals": {
+      "title": "Test Principals",
       "description": "List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT TO BE USED IN PRODUCTION SETUP**",
       "type": "array",
       "items": {
@@ -40,6 +45,7 @@
       "uniqueItems": true
     },
     "allowedEmailRegistrationDomains": {
+      "title": "Allowed Email Registration Domains",
       "description": "List of unique email domains that are allowed to signup on the platforms",
       "type": "array",
       "items": {
@@ -48,10 +54,12 @@
       "uniqueItems": true
     },
     "principalDomain": {
+      "title": "Principal Domain",
       "description": "Principal Domain",
       "type": "string"
     },
     "allowedDomains": {
+      "title": "Allowed Domains",
       "description": "Allowed Domains to access",
       "type": "array",
       "items": {
@@ -60,14 +68,17 @@
       "uniqueItems": true
     },
     "enforcePrincipalDomain": {
+      "title": "Enable Enforce Principal Domain",
       "description": "Enable Enforce Principal Domain",
       "type": "boolean"
     },
     "enableSecureSocketConnection": {
+      "title": "Enable Secure Socket Connection.",
       "description": "Enable Secure Socket Connection.",
       "type": "boolean"
     },
     "useRolesFromProvider": {
+      "title": "Use Roles from Provider",
       "description": "Use Roles from Provider",
       "type": "boolean",
       "default": false

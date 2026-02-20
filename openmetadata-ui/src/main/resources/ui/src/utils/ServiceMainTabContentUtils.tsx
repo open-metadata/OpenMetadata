@@ -13,10 +13,9 @@
 
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isUndefined } from 'lodash';
+import { Operation } from 'fast-json-patch';
 import { ServiceTypes } from 'Models';
 import DisplayName from '../components/common/DisplayName/DisplayName';
-import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
@@ -35,10 +34,13 @@ import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
+import { getColumnSorter, highlightSearchText } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
+import { stringToHTML } from './StringsUtils';
 import {
   dataProductTableObject,
+  descriptionTableObject,
   domainTableObject,
   ownerTableObject,
   tagTableObject,
@@ -51,41 +53,30 @@ export const getServiceMainTabColumns = (
   handleDisplayNameUpdate?: (
     entityData: EntityName,
     id?: string
-  ) => Promise<void>
+  ) => Promise<void>,
+  searchValue?: string
 ): ColumnsType<ServicePageData> => [
   {
     title: t('label.name'),
     dataIndex: TABLE_COLUMNS_KEYS.NAME,
     key: TABLE_COLUMNS_KEYS.NAME,
     width: 280,
+    sorter: getColumnSorter<ServicePageData, 'name'>('name'),
     render: (_, record: ServicePageData) => (
       <DisplayName
-        displayName={record.displayName}
+        displayName={stringToHTML(
+          highlightSearchText(record.displayName, searchValue)
+        )}
         hasEditPermission={editDisplayNamePermission}
         id={record.id}
         key={record.id}
         link={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}
-        name={record.name}
+        name={stringToHTML(highlightSearchText(record.name, searchValue))}
         onEditDisplayName={handleDisplayNameUpdate}
       />
     ),
   },
-  {
-    title: t('label.description'),
-    dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
-    key: TABLE_COLUMNS_KEYS.DESCRIPTION,
-    width: 300,
-    render: (description: ServicePageData['description']) =>
-      !isUndefined(description) && description.trim() ? (
-        <RichTextEditorPreviewerNew markdown={description} />
-      ) : (
-        <span className="text-grey-muted">
-          {t('label.no-entity', {
-            entity: t('label.description'),
-          })}
-        </span>
-      ),
-  },
+  ...descriptionTableObject<ServicePageData>({ width: 300 }),
   ...(ServiceCategory.PIPELINE_SERVICES === serviceCategory
     ? [
         {
@@ -128,7 +119,7 @@ export const getServiceMainTabColumns = (
 export const callServicePatchAPI = async (
   serviceCategory: ServiceTypes,
   id: string,
-  jsonPatch: any
+  jsonPatch: Operation[]
 ) => {
   switch (serviceCategory) {
     case ServiceCategory.DATABASE_SERVICES:

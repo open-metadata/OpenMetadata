@@ -372,4 +372,29 @@ public class MigrationUtil {
       LOG.error("✗ FAILED cleanup of orphaned data contracts: {}", e.getMessage(), e);
     }
   }
+
+  public void removeStoredProcedureIndex() {
+    if (connectionType == ConnectionType.MYSQL) {
+      try {
+        boolean indexExists =
+            handle
+                .createQuery("SHOW INDEX FROM stored_procedure_entity WHERE Key_name = :keyName")
+                .bind("keyName", "idx_stored_procedure_entity_deleted_name_id")
+                .mapToMap()
+                .findFirst()
+                .isPresent();
+
+        if (indexExists) {
+          handle
+              .createUpdate(
+                  "ALTER TABLE stored_procedure_entity DROP INDEX idx_stored_procedure_entity_deleted_name_id")
+              .execute();
+        }
+      } catch (Exception ex) {
+        LOG.warn(
+            "Issue in remove Store Procedure Index. Index Might Already be Removed. message : {}",
+            ex.getMessage());
+      }
+    }
+  }
 }

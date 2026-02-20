@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ROUTES } from '../../../constants/constants';
+import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { POLICY_LIST_WITH_PAGING } from '../../RolesPage/Roles.mock';
 import PoliciesListPage from './PoliciesListPage';
 
@@ -143,13 +144,12 @@ describe('Test Policies List Page', () => {
     const container = await screen.findByTestId('policies-list-table');
 
     const nameCol = await screen.findByText('label.name');
-    const descriptionCol = await screen.findByText('label.description');
     const rolesCol = await screen.findByText('label.role-plural');
     const actionsCol = await screen.findByText('label.action-plural');
 
     expect(container).toBeInTheDocument();
     expect(nameCol).toBeInTheDocument();
-    expect(descriptionCol).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith();
     expect(rolesCol).toBeInTheDocument();
     expect(actionsCol).toBeInTheDocument();
   });

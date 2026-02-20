@@ -12,11 +12,16 @@
  */
 
 import { act, fireEvent, render } from '@testing-library/react';
-import { tableSortingFields } from '../../constants/explore.constants';
 import SortingDropDown from './SortingDropDown';
 
 const handleFieldDropDown = jest.fn();
-const fieldList = tableSortingFields;
+const fieldList = [
+  { name: 'Popularity', value: 'totalVotes' },
+  { name: 'Name', value: 'displayName.keyword' },
+  { name: 'Weekly Usage', value: 'usageSummary.weeklyStats.count' },
+  { name: 'Relevance', value: '_score' },
+  { name: 'Last Updated', value: 'updatedAt' },
+];
 const sortField = '';
 
 const mockPorps = {

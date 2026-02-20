@@ -273,8 +273,8 @@ const Table = <T extends Record<string, unknown>>(
                 {...searchProps}
                 removeMargin
                 placeholder={searchProps?.placeholder ?? t('label.search')}
-                searchValue={searchProps?.value}
-                typingInterval={searchProps?.searchDebounceTime ?? 500}
+                searchValue={searchProps?.searchValue}
+                typingInterval={searchProps?.typingInterval ?? 500}
                 onSearch={handleSearchAction}
               />
             </Col>
@@ -341,5 +341,4 @@ const Table = <T extends Record<string, unknown>>(
   );
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default forwardRef<HTMLDivElement, TableProps<any>>(Table);

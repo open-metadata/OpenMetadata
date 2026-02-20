@@ -98,6 +98,15 @@ const MyTaskWidget = ({
     [entityThread, loading]
   );
 
+  const translatedSortOptions = useMemo(
+    () =>
+      MY_TASK_WIDGET_FILTER_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const widgetHeader = useMemo(
     () => (
       <WidgetHeader
@@ -107,10 +116,9 @@ const MyTaskWidget = ({
         icon={<MyTaskIcon data-testid="task-icon" height={22} width={22} />}
         isEditView={isEditView}
         selectedSortBy={selectedFilter}
-        sortOptions={MY_TASK_WIDGET_FILTER_OPTIONS}
+        sortOptions={translatedSortOptions}
         title={t('label.my-task-plural')}
         widgetKey={widgetKey}
-        widgetWidth={myTaskData?.w}
         onSortChange={(key) => handleSortByClick(key as MyTaskFilter)}
         onTitleClick={() => {
           if (currentUser?.name) {
@@ -130,6 +138,7 @@ const MyTaskWidget = ({
       widgetKey,
       myTaskData?.w,
       handleSortByClick,
+      translatedSortOptions,
     ]
   );
 

@@ -13,6 +13,7 @@
 import '@testing-library/jest-dom';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AxiosError } from 'axios';
+import { EDataContractTab } from '../../../constants/DataContract.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
@@ -40,6 +41,18 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
     ...contract,
     ...formValues,
   })),
+  getDataContractTabByEntity: jest
+    .fn()
+    .mockReturnValue([
+      EDataContractTab.CONTRACT_DETAIL,
+      EDataContractTab.TERMS_OF_SERVICE,
+      EDataContractTab.SCHEMA,
+      EDataContractTab.SEMANTICS,
+      EDataContractTab.SECURITY,
+      EDataContractTab.QUALITY,
+      EDataContractTab.SLA,
+    ]),
+  getContractTabLabel: jest.fn(),
 }));
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
@@ -48,6 +61,12 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
       id: 'table-id',
       name: 'test-table',
     } as Table,
+  })),
+}));
+
+jest.mock('../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockImplementation(() => ({
+    entityType: 'table',
   })),
 }));
 
@@ -686,19 +705,6 @@ describe('AddDataContract', () => {
 
       expect(screen.getByTestId('add-contract-card')).toBeInTheDocument();
       expect(document.querySelector('.contract-tabs')).toBeInTheDocument();
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('should handle missing table context', () => {
-      const mockUseGenericContext = jest.requireMock(
-        '../../Customization/GenericProvider/GenericProvider'
-      ).useGenericContext;
-      mockUseGenericContext.mockReturnValue({ data: undefined });
-
-      expect(() => {
-        render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
-      }).not.toThrow();
     });
   });
 

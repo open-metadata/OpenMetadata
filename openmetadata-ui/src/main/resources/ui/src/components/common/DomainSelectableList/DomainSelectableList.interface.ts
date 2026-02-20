@@ -17,6 +17,7 @@ import { EntityReference } from '../../../generated/entity/type';
 export interface DomainSelectableListProps {
   children?: ReactNode;
   disabled?: boolean;
+  getPopupContainer?: (trigger?: HTMLElement) => HTMLElement;
   hasPermission: boolean;
   multiple?: boolean;
   onCancel?: () => void;
@@ -25,4 +26,6 @@ export interface DomainSelectableListProps {
   selectedDomain?: EntityReference | EntityReference[];
   showAllDomains?: boolean;
   wrapInButton?: boolean;
+  overlayClassName?: string;
+  isClearable?: boolean;
 }

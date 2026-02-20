@@ -33,6 +33,7 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   maxLength = DESCRIPTION_MAX_PREVIEW_CHARACTERS,
   isDescriptionExpanded = false,
   reducePreviewLineClass,
+  extensionOptions,
 }) => {
   const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
@@ -86,7 +87,12 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
           readMore ? '' : reducePreviewLineClass
         )}
         data-testid="markdown-parser">
-        <BlockEditor autoFocus={false} content={viewerValue} editable={false} />
+        <BlockEditor
+          autoFocus={false}
+          content={viewerValue}
+          editable={false}
+          extensionOptions={extensionOptions}
+        />
       </div>
       {hasReadMore && showReadMoreBtn && (
         <Button

@@ -24,6 +24,14 @@
     cursor: pointer;
     transition: all 0.3s ease;
     background: @white;
+    position: relative;
+
+    .beta-badge {
+      position: absolute;
+      top: -8px;
+      left: 10%;
+      z-index: 1;
+    }
 
     .ant-card-body {
       padding: @size-md;

@@ -1,0 +1,39 @@
+{
+  "$id": "https://open-metadata.org/schema/api/events/notificationTemplateRenderResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NotificationTemplateRenderResponse",
+  "description": "Response from rendering a notification template with mock data, including validation and rendered output.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.events.NotificationTemplateRenderResponse",
+  "definitions": {
+    "templateRenderResult": {
+      "type": "object",
+      "description": "Rendered template output with subject and body strings.",
+      "javaType": "org.openmetadata.schema.api.events.TemplateRenderResult",
+      "properties": {
+        "subject": {
+          "type": "string",
+          "description": "Rendered template subject."
+        },
+        "body": {
+          "type": "string",
+          "description": "Rendered template body."
+        }
+      },
+      "required": ["subject", "body"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "validation": {
+      "$ref": "./notificationTemplateValidationResponse.json",
+      "description": "Syntax validation results for the template."
+    },
+    "render": {
+      "$ref": "#/definitions/templateRenderResult",
+      "description": "Actual rendering results with mock data. Null if validation failed."
+    }
+  },
+  "required": ["validation"],
+  "additionalProperties": false
+}

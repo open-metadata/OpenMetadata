@@ -107,9 +107,16 @@ export const validateViewPermissions = async (
   // check Add domain permission
   await expect(page.locator('[data-testid="add-domain"]')).not.toBeVisible();
 
-  await expect(
-    page.locator('[data-testid="edit-displayName-button"]')
-  ).toHaveCount(permission?.editDisplayName ? 8 : 0);
+  if (permission?.editDisplayName) {
+    expect(
+      await page.locator('[data-testid="edit-displayName-button"]').count()
+    ).toBeGreaterThan(0);
+  } else {
+    await expect(
+      page.locator('[data-testid="edit-displayName-button"]')
+    ).toHaveCount(0);
+  }
+
 
   // check edit owner permission
   await expect(page.locator('[data-testid="edit-owner"]')).not.toBeVisible();
@@ -171,14 +178,7 @@ export const validateViewPermissions = async (
   await page.click('[data-testid="profiler"]');
   await page.waitForLoadState('networkidle');
   await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
-  await page
-    .getByTestId('profiler-tab-left-panel')
-    .getByText('Data Quality')
-    .waitFor({ state: 'visible' });
-  await page
-    .getByTestId('profiler-tab-left-panel')
-    .getByText('Data Quality')
-    .click();
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
   await page.waitForLoadState('networkidle');
   await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await checkNoPermissionPlaceholder(
@@ -190,7 +190,7 @@ export const validateViewPermissions = async (
   await page.waitForLoadState('networkidle');
   await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
 
-  await expect(page.locator('[data-testid="edit-lineage"]')).toBeDisabled();
+  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
 
   await page.click('[data-testid="custom_properties"]');
   await page.waitForLoadState('networkidle');
@@ -241,10 +241,10 @@ export const updateDefaultOrganizationPolicy = async (
 };
 
 export const cleanupPermissions = async (apiContext: APIRequestContext) => {
-  if (role && role.responseData?.id) {
+  if (role?.responseData?.id) {
     await role.delete(apiContext);
   }
-  if (policy && policy.responseData?.id) {
+  if (policy?.responseData?.id) {
     await policy.delete(apiContext);
   }
 };

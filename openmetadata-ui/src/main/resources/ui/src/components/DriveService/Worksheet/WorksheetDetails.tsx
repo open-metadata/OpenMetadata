@@ -34,7 +34,6 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
@@ -47,7 +46,10 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -87,12 +89,13 @@ function WorksheetDetails({
   versionHandler,
   onWorksheetUpdate,
   onUpdateVote,
+  activeColumnFqn,
 }: Readonly<WorksheetDetailsProps>) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedWorksheetFQN } = useFqn();
+
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.Worksheet);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
@@ -173,7 +176,7 @@ function WorksheetDetails({
       navigate(
         getEntityDetailsPath(
           EntityType.WORKSHEET,
-          decodedWorksheetFQN,
+          worksheetDetails.fullyQualifiedName ?? '',
           activeKey
         ),
         { replace: true }
@@ -243,7 +246,11 @@ function WorksheetDetails({
   }, []);
 
   const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.WORKSHEET, decodedWorksheetFQN, handleFeedCount);
+    getFeedCounts(
+      EntityType.WORKSHEET,
+      worksheetDetails.fullyQualifiedName ?? '',
+      handleFeedCount
+    );
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
@@ -258,6 +265,7 @@ function WorksheetDetails({
     editAllPermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -287,13 +295,19 @@ function WorksheetDetails({
           Operation.EditLineage
         ) && !deleted,
       viewAllPermission: worksheetPermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        worksheetPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [worksheetPermissions, deleted]
   );
 
   useEffect(() => {
-    getEntityFeedCount();
-  }, [worksheetPermissions, decodedWorksheetFQN]);
+    if (worksheetDetails.fullyQualifiedName) {
+      getEntityFeedCount();
+    }
+  }, [worksheetPermissions, worksheetDetails.fullyQualifiedName]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
@@ -325,7 +339,7 @@ function WorksheetDetails({
         <CustomPropertyTable<EntityType.WORKSHEET>
           entityType={EntityType.WORKSHEET}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
       activeTab,
@@ -344,7 +358,6 @@ function WorksheetDetails({
     worksheetTags,
     entityName,
     worksheetDetails,
-    decodedWorksheetFQN,
     fetchWorksheet,
     deleted,
     handleFeedCount,
@@ -359,6 +372,7 @@ function WorksheetDetails({
     editLineagePermission,
     editAllPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(
     async (newCertification?: Tag) => {
@@ -389,10 +403,7 @@ function WorksheetDetails({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.worksheet'),
-      })}>
+    <PageLayoutV1 pageTitle={entityName}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader
@@ -415,6 +426,7 @@ function WorksheetDetails({
           />
         </Col>
         <GenericProvider<Worksheet>
+          columnFqn={activeColumnFqn}
           customizedPage={customizedPage}
           data={worksheetDetails}
           isTabExpanded={isTabExpanded}

@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
@@ -27,9 +28,12 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
+import com.google.gson.Gson;
+import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -53,6 +57,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
@@ -61,7 +66,10 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadCursorException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -70,13 +78,23 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.tags.TagResource;
+import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
+  private InheritedFieldEntitySearch inheritedFieldEntitySearch;
+
   public TagRepository() {
     super(
         TagResource.TAG_COLLECTION_PATH,
@@ -87,6 +105,68 @@ public class TagRepository extends EntityRepository<Tag> {
         "");
     supportsSearch = true;
     renameAllowed = true;
+
+    // Initialize inherited field search
+    if (searchRepository != null) {
+      inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
+    }
+  }
+
+  public ResultList<EntityReference> getTagAssets(UUID tagId, int limit, int offset) {
+    Tag tag = get(null, tagId, getFields("id,fullyQualifiedName"));
+
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search is unavailable for tag assets. Returning empty list.");
+      return new ResultList<>(new ArrayList<>(), null, null, 0);
+    }
+
+    InheritedFieldQuery query =
+        InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), offset, limit);
+
+    InheritedFieldResult result =
+        inheritedFieldEntitySearch.getEntitiesForField(
+            query,
+            () -> {
+              LOG.warn(
+                  "Search fallback for tag {} assets. Returning empty list.",
+                  tag.getFullyQualifiedName());
+              return new InheritedFieldResult(new ArrayList<>(), 0);
+            });
+
+    return new ResultList<>(result.entities(), null, null, result.total());
+  }
+
+  public ResultList<EntityReference> getTagAssetsByName(String tagName, int limit, int offset) {
+    Tag tag = getByName(null, tagName, getFields("id,fullyQualifiedName"));
+    return getTagAssets(tag.getId(), limit, offset);
+  }
+
+  public Map<String, Integer> getAllTagsWithAssetsCount() {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for tag asset counts");
+      return new HashMap<>();
+    }
+
+    List<Tag> allTags = listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    Map<String, Integer> tagAssetCounts = new LinkedHashMap<>();
+
+    for (Tag tag : allTags) {
+      InheritedFieldQuery query = InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), 0, 0);
+
+      Integer count =
+          inheritedFieldEntitySearch.getCountForField(
+              query,
+              () -> {
+                LOG.warn(
+                    "Search fallback for tag {} asset count. Returning 0.",
+                    tag.getFullyQualifiedName());
+                return 0;
+              });
+
+      tagAssetCounts.put(tag.getFullyQualifiedName(), count);
+    }
+
+    return tagAssetCounts;
   }
 
   @Override
@@ -103,8 +183,15 @@ public class TagRepository extends EntityRepository<Tag> {
     // Validate recognizers
     if (entity.getRecognizers() != null) {
       for (org.openmetadata.schema.type.Recognizer recognizer : entity.getRecognizers()) {
+        prepareRecognizer(recognizer);
         validateRecognizer(recognizer);
       }
+    }
+  }
+
+  private void prepareRecognizer(org.openmetadata.schema.type.Recognizer recognizer) {
+    if (recognizer.getId() == null) {
+      recognizer.setId(UUID.randomUUID());
     }
   }
 
@@ -118,6 +205,10 @@ public class TagRepository extends EntityRepository<Tag> {
       if (threshold < 0.0 || threshold > 1.0) {
         throw new IllegalArgumentException("confidenceThreshold must be between 0.0 and 1.0");
       }
+    }
+
+    if (recognizer.getId() == null) {
+      throw new IllegalArgumentException("Can't create recognizer without an ID");
     }
   }
 
@@ -205,9 +296,37 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
+  public void storeEntities(List<Tag> entities) {
+    List<Tag> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Tag tag : entities) {
+      EntityReference classification = tag.getClassification();
+      EntityReference parent = tag.getParent();
+
+      tag.withClassification(null).withParent(null);
+
+      String jsonCopy = gson.toJson(tag);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Tag.class));
+
+      tag.withClassification(classification).withParent(parent);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
   public void restorePatchAttributes(Tag original, Tag updated) {
     super.restorePatchAttributes(original, updated);
     updated.setChildren(original.getChildren());
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Tag> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Tag::getId).toList();
+    deleteToMany(ids, Entity.TAG, Relationship.CONTAINS, Entity.CLASSIFICATION);
+    deleteToMany(ids, Entity.TAG, Relationship.CONTAINS, Entity.TAG);
   }
 
   @Override
@@ -366,7 +485,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public void setFields(Tag tag, Fields fields) {
+  public void setFields(Tag tag, Fields fields, RelationIncludes relationIncludes) {
     tag.withClassification(getClassification(tag)).withParent(getParent(tag));
     if (fields.contains("usageCount")) {
       tag.withUsageCount(getUsageCount(tag));
@@ -579,10 +698,23 @@ public class TagRepository extends EntityRepository<Tag> {
       return new DescriptionTaskWorkflow(threadContext);
     } else if (EntityUtil.isTagTask(taskType)) {
       return new TagTaskWorkflow(threadContext);
+    } else if (isRecognizerFeedbackTask(threadContext.getThread().getId())) {
+      return new RecognizerFeedbackTaskWorkflow(threadContext);
     } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
       return new ApprovalTaskWorkflow(threadContext);
     }
     return super.getTaskWorkflow(threadContext);
+  }
+
+  private boolean isRecognizerFeedbackTask(UUID taskId) {
+    try {
+      FeedRepository feedRepository = Entity.getFeedRepository();
+      Thread thread = feedRepository.get(taskId);
+      return thread.getTask() != null && thread.getTask().getFeedback() != null;
+    } catch (Exception e) {
+      LOG.debug("Failed to check if task is recognizer feedback task", e);
+    }
+    return false;
   }
 
   public static class ApprovalTaskWorkflow extends TaskWorkflow {
@@ -600,16 +732,86 @@ public class TagRepository extends EntityRepository<Tag> {
       variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
       variables.put(UPDATED_BY_VARIABLE, user);
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      workflowHandler.resolveTask(
-          taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+      boolean workflowSuccess =
+          workflowHandler.resolveTask(
+              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      if (!workflowSuccess) {
+        LOG.warn(
+            "[GlossaryTerm] Workflow failed for taskId='{}', applying status directly", taskId);
+        Boolean approved = (Boolean) variables.get(RESULT_VARIABLE);
+        String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
+        EntityFieldUtils.setEntityField(tag, TAG, user, FIELD_ENTITY_STATUS, entityStatus, true);
+      }
+      return tag;
+    }
+  }
+
+  public static class RecognizerFeedbackTaskWorkflow extends TaskWorkflow {
+    RecognizerFeedbackTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      Tag tag = (Tag) threadContext.getAboutEntity();
+      TagRepository.checkUpdatedByReviewer(tag, user);
+
+      UUID taskId = threadContext.getThread().getId();
+      Map<String, Object> variables = new HashMap<>();
+      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
+      variables.put(UPDATED_BY_VARIABLE, user);
+
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      boolean workflowSuccess =
+          workflowHandler.resolveTask(
+              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      if (!workflowSuccess) {
+        LOG.warn(
+            "[RecognizerFeedback] Workflow failed for taskId='{}', attempting direct resolution",
+            taskId);
+        try {
+          org.openmetadata.schema.type.RecognizerFeedback feedback =
+              threadContext.getThread().getTask().getFeedback();
+          if (feedback != null) {
+            RecognizerFeedbackRepository repo =
+                new RecognizerFeedbackRepository(Entity.getCollectionDAO());
+
+            boolean approved =
+                resolveTask.getNewValue() != null
+                    && resolveTask.getNewValue().equalsIgnoreCase("approved");
+            if (approved) {
+              repo.applyFeedback(feedback, user);
+            } else {
+              repo.rejectFeedback(feedback, user, null);
+            }
+          }
+        } catch (Exception e) {
+          LOG.error("[RecognizerFeedback] Failed to resolve feedback directly", e);
+        }
+      }
 
       return tag;
     }
   }
 
   public class TagUpdater extends EntityUpdater {
+    private boolean renameProcessed = false;
+
     public TagUpdater(Tag original, Tag updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    public void updateReviewers() {
+      super.updateReviewers();
+      // adding the reviewer should add the person as assignee to the task
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
+        updateTaskWithNewReviewers(updated);
+      }
     }
 
     @Transaction
@@ -627,39 +829,24 @@ public class TagRepository extends EntityRepository<Tag> {
           "autoClassificationPriority",
           original.getAutoClassificationPriority(),
           updated.getAutoClassificationPriority());
-      updateName(original, updated);
-      updateParent(original, updated);
+      updateNameAndParent(updated);
     }
 
-    public void updateName(Tag original, Tag updated) {
-      if (!original.getName().equals(updated.getName())) {
-        if (ProviderType.SYSTEM.equals(original.getProvider())) {
-          throw new IllegalArgumentException(
-              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
-        }
-        // Category name changed - update tag names starting from classification and all the
-        // children tags
-        LOG.info("Tag name changed from {} to {}", original.getName(), updated.getName());
-        setFullyQualifiedName(updated);
-        daoCollection
-            .tagDAO()
-            .updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-        daoCollection
-            .tagUsageDAO()
-            .rename(
-                TagSource.CLASSIFICATION.ordinal(),
-                original.getFullyQualifiedName(),
-                updated.getFullyQualifiedName());
-        recordChange("name", original.getName(), updated.getName());
-      }
+    /**
+     * Handle name and parent changes together using getOriginalFqn() for correct FQN tracking.
+     */
+    public void updateNameAndParent(Tag updated) {
+      // Use getOriginalFqn() which was captured at EntityUpdater construction time.
+      String oldFqn = getOriginalFqn();
+      setFullyQualifiedName(updated);
+      String newFqn = updated.getFullyQualifiedName();
 
-      // Populate response fields
-      invalidateTags(original.getId());
-      getChildren(updated);
-    }
+      // Check if this is a name change
+      String[] oldParts = FullyQualifiedName.split(oldFqn);
+      String oldTagName = oldParts.length > 0 ? oldParts[oldParts.length - 1] : "";
+      boolean nameChanged = !oldTagName.equals(updated.getName());
 
-    private void updateParent(Tag original, Tag updated) {
-      // Can't change parent and Classification both at the same time
+      // Check for parent/classification changes
       UUID oldParentId = getId(original.getParent());
       UUID newParentId = getId(updated.getParent());
       boolean parentChanged = !Objects.equals(oldParentId, newParentId);
@@ -667,20 +854,28 @@ public class TagRepository extends EntityRepository<Tag> {
       UUID oldCategoryId = getId(original.getClassification());
       UUID newCategoryId = getId(updated.getClassification());
       boolean classificationChanged = !Objects.equals(oldCategoryId, newCategoryId);
-      if (!parentChanged && !classificationChanged) {
-        return;
+
+      boolean fqnChanged = !oldFqn.equals(newFqn);
+
+      if (fqnChanged && !renameProcessed) {
+        renameProcessed = true;
+
+        if (nameChanged && ProviderType.SYSTEM.equals(original.getProvider())) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+        }
+
+        LOG.info("Tag FQN changed from {} to {}", oldFqn, newFqn);
+        daoCollection.tagDAO().updateFqn(oldFqn, newFqn);
+        daoCollection.tagUsageDAO().rename(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
+
+        if (nameChanged) {
+          recordChange("name", oldTagName, updated.getName());
+        }
+
+        updateEntityLinks(oldFqn, newFqn, updated);
       }
 
-      setFullyQualifiedName(updated);
-      daoCollection
-          .tagDAO()
-          .updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-      daoCollection
-          .tagUsageDAO()
-          .rename(
-              TagSource.CLASSIFICATION.ordinal(),
-              original.getFullyQualifiedName(),
-              updated.getFullyQualifiedName());
       if (classificationChanged) {
         updateClassificationRelationship(original, updated);
         recordChange(
@@ -689,14 +884,18 @@ public class TagRepository extends EntityRepository<Tag> {
             updated.getClassification(),
             true,
             entityReferenceMatch);
-        invalidateTags(original.getId());
+        invalidateTags(updated.getId());
       }
       if (parentChanged) {
         updateParentRelationship(original, updated);
         recordChange(
             "parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
-        invalidateTags(original.getId());
+        invalidateTags(updated.getId());
       }
+
+      // Populate response fields
+      invalidateTags(updated.getId());
+      getChildren(updated);
     }
 
     private void updateClassificationRelationship(Tag orig, Tag updated) {
@@ -721,6 +920,24 @@ public class TagRepository extends EntityRepository<Tag> {
     private void deleteParentRelationship(Tag term) {
       if (term.getParent() != null) {
         deleteRelationship(term.getParent().getId(), TAG, term.getId(), TAG, Relationship.CONTAINS);
+      }
+    }
+
+    private void updateEntityLinks(String oldFqn, String newFqn, Tag updated) {
+      daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
+
+      MessageParser.EntityLink newAbout = new MessageParser.EntityLink(TAG, newFqn);
+      daoCollection
+          .feedDAO()
+          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
+
+      List<EntityReference> childTags = findTo(updated.getId(), TAG, Relationship.CONTAINS, TAG);
+
+      for (EntityReference child : childTags) {
+        newAbout = new MessageParser.EntityLink(TAG, child.getFullyQualifiedName());
+        daoCollection
+            .feedDAO()
+            .updateByEntityId(newAbout.getLinkString(), child.getId().toString());
       }
     }
 
@@ -789,6 +1006,34 @@ public class TagRepository extends EntityRepository<Tag> {
     }
   }
 
+  protected void updateTaskWithNewReviewers(Tag tag) {
+    try {
+      MessageParser.EntityLink about =
+          new MessageParser.EntityLink(TAG, tag.getFullyQualifiedName());
+      FeedRepository feedRepository = Entity.getFeedRepository();
+      Thread originalTask =
+          feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      tag =
+          Entity.getEntityByName(
+              Entity.TAG,
+              tag.getFullyQualifiedName(),
+              "id,fullyQualifiedName,reviewers",
+              Include.ALL);
+
+      Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
+      updatedTask.getTask().withAssignees(new ArrayList<>(tag.getReviewers()));
+      JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
+      RestUtil.PatchResponse<Thread> thread =
+          feedRepository.patchThread(null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
+
+      // Send WebSocket Notification
+      WebsocketNotificationHandler.handleTaskNotification(thread.entity());
+    } catch (EntityNotFoundException e) {
+      LOG.info(
+          "{} Task not found for tag {}", TaskType.RequestApproval, tag.getFullyQualifiedName());
+    }
+  }
+
   public static void checkUpdatedByReviewer(Tag tag, String updatedBy) {
     // Only list of allowed reviewers can change the status from DRAFT to APPROVED
     List<EntityReference> reviewers = tag.getReviewers();
@@ -815,5 +1060,127 @@ public class TagRepository extends EntityRepository<Tag> {
         throw new AuthorizationException(notReviewer(updatedBy));
       }
     }
+  }
+
+  private String getRecognizerCursorValue(Recognizer recognizer) {
+    Map<String, String> map =
+        Map.of("id", recognizer.getId().toString(), "name", recognizer.getName());
+    return JsonUtils.pojoToJson(map);
+  }
+
+  public ResultList<Recognizer> getRecognizersOfTagById(
+      UUID tagId, String before, String after, int limit) {
+    Tag tag = get(null, tagId, getFields("recognizers"));
+    return getRecognizersOfTag(tag, before, after, limit);
+  }
+
+  public ResultList<Recognizer> getRecognizersOfTagByFQN(
+      String tagFqn, String before, String after, int limit) {
+    Tag tag = getByName(null, tagFqn, getFields("recognizers"));
+    return getRecognizersOfTag(tag, before, after, limit);
+  }
+
+  public ResultList<Recognizer> getRecognizersOfTag(
+      Tag tag, String before, String after, int limit) {
+    ResultList<Recognizer> result;
+
+    if (tag.getRecognizers() == null || tag.getRecognizers().isEmpty()) {
+      return new ResultList<>(Collections.emptyList(), null, null, 0);
+    }
+
+    if (before != null) {
+      result = listRecognizersBeforeCursor(tag.getRecognizers(), before, limit);
+    } else {
+      result = listRecognizersAfterCursor(tag.getRecognizers(), after, limit);
+    }
+
+    return result;
+  }
+
+  private UUID extractIdFromCursor(String cursor) {
+    UUID id = null;
+    if (cursor != null) {
+      try {
+        Map<String, String> map = parseCursorMap(RestUtil.decodeCursor(cursor));
+        String idString = map.get("id");
+
+        if (idString == null) {
+          throw new BadCursorException();
+        }
+
+        id = UUID.fromString(idString);
+
+      } catch (Exception e) {
+        throw new BadCursorException();
+      }
+    }
+    return id;
+  }
+
+  private ResultList<Recognizer> listRecognizersAfterCursor(
+      List<Recognizer> recognizers, String after, int limit) {
+    UUID afterId;
+
+    try {
+      afterId = extractIdFromCursor(after);
+    } catch (BadCursorException ignored) {
+      throw new BadCursorException("Invalid `after` cursor");
+    }
+
+    return listRecognizersAfter(recognizers, afterId, limit);
+  }
+
+  private ResultList<Recognizer> listRecognizersBeforeCursor(
+      List<Recognizer> recognizers, String before, int limit) {
+    UUID beforeId;
+
+    try {
+      beforeId = extractIdFromCursor(before);
+    } catch (BadCursorException ignored) {
+      throw new BadCursorException("Invalid `before` cursor");
+    }
+
+    return listRecognizersAfter(recognizers.reversed(), beforeId, limit);
+  }
+
+  private ResultList<Recognizer> listRecognizersAfter(
+      List<Recognizer> recognizers, UUID startId, int limit) {
+    int total = recognizers.size();
+
+    boolean append = startId == null;
+    limit = limit > 0 ? Math.min(total, limit) : total;
+
+    List<Recognizer> result = new ArrayList<>(limit);
+    int startIndex = 0;
+    int endIndex = -1;
+
+    for (int i = 0; i < recognizers.size(); i++) {
+      Recognizer recognizer = recognizers.get(i);
+
+      if (result.size() >= limit) {
+        break;
+      }
+
+      if (!append) {
+        append = startId.equals(recognizer.getId());
+        continue;
+      }
+
+      if (result.isEmpty()) {
+        startIndex = i;
+      }
+      endIndex = i;
+      result.add(recognizer);
+    }
+
+    if (result.isEmpty()) {
+      return new ResultList<>(result, null, null, total);
+    }
+
+    String newBefore = (startIndex == 0) ? null : getRecognizerCursorValue(result.getFirst());
+    String newAfter =
+        (endIndex == recognizers.size() - 1) ? null : getRecognizerCursorValue(result.getLast());
+
+    return new ResultList<>(result, newBefore, newAfter, total);
   }
 }

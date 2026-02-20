@@ -29,6 +29,32 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
+jest.mock('../../../../rest/PersonaAPI', () => ({
+  getAllPersonas: jest.fn().mockResolvedValue({
+    data: [],
+    paging: { total: 0 },
+  }),
+}));
+
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    authConfig: {
+      provider: 'basic',
+    },
+    inlineAlertDetails: undefined,
+  })),
+}));
+
+jest.mock('../../../../hooks/useDomainStore', () => ({
+  useDomainStore: jest.fn().mockImplementation(() => ({
+    activeDomainEntityRef: undefined,
+  })),
+}));
+
+jest.mock('../../../../rest/auth-API', () => ({
+  generateRandomPwd: jest.fn().mockResolvedValue('randomPassword123!'),
+}));
+
 jest.mock('../../Team/TeamsSelectable/TeamsSelectable', () => {
   return jest.fn().mockReturnValue(<p>TeamsSelectable component</p>);
 });
@@ -69,11 +95,13 @@ describe('Test CreateUser component', () => {
       /TeamsSelectable component/i
     );
     const roleSelectInput = queryByTestId(container, 'roles-dropdown');
+    const personasSelectInput = queryByTestId(container, 'personas-dropdown');
 
     expect(email).toBeInTheDocument();
     expect(admin).toBeInTheDocument();
     expect(description).toBeInTheDocument();
     expect(roleSelectInput).toBeInTheDocument();
+    expect(personasSelectInput).toBeInTheDocument();
     expect(teamsSelectable).toBeInTheDocument();
     expect(cancelButton).toBeInTheDocument();
     expect(saveButton).toBeInTheDocument();
@@ -89,12 +117,62 @@ describe('Test CreateUser component', () => {
     });
 
     const roleSelectInput = queryByTestId(container, 'roles-dropdown');
+    const personasSelectInput = queryByTestId(container, 'personas-dropdown');
     const teamsSelectable = queryByText(
       container,
       /TeamsSelectable component/i
     );
 
     expect(roleSelectInput).not.toBeInTheDocument();
+    expect(personasSelectInput).not.toBeInTheDocument();
     expect(teamsSelectable).not.toBeInTheDocument();
+  });
+
+  it('should render password fields for Basic auth provider', async () => {
+    const {
+      useApplicationStore,
+    } = require('../../../../hooks/useApplicationStore');
+
+    (useApplicationStore as jest.Mock).mockImplementation(() => ({
+      authConfig: {
+        provider: 'basic',
+      },
+      inlineAlertDetails: undefined,
+    }));
+
+    const { container } = render(<CreateUser {...propsValue} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const passwordGenerator = await findByText(
+      container,
+      'label.automatically-generate'
+    );
+
+    expect(passwordGenerator).toBeInTheDocument();
+  });
+
+  it('should not render password fields for SSO auth provider', async () => {
+    const {
+      useApplicationStore,
+    } = require('../../../../hooks/useApplicationStore');
+
+    (useApplicationStore as jest.Mock).mockImplementation(() => ({
+      authConfig: {
+        provider: 'google',
+      },
+      inlineAlertDetails: undefined,
+    }));
+
+    const { container } = render(<CreateUser {...propsValue} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const passwordGenerator = queryByText(
+      container,
+      'label.automatically-generate'
+    );
+
+    expect(passwordGenerator).not.toBeInTheDocument();
   });
 });

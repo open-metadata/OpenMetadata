@@ -4,6 +4,6 @@
   "displayName": "Default Entity Notification",
   "description": "System default fallback template for any unhandled eventTypes",
   "provider": "system",
-  "templateSubject": "{{event.eventType}} - {{entity.fullyQualifiedName}}",
-  "templateBody": "{{#if (eq channel 'email')}}Hello {{recipientName}},<br/><br/>{{/if}}[{{publisherName}}] <b>{{event.userName}}</b> performed {{event.eventType}} on <a href=\"{{entity.href}}\">{{entity.fullyQualifiedName}}</a>{{#if changes.fieldsUpdated}}<br/><b>Changed:</b> {{#each changes.fieldsUpdated}}{{name}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}{{#if (eq channel 'email')}}<br/><br/>Happy Exploring!<br/>Thanks.{{/if}}"
+  "templateSubject": "[{{publisherName}}] - Change Event Update from {{emailingEntity}}",
+  "templateBody": "<strong>{{event.userName}}</strong> performed <strong>{{camelCaseToTitle event.eventType}}</strong> operation on <strong>{{camelCaseToTitle event.entityType}}</strong>: <a href=\"{{buildEntityUrl event.entityType entity}}\">{{entity.fullyQualifiedName}}</a>"
 }

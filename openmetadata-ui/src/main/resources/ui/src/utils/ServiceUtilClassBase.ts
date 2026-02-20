@@ -35,6 +35,7 @@ import {
   AZURESQL,
   BIGQUERY,
   BIGTABLE,
+  BURSTIQ,
   CASSANDRA,
   CLICKHOUSE,
   COCKROACH,
@@ -63,6 +64,7 @@ import {
   GOOGLE_DRIVE,
   GRAFANA,
   GREENPLUM,
+  HEX,
   HIVE,
   IBMDB2,
   ICEBERGE,
@@ -102,12 +104,14 @@ import {
   SAP_HANA,
   SAS,
   SCIKIT,
+  SFTP,
   SIGMA,
   SINGLESTORE,
   SNOWFLAKE,
   SPARK,
   SPLINE,
   SQLITE,
+  STARROCKS,
   SUPERSET,
   SYNAPSE,
   TABLEAU,
@@ -135,8 +139,6 @@ import {
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
 import { DriveServiceType } from '../generated/api/services/createDriveService';
-import { ConfigObject } from '../generated/entity/automations/testServiceConnection';
-import { WorkflowType } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
 import { DatabaseServiceType } from '../generated/entity/data/database';
@@ -147,9 +149,12 @@ import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
-import { ServiceType } from '../generated/entity/services/serviceType';
 import { SearchSourceAlias } from '../interface/search.interface';
-import { ConfigData, ServicesType } from '../interface/service.interface';
+import {
+  ConfigData,
+  ExtraInfoType,
+  ServicesType,
+} from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
@@ -160,7 +165,6 @@ import { getMlmodelConfig } from './MlmodelServiceUtils';
 import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
 import { getSecurityConfig } from './SecurityServiceUtils';
-import { getTestConnectionName } from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringsUtils';
 
@@ -187,6 +191,11 @@ class ServiceUtilClassBase {
     DriveServiceType.GoogleDrive,
     DriveServiceType.SharePoint,
     DatabaseServiceType.ServiceNow,
+    DatabaseServiceType.Dremio,
+    MetadataServiceType.Collibra,
+    PipelineServiceType.Mulesoft,
+    DatabaseServiceType.MicrosoftFabric,
+    PipelineServiceType.MicrosoftFabricPipeline,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -305,7 +314,7 @@ class ServiceUtilClassBase {
     };
   }
 
-  public getServiceExtraInfo(_data?: ServicesType): any {
+  public getServiceExtraInfo(_data?: ServicesType): ExtraInfoType | null {
     return null;
   }
 
@@ -478,6 +487,9 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.Doris:
         return DORIS;
 
+      case this.DatabaseServiceTypeSmallCase.StarRocks:
+        return STARROCKS;
+
       case this.DatabaseServiceTypeSmallCase.Druid:
         return DRUID;
 
@@ -538,6 +550,9 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.Synapse:
         return SYNAPSE;
 
+      case this.DatabaseServiceTypeSmallCase.BurstIQ:
+        return BURSTIQ;
+
       case this.MessagingServiceTypeSmallCase.CustomMessaging:
         return TOPIC_DEFAULT;
 
@@ -561,6 +576,9 @@ class ServiceUtilClassBase {
 
       case this.DashboardServiceTypeSmallCase.Tableau:
         return TABLEAU;
+
+      case this.DashboardServiceTypeSmallCase.Hex:
+        return HEX;
 
       case this.DashboardServiceTypeSmallCase.Redash:
         return REDASH;
@@ -693,6 +711,9 @@ class ServiceUtilClassBase {
 
       case this.DriveServiceTypeSmallCase.GoogleDrive:
         return GOOGLE_DRIVE;
+
+      case this.DriveServiceTypeSmallCase.Sftp:
+        return SFTP;
 
       case this.DatabaseServiceTypeSmallCase.Timescale:
         return TIMESCALE;
@@ -855,6 +876,7 @@ class ServiceUtilClassBase {
   }
 
   public getInsightsTabWidgets(_: ServiceTypes) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const widgets: Record<string, React.ComponentType<any>> = {
       AgentsStatusWidget,
       PlatformInsightsWidget,
@@ -901,6 +923,7 @@ class ServiceUtilClassBase {
   }
 
   public getAgentsTabWidgets() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const widgets: Record<string, React.ComponentType<any>> = {
       MetadataAgentsWidget,
     };

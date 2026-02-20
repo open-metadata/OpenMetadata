@@ -30,6 +30,7 @@
         "slackBot",
         "slackInstaller",
         "slackState",
+        "teamsAppConfiguration",
         "profilerConfiguration",
         "searchSettings",
         "assetCertificationSettings",
@@ -37,7 +38,8 @@
         "workflowSettings",
         "scimConfiguration",
         "securityConfiguration",
-        "entityRulesSettings"
+        "entityRulesSettings",
+        "openLineageSettings"
       ]
     }
   },
@@ -82,6 +84,9 @@
           "$ref": "../configuration/slackAppConfiguration.json"
         },
         {
+          "$ref": "../configuration/teamsAppConfiguration.json"
+        },
+        {
           "$ref": "../configuration/profilerConfiguration.json"
         },
         {
@@ -101,6 +106,9 @@
         },
         {
           "$ref": "../configuration/securityConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/openLineageSettings.json"
         }
       ]
     }

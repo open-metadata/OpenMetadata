@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import { EntityReference } from '../../../../generated/entity/type';
+import { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
 import type { AppPlugin } from '../plugins/AppPlugin';
 
 export type ApplicationsContextType = {
   applications: EntityReference[];
   plugins: AppPlugin[];
+  extensionRegistry: ExtensionPointRegistry;
 };

@@ -18,7 +18,12 @@ from typing import Iterable, List, Optional, Tuple
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy_redshift.dialect import RedshiftDialect, RedshiftDialectMixin
+from sqlalchemy_redshift.dialect import (
+    FOREIGN_KEY_RE,
+    SQL_IDENTIFIER_RE,
+    RedshiftDialect,
+    RedshiftDialectMixin,
+)
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -72,6 +77,7 @@ from metadata.ingestion.source.database.redshift.incremental_table_processor imp
 from metadata.ingestion.source.database.redshift.models import RedshiftStoredProcedure
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_EXTERNAL_TABLE_LOCATION,
+    REDSHIFT_GET_ALL_CONSTRAINTS,
     REDSHIFT_GET_ALL_RELATION_INFO,
     REDSHIFT_GET_DATABASE_NAMES,
     REDSHIFT_GET_STORED_PROCEDURES,
@@ -94,6 +100,7 @@ from metadata.utils.execution_time_tracker import (
     calculate_execution_time_generator,
 )
 from metadata.utils.filters import filter_by_database
+from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
@@ -108,6 +115,7 @@ STANDARD_TABLE_TYPES = {
     "r": TableType.Regular,
     "e": TableType.External,
     "v": TableType.View,
+    "m": TableType.MaterializedView,
 }
 
 # pylint: disable=protected-access
@@ -142,6 +150,9 @@ class RedshiftSource(
     ):
         super().__init__(config, metadata)
         self.partition_details = {}
+        self.constraint_details: dict[
+            str, dict[str, set[str] | list[dict[str, str]]]
+        ] = {}
         self.life_cycle_query = REDSHIFT_LIFE_CYCLE_QUERY
         self.context.get_global().deleted_tables = []
         self.incremental = incremental_configuration
@@ -185,7 +196,9 @@ class RedshiftSource(
         """
         try:
             self.partition_details.clear()
-            results = self.connection.execute(REDSHIFT_PARTITION_DETAILS).fetchall()
+            results = self.connection.execute(
+                statement=REDSHIFT_PARTITION_DETAILS
+            ).fetchall()
             for row in results:
                 self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
         except Exception as exe:
@@ -198,9 +211,18 @@ class RedshiftSource(
         """
         Handle custom table types
         """
+        self._set_constraint_details(schema_name)
 
         result = self.connection.execute(
-            sql.text(REDSHIFT_GET_ALL_RELATION_INFO),
+            sql.text(
+                REDSHIFT_GET_ALL_RELATION_INFO.format(
+                    view_filter=(
+                        "OR c.relkind IN ('v', 'm')"
+                        if self.source_config.includeViews
+                        else "AND c.relkind NOT IN ('v', 'm')"
+                    )
+                )
+            ),
             {"schema": schema_name},
         )
 
@@ -232,23 +254,7 @@ class RedshiftSource(
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., material views,...
         """
-
-        result = self.inspector.get_view_names(schema_name) or []
-
-        if self.incremental.enabled:
-            result = [
-                name
-                for name in result
-                if name
-                in self.incremental_table_processor.get_not_deleted(
-                    schema_name=schema_name
-                )
-            ]
-
-        return [
-            TableNameAndType(name=table_name, type_=TableType.View)
-            for table_name in result
-        ]
+        return []
 
     def get_configured_database(self) -> Optional[str]:
         if not self.service_connection.ingestAllDatabases:
@@ -259,7 +265,7 @@ class RedshiftSource(
         yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
 
     def _set_incremental_table_processor(self, database: str):
-        """Prepares the needed data for doing incremental metadata extration for a given database.
+        """Prepares the needed data for doing incremental metadata extraction for a given database.
 
         1. Queries Redshift to get the changes done after the `self.incremental.start_datetime_utc`
         2. Sets the table map with the changes within the RedshiftIncrementalTableProcessor
@@ -398,6 +404,8 @@ class RedshiftSource(
             ).all()
             for row in results:
                 stored_procedure = RedshiftStoredProcedure.model_validate(dict(row))
+                if self.is_stored_procedure_filtered(stored_procedure.name):
+                    continue
                 yield stored_procedure
 
     @calculate_execution_time_generator()
@@ -456,3 +464,115 @@ class RedshiftSource(
                 )
         else:
             yield from super().mark_tables_as_deleted()
+
+    def _get_columns_with_constraints(
+        self,
+        schema_name: str,
+        table_name: str,
+        *args,
+        **kwargs,
+    ) -> tuple[list[str], list[str], list[str]]:
+        """Fetch constraint for a specific schema and table
+
+        Args:
+            schema_name (str): schema name
+            table_name (str): table name
+
+        Returns:
+            tuple[list, list, list]: list of primary, unique and foreign columns
+        """
+        constraints = self.constraint_details.get(f"{schema_name}.{table_name}", {})
+        if not constraints:
+            return [], [], []
+        pkeys = [
+            clean_up_starting_ending_double_quotes_in_string(p)
+            for p in constraints.get("pkey", set())
+        ]
+        ukeys = [
+            clean_up_starting_ending_double_quotes_in_string(p)
+            for p in constraints.get("ukey", set())
+        ]
+
+        fkeys = []
+        fkey_constraints: list[dict[str, str]] = constraints.get("fkey", [])
+        for fkey_constraint in fkey_constraints:
+            fkey_constraint.update(
+                {
+                    "constrained_columns": [
+                        clean_up_starting_ending_double_quotes_in_string(column)
+                        for column in fkey_constraint.get("constrained_columns")
+                    ],
+                    "referred_columns": [
+                        clean_up_starting_ending_double_quotes_in_string(column)
+                        for column in fkey_constraint.get("referred_columns")
+                    ],
+                }
+            )
+            fkeys.append(fkey_constraint)
+
+        return pkeys, [ukeys], fkeys
+
+    def _set_constraint_details(self, schema_name: str):
+        """Get all the column constraints in a given schema
+
+        Args:
+            schema_name (str): schema name
+        """
+        self.constraint_details = (
+            {}
+        )  # reset constraint_details dict when fetching for a new schema
+
+        rows = self.connection.execute(
+            sql.text(REDSHIFT_GET_ALL_CONSTRAINTS),
+            {"schema": schema_name},
+        )
+
+        for row in rows or []:
+            schema_table_name = f"{row.schema}.{row.table_name}"
+            schema_table_constraints = self.constraint_details.setdefault(
+                schema_table_name, {}
+            )
+            if row.constraint_type == "p":
+                pkey = schema_table_constraints.setdefault("pkey", set())
+                pkey.add(row.column_name)
+            if row.constraint_type == "f":
+                fkey_constraint = {
+                    "key": row.conkey,
+                    "condef": row.condef,
+                    "database": self.connection.engine.url.database,
+                }
+                extracted_fkey = self._extract_fkeys(fkey_constraint)
+                fkey: list[dict[str, str]] = schema_table_constraints.setdefault(
+                    "fkey", []
+                )
+                fkey.extend(extracted_fkey)
+            if row.constraint_type == "u":
+                ukey = schema_table_constraints.setdefault("ukey", set())
+                ukey.add(row.column_name)
+
+    def _extract_fkeys(self, fkey_constraint: dict) -> list[dict[str, str]]:
+        """extract foreign keys from rows
+
+        Args:
+            uniques (dict): _description_
+        """
+        fkeys = []
+
+        m = FOREIGN_KEY_RE.match(fkey_constraint["condef"])
+        colstring = m.group("referred_columns")
+        referred_columns = SQL_IDENTIFIER_RE.findall(colstring)
+        referred_table = m.group("referred_table")
+        referred_schema = m.group("referred_schema")
+        colstring = m.group("columns")
+        constrained_columns = SQL_IDENTIFIER_RE.findall(colstring)
+        fkey_d = {
+            "name": fkey_constraint["key"],
+            "constrained_columns": constrained_columns,
+            "referred_schema": referred_schema,
+            "referred_table": referred_table,
+            "referred_columns": referred_columns,
+            "referred_database": fkey_constraint["database"],
+        }
+        fkeys.append(fkey_d)
+
+        return fkeys

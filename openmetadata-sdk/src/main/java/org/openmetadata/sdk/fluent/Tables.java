@@ -72,6 +72,57 @@ public final class Tables {
     return getClient().tables().create(request);
   }
 
+  // ==================== Direct Access Methods ====================
+
+  public static Table get(String id) {
+    return getClient().tables().get(id);
+  }
+
+  public static Table get(String id, String fields) {
+    return getClient().tables().get(id, fields);
+  }
+
+  public static Table get(String id, String fields, String include) {
+    return getClient().tables().get(id, fields, include);
+  }
+
+  public static Table getByName(String fqn) {
+    return getClient().tables().getByName(fqn);
+  }
+
+  public static Table getByName(String fqn, String fields) {
+    return getClient().tables().getByName(fqn, fields);
+  }
+
+  public static Table update(String id, Table entity) {
+    return getClient().tables().update(id, entity);
+  }
+
+  public static void delete(String id) {
+    getClient().tables().delete(id);
+  }
+
+  public static void delete(String id, java.util.Map<String, String> params) {
+    getClient().tables().delete(id, params);
+  }
+
+  public static void restore(String id) {
+    getClient().tables().restore(id);
+  }
+
+  public static org.openmetadata.sdk.models.ListResponse<Table> list(
+      org.openmetadata.sdk.models.ListParams params) {
+    return getClient().tables().list(params);
+  }
+
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(java.util.UUID id) {
+    return getClient().tables().getVersionList(id);
+  }
+
+  public static Table getVersion(String id, Double version) {
+    return getClient().tables().getVersion(id, version);
+  }
+
   // ==================== Finding/Retrieval ====================
 
   public static TableFinder find(String id) {
@@ -131,6 +182,26 @@ public final class Tables {
       return this;
     }
 
+    public TableCreator inSchema(String schemaFQN) {
+      request.setDatabaseSchema(schemaFQN);
+      return this;
+    }
+
+    public TableCreator withColumns(List<Column> columns) {
+      request.setColumns(columns);
+      return this;
+    }
+
+    public TableCreator withColumns(Column... columns) {
+      request.setColumns(Arrays.asList(columns));
+      return this;
+    }
+
+    public TableCreator withTags(List<TagLabel> tags) {
+      request.setTags(tags);
+      return this;
+    }
+
     public Table execute() {
       return client.tables().create(request);
     }
@@ -177,7 +248,12 @@ public final class Tables {
       return this;
     }
 
-    public FluentTable fetch() {
+    public TableFinder withFields(String... fields) {
+      includes.addAll(Arrays.asList(fields));
+      return this;
+    }
+
+    public org.openmetadata.sdk.fluent.wrappers.FluentTable fetch() {
       Table table;
       if (includes.isEmpty()) {
         table = isFqn ? client.tables().getByName(identifier) : client.tables().get(identifier);
@@ -188,7 +264,7 @@ public final class Tables {
                 ? client.tables().getByName(identifier, fields)
                 : client.tables().get(identifier, fields);
       }
-      return new FluentTable(table, client);
+      return new org.openmetadata.sdk.fluent.wrappers.FluentTable(table, client);
     }
 
     public TableDeleter delete() {
@@ -204,7 +280,7 @@ public final class Tables {
     private boolean recursive = false;
     private boolean hardDelete = false;
 
-    TableDeleter(OpenMetadataClient client, String id) {
+    public TableDeleter(OpenMetadataClient client, String id) {
       this.client = client;
       this.id = id;
     }
@@ -249,21 +325,22 @@ public final class Tables {
       return this;
     }
 
-    public List<FluentTable> fetch() {
+    public List<org.openmetadata.sdk.fluent.wrappers.FluentTable> fetch() {
       var params = new org.openmetadata.sdk.models.ListParams();
       if (limit != null) params.setLimit(limit);
       if (after != null) params.setAfter(after);
       filters.forEach(params::addFilter);
 
       var response = client.tables().list(params);
-      List<FluentTable> items = new ArrayList<>();
+      List<org.openmetadata.sdk.fluent.wrappers.FluentTable> items = new ArrayList<>();
       for (Table item : response.getData()) {
-        items.add(new FluentTable(item, client));
+        items.add(new org.openmetadata.sdk.fluent.wrappers.FluentTable(item, client));
       }
       return items;
     }
 
-    public void forEach(java.util.function.Consumer<FluentTable> action) {
+    public void forEach(
+        java.util.function.Consumer<org.openmetadata.sdk.fluent.wrappers.FluentTable> action) {
       fetch().forEach(action);
     }
   }

@@ -42,6 +42,20 @@ public class SearchSettingsHandler {
                   "Duplicate field configuration found for field: %s in asset type: %s",
                   fieldName, assetConfig.getAssetType()));
         }
+
+        validateExtensionField(fieldName, assetConfig.getAssetType());
+      }
+    }
+  }
+
+  private void validateExtensionField(String fieldName, String assetType) {
+    if (fieldName.startsWith("extension.")) {
+      String[] parts = fieldName.split("\\.", 2);
+      if (parts.length != 2 || parts[1].trim().isEmpty()) {
+        throw new SystemSettingsException(
+            String.format(
+                "Invalid extension field format: %s. Extension fields must be in format 'extension.propertyName' for asset type: %s",
+                fieldName, assetType));
       }
     }
   }

@@ -131,10 +131,13 @@ public class WorkflowHandler {
 
     // Setting History CleanUp
     processEngineConfiguration
+        .setAsyncHistoryEnabled(true)
         .setEnableHistoryCleaning(true)
         .setCleanInstancesEndedAfter(
             Duration.ofDays(
-                workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays()));
+                workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays()))
+        .setHistoryCleaningTimeCycleConfig(
+            workflowSettings.getHistoryCleanUpConfiguration().getTimeCycleConfig());
 
     // Add Expression Manager
     processEngineConfiguration.setExpressionManager(new DefaultExpressionManager(expressionMap));
@@ -270,44 +273,6 @@ public class WorkflowHandler {
             "Error cancelling old timer jobs for workflow {}: {}",
             triggerWorkflowKey,
             e.getMessage());
-      }
-
-      // Step 3: Delete old deployments to prevent confusion with old process definitions
-      // This is critical for periodicBatchEntity triggers that may have changed format
-      try {
-        // Delete ALL trigger deployments that start with the trigger key
-        // This includes both the base trigger (e.g., "SetTierForMLModelTrigger") and
-        // any entity-specific variants (e.g., "SetTierForMLModelTrigger-dashboard",
-        // "SetTierForMLModelTrigger-table")
-        List<ProcessDefinition> oldTriggerDefinitions =
-            repositoryService
-                .createProcessDefinitionQuery()
-                .processDefinitionKeyLike(triggerWorkflowKey + "%")
-                .list();
-
-        for (ProcessDefinition pd : oldTriggerDefinitions) {
-          LOG.info(
-              "Removing old trigger deployment: {} (version: {})", pd.getKey(), pd.getVersion());
-          repositoryService.deleteDeployment(pd.getDeploymentId(), true);
-        }
-
-        // Delete old main workflow deployments
-        List<ProcessDefinition> oldMainDefinitions =
-            repositoryService
-                .createProcessDefinitionQuery()
-                .processDefinitionKey(workflowName)
-                .list();
-
-        for (ProcessDefinition pd : oldMainDefinitions) {
-          LOG.info(
-              "Removing old main workflow deployment: {} (version: {})",
-              pd.getKey(),
-              pd.getVersion());
-          repositoryService.deleteDeployment(pd.getDeploymentId(), true);
-        }
-      } catch (Exception e) {
-        LOG.warn(
-            "Error removing old deployments for workflow {}: {}", workflowName, e.getMessage());
       }
     }
 
@@ -568,11 +533,11 @@ public class WorkflowHandler {
     return namespacedVariables;
   }
 
-  public void resolveTask(UUID taskId) {
-    resolveTask(taskId, null);
+  public boolean resolveTask(UUID taskId) {
+    return resolveTask(taskId, null);
   }
 
-  public void resolveTask(UUID customTaskId, Map<String, Object> variables) {
+  public boolean resolveTask(UUID customTaskId, Map<String, Object> variables) {
     TaskService taskService = processEngine.getTaskService();
     LOG.debug("[WorkflowTask] RESOLVE: customTaskId='{}' variables={}", customTaskId, variables);
     try {
@@ -624,18 +589,21 @@ public class WorkflowHandler {
                   });
           LOG.debug("[WorkflowTask] SUCCESS: Task '{}' resolved", customTaskId);
         }
+        return true;
       } else {
         LOG.warn("[WorkflowTask] NOT_FOUND: No Flowable task for customTaskId='{}'", customTaskId);
+        return false;
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.error(
           "[WorkflowTask] ERROR: Flowable task not found for customTaskId='{}': {}",
           customTaskId,
           ex.getMessage());
+      return false;
     } catch (Exception e) {
       LOG.error(
           "[WorkflowTask] ERROR: Failed to resolve task '{}': {}", customTaskId, e.getMessage(), e);
-      throw e;
+      return false;
     }
   }
 
@@ -1132,46 +1100,111 @@ public class WorkflowHandler {
 
   public boolean isWorkflowSuspended(String workflowName) {
     RepositoryService repositoryService = processEngine.getRepositoryService();
-    ProcessDefinition processDefinition =
+    String triggerWorkflowId = getTriggerWorkflowId(workflowName);
+
+    // Get ALL latest versions of matching process definitions
+    List<ProcessDefinition> processDefinitions =
         repositoryService
             .createProcessDefinitionQuery()
-            .processDefinitionKey(getTriggerWorkflowId(workflowName))
+            .processDefinitionKeyLike(triggerWorkflowId + "%")
             .latestVersion()
-            .singleResult();
+            .list(); // Use list() to handle both single and multiple
 
-    if (processDefinition == null) {
+    if (processDefinitions.isEmpty()) {
       throw new IllegalArgumentException(
           "Process Definition not found for workflow: " + workflowName);
     }
 
-    return processDefinition.isSuspended();
+    // Check if all are suspended
+    boolean allSuspended = processDefinitions.stream().allMatch(ProcessDefinition::isSuspended);
+    boolean allActive = processDefinitions.stream().noneMatch(ProcessDefinition::isSuspended);
+
+    if (!allSuspended && !allActive) {
+      LOG.warn(
+          "Workflow '{}' has inconsistent suspension state across {} process definitions",
+          workflowName,
+          processDefinitions.size());
+    }
+
+    return allSuspended;
   }
 
   public void suspendWorkflow(String workflowName) {
     RepositoryService repositoryService = processEngine.getRepositoryService();
-    if (isWorkflowSuspended(workflowName)) {
-      LOG.debug(String.format("Workflow '%s' is already suspended.", workflowName));
-    } else {
-      repositoryService.suspendProcessDefinitionByKey(
-          getTriggerWorkflowId(workflowName), true, null);
+    String triggerWorkflowId = getTriggerWorkflowId(workflowName);
+
+    // Get ALL latest versions of matching process definitions
+    List<ProcessDefinition> processDefinitions =
+        repositoryService
+            .createProcessDefinitionQuery()
+            .processDefinitionKeyLike(triggerWorkflowId + "%")
+            .latestVersion()
+            .list();
+
+    if (processDefinitions.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Process Definition not found for workflow: " + workflowName);
     }
+
+    // Check if all are already suspended
+    if (processDefinitions.stream().allMatch(ProcessDefinition::isSuspended)) {
+      LOG.debug("Workflow '{}' is already suspended.", workflowName);
+      return;
+    }
+
+    // Suspend each process definition that isn't already suspended
+    for (ProcessDefinition pd : processDefinitions) {
+      if (!pd.isSuspended()) {
+        // Use suspendProcessDefinitionById to suspend only this specific version
+        repositoryService.suspendProcessDefinitionById(pd.getId(), true, null);
+        LOG.debug("Suspended process definition: {} (version {})", pd.getKey(), pd.getVersion());
+      }
+    }
+
+    LOG.info("Successfully suspended workflow '{}'", workflowName);
   }
 
   public void resumeWorkflow(String workflowName) {
     RepositoryService repositoryService = processEngine.getRepositoryService();
-    if (!isWorkflowSuspended(workflowName)) {
-      LOG.debug(String.format("Workflow '%s' is already active.", workflowName));
-    } else {
-      repositoryService.activateProcessDefinitionByKey(
-          getTriggerWorkflowId(workflowName), true, null);
+    String triggerWorkflowId = getTriggerWorkflowId(workflowName);
+
+    // Get ALL latest versions of matching process definitions
+    List<ProcessDefinition> processDefinitions =
+        repositoryService
+            .createProcessDefinitionQuery()
+            .processDefinitionKeyLike(triggerWorkflowId + "%")
+            .latestVersion()
+            .list();
+
+    if (processDefinitions.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Process Definition not found for workflow: " + workflowName);
     }
+
+    // Check if all are already active
+    if (processDefinitions.stream().noneMatch(ProcessDefinition::isSuspended)) {
+      LOG.debug("Workflow '{}' is already active.", workflowName);
+      return;
+    }
+
+    // Resume each process definition that is suspended
+    for (ProcessDefinition pd : processDefinitions) {
+      if (pd.isSuspended()) {
+        // Use activateProcessDefinitionById to activate only this specific version
+        repositoryService.activateProcessDefinitionById(pd.getId(), true, null);
+        LOG.debug("Activated process definition: {} (version {})", pd.getKey(), pd.getVersion());
+      }
+    }
+
+    LOG.info("Successfully resumed workflow '{}'", workflowName);
   }
 
   public void terminateWorkflow(String workflowName) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
+    String triggerWorkflowId = getTriggerWorkflowId(workflowName);
     runtimeService
         .createProcessInstanceQuery()
-        .processDefinitionKey(getTriggerWorkflowId(workflowName))
+        .processDefinitionKeyLike(triggerWorkflowId + "%")
         .list()
         .forEach(
             instance ->
@@ -1248,7 +1281,6 @@ public class WorkflowHandler {
               handle -> {
                 try {
                   // Terminate both trigger and main workflow instances
-                  getInstance().terminateWorkflow(mainWorkflowDefinitionName);
 
                   // Now terminate the main workflow instances that contain the user tasks
                   for (WorkflowInstance instance : conflictingInstances) {

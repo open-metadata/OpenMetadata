@@ -14,9 +14,11 @@
 import { Cube01 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
+import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
+import { ReactComponent as ColumnBulkIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
@@ -33,7 +35,14 @@ import { DataInsightTabs } from '../interface/data-insight.interface';
 import { createIconWithStroke } from '../utils/IconUtils';
 import { PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
 
-const DataProductIcon = createIconWithStroke(Cube01, 1.2);
+const DataProductIcon = createIconWithStroke(
+  Cube01 as React.ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+    style?: React.CSSProperties;
+  }>,
+  1.2
+);
 
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
@@ -88,6 +97,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         icon: AlertIcon,
         dataTestId: `app-bar-item-${SidebarItem.OBSERVABILITY_ALERT}`,
       },
+      {
+        key: ROUTES.TEST_LIBRARY,
+        title: 'label.test-library',
+        redirect_url: ROUTES.TEST_LIBRARY,
+        icon: DataQualityRulesIcon,
+        dataTestId: `app-bar-item-test-library`,
+      },
     ],
   },
   {
@@ -108,14 +124,14 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     children: [
       {
         key: ROUTES.DOMAIN,
-        title: 'label.domain',
+        title: 'label.domain-plural',
         redirect_url: ROUTES.DOMAIN,
         icon: DomainsIcon,
         dataTestId: `app-bar-item-${SidebarItem.DOMAIN}`,
       },
       {
         key: ROUTES.DATA_PRODUCT,
-        title: 'label.data-product',
+        title: 'label.data-product-plural',
         redirect_url: ROUTES.DATA_PRODUCT,
         icon: DataProductIcon,
         dataTestId: `app-bar-item-${SidebarItem.DATA_PRODUCT}`,
@@ -148,6 +164,14 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.METRICS,
         icon: MetricIcon,
         dataTestId: `app-bar-item-${SidebarItem.METRICS}`,
+      },
+      {
+        key: ROUTES.COLUMN_BULK_OPERATIONS,
+        title: 'label.column-bulk-operations',
+        redirect_url: ROUTES.COLUMN_BULK_OPERATIONS,
+        icon: ColumnBulkIcon,
+        dataTestId: `app-bar-item-${SidebarItem.COLUMN_BULK_OPERATIONS}`,
+        isBeta: true,
       },
     ],
   },

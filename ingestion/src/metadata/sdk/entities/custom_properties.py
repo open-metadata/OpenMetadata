@@ -109,7 +109,8 @@ class CustomProperties:
         entity_type: Type[TEntity], identifier: Union[UuidLike, UUID]
     ) -> CustomPropertyUpdater[TEntity]:
         """Create an updater targeting the provided entity identifier."""
-        identifier_str = str(identifier)
+        root = getattr(identifier, "root", None)
+        identifier_str = str(root) if root is not None else str(identifier)
         return CustomPropertyUpdater(entity_type, identifier_str, is_fqn=False)
 
     @staticmethod

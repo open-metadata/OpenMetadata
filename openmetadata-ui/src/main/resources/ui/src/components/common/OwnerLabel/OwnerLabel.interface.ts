@@ -20,7 +20,7 @@ export interface OwnerLabelProps {
   className?: string;
   onUpdate?: (owners?: EntityReference[]) => void;
   hasPermission?: boolean;
-  ownerDisplayName?: ReactNode[];
+  ownerDisplayName?: Map<string, ReactNode>;
   placeHolder?: string;
   maxVisibleOwners?: number;
   multiple?: {
@@ -32,4 +32,6 @@ export interface OwnerLabelProps {
   avatarSize?: number;
   isAssignee?: boolean;
   onEditClick?: () => void;
+  ownerLabelClassName?: string;
+  placement?: 'vertical' | 'horizontal';
 }

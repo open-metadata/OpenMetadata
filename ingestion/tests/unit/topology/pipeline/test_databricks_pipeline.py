@@ -42,7 +42,7 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.models.pipeline_status import OMetaBulkPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
     DatabrickspipelineSource,
@@ -82,7 +82,9 @@ mock_databricks_config = {
                 },
             }
         },
-        "sourceConfig": {"config": {"type": "PipelineMetadata"}},
+        "sourceConfig": {
+            "config": {"type": "PipelineMetadata", "statusLookbackDays": 99999}
+        },
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -148,24 +150,24 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     description="This job contain multiple tasks that are required to produce the weekly shark sightings report.",
     tasks=[
         Task(
-            name="Orders_Ingest",
-            description="Ingests order data",
-            sourceUrl="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
-            downstreamTasks=[],
-            taskType="SINGLE_TASK",
-        ),
-        Task(
-            name="Match",
-            description="Matches orders with user sessions",
-            sourceUrl="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
-            downstreamTasks=["Orders_Ingested", "Sessionize"],
-            taskType="SINGLE_TASK",
-        ),
-        Task(
             name="Sessionize",
             description="Extracts session data from events",
-            sourceUrl="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
+            sourceUrl="https://localhost:443/#job/11223344",
             downstreamTasks=[],
+            taskType="SINGLE_TASK",
+        ),
+        Task(
+            name="Orders_Ingest",
+            description="Ingests order data",
+            sourceUrl="https://localhost:443/#job/11223344",
+            downstreamTasks=[],
+            taskType="SINGLE_TASK",
+        ),
+        Task(
+            name="Matched_Changed",
+            description="Matches orders with user sessions",
+            sourceUrl="https://localhost:443/#job/11223344",
+            downstreamTasks=["Orders_Ingest", "Sessionize", "Sessionize_duplicated"],
             taskType="SINGLE_TASK",
         ),
     ],
@@ -174,35 +176,37 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
 )
 
 EXPECTED_PIPELINE_STATUS = [
-    OMetaPipelineStatus(
+    OMetaBulkPipelineStatus(
         pipeline_fqn="databricks_pipeline_test.11223344",
-        pipeline_status=PipelineStatus(
-            timestamp=1625060460483,
-            executionStatus="Successful",
-            taskStatus=[
-                TaskStatus(
-                    name="Orders_Ingest",
-                    executionStatus="Successful",
-                    startTime=1625060460483,
-                    endTime=1625060863413,
-                    logLink="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
-                ),
-                TaskStatus(
-                    name="Match",
-                    executionStatus="Successful",
-                    startTime=1625060460483,
-                    endTime=1625060863413,
-                    logLink="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
-                ),
-                TaskStatus(
-                    name="Sessionize",
-                    executionStatus="Successful",
-                    startTime=1625060460483,
-                    endTime=1625060863413,
-                    logLink="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
-                ),
-            ],
-        ),
+        pipeline_statuses=[
+            PipelineStatus(
+                timestamp=1625060460483,
+                executionStatus="Successful",
+                taskStatus=[
+                    TaskStatus(
+                        name="Orders_Ingest",
+                        executionStatus="Successful",
+                        startTime=1625060460483,
+                        endTime=1625060863413,
+                        logLink="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
+                    ),
+                    TaskStatus(
+                        name="Match",
+                        executionStatus="Successful",
+                        startTime=1625060460483,
+                        endTime=1625060863413,
+                        logLink="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
+                    ),
+                    TaskStatus(
+                        name="Sessionize",
+                        executionStatus="Successful",
+                        startTime=1625060460483,
+                        endTime=1625060863413,
+                        logLink="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
+                    ),
+                ],
+            ),
+        ],
     ),
 ]
 
@@ -279,11 +283,7 @@ class DatabricksPipelineTests(TestCase):
         results = list(self.databricks.get_pipelines_list())
         self.assertEqual(PIPELINE_LIST, results)
 
-    @patch(
-        "metadata.ingestion.source.database.databricks.client.DatabricksClient.get_job_runs"
-    )
-    def test_yield_pipeline(self, get_job_runs):
-        get_job_runs.return_value = mock_run_data
+    def test_yield_pipeline(self):
         pipelines = list(self.databricks.yield_pipeline(PIPELINE_LIST[0]))[0].right
         self.assertEqual(pipelines, EXPECTED_CREATED_PIPELINES)
 
@@ -374,23 +374,30 @@ class DatabricksPipelineTests(TestCase):
                         ("column_1", "column_2"),
                         ("column_3", "column_4"),
                     ]
-                    lineage_details = list(
-                        self.databricks.yield_pipeline_lineage_details(
-                            DataBrickPipelineDetails(**mock_data[0])
+                    # Mock get_pipeline_details for Kafka lineage extraction
+                    # Return None since this is a regular job, not a DLT pipeline
+                    with patch.object(
+                        self.databricks.client, "get_pipeline_details"
+                    ) as mock_get_pipeline_details:
+                        mock_get_pipeline_details.return_value = None
+
+                        lineage_details = list(
+                            self.databricks.yield_pipeline_lineage_details(
+                                DataBrickPipelineDetails(**mock_data[0])
+                            )
+                        )[0].right
+                        self.assertEqual(
+                            lineage_details.edge.fromEntity.id,
+                            EXPECTED_PIPELINE_LINEAGE.edge.fromEntity.id,
                         )
-                    )[0].right
-                    self.assertEqual(
-                        lineage_details.edge.fromEntity.id,
-                        EXPECTED_PIPELINE_LINEAGE.edge.fromEntity.id,
-                    )
-                    self.assertEqual(
-                        lineage_details.edge.toEntity.id,
-                        EXPECTED_PIPELINE_LINEAGE.edge.toEntity.id,
-                    )
-                    self.assertEqual(
-                        lineage_details.edge.lineageDetails.columnsLineage,
-                        EXPECTED_PIPELINE_LINEAGE.edge.lineageDetails.columnsLineage,
-                    )
+                        self.assertEqual(
+                            lineage_details.edge.toEntity.id,
+                            EXPECTED_PIPELINE_LINEAGE.edge.toEntity.id,
+                        )
+                        self.assertEqual(
+                            lineage_details.edge.lineageDetails.columnsLineage,
+                            EXPECTED_PIPELINE_LINEAGE.edge.lineageDetails.columnsLineage,
+                        )
 
         with patch.object(self.databricks.metadata, "get_by_name") as mock_get_by_name:
 

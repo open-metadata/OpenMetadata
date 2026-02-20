@@ -102,7 +102,9 @@ const DatabaseDetails: FunctionComponent = () => {
   const { withinPageSearch } =
     useLocationSearch<{ withinPageSearch: string }>();
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedDatabaseFQN } = useFqn();
+  const { entityFqn: decodedDatabaseFQN } = useFqn({
+    type: EntityType.DATABASE,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const { customizedPage, isLoading: loading } = useCustomPages(
     PageType.Database
@@ -400,6 +402,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const {
     editCustomAttributePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     hasViewBasicPermission,
   } = useMemo(
     () => ({
@@ -409,6 +412,10 @@ const DatabaseDetails: FunctionComponent = () => {
           PermissionOperation.EditCustomFields
         ) && !database.deleted,
       viewAllPermission: databasePermission.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        databasePermission,
+        PermissionOperation.ViewCustomFields
+      ),
       hasViewBasicPermission: getPrioritizedViewPermission(
         databasePermission,
         PermissionOperation.ViewBasic
@@ -438,6 +445,7 @@ const DatabaseDetails: FunctionComponent = () => {
       activeTab: activeTab as EntityTabs,
       database,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       schemaInstanceCount,
       feedCount,
       handleFeedCount,
@@ -460,6 +468,7 @@ const DatabaseDetails: FunctionComponent = () => {
     feedCount.totalCount,
     editCustomAttributePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     deleted,
     handleFeedCount,
     customizedPage?.tabs,
@@ -586,10 +595,7 @@ const DatabaseDetails: FunctionComponent = () => {
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: getEntityName(database),
-      })}>
+    <PageLayoutV1 pageTitle={getEntityName(database)}>
       {isEmpty(database) ? (
         <ErrorPlaceHolder className="m-0">
           {getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}

@@ -221,10 +221,11 @@ public class CustomOidcValidator {
 
       // Verify publicKeyUrls is configured and contains the JWKS URI
       List<String> publicKeyUrls = authConfig.getPublicKeyUrls();
+      // Skip validation if publicKeyUrls is empty - it's auto-populated for confidential clients
       if (publicKeyUrls == null || publicKeyUrls.isEmpty()) {
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
-            "publicKeyUrls is required. Please configure it with the JWKS URI: " + jwksUri);
+        LOG.debug(
+            "publicKeyUrls is empty, skipping validation (auto-populated for confidential clients)");
+        return null;
       }
 
       // Check if the JWKS URI from discovery is in publicKeyUrls

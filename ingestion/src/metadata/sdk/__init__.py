@@ -1,6 +1,7 @@
 """High-level entry points for the OpenMetadata Python SDK."""
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
 from typing import Any, Optional
 
@@ -42,9 +43,37 @@ from metadata.sdk.entities.base import BaseEntity
 _global_client: Optional[OpenMetadata] = None
 
 
+def to_entity_reference(entity: Any) -> dict[str, Any]:
+    """Convert any entity to an EntityReference dict.
+
+    This is useful when setting owners, domains, or other reference fields
+    that expect EntityReference objects rather than full entities.
+
+    Args:
+        entity: The entity to convert (must have id, type, and name attributes)
+
+    Returns:
+        A dict with id, type, name, and optionally fullyQualifiedName
+
+    Example:
+        >>> from metadata.sdk import configure, to_entity_reference, Teams, Users
+        >>> configure(host="http://localhost:8585/api", jwt_token="token")
+        >>> team = Teams.retrieve_by_name("engineering")
+        >>> user = Users.retrieve_by_name("john.doe")
+        >>> database.owners = [
+        ...     to_entity_reference(team),
+        ...     to_entity_reference(user)
+        ... ]
+    """
+    return BaseEntity.to_entity_reference(entity)
+
+
 def configure(
     config: OpenMetadataConfig | Mapping[str, Any] | None = None,
     /,
+    host: str | None = None,
+    server_url: str | None = None,
+    jwt_token: str | None = None,
     **kwargs: Any,
 ) -> OpenMetadata:
     """Configure the SDK with a connection to OpenMetadata.
@@ -52,18 +81,62 @@ def configure(
     Mirrors the ergonomics of ``stripe.api_key = ...`` by establishing a global
     client that the entity facades rely on. You can either pass an
     :class:`OpenMetadataConfig` instance, a mapping, or keyword arguments.
+
+    If neither config nor keyword arguments are provided, configuration will be
+    loaded from environment variables.
+
+    Args:
+        config: OpenMetadataConfig instance or mapping
+        host: OpenMetadata server URL (alias for server_url). Falls back to
+              OPENMETADATA_HOST or OPENMETADATA_SERVER_URL env vars
+        server_url: OpenMetadata server URL. Falls back to OPENMETADATA_HOST
+                    or OPENMETADATA_SERVER_URL env vars
+        jwt_token: JWT token for authentication. Falls back to
+                   OPENMETADATA_JWT_TOKEN or OPENMETADATA_API_KEY env vars
+        **kwargs: Additional configuration parameters
+
+    Example:
+        >>> from metadata.sdk import configure
+        >>> configure(host="http://localhost:8585/api", jwt_token="your-token")
+
+        Or using environment variables:
+        >>> import os
+        >>> os.environ["OPENMETADATA_HOST"] = "http://localhost:8585/api"
+        >>> os.environ["OPENMETADATA_JWT_TOKEN"] = "your-token"
+        >>> configure()
     """
 
     global _global_client  # pylint: disable=global-statement
 
-    if config is not None and kwargs:
+    if config is not None and (host or server_url or jwt_token or kwargs):
         raise TypeError("Pass either a config object or keyword arguments, not both")
 
     config_obj: OpenMetadataConfig
     if config is None:
-        if not kwargs:
-            raise ValueError("Provide an OpenMetadataConfig or keyword arguments")
-        config_obj = OpenMetadataConfig(**kwargs)
+        if not host and not server_url and not jwt_token and not kwargs:
+            config_obj = OpenMetadataConfig.from_env()
+        else:
+            resolved_server_url = (
+                host
+                or server_url
+                or os.environ.get("OPENMETADATA_HOST")
+                or os.environ.get("OPENMETADATA_SERVER_URL")
+            )
+            resolved_jwt_token = (
+                jwt_token
+                or os.environ.get("OPENMETADATA_JWT_TOKEN")
+                or os.environ.get("OPENMETADATA_API_KEY")
+            )
+
+            if not resolved_server_url:
+                raise ValueError(
+                    "Server URL must be provided via 'host'/'server_url' parameter or "
+                    + "'OPENMETADATA_HOST'/'OPENMETADATA_SERVER_URL' environment variable"
+                )
+
+            config_obj = OpenMetadataConfig(
+                server_url=resolved_server_url, jwt_token=resolved_jwt_token, **kwargs
+            )
     elif isinstance(config, Mapping):
         config_obj = OpenMetadataConfig(**dict(config))
     else:
@@ -125,6 +198,7 @@ __all__ = [
     "configure",
     "reset",
     "client",
+    "to_entity_reference",
     "BaseEntity",
     "base_entity",
     "APICollections",

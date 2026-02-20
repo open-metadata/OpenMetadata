@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Drawer, Form, FormProps, Input, Space } from 'antd';
+import {
+  Button,
+  Card,
+  Drawer,
+  Form,
+  FormProps,
+  Input,
+  Select,
+  Space,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isArray, isEmpty, isEqual, pick } from 'lodash';
@@ -160,6 +169,23 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
     return <></>;
   }, [selectedDefinition, table, handleActiveField]);
 
+  const dimensionColumnOptions = useMemo(() => {
+    const selectedColumn = getColumnNameFromEntityLink(testCase?.entityLink);
+
+    return table?.columns?.reduce((acc, col) => {
+      if (col.name === selectedColumn) {
+        return acc;
+      }
+
+      acc.push({
+        label: getEntityName(col),
+        value: col.name,
+      });
+
+      return acc;
+    }, [] as { label: string; value: string }[]);
+  }, [table?.columns]);
+
   // =============================================
   // FORM FIELDS
   // =============================================
@@ -278,6 +304,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
             ...(value.tags ?? []),
             ...(value.glossaryTerms ?? []),
           ],
+      dimensionColumns: value.dimensionColumns || undefined,
     };
 
     const jsonPatch = compare(testCase, updatedTestCase);
@@ -330,6 +357,13 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
         };
       }
 
+      if (param?.dataType === TestDataType.Boolean) {
+        return {
+          ...acc,
+          [curr.name || '']: curr.value === 'true',
+        };
+      }
+
       return {
         ...acc,
         [curr.name || '']: curr.value,
@@ -373,6 +407,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
         'description',
         'computePassedFailedRowCount',
         'useDynamicAssertion',
+        'dimensionColumns',
       ]);
 
       form.setFieldsValue({
@@ -442,7 +477,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
           {errorMessage && (
             <div className="floating-error-alert">
               <AlertBar
-                defafultExpand
+                defaultExpand
                 className="h-full custom-alert-description"
                 message={errorMessage}
                 type="error"
@@ -469,9 +504,21 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
                     <Input disabled id="root/column" />
                   </Form.Item>
                 )}
+                {isColumn && (
+                  <Form.Item
+                    label={t('label.dimension-plural')}
+                    name="dimensionColumns">
+                    <Select
+                      getPopupContainer={getPopupContainer}
+                      id="root/dimensionColumns"
+                      mode="multiple"
+                      options={dimensionColumnOptions}
+                    />
+                  </Form.Item>
+                )}
               </Card>
             )}
-            <Card className="form-card-section">
+            <Card className="form-card-section test-type-card">
               <Form.Item
                 required
                 label={t('label.test-entity', {
@@ -552,7 +599,6 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
       className="custom-drawer-style test-case-form-drawer"
       closable={false}
       footer={drawerFooter}
-      maskClosable={false}
       open={open}
       placement="right"
       title={

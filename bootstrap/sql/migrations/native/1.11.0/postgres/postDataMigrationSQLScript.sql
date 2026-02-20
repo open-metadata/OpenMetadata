@@ -56,3 +56,53 @@ SET json = json::jsonb || json_build_object(
     'version', 0.2
 )::jsonb
 WHERE name = 'tableDiff';
+
+-- Update DataRetentionApplication add profileDataRetentionPeriod and testCaseResultsRetentionPeriod
+UPDATE installed_apps
+SET json = jsonb_set(
+    jsonb_set(
+        json,
+        '{appConfiguration, testCaseResultsRetentionPeriod}',
+        '1440'
+    ),
+    '{appConfiguration, profileDataRetentionPeriod}',
+    '1440'
+)
+WHERE json->>'name' = 'DataRetentionApplication';
+
+UPDATE notification_template_entity
+SET json = json::jsonb - 'defaultTemplateChecksum';
+
+-- Update appType from 'internal' to 'external' and add sourcePythonClass for CollateAIQualityAgentApplication and CollateAITierAgentApplication
+UPDATE apps_marketplace
+SET json = jsonb_set(
+    jsonb_set(
+        json::jsonb,
+        '{appType}',
+        '"external"'
+    ),
+    '{sourcePythonClass}',
+    '"metadata.applications.dynamic_agent.app.DynamicAgentApp"'
+)
+WHERE json->>'name' IN  ('CollateAIQualityAgentApplication', 'CollateAITierAgentApplication')
+    AND json->>'appType' = 'internal' AND json->>'sourcePythonClass' IS NULL;
+
+-- Update appType from 'internal' to 'external' and add sourcePythonClass for CollateAITierAgentApplication and CollateAIQualityAgentApplication
+UPDATE installed_apps
+SET json = jsonb_set(
+    jsonb_set(
+        json::jsonb,
+        '{appType}',
+        '"external"'
+    ),
+    '{sourcePythonClass}',
+    '"metadata.applications.dynamic_agent.app.DynamicAgentApp"'
+)
+WHERE json->>'name' IN ('CollateAIQualityAgentApplication', 'CollateAITierAgentApplication')
+  AND json->>'appType' = 'internal' AND json->>'sourcePythonClass' IS NULL;
+  
+-- Remove bot form App entity  
+UPDATE installed_apps SET json = json - 'bot';
+
+-- Remove SearchIndexingApplication past runs
+delete from apps_extension_time_series where appname = 'SearchIndexingApplication';

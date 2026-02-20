@@ -36,18 +36,19 @@ class DefaultInheritedFieldEntitySearchTest {
 
   @Test
   @SuppressWarnings("resource")
-  void shouldFetchAllAssetsWhenCountBelowBatchSize() throws Exception {
-    // Given: A domain with 102 total assets and query.size=100 (the old default that caused bug)
+  void shouldFetchSinglePageWithRequestedSize() throws Exception {
+    // Given: A domain with 500 total assets and query.size=100
     InheritedFieldQuery query =
         InheritedFieldQuery.builder()
             .fieldPath("domains.fullyQualifiedName")
             .fieldValue("Engineering")
             .filterType(InheritedFieldEntitySearch.QueryFilterType.DOMAIN_ASSETS)
-            .size(100) // Old behavior would respect this and return only 100
+            .size(100)
+            .from(0)
             .build();
 
-    // ES returns all 102 entities in one batch (since 102 < MAX_PAGE_SIZE=1000)
-    Response esResponse = mockESResponse(102, 102);
+    // ES returns 100 entities for the requested page
+    Response esResponse = mockESResponse(500, 100);
     when(searchRepository.search(any(), isNull())).thenReturn(esResponse);
 
     // When: Fetching entities
@@ -55,63 +56,42 @@ class DefaultInheritedFieldEntitySearchTest {
         inheritedFieldSearch.getEntitiesForField(
             query, () -> new InheritedFieldResult(List.of(), 0));
 
-    // Then: Should request with MAX_PAGE_SIZE=1000, not query.size=100
+    // Then: Should request with query.size=100 (true pagination)
     verify(searchRepository)
         .search(
-            org.mockito.ArgumentMatchers.argThat(req -> req.getSize() == MAX_PAGE_SIZE), isNull());
+            org.mockito.ArgumentMatchers.argThat(req -> req.getSize() == 100 && req.getFrom() == 0),
+            isNull());
 
-    // And: Should return all 102 entities, not just 100
-    assertEquals(102, result.total());
-    assertEquals(102, result.entities().size());
+    // And: Should return the single page with 100 entities
+    assertEquals(500, result.total());
+    assertEquals(100, result.entities().size());
   }
 
   @Test
   @SuppressWarnings("resource")
-  void shouldPaginateCorrectlyForLargeDataAssets() throws Exception {
-    // Given: A domain with 2500 assets requiring 3 batches (1000 + 1000 + 500)
-    InheritedFieldQuery query = InheritedFieldQuery.forDomain("LargeDomain");
+  void shouldRespectMaxPageSizeLimit() throws Exception {
+    // Given: A query requesting 2500 entities (exceeds MAX_PAGE_SIZE=1000)
+    InheritedFieldQuery query = InheritedFieldQuery.forDomain("LargeDomain", 0, 2500);
 
-    Response batch1 = mockESResponse(2500, 1000, 0);
-    Response batch2 = mockESResponse(2500, 1000, 1000);
-    Response batch3 = mockESResponse(2500, 500, 2000);
-
-    when(searchRepository.search(any(), isNull()))
-        .thenReturn(batch1)
-        .thenReturn(batch2)
-        .thenReturn(batch3);
+    // ES returns 1000 entities (capped at MAX_PAGE_SIZE)
+    Response response = mockESResponse(2500, 1000, 0);
+    when(searchRepository.search(any(), isNull())).thenReturn(response);
 
     // When: Fetching entities
     InheritedFieldResult result =
         inheritedFieldSearch.getEntitiesForField(
             query, () -> new InheritedFieldResult(List.of(), 0));
 
-    // Then: Should make 3 paginated requests with correct from/size parameters
-    var inOrder = org.mockito.Mockito.inOrder(searchRepository);
-
-    inOrder
-        .verify(searchRepository)
+    // Then: Should cap the request at MAX_PAGE_SIZE=1000
+    verify(searchRepository)
         .search(
             org.mockito.ArgumentMatchers.argThat(
-                req -> req.getFrom() == 0 && req.getSize() == 1000),
+                req -> req.getFrom() == 0 && req.getSize() == MAX_PAGE_SIZE),
             isNull());
 
-    inOrder
-        .verify(searchRepository)
-        .search(
-            org.mockito.ArgumentMatchers.argThat(
-                req -> req.getFrom() == 1000 && req.getSize() == 1000),
-            isNull());
-
-    inOrder
-        .verify(searchRepository)
-        .search(
-            org.mockito.ArgumentMatchers.argThat(
-                req -> req.getFrom() == 2000 && req.getSize() == 500),
-            isNull());
-
-    // And: Should return all 2500 entities
+    // And: Should return only the first page with 1000 entities
     assertEquals(2500, result.total());
-    assertEquals(2500, result.entities().size());
+    assertEquals(1000, result.entities().size());
   }
 
   @Test
@@ -119,7 +99,7 @@ class DefaultInheritedFieldEntitySearchTest {
     // Given: Search throws exception
     when(searchRepository.search(any(), isNull())).thenThrow(new RuntimeException("ES down"));
 
-    InheritedFieldQuery query = InheritedFieldQuery.forDomain("TestDomain");
+    InheritedFieldQuery query = InheritedFieldQuery.forDomain("TestDomain", 0, 100);
 
     // When: Fetching entities with fallback (empty list, count 0)
     InheritedFieldResult result =
@@ -138,7 +118,7 @@ class DefaultInheritedFieldEntitySearchTest {
     Response esResponse = mockESResponse(250, 0); // 0 entities in response body (count-only query)
     when(searchRepository.search(any(), isNull())).thenReturn(esResponse);
 
-    InheritedFieldQuery query = InheritedFieldQuery.forDomain("CountTestDomain");
+    InheritedFieldQuery query = InheritedFieldQuery.forDomain("CountTestDomain", 0, 100);
 
     // When: Getting count
     Integer count = inheritedFieldSearch.getCountForField(query, () -> 0);

@@ -22,6 +22,7 @@ import {
   getContractByEntityId,
 } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../common/Loader/Loader';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -38,12 +39,13 @@ export const ContractTab = () => {
   const [contract, setContract] = useState<DataContract>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-  const { id } = entityData ?? {};
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const { id, name: entityName } = entityData ?? {};
 
   const fetchContract = async () => {
     try {
       setIsLoading(true);
-      const contract = await getContractByEntityId(id, EntityType.TABLE, [
+      const contract = await getContractByEntityId(id, entityType, [
         TabSpecificField.OWNERS,
       ]);
       setContract(contract);
@@ -54,7 +56,7 @@ export const ContractTab = () => {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (contract?.id) {
       setIsDeleteModalVisible(true);
     }
@@ -84,26 +86,23 @@ export const ContractTab = () => {
     fetchContract();
   }, [id]);
 
+  // Check if the contract is inherited from a Data Product
+  // If so, editing should create a NEW contract for this asset, not modify the parent's
+  const isInheritedContract = Boolean(contract?.inherited);
+
   const content = useMemo(() => {
     switch (tabMode) {
       case DataContractTabMode.ADD:
-        return (
-          <AddDataContract
-            contract={contract}
-            onCancel={() => {
-              setTabMode(DataContractTabMode.VIEW);
-            }}
-            onSave={() => {
-              fetchContract();
-              setTabMode(DataContractTabMode.VIEW);
-            }}
-          />
-        );
-
       case DataContractTabMode.EDIT:
         return (
           <AddDataContract
-            contract={contract}
+            // Don't pass the inherited contract - we want to CREATE a new one for this asset
+            // Only pass the contract if it's a direct (non-inherited) contract being edited
+            contract={
+              tabMode === DataContractTabMode.EDIT && !isInheritedContract
+                ? contract
+                : undefined
+            }
             onCancel={() => {
               setTabMode(DataContractTabMode.VIEW);
             }}
@@ -118,16 +117,24 @@ export const ContractTab = () => {
         return (
           <ContractDetail
             contract={contract}
+            entityId={id ?? ''}
+            entityName={entityName}
+            entityType={entityType}
+            onContractUpdated={fetchContract}
             onDelete={handleDelete}
             onEdit={() => {
+              // If contract is inherited, use ADD mode to create a new contract for this asset
+              // Only use EDIT mode for direct (non-inherited) contracts
               setTabMode(
-                contract ? DataContractTabMode.EDIT : DataContractTabMode.ADD
+                contract && !isInheritedContract
+                  ? DataContractTabMode.EDIT
+                  : DataContractTabMode.ADD
               );
             }}
           />
         );
     }
-  }, [tabMode, contract]);
+  }, [tabMode, contract, entityName, isInheritedContract]);
 
   return isLoading ? (
     <Loader />

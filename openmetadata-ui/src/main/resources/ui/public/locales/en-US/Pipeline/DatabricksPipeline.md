@@ -41,6 +41,12 @@ Databricks compute resources URL. E.g., `/sql/1.0/warehouses/xyz123`.
 $$
 
 $$section
+### Lineage Look Back Days $(id="lineageLookBackDays")
+Number of days to look back when fetching lineage data from Databricks system tables (system.access.table_lineage and system.access.column_lineage). 
+Default is 90 days.
+$$
+
+$$section
 ### Connection Arguments $(id="connectionArguments")
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
 $$

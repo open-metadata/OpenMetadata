@@ -58,6 +58,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -70,6 +74,10 @@
       "description" : "Children domains or sub-domains.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "childrenCount": {
+      "description": "Count of all nested children domains under this domain",
+      "type": "integer"
+    },
     "owners": {
       "description": "Owners of this Domain.",
       "$ref": "../../type/entityReferenceList.json"
@@ -81,11 +89,9 @@
     },
     "assets": {
       "description": "Data assets collection that is part of this domain.",
-      "$ref" : "../../type/entityReferenceList.json"
-    },
-    "assetsCount": {
-      "description": "Count of data assets that are part of this domain (including inherited from sub-domains).",
-      "type": "integer"
+      "$ref" : "../../type/entityReferenceList.json",
+      "deprecated": true,
+      "$comment": "@deprecated Use GET /v1/domains/{id}/assets API endpoint for paginated access to domain assets"
     },
     "tags": {
       "description": "Tags associated with the Domain.",

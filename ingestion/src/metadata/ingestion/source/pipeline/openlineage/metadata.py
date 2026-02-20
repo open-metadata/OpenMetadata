@@ -72,7 +72,7 @@ class OpenlineageSource(PipelineServiceSource):
     Works under the assumption that OpenLineage integrations produce events to Kafka topic, which is a source of events
     for this connector.
 
-    Only 'SUCCESS' OpenLineage events are taken into account in this connector.
+    Only OpenLineage events that indicate successfull data movement (COMPLETE, RUNNING, START) are taken into account in this connector.
 
     Configuring OpenLineage integrations: https://openlineage.io/docs/integrations/about
     """
@@ -195,18 +195,18 @@ class OpenlineageSource(PipelineServiceSource):
         return f"{namespace}-{name}"
 
     @classmethod
-    def _filter_event_by_type(
-        cls, event: OpenLineageEvent, event_type: EventType
+    def _filter_event_by_types(
+        cls, event: OpenLineageEvent, event_types: List[EventType]
     ) -> Optional[Dict]:
         """
-        returns event if it's of particular event_type.
+        returns event if it's of one of the particular event_types.
         for example - for lineage events we will be only looking for EventType.COMPLETE event type.
 
         :param event: Open Lineage raw event.
-        :param event_type: type of event we are looking for.
-        :return: Open Lineage event if matches event_type, otherwise None
+        :param event_types: list of event types we are looking for.
+        :return: Open Lineage event if matches one of the event_types, otherwise None
         """
-        return event if event.event_type == event_type else {}
+        return event if event.event_type in event_types else {}
 
     @classmethod
     def _get_om_table_columns(cls, table_input: Dict) -> Optional[List]:
@@ -471,7 +471,10 @@ class OpenlineageSource(PipelineServiceSource):
                         _result = message_to_open_lineage_event(
                             json.loads(message.value())
                         )
-                        result = self._filter_event_by_type(_result, EventType.COMPLETE)
+                        result = self._filter_event_by_types(
+                            _result,
+                            [EventType.COMPLETE, EventType.RUNNING, EventType.START],
+                        )
                         if result:
                             yield result
                     except Exception as e:

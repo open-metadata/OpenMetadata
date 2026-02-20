@@ -49,6 +49,15 @@
       "description": "Query Filter",
       "type": "string"
     },
+    "columnFilter": {
+      "description": "Column-level lineage filter. Supports filtering by column names in fromColumns or toColumn fields.",
+      "type": "string"
+    },
+    "preservePaths": {
+      "description": "When true, preserves all nodes in the path to filtered results. When false, only returns nodes matching the filter.",
+      "type": "boolean",
+      "default": true
+    },
     "includeDeleted": {
       "description": "Include deleted entities",
       "type": "boolean",

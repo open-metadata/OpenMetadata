@@ -28,7 +28,13 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
     migrationWorkflow =
         spy(
             new MigrationWorkflow(
-                jdbi, "nativePath", ConnectionType.MYSQL, "extensionPath", null, false));
+                jdbi,
+                "nativePath",
+                ConnectionType.MYSQL,
+                "extensionPath",
+                "flywayPath",
+                null,
+                false));
 
     omMigrationList =
         List.of(
@@ -83,7 +89,8 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
             "nativePath",
             ConnectionType.MYSQL,
             migrationWorkflow.getOpenMetadataApplicationConfig(),
-            "extensionPath");
+            "extensionPath",
+            "flywayPath");
 
     assertEquals(
         List.of("1.1.0", "1.1.0-collate", "1.2.0", "1.2.1", "1.2.2-collate"),

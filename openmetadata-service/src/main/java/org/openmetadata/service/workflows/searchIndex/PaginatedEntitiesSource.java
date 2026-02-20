@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
@@ -48,6 +47,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   private final List<String> readerErrors = new ArrayList<>();
   private final StepStats stats = new StepStats();
   private final ListFilter filter;
+  private final int cachedTotalCount;
   private String lastFailedCursor = null;
   private final AtomicReference<String> cursor = new AtomicReference<>(RestUtil.encodeCursor("0"));
   private final AtomicReference<Boolean> isDone = new AtomicReference<>(false);
@@ -57,10 +57,26 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     this.batchSize = batchSize;
     this.fields = fields;
     this.filter = new ListFilter(Include.ALL);
+    this.cachedTotalCount = Entity.getEntityRepository(entityType).getDao().listCount(this.filter);
     this.stats
-        .withTotalRecords(Entity.getEntityRepository(entityType).getDao().listTotalCount())
+        .withTotalRecords(cachedTotalCount)
         .withSuccessRecords(0)
-        .withFailedRecords(0);
+        .withFailedRecords(0)
+        .withWarningRecords(0);
+  }
+
+  public PaginatedEntitiesSource(
+      String entityType, int batchSize, List<String> fields, int knownTotal) {
+    this.entityType = entityType;
+    this.batchSize = batchSize;
+    this.fields = fields;
+    this.filter = new ListFilter(Include.ALL);
+    this.cachedTotalCount = knownTotal;
+    this.stats
+        .withTotalRecords(cachedTotalCount)
+        .withSuccessRecords(0)
+        .withFailedRecords(0)
+        .withWarningRecords(0);
   }
 
   public PaginatedEntitiesSource(
@@ -69,10 +85,12 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     this.batchSize = batchSize;
     this.fields = fields;
     this.filter = filter;
+    this.cachedTotalCount = Entity.getEntityRepository(entityType).getDao().listCount(filter);
     this.stats
-        .withTotalRecords(Entity.getEntityRepository(entityType).getDao().listCount(filter))
+        .withTotalRecords(cachedTotalCount)
         .withSuccessRecords(0)
-        .withFailedRecords(0);
+        .withFailedRecords(0)
+        .withWarningRecords(0);
   }
 
   public PaginatedEntitiesSource withName(String name) {
@@ -103,7 +121,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       result =
           entityRepository.listWithOffset(
               entityDAO::listAfter,
-              entityDAO::listCount,
+              f -> cachedTotalCount,
               filter,
               batchSize,
               cursor,
@@ -112,31 +130,31 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               null);
 
       // Filter out EntityNotFoundExceptions from errors - these are expected when relationships
-      // point to deleted entities and should not be counted as failures
+      // point to deleted entities and should be counted as warnings, not failures
       if (!result.getErrors().isEmpty()) {
-        List<EntityError> realErrors =
-            result.getErrors().stream()
-                .filter(error -> !isEntityNotFoundError(error))
-                .collect(Collectors.toList());
+        List<EntityError> realErrors = new ArrayList<>();
+        List<EntityError> warningErrors = new ArrayList<>();
+
+        for (EntityError error : result.getErrors()) {
+          if (isEntityNotFoundError(error)) {
+            warningErrors.add(error);
+          } else {
+            realErrors.add(error);
+          }
+        }
 
         if (!realErrors.isEmpty()) {
           LOG.warn("[PaginatedEntitiesSource] Real errors found: {}", realErrors.size());
           realErrors.forEach(error -> LOG.warn("Error: {}", error.getMessage()));
-        }
-
-        long notFoundCount = result.getErrors().size() - realErrors.size();
-        if (notFoundCount > 0) {
-          LOG.debug(
-              "[PaginatedEntitiesSource] Ignored {} 'entity not found' errors for stale relationships",
-              notFoundCount);
-        }
-
-        if (!realErrors.isEmpty()) {
           lastFailedCursor = this.cursor.get();
-          realErrors.forEach(error -> LOG.warn("Error: {}", error.getMessage()));
         }
 
-        lastFailedCursor = this.cursor.get();
+        if (!warningErrors.isEmpty()) {
+          LOG.debug(
+              "[PaginatedEntitiesSource] {} 'entity not found' warnings for stale relationships",
+              warningErrors.size());
+        }
+
         if (result.getPaging().getAfter() == null) {
           this.cursor.set(null);
           this.isDone.set(true);
@@ -144,11 +162,12 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
           this.cursor.set(result.getPaging().getAfter());
         }
 
-        // Update stats with only real errors, not missing relationship errors
-        updateStats(result.getData().size(), realErrors.size());
+        // Update stats with real errors as failures and stale references as warnings
+        updateStats(result.getData().size(), realErrors.size(), warningErrors.size());
 
-        // Update the result to only include real errors
+        // Update the result to only include real errors, but carry warnings count
         result.setErrors(realErrors);
+        result.setWarningsCount(warningErrors.size());
         return result;
       }
 
@@ -202,7 +221,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       result =
           entityRepository.listWithOffset(
               entityDAO::listAfter,
-              entityDAO::listCount,
+              f -> cachedTotalCount,
               filter,
               batchSize,
               currentCursor,
@@ -211,21 +230,28 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
               null);
 
       // Filter out EntityNotFoundExceptions from errors - same as in read() method
+      // These are counted as warnings, not failures
+      int warningsCount = 0;
       if (!result.getErrors().isEmpty()) {
         List<EntityError> realErrors = new ArrayList<>();
         for (EntityError error : result.getErrors()) {
-          if (error.getMessage() != null && error.getMessage().contains("Not found")) {
+          if (isEntityNotFoundError(error)) {
+            warningsCount++;
             LOG.debug("Skipping entity due to missing relationship: {}", error.getMessage());
           } else {
             realErrors.add(error);
           }
         }
         result.setErrors(realErrors);
+        result.setWarningsCount(warningsCount);
       }
 
       LOG.debug(
-          "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
-          batchSize, result.getData().size(), result.getErrors().size());
+          "[PaginatedEntitiesSource] Batch Stats :- Submitted: {} Success: {} Failed: {} Warnings: {}",
+          batchSize,
+          result.getData().size(),
+          result.getErrors().size(),
+          warningsCount);
 
     } catch (Exception e) {
       LOG.error(
@@ -259,6 +285,10 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   @Override
   public void updateStats(int currentSuccess, int currentFailed) {
     getUpdatedStats(stats, currentSuccess, currentFailed);
+  }
+
+  public void updateStats(int currentSuccess, int currentFailed, int currentWarnings) {
+    getUpdatedStats(stats, currentSuccess, currentFailed, currentWarnings);
   }
 
   private boolean isEntityNotFoundError(EntityError error) {

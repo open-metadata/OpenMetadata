@@ -12,7 +12,7 @@
  */
 
 import { TooltipProps } from 'recharts';
-import { DataInsightIndex } from '../enums/DataInsight.enum';
+import { DataInsightIndex, SystemChartType } from '../enums/DataInsight.enum';
 import { ReportData } from '../generated/analytics/reportData';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
@@ -37,10 +37,11 @@ export interface ChartFilter {
   startTs: number;
   endTs: number;
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
   cardStyles?: React.CSSProperties;
   customValueKey?: string;
+  displayDateInHeader?: boolean;
   dateTimeFormatter?: (date?: number, format?: string) => string;
   isPercentage?: boolean;
   isTier?: boolean;
@@ -98,3 +99,11 @@ export type DataInsightSearchRequest = {
       fetchSource?: false;
     }
 );
+
+export type entitySummeryList = {
+  label: string;
+  labelData?: Record<string, string | number | boolean>;
+  latest: number;
+  type: SystemChartType;
+  id: SystemChartType;
+};

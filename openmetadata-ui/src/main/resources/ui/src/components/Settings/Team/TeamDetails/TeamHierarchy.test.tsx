@@ -19,6 +19,7 @@ import {
   MOCK_CURRENT_TEAM,
   MOCK_TABLE_DATA,
 } from '../../../../mocks/Teams.mock';
+import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import { TeamHierarchyProps } from './team.interface';
 import TeamHierarchy from './TeamHierarchy';
 
@@ -27,6 +28,8 @@ const teamHierarchyPropsData: TeamHierarchyProps = {
   currentTeam: MOCK_CURRENT_TEAM,
   onTeamExpand: jest.fn(),
   isFetchingAllTeamAdvancedDetails: false,
+  isSearchLoading: false,
+  isTeamBasicDataLoading: false,
   showDeletedTeam: false,
   onShowDeletedTeamChange: jest.fn(),
   handleAddTeamButtonClick: jest.fn(),
@@ -47,6 +50,19 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../../../utils/TeamUtils', () => ({
   getMovedTeamData: jest.fn().mockReturnValue([]),
   isDropRestricted: jest.fn().mockReturnValue(false),
+  flattenTeamTree: jest.fn((teams) => teams),
+}));
+
+jest.mock('../../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({ hits: { total: { value: 0 } } }),
+}));
+
+jest.mock('./TeamDetailsV1.utils', () => ({
+  collectAllTeamIds: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('../../../../utils/SearchUtils', () => ({
+  getTermQuery: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../../../../rest/teamsAPI', () => ({
@@ -109,7 +125,6 @@ describe('Team Hierarchy page', () => {
     const subTeamsColumn = await screen.findByText('label.sub-team-plural');
     const usersColumn = await screen.findByText('label.user-plural');
     const assetCountColumn = await screen.findByText('label.entity-count');
-    const descriptionColumn = await screen.findByText('label.description');
     const rows = await screen.findAllByRole('row');
 
     expect(table).toBeInTheDocument();
@@ -118,7 +133,7 @@ describe('Team Hierarchy page', () => {
     expect(subTeamsColumn).toBeInTheDocument();
     expect(usersColumn).toBeInTheDocument();
     expect(assetCountColumn).toBeInTheDocument();
-    expect(descriptionColumn).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith({ width: 300 });
 
     expect(rows).toHaveLength(MOCK_TABLE_DATA.length + 1);
   });

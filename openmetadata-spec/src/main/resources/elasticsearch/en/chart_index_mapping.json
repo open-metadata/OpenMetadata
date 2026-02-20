@@ -249,6 +249,14 @@
           }
         }
       },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "tags": {
         "properties": {
           "tagFQN": {
@@ -310,7 +318,14 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text"
@@ -378,7 +393,8 @@
         }
       },
       "lifeCycle": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "dataProducts": {
         "properties": {
@@ -436,13 +452,16 @@
         "type": "keyword"
       },
       "descriptionSources": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "tagSources": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "tierSources": {
-        "type": "object"
+        "type": "object",
+        "dynamic": false
       },
       "dashboards": {
         "properties": {

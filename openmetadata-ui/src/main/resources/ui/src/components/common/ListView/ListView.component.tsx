@@ -27,7 +27,6 @@ import Searchbar from '../SearchBarComponent/SearchBar.component';
 import Table from '../Table/Table';
 import { ListViewOptions, ListViewProps } from './ListView.interface';
 
-// eslint-disable-next-line @typescript-eslint/ban-types, @typescript-eslint/no-explicit-any
 export const ListView = <T extends object = any>({
   tableProps,
   cardRenderer,

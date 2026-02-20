@@ -59,6 +59,10 @@ jest.mock(
   }
 );
 
+jest.mock('../components/DataContract/ContractTab/ContractTab.tsx', () => {
+  return jest.fn().mockImplementation(() => <p>DataContractComponent</p>);
+});
+
 jest.mock('./i18next/LocalUtil', () => ({
   t: (key: string) => key,
 }));
@@ -82,12 +86,6 @@ const mockProps: SpreadsheetDetailPageTabProps = {
   ),
   activeTab: EntityTabs.WORKSHEETS,
   feedCount: { totalCount: 25 },
-  labelMap: {
-    [EntityTabs.WORKSHEETS]: 'Worksheets',
-    [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
-    [EntityTabs.LINEAGE]: 'Lineage',
-    [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
-  } as Record<EntityTabs, string>,
 };
 
 describe('SpreadsheetDetailsUtils', () => {
@@ -95,7 +93,7 @@ describe('SpreadsheetDetailsUtils', () => {
     it('should return correct number of tabs', () => {
       const tabs = getSpreadsheetDetailsPageTabs(mockProps);
 
-      expect(tabs).toHaveLength(4);
+      expect(tabs).toHaveLength(5);
     });
 
     it('should return tabs with correct keys', () => {
@@ -106,6 +104,7 @@ describe('SpreadsheetDetailsUtils', () => {
         EntityTabs.WORKSHEETS,
         EntityTabs.ACTIVITY_FEED,
         EntityTabs.LINEAGE,
+        EntityTabs.CONTRACT,
         EntityTabs.CUSTOM_PROPERTIES,
       ]);
     });
@@ -148,9 +147,21 @@ describe('SpreadsheetDetailsUtils', () => {
       expect(screen.getByText('label.lineage')).toBeInTheDocument();
     });
 
+    it('should render contract tab without count', () => {
+      const tabs = getSpreadsheetDetailsPageTabs(mockProps);
+      const contractTab = tabs[3];
+
+      render(<MemoryRouter>{contractTab.label}</MemoryRouter>);
+
+      expect(
+        screen.getByTestId('tab-label-label.contract')
+      ).toBeInTheDocument();
+      expect(screen.getByText('label.contract')).toBeInTheDocument();
+    });
+
     it('should render custom properties tab without count', () => {
       const tabs = getSpreadsheetDetailsPageTabs(mockProps);
-      const customPropertiesTab = tabs[3];
+      const customPropertiesTab = tabs[4];
 
       render(<MemoryRouter>{customPropertiesTab.label}</MemoryRouter>);
 
@@ -192,7 +203,7 @@ describe('SpreadsheetDetailsUtils', () => {
 
     it('should render custom properties tab content correctly', () => {
       const tabs = getSpreadsheetDetailsPageTabs(mockProps);
-      const customPropertiesTab = tabs[3];
+      const customPropertiesTab = tabs[4];
 
       render(<MemoryRouter>{customPropertiesTab.children}</MemoryRouter>);
 
@@ -510,23 +521,6 @@ describe('SpreadsheetDetailsUtils', () => {
       expect(screen.queryByText('- Active')).not.toBeInTheDocument();
     });
 
-    it('should handle missing labelMap gracefully', () => {
-      const propsWithoutLabelMap = {
-        ...mockProps,
-        labelMap: undefined,
-      };
-
-      const tabs = getSpreadsheetDetailsPageTabs(propsWithoutLabelMap);
-
-      expect(tabs).toHaveLength(4);
-
-      tabs.forEach((tab) => {
-        expect(tab.key).toBeDefined();
-        expect(tab.label).toBeDefined();
-        expect(tab.children).toBeDefined();
-      });
-    });
-
     it('should handle partial widget config', () => {
       const partialWidgetConfig = {
         i: DetailPageWidgetKeys.DESCRIPTION,
@@ -537,6 +531,136 @@ describe('SpreadsheetDetailsUtils', () => {
       render(<MemoryRouter>{result}</MemoryRouter>);
 
       expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+    });
+  });
+
+  describe('labelMap props', () => {
+    it('should use custom labels from labelMap when provided', () => {
+      const propsWithLabelMap = {
+        ...mockProps,
+        labelMap: {
+          [EntityTabs.WORKSHEETS]: 'Custom Worksheets Label',
+          [EntityTabs.ACTIVITY_FEED]: 'Custom Activity Feed',
+          [EntityTabs.LINEAGE]: 'Custom Lineage',
+          [EntityTabs.CONTRACT]: 'Custom Contract',
+          [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties Label',
+        } as Record<EntityTabs, string>,
+      };
+
+      const tabs = getSpreadsheetDetailsPageTabs(propsWithLabelMap);
+      const worksheetsTab = tabs[0];
+
+      render(<MemoryRouter>{worksheetsTab.label}</MemoryRouter>);
+
+      expect(
+        screen.getByText('Custom Worksheets Label (8) - Active')
+      ).toBeInTheDocument();
+    });
+
+    it('should use custom label for activity feed tab from labelMap', () => {
+      const propsWithLabelMap = {
+        ...mockProps,
+        labelMap: {
+          [EntityTabs.ACTIVITY_FEED]: 'Custom Activity',
+        } as Record<EntityTabs, string>,
+      };
+
+      const tabs = getSpreadsheetDetailsPageTabs(propsWithLabelMap);
+      const activityTab = tabs[1];
+
+      render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
+
+      expect(screen.getByText('Custom Activity (25)')).toBeInTheDocument();
+    });
+
+    it('should use custom label for lineage tab from labelMap', () => {
+      const propsWithLabelMap = {
+        ...mockProps,
+        labelMap: {
+          [EntityTabs.LINEAGE]: 'Custom Lineage Label',
+        } as Record<EntityTabs, string>,
+      };
+
+      const tabs = getSpreadsheetDetailsPageTabs(propsWithLabelMap);
+      const lineageTab = tabs[2];
+
+      render(<MemoryRouter>{lineageTab.label}</MemoryRouter>);
+
+      expect(screen.getByText('Custom Lineage Label')).toBeInTheDocument();
+    });
+
+    it('should use custom label for contract tab from labelMap', () => {
+      const propsWithLabelMap = {
+        ...mockProps,
+        labelMap: {
+          [EntityTabs.CONTRACT]: 'Custom Contract Label',
+        } as Record<EntityTabs, string>,
+      };
+
+      const tabs = getSpreadsheetDetailsPageTabs(propsWithLabelMap);
+      const contractTab = tabs[3];
+
+      render(<MemoryRouter>{contractTab.label}</MemoryRouter>);
+
+      expect(screen.getByText('Custom Contract Label')).toBeInTheDocument();
+    });
+
+    it('should use custom label for custom properties tab from labelMap', () => {
+      const propsWithLabelMap = {
+        ...mockProps,
+        labelMap: {
+          [EntityTabs.CUSTOM_PROPERTIES]: 'My Custom Properties',
+        } as Record<EntityTabs, string>,
+      };
+
+      const tabs = getSpreadsheetDetailsPageTabs(propsWithLabelMap);
+      const customPropertiesTab = tabs[4];
+
+      render(<MemoryRouter>{customPropertiesTab.label}</MemoryRouter>);
+
+      expect(screen.getByText('My Custom Properties')).toBeInTheDocument();
+    });
+
+    it('should fallback to default i18n labels when labelMap is empty', () => {
+      const propsWithEmptyLabelMap = {
+        ...mockProps,
+        labelMap: {} as Record<EntityTabs, string>,
+      };
+
+      const tabs = getSpreadsheetDetailsPageTabs(propsWithEmptyLabelMap);
+      const worksheetsTab = tabs[0];
+
+      render(<MemoryRouter>{worksheetsTab.label}</MemoryRouter>);
+
+      expect(
+        screen.getByText('label.worksheet-plural (8) - Active')
+      ).toBeInTheDocument();
+    });
+
+    it('should use partial labelMap and fallback to defaults for missing keys', () => {
+      const propsWithPartialLabelMap = {
+        ...mockProps,
+        labelMap: {
+          [EntityTabs.WORKSHEETS]: 'Custom Worksheets',
+          [EntityTabs.CONTRACT]: 'Custom Contract',
+        } as Record<EntityTabs, string>,
+      };
+
+      const tabs = getSpreadsheetDetailsPageTabs(propsWithPartialLabelMap);
+
+      const worksheetsTab = tabs[0];
+
+      render(<MemoryRouter>{worksheetsTab.label}</MemoryRouter>);
+
+      expect(
+        screen.getByText('Custom Worksheets (8) - Active')
+      ).toBeInTheDocument();
+
+      const lineageTab = tabs[2];
+
+      render(<MemoryRouter>{lineageTab.label}</MemoryRouter>);
+
+      expect(screen.getByText('label.lineage')).toBeInTheDocument();
     });
   });
 });

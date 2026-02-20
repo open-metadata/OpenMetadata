@@ -12,6 +12,7 @@
  */
 
 export interface NotificationBoxProp {
+  activeTab: string;
   hasMentionNotification: boolean;
   hasTaskNotification: boolean;
   onMarkMentionsNotificationRead: () => void;

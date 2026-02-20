@@ -123,10 +123,14 @@ jest.mock('../../AddDataQualityTest/EditTestCaseModal', () => {
 });
 
 const mockUpdateTestCaseById = jest.fn();
+const mockGetTestDefinitionById = jest.fn();
 jest.mock('../../../../rest/testAPI', () => ({
   updateTestCaseById: jest
     .fn()
     .mockImplementation(() => mockUpdateTestCaseById()),
+  getTestDefinitionById: jest
+    .fn()
+    .mockImplementation(() => mockGetTestDefinitionById()),
   TestCaseType: {
     all: 'all',
     table: 'table',
@@ -275,7 +279,83 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.showAILearningBanner = false;
   });
 
-  // Tier tag tests
+  describe('Compute Row Count visibility', () => {
+    beforeEach(() => {
+      mockGetTestDefinitionById.mockClear();
+      mockUseTestCaseStore.testCase = mockTestCaseData;
+      mockUseTestCaseStore.isTabExpanded = false;
+    });
+
+    it('should show Compute Row Count when testDefinition supports supportsRowLevelPassedFailed', async () => {
+      const testCaseWithComputeRowCount = {
+        ...mockTestCaseData,
+        computePassedFailedRowCount: true,
+      };
+      mockUseTestCaseStore.testCase = testCaseWithComputeRowCount;
+      mockGetTestDefinitionById.mockResolvedValue({
+        id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+        name: 'columnValuesToMatchRegex',
+        supportsRowLevelPassedFailed: true,
+      });
+
+      render(<TestCaseResultTab />);
+
+      const parameterContainer = await screen.findByTestId(
+        'parameter-container'
+      );
+
+      expect(parameterContainer).toBeInTheDocument();
+      // Check that compute row count label is present in the parameter section
+      expect(screen.getByText('label.compute-row-count:')).toBeInTheDocument();
+      // Check that the value "true" is present
+      expect(screen.getByText('true')).toBeInTheDocument();
+    });
+
+    it('should not show Compute Row Count when testDefinition does not support supportsRowLevelPassedFailed', async () => {
+      const testCaseWithComputeRowCount = {
+        ...mockTestCaseData,
+        computePassedFailedRowCount: false,
+      };
+      mockUseTestCaseStore.testCase = testCaseWithComputeRowCount;
+      mockGetTestDefinitionById.mockResolvedValue({
+        id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+        name: 'tableColumnCountToEqual',
+        supportsRowLevelPassedFailed: false,
+      });
+
+      render(<TestCaseResultTab />);
+
+      await screen.findByTestId('test-case-result-tab-container');
+
+      // Compute row count should not be shown in parameter section when not supported
+      expect(
+        screen.queryByText('label.compute-row-count:')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not show Compute Row Count when computePassedFailedRowCount is undefined', async () => {
+      const testCaseWithoutComputeRowCount = {
+        ...mockTestCaseData,
+        computePassedFailedRowCount: undefined,
+      };
+      mockUseTestCaseStore.testCase = testCaseWithoutComputeRowCount;
+      mockGetTestDefinitionById.mockResolvedValue({
+        id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+        name: 'columnValuesToMatchRegex',
+        supportsRowLevelPassedFailed: true,
+      });
+
+      render(<TestCaseResultTab />);
+
+      await screen.findByTestId('test-case-result-tab-container');
+
+      // Compute row count should not be shown when computePassedFailedRowCount is undefined
+      expect(
+        screen.queryByText('label.compute-row-count:')
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe('Tier tag filtering', () => {
     beforeEach(() => {
       mockTagsContainerV2.mockClear();

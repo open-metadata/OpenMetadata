@@ -9,7 +9,7 @@ import org.openmetadata.service.search.ParseTags;
 
 @Slf4j
 public record DomainIndex(Domain domain) implements SearchIndex {
-  private static final Set<String> excludeFields = Set.of("assets", "assetsCount");
+  private static final Set<String> excludeFields = Set.of("assets");
 
   @Override
   public Object getEntity() {
@@ -21,6 +21,8 @@ public record DomainIndex(Domain domain) implements SearchIndex {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.DOMAIN, domain));
     doc.putAll(commonAttributes);
     doc.put("tags", parseTags.getTags());
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("upstreamLineage", SearchIndex.getLineageData(domain.getEntityReference()));
     return doc;
   }

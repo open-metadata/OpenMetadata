@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
+import { ThemeColors } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
@@ -123,25 +126,49 @@ Object.defineProperty(window, 'location', {
   writable: true,
 });
 
+const mockThemeColors: ThemeColors = {
+  white: '#FFFFFF',
+  blue: {
+    50: '#E6F4FF',
+    100: '#BAE0FF',
+    700: '#0958D9',
+  },
+  gray: {
+    300: '#D1D5DB',
+    700: '#374151',
+    900: '#111827',
+  },
+} as ThemeColors;
+
+const theme: Theme = createTheme({
+  palette: {
+    allShades: mockThemeColors,
+  },
+});
+
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider theme={theme}>
+    <MemoryRouter>{children}</MemoryRouter>
+  </ThemeProvider>
+);
+
 describe('CustomControls', () => {
   it('renders all main control buttons', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     expect(screen.getByLabelText('label.filter-plural')).toBeInTheDocument();
     expect(screen.getByText('label.lineage')).toBeInTheDocument();
     expect(screen.getByText('label.impact-analysis')).toBeInTheDocument();
-    expect(screen.getByLabelText('label.export-as-type')).toBeInTheDocument();
-    expect(
-      screen.getByLabelText('label.lineage-configuration')
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText('label.export')).toBeInTheDocument();
+    expect(screen.getByTestId('lineage-config')).toBeInTheDocument();
     expect(screen.getByLabelText('label.full-screen-view')).toBeInTheDocument();
   });
 
   it('shows LineageSearchSelect by default in lineage mode', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     expect(screen.getByTestId('lineage-search-select')).toBeInTheDocument();
@@ -153,7 +180,7 @@ describe('CustomControls', () => {
     }));
 
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     expect(screen.getByTestId('search-bar')).toBeInTheDocument();
@@ -161,7 +188,7 @@ describe('CustomControls', () => {
 
   it('toggles filter selection when filter button is clicked', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     const filterButton = screen.getByLabelText('label.filter-plural');
@@ -172,7 +199,7 @@ describe('CustomControls', () => {
 
   it('navigates to lineage mode when lineage button is clicked', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     const lineageButton = screen.getByText('label.lineage');
@@ -183,7 +210,7 @@ describe('CustomControls', () => {
 
   it('navigates to impact analysis mode when impact analysis button is clicked', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     const impactAnalysisButton = screen.getByText('label.impact-analysis');
@@ -194,7 +221,7 @@ describe('CustomControls', () => {
 
   it('calls onExportClick when export button is clicked', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     const exportButton = screen.getByLabelText('label.export-as-type');
@@ -205,10 +232,10 @@ describe('CustomControls', () => {
 
   it('opens lineage config modal when settings button is clicked', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
-    const settingsButton = screen.getByLabelText('label.lineage-configuration');
+    const settingsButton = screen.getByTestId('lineage-config');
     fireEvent.click(settingsButton);
 
     expect(screen.getByTestId('lineage-config-modal')).toBeInTheDocument();
@@ -216,10 +243,10 @@ describe('CustomControls', () => {
 
   it('calls onLineageConfigUpdate when modal is saved', async () => {
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
-    const settingsButton = screen.getByLabelText('label.lineage-configuration');
+    const settingsButton = screen.getByTestId('lineage-config');
     fireEvent.click(settingsButton);
 
     const saveButton = screen.getByText('Save');
@@ -232,7 +259,7 @@ describe('CustomControls', () => {
 
   it('toggles fullscreen mode when fullscreen button is clicked', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     const fullscreenButton = screen.getByLabelText('label.full-screen-view');
@@ -247,7 +274,7 @@ describe('CustomControls', () => {
     }));
 
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     const filterButton = screen.getByLabelText('label.filter-plural');
@@ -269,7 +296,7 @@ describe('CustomControls', () => {
     }));
 
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     const filterButton = screen.getByLabelText('label.filter-plural');
@@ -292,7 +319,7 @@ describe('CustomControls', () => {
     }));
 
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     const searchInput = screen.getByTestId('search-bar');
@@ -316,7 +343,7 @@ describe('CustomControls', () => {
     }));
 
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     const filterButton = screen.getByLabelText('label.filter-plural');
@@ -329,7 +356,7 @@ describe('CustomControls', () => {
     window.location.search = '?mode=lineage&depth=2&dir=upstream';
 
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     // Component should render correctly with upstream direction
@@ -340,7 +367,7 @@ describe('CustomControls', () => {
     window.location.search = '';
 
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     // Component should render with default values
@@ -367,7 +394,7 @@ describe('CustomControls', () => {
         queryFilterNodeIds={['customNode1', 'customNode2']}
       />,
       {
-        wrapper: MemoryRouter,
+        wrapper: Wrapper,
       }
     );
 
@@ -404,7 +431,7 @@ describe('CustomControls', () => {
     }));
 
     render(<CustomControlsComponent {...defaultProps} />, {
-      wrapper: MemoryRouter,
+      wrapper: Wrapper,
     });
 
     const filterButton = screen.getByLabelText('label.filter-plural');

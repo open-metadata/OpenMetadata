@@ -25,119 +25,30 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class ApiCollectionClass extends EntityClass {
-  private serviceName = `pw-api-service-${uuid()}`;
-  private apiCollectionName = `pw-api-collection-${uuid()}`;
-  service = {
-    name: this.serviceName,
-    serviceType: 'Rest',
+  private serviceName: string;
+  private apiCollectionName: string;
+  private apiEndpointName: string;
+  service: {
+    name: string;
+    serviceType: string;
     connection: {
       config: {
-        type: 'Rest',
-        openAPISchemaURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
-      },
-    },
+        type: string;
+        openAPISchemaURL: string;
+      };
+    };
   };
-
-  entity = {
-    name: this.apiCollectionName,
-    service: this.service.name,
+  entity: {
+    name: string;
+    service: string;
+    description: string;
   };
-
-  private apiEndpointName = `pw-api-endpoint-${uuid()}`;
-
-  apiEndpoint = {
-    name: this.apiEndpointName,
-    apiCollection: `${this.service.name}.${this.entity.name}`,
-    endpointURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
-    requestSchema: {
-      schemaType: 'JSON',
-      schemaFields: [
-        {
-          name: `default${uuid()}`,
-          dataType: 'RECORD',
-          tags: [],
-          children: [
-            {
-              name: `name${uuid()}`,
-              dataType: 'RECORD',
-              tags: [],
-              children: [
-                {
-                  name: `first_name${uuid()}`,
-                  dataType: 'STRING',
-                  description: 'Description for schema field first_name',
-                  tags: [],
-                },
-                {
-                  name: `last_name${uuid()}`,
-                  dataType: 'STRING',
-                  tags: [],
-                },
-              ],
-            },
-            {
-              name: `age${uuid()}`,
-              dataType: 'INT',
-              tags: [],
-            },
-            {
-              name: `club_name${uuid()}`,
-              dataType: 'STRING',
-              tags: [],
-            },
-          ],
-        },
-        {
-          name: `secondary${uuid()}`,
-          dataType: 'RECORD',
-          tags: [],
-        },
-      ],
-    },
-    responseSchema: {
-      schemaType: 'JSON',
-      schemaFields: [
-        {
-          name: `default${uuid()}`,
-          dataType: 'RECORD',
-          tags: [],
-          children: [
-            {
-              name: `name${uuid()}`,
-              dataType: 'RECORD',
-              tags: [],
-              children: [
-                {
-                  name: `first_name${uuid()}`,
-                  dataType: 'STRING',
-                  tags: [],
-                },
-                {
-                  name: `last_name${uuid()}`,
-                  dataType: 'STRING',
-                  tags: [],
-                },
-              ],
-            },
-            {
-              name: `age${uuid()}`,
-              dataType: 'INT',
-              tags: [],
-            },
-            {
-              name: `club_name${uuid()}`,
-              dataType: 'STRING',
-              tags: [],
-            },
-          ],
-        },
-        {
-          name: `secondary${uuid()}`,
-          dataType: 'RECORD',
-          tags: [],
-        },
-      ],
-    },
+  apiEndpoint: {
+    name: string;
+    apiCollection: string;
+    endpointURL: string;
+    requestSchema: unknown;
+    responseSchema: unknown;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -149,8 +60,125 @@ export class ApiCollectionClass extends EntityClass {
     super(EntityTypeEndpoint.API_COLLECTION);
     this.serviceCategory = SERVICE_TYPE.ApiService;
     this.serviceType = ServiceTypes.API_SERVICES;
-    this.service.name = name ?? this.service.name;
     this.type = 'Api Collection';
+
+    // Generate names in constructor for deterministic behavior
+    this.serviceName = name ?? `pw-api-service-${uuid()}`;
+    this.apiCollectionName = name ?? `pw-api-collection-${uuid()}`;
+    this.apiEndpointName = `pw-api-endpoint-${uuid()}`;
+
+    this.service = {
+      name: this.serviceName,
+      serviceType: 'Rest',
+      connection: {
+        config: {
+          type: 'Rest',
+          openAPISchemaURL:
+            'https://sandbox-beta.open-metadata.org/swagger.json',
+        },
+      },
+    };
+
+    this.entity = {
+      name: this.apiCollectionName,
+      service: this.service.name,
+      description: `Description for ${this.apiCollectionName}`,
+    };
+
+    this.apiEndpoint = {
+      name: this.apiEndpointName,
+      apiCollection: `${this.service.name}.${this.entity.name}`,
+      endpointURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
+      requestSchema: {
+        schemaType: 'JSON',
+        schemaFields: [
+          {
+            name: `default${uuid()}`,
+            dataType: 'RECORD',
+            tags: [],
+            children: [
+              {
+                name: `name${uuid()}`,
+                dataType: 'RECORD',
+                tags: [],
+                children: [
+                  {
+                    name: `first_name${uuid()}`,
+                    dataType: 'STRING',
+                    description: 'Description for schema field first_name',
+                    tags: [],
+                  },
+                  {
+                    name: `last_name${uuid()}`,
+                    dataType: 'STRING',
+                    tags: [],
+                  },
+                ],
+              },
+              {
+                name: `age${uuid()}`,
+                dataType: 'INT',
+                tags: [],
+              },
+              {
+                name: `club_name${uuid()}`,
+                dataType: 'STRING',
+                tags: [],
+              },
+            ],
+          },
+          {
+            name: `secondary${uuid()}`,
+            dataType: 'RECORD',
+            tags: [],
+          },
+        ],
+      },
+      responseSchema: {
+        schemaType: 'JSON',
+        schemaFields: [
+          {
+            name: `default${uuid()}`,
+            dataType: 'RECORD',
+            tags: [],
+            children: [
+              {
+                name: `name${uuid()}`,
+                dataType: 'RECORD',
+                tags: [],
+                children: [
+                  {
+                    name: `first_name${uuid()}`,
+                    dataType: 'STRING',
+                    tags: [],
+                  },
+                  {
+                    name: `last_name${uuid()}`,
+                    dataType: 'STRING',
+                    tags: [],
+                  },
+                ],
+              },
+              {
+                name: `age${uuid()}`,
+                dataType: 'INT',
+                tags: [],
+              },
+              {
+                name: `club_name${uuid()}`,
+                dataType: 'STRING',
+                tags: [],
+              },
+            ],
+          },
+          {
+            name: `secondary${uuid()}`,
+            dataType: 'RECORD',
+            tags: [],
+          },
+        ],
+      },
+    };
   }
 
   async create(apiContext: APIRequestContext) {
@@ -209,6 +237,16 @@ export class ApiCollectionClass extends EntityClass {
     };
   }
 
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+    apiEndpoint: ResponseDataType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+    this.apiEndpointResponseData = data.apiEndpoint;
+  }
+
   async visitEntityPage(page: Page) {
     await visitServiceDetailsPage(
       page,
@@ -220,7 +258,7 @@ export class ApiCollectionClass extends EntityClass {
     );
 
     const apiCollectionsResponse = page.waitForResponse(
-      `/api/v1/apiCollections/name/*${this.entity}?*`
+      `/api/v1/apiCollections/name/*${this.entity.name}?*`
     );
     await page.getByTestId(this.entity.name).click();
     await apiCollectionsResponse;

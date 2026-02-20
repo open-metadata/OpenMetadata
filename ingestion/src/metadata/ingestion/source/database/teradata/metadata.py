@@ -87,6 +87,10 @@ class TeradataSource(CommonDbSourceService):
                     stored_procedure.definition = self.describe_procedure_definition(
                         stored_procedure
                     )
+                    if self.is_stored_procedure_filtered(
+                        stored_procedure.procedure_name
+                    ):
+                        continue
                     yield stored_procedure
                 except Exception as exc:
                     logger.error()

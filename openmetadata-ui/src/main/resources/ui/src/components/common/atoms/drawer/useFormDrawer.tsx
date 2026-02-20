@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 
-import React, { ReactNode, useCallback, useState } from 'react';
+import classNames from 'classnames';
+import React, { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { createScrollToErrorHandler } from '../../../../utils/formUtils';
 import {
   CompositeDrawerConfig,
   useCompositeDrawer,
 } from './useCompositeDrawer';
 
-export interface FormDrawerConfig<T = any>
-  extends Omit<CompositeDrawerConfig, 'header' | 'footer' | 'body'> {
+export interface FormDrawerConfig<T> extends CompositeDrawerConfig {
   title: string | ReactNode;
   form: ReactNode;
   onSubmit: (data: T) => Promise<void> | void;
@@ -70,7 +71,7 @@ export interface FormDrawerConfig<T = any>
  * );
  * ```
  */
-export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
+export const useFormDrawer = <T,>(config: FormDrawerConfig<T>) => {
   const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -92,6 +93,9 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
     headerActions,
     footerAlign = 'right',
     closeOnEscape,
+    header = {},
+    body = {},
+    footer = {},
     ...drawerConfig
   } = config;
 
@@ -103,10 +107,13 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
       title,
       // onClose will be handled by useCompositeDrawer with onBeforeClose
       actions: headerActions,
+      ...header,
     },
     body: {
+      ...body,
       children: form,
       loading: loading || isSubmitting,
+      className: classNames('drawer-form-content', body?.className),
     },
     footer: {
       align: footerAlign,
@@ -134,6 +141,7 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
           }
         },
       },
+      ...footer,
     },
   });
 
@@ -171,18 +179,25 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
  * });
  * ```
  */
-export const useFormDrawerWithRef = <T = any,>(
+export const useFormDrawerWithRef = <T,>(
   config: FormDrawerConfig<T> & {
-    formRef?: { submit: () => void; validateFields?: () => Promise<any> };
+    formRef?: { submit: () => void; validateFields?: () => Promise<T> };
   }
 ) => {
   const { formRef, onSubmit, ...restConfig } = config;
 
+  const scrollToError = useMemo(() => createScrollToErrorHandler(), []);
+
   const handleSubmit = useCallback(async () => {
     if (formRef?.validateFields) {
-      // Validate first
-      const values = await formRef.validateFields();
-      // If validation passes, submit the form
+      let values: T;
+      try {
+        values = await formRef.validateFields();
+      } catch {
+        scrollToError();
+
+        return;
+      }
       if (formRef?.submit) {
         formRef.submit();
       } else {
@@ -193,7 +208,7 @@ export const useFormDrawerWithRef = <T = any,>(
     } else {
       await onSubmit({} as T);
     }
-  }, [formRef, onSubmit]);
+  }, [formRef, onSubmit, scrollToError]);
 
   const drawer = useFormDrawer({
     ...restConfig,

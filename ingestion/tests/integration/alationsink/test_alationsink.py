@@ -214,13 +214,6 @@ EXPECTED_TABLES = [
         sql=None,
     ),
     CreateTableRequest(
-        key="34.shopify.marketing",
-        title="marketing",
-        description="Marketing data",
-        table_type="TABLE",
-        sql=None,
-    ),
-    CreateTableRequest(
         key="34.shopify.raw_customer",
         title="raw_customer",
         description="This is a raw customers table as represented in our online DB. This contains personal, shipping and billing addresses and details of the customer store and customer profile. This table is used to build our dimensional and fact tables",
@@ -238,13 +231,6 @@ EXPECTED_TABLES = [
         key="34.shopify.raw_product_catalog",
         title="raw_product_catalog",
         description="This is a raw product catalog table contains the product listing, price, seller etc.. represented in our online DB. ",
-        table_type="TABLE",
-        sql=None,
-    ),
-    CreateTableRequest(
-        key="34.shopify.sales",
-        title="sales",
-        description="Sales data",
         table_type="TABLE",
         sql=None,
     ),

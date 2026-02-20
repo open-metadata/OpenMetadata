@@ -13,15 +13,46 @@
 
 import { render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
-import { DateRangeObject } from 'Models';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ColumnProfile } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
+import { DataType } from '../../../../generated/tests/testDefinition';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
+import '../../../../test/unit/mocks/mui.mock';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import SingleColumnProfile from './SingleColumnProfile';
 import { useTableProfiler } from './TableProfilerProvider';
+
+const MOCK_START_TS = 1703980800000;
+const MOCK_END_TS = 1704067200000;
+const UPDATED_START_TS = 1703894400000;
+const UPDATED_END_TS = 1703980800000;
+jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => ({
+  __esModule: true,
+  default: jest.fn().mockReturnValue({
+    hash: '',
+    key: 'default',
+    pathname: '/test-path',
+    search: '',
+    state: null,
+  }),
+}));
+
+jest.mock('../../../../constants/profiler.constant', () => ({
+  DEFAULT_RANGE_DATA: {
+    startTs: 1703980800000,
+    endTs: 1704067200000,
+  },
+  INITIAL_COLUMN_METRICS_VALUE: {
+    countMetrics: { data: [] },
+    proportionMetrics: { data: [] },
+    mathMetrics: { data: [] },
+    sumMetrics: { data: [] },
+    quartileMetrics: { data: [] },
+  },
+}));
 
 jest.mock('../../../../rest/tableAPI', () => ({
   getColumnProfilerList: jest.fn(),
@@ -52,6 +83,76 @@ jest.mock('../../../../utils/DocumentationLinksClassBase', () => ({
     DATA_QUALITY_PROFILER_WORKFLOW_DOCS: 'https://docs.example.com/profiler',
   }),
 }));
+
+jest.mock('recharts', () => ({
+  PieChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="pie-chart">{children}</div>
+  ),
+  Pie: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="pie">{children}</div>
+  ),
+  Cell: () => <div data-testid="cell" />,
+  Tooltip: () => <div data-testid="tooltip" />,
+}));
+
+jest.mock('../../../../utils/CommonUtils', () => ({
+  formatNumberWithComma: (value: number) => value.toString(),
+  Transi18next: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+}));
+
+jest.mock('../../../../utils/EntityUtils', () => ({
+  getEntityName: (entity: { name?: string }) => entity.name ?? '',
+}));
+
+jest.mock('../../../../utils/TableTags/TableTags.utils', () => ({
+  getFilterTags: () => ({ Classification: [], Glossary: [] }),
+}));
+
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
+  return function MockRichTextEditorPreviewerV1() {
+    return <div data-testid="rich-text-previewer">Description</div>;
+  };
+});
+
+jest.mock('../../../Tag/TagsViewer/TagsViewer', () => {
+  return function MockTagsViewer() {
+    return <div data-testid="tags-viewer">Tags</div>;
+  };
+});
+
+jest.mock('../../../common/DataPill/DataPill.styled', () => ({
+  DataPill: ({ children }: { children: React.ReactNode }) => (
+    <span data-testid="data-pill">{children}</span>
+  ),
+}));
+
+jest.mock('./ColumnSummary', () => {
+  return function MockColumnSummary() {
+    return <div data-testid="column-summary">Column Summary</div>;
+  };
+});
+
+jest.mock('../ProfilerStateWrapper/ProfilerStateWrapper.component', () => {
+  return function MockProfilerStateWrapper(props: {
+    children: React.ReactNode;
+    title: string;
+    dataTestId?: string;
+    isLoading?: boolean;
+  }) {
+    return (
+      <div data-testid={props.dataTestId ?? 'profiler-state-wrapper'}>
+        <div data-testid={`${props.dataTestId}-title`}>{props.title}</div>
+        {props.isLoading ? (
+          <div data-testid="skeleton">Loading...</div>
+        ) : (
+          props.children
+        )}
+      </div>
+    );
+  };
+});
 
 jest.mock('../ProfilerDetailsCard/ProfilerDetailsCard', () => {
   return function MockProfilerDetailsCard(props: Record<string, unknown>) {
@@ -176,17 +277,19 @@ const mockStringColumnProfilerData: ColumnProfile[] = [
   },
 ];
 
-const mockDateRangeObject: DateRangeObject = {
-  startTs: 1703980800000,
-  endTs: 1704067200000,
-  key: 'last_7_days',
-};
-
 const mockTableDetails: Table = {
   id: 'table-id',
   name: 'test_table',
   fullyQualifiedName: 'db.schema.test_table',
-  columns: [],
+  columns: [
+    {
+      name: 'test_column',
+      dataType: 'INTEGER' as DataType,
+      fullyQualifiedName: 'db.schema.test_table.test_column',
+      description: 'Test column description',
+      tags: [],
+    },
+  ],
   customMetrics: [
     {
       id: 'metric-1',
@@ -215,8 +318,6 @@ const defaultTableProfilerContext = {
   fetchAllTests: jest.fn(),
   onCustomMetricUpdate: jest.fn(),
   isProfilingEnabled: true,
-  dateRangeObject: { startTs: 0, endTs: 0, key: '' },
-  onDateRangeChange: jest.fn(),
   testCasePaging: {
     currentPage: 1,
     paging: { total: 0 },
@@ -234,10 +335,21 @@ const defaultTableProfilerContext = {
   },
   isTestCaseDrawerOpen: false,
   onTestCaseDrawerOpen: jest.fn(),
+  testCaseSummary: {
+    'db.schema.test_table.test_column': {
+      success: 5,
+      failed: 2,
+      aborted: 1,
+      total: 8,
+    },
+  },
 };
 
 const mockGetColumnProfilerList = getColumnProfilerList as jest.MockedFunction<
   typeof getColumnProfilerList
+>;
+const mockUseCustomLocation = useCustomLocation as jest.MockedFunction<
+  typeof useCustomLocation
 >;
 const mockUseTableProfiler = useTableProfiler as jest.MockedFunction<
   typeof useTableProfiler
@@ -249,6 +361,13 @@ const mockShowErrorToast = showErrorToast as jest.MockedFunction<
 describe('SingleColumnProfile', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseCustomLocation.mockReturnValue({
+      hash: '',
+      key: 'default',
+      pathname: '/test-path',
+      search: '',
+      state: null,
+    });
     mockUseTableProfiler.mockReturnValue(defaultTableProfilerContext);
     mockGetColumnProfilerList.mockResolvedValue({
       data: mockColumnProfilerData,
@@ -258,7 +377,6 @@ describe('SingleColumnProfile', () => {
 
   const defaultProps = {
     activeColumnFqn: 'db.schema.test_table.test_column',
-    dateRangeObject: mockDateRangeObject,
     tableDetails: mockTableDetails,
   };
 
@@ -297,7 +415,7 @@ describe('SingleColumnProfile', () => {
         expect(screen.getByTestId('histogram-metrics')).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('data-distribution-title')).toBeInTheDocument();
+      expect(screen.getByTestId('histogram-metrics-title')).toBeInTheDocument();
       expect(
         screen.getByTestId('data-distribution-histogram')
       ).toBeInTheDocument();
@@ -313,7 +431,7 @@ describe('SingleColumnProfile', () => {
       });
 
       expect(
-        screen.getByTestId('cardinality-distribution-title')
+        screen.getByTestId('cardinality-distribution-metrics-title')
       ).toBeInTheDocument();
       expect(
         screen.getByTestId('cardinality-distribution-chart')
@@ -387,18 +505,13 @@ describe('SingleColumnProfile', () => {
       await waitFor(() => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledWith(
           'db.schema.test_table.test_column',
-          { startTs: 1703980800000, endTs: 1704067200000 }
+          { startTs: MOCK_START_TS, endTs: MOCK_END_TS }
         );
       });
     });
 
-    it('should fetch data with default range when dateRangeObject is not provided', async () => {
-      render(
-        <SingleColumnProfile
-          {...defaultProps}
-          dateRangeObject={undefined as unknown as DateRangeObject}
-        />
-      );
+    it('should fetch data with default range when query params are not provided', async () => {
+      render(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledWith(
@@ -435,33 +548,32 @@ describe('SingleColumnProfile', () => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledTimes(2);
         expect(mockGetColumnProfilerList).toHaveBeenLastCalledWith(
           'db.schema.test_table.new_column',
-          { startTs: 1703980800000, endTs: 1704067200000 }
+          { startTs: MOCK_START_TS, endTs: MOCK_END_TS }
         );
       });
     });
 
-    it('should refetch data when dateRangeObject changes', async () => {
+    it('should refetch data when URL query params change', async () => {
       const { rerender } = render(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledTimes(1);
       });
 
-      const newDateRange = {
-        startTs: 1703894400000,
-        endTs: 1703980800000,
-        key: 'last_1_day',
-      };
-
-      rerender(
-        <SingleColumnProfile {...defaultProps} dateRangeObject={newDateRange} />
-      );
+      mockUseCustomLocation.mockReturnValue({
+        hash: '',
+        key: 'default',
+        pathname: '/path',
+        search: `?startTs=${UPDATED_START_TS}&endTs=${UPDATED_END_TS}&key=last_1_day`,
+        state: null,
+      });
+      rerender(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledTimes(2);
         expect(mockGetColumnProfilerList).toHaveBeenLastCalledWith(
           'db.schema.test_table.test_column',
-          { startTs: 1703894400000, endTs: 1703980800000 }
+          { startTs: UPDATED_START_TS, endTs: UPDATED_END_TS }
         );
       });
     });
@@ -644,7 +756,7 @@ describe('SingleColumnProfile', () => {
       await waitFor(() => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledWith(
           'db.schema.test_table.string_column',
-          { startTs: 1703980800000, endTs: 1704067200000 }
+          { startTs: MOCK_START_TS, endTs: MOCK_END_TS }
         );
       });
     });

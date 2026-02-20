@@ -122,8 +122,19 @@ describe('FollowingWidget component', () => {
     expect(searchQuery).toHaveBeenCalledWith({
       pageSize: PAGE_SIZE_MEDIUM,
       searchIndex: 'all',
-      query: '*',
-      filters: 'followers:113',
+      queryFilter: {
+        query: {
+          bool: {
+            must: [
+              {
+                term: {
+                  followers: '113',
+                },
+              },
+            ],
+          },
+        },
+      },
       sortField: 'updatedAt',
       sortOrder: 'desc',
     });

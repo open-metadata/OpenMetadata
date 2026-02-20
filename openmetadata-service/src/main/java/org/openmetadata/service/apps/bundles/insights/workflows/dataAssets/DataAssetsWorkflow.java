@@ -249,10 +249,11 @@ public class DataAssetsWorkflow {
   private void deleteBasedOnDataRetentionPolicy(String dataStreamName) throws SearchIndexException {
     long retentionLimitTimestamp =
         TimestampUtils.subtractDays(System.currentTimeMillis(), dataAssetsConfig.getRetention());
-    String rangeTermQuery =
-        String.format("{ \"@timestamp\": { \"lte\": %s } }", retentionLimitTimestamp);
     try {
-      searchRepository.getSearchClient().deleteByQuery(dataStreamName, rangeTermQuery);
+      searchRepository
+          .getSearchClient()
+          .deleteByRangeQuery(
+              dataStreamName, "@timestamp", null, null, null, retentionLimitTimestamp);
     } catch (Exception rx) {
       throw new SearchIndexException(new IndexingError().withMessage(rx.getMessage()));
     }
@@ -264,13 +265,20 @@ public class DataAssetsWorkflow {
             "{ \"@timestamp\": { \"gte\": %s, \"lte\": %s } }", startTimestamp, endTimestamp);
     try {
       if (dataAssetsConfig.getServiceFilter() == null) {
-        searchRepository.getSearchClient().deleteByQuery(dataStreamName, rangeTermQuery);
+        searchRepository
+            .getSearchClient()
+            .deleteByRangeQuery(
+                dataStreamName, "@timestamp", null, startTimestamp, null, endTimestamp);
       } else {
         searchRepository
             .getSearchClient()
             .deleteByRangeAndTerm(
                 dataStreamName,
-                rangeTermQuery,
+                "@timestamp",
+                null,
+                startTimestamp,
+                null,
+                endTimestamp,
                 "service.name.keyword",
                 dataAssetsConfig.getServiceFilter().getServiceName());
       }

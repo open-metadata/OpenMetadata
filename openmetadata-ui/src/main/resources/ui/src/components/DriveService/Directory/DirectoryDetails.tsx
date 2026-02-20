@@ -49,7 +49,10 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -94,10 +97,14 @@ function DirectoryDetails({
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.CHILDREN } =
     useRequiredParams<{ tab: EntityTabs }>();
-  const { fqn: decodedDirectoryFQN } = useFqn();
+
   const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.Directory);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
+
+  const { entityFqn: decodedDirectoryFQN } = useFqn({
+    type: EntityType.DIRECTORY,
+  });
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -276,6 +283,7 @@ function DirectoryDetails({
     editAllPermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -305,6 +313,10 @@ function DirectoryDetails({
           Operation.EditLineage
         ) && !deleted,
       viewAllPermission: directoryPermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        directoryPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [directoryPermissions, deleted]
   );
@@ -344,7 +356,7 @@ function DirectoryDetails({
         <CustomPropertyTable<EntityType.DIRECTORY>
           entityType={EntityType.DIRECTORY}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
       activeTab,
@@ -379,6 +391,7 @@ function DirectoryDetails({
     editLineagePermission,
     editAllPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(
     async (newCertification?: Tag) => {
@@ -409,10 +422,7 @@ function DirectoryDetails({
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.directory'),
-      })}>
+    <PageLayoutV1 pageTitle={entityName}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

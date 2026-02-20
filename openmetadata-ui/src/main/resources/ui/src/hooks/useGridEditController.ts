@@ -129,8 +129,10 @@ function useClipboardHandlers(
         textarea.value = tsv.join('\n');
         document.body.appendChild(textarea);
         textarea.select();
-        document.execCommand('copy');
+        const success = document.execCommand('copy');
         document.body.removeChild(textarea);
+
+        return success;
       }
     }
   }, [selectedRange, dataSource, columns, getFinalSelectedRange]);
@@ -400,7 +402,6 @@ export function useGridEditController({
       gridContainer.removeEventListener('mouseover', onMouseOver);
       window.removeEventListener('mouseup', onMouseUp);
     };
-    // eslint-disable-next-line
   }, [gridContainer, isSelecting]);
 
   // Keyboard event handlers for range selection, undo/redo, and select all

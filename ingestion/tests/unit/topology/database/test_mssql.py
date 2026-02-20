@@ -14,7 +14,7 @@ Test Mssql using the topology
 
 import types
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from sqlalchemy.types import INTEGER, VARCHAR
 
@@ -42,6 +42,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 
@@ -164,6 +165,7 @@ EXPECTED_TABLE = [
                 dataLength=1,
                 dataTypeDisplay="varchar(50)",
                 constraint="NULL",
+                tags=None,
             ),
             Column(
                 name=ColumnName("sample_col_2"),
@@ -171,6 +173,7 @@ EXPECTED_TABLE = [
                 dataLength=1,
                 dataTypeDisplay="int",
                 constraint="NULL",
+                tags=None,
             ),
             Column(
                 name=ColumnName("sample_col_3"),
@@ -178,6 +181,7 @@ EXPECTED_TABLE = [
                 dataLength=1,
                 dataTypeDisplay="varchar(50)",
                 constraint="NULL",
+                tags=None,
             ),
             Column(
                 name=ColumnName("sample_col_4"),
@@ -185,6 +189,7 @@ EXPECTED_TABLE = [
                 dataLength=1,
                 dataTypeDisplay="varchar(50)",
                 constraint="NULL",
+                tags=None,
             ),
         ],
         tableConstraints=[],
@@ -280,3 +285,40 @@ class MssqlUnitTest(TestCase):
             either.right
             for either in self.mssql.yield_table(("sample_table", "Regular"))
         ]
+
+    def test_get_stored_procedures(self):
+        """
+        Test that stored procedures are filtered correctly
+        """
+        self.mssql.source_config.includeStoredProcedures = True
+        self.mssql.source_config.storedProcedureFilterPattern = FilterPattern(
+            excludes=["sp_exclude"]
+        )
+        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.mssql.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
+
+        mock_engine = MagicMock()
+        self.mssql.engine = mock_engine
+
+        # Mock rows
+        row1 = {
+            "name": "sp_include",
+            "definition": "def1",
+            "language": "SQL",
+            "owner": "owner",
+        }
+        row2 = {
+            "name": "sp_exclude",
+            "definition": "def2",
+            "language": "SQL",
+            "owner": "owner",
+        }
+
+        mock_engine.execute.return_value.all.return_value = [row1, row2]
+
+        results = list(self.mssql.get_stored_procedures())
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "sp_include")

@@ -31,6 +31,7 @@ import {
   PolicyRulesType,
 } from '../../support/access-control/PoliciesClass';
 import {
+  closeFirstPopupAlert,
   descriptionBox,
   getApiContext,
   redirectToHomePage,
@@ -74,7 +75,11 @@ const addRule = async (
   await page.locator('[data-testid="condition"]').click();
 
   // Select condition
+  const conditionResponse = page.waitForResponse(
+    '/api/v1/policies/validation/condition/*'
+  );
   await page.locator(`[title="${RULE_DETAILS.condition}"]`).click();
+  await conditionResponse;
 
   // Verify condition success
   await expect(page.locator('[data-testid="condition-success"]')).toContainText(
@@ -289,6 +294,9 @@ test.describe('Policy page should work properly', () => {
         page,
         ERROR_MESSAGE_VALIDATION.lastRuleCannotBeRemoved
       );
+
+      // Close the toast to prevent it from interfering with the next step
+      await closeFirstPopupAlert(page);
     });
 
     await test.step('Delete created policy', async () => {
@@ -302,9 +310,11 @@ test.describe('Policy page should work properly', () => {
       await getElementWithPagination(page, policyElement, false);
 
       // Click on delete action button
-      await page
-        .locator(`[data-testid="delete-action-${UPDATED_POLICY_NAME}"]`)
-        .click({ force: true });
+      const deleteButton = page.locator(
+        `[data-testid="delete-action-${UPDATED_POLICY_NAME}"]`
+      );
+      await deleteButton.waitFor({ state: 'visible' });
+      await deleteButton.click();
 
       await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 

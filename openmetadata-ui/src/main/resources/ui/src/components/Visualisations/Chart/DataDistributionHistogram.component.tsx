@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tag } from 'antd';
-import { isUndefined, map } from 'lodash';
+import { Box, useTheme } from '@mui/material';
+import { isUndefined } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bar,
@@ -28,8 +29,14 @@ import { CHART_BLUE_1 } from '../../../constants/Color.constants';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { DEFAULT_HISTOGRAM_DATA } from '../../../constants/profiler.constant';
 import { HistogramClass } from '../../../generated/entity/data/table';
-import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
+import {
+  axisTickFormatter,
+  createHorizontalGridLineRenderer,
+  tooltipFormatter,
+} from '../../../utils/ChartUtils';
+import { CustomDQTooltip } from '../../../utils/DataQuality/DataQualityUtils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import { DataPill } from '../../common/DataPill/DataPill.styled';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { DataDistributionHistogramProps } from './Chart.interface';
 
@@ -37,7 +44,14 @@ const DataDistributionHistogram = ({
   data,
   noDataPlaceholderText,
 }: DataDistributionHistogramProps) => {
+  const theme = useTheme();
   const { t } = useTranslation();
+
+  const renderHorizontalGridLine = useMemo(
+    () => createHorizontalGridLineRenderer(),
+    []
+  );
+
   const showSingleGraph =
     isUndefined(data.firstDayData?.histogram) ||
     isUndefined(data.currentDayData?.histogram);
@@ -47,21 +61,32 @@ const DataDistributionHistogram = ({
     isUndefined(data.currentDayData?.histogram)
   ) {
     return (
-      <Row align="middle" className="h-full w-full" justify="center">
-        <Col>
-          <ErrorPlaceHolder placeholderText={noDataPlaceholderText} />
-        </Col>
-      </Row>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          width: '100%',
+        }}>
+        <ErrorPlaceHolder placeholderText={noDataPlaceholderText} />
+      </Box>
     );
   }
 
-  return (
-    <Row className="w-full" data-testid="chart-container">
-      {map(data, (columnProfile, key) => {
-        if (isUndefined(columnProfile?.histogram)) {
-          return;
-        }
+  const dataEntries = Object.entries(data).filter(
+    ([, columnProfile]) => !isUndefined(columnProfile?.histogram)
+  );
 
+  return (
+    <Box
+      data-testid="chart-container"
+      sx={{
+        display: 'flex',
+        width: '100%',
+        gap: 0,
+      }}>
+      {dataEntries.map(([key, columnProfile], index) => {
         const histogramData =
           (columnProfile?.histogram as HistogramClass) ||
           DEFAULT_HISTOGRAM_DATA;
@@ -73,59 +98,106 @@ const DataDistributionHistogram = ({
 
         const graphDate = customFormatDateTime(
           columnProfile?.timestamp || 0,
-          'MMM dd'
+          'MMM dd, yyyy'
         );
 
+        const skewColorTheme = columnProfile?.nonParametricSkew
+          ? columnProfile?.nonParametricSkew > 0
+            ? theme.palette.allShades.success
+            : theme.palette.allShades.error
+          : theme.palette.allShades.info;
+
         return (
-          <Col key={key} span={showSingleGraph ? 24 : 12}>
-            <Row gutter={[8, 8]}>
-              <Col
-                data-testid="date"
-                offset={showSingleGraph ? 1 : 2}
-                span={24}>
-                {graphDate}
-              </Col>
-              <Col offset={showSingleGraph ? 1 : 2} span={24}>
-                <Tag data-testid="skew-tag">{`${t('label.skew')}: ${
+          <Box
+            key={key}
+            sx={{
+              flex: showSingleGraph ? '1 1 100%' : '1 1 50%',
+              minWidth: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              px: showSingleGraph ? 4 : 3,
+              py: 2,
+              borderRight:
+                !showSingleGraph && index === 0
+                  ? `1px solid ${theme.palette.grey[200]}`
+                  : 'none',
+            }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                mb: 5,
+              }}>
+              <DataPill>{graphDate}</DataPill>
+              <DataPill
+                sx={{
+                  backgroundColor: skewColorTheme[100],
+                  color: skewColorTheme[900],
+                }}>
+                {`${t('label.skew')}: ${
                   columnProfile?.nonParametricSkew || '--'
-                }`}</Tag>
-              </Col>
-              <Col span={24}>
-                <ResponsiveContainer
-                  debounce={200}
-                  id={`${key}-histogram`}
-                  minHeight={300}>
-                  <BarChart
-                    className="w-full"
-                    data={graphData}
-                    margin={{ left: 16 }}>
-                    <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
-                    <XAxis
-                      dataKey="name"
-                      padding={{ left: 16, right: 16 }}
-                      tick={{ fontSize: 12 }}
-                    />
-                    <YAxis
-                      allowDataOverflow
-                      padding={{ top: 16, bottom: 16 }}
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={(props) => axisTickFormatter(props)}
-                    />
-                    <Legend />
-                    <Tooltip
-                      formatter={(value: number | string) =>
-                        tooltipFormatter(value)
-                      }
-                    />
-                    <Bar dataKey="frequency" fill={CHART_BLUE_1} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Col>
-            </Row>
-          </Col>
+                }`}
+              </DataPill>
+            </Box>
+            <Box sx={{ flex: 1, minHeight: 350 }}>
+              <ResponsiveContainer
+                debounce={200}
+                height="100%"
+                id={`${key}-histogram`}
+                width="100%">
+                <BarChart
+                  data={graphData}
+                  margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                  <CartesianGrid
+                    horizontal={renderHorizontalGridLine}
+                    stroke={GRAPH_BACKGROUND_COLOR}
+                    strokeDasharray="3 3"
+                    vertical={false}
+                  />
+                  <XAxis
+                    axisLine={false}
+                    dataKey="name"
+                    padding={{ left: 16, right: 16 }}
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    allowDataOverflow
+                    axisLine={false}
+                    padding={{ top: 16, bottom: 16 }}
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(props) => axisTickFormatter(props)}
+                    tickLine={false}
+                  />
+                  <Legend />
+                  <Tooltip
+                    content={
+                      <CustomDQTooltip
+                        displayDateInHeader={false}
+                        timeStampKey="name"
+                        valueFormatter={(value) => tooltipFormatter(value)}
+                      />
+                    }
+                    cursor={{
+                      fill: theme.palette.grey[100],
+                      stroke: theme.palette.grey[200],
+                      strokeDasharray: '3 3',
+                    }}
+                  />
+                  <Bar
+                    barSize={22}
+                    dataKey="frequency"
+                    fill={CHART_BLUE_1}
+                    radius={[8, 8, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </Box>
+          </Box>
         );
       })}
-    </Row>
+    </Box>
   );
 };
 

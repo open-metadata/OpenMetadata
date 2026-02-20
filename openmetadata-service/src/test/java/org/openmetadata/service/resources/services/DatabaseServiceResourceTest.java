@@ -743,4 +743,67 @@ public class DatabaseServiceResourceTest
           expectedSnowflakeConnection.getPassword(), actualSnowflakeConnection.getPassword());
     }
   }
+
+  @Test
+  void test_softDeleteWithConnection_preservesSecrets(TestInfo test) throws IOException {
+    CreateDatabaseService createRequest =
+        createRequest(test)
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
+    DatabaseService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(service.getConnection(), "Service should have connection");
+
+    deleteEntity(service.getId(), false, false, ADMIN_AUTH_HEADERS);
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("include", Include.DELETED.value());
+    DatabaseService deletedService =
+        getEntity(service.getId(), queryParams, "", ADMIN_AUTH_HEADERS);
+    assertTrue(deletedService.getDeleted(), "Service should be marked as deleted");
+    assertNotNull(
+        deletedService.getConnection(), "Connection should be preserved after soft delete");
+  }
+
+  @Test
+  void test_hardDeleteWithConnection_deletesSecrets(TestInfo test) throws IOException {
+    CreateDatabaseService createRequest =
+        createRequest(test)
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
+    DatabaseService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    deleteEntity(service.getId(), false, true, ADMIN_AUTH_HEADERS);
+
+    assertEntityDeleted(service.getId(), true);
+  }
+
+  @Test
+  void test_passwordWithSecretPrefix_isPreserved(TestInfo test) throws IOException {
+    String passwordWithSecretPrefix = "secret:my-actual-password";
+    MysqlConnection mysqlConnection =
+        new MysqlConnection()
+            .withHostPort("localhost:3306")
+            .withUsername("test")
+            .withAuthType(new basicAuth().withPassword(passwordWithSecretPrefix));
+    DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(mysqlConnection);
+
+    CreateDatabaseService createRequest =
+        createRequest(test)
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(databaseConnection);
+
+    DatabaseService service = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    DatabaseService retrievedService = getEntity(service.getId(), INGESTION_BOT_AUTH_HEADERS);
+    MysqlConnection retrievedConnection =
+        JsonUtils.convertValue(retrievedService.getConnection().getConfig(), MysqlConnection.class);
+    basicAuth retrievedAuth =
+        JsonUtils.convertValue(retrievedConnection.getAuthType(), basicAuth.class);
+
+    assertEquals(
+        passwordWithSecretPrefix,
+        retrievedAuth.getPassword(),
+        "Password starting with 'secret:' should be preserved when retrieved by ingestion-bot");
+  }
 }

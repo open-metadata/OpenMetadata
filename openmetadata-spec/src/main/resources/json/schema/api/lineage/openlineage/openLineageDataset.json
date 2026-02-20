@@ -1,0 +1,64 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/openlineage/openLineageDataset.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenLineageDataset",
+  "description": "OpenLineage dataset representing an input or output of a job.",
+  "definitions": {
+    "openLineageDataset": {
+      "description": "Base dataset definition.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.lineage.openlineage.OpenLineageDataset",
+      "properties": {
+        "namespace": {
+          "description": "The namespace of the dataset (e.g., 'postgres://host:5432/database').",
+          "type": "string"
+        },
+        "name": {
+          "description": "The name of the dataset (e.g., 'schema.table').",
+          "type": "string"
+        },
+        "facets": {
+          "description": "Dataset facets containing metadata like schema.",
+          "$ref": "openLineageFacets.json#/definitions/datasetFacets"
+        }
+      },
+      "required": ["namespace", "name"]
+    },
+    "openLineageInputDataset": {
+      "description": "Input dataset consumed by a job.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.lineage.openlineage.OpenLineageInputDataset",
+      "allOf": [
+        { "$ref": "#/definitions/openLineageDataset" }
+      ],
+      "properties": {
+        "namespace": { "type": "string" },
+        "name": { "type": "string" },
+        "facets": { "$ref": "openLineageFacets.json#/definitions/datasetFacets" },
+        "inputFacets": {
+          "description": "Input-specific facets.",
+          "$ref": "openLineageFacets.json#/definitions/inputDatasetFacets"
+        }
+      },
+      "required": ["namespace", "name"]
+    },
+    "openLineageOutputDataset": {
+      "description": "Output dataset produced by a job.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.lineage.openlineage.OpenLineageOutputDataset",
+      "allOf": [
+        { "$ref": "#/definitions/openLineageDataset" }
+      ],
+      "properties": {
+        "namespace": { "type": "string" },
+        "name": { "type": "string" },
+        "facets": { "$ref": "openLineageFacets.json#/definitions/datasetFacets" },
+        "outputFacets": {
+          "description": "Output-specific facets including column lineage.",
+          "$ref": "openLineageFacets.json#/definitions/outputDatasetFacets"
+        }
+      },
+      "required": ["namespace", "name"]
+    }
+  }
+}

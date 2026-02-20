@@ -13,8 +13,6 @@
 Source connection handler
 """
 from functools import partial
-
-# from functools import partial
 from typing import Optional
 
 from pydantic import BaseModel
@@ -40,7 +38,14 @@ def get_connection(connection: MongoDBConnection):
     Create connection
     """
     mongo_url = get_connection_url_common(connection)
-    return MongoClient(mongo_url)
+    args = {}
+
+    # Check for extended timeout configuration in connectionArguments
+    # serverSelectionTimeoutMS, connectTimeoutMS, socketTimeoutMS
+    if connection.connectionOptions and connection.connectionOptions.root:
+        args = connection.connectionOptions.root
+
+    return MongoClient(mongo_url, **args)
 
 
 def test_connection(
@@ -60,10 +65,16 @@ def test_connection(
 
     holder = SchemaHolder()
 
-    def test_get_databases(client_: MongoClient, holder_: SchemaHolder):
-        for database in client_.list_database_names():
-            holder_.database = database
-            break
+    def test_get_databases(
+        client_: MongoClient, holder_: SchemaHolder, database_name: Optional[str] = None
+    ):
+        # If database name is provided, use it directly instead of listing all databases
+        if database_name:
+            holder_.database = database_name
+        else:
+            for database in client_.list_database_names():
+                holder_.database = database
+                break
 
     def test_get_collections(client_: MongoClient, holder_: SchemaHolder):
         database = client_.get_database(holder_.database)
@@ -71,7 +82,9 @@ def test_connection(
 
     test_fn = {
         "CheckAccess": client.server_info,
-        "GetDatabases": partial(test_get_databases, client, holder),
+        "GetDatabases": partial(
+            test_get_databases, client, holder, service_connection.databaseSchema
+        ),
         "GetCollections": partial(test_get_collections, client, holder),
     }
 

@@ -175,6 +175,8 @@ class OracleSource(CommonDbSourceService):
                 owner=row[0][0],
                 procedure_type=row[1]["procedure_type"],
             )
+            if self.is_stored_procedure_filtered(stored_procedure.name):
+                continue
             yield stored_procedure
 
     def get_stored_procedures(self) -> Iterable[OracleStoredObject]:

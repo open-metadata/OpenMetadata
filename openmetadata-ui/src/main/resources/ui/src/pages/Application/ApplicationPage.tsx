@@ -26,6 +26,7 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ApplicationCard from '../../components/Settings/Applications/ApplicationCard/ApplicationCard.component';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { App } from '../../generated/entity/applications/app';
@@ -36,6 +37,7 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { getApplicationList } from '../../rest/applicationAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -49,6 +51,7 @@ const ApplicationPage = () => {
     handlePageChange,
     handlePageSizeChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
@@ -62,7 +65,7 @@ const ApplicationPage = () => {
   );
 
   const fetchApplicationList = useCallback(
-    async (showDisabled = false, pagingOffset?: Paging) => {
+    async (showDisabled = false, pagingOffset?: Partial<Paging>) => {
       try {
         setIsLoading(true);
         const { data, paging } = await getApplicationList({
@@ -87,12 +90,17 @@ const ApplicationPage = () => {
     currentPage,
     cursorType,
   }: PagingHandlerParams) => {
-    handlePageChange(currentPage);
-    cursorType &&
+    if (cursorType) {
       fetchApplicationList(showDisabled, {
         [cursorType]: paging[cursorType],
         total: paging.total,
       });
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
+    }
   };
 
   const viewAppDetails = (item: App) => {
@@ -129,8 +137,14 @@ const ApplicationPage = () => {
   };
 
   useEffect(() => {
-    fetchApplicationList();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchApplicationList(showDisabled, { [cursorType]: cursorValue });
+    } else {
+      fetchApplicationList(showDisabled);
+    }
+  }, [pageSize, pagingCursor, showDisabled]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.application-plural')}>
@@ -139,7 +153,16 @@ const ApplicationPage = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
         <Col span={16}>
-          <PageHeader data={PAGE_HEADERS.APPLICATION} />
+          <PageHeader
+            data={{
+              header: translateWithNestedKeys(
+                PAGE_HEADERS.APPLICATION.header,
+                PAGE_HEADERS.APPLICATION.headerParams
+              ),
+              subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
+            }}
+            learningPageId={LEARNING_PAGE_IDS.AUTOMATIONS}
+          />
         </Col>
         <Col className="d-flex justify-end" span={8}>
           <Space size="middle">

@@ -1,7 +1,10 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -10,9 +13,16 @@ import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 
 public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
+  private static final Set<String> excludeFields = Set.of("summary", "testCaseResultSummary");
+
   @Override
   public Object getEntity() {
     return testSuite;
+  }
+
+  @Override
+  public Set<String> getExcludedFields() {
+    return excludeFields;
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
@@ -24,6 +34,16 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TEST_SUITE, testSuite));
     doc.put("tags", parseTags.getTags());
     setParentRelationships(doc, testSuite);
+
+    List<ResultSummary> resultSummaries = testSuite.getTestCaseResultSummary();
+    if (resultSummaries != null && !resultSummaries.isEmpty()) {
+      long maxTimestamp =
+          resultSummaries.stream().mapToLong(ResultSummary::getTimestamp).max().orElse(0L);
+      doc.put("lastResultTimestamp", maxTimestamp);
+    } else {
+      doc.put("lastResultTimestamp", 0L);
+    }
+
     return doc;
   }
 

@@ -17,6 +17,9 @@ import traceback
 from typing import Optional
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
@@ -31,7 +34,11 @@ from metadata.utils.time_utils import datetime_to_timestamp
 logger = ingestion_logger()
 
 
-def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[ParsedData]:
+def parse_sql_statement(
+    record: TableQuery,
+    dialect: Dialect,
+    parser_type: QueryParserType = QueryParserType.Auto,
+) -> Optional[ParsedData]:
     """
     Use the lineage parser and work with the tokens
     to convert a RAW SQL statement into
@@ -48,7 +55,11 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
 
     start_time = datetime_to_timestamp(start_time, milliseconds=True)
 
-    lineage_parser = LineageParser(record.query, dialect=dialect)
+    lineage_parser = LineageParser(
+        record.query,
+        dialect=dialect,
+        parser_type=parser_type,
+    )
 
     if not lineage_parser.involved_tables:
         return None

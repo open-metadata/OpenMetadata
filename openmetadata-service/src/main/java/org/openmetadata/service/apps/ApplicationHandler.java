@@ -22,6 +22,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
@@ -62,6 +63,7 @@ public class ApplicationHandler {
       return;
     }
     instance = new ApplicationHandler(config);
+    instance.cleanupStaleJobs();
   }
 
   /**
@@ -95,6 +97,16 @@ public class ApplicationHandler {
     } catch (ConfigurationException e) {
       LOG.error("Error reading config file for app {}", appName, e);
       return false;
+    }
+  }
+
+  public void cleanupStaleJobs() {
+    try {
+      LOG.info("Cleaning up stale application jobs from previous server runs");
+      Entity.getCollectionDAO().appExtensionTimeSeriesDao().markAllStaleEntriesFailed();
+      LOG.info("Stale application jobs cleanup completed successfully");
+    } catch (Exception e) {
+      LOG.error("Failed to cleanup stale application jobs", e);
     }
   }
 
@@ -144,6 +156,48 @@ public class ApplicationHandler {
       LOG.error("Failed to uninstall application {}", app.getName(), e);
       throw AppException.byMessage(
           app.getName(), "install", e.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  public App appWithDecryptedAppConfiguration(
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+    try {
+      Map<String, Object> decryptedAppConfig =
+          runAppInit(app, daoCollection, searchRepository)
+              .decryptConfiguration(JsonUtils.getMap(app.getAppConfiguration()));
+      return app.withAppConfiguration(decryptedAppConfig);
+    } catch (ClassNotFoundException
+        | NoSuchMethodException
+        | InvocationTargetException
+        | InstantiationException
+        | IllegalAccessException e) {
+      LOG.error("Failed to decrypt application configuration for {}", app.getName(), e);
+      throw AppException.byMessage(
+          app.getName(),
+          "decryptAppConfiguration",
+          e.getMessage(),
+          Response.Status.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  public App appWithEncryptedAppConfiguration(
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+    try {
+      Map<String, Object> encryptedAppConfig =
+          runAppInit(app, daoCollection, searchRepository)
+              .encryptConfiguration(JsonUtils.getMap(app.getAppConfiguration()));
+      return app.withAppConfiguration(encryptedAppConfig);
+    } catch (ClassNotFoundException
+        | NoSuchMethodException
+        | InvocationTargetException
+        | InstantiationException
+        | IllegalAccessException e) {
+      LOG.error("Failed to encrypt application configuration for {}", app.getName(), e);
+      throw AppException.byMessage(
+          app.getName(),
+          "encryptAppConfiguration",
+          e.getMessage(),
+          Response.Status.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -293,8 +347,9 @@ public class ApplicationHandler {
         appRepository.getUpdater(currentApp, updatedApp, EntityRepository.Operation.PATCH, null);
     updater.update();
     AppScheduler.getInstance().deleteScheduledApplication(updatedApp);
-    AppScheduler.getInstance().scheduleApplication(updatedApp);
-    LOG.info("migrated app configuration for {}", application.getName());
+    LOG.info(
+        "migrated app configuration for {}, will be rescheduled by install()",
+        application.getName());
   }
 
   public void fixCorruptedInstallation(App application) throws SchedulerException {
@@ -311,10 +366,11 @@ public class ApplicationHandler {
     }
     String appName = jobDataMap.getString(APP_NAME);
     if (appName == null) {
-      LOG.info("corrupt entry for app {}, reinstalling", application.getName());
+      LOG.info(
+          "corrupt entry for app {}, deleting corrupt job. Will be rescheduled by install()",
+          application.getName());
       App app = appRepository.getDao().findEntityByName(application.getName());
       AppScheduler.getInstance().deleteScheduledApplication(app);
-      AppScheduler.getInstance().scheduleApplication(app);
     }
   }
 

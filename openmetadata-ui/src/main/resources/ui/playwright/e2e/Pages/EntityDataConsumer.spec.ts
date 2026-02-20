@@ -77,7 +77,6 @@ entities.forEach((EntityClass) => {
 
       await user.create(apiContext);
 
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
       await afterAction();
     });
@@ -92,9 +91,9 @@ entities.forEach((EntityClass) => {
       test('User as Owner Add, Update and Remove', async ({ page }) => {
         test.slow(true);
 
-        const OWNER1 = EntityDataClass.user1.getUserName();
-        const OWNER2 = EntityDataClass.user2.getUserName();
-        const OWNER3 = EntityDataClass.user3.getUserName();
+        const OWNER1 = EntityDataClass.user1.getUserDisplayName();
+        const OWNER2 = EntityDataClass.user2.getUserDisplayName();
+        const OWNER3 = EntityDataClass.user3.getUserDisplayName();
         await entity.owner(page, [OWNER1, OWNER3], [OWNER2], undefined, false);
       });
 
@@ -210,7 +209,6 @@ entities.forEach((EntityClass) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await user.delete(apiContext);
       await entity.delete(apiContext);
-      await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
     });
   });

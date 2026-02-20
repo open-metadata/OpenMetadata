@@ -23,6 +23,13 @@ public class DatabaseSchemaBuilder {
   private final CreateDatabaseSchema request;
   private EntityReference databaseRef;
 
+  /**
+   * Create a new DatabaseSchemaBuilder with the given client.
+   */
+  public static DatabaseSchemaBuilder create(OpenMetadataClient client) {
+    return new DatabaseSchemaBuilder(client);
+  }
+
   public DatabaseSchemaBuilder(OpenMetadataClient client) {
     this.client = client;
     this.request = new CreateDatabaseSchema();
@@ -127,32 +134,7 @@ public class DatabaseSchemaBuilder {
    * Create the database schema and return the created entity.
    */
   public DatabaseSchema create() {
-    CreateDatabaseSchema createRequest = build();
-    // Convert CreateDatabaseSchema to DatabaseSchema
-    DatabaseSchema entity = new DatabaseSchema();
-    entity.setName(createRequest.getName());
-    if (createRequest.getDisplayName() != null)
-      entity.setDisplayName(createRequest.getDisplayName());
-    if (createRequest.getDescription() != null)
-      entity.setDescription(createRequest.getDescription());
-    // TODO: Map other fields as needed
-    return client.databaseSchemas().create(entity);
-  }
-
-  /**
-   * Create or update the database schema (upsert).
-   */
-  public DatabaseSchema createOrUpdate() {
-    CreateDatabaseSchema createRequest = build();
-    // Convert CreateDatabaseSchema to DatabaseSchema
-    DatabaseSchema entity = new DatabaseSchema();
-    entity.setName(createRequest.getName());
-    if (createRequest.getDisplayName() != null)
-      entity.setDisplayName(createRequest.getDisplayName());
-    if (createRequest.getDescription() != null)
-      entity.setDescription(createRequest.getDescription());
-    // TODO: Map other fields as needed
-    return client.databaseSchemas().upsert(entity);
+    return client.databaseSchemas().create(build());
   }
 
   // ==================== Helper Methods ====================

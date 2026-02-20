@@ -1,20 +1,19 @@
 package org.openmetadata.service.search.opensearch.queries;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
-import os.org.opensearch.index.query.BoolQueryBuilder;
-import os.org.opensearch.index.query.MatchAllQueryBuilder;
-import os.org.opensearch.index.query.QueryBuilder;
-import os.org.opensearch.index.query.QueryBuilders;
+import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
+import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 
 public class OpenSearchQueryBuilder implements OMQueryBuilder {
-  private QueryBuilder query;
+  private Query query;
 
   public OpenSearchQueryBuilder() {
     // Default constructor
   }
 
-  public OpenSearchQueryBuilder(QueryBuilder query) {
+  public OpenSearchQueryBuilder(Query query) {
     this.query = query;
   }
 
@@ -25,50 +24,72 @@ public class OpenSearchQueryBuilder implements OMQueryBuilder {
 
   @Override
   public boolean isMatchNone() {
-    if (query instanceof BoolQueryBuilder boolQuery) {
+    if (query != null && query.isBool()) {
+      BoolQuery boolQuery = query.bool();
       return boolQuery.must().isEmpty()
           && boolQuery.should().isEmpty()
           && boolQuery.mustNot().size() == 1
-          && boolQuery.mustNot().get(0) instanceof MatchAllQueryBuilder;
+          && boolQuery.mustNot().get(0).isMatchAll();
     }
     return false;
   }
 
   @Override
   public boolean isMatchAll() {
-    return query instanceof MatchAllQueryBuilder;
+    return query != null && query.isMatchAll();
   }
 
   @Override
   public OMQueryBuilder must(List<OMQueryBuilder> queries) {
-    BoolQueryBuilder boolQuery = getOrCreateBoolQuery();
+    List<Query> queryList = new ArrayList<>();
     for (OMQueryBuilder q : queries) {
-      OpenSearchQueryBuilder eqb = (OpenSearchQueryBuilder) q;
-      boolQuery.must(eqb.build());
+      OpenSearchQueryBuilder osqb = (OpenSearchQueryBuilder) q;
+      if (osqb.query != null) {
+        queryList.add(osqb.query);
+      }
     }
-    this.query = boolQuery;
+
+    if (!queryList.isEmpty()) {
+      BoolQuery.Builder boolBuilder = getOrCreateBoolQueryBuilder();
+      boolBuilder.must(queryList);
+      this.query = Query.of(q -> q.bool(boolBuilder.build()));
+    }
     return this;
   }
 
   @Override
   public OMQueryBuilder should(List<OMQueryBuilder> queries) {
-    BoolQueryBuilder boolQuery = getOrCreateBoolQuery();
+    List<Query> queryList = new ArrayList<>();
     for (OMQueryBuilder q : queries) {
-      OpenSearchQueryBuilder eqb = (OpenSearchQueryBuilder) q;
-      boolQuery.should(eqb.build());
+      OpenSearchQueryBuilder osqb = (OpenSearchQueryBuilder) q;
+      if (osqb.query != null) {
+        queryList.add(osqb.query);
+      }
     }
-    this.query = boolQuery;
+
+    if (!queryList.isEmpty()) {
+      BoolQuery.Builder boolBuilder = getOrCreateBoolQueryBuilder();
+      boolBuilder.should(queryList);
+      this.query = Query.of(q -> q.bool(boolBuilder.build()));
+    }
     return this;
   }
 
   @Override
   public OMQueryBuilder mustNot(List<OMQueryBuilder> queries) {
-    BoolQueryBuilder boolQuery = getOrCreateBoolQuery();
+    List<Query> queryList = new ArrayList<>();
     for (OMQueryBuilder q : queries) {
-      OpenSearchQueryBuilder eqb = (OpenSearchQueryBuilder) q;
-      boolQuery.mustNot(eqb.build());
+      OpenSearchQueryBuilder osqb = (OpenSearchQueryBuilder) q;
+      if (osqb.query != null) {
+        queryList.add(osqb.query);
+      }
     }
-    this.query = boolQuery;
+
+    if (!queryList.isEmpty()) {
+      BoolQuery.Builder boolBuilder = getOrCreateBoolQueryBuilder();
+      boolBuilder.mustNot(queryList);
+      this.query = Query.of(q -> q.bool(boolBuilder.build()));
+    }
     return this;
   }
 
@@ -84,7 +105,8 @@ public class OpenSearchQueryBuilder implements OMQueryBuilder {
 
   @Override
   public boolean hasClauses() {
-    if (query instanceof BoolQueryBuilder boolQuery) {
+    if (query != null && query.isBool()) {
+      BoolQuery boolQuery = query.bool();
       return !boolQuery.must().isEmpty()
           || !boolQuery.should().isEmpty()
           || !boolQuery.mustNot().isEmpty();
@@ -92,11 +114,15 @@ public class OpenSearchQueryBuilder implements OMQueryBuilder {
     return query != null;
   }
 
-  public QueryBuilder build() {
+  public Query build() {
     return query;
   }
 
-  public OpenSearchQueryBuilder setQuery(QueryBuilder query) {
+  public Query buildV2() {
+    return query;
+  }
+
+  public OpenSearchQueryBuilder setQuery(Query query) {
     this.query = query;
     return this;
   }
@@ -104,44 +130,68 @@ public class OpenSearchQueryBuilder implements OMQueryBuilder {
   // Helper methods
 
   public OpenSearchQueryBuilder matchNoneQuery() {
-    this.query = QueryBuilders.boolQuery().mustNot(QueryBuilders.matchAllQuery());
+    this.query = Query.of(q -> q.bool(b -> b.mustNot(mn -> mn.matchAll(m -> m))));
     return this;
   }
 
   public OpenSearchQueryBuilder matchAllQuery() {
-    this.query = QueryBuilders.matchAllQuery();
+    this.query = Query.of(q -> q.matchAll(m -> m));
     return this;
   }
 
   public OpenSearchQueryBuilder boolQuery() {
-    this.query = QueryBuilders.boolQuery();
+    this.query = Query.of(q -> q.bool(b -> b));
     return this;
   }
 
   public OpenSearchQueryBuilder termQuery(String field, String value) {
-    this.query = QueryBuilders.termQuery(field, value);
+    this.query = Query.of(q -> q.term(t -> t.field(field).value(v -> v.stringValue(value))));
     return this;
   }
 
   public OpenSearchQueryBuilder termsQuery(String field, List<String> values) {
-    this.query = QueryBuilders.termsQuery(field, values);
+    this.query =
+        Query.of(
+            q ->
+                q.terms(
+                    t ->
+                        t.field(field)
+                            .terms(
+                                tv ->
+                                    tv.value(
+                                        values.stream()
+                                            .map(
+                                                os.org.opensearch.client.opensearch._types
+                                                        .FieldValue
+                                                    ::of)
+                                            .toList()))));
     return this;
   }
 
   public OpenSearchQueryBuilder existsQuery(String field) {
-    this.query = QueryBuilders.existsQuery(field);
+    this.query = Query.of(q -> q.exists(e -> e.field(field)));
     return this;
   }
 
-  private BoolQueryBuilder getOrCreateBoolQuery() {
-    if (query instanceof BoolQueryBuilder) {
-      return (BoolQueryBuilder) query;
-    } else {
-      BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-      if (query != null) {
-        boolQuery.must(query);
+  private BoolQuery.Builder getOrCreateBoolQueryBuilder() {
+    if (query != null && query.isBool()) {
+      // Create a new builder with existing clauses
+      BoolQuery existingBool = query.bool();
+      BoolQuery.Builder builder = new BoolQuery.Builder();
+      builder.must(existingBool.must());
+      builder.should(existingBool.should());
+      builder.mustNot(existingBool.mustNot());
+      builder.filter(existingBool.filter());
+      if (existingBool.minimumShouldMatch() != null) {
+        builder.minimumShouldMatch(existingBool.minimumShouldMatch());
       }
-      return boolQuery;
+      return builder;
+    } else {
+      BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
+      if (query != null) {
+        boolBuilder.must(query);
+      }
+      return boolBuilder;
     }
   }
 }

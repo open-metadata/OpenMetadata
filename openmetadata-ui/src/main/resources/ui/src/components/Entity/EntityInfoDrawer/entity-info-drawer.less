@@ -35,7 +35,11 @@
 
 .entity-panel-container {
   margin-top: 54px;
-
+  .entity-title-link {
+    font-size: 15px;
+    font-weight: 600;
+    color: @primary-6;
+  }
   .ant-drawer-header {
     border-bottom: none;
     align-items: flex-start;
@@ -44,14 +48,6 @@
   .entity-header-title-link {
     // added to fix title overlap with close button
     max-width: 95%;
-  }
-
-  .ant-drawer-body {
-    padding-top: 0 !important;
-  }
-
-  .entity-header-display-name {
-    color: inherit !important;
   }
 
   .entity-info-header-link {
@@ -66,8 +62,9 @@
   }
 
   .summary-panel-section-title {
-    font-size: 14px;
-    color: @text-grey-muted;
+    font-size: 13px;
+    font-weight: 600;
+    color: @grey-900;
   }
 
   .summary-panel-statistics-count {
@@ -90,23 +87,100 @@
   }
 }
 
-.edge-info-drawer {
+.edge-info-drawer-container {
+  background-color: @background-primary;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  .title-section {
+    position: sticky;
+    padding: 4px;
+    z-index: 999;
+    top: 0;
+    flex: 1;
+    background-color: @white;
+
+    &.drawer-title-section {
+      background-color: transparent;
+    }
+  }
+
+  .title-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 8px;
+    height: 49px;
+    padding-left: 12px;
+    padding-right: 12px;
+    background-color: @grey-9;
+
+    .edge-info-drawer-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: @grey-800;
+    }
+  }
+
+  .drawer-close-icon {
+    background: transparent;
+    border: none;
+
+    svg {
+      height: 16px;
+      width: 16px;
+    }
+
+    &:hover {
+      background: none;
+      border: none;
+    }
+  }
   .summary-panel-card {
-    .ant-btn-sm {
-      width: 24px;
-      height: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
+    margin-top: 16px;
+    .section-header {
+      justify-content: flex-start;
+      gap: 8px;
     }
-
-    .ant-space.schema-description {
-      gap: 8px !important; // needed to override inline styles
-
-      .ant-typography {
-        color: @grey-4;
-      }
+    .description-section {
+      margin-top: 0;
     }
+    &:last-child {
+      border-bottom: none;
+    }
+    .schema-editor-container,
+    .CodeMirror {
+      border-radius: 8px;
+    }
+  }
+  .lineage-source-text {
+    font-size: 12px;
+    font-weight: 400;
+    color: @grey-900;
+  }
+}
+
+.edge-info-drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: @white;
+  border-radius: 8px;
+  max-height: calc(100vh - 70px);
+  margin-left: 12px;
+  margin-right: 12px;
+  border: 1px solid @grey-15;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+  }
+
+  .summary-panel-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: @grey-900;
   }
 }

@@ -835,3 +835,30 @@ class TableauUnitTest(TestCase):
         # Test with includeOwners = False
         self.tableau.source_config.includeOwners = False
         self.assertFalse(self.tableau.source_config.includeOwners)
+
+    def test_get_table_entities_from_api_with_none_db_service_entity(self):
+        """
+        Test that _get_table_entities_from_api handles None db_service_entity gracefully
+        """
+        mock_table = UpstreamTable(
+            id="table1",
+            luid="table1_luid",
+            name="test_schema.test_table",
+            fullName="[test_database].[test_schema].[test_table]",
+            schema_="test_schema",
+            database={"id": "db1", "name": "test_database"},
+        )
+
+        with patch.object(
+            self.tableau.metadata, "get_by_name", return_value=None
+        ) as mock_get_by_name:
+            with patch.object(
+                self.tableau.metadata, "search_in_any_service", return_value=None
+            ):
+                result = self.tableau._get_table_entities_from_api(
+                    db_service_prefix="non_existent_service",
+                    table=mock_table,
+                )
+
+                mock_get_by_name.assert_called_once()
+                assert result is None

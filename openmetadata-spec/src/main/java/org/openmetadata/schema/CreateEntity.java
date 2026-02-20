@@ -64,6 +64,8 @@ public interface CreateEntity {
 
   default void setDomains(List<String> domains) {}
 
+  default void setDataProducts(List<String> dataProducts) {}
+
   default void setTags(List<TagLabel> tags) {
     /* no-op implementation to be overridden */
   }

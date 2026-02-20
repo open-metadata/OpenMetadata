@@ -22,7 +22,7 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
 import {
@@ -50,6 +50,7 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../../utils/TableUtils';
+import CopyLinkButton from '../../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../../common/Table/Table';
@@ -65,6 +66,8 @@ function WorksheetColumnsTable() {
     data: worksheetDetails,
     permissions,
     onUpdate,
+    openColumnDetailPanel,
+    setDisplayedColumns,
   } = useGenericContext<Worksheet>();
 
   const [editWorksheetColumnDescription, setEditWorksheetColumnDescription] =
@@ -89,7 +92,19 @@ function WorksheetColumnsTable() {
     };
   }, [permissions, worksheetDetails]);
 
-  const schema = pruneEmptyChildren(worksheetDetails?.columns ?? []);
+  const schema = useMemo(
+    () => pruneEmptyChildren(worksheetDetails?.columns ?? []),
+    [worksheetDetails?.columns]
+  );
+
+  // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
+  useEffect(() => {
+    setDisplayedColumns(schema);
+  }, [schema, setDisplayedColumns]);
+
+  const handleFieldClick = (field: Column) => {
+    openColumnDetailPanel(field);
+  };
 
   const handleWorksheetColumnTagChange = async (
     selectedTags: EntityTags[],
@@ -143,31 +158,52 @@ function WorksheetColumnsTable() {
         key: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 300,
+        onCell: (record: Column) => ({
+          onClick: (event: React.MouseEvent) => {
+            const target = event.target as HTMLElement;
+            const isExpandIcon = target.closest('.table-expand-icon') !== null;
+            const isButton = target.closest('button') !== null;
+
+            if (!isExpandIcon && !isButton) {
+              handleFieldClick(record);
+            }
+          },
+          className: 'cursor-pointer',
+          'data-testid': 'column-name-cell',
+        }),
         render: (name: Column['name'], record: Column) => {
           const { displayName } = record;
 
           return (
-            <div className="d-inline-flex flex-column hover-icon-group w-max-90">
+            <div
+              className="d-inline-flex flex-column hover-icon-group"
+              style={{ maxWidth: '80%' }}>
               <div className="d-inline-flex items-baseline">
                 {prepareConstraintIcon({
                   columnName: name,
                   columnConstraint: record.constraint,
                 })}
                 <Typography.Text
-                  className={classNames('m-b-0 d-block break-word', {
-                    'text-grey-600': !isEmpty(displayName),
-                  })}
+                  className={classNames(
+                    'm-b-0 d-block break-word text-link-color'
+                  )}
                   data-testid="column-name">
                   {name}
                 </Typography.Text>
+                {record.fullyQualifiedName && (
+                  <CopyLinkButton
+                    entityType={EntityType.WORKSHEET}
+                    fieldFqn={record.fullyQualifiedName}
+                  />
+                )}
               </div>
-              {!isEmpty(displayName) ? (
+              {isEmpty(displayName) ? null : (
                 <Typography.Text
                   className="m-b-0 d-block break-word"
                   data-testid="column-display-name">
                   {getEntityName(record)}
                 </Typography.Text>
-              ) : null}
+              )}
             </div>
           );
         },
@@ -290,7 +326,7 @@ function WorksheetColumnsTable() {
         dataSource={schema}
         defaultVisibleColumns={DEFAULT_WORKSHEET_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
-          ...getTableExpandableConfig<Column>(),
+          ...getTableExpandableConfig<Column>(false, 'text-link-color'),
           rowExpandable: (record) => !isEmpty(record.children),
         }}
         pagination={false}

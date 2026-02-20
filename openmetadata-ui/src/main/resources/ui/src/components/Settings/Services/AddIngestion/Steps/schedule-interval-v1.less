@@ -39,4 +39,18 @@
       }
     }
   }
+  .ant-radio-button-wrapper.week-selector-buttons,
+  .ant-radio-button-wrapper.week-selector-buttons:first-child,
+  .ant-radio-button-wrapper.week-selector-buttons:last-child {
+    height: 32px;
+    width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    border-width: 1px;
+  }
+  .ant-radio-button-wrapper.week-selector-buttons:not(:first-child)::before {
+    position: relative;
+  }
 }

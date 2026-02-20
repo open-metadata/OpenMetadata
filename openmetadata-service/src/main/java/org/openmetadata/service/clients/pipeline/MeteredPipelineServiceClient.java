@@ -34,6 +34,12 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
     this.decoratedClient = decoratedClient;
   }
 
+  /** Get the underlying decorated client. Used for testing to check the actual client type. */
+  @com.google.common.annotations.VisibleForTesting
+  public PipelineServiceClientInterface getDecoratedClient() {
+    return decoratedClient;
+  }
+
   private <T> T executeWithMetering(String name, Supplier<T> operation) {
     try {
       T result = operation.get();
@@ -151,8 +157,8 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
   }
 
   @Override
-  public Boolean validServerClientVersions(String clientVersion) {
-    return decoratedClient.validServerClientVersions(clientVersion);
+  public Boolean validServerClientVersions(String clientVersion, String serverVersion) {
+    return decoratedClient.validServerClientVersions(clientVersion, serverVersion);
   }
 
   @Override

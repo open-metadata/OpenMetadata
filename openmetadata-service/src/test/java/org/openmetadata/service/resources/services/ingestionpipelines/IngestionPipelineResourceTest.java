@@ -18,6 +18,7 @@ import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
@@ -36,6 +37,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -63,6 +65,9 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.Progress;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressProperty;
+import org.openmetadata.schema.entity.services.ingestionPipelines.StepSummary;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
@@ -168,7 +173,9 @@ public class IngestionPipelineResourceTest
         createRequest.getAirflowConfig().getConcurrency(),
         ingestion.getAirflowConfig().getConcurrency());
     validateSourceConfig(createRequest.getSourceConfig(), ingestion.getSourceConfig(), ingestion);
-    assertNotNull(ingestion.getOpenMetadataServerConnection());
+    // SECURITY: OpenMetadataServerConnection should NOT be returned in GET/LIST API responses
+    // to prevent JWT token exposure. It's only populated during deploy operations.
+    assertNull(ingestion.getOpenMetadataServerConnection());
   }
 
   @Override
@@ -280,6 +287,7 @@ public class IngestionPipelineResourceTest
         updateIngestionPipeline(
             request
                 .withSourceConfig(DATABASE_METADATA_CONFIG)
+                .withLoggerLevel(LogLevels.INFO)
                 .withAirflowConfig(
                     new AirflowConfig()
                         .withConcurrency(pipelineConcurrency)
@@ -814,6 +822,145 @@ public class IngestionPipelineResourceTest
   }
 
   @Test
+  void delete_pipelineStatusByRunId_success_204(TestInfo test) throws IOException {
+    CreateIngestionPipeline requestPipeline =
+        createRequest(test)
+            .withName("ingestion_testDeleteByRunId")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE)
+            .withAirflowConfig(
+                new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(requestPipeline, ADMIN_AUTH_HEADERS);
+
+    String runId1 = UUID.randomUUID().toString();
+    String runId2 = UUID.randomUUID().toString();
+
+    // Create first pipeline status
+    TestUtils.put(
+        getPipelineStatusTarget(ingestionPipeline.getFullyQualifiedName()),
+        new PipelineStatus()
+            .withPipelineState(PipelineStatusType.RUNNING)
+            .withRunId(runId1)
+            .withTimestamp(3L),
+        Response.Status.CREATED,
+        ADMIN_AUTH_HEADERS);
+
+    // Create second pipeline status
+    TestUtils.put(
+        getPipelineStatusTarget(ingestionPipeline.getFullyQualifiedName()),
+        new PipelineStatus()
+            .withPipelineState(PipelineStatusType.SUCCESS)
+            .withRunId(runId2)
+            .withTimestamp(4L),
+        Response.Status.CREATED,
+        ADMIN_AUTH_HEADERS);
+
+    // Verify both statuses exist
+    PipelineStatus status1 =
+        TestUtils.get(
+            getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId1),
+            PipelineStatus.class,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(PipelineStatusType.RUNNING, status1.getPipelineState());
+
+    PipelineStatus status2 =
+        TestUtils.get(
+            getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId2),
+            PipelineStatus.class,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(PipelineStatusType.SUCCESS, status2.getPipelineState());
+
+    // Delete first status by runId (should return 204 No Content)
+    Response deleteResponse =
+        SecurityUtil.addHeaders(
+                getDeletePipelineStatusByRunId(ingestionPipeline.getId().toString(), runId1),
+                ADMIN_AUTH_HEADERS)
+            .delete();
+    assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
+
+    // Verify first status is deleted (should return 204 No Content)
+    Response response1 =
+        SecurityUtil.addHeaders(
+                getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId1),
+                ADMIN_AUTH_HEADERS)
+            .get();
+    TestUtils.readResponse(response1, PipelineStatus.class, Status.NO_CONTENT.getStatusCode());
+
+    // Verify second status still exists
+    status2 =
+        TestUtils.get(
+            getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId2),
+            PipelineStatus.class,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(PipelineStatusType.SUCCESS, status2.getPipelineState());
+  }
+
+  @Test
+  void delete_pipelineStatusByRunId_nonExistentPipeline_404(TestInfo test) throws IOException {
+    UUID nonExistentPipelineId = UUID.randomUUID();
+    UUID runId = UUID.randomUUID();
+
+    // Try to delete status from non-existent pipeline
+    assertResponse(
+        () ->
+            TestUtils.delete(
+                getDeletePipelineStatusByRunId(nonExistentPipelineId.toString(), runId.toString()),
+                ADMIN_AUTH_HEADERS),
+        Response.Status.NOT_FOUND,
+        String.format("ingestionPipeline instance for %s not found", nonExistentPipelineId));
+  }
+
+  @Test
+  void delete_pipelineStatusByRunId_nonExistentRunId_204(TestInfo test) throws IOException {
+    CreateIngestionPipeline requestPipeline =
+        createRequest(test)
+            .withName("ingestion_testDeleteNonExistentRunId")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE)
+            .withAirflowConfig(
+                new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(requestPipeline, ADMIN_AUTH_HEADERS);
+
+    UUID nonExistentRunId = UUID.randomUUID();
+
+    // Delete non-existent runId (should succeed with 204 as no records to delete)
+    Response deleteResponse =
+        SecurityUtil.addHeaders(
+                getDeletePipelineStatusByRunId(
+                    ingestionPipeline.getId().toString(), nonExistentRunId.toString()),
+                ADMIN_AUTH_HEADERS)
+            .delete();
+    assertEquals(Status.NO_CONTENT.getStatusCode(), deleteResponse.getStatus());
+  }
+
+  @Test
+  void delete_pipelineStatusByRunId_unauthorized_403(TestInfo test) throws IOException {
+    CreateIngestionPipeline requestPipeline = createRequest(getEntityName(test));
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(requestPipeline, ADMIN_AUTH_HEADERS);
+
+    String runId = UUID.randomUUID().toString();
+
+    // Create pipeline status
+    TestUtils.put(
+        getPipelineStatusTarget(ingestionPipeline.getFullyQualifiedName()),
+        new PipelineStatus()
+            .withPipelineState(PipelineStatusType.RUNNING)
+            .withRunId(runId)
+            .withTimestamp(3L),
+        Response.Status.CREATED,
+        ADMIN_AUTH_HEADERS);
+
+    // Try to delete with unauthorized user
+    assertResponse(
+        () ->
+            TestUtils.delete(
+                getDeletePipelineStatusByRunId(ingestionPipeline.getId().toString(), runId),
+                authHeaders(USER2.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(USER2.getName(), List.of(MetadataOperation.DELETE)));
+  }
+
+  @Test
   void post_ingestionPipeline_403(TestInfo test) throws HttpResponseException {
     CreateIngestionPipeline create = createRequest(getEntityName(test));
     create
@@ -880,6 +1027,135 @@ public class IngestionPipelineResourceTest
     assertEquals(ingestionPipeline.getId(), multipleParamsResult.getData().get(0).getId());
   }
 
+  @Test
+  void get_ingestionPipeline_doesNotExposeJwtToken_security(TestInfo test) throws IOException {
+    CreateIngestionPipeline request =
+        createRequest(test)
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE)
+            .withDescription("Security test pipeline");
+    IngestionPipeline created = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // GET by ID should NOT return openMetadataServerConnection (contains JWT)
+    IngestionPipeline fetched = getEntity(created.getId(), ADMIN_AUTH_HEADERS);
+    assertNull(
+        fetched.getOpenMetadataServerConnection(),
+        "SECURITY: GET by ID must NOT return openMetadataServerConnection to prevent JWT token exposure");
+
+    // GET by name should NOT return openMetadataServerConnection
+    IngestionPipeline fetchedByName =
+        getEntityByName(created.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS);
+    assertNull(
+        fetchedByName.getOpenMetadataServerConnection(),
+        "SECURITY: GET by name must NOT return openMetadataServerConnection to prevent JWT token exposure");
+  }
+
+  @Test
+  void get_ingestionPipeline_doesNotExposeJwtToken_regularUser_security(TestInfo test)
+      throws IOException {
+    CreateIngestionPipeline request =
+        createRequest(test)
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE)
+            .withDescription("Security test pipeline for regular user")
+            .withOwners(List.of(USER1_REF));
+    IngestionPipeline created = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Regular user (owner) should also NOT see JWT token
+    IngestionPipeline fetched = getEntity(created.getId(), authHeaders(USER1.getName()));
+    assertNull(
+        fetched.getOpenMetadataServerConnection(),
+        "SECURITY: Regular users must NOT see openMetadataServerConnection");
+  }
+
+  @Test
+  void list_ingestionPipelines_doesNotExposeJwtToken_security(TestInfo test) throws IOException {
+    CreateIngestionPipeline request1 =
+        createRequest(test)
+            .withName("security_test_list_1")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE);
+    createAndCheckEntity(request1, ADMIN_AUTH_HEADERS);
+
+    CreateIngestionPipeline request2 =
+        createRequest(test)
+            .withName("security_test_list_2")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE);
+    createAndCheckEntity(request2, ADMIN_AUTH_HEADERS);
+
+    // LIST should NOT return openMetadataServerConnection for ANY pipeline
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("service", BIGQUERY_REFERENCE.getFullyQualifiedName());
+    ResultList<IngestionPipeline> pipelines = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+    for (IngestionPipeline pipeline : pipelines.getData()) {
+      assertNull(
+          pipeline.getOpenMetadataServerConnection(),
+          String.format(
+              "SECURITY: LIST must NOT return openMetadataServerConnection for pipeline [%s]",
+              pipeline.getName()));
+    }
+  }
+
+  @Test
+  void get_ingestionPipelineVersions_doesNotExposeJwtToken_security(TestInfo test)
+      throws IOException {
+    CreateIngestionPipeline request =
+        createRequest(test)
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE)
+            .withDescription("Security test for versions");
+    IngestionPipeline created = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Update to create a new version
+    request.withDescription("Updated description for version test");
+    updateIngestionPipeline(request, ADMIN_AUTH_HEADERS);
+
+    // GET version should NOT return openMetadataServerConnection
+    IngestionPipeline version =
+        getVersion(created.getId(), created.getVersion(), ADMIN_AUTH_HEADERS);
+    assertNull(
+        version.getOpenMetadataServerConnection(),
+        "SECURITY: GET version must NOT return openMetadataServerConnection");
+  }
+
+  @Test
+  void bot_canAccessPipeline_butApiDoesNotExposeJwt_security(TestInfo test) throws IOException {
+    CreateIngestionPipeline request =
+        createRequest(test)
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE)
+            .withDescription("Security test for bot access");
+    IngestionPipeline created = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Even ingestion bot should NOT see JWT token via GET API
+    // The JWT is only needed internally during deploy operations
+    IngestionPipeline fetchedByBot = getEntity(created.getId(), INGESTION_BOT_AUTH_HEADERS);
+    assertNull(
+        fetchedByBot.getOpenMetadataServerConnection(),
+        "SECURITY: Even bot users must NOT see openMetadataServerConnection via GET API. "
+            + "JWT should only be passed to pipeline service during deploy.");
+  }
+
+  @Test
+  void put_ingestionPipeline_doesNotExposeJwtToken_security(TestInfo test) throws IOException {
+    CreateIngestionPipeline request =
+        createRequest(test)
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE)
+            .withDescription("Security test for PUT");
+    createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // PUT (update) response should NOT return openMetadataServerConnection
+    IngestionPipeline updated =
+        updateIngestionPipeline(
+            request.withDescription("Updated description for security test"), ADMIN_AUTH_HEADERS);
+    assertNull(
+        updated.getOpenMetadataServerConnection(),
+        "SECURITY: PUT response must NOT return openMetadataServerConnection");
+  }
+
   private IngestionPipeline updateIngestionPipeline(
       CreateIngestionPipeline create, Map<String, String> authHeaders)
       throws HttpResponseException {
@@ -896,6 +1172,10 @@ public class IngestionPipelineResourceTest
 
   protected final WebTarget getDeletePipelineStatus(String id) {
     return getCollection().path("/" + id + "/pipelineStatus");
+  }
+
+  protected final WebTarget getDeletePipelineStatusByRunId(String id, String runId) {
+    return getCollection().path("/" + id + "/pipelineStatus/" + runId);
   }
 
   @Override
@@ -948,5 +1228,105 @@ public class IngestionPipelineResourceTest
           JsonUtils.convertValue(updated.getConfig(), MessagingServiceMetadataPipeline.class);
       assertEquals(origConfig, updatedConfig);
     }
+  }
+
+  @Test
+  void testProgressTrackingInIngestionStatus(TestInfo test) throws IOException {
+    // Create a test ingestion pipeline
+    CreateIngestionPipeline create = createRequest(test);
+    IngestionPipeline pipeline = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    String runId = UUID.randomUUID().toString();
+
+    // Create progress data with all entity types using ProgressProperty
+    Progress progressData = new Progress();
+    progressData.withAdditionalProperty(
+        "databases",
+        new ProgressProperty().withTotal(1).withProcessed(1).withEstimatedRemainingSeconds(0));
+    progressData.withAdditionalProperty(
+        "schemas",
+        new ProgressProperty().withTotal(47).withProcessed(30).withEstimatedRemainingSeconds(120));
+    progressData.withAdditionalProperty(
+        "tables",
+        new ProgressProperty()
+            .withTotal(9621)
+            .withProcessed(5000)
+            .withEstimatedRemainingSeconds(600));
+    progressData.withAdditionalProperty(
+        "stored_procedures",
+        new ProgressProperty().withTotal(100).withProcessed(0).withEstimatedRemainingSeconds(null));
+
+    // Create step summary with progress
+    List<StepSummary> steps = new ArrayList<>();
+    StepSummary stepSummary =
+        new StepSummary()
+            .withName("TestSource")
+            .withRecords(5000)
+            .withUpdatedRecords(100)
+            .withWarnings(5)
+            .withErrors(2)
+            .withFiltered(50)
+            .withProgress(progressData);
+    steps.add(stepSummary);
+
+    // Create and submit pipeline status with progress data
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withRunId(runId)
+            .withPipelineState(PipelineStatusType.RUNNING)
+            .withStartDate(System.currentTimeMillis())
+            .withTimestamp(System.currentTimeMillis())
+            .withStatus(steps);
+
+    TestUtils.put(
+        getPipelineStatusTarget(pipeline.getFullyQualifiedName()),
+        pipelineStatus,
+        Response.Status.CREATED,
+        ADMIN_AUTH_HEADERS);
+
+    // Retrieve the status and verify it was stored correctly
+    PipelineStatus retrievedStatus =
+        TestUtils.get(
+            getPipelineStatusByRunId(pipeline.getFullyQualifiedName(), runId),
+            PipelineStatus.class,
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(retrievedStatus);
+    assertNotNull(retrievedStatus.getStatus());
+    assertEquals(1, retrievedStatus.getStatus().size());
+    assertNotNull(retrievedStatus.getStatus().get(0).getProgress());
+
+    // Verify progress data was persisted correctly
+    Progress retrievedProgress = retrievedStatus.getStatus().get(0).getProgress();
+    assertEquals(4, retrievedProgress.getAdditionalProperties().size());
+
+    // Verify databases progress
+    ProgressProperty dbProgress = retrievedProgress.getAdditionalProperties().get("databases");
+    assertNotNull(dbProgress);
+    assertEquals(1, dbProgress.getTotal());
+    assertEquals(1, dbProgress.getProcessed());
+    assertEquals(0, dbProgress.getEstimatedRemainingSeconds());
+
+    // Verify schemas progress
+    ProgressProperty schemaProgress = retrievedProgress.getAdditionalProperties().get("schemas");
+    assertNotNull(schemaProgress);
+    assertEquals(47, schemaProgress.getTotal());
+    assertEquals(30, schemaProgress.getProcessed());
+    assertEquals(120, schemaProgress.getEstimatedRemainingSeconds());
+
+    // Verify tables progress
+    ProgressProperty tableProgress = retrievedProgress.getAdditionalProperties().get("tables");
+    assertNotNull(tableProgress);
+    assertEquals(9621, tableProgress.getTotal());
+    assertEquals(5000, tableProgress.getProcessed());
+    assertEquals(600, tableProgress.getEstimatedRemainingSeconds());
+
+    // Verify stored procedures progress (no estimate yet)
+    ProgressProperty spProgress =
+        retrievedProgress.getAdditionalProperties().get("stored_procedures");
+    assertNotNull(spProgress);
+    assertEquals(100, spProgress.getTotal());
+    assertEquals(0, spProgress.getProcessed());
+    assertNull(spProgress.getEstimatedRemainingSeconds());
   }
 }

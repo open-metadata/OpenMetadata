@@ -2,6 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/classification/classification.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Classification",
+  "$comment": "@om-entity-type",
   "description": "A `Classification` entity contains hierarchical terms called tags used for categorizing and classifying data assets and other entities.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.classification.Classification",
@@ -42,6 +43,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "href": {
       "description": "Link to the resource corresponding to the classification.",
@@ -91,8 +96,7 @@
     },
     "entityStatus": {
       "description": "Status of the tag.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     },
     "autoClassificationConfig": {
       "description": "Configuration for automatic classification behavior",

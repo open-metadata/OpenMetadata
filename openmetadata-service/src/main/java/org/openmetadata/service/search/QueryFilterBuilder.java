@@ -19,6 +19,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
@@ -32,6 +33,7 @@ public class QueryFilterBuilder {
   private static final String MUST_NOT_KEY = "must_not";
   private static final String SHOULD_KEY = "should";
   private static final String TERM_KEY = "term";
+  private static final String MATCH_KEY = "match";
   private static final String PREFIX_KEY = "prefix";
   private static final String DELETED_KEY = "deleted";
   private static final String ENTITY_TYPE_KEY = "entityType";
@@ -58,13 +60,34 @@ public class QueryFilterBuilder {
     return serializeQuery(queryFilter);
   }
 
+  public static String buildDomainAssetsCountFilter(String fieldPath) {
+    ObjectNode queryFilter = MAPPER.createObjectNode();
+    ObjectNode queryNode = queryFilter.putObject(QUERY_KEY);
+    ObjectNode boolNode = queryNode.putObject(BOOL_KEY);
+    ArrayNode mustArray = boolNode.putArray(MUST_KEY);
+
+    // Must have domains field
+    ObjectNode existsNode = MAPPER.createObjectNode();
+    existsNode.putObject("exists").put("field", fieldPath);
+    mustArray.add(existsNode);
+
+    // Exclude data products from domain assets
+    ArrayNode mustNotArray = boolNode.putArray(MUST_NOT_KEY);
+    ObjectNode dataProductNode = MAPPER.createObjectNode();
+    dataProductNode.putObject(TERM_KEY).put(ENTITY_TYPE_KEY, DATA_PRODUCT);
+    mustNotArray.add(dataProductNode);
+
+    return serializeQuery(queryFilter);
+  }
+
   public static String buildOwnerAssetsFilter(InheritedFieldQuery query) {
     ObjectNode queryFilter = MAPPER.createObjectNode();
     ObjectNode queryNode = queryFilter.putObject(QUERY_KEY);
     ObjectNode boolNode = queryNode.putObject(BOOL_KEY);
     ArrayNode mustArray = boolNode.putArray(MUST_KEY);
 
-    addExactMatchCondition(mustArray, query.getFieldPath(), query.getFieldValue());
+    // owners.fullyQualifiedName is a text field, use match query for exact matching
+    addMatchCondition(mustArray, query.getFieldPath(), query.getFieldValue());
     addCommonFilters(mustArray, query);
 
     return serializeQuery(queryFilter);
@@ -98,6 +121,19 @@ public class QueryFilterBuilder {
     return serializeQuery(queryFilter);
   }
 
+  public static String buildUserAssetsFilter(InheritedFieldQuery query) {
+    ObjectNode queryFilter = MAPPER.createObjectNode();
+    ObjectNode queryNode = queryFilter.putObject(QUERY_KEY);
+    ObjectNode boolNode = queryNode.putObject(BOOL_KEY);
+    ArrayNode mustArray = boolNode.putArray(MUST_KEY);
+
+    // owners.id is a keyword field, use term query with OR condition
+    addOrCondition(mustArray, query.getFieldPath(), query.getFieldValues());
+    addCommonFilters(mustArray, query);
+
+    return serializeQuery(queryFilter);
+  }
+
   private static void addHierarchyCondition(
       ArrayNode mustArray, String fieldPath, String fieldValue) {
     ObjectNode fieldCondition = MAPPER.createObjectNode();
@@ -120,6 +156,27 @@ public class QueryFilterBuilder {
     ObjectNode termNode = MAPPER.createObjectNode();
     termNode.putObject(TERM_KEY).put(fieldPath, fieldValue);
     mustArray.add(termNode);
+  }
+
+  private static void addMatchCondition(ArrayNode mustArray, String fieldPath, String fieldValue) {
+    ObjectNode matchNode = MAPPER.createObjectNode();
+    matchNode.putObject(MATCH_KEY).put(fieldPath, fieldValue);
+    mustArray.add(matchNode);
+  }
+
+  private static void addOrCondition(
+      ArrayNode mustArray, String fieldPath, List<String> fieldValues) {
+    ObjectNode orCondition = MAPPER.createObjectNode();
+    ObjectNode innerBool = orCondition.putObject(BOOL_KEY);
+    ArrayNode shouldArray = innerBool.putArray(SHOULD_KEY);
+
+    for (String value : fieldValues) {
+      ObjectNode termNode = MAPPER.createObjectNode();
+      termNode.putObject(TERM_KEY).put(fieldPath, value);
+      shouldArray.add(termNode);
+    }
+
+    mustArray.add(orCondition);
   }
 
   private static void addCommonFilters(ArrayNode mustArray, InheritedFieldQuery query) {
