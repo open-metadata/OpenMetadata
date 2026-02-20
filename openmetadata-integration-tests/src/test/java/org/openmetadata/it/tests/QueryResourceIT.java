@@ -22,6 +22,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
@@ -1016,6 +1017,20 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   // ===================================================================
   // BULK API SUPPORT
   // ===================================================================
+
+  @Test
+  void test_bulkCreate_duplicateQueryHandledGracefully(TestNamespace ns) {
+    CreateQuery request = createRequest(ns.prefix("dup_bulk_q"), ns);
+    Query existing = createEntity(request);
+    assertNotNull(existing);
+
+    BulkOperationResult result = executeBulkCreate(List.of(request));
+
+    assertNotNull(result);
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+  }
 
   @Override
   protected BulkOperationResult executeBulkCreate(List<CreateQuery> createRequests) {

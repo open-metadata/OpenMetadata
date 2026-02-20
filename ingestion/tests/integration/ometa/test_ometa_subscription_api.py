@@ -13,14 +13,13 @@
 OpenMetadata high-level API EventSubscription test
 """
 from copy import deepcopy
-from unittest import TestCase
 from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
 
-from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.events.api.createEventSubscription import (
     CreateEventSubscription,
 )
@@ -35,6 +34,8 @@ from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.client import REST
+
+from ..integration_base import generate_name
 
 # Mock response with invalid EventSubscription data
 BAD_SUBSCRIPTION_RESPONSE = {
@@ -82,21 +83,33 @@ BAD_SUBSCRIPTION_RESPONSE = {
 }
 
 
-class OMetaSubscriptionTest(TestCase):
-    """
-    Run this integration test with the local API available
-    Install the ingestion package before running the tests
-    """
-
-    metadata = int_admin_ometa()
-
+@pytest.fixture(scope="module")
+def subscription_user(metadata):
+    """Create a user for subscription ownership tests."""
+    user_name = generate_name()
     user = metadata.create_or_update(
-        data=CreateUserRequest(name="subscription-user", email="subscription@test.com"),
+        data=CreateUserRequest(name=user_name, email=f"{user_name.root}@test.com"),
     )
-    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
-    create_subscription = CreateEventSubscription(
-        name="test-subscription",
+    yield user
+
+    metadata.delete(entity=User, entity_id=user.id, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def subscription_owners(subscription_user):
+    """Owner reference list for subscription tests."""
+    return EntityReferenceList(
+        root=[EntityReference(id=subscription_user.id, type="user")]
+    )
+
+
+@pytest.fixture
+def subscription_request():
+    """Create a subscription request with a unique name."""
+    name = generate_name()
+    return CreateEventSubscription(
+        name=name,
         description="Test event subscription for integration testing",
         alertType=AlertType.Notification,
         resources=["All"],
@@ -113,144 +126,127 @@ class OMetaSubscriptionTest(TestCase):
         pollInterval=30,
     )
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        Prepare ingredients
-        """
-        cls.metadata.create_or_update(data=cls.create_subscription)
 
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Clean up
-        """
-        subscription: EventSubscription = cls.metadata.get_by_name(
-            entity=EventSubscription, fqn=cls.create_subscription.name.root
-        )
+@pytest.fixture
+def create_subscription(metadata, request):
+    """Factory fixture for creating subscriptions with automatic cleanup."""
+    subscriptions = []
 
-        if subscription:
-            cls.metadata.delete(
+    def _create_subscription(create_request):
+        subscription = metadata.create_or_update(data=create_request)
+        subscriptions.append(subscription)
+        return subscription
+
+    def teardown():
+        for sub in subscriptions:
+            metadata.delete(
                 entity=EventSubscription,
-                entity_id=subscription.id,
-                recursive=True,
+                entity_id=sub.id,
                 hard_delete=True,
             )
 
-        cls.metadata.delete(
-            entity=cls.user.__class__,
-            entity_id=cls.user.id,
-            recursive=True,
-            hard_delete=True,
-        )
+    request.addfinalizer(teardown)
 
-    def test_create(self):
+    return _create_subscription
+
+
+class TestOMetaSubscriptionAPI:
+    """
+    EventSubscription API integration tests.
+    Tests CRUD operations, pagination, and configuration options.
+
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    """
+
+    def test_create(self, metadata, subscription_request, create_subscription):
         """
         We can create an EventSubscription and we receive it back as Entity
         """
-        res = self.metadata.create_or_update(data=self.create_subscription)
-        self.assertEqual(res.name, self.create_subscription.name)
-        self.assertEqual(res.alertType, self.create_subscription.alertType)
-        self.assertEqual(len(res.destinations), 1)
-        self.assertEqual(res.enabled, True)
-        self.assertEqual(res.batchSize, 50)
+        res = create_subscription(subscription_request)
+        assert res.name == subscription_request.name
+        assert res.alertType == subscription_request.alertType
+        assert len(res.destinations) == 1
+        assert res.enabled is True
+        assert res.batchSize == 50
 
-    def test_get_name(self):
+    def test_get_name(self, metadata, subscription_request, create_subscription):
         """
         We can fetch an EventSubscription by name and get it back as Entity
         """
-        res = self.metadata.get_by_name(
-            entity=EventSubscription, fqn=self.create_subscription.name.root
-        )
-        self.assertEqual(res.name, self.create_subscription.name)
+        created = create_subscription(subscription_request)
 
-    def test_get_id(self):
+        res = metadata.get_by_name(
+            entity=EventSubscription, fqn=subscription_request.name.root
+        )
+        assert res.name == created.name
+
+    def test_get_id(self, metadata, subscription_request, create_subscription):
         """
         We can fetch an EventSubscription by ID and get it back as Entity
         """
-        # First get by name
-        res_name = self.metadata.get_by_name(
-            entity=EventSubscription, fqn=self.create_subscription.name.root
-        )
-        # Then fetch by ID
-        res = self.metadata.get_by_id(entity=EventSubscription, entity_id=res_name.id)
-        self.assertEqual(res_name.id, res.id)
+        created = create_subscription(subscription_request)
 
-    def test_list(self):
+        res_name = metadata.get_by_name(
+            entity=EventSubscription, fqn=subscription_request.name.root
+        )
+        res = metadata.get_by_id(entity=EventSubscription, entity_id=res_name.id)
+        assert res_name.id == res.id
+
+    def test_list(self, metadata, subscription_request, create_subscription):
         """
         We can list all our EventSubscriptions
         """
-        res = self.metadata.list_entities(entity=EventSubscription)
+        created = create_subscription(subscription_request)
 
-        # Fetch our test EventSubscription. We have already inserted it, so we should find it
+        res = metadata.list_entities(entity=EventSubscription)
+
         data = next(
-            iter(
-                ent for ent in res.entities if ent.name == self.create_subscription.name
-            ),
+            iter(ent for ent in res.entities if ent.name == created.name),
             None,
         )
         assert data
 
-    def test_list_all_and_paginate(self):
+    def test_list_all_and_paginate(
+        self, metadata, subscription_request, create_subscription
+    ):
         """
         Validate generator utility to fetch all event subscriptions
         """
-        fake_create = deepcopy(self.create_subscription)
+        base_name = subscription_request.name.root
         for i in range(0, 10):
-            fake_create.name = EntityName(self.create_subscription.name.root + str(i))
-            self.metadata.create_or_update(data=fake_create)
+            fake_create = deepcopy(subscription_request)
+            fake_create.name = EntityName(base_name + str(i))
+            create_subscription(fake_create)
 
-        all_entities = self.metadata.list_all_entities(
-            entity=EventSubscription, limit=2  # paginate in batches of pairs
-        )
-        assert (
-            len(list(all_entities)) >= 10
-        )  # In case the default testing entity is not present
+        all_entities = metadata.list_all_entities(entity=EventSubscription, limit=2)
+        assert len(list(all_entities)) >= 10
 
-        entity_list = self.metadata.list_entities(entity=EventSubscription, limit=2)
+        entity_list = metadata.list_entities(entity=EventSubscription, limit=2)
         assert len(entity_list.entities) == 2
-        after_entity_list = self.metadata.list_entities(
+        after_entity_list = metadata.list_entities(
             entity=EventSubscription, limit=2, after=entity_list.after
         )
         assert len(after_entity_list.entities) == 2
-        before_entity_list = self.metadata.list_entities(
+        before_entity_list = metadata.list_entities(
             entity=EventSubscription, limit=2, before=after_entity_list.before
         )
         assert before_entity_list.entities == entity_list.entities
 
-    def test_delete(self):
+    def test_delete(self, metadata, subscription_request):
         """
         We can delete an EventSubscription by ID
         """
-        # Create a subscription to delete
-        delete_subscription = CreateEventSubscription(
-            name="test-delete-subscription",
-            alertType=AlertType.Notification,
-            resources=["All"],
-            destinations=[
-                Destination(
-                    category=SubscriptionCategory.External,
-                    type=SubscriptionType.Webhook,
-                    config={"endpoint": "https://example.com/delete-webhook"},
-                )
-            ],
-        )
-        subscription = self.metadata.create_or_update(data=delete_subscription)
+        subscription = metadata.create_or_update(data=subscription_request)
 
-        # Find by name
-        res_name = self.metadata.get_by_name(
+        res_name = metadata.get_by_name(
             entity=EventSubscription, fqn=subscription.fullyQualifiedName
         )
-        # Then fetch by ID
-        res_id = self.metadata.get_by_id(
-            entity=EventSubscription, entity_id=res_name.id
-        )
+        res_id = metadata.get_by_id(entity=EventSubscription, entity_id=res_name.id)
 
-        # Delete
-        self.metadata.delete(entity=EventSubscription, entity_id=str(res_id.id.root))
+        metadata.delete(entity=EventSubscription, entity_id=str(res_id.id.root))
 
-        # Then we should not find it
-        res = self.metadata.list_entities(entity=EventSubscription)
+        res = metadata.list_entities(entity=EventSubscription)
         assert not next(
             iter(
                 ent
@@ -260,103 +256,106 @@ class OMetaSubscriptionTest(TestCase):
             None,
         )
 
-    def test_update(self):
+    def test_update(
+        self,
+        metadata,
+        subscription_request,
+        subscription_user,
+        subscription_owners,
+        create_subscription,
+    ):
         """
         Updating it properly changes its properties
         """
-        res_create = self.metadata.create_or_update(data=self.create_subscription)
+        res_create = create_subscription(subscription_request)
 
-        updated = self.create_subscription.model_dump(exclude_unset=True)
-        updated["owners"] = self.owners
+        updated = subscription_request.model_dump(exclude_unset=True)
+        updated["owners"] = subscription_owners
         updated["description"] = "Updated description"
         updated["batchSize"] = 100
         updated_entity = CreateEventSubscription(**updated)
 
-        res = self.metadata.create_or_update(data=updated_entity)
+        res = metadata.create_or_update(data=updated_entity)
 
-        # Same ID, updated properties
-        self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owners.root[0].id, self.user.id)
-        self.assertEqual(res.description.root, "Updated description")
-        self.assertEqual(res.batchSize, 100)
+        assert res_create.id == res.id
+        assert res.owners.root[0].id == subscription_user.id
+        assert res.description.root == "Updated description"
+        assert res.batchSize == 100
 
-    def test_list_versions(self):
+    def test_list_versions(self, metadata, subscription_request, create_subscription):
         """
         test list event subscription entity versions
         """
-        subscription = self.metadata.create_or_update(data=self.create_subscription)
+        subscription = create_subscription(subscription_request)
 
-        res = self.metadata.get_list_entity_versions(
+        res = metadata.get_list_entity_versions(
             entity=EventSubscription, entity_id=subscription.id.root
         )
         assert res
 
-    def test_get_entity_version(self):
+    def test_get_entity_version(
+        self, metadata, subscription_request, create_subscription
+    ):
         """
         test get event subscription entity version
         """
-        subscription = self.metadata.create_or_update(data=self.create_subscription)
+        subscription = create_subscription(subscription_request)
 
-        res = self.metadata.get_entity_version(
-            entity=EventSubscription, entity_id=subscription.id.root, version=0.1
+        res = metadata.get_entity_version(
+            entity=EventSubscription,
+            entity_id=subscription.id.root,
+            version=0.1,
         )
 
-        # check we get the correct version requested and the correct entity ID
         assert res.version.root == 0.1
         assert res.id == subscription.id
 
-    def test_get_entity_ref(self):
+    def test_get_entity_ref(self, metadata, subscription_request, create_subscription):
         """
         test get EventSubscription EntityReference
         """
-        subscription = self.metadata.create_or_update(data=self.create_subscription)
-        entity_ref = self.metadata.get_entity_reference(
+        subscription = create_subscription(subscription_request)
+        entity_ref = metadata.get_entity_reference(
             entity=EventSubscription, fqn=subscription.fullyQualifiedName
         )
 
         assert subscription.id == entity_ref.id
 
-    def test_list_w_skip_on_failure(self):
+    def test_list_w_skip_on_failure(self, metadata):
         """
         We can list all our EventSubscriptions even when some of them are broken
         """
-        # first validate that exception is raised when skip_on_failure is False
         with patch.object(REST, "get", return_value=BAD_SUBSCRIPTION_RESPONSE):
             with pytest.raises(ValidationError):
-                self.metadata.list_entities(entity=EventSubscription)
+                metadata.list_entities(entity=EventSubscription)
 
         with patch.object(REST, "get", return_value=BAD_SUBSCRIPTION_RESPONSE):
-            res = self.metadata.list_entities(
-                entity=EventSubscription, skip_on_failure=True
-            )
+            res = metadata.list_entities(entity=EventSubscription, skip_on_failure=True)
 
-        # We should have 2 subscriptions, the 3rd one is broken and should be skipped
         assert len(res.entities) == 2
 
-    def test_list_all_w_skip_on_failure(self):
+    def test_list_all_w_skip_on_failure(self, metadata):
         """
         Validate generator utility to fetch all event subscriptions even when some are broken
         """
-        # first validate that exception is raised when skip_on_failure is False
         with patch.object(REST, "get", return_value=BAD_SUBSCRIPTION_RESPONSE):
             with pytest.raises(ValidationError):
-                res = self.metadata.list_all_entities(
+                res = metadata.list_all_entities(
                     entity=EventSubscription,
-                    limit=1,  # paginate in batches of pairs
+                    limit=1,
                 )
                 list(res)
 
         with patch.object(REST, "get", return_value=BAD_SUBSCRIPTION_RESPONSE):
-            res = self.metadata.list_all_entities(
+            res = metadata.list_all_entities(
                 entity=EventSubscription,
                 limit=1,
-                skip_on_failure=True,  # paginate in batches of pairs
+                skip_on_failure=True,
             )
 
-            # We should have 2 subscriptions, the 3rd one is broken and should be skipped
             assert len(list(res)) == 2
 
-    def test_subscription_with_slash_in_name(self):
+    def test_subscription_with_slash_in_name(self, metadata):
         """E.g., `subscription.name/with-slash`"""
         name = EntityName("subscription.name/with-slash")
         create_request = CreateEventSubscription(
@@ -372,22 +371,23 @@ class OMetaSubscriptionTest(TestCase):
                 )
             ],
         )
-        new_subscription: EventSubscription = self.metadata.create_or_update(
+        new_subscription: EventSubscription = metadata.create_or_update(
             data=create_request
         )
 
-        res: EventSubscription = self.metadata.get_by_name(
+        res: EventSubscription = metadata.get_by_name(
             entity=EventSubscription, fqn=new_subscription.fullyQualifiedName
         )
 
         assert res.name == name
 
-        # Clean up
-        self.metadata.delete(
-            entity=EventSubscription, entity_id=new_subscription.id, hard_delete=True
+        metadata.delete(
+            entity=EventSubscription,
+            entity_id=new_subscription.id,
+            hard_delete=True,
         )
 
-    def test_different_alert_types(self):
+    def test_different_alert_types(self, metadata):
         """
         Test creating subscriptions with different alert types
         """
@@ -398,7 +398,7 @@ class OMetaSubscriptionTest(TestCase):
 
         created_subscriptions = []
 
-        for i, alert_type in enumerate(alert_types):
+        for alert_type in alert_types:
             create_request = CreateEventSubscription(
                 name=f"test-{alert_type.value.lower()}-subscription",
                 description=f"Test {alert_type.value} subscription",
@@ -415,19 +415,19 @@ class OMetaSubscriptionTest(TestCase):
                 ],
             )
 
-            subscription = self.metadata.create_or_update(data=create_request)
+            subscription = metadata.create_or_update(data=create_request)
             created_subscriptions.append(subscription)
 
-            # Verify the alert type was set correctly
-            self.assertEqual(subscription.alertType, alert_type)
+            assert subscription.alertType == alert_type
 
-        # Clean up
         for subscription in created_subscriptions:
-            self.metadata.delete(
-                entity=EventSubscription, entity_id=subscription.id, hard_delete=True
+            metadata.delete(
+                entity=EventSubscription,
+                entity_id=subscription.id,
+                hard_delete=True,
             )
 
-    def test_different_destination_types(self):
+    def test_different_destination_types(self, metadata):
         """
         Test creating subscriptions with different destination types
         """
@@ -444,7 +444,7 @@ class OMetaSubscriptionTest(TestCase):
 
         created_subscriptions = []
 
-        for i, dest_config in enumerate(destination_configs):
+        for dest_config in destination_configs:
             create_request = CreateEventSubscription(
                 name=f"test-{dest_config['type'].value.lower()}-destination",
                 description=f"Test {dest_config['type'].value} destination",
@@ -459,19 +459,19 @@ class OMetaSubscriptionTest(TestCase):
                 ],
             )
 
-            subscription = self.metadata.create_or_update(data=create_request)
+            subscription = metadata.create_or_update(data=create_request)
             created_subscriptions.append(subscription)
 
-            # Verify the destination type was set correctly
-            self.assertEqual(subscription.destinations[0].type, dest_config["type"])
+            assert subscription.destinations[0].type == dest_config["type"]
 
-        # Clean up
         for subscription in created_subscriptions:
-            self.metadata.delete(
-                entity=EventSubscription, entity_id=subscription.id, hard_delete=True
+            metadata.delete(
+                entity=EventSubscription,
+                entity_id=subscription.id,
+                hard_delete=True,
             )
 
-    def test_subscription_configuration_options(self):
+    def test_subscription_configuration_options(self, metadata):
         """
         Test various configuration options for event subscriptions
         """
@@ -499,17 +499,17 @@ class OMetaSubscriptionTest(TestCase):
             pollInterval=60,
         )
 
-        subscription = self.metadata.create_or_update(data=create_request)
+        subscription = metadata.create_or_update(data=create_request)
 
-        # Verify all configuration options
-        self.assertEqual(subscription.alertType, AlertType.Observability)
-        self.assertEqual(subscription.batchSize, 25)
-        self.assertEqual(subscription.retries, 5)
-        self.assertEqual(subscription.pollInterval, 60)
-        self.assertEqual(subscription.destinations[0].timeout, 15)
-        self.assertEqual(subscription.destinations[0].readTimeout, 20)
+        assert subscription.alertType == AlertType.Observability
+        assert subscription.batchSize == 25
+        assert subscription.retries == 5
+        assert subscription.pollInterval == 60
+        assert subscription.destinations[0].timeout == 15
+        assert subscription.destinations[0].readTimeout == 20
 
-        # Clean up
-        self.metadata.delete(
-            entity=EventSubscription, entity_id=subscription.id, hard_delete=True
+        metadata.delete(
+            entity=EventSubscription,
+            entity_id=subscription.id,
+            hard_delete=True,
         )

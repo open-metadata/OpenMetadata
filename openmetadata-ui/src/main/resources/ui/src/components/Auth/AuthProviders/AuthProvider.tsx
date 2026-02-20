@@ -79,8 +79,6 @@ import {
   clearOidcToken,
   getOidcToken,
   getRefreshToken,
-  setOidcToken,
-  setRefreshToken,
 } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
@@ -198,8 +196,7 @@ export const AuthProvider = ({
     removeSession();
 
     // Clear tokens properly during logout
-    await setOidcToken('');
-    await setRefreshToken('');
+    await clearOidcToken();
 
     setApplicationLoading(false);
 
@@ -575,7 +572,7 @@ export const AuthProvider = ({
         // show an error toast if provider is null or not supported
         if (provider && Object.values(AuthProviderEnum).includes(provider)) {
           const configJson = getAuthConfig(authConfig);
-          validateAuthFields(configJson, t);
+          validateAuthFields(configJson);
           setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
           setJwtPrincipalClaimsMapping(authConfig.jwtPrincipalClaimsMapping);
           setAuthConfig(configJson);
@@ -656,9 +653,9 @@ export const AuthProvider = ({
           <Auth0Provider
             useRefreshTokens
             cacheLocation="memory"
-            clientId={authConfig.clientId.toString()}
-            domain={authConfig.authority.toString()}
-            redirectUri={authConfig.callbackUrl.toString()}>
+            clientId={authConfig.clientId?.toString() ?? ''}
+            domain={authConfig.authority?.toString() ?? ''}
+            redirectUri={authConfig.callbackUrl?.toString()}>
             <Auth0Authenticator ref={authenticatorRef}>
               {childElement}
             </Auth0Authenticator>

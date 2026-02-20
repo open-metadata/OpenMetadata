@@ -22,6 +22,7 @@ import {
   DATA_CONTRACT_SEMANTICS2,
   NEW_TABLE_TEST_CASE,
   ODCS_WITH_SLA_YAML,
+  VALID_OM_SIMPLE_YAML,
 } from '../../constant/dataContracts';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
@@ -63,6 +64,7 @@ import {
   deleteContract,
   exportContractYaml,
   importOdcsViaDropdown,
+  importOMViaDropdown,
   navigateToContractTab,
   openContractActionsDropdown,
   saveAndTriggerDataContractValidation,
@@ -79,6 +81,7 @@ import {
   assignGlossaryTerm,
   assignTag,
   assignTier,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
@@ -723,6 +726,44 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
       });
+
+      await test.step('Import contract from OM YAML', async () => {
+        await importOMViaDropdown(
+          page,
+          VALID_OM_SIMPLE_YAML,
+          'om-contract.yaml'
+        );
+
+        await toastNotification(page, 'Contract imported successfully');
+
+        await expect(page.getByTestId('contract-title')).toBeVisible();
+
+        await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+      });
+
+      await test.step('Export OM YAML', async () => {
+        const filename = await exportContractYaml(page, 'native');
+        expect(filename).toBeTruthy();
+        await toastNotification(page, 'Contract exported successfully');
+      });
+
+      await test.step('Delete OM imported contract', async () => {
+        const contractRefreshResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataContracts/entity') &&
+            response.request().method() === 'GET'
+        );
+
+        await deleteContract(page);
+
+        const response = await contractRefreshResponse;
+        expect(response.status()).toBe(404);
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+      });
     });
   });
 
@@ -962,7 +1003,12 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
 
         await toastNotification(page, '"Contract" deleted successfully!');
 
-        await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+        // Wait for loaders to disappear and verify page is ready
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
+          timeout: 10000,
+        });
         await expect(page.getByTestId('add-contract-button')).toBeVisible();
       });
     }
@@ -1907,7 +1953,8 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
         await expect(
           page.getByTestId(`contract-security-rowFilter-0-${filter.index}`)
         ).toContainText(
-          `${table.columnsName[filter.index]} = ${filter.values[0]},${filter.values[1]
+          `${table.columnsName[filter.index]} = ${filter.values[0]},${
+            filter.values[1]
           }`
         );
       }
@@ -1985,7 +2032,8 @@ test.describe('Data Contracts', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
           await expect(
             page.getByTestId(`contract-security-rowFilter-0-${filter.index}`)
           ).toContainText(
-            `${table.columnsName[filter.index]} = ${filter.values[0]},${filter.values[1]
+            `${table.columnsName[filter.index]} = ${filter.values[0]},${
+              filter.values[1]
             },${filter.values[2]},${filter.values[3]}`
           );
         }

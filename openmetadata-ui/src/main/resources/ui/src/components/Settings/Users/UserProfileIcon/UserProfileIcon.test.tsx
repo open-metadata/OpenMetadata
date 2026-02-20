@@ -26,10 +26,45 @@ jest.mock('../../../../hooks/authHooks', () => ({
     onLogoutHandler: jest.fn(),
   }),
 }));
+const translationState = {
+  language: 'en',
+};
+
+const germanTranslations: Record<string, string> = {
+  'label.role-plural': 'Rollen',
+  'label.team-plural': 'Teams',
+  'label.logout': 'Abmelden',
+  'label.switch-persona': 'Persona wechseln',
+  'label.inherited-role-plural': 'Geerbte Rollen',
+  'label.default': 'Standard',
+  'label.more': 'mehr',
+};
+
+const mockChangeLanguage = jest.fn((lng: string) => {
+  translationState.language = lng;
+});
+
+const mockI18n = {
+  changeLanguage: mockChangeLanguage,
+  language: translationState.language,
+};
+
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
+  useTranslation: () => {
+    const currentLanguage = translationState.language;
+    const getTranslation = (key: string) => {
+      if (currentLanguage === 'de') {
+        return germanTranslations[key] || key;
+      }
+
+      return key;
+    };
+
+    return {
+      t: getTranslation,
+      i18n: mockI18n,
+    };
+  },
 }));
 
 const mockPersonas: EntityReference[] = [
@@ -95,6 +130,7 @@ describe('UserProfileIcon', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseApplicationStore.mockReturnValue(createMockStoreData());
+    translationState.language = 'en';
   });
 
   const openDropdown = () => {
@@ -195,5 +231,32 @@ describe('UserProfileIcon', () => {
 
     expect(screen.queryByTestId('default-persona-tag')).not.toBeInTheDocument();
     expect(screen.getAllByRole('radio').length).toBeGreaterThan(0);
+  });
+
+  it('should update dropdown labels when language changes', async () => {
+    const { rerender } = render(
+      <MockWrapper>
+        <UserProfileIcon />
+      </MockWrapper>
+    );
+
+    openDropdown();
+    await screen.findByText('label.switch-persona');
+
+    expect(screen.getByText('label.role-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.team-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.logout')).toBeInTheDocument();
+
+    mockChangeLanguage('de');
+    rerender(
+      <MockWrapper>
+        <UserProfileIcon />
+      </MockWrapper>
+    );
+
+    expect(screen.getByText('Persona wechseln')).toBeInTheDocument();
+    expect(screen.getByText('Rollen')).toBeInTheDocument();
+    expect(screen.getByText('Teams')).toBeInTheDocument();
+    expect(screen.getByText('Abmelden')).toBeInTheDocument();
   });
 });

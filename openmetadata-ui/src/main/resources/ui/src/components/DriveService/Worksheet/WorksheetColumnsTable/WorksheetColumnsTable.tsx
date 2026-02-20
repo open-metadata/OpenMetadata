@@ -92,9 +92,10 @@ function WorksheetColumnsTable() {
     };
   }, [permissions, worksheetDetails]);
 
-  const schema = useMemo(() => pruneEmptyChildren(worksheetDetails?.columns ?? []), [
-    worksheetDetails?.columns,
-  ]);
+  const schema = useMemo(
+    () => pruneEmptyChildren(worksheetDetails?.columns ?? []),
+    [worksheetDetails?.columns]
+  );
 
   // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
   useEffect(() => {
@@ -174,7 +175,9 @@ function WorksheetColumnsTable() {
           const { displayName } = record;
 
           return (
-            <div className="d-inline-flex flex-column hover-icon-group w-max-90">
+            <div
+              className="d-inline-flex flex-column hover-icon-group"
+              style={{ maxWidth: '80%' }}>
               <div className="d-inline-flex items-baseline">
                 {prepareConstraintIcon({
                   columnName: name,
@@ -194,13 +197,13 @@ function WorksheetColumnsTable() {
                   />
                 )}
               </div>
-              {!isEmpty(displayName) ? (
+              {isEmpty(displayName) ? null : (
                 <Typography.Text
                   className="m-b-0 d-block break-word"
                   data-testid="column-display-name">
                   {getEntityName(record)}
                 </Typography.Text>
-              ) : null}
+              )}
             </div>
           );
         },

@@ -587,7 +587,7 @@ public class ListFilter extends Filter<ListFilter> {
         : String.format("%s.json->>'pipelineType' IN (%s)", tableName, inCondition);
   }
 
-  private String getInConditionFromString(String condition) {
+  protected String getInConditionFromString(String condition) {
     return Arrays.stream(condition.split(","))
         .map(String::trim)
         .filter(s -> !s.isEmpty())

@@ -87,11 +87,11 @@ export interface CreateLearningResource {
 }
 
 export type ListLearningResourcesParams = ListParams & {
-  q?: string;
+  search?: string;
   pageId?: string | string[];
   componentId?: string | string[];
   category?: string | string[];
-  type?: string | string[];
+  resourceType?: string | string[];
   difficulty?: string;
   status?: string | string[];
 };

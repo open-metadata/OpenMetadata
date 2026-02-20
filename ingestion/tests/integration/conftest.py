@@ -1,5 +1,5 @@
 import logging
-import sys
+import time
 from typing import List, Tuple, Type
 
 import pytest
@@ -16,10 +16,6 @@ from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.ingestion import IngestionWorkflow
-
-if not sys.version_info >= (3, 9):
-    # these tests use test-containers which are not supported in python 3.8
-    collect_ignore = ["trino", "kafka", "datalake"]
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -43,6 +39,29 @@ def pytest_pycollect_makeitem(collector, name, obj):
         pass
 
 
+@pytest.hookimpl(tryfirst=True)
+def pytest_collection_modifyitems(config, items):
+    """Auto-apply xdist_group markers based on source directory.
+
+    This ensures all tests for a source (mysql, postgres, etc.) run in the
+    SAME worker, allowing them to share module-scoped container fixtures.
+
+    Examples:
+        tests/integration/mysql/test_metadata.py      -> xdist_group("mysql_suite")
+        tests/integration/postgres/test_metadata.py   -> xdist_group("postgres_suite")
+        tests/integration/ometa/test_domains.py       -> xdist_group("ometa_suite")
+    """
+    for item in items:
+        test_path = str(item.fspath)
+
+        if "/integration/" in test_path:
+            parts = test_path.split("/integration/")
+            if len(parts) > 1:
+                source_name = parts[1].split("/")[0]
+                group_name = f"{source_name}_suite"
+                item.add_marker(pytest.mark.xdist_group(group_name))
+
+
 # TODO: Will be addressed when cleaning up integration tests.
 #  Setting the max tries for testcontainers here has pitfalls,
 #  the main one being that it cannot be changed through the recommended
@@ -53,7 +72,7 @@ def pytest_pycollect_makeitem(collector, name, obj):
 #  which is a potential source of issues.
 
 
-@pytest.fixture(scope="session", autouse=sys.version_info >= (3, 9))
+@pytest.fixture(scope="session", autouse=True)
 def config_testcontatiners():
     try:
         from testcontainers.core.config import testcontainers_config
@@ -143,6 +162,29 @@ def run_workflow():
     return _run
 
 
+logger = logging.getLogger(__name__)
+
+
+def _safe_delete(metadata, entity, entity_id, retries=3, **kwargs):
+    """Delete with retry logic to handle transient server errors during parallel teardown."""
+    for attempt in range(retries):
+        try:
+            metadata.delete(entity=entity, entity_id=entity_id, **kwargs)
+            return
+        except Exception:
+            if attempt < retries - 1:
+                logger.warning(
+                    "Retry %d/%d: delete %s %s",
+                    attempt + 1,
+                    retries,
+                    entity.__name__,
+                    entity_id,
+                )
+                time.sleep(0.5 * (attempt + 1))
+            else:
+                raise
+
+
 @pytest.fixture(scope="module")
 def db_service(metadata, create_service_request, unmask_password):
     service_entity = metadata.create_or_update(data=create_service_request)
@@ -150,8 +192,12 @@ def db_service(metadata, create_service_request, unmask_password):
     yield unmask_password(service_entity)
     service_entity = metadata.get_by_name(DatabaseService, fqn)
     if service_entity:
-        metadata.delete(
-            DatabaseService, service_entity.id, recursive=True, hard_delete=True
+        _safe_delete(
+            metadata,
+            entity=DatabaseService,
+            entity_id=service_entity.id,
+            recursive=True,
+            hard_delete=True,
         )
 
 
@@ -260,7 +306,13 @@ def cleanup_fqns(metadata):
     for etype, fqn in fqns:
         entity = metadata.get_by_name(etype, fqn, fields=["*"])
         if entity:
-            metadata.delete(etype, entity.id, recursive=True, hard_delete=True)
+            _safe_delete(
+                metadata,
+                entity=etype,
+                entity_id=entity.id,
+                recursive=True,
+                hard_delete=True,
+            )
 
 
 @pytest.fixture(scope="module")

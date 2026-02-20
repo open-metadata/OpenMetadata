@@ -15,9 +15,10 @@ OpenMetadata high-level API Table test
 import logging
 import time
 from datetime import datetime
-from unittest import TestCase, mock
+from unittest import mock
 
-from _openmetadata_testutils.ometa import int_admin_ometa
+import pytest
+
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
@@ -62,6 +63,40 @@ from ..integration_base import (
     get_create_test_suite,
     get_create_user_entity,
 )
+from .conftest import _safe_delete
+
+
+def patch_with_retry(metadata, retries=3, delay=1, **kwargs):
+    """Retry metadata.patch to handle transient MySQL deadlocks.
+
+    The patch mixin catches server errors and returns None. We retry
+    on None for calls expected to succeed.
+    """
+    for attempt in range(retries):
+        res = metadata.patch(**kwargs)
+        if res is not None:
+            return res
+        if attempt < retries - 1:
+            time.sleep(delay)
+    return res
+
+
+def patch_owner_with_retry(metadata, retries=3, delay=1, **kwargs):
+    """Retry patch_owner to handle transient MySQL deadlocks.
+
+    Under parallel execution (--dist loadfile), concurrent writes to the
+    tag_usage table from other test files can cause deadlocks during
+    the server-side PATCH handler. patch_owner returns None on server
+    errors, so we retry on None for calls expected to succeed.
+    """
+    for attempt in range(retries):
+        res = metadata.patch_owner(**kwargs)
+        if res is not None:
+            return res
+        if attempt < retries - 1:
+            time.sleep(delay)
+    return res
+
 
 PII_TAG_LABEL = TagLabel(
     tagFQN=TagFQN("PII.Sensitive"),
@@ -78,201 +113,190 @@ TIER_TAG_LABEL = TagLabel(
 )
 
 
-class OMetaTableTest(TestCase):
-    """
-    Run this integration test with the local API available
-    Install the ingestion package before running the tests
-    """
-
-    service_entity_id = None
-    table: Table = None
-    patch_test_table: Table = None
-    test_case: TestCaseEntity = None
-    db_entity: Database = None
-    db_schema_entity: DatabaseSchema = None
-    user_1: User = None
-    user_2: User = None
-    team_1: Team = None
-    team_2: Team = None
-    owner_user_1: EntityReferenceList = None
-    owner_user_2: EntityReferenceList = None
-    owner_team_1: EntityReferenceList = None
-    owner_team_2: EntityReferenceList = None
-
-    metadata = int_admin_ometa()
+@pytest.fixture(scope="module")
+def patch_service(metadata):
+    """Module-scoped database service for patch tests."""
     service_name = generate_name()
-    service_type = "databaseService"
+    create_service = get_create_service(entity=DatabaseService, name=service_name)
+    service_entity = metadata.create_or_update(data=create_service)
 
-    @classmethod
-    def check_es_index(cls) -> None:
-        """
-        Wait until the index has been updated with the test user.
-        """
-        logging.info("Checking ES index status...")
-        tries = 0
+    yield service_entity
 
-        res = None
-        while not res and tries <= 5:  # Kill in 5 seconds
-            res = cls.metadata.es_search_from_fqn(
-                entity_type=User,
-                fqn_search_string="Levy",
-            )
-            if not res:
-                tries += 1
-                time.sleep(1)
+    _safe_delete(
+        metadata,
+        entity=DatabaseService,
+        entity_id=service_entity.id,
+        recursive=True,
+        hard_delete=True,
+    )
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        Prepare ingredients
-        """
-        # Create the service entity
-        create_service = get_create_service(
-            entity=DatabaseService, name=cls.service_name
+
+@pytest.fixture(scope="module")
+def patch_database(metadata, patch_service):
+    """Module-scoped database for patch tests."""
+    create_db = get_create_entity(
+        entity=Database, reference=patch_service.fullyQualifiedName
+    )
+    return metadata.create_or_update(data=create_db)
+
+
+@pytest.fixture(scope="module")
+def patch_schema(metadata, patch_database):
+    """Module-scoped database schema for patch tests."""
+    create_schema = get_create_entity(
+        entity=DatabaseSchema, reference=patch_database.fullyQualifiedName
+    )
+    return metadata.create_or_update(data=create_schema)
+
+
+@pytest.fixture(scope="module")
+def patch_table(metadata, patch_schema):
+    """Module-scoped table for patch tests."""
+    create = get_create_entity(entity=Table, reference=patch_schema.fullyQualifiedName)
+    return metadata.create_or_update(data=create)
+
+
+@pytest.fixture(scope="module")
+def patch_test_table(metadata, patch_schema):
+    """Module-scoped second table for patch-specific tests."""
+    create = get_create_entity(entity=Table, reference=patch_schema.fullyQualifiedName)
+    return metadata.create_or_update(data=create)
+
+
+@pytest.fixture(scope="module")
+def patch_test_case(metadata, patch_table):
+    """Module-scoped test case for patch tests."""
+    test_definition = metadata.create_or_update(
+        get_create_test_definition(
+            parameter_definition=[TestCaseParameterDefinition(name="foo")],
+            entity_type=EntityType.TABLE,
         )
-        cls.service_entity = cls.metadata.create_or_update(data=create_service)
+    )
 
-        # Create the database entity
-        create_db = get_create_entity(
-            entity=Database, reference=cls.service_entity.fullyQualifiedName
+    metadata.create_or_update_executable_test_suite(
+        get_create_test_suite(
+            executable_entity_reference=patch_table.fullyQualifiedName.root
         )
-        cls.db_entity = cls.metadata.create_or_update(data=create_db)
+    )
 
-        # Create the schema entity
-        create_schema = get_create_entity(
-            entity=DatabaseSchema, reference=cls.db_entity.fullyQualifiedName
+    return metadata.create_or_update(
+        get_create_test_case(
+            entity_link=f"<#E::table::{patch_table.fullyQualifiedName.root}>",
+            test_definition=test_definition.fullyQualifiedName,
+            parameter_values=[TestCaseParameterValue(name="foo", value="10")],
         )
-        cls.db_schema_entity = cls.metadata.create_or_update(data=create_schema)
+    )
 
-        # Create the table entity
-        cls.create = get_create_entity(
-            entity=Table, reference=cls.db_schema_entity.fullyQualifiedName
+
+@pytest.fixture(scope="module")
+def patch_user_1(metadata):
+    """Module-scoped first user for patch owner tests."""
+    user = metadata.create_or_update(data=get_create_user_entity())
+    yield user
+    _safe_delete(metadata, entity=User, entity_id=user.id, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def patch_user_2(metadata):
+    """Module-scoped second user for patch owner tests."""
+    user = metadata.create_or_update(data=get_create_user_entity())
+    yield user
+    _safe_delete(metadata, entity=User, entity_id=user.id, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def patch_team_1(metadata, patch_user_1, patch_user_2):
+    """Module-scoped first team for patch owner tests."""
+    team = metadata.create_or_update(
+        data=get_create_team_entity(users=[patch_user_1.id, patch_user_2.id])
+    )
+    yield team
+    _safe_delete(metadata, entity=Team, entity_id=team.id, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def patch_team_2(metadata, patch_user_2):
+    """Module-scoped second team for patch owner tests."""
+    team = metadata.create_or_update(
+        data=get_create_team_entity(users=[patch_user_2.id])
+    )
+    yield team
+    _safe_delete(metadata, entity=Team, entity_id=team.id, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def owner_user_1(patch_user_1):
+    return EntityReferenceList(root=[EntityReference(id=patch_user_1.id, type="user")])
+
+
+@pytest.fixture(scope="module")
+def owner_user_2(patch_user_2):
+    return EntityReferenceList(root=[EntityReference(id=patch_user_2.id, type="user")])
+
+
+@pytest.fixture(scope="module")
+def owner_team_1(patch_team_1):
+    return EntityReferenceList(root=[EntityReference(id=patch_team_1.id, type="team")])
+
+
+@pytest.fixture(scope="module")
+def owner_team_2(patch_team_2):
+    return EntityReferenceList(root=[EntityReference(id=patch_team_2.id, type="team")])
+
+
+@pytest.fixture(scope="module")
+def wait_for_patch_es_index(metadata, patch_user_1):
+    """Wait for ES index to be updated with test user."""
+    logging.info("Checking ES index status...")
+    tries = 0
+    res = None
+    while not res and tries <= 5:
+        res = metadata.es_search_from_fqn(
+            entity_type=User,
+            fqn_search_string=patch_user_1.name.root,
         )
-        cls.table = cls.metadata.create_or_update(data=cls.create)
-        cls.patch_test_table = cls.metadata.create_or_update(data=cls.create)
+        if not res:
+            tries += 1
+            time.sleep(1)
+    return True
 
-        # Create test case
-        cls.test_definition = cls.metadata.create_or_update(
-            get_create_test_definition(
-                parameter_definition=[TestCaseParameterDefinition(name="foo")],
-                entity_type=EntityType.TABLE,
-            )
-        )
 
-        cls.test_suite = cls.metadata.create_or_update_executable_test_suite(
-            get_create_test_suite(
-                executable_entity_reference=cls.table.fullyQualifiedName.root
-            )
-        )
+class TestOMetaPatch:
+    """
+    Patch API integration tests.
+    Tests patch operations on tables, descriptions, tags, owners, and test cases.
 
-        cls.test_case = cls.metadata.create_or_update(
-            get_create_test_case(
-                entity_link=f"<#E::table::{cls.table.fullyQualifiedName.root}>",
-                test_definition=cls.test_definition.fullyQualifiedName,
-                parameter_values=[TestCaseParameterValue(name="foo", value="10")],
-            )
-        )
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    """
 
-        cls.user_1 = cls.metadata.create_or_update(
-            data=get_create_user_entity(
-                name="random.user", email="random.user@getcollate.io"
-            )
-        )
+    def test_patch_table(
+        self,
+        metadata,
+        patch_test_table,
+        owner_user_1,
+        owner_user_2,
+        wait_for_patch_es_index,
+    ):
+        new_patched_table = patch_test_table.model_copy(deep=True)
 
-        cls.user_2 = cls.metadata.create_or_update(data=get_create_user_entity())
-
-        cls.team_1 = cls.metadata.create_or_update(
-            data=get_create_team_entity(
-                name="Team 1", users=[cls.user_1.id, cls.user_2.id]
-            )
-        )
-
-        cls.team_2 = cls.metadata.create_or_update(
-            data=get_create_team_entity(name="Team 2", users=[cls.user_2.id])
-        )
-
-        cls.owner_user_1 = EntityReferenceList(
-            root=[EntityReference(id=cls.user_1.id, type="user")]
-        )
-        cls.owner_user_2 = EntityReferenceList(
-            root=[EntityReference(id=cls.user_2.id, type="user")]
-        )
-        cls.owner_team_1 = EntityReferenceList(
-            root=[EntityReference(id=cls.team_1.id, type="team")]
-        )
-        cls.owner_team_2 = EntityReferenceList(
-            root=[EntityReference(id=cls.team_2.id, type="team")]
-        )
-
-        # Leave some time for indexes to get updated, otherwise this happens too fast
-        cls.check_es_index()
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Clean up
-        """
-
-        service_id = str(
-            cls.metadata.get_by_name(
-                entity=DatabaseService, fqn=cls.service_name
-            ).id.root
-        )
-
-        cls.metadata.delete(
-            entity=DatabaseService,
-            entity_id=service_id,
-            recursive=True,
-            hard_delete=True,
-        )
-
-        cls.metadata.delete(
-            entity=User,
-            entity_id=cls.user_1.id,
-            hard_delete=True,
-        )
-
-        cls.metadata.delete(
-            entity=User,
-            entity_id=cls.user_2.id,
-            hard_delete=True,
-        )
-
-        cls.metadata.delete(
-            entity=Team,
-            entity_id=cls.team_1.id,
-            hard_delete=True,
-        )
-
-        cls.metadata.delete(
-            entity=Team,
-            entity_id=cls.team_2.id,
-            hard_delete=True,
-        )
-
-    def test_patch_table(self):
-        new_patched_table = self.patch_test_table.model_copy(deep=True)
-
-        # Test adding a new column to the table
         new_patched_table.columns.append(
             Column(name=ColumnName("new_column"), dataType=DataType.BIGINT),
         )
-        # Test if table and column descriptions are getting patched
         new_patched_table.description = Markdown("This should get patched")
         new_patched_table.columns[0].description = Markdown(
             root="This column description should get patched"
         )
 
-        # Test if table and column tags are getting patched
         new_patched_table.tags = [PII_TAG_LABEL]
         new_patched_table.columns[0].tags = [PII_TAG_LABEL]
 
-        # Test if table owners are getting patched (user and team)
-        new_patched_table.owners = self.owner_user_1
+        new_patched_table.owners = owner_user_1
 
-        patched_table = self.metadata.patch(
-            entity=type(self.patch_test_table),
-            source=self.patch_test_table,
+        patched_table = patch_with_retry(
+            metadata,
+            entity=type(patch_test_table),
+            source=patch_test_table,
             destination=new_patched_table,
             allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
             restrict_update_fields=RESTRICT_UPDATE_LIST,
@@ -285,25 +309,22 @@ class OMetaTableTest(TestCase):
         )
         assert patched_table.tags[0].tagFQN == PII_TAG_LABEL.tagFQN
         assert patched_table.columns[0].tags[0].tagFQN == PII_TAG_LABEL.tagFQN
-        assert patched_table.owners.root[0].id == self.owner_user_1.root[0].id
+        assert patched_table.owners.root[0].id == owner_user_1.root[0].id
 
-        # After this we'll again update the descriptions, tags and owner
         new_patched_table = patched_table.model_copy(deep=True)
 
-        # Descriptions should not override already present descriptions
         new_patched_table.description = Markdown("This should NOT get patched")
         new_patched_table.columns[0].description = Markdown(
             root="This column description should NOT get patched"
         )
 
-        # Only adding the tags is allowed
         new_patched_table.tags = [PII_TAG_LABEL, TIER_TAG_LABEL]
         new_patched_table.columns[0].tags = None
 
-        # Already existing owner should not get patched
-        new_patched_table.owners = self.owner_user_2
+        new_patched_table.owners = owner_user_2
 
-        patched_table = self.metadata.patch(
+        patched_table = patch_with_retry(
+            metadata,
             entity=type(patched_table),
             source=patched_table,
             destination=new_patched_table,
@@ -319,118 +340,107 @@ class OMetaTableTest(TestCase):
         assert patched_table.tags[0].tagFQN == PII_TAG_LABEL.tagFQN
         assert patched_table.tags[1].tagFQN == TIER_TAG_LABEL.tagFQN
         assert patched_table.columns[0].tags[0].tagFQN == PII_TAG_LABEL.tagFQN
-        assert patched_table.owners.root[0].id == self.owner_user_1.root[0].id
+        assert patched_table.owners.root[0].id == owner_user_1.root[0].id
 
-    def test_patch_description(self):
-        """
-        Update description and force
-        """
-        updated: Table = self.metadata.patch_description(
-            entity=Table, source=self.table, description="New description"
+    def test_patch_description(self, metadata, patch_table):
+        """Update description and force"""
+        updated: Table = metadata.patch_description(
+            entity=Table, source=patch_table, description="New description"
         )
 
         assert updated.description.root == "New description"
 
-        not_updated = self.metadata.patch_description(
-            entity=Table, source=self.table, description="Not passing force"
+        not_updated = metadata.patch_description(
+            entity=Table, source=patch_table, description="Not passing force"
         )
 
         assert not not_updated
 
-        force_updated: Table = self.metadata.patch_description(
+        force_updated: Table = metadata.patch_description(
             entity=Table,
-            source=self.table,
+            source=patch_table,
             description="Forced new",
             force=True,
         )
 
         assert force_updated.description.root == "Forced new"
 
-    def test_patch_description_TestCase(self):
-        """
-        Update description and force
-        """
+    def test_patch_description_TestCase(self, metadata, patch_test_case):
+        """Update description and force"""
         new_description = "Description " + str(datetime.now())
-        updated: TestCaseEntity = self.metadata.patch_description(
+        updated: TestCaseEntity = metadata.patch_description(
             entity=TestCaseEntity,
-            source=self.test_case,
+            source=patch_test_case,
             description=new_description,
             force=True,
         )
 
         assert updated.description.root == new_description
 
-        not_updated = self.metadata.patch_description(
+        not_updated = metadata.patch_description(
             entity=TestCaseEntity,
-            source=self.test_case,
+            source=patch_test_case,
             description="Not passing force",
         )
 
         assert not not_updated
 
-        force_updated: TestCaseEntity = self.metadata.patch_description(
+        force_updated: TestCaseEntity = metadata.patch_description(
             entity=TestCaseEntity,
-            source=self.test_case,
+            source=patch_test_case,
             description="Forced new",
             force=True,
         )
 
         assert force_updated.description.root == "Forced new"
 
-    def test_patch_column_description(self):
-        """
-        Update column description and force
-        """
-
-        updated: Table = self.metadata.patch_column_description(
-            table=self.table,
+    def test_patch_column_description(self, metadata, patch_table):
+        """Update column description and force"""
+        updated: Table = metadata.patch_column_description(
+            table=patch_table,
             description="New column description",
-            column_fqn=self.table.fullyQualifiedName.root + ".another",
+            column_fqn=patch_table.fullyQualifiedName.root + ".another",
         )
 
         updated_col = find_column_in_table(column_name="another", table=updated)
         assert updated_col.description.root == "New column description"
 
-        not_updated = self.metadata.patch_column_description(
-            table=self.table,
+        not_updated = metadata.patch_column_description(
+            table=patch_table,
             description="Not passing force",
-            column_fqn=self.table.fullyQualifiedName.root + ".another",
+            column_fqn=patch_table.fullyQualifiedName.root + ".another",
         )
 
         assert not not_updated
 
-        force_updated: Table = self.metadata.patch_column_description(
-            table=self.table,
+        force_updated: Table = metadata.patch_column_description(
+            table=patch_table,
             description="Forced new",
-            column_fqn=self.table.fullyQualifiedName.root + ".another",
+            column_fqn=patch_table.fullyQualifiedName.root + ".another",
             force=True,
         )
 
         updated_col = find_column_in_table(column_name="another", table=force_updated)
         assert updated_col.description.root == "Forced new"
 
-    def test_patch_tags(self):
-        """
-        Update table tags
-        """
-        updated: Table = self.metadata.patch_tags(
+    def test_patch_tags(self, metadata, patch_table):
+        """Update table tags"""
+        updated: Table = metadata.patch_tags(
             entity=Table,
-            source=self.table,
-            tag_labels=[PII_TAG_LABEL, TIER_TAG_LABEL],  # Shipped by default
+            source=patch_table,
+            tag_labels=[PII_TAG_LABEL, TIER_TAG_LABEL],
         )
         assert updated.tags[0].tagFQN.root == "PII.Sensitive"
         assert updated.tags[1].tagFQN.root == "Tier.Tier2"
 
-    def test_patch_column_tags(self):
-        """
-        Update column tags
-        """
-        updated: Table = self.metadata.patch_column_tags(
-            table=self.table,
+    def test_patch_column_tags(self, metadata, patch_table):
+        """Update column tags"""
+        updated: Table = metadata.patch_column_tags(
+            table=patch_table,
             column_tags=[
                 ColumnTag(
-                    column_fqn=self.table.fullyQualifiedName.root + ".id",
-                    tag_label=PII_TAG_LABEL,  # Shipped by default
+                    column_fqn=patch_table.fullyQualifiedName.root + ".id",
+                    tag_label=PII_TAG_LABEL,
                 )
             ],
         )
@@ -438,12 +448,12 @@ class OMetaTableTest(TestCase):
 
         assert updated_col.tags[0].tagFQN.root == "PII.Sensitive"
 
-        updated_again: Table = self.metadata.patch_column_tags(
-            table=self.table,
+        updated_again: Table = metadata.patch_column_tags(
+            table=patch_table,
             column_tags=[
                 ColumnTag(
-                    column_fqn=self.table.fullyQualifiedName.root + ".id",
-                    tag_label=TIER_TAG_LABEL,  # Shipped by default
+                    column_fqn=patch_table.fullyQualifiedName.root + ".id",
+                    tag_label=TIER_TAG_LABEL,
                 )
             ],
         )
@@ -452,169 +462,174 @@ class OMetaTableTest(TestCase):
         assert updated_again_col.tags[0].tagFQN.root == "PII.Sensitive"
         assert updated_again_col.tags[1].tagFQN.root == "Tier.Tier2"
 
-    def test_patch_owner(self):
-        """
-        Update owner
-        """
+    def test_patch_owner(
+        self,
+        metadata,
+        patch_table,
+        patch_database,
+        patch_schema,
+        owner_user_1,
+        owner_user_2,
+        owner_team_1,
+        owner_team_2,
+    ):
+        """Update owner"""
         # Database, no existing owner, owner is a User -> Modified
-        updated: Database = self.metadata.patch_owner(
+        updated: Database = patch_owner_with_retry(
+            metadata,
             entity=Database,
-            source=self.db_entity,
-            owners=self.owner_user_1,
+            source=patch_database,
+            owners=owner_user_1,
         )
         assert updated is not None
-        assert updated.owners.root[0].id == self.owner_user_1.root[0].id
+        assert updated.owners.root[0].id == owner_user_1.root[0].id
 
         # Database, existing owner, owner is a User, no force -> Unmodified
-        updated: Database = self.metadata.patch_owner(
+        updated: Database = metadata.patch_owner(
             entity=Database,
-            source=self.db_entity,
-            owners=self.owner_user_2,
+            source=patch_database,
+            owners=owner_user_2,
         )
         assert updated is None
 
         # Database, existing owner, owner is a User, force -> Modified
-        updated: Database = self.metadata.patch_owner(
+        updated: Database = patch_owner_with_retry(
+            metadata,
             entity=Database,
-            source=self.db_entity,
-            owners=self.owner_user_2,
+            source=patch_database,
+            owners=owner_user_2,
             force=True,
         )
         assert updated is not None
-        assert updated.owners.root[0].id == self.owner_user_2.root[0].id
+        assert updated.owners.root[0].id == owner_user_2.root[0].id
 
         # Database, existing owner, no owner, no force -> Unmodified
-        updated: Database = self.metadata.patch_owner(
+        updated: Database = metadata.patch_owner(
             entity=Database,
-            source=self.db_entity,
+            source=patch_database,
         )
         assert updated is None
 
         # Database, existing owner, no owner, force -> Modified
-        updated: Database = self.metadata.patch_owner(
+        updated: Database = patch_owner_with_retry(
+            metadata,
             entity=Database,
-            source=self.db_entity,
+            source=patch_database,
             force=True,
         )
         assert updated is not None
         assert updated.owners == EntityReferenceList(root=[])
 
         # DatabaseSchema, no existing owner, owner is Team -> Modified
-        updated: DatabaseSchema = self.metadata.patch_owner(
+        updated: DatabaseSchema = patch_owner_with_retry(
+            metadata,
             entity=DatabaseSchema,
-            source=self.db_schema_entity,
-            owners=self.owner_team_1,
+            source=patch_schema,
+            owners=owner_team_1,
         )
         assert updated is not None
-        assert updated.owners.root[0].id == self.owner_team_1.root[0].id
+        assert updated.owners.root[0].id == owner_team_1.root[0].id
 
         # DatabaseSchema, existing owner, owner is Team, no force -> Unmodified
-        updated: DatabaseSchema = self.metadata.patch_owner(
+        updated: DatabaseSchema = metadata.patch_owner(
             entity=DatabaseSchema,
-            source=self.db_schema_entity,
-            owners=self.owner_team_2,
+            source=patch_schema,
+            owners=owner_team_2,
         )
         assert updated is None
 
         # DatabaseSchema, existing owner, owner is Team, force -> Modified
-        updated: DatabaseSchema = self.metadata.patch_owner(
+        updated: DatabaseSchema = patch_owner_with_retry(
+            metadata,
             entity=DatabaseSchema,
-            source=self.db_schema_entity,
-            owners=self.owner_team_2,
+            source=patch_schema,
+            owners=owner_team_2,
             force=True,
         )
         assert updated is not None
-        assert updated.owners.root[0].id == self.owner_team_2.root[0].id
+        assert updated.owners.root[0].id == owner_team_2.root[0].id
 
         # DatabaseSchema, existing owner, no owner, no force -> Unmodified
-        updated: DatabaseSchema = self.metadata.patch_owner(
+        updated: DatabaseSchema = metadata.patch_owner(
             entity=DatabaseSchema,
-            source=self.db_schema_entity,
+            source=patch_schema,
         )
         assert updated is None
 
         # DatabaseSchema, existing owner, no owner, force -> Modified
-        updated: DatabaseSchema = self.metadata.patch_owner(
+        updated: DatabaseSchema = patch_owner_with_retry(
+            metadata,
             entity=DatabaseSchema,
-            source=self.db_schema_entity,
+            source=patch_schema,
             force=True,
         )
         assert updated is not None
         assert updated.owners == EntityReferenceList(root=[])
 
         # Table, no existing owner, owner is a Team -> Modified
-        updated: Table = self.metadata.patch_owner(
+        updated: Table = patch_owner_with_retry(
+            metadata,
             entity=Table,
-            source=self.table,
-            owners=self.owner_team_1,
+            source=patch_table,
+            owners=owner_team_1,
         )
         assert updated is not None
-        assert updated.owners.root[0].id == self.owner_team_1.root[0].id
+        assert updated.owners.root[0].id == owner_team_1.root[0].id
 
         # Table, existing owner, owner is a Team, no force -> Unmodified
-        updated: Table = self.metadata.patch_owner(
+        updated: Table = metadata.patch_owner(
             entity=Table,
-            source=self.table,
-            owners=self.owner_team_2,
+            source=patch_table,
+            owners=owner_team_2,
         )
         assert updated is None
 
         # Table, existing owner, owner is a Team, force -> Modified
-        updated: Table = self.metadata.patch_owner(
+        updated: Table = patch_owner_with_retry(
+            metadata,
             entity=Table,
-            source=self.table,
-            owners=self.owner_team_2,
+            source=patch_table,
+            owners=owner_team_2,
             force=True,
         )
         assert updated is not None
-        assert updated.owners.root[0].id == self.owner_team_2.root[0].id
+        assert updated.owners.root[0].id == owner_team_2.root[0].id
 
         # Table, existing owner, no owner, no force -> Unmodified
-        updated: Table = self.metadata.patch_owner(
+        updated: Table = metadata.patch_owner(
             entity=Table,
-            source=self.table,
+            source=patch_table,
         )
         assert updated is None
 
         # Table, existing owner, no owner, no force -> Modified
-        updated: Table = self.metadata.patch_owner(
+        updated: Table = patch_owner_with_retry(
+            metadata,
             entity=Table,
-            source=self.table,
+            source=patch_table,
             force=True,
         )
         assert updated is not None
         assert updated.owners == EntityReferenceList(root=[])
 
         # Table with non-existent id, force -> Unmodified
-        non_existent_table = self.table.model_copy(deep=True)
+        non_existent_table = patch_table.model_copy(deep=True)
         non_existent_table.id = "9facb7b3-1dee-4017-8fca-1254b700afef"
-        updated: Table = self.metadata.patch_owner(
+        updated: Table = metadata.patch_owner(
             entity=Table,
             source=non_existent_table,
             force=True,
         )
         assert updated is None
 
-        # Table, no owner, invalid owner type -> Unmodified
-        # Enable after https://github.com/open-metadata/OpenMetadata/issues/11715
-        # updated: Table = self.metadata.patch_owner(
-        #     entity=Table,
-        #     source=self.table,
-        #     owner=EntityReference(id=self.table.id, type="table"),
-        #     force=True,
-        # )
-        # assert updated is None
-
-    def test_patch_nested_col(self):
-        """
-        create a table with nested cols and run patch on it
-        """
+    def test_patch_nested_col(self, metadata, patch_schema):
+        """Create a table with nested cols and run patch on it"""
         create = get_create_entity(
-            entity=Table, reference=self.db_schema_entity.fullyQualifiedName
+            entity=Table, reference=patch_schema.fullyQualifiedName
         )
-        created: Table = self.metadata.create_or_update(create)
+        created: Table = metadata.create_or_update(create)
 
-        with_tags: Table = self.metadata.patch_column_tags(
+        with_tags: Table = metadata.patch_column_tags(
             table=created,
             column_tags=[
                 ColumnTag(
@@ -624,77 +639,68 @@ class OMetaTableTest(TestCase):
             ],
         )
 
-        self.assertEqual(
-            with_tags.columns[2].children[0].tags[0].tagFQN.root,
-            TIER_TAG_LABEL.tagFQN.root,
+        assert (
+            with_tags.columns[2].children[0].tags[0].tagFQN.root
+            == TIER_TAG_LABEL.tagFQN.root
         )
 
-        with_description: Table = self.metadata.patch_column_description(
+        with_description: Table = metadata.patch_column_description(
             table=created,
             column_fqn=created.fullyQualifiedName.root + ".struct.name",
             description="I am so nested",
         )
 
-        self.assertEqual(
-            with_description.columns[2].children[1].description.root,
-            "I am so nested",
+        assert (
+            with_description.columns[2].children[1].description.root == "I am so nested"
         )
 
-    def test_patch_when_inherited_owner(self):
+    def test_patch_when_inherited_owner(self, metadata, patch_database, owner_team_1):
         """PATCHing anything when owner is inherited, does not add the owner to the entity"""
-
-        # Prepare a schema with owners
         create_schema = get_create_entity(
-            entity=DatabaseSchema, reference=self.db_entity.fullyQualifiedName
+            entity=DatabaseSchema, reference=patch_database.fullyQualifiedName
         )
-        create_schema.owners = self.owner_team_1
-        db_schema_entity = self.metadata.create_or_update(data=create_schema)
+        create_schema.owners = owner_team_1
+        db_schema_entity = metadata.create_or_update(data=create_schema)
 
-        # Add a table and check it has inherited owners
         create_table = get_create_entity(
             entity=Table, reference=db_schema_entity.fullyQualifiedName
         )
-        _table = self.metadata.create_or_update(data=create_table)
+        _table = metadata.create_or_update(data=create_table)
 
-        table: Table = self.metadata.get_by_name(
+        table: Table = metadata.get_by_name(
             entity=Table, fqn=_table.fullyQualifiedName, fields=["owners"]
         )
         assert table.owners.root
         assert table.owners.root[0].inherited
 
-        # Add a description to the table and PATCH it
         dest = table.model_copy(deep=True)
         dest.description = Markdown(root="potato")
 
-        self.metadata.patch(
+        metadata.patch(
             entity=Table,
             source=table,
             destination=dest,
         )
 
-        patched_table = self.metadata.get_by_name(
+        patched_table = metadata.get_by_name(
             entity=Table, fqn=table.fullyQualifiedName, fields=["owners"]
         )
 
-        # Check the table still has inherited owners
         assert patched_table.description.root == "potato"
         assert patched_table.owners.root
         assert patched_table.owners.root[0].inherited
 
-    def test_patch_skip_on_failure_true(self):
+    def test_patch_skip_on_failure_true(self, metadata, patch_table):
         """Test that patch operation skips failures when skip_on_failure=True."""
-        # Create a destination with a change to trigger a patch
-        corrupted_destination = self.table.model_copy(deep=True)
+        corrupted_destination = patch_table.model_copy(deep=True)
         corrupted_destination.description = Markdown("Modified description")
 
-        # Mock the client.patch to raise an exception
-        with mock.patch.object(self.metadata.client, "patch") as mock_patch_client:
+        with mock.patch.object(metadata.client, "patch") as mock_patch_client:
             mock_patch_client.side_effect = Exception("API error")
 
-            # Test with skip_on_failure=True (should return None)
-            result = self.metadata.patch(
+            result = metadata.patch(
                 entity=Table,
-                source=self.table,
+                source=patch_table,
                 destination=corrupted_destination,
                 skip_on_failure=True,
             )
@@ -702,57 +708,49 @@ class OMetaTableTest(TestCase):
             assert result is None
             mock_patch_client.assert_called_once()
 
-    def test_patch_skip_on_failure_false(self):
+    def test_patch_skip_on_failure_false(self, metadata, patch_table):
         """Test that patch operation raises exception when skip_on_failure=False."""
-        # Create a destination with a change to trigger a patch
-        corrupted_destination = self.table.model_copy(deep=True)
+        corrupted_destination = patch_table.model_copy(deep=True)
         corrupted_destination.description = Markdown("Modified description")
 
-        # Mock the client.patch to raise an exception
-        with mock.patch.object(self.metadata.client, "patch") as mock_patch_client:
+        with mock.patch.object(metadata.client, "patch") as mock_patch_client:
             mock_patch_client.side_effect = Exception("API error")
 
-            # Test with skip_on_failure=False (should raise exception)
-            with self.assertRaises(RuntimeError) as context:
-                self.metadata.patch(
+            with pytest.raises(RuntimeError) as context:
+                metadata.patch(
                     entity=Table,
-                    source=self.table,
+                    source=patch_table,
                     destination=corrupted_destination,
                     skip_on_failure=False,
                 )
 
-            assert "API error" in str(context.exception)
-            assert "Failed to update" in str(context.exception)
+            assert "API error" in str(context.value)
+            assert "Failed to update" in str(context.value)
             mock_patch_client.assert_called_once()
 
-    def test_patch_skip_on_failure_default_behavior(self):
+    def test_patch_skip_on_failure_default_behavior(self, metadata, patch_table):
         """Test that patch operation defaults to skip_on_failure=True."""
-        # Create a destination with a change to trigger a patch
-        corrupted_destination = self.table.model_copy(deep=True)
+        corrupted_destination = patch_table.model_copy(deep=True)
         corrupted_destination.description = Markdown("Modified description")
 
-        # Mock the client.patch to raise an exception
-        with mock.patch.object(self.metadata.client, "patch") as mock_patch_client:
+        with mock.patch.object(metadata.client, "patch") as mock_patch_client:
             mock_patch_client.side_effect = Exception("API error")
 
-            # Test without explicitly setting skip_on_failure (should default to True)
-            result = self.metadata.patch(
-                entity=Table, source=self.table, destination=corrupted_destination
+            result = metadata.patch(
+                entity=Table, source=patch_table, destination=corrupted_destination
             )
 
             assert result is None
             mock_patch_client.assert_called_once()
 
-    def test_patch_description_skip_on_failure_true(self):
+    def test_patch_description_skip_on_failure_true(self, metadata, patch_table):
         """Test that patch_description skips failures when skip_on_failure=True."""
-        # Mock _fetch_entity_if_exists to raise an exception
-        with mock.patch.object(self.metadata, "_fetch_entity_if_exists") as mock_fetch:
+        with mock.patch.object(metadata, "_fetch_entity_if_exists") as mock_fetch:
             mock_fetch.side_effect = Exception("Database error")
 
-            # Test with skip_on_failure=True
-            result = self.metadata.patch_description(
+            result = metadata.patch_description(
                 entity=Table,
-                source=self.table,
+                source=patch_table,
                 description="New description",
                 skip_on_failure=True,
             )
@@ -760,34 +758,30 @@ class OMetaTableTest(TestCase):
             assert result is None
             mock_fetch.assert_called_once()
 
-    def test_patch_description_skip_on_failure_false(self):
+    def test_patch_description_skip_on_failure_false(self, metadata, patch_table):
         """Test that patch_description raises exception when skip_on_failure=False."""
-        # Mock _fetch_entity_if_exists to raise an exception
-        with mock.patch.object(self.metadata, "_fetch_entity_if_exists") as mock_fetch:
+        with mock.patch.object(metadata, "_fetch_entity_if_exists") as mock_fetch:
             mock_fetch.side_effect = Exception("Database error")
 
-            # Test with skip_on_failure=False
-            with self.assertRaises(Exception) as context:
-                self.metadata.patch_description(
+            with pytest.raises(Exception) as context:
+                metadata.patch_description(
                     entity=Table,
-                    source=self.table,
+                    source=patch_table,
                     description="New description",
                     skip_on_failure=False,
                 )
 
-            assert str(context.exception) == "Database error"
+            assert str(context.value) == "Database error"
             mock_fetch.assert_called_once()
 
-    def test_patch_tags_skip_on_failure_true(self):
+    def test_patch_tags_skip_on_failure_true(self, metadata, patch_table):
         """Test that patch_tags skips failures when skip_on_failure=True."""
-        # Mock _fetch_entity_if_exists to raise an exception
-        with mock.patch.object(self.metadata, "_fetch_entity_if_exists") as mock_fetch:
+        with mock.patch.object(metadata, "_fetch_entity_if_exists") as mock_fetch:
             mock_fetch.side_effect = Exception("Database error")
 
-            # Test with skip_on_failure=True
-            result = self.metadata.patch_tags(
+            result = metadata.patch_tags(
                 entity=Table,
-                source=self.table,
+                source=patch_table,
                 tag_labels=[PII_TAG_LABEL],
                 skip_on_failure=True,
             )
@@ -795,20 +789,18 @@ class OMetaTableTest(TestCase):
             assert result is None
             mock_fetch.assert_called_once()
 
-    def test_patch_tags_skip_on_failure_false(self):
+    def test_patch_tags_skip_on_failure_false(self, metadata, patch_table):
         """Test that patch_tags raises exception when skip_on_failure=False."""
-        # Mock _fetch_entity_if_exists to raise an exception
-        with mock.patch.object(self.metadata, "_fetch_entity_if_exists") as mock_fetch:
+        with mock.patch.object(metadata, "_fetch_entity_if_exists") as mock_fetch:
             mock_fetch.side_effect = Exception("Database error")
 
-            # Test with skip_on_failure=False
-            with self.assertRaises(Exception) as context:
-                self.metadata.patch_tags(
+            with pytest.raises(Exception) as context:
+                metadata.patch_tags(
                     entity=Table,
-                    source=self.table,
+                    source=patch_table,
                     tag_labels=[PII_TAG_LABEL],
                     skip_on_failure=False,
                 )
 
-            assert str(context.exception) == "Database error"
+            assert str(context.value) == "Database error"
             mock_fetch.assert_called_once()

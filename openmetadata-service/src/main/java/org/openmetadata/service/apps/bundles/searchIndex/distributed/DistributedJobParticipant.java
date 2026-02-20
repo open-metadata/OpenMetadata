@@ -316,26 +316,19 @@ public class DistributedJobParticipant implements Managed {
             partition.getId(),
             partition.getEntityType());
 
-        try {
-          PartitionWorker.PartitionResult result = worker.processPartition(partition);
-          partitionsProcessed++;
-          totalReaderSuccess += result.successCount();
-          totalReaderFailed += result.readerFailed();
-          totalReaderWarnings += result.readerWarnings();
+        PartitionWorker.PartitionResult result = worker.processPartition(partition);
+        partitionsProcessed++;
+        totalReaderSuccess += result.successCount();
+        totalReaderFailed += result.readerFailed();
+        totalReaderWarnings += result.readerWarnings();
 
-          LOG.info(
-              "Participant completed partition {} (success: {}, failed: {}, readerFailed: {}, readerWarnings: {})",
-              partition.getId(),
-              result.successCount(),
-              result.failedCount(),
-              result.readerFailed(),
-              result.readerWarnings());
-
-          // Stats are tracked per-entityType by StageStatsTracker in PartitionWorker
-
-        } catch (Exception e) {
-          LOG.error("Error processing partition {}", partition.getId(), e);
-        }
+        LOG.info(
+            "Participant completed partition {} (success: {}, failed: {}, readerFailed: {}, readerWarnings: {})",
+            partition.getId(),
+            result.successCount(),
+            result.failedCount(),
+            result.readerFailed(),
+            result.readerWarnings());
       }
 
       // Flush sink and wait for all pending bulk requests to complete

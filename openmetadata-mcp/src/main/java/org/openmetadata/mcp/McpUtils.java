@@ -39,7 +39,6 @@ public class McpUtils {
   public static List<Map<String, Object>> loadDefinitionsFromJson(String json) {
     try {
       LOG.info("Loaded definitions, content length: {}", json.length());
-      LOG.info("Raw content: {}", json);
 
       JsonNode jsonNode = JsonUtils.readTree(json);
       JsonNode jsonArray = jsonNode.get("tools");

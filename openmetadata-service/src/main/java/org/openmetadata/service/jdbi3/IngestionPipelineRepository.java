@@ -283,6 +283,23 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   protected void deployPipelineBeforeUpdate(IngestionPipeline ingestionPipeline) {
     IngestionPipeline decrypted = buildIngestionPipelineDecrypted(ingestionPipeline);
 
+    // Restore service reference lost during JSON round-trip (service is a relationship,
+    // not stored in the entity JSON). Fall back to fetching from the relationships table.
+    if (decrypted.getService() == null) {
+      EntityReference serviceRef =
+          ingestionPipeline.getService() != null
+              ? ingestionPipeline.getService()
+              : getContainer(ingestionPipeline.getId());
+      if (serviceRef == null) {
+        throw new IllegalStateException(
+            String.format(
+                "Cannot deploy pipeline '%s': no service reference found. "
+                    + "The pipeline may have a broken service relationship.",
+                ingestionPipeline.getName()));
+      }
+      decrypted.setService(serviceRef);
+    }
+
     OpenMetadataConnection openMetadataServerConnection =
         new org.openmetadata.service.util.OpenMetadataConnectionBuilder(
                 openMetadataApplicationConfig, decrypted)
@@ -460,7 +477,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   protected void postDelete(IngestionPipeline entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
     // Delete deployed pipeline in the Pipeline Service Client
-    pipelineServiceClient.deletePipeline(entity);
+    if (pipelineServiceClient != null) {
+      pipelineServiceClient.deletePipeline(entity);
+    } else {
+      LOG.debug(
+          "Skipping pipeline service delete for '{}' because pipeline service client is not configured.",
+          entity.getFullyQualifiedName());
+    }
     // Clean pipeline status
     daoCollection
         .entityExtensionTimeSeriesDao()

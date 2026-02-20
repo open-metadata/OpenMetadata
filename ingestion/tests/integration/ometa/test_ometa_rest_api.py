@@ -13,11 +13,10 @@
 OpenMetadata high-level API REST API test
 Tests for ApiService, APICollection, and APIEndpoint entities
 """
-import uuid
 from copy import deepcopy
-from unittest import TestCase
 
-from _openmetadata_testutils.ometa import int_admin_ometa
+import pytest
+
 from metadata.generated.schema.api.data.createAPICollection import (
     CreateAPICollectionRequest,
 )
@@ -27,7 +26,6 @@ from metadata.generated.schema.api.data.createAPIEndpoint import (
 from metadata.generated.schema.api.services.createApiService import (
     CreateApiServiceRequest,
 )
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import (
     APIEndpoint,
@@ -46,30 +44,16 @@ from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 
+from ..conftest import _safe_delete
+from ..integration_base import generate_name
 
-class OMetaRestApiTest(TestCase):
-    """
-    Run this integration test with the local API available
-    Install the ingestion package before running the tests
-    """
 
-    service_entity_id = None
-
-    metadata = int_admin_ometa()
-
-    user = metadata.create_or_update(
-        data=CreateUserRequest(name="random-user", email="random@user.com"),
-    )
-    owners = EntityReferenceList(
-        root=[
-            EntityReference(
-                id=user.id, type="user", fullyQualifiedName=user.fullyQualifiedName.root
-            )
-        ]
-    )
-
-    service = CreateApiServiceRequest(
-        name="test-api-service",
+@pytest.fixture(scope="module")
+def api_service(metadata):
+    """Module-scoped ApiService for REST API tests."""
+    service_name = generate_name()
+    service_request = CreateApiServiceRequest(
+        name=service_name,
         serviceType=ApiServiceType.Rest,
         connection=ApiConnection(
             config=RestConnection(
@@ -78,471 +62,189 @@ class OMetaRestApiTest(TestCase):
             )
         ),
     )
-    service_type = "apiService"
+    service_entity = metadata.create_or_update(data=service_request)
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        Prepare ingredients
-        """
+    yield service_entity
 
-        cls.service_entity = cls.metadata.create_or_update(data=cls.service)
+    _safe_delete(
+        metadata,
+        entity=ApiService,
+        entity_id=service_entity.id,
+        recursive=True,
+        hard_delete=True,
+    )
 
-        cls.api_collection_entity = APICollection(
-            id=uuid.uuid4(),
-            name="test-collection",
-            service=EntityReference(id=cls.service_entity.id, type="apiService"),
-            fullyQualifiedName="test-api-service.test-collection",
-            endpointURL="https://petstore.swagger.io/v2/pet",
-        )
 
-        cls.create_collection = CreateAPICollectionRequest(
-            name="test-collection",
-            service=cls.service_entity.fullyQualifiedName,
-            endpointURL="https://petstore.swagger.io/v2/pet",
-        )
+@pytest.fixture(scope="module")
+def rest_user(metadata):
+    """User for REST API ownership tests."""
+    from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+    from metadata.generated.schema.entity.teams.user import User
 
-        cls.api_endpoint_entity = APIEndpoint(
-            id=uuid.uuid4(),
-            name="test-endpoint",
-            service=EntityReference(id=cls.service_entity.id, type="apiService"),
-            apiCollection=EntityReference(
-                id=cls.api_collection_entity.id, type="apiCollection"
-            ),
-            fullyQualifiedName="test-api-service.test-collection.test-endpoint",
-            endpointURL="https://petstore.swagger.io/v2/pet/{petId}",
-            requestMethod=ApiRequestMethod.GET,
-        )
+    user_name = generate_name()
+    user = metadata.create_or_update(
+        data=CreateUserRequest(name=user_name, email=f"{user_name.root}@user.com"),
+    )
 
-        cls.create_endpoint = CreateAPIEndpointRequest(
-            name="test-endpoint",
-            apiCollection=cls.api_collection_entity.fullyQualifiedName,
-            endpointURL="https://petstore.swagger.io/v2/pet/{petId}",
-            requestMethod=ApiRequestMethod.GET,
-        )
+    yield user
 
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Clean up
-        """
+    metadata.delete(entity=User, entity_id=user.id, hard_delete=True)
 
-        service_id = str(
-            cls.metadata.get_by_name(entity=ApiService, fqn="test-api-service").id.root
-        )
 
-        cls.metadata.delete(
-            entity=ApiService,
-            entity_id=service_id,
-            recursive=True,
-            hard_delete=True,
-        )
+@pytest.fixture(scope="module")
+def rest_owners(rest_user):
+    """Owner reference list for REST API tests."""
+    return EntityReferenceList(
+        root=[
+            EntityReference(
+                id=rest_user.id,
+                type="user",
+                fullyQualifiedName=rest_user.fullyQualifiedName.root,
+            )
+        ]
+    )
 
-    def test_create_api_service(self):
-        """
-        We can create an ApiService and we receive it back as Entity
-        """
 
-        res = self.metadata.create_or_update(data=self.service)
+@pytest.fixture(scope="module")
+def service_request(api_service):
+    """Recreatable service request matching the existing service."""
+    return CreateApiServiceRequest(
+        name=api_service.name,
+        serviceType=ApiServiceType.Rest,
+        connection=ApiConnection(
+            config=RestConnection(
+                openAPISchemaURL="https://petstore.swagger.io/v2/swagger.json",
+                type=RestType.Rest,
+            )
+        ),
+    )
 
-        self.assertEqual(res.name, self.service.name)
-        self.assertEqual(res.serviceType, self.service.serviceType)
-        self.assertTrue(
-            res.owners is None or res.owners == EntityReferenceList(root=[])
-        )
 
-    def test_update_api_service(self):
-        """
-        Updating it properly changes its properties
-        """
+@pytest.fixture(scope="module")
+def collection_request(api_service):
+    """CreateAPICollectionRequest for the module's service."""
+    return CreateAPICollectionRequest(
+        name="test-collection",
+        service=api_service.fullyQualifiedName,
+        endpointURL="https://petstore.swagger.io/v2/pet",
+    )
 
-        res_create = self.metadata.create_or_update(data=self.service)
 
-        updated = self.service.model_dump(exclude_unset=True)
-        updated["owners"] = self.owners
-        updated_entity = CreateApiServiceRequest(**updated)
+@pytest.fixture(scope="module")
+def api_collection(metadata, collection_request):
+    """Module-scoped APICollection entity."""
+    return metadata.create_or_update(data=collection_request)
 
-        res = self.metadata.create_or_update(data=updated_entity)
 
-        # Same ID, updated owner
-        self.assertEqual(res.name, updated_entity.name)
-        self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owners.root[0].id, self.user.id)
+@pytest.fixture(scope="module")
+def endpoint_request(api_collection):
+    """CreateAPIEndpointRequest for the module's collection."""
+    return CreateAPIEndpointRequest(
+        name="test-endpoint",
+        apiCollection=api_collection.fullyQualifiedName,
+        endpointURL="https://petstore.swagger.io/v2/pet/{petId}",
+        requestMethod=ApiRequestMethod.GET,
+    )
 
-    def test_get_api_service_name(self):
-        """
-        We can fetch an ApiService by name and get it back as Entity
-        """
 
-        self.metadata.create_or_update(data=self.service)
+class TestOMetaRestAPI:
+    """
+    REST API integration tests.
+    Tests CRUD operations for ApiService, APICollection, and APIEndpoint.
 
-        res = self.metadata.get_by_name(entity=ApiService, fqn=self.service.name)
-        self.assertEqual(res.name, self.service.name)
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    """
 
-        # Now check that we get a None if the service does not exist
-        nullable_res = self.metadata.get_by_name(
-            entity=ApiService, fqn="something.made.up"
-        )
-        self.assertIsNone(nullable_res)
-
-    def test_get_api_service_id(self):
-        """
-        We can fetch an ApiService by ID and get it back as Entity
-        """
-
-        self.metadata.create_or_update(data=self.service)
-
-        # First pick up by name
-        res_name = self.metadata.get_by_name(entity=ApiService, fqn=self.service.name)
-        # Then fetch by ID
-        res = self.metadata.get_by_id(
-            entity=ApiService, entity_id=str(res_name.id.root)
-        )
-
-        self.assertEqual(res_name.id, res.id)
-
-    def test_list_api_services(self):
-        """
-        We can list all our ApiServices
-        """
-
-        self.metadata.create_or_update(data=self.service)
-
-        res = self.metadata.list_entities(entity=ApiService)
-
-        # Fetch our test ApiService. We have already inserted it, so we should find it
-        data = next(
-            iter(ent for ent in res.entities if ent.name == self.service.name), None
-        )
-        assert data
-
-    def test_delete_api_service(self):
-        """
-        We can delete an ApiService by ID
-        """
-        # Create a separate service for deletion test
-        delete_service = CreateApiServiceRequest(
-            name="test-api-service-delete",
-            serviceType=ApiServiceType.Rest,
-            connection=ApiConnection(
-                config=RestConnection(
-                    openAPISchemaURL="https://petstore.swagger.io/v2/swagger.json",
-                    type=RestType.Rest,
-                )
-            ),
-        )
-
-        self.metadata.create_or_update(data=delete_service)
-
-        # Find by name
-        res_name = self.metadata.get_by_name(entity=ApiService, fqn=delete_service.name)
-        # Then fetch by ID
-        res_id = self.metadata.get_by_id(entity=ApiService, entity_id=res_name.id)
-
-        # Delete
-        self.metadata.delete(entity=ApiService, entity_id=str(res_id.id.root))
-
-        # Then we should not find it
-        res = self.metadata.list_entities(entity=ApiService)
-        assert not next(
-            iter(
-                ent
-                for ent in res.entities
-                if ent.fullyQualifiedName == delete_service.name.root
-            ),
-            None,
-        )
-
-    def test_create_api_collection(self):
+    @pytest.mark.order(1)
+    def test_create_api_collection(
+        self, metadata, api_service, api_collection, collection_request
+    ):
         """
         We can create an APICollection and we receive it back as Entity
         """
+        res = metadata.create_or_update(data=collection_request)
 
-        res = self.metadata.create_or_update(data=self.create_collection)
+        assert res.name == collection_request.name
+        assert res.service.id == api_service.id
+        assert res.owners is None or res.owners == EntityReferenceList(root=[])
 
-        self.assertEqual(res.name, self.api_collection_entity.name)
-        self.assertEqual(res.service.id, self.service_entity.id)
-        self.assertTrue(
-            res.owners is None or res.owners == EntityReferenceList(root=[])
-        )
-
-    def test_update_api_collection(self):
+    @pytest.mark.order(2)
+    def test_create_api_endpoint(
+        self, metadata, api_service, api_collection, endpoint_request
+    ):
         """
-        Updating it properly changes its properties
+        We can create an APIEndpoint and we receive it back as Entity
         """
+        res = metadata.create_or_update(data=endpoint_request)
 
-        res_create = self.metadata.create_or_update(data=self.create_collection)
+        assert res.name == endpoint_request.name
+        assert res.apiCollection.id == api_collection.id
+        assert res.requestMethod == ApiRequestMethod.GET
+        assert res.owners is None or res.owners == EntityReferenceList(root=[])
 
-        updated = self.create_collection.model_dump(exclude_unset=True)
-        updated["owners"] = self.owners
-        updated_entity = CreateAPICollectionRequest(**updated)
-
-        res = self.metadata.create_or_update(data=updated_entity)
-
-        # Same ID, updated owner
-        self.assertEqual(res.name, updated_entity.name)
-        self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owners.root[0].id, self.user.id)
-
-    def test_get_api_collection_name(self):
+    @pytest.mark.order(3)
+    def test_create_api_service(self, metadata, api_service, service_request):
         """
-        We can fetch an APICollection by name and get it back as Entity
+        We can create an ApiService and we receive it back as Entity
         """
+        res = metadata.create_or_update(data=service_request)
 
-        self.metadata.create_or_update(data=self.create_collection)
+        assert res.name == service_request.name
+        assert res.serviceType == service_request.serviceType
+        assert res.owners is None or res.owners == EntityReferenceList(root=[])
 
-        res = self.metadata.get_by_name(
-            entity=APICollection, fqn=self.api_collection_entity.fullyQualifiedName
-        )
-        self.assertEqual(res.name, self.api_collection_entity.name)
-
-        # Now check that we get a None if the collection does not exist
-        nullable_res = self.metadata.get_by_name(
-            entity=APICollection, fqn="something.made.up"
-        )
-        self.assertIsNone(nullable_res)
-
-    def test_get_api_collection_id(self):
-        """
-        We can fetch an APICollection by ID and get it back as Entity
-        """
-
-        self.metadata.create_or_update(data=self.create_collection)
-
-        # First pick up by name
-        res_name = self.metadata.get_by_name(
-            entity=APICollection, fqn=self.api_collection_entity.fullyQualifiedName
-        )
-        # Then fetch by ID
-        res = self.metadata.get_by_id(
-            entity=APICollection, entity_id=str(res_name.id.root)
-        )
-
-        self.assertEqual(res_name.id, res.id)
-
-    def test_list_api_collections(self):
-        """
-        We can list all our APICollections
-        """
-
-        self.metadata.create_or_update(data=self.create_collection)
-
-        res = self.metadata.list_entities(
-            entity=APICollection, params={"service": "test-api-service"}
-        )
-
-        # Fetch our test APICollection. We have already inserted it, so we should find it
-        data = next(
-            iter(
-                ent
-                for ent in res.entities
-                if ent.name == self.api_collection_entity.name
-            ),
-            None,
-        )
-        assert data
-
-    def test_delete_api_collection(self):
+    @pytest.mark.order(4)
+    def test_delete_api_collection(self, metadata, api_service):
         """
         We can delete an APICollection by ID
         """
-        # Create a separate collection for deletion test
         delete_collection = CreateAPICollectionRequest(
-            name="test-collection-delete",
-            service=self.service_entity.fullyQualifiedName,
+            name=generate_name(),
+            service=api_service.fullyQualifiedName,
             endpointURL="https://petstore.swagger.io/v2/user",
         )
 
-        self.metadata.create_or_update(data=delete_collection)
+        created = metadata.create_or_update(data=delete_collection)
 
-        # Find by name
-        res_name = self.metadata.get_by_name(
-            entity=APICollection, fqn=f"test-api-service.test-collection-delete"
+        res_name = metadata.get_by_name(
+            entity=APICollection, fqn=created.fullyQualifiedName
         )
-        # Then fetch by ID
-        res_id = self.metadata.get_by_id(entity=APICollection, entity_id=res_name.id)
+        res_id = metadata.get_by_id(entity=APICollection, entity_id=res_name.id)
 
-        # Delete
-        self.metadata.delete(entity=APICollection, entity_id=str(res_id.id.root))
+        metadata.delete(entity=APICollection, entity_id=str(res_id.id.root))
 
-        # Then we should not find it
-        res = self.metadata.list_entities(entity=APICollection)
+        res = metadata.list_entities(entity=APICollection)
         assert not next(
             iter(
                 ent
                 for ent in res.entities
-                if ent.fullyQualifiedName == f"test-api-service.test-collection-delete"
+                if ent.fullyQualifiedName == created.fullyQualifiedName
             ),
             None,
         )
 
-    def test_create_api_endpoint(self):
-        """
-        We can create an APIEndpoint and we receive it back as Entity
-        """
-        # First ensure the collection exists
-        collection_res = self.metadata.create_or_update(data=self.create_collection)
-
-        # Update the endpoint creation request with the actual collection FQN
-        endpoint_request = CreateAPIEndpointRequest(
-            name="test-endpoint",
-            apiCollection=collection_res.fullyQualifiedName,
-            endpointURL="https://petstore.swagger.io/v2/pet/{petId}",
-            requestMethod=ApiRequestMethod.GET,
-        )
-
-        res = self.metadata.create_or_update(data=endpoint_request)
-
-        self.assertEqual(res.name, self.api_endpoint_entity.name)
-        self.assertEqual(res.apiCollection.id, collection_res.id)
-        self.assertEqual(res.requestMethod, ApiRequestMethod.GET)
-        self.assertTrue(
-            res.owners is None or res.owners == EntityReferenceList(root=[])
-        )
-
-    def test_update_api_endpoint(self):
-        """
-        Updating it properly changes its properties
-        """
-        # First ensure the collection exists
-        collection_res = self.metadata.create_or_update(data=self.create_collection)
-
-        # Create the endpoint
-        endpoint_request = CreateAPIEndpointRequest(
-            name="test-endpoint",
-            apiCollection=collection_res.fullyQualifiedName,
-            endpointURL="https://petstore.swagger.io/v2/pet/{petId}",
-            requestMethod=ApiRequestMethod.GET,
-        )
-
-        res_create = self.metadata.create_or_update(data=endpoint_request)
-
-        updated = endpoint_request.model_dump(exclude_unset=True)
-        updated["owners"] = self.owners
-        updated_entity = CreateAPIEndpointRequest(**updated)
-
-        res = self.metadata.create_or_update(data=updated_entity)
-
-        # Same ID, updated owner
-        self.assertEqual(res.name, updated_entity.name)
-        self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owners.root[0].id, self.user.id)
-
-    def test_get_api_endpoint_name(self):
-        """
-        We can fetch an APIEndpoint by name and get it back as Entity
-        """
-        # First ensure the collection exists
-        collection_res = self.metadata.create_or_update(data=self.create_collection)
-
-        # Create the endpoint
-        endpoint_request = CreateAPIEndpointRequest(
-            name="test-endpoint-get-name",
-            apiCollection=collection_res.fullyQualifiedName,
-            endpointURL="https://petstore.swagger.io/v2/pet/{petId}",
-            requestMethod=ApiRequestMethod.GET,
-        )
-
-        endpoint_res = self.metadata.create_or_update(data=endpoint_request)
-
-        res = self.metadata.get_by_name(
-            entity=APIEndpoint, fqn=endpoint_res.fullyQualifiedName
-        )
-        self.assertEqual(res.name, endpoint_res.name)
-
-        # Now check that we get a None if the endpoint does not exist
-        nullable_res = self.metadata.get_by_name(
-            entity=APIEndpoint, fqn="something.made.up"
-        )
-        self.assertIsNone(nullable_res)
-
-    def test_get_api_endpoint_id(self):
-        """
-        We can fetch an APIEndpoint by ID and get it back as Entity
-        """
-        # First ensure the collection exists
-        collection_res = self.metadata.create_or_update(data=self.create_collection)
-
-        # Create the endpoint
-        endpoint_request = CreateAPIEndpointRequest(
-            name="test-endpoint-get-id",
-            apiCollection=collection_res.fullyQualifiedName,
-            endpointURL="https://petstore.swagger.io/v2/pet/{petId}",
-            requestMethod=ApiRequestMethod.GET,
-        )
-
-        endpoint_res = self.metadata.create_or_update(data=endpoint_request)
-
-        # First pick up by name
-        res_name = self.metadata.get_by_name(
-            entity=APIEndpoint, fqn=endpoint_res.fullyQualifiedName
-        )
-        # Then fetch by ID
-        res = self.metadata.get_by_id(
-            entity=APIEndpoint, entity_id=str(res_name.id.root)
-        )
-
-        self.assertEqual(res_name.id, res.id)
-
-    def test_list_api_endpoints(self):
-        """
-        We can list all our APIEndpoints
-        """
-        # First ensure the collection exists
-        collection_res = self.metadata.create_or_update(data=self.create_collection)
-
-        # Create the endpoint
-        endpoint_request = CreateAPIEndpointRequest(
-            name="test-endpoint",
-            apiCollection=collection_res.fullyQualifiedName,
-            endpointURL="https://petstore.swagger.io/v2/pet/{petId}",
-            requestMethod=ApiRequestMethod.GET,
-        )
-
-        self.metadata.create_or_update(data=endpoint_request)
-
-        res = self.metadata.list_entities(
-            entity=APIEndpoint,
-            params={"apiCollection": collection_res.fullyQualifiedName.root},
-        )
-
-        # Fetch our test APIEndpoint. We have already inserted it, so we should find it
-        data = next(
-            iter(
-                ent for ent in res.entities if ent.name == self.api_endpoint_entity.name
-            ),
-            None,
-        )
-        assert data
-
-    def test_delete_api_endpoint(self):
+    @pytest.mark.order(5)
+    def test_delete_api_endpoint(self, metadata, api_collection):
         """
         We can delete an APIEndpoint by ID
         """
-        # First ensure the collection exists
-        collection_res = self.metadata.create_or_update(data=self.create_collection)
-
-        # Create a separate endpoint for deletion test
         delete_endpoint = CreateAPIEndpointRequest(
-            name="test-endpoint-delete",
-            apiCollection=collection_res.fullyQualifiedName,
+            name=generate_name(),
+            apiCollection=api_collection.fullyQualifiedName,
             endpointURL="https://petstore.swagger.io/v2/pet/{petId}/delete",
             requestMethod=ApiRequestMethod.DELETE,
         )
 
-        # Find by name
-        endpoint_res = self.metadata.create_or_update(data=delete_endpoint)
-        res_name = self.metadata.get_by_name(
+        endpoint_res = metadata.create_or_update(data=delete_endpoint)
+        res_name = metadata.get_by_name(
             entity=APIEndpoint, fqn=endpoint_res.fullyQualifiedName
         )
-        # Then fetch by ID
-        res_id = self.metadata.get_by_id(entity=APIEndpoint, entity_id=res_name.id)
+        res_id = metadata.get_by_id(entity=APIEndpoint, entity_id=res_name.id)
 
-        # Delete
-        self.metadata.delete(entity=APIEndpoint, entity_id=str(res_id.id.root))
+        metadata.delete(entity=APIEndpoint, entity_id=str(res_id.id.root))
 
-        # Then we should not find it
-        res = self.metadata.list_entities(entity=APIEndpoint)
+        res = metadata.list_entities(entity=APIEndpoint)
         assert not next(
             iter(
                 ent
@@ -552,70 +254,284 @@ class OMetaRestApiTest(TestCase):
             None,
         )
 
-    def test_list_all_and_paginate_collections(self):
+    @pytest.mark.order(6)
+    def test_delete_api_service(self, metadata):
         """
-        Validate generator utility to fetch all APICollections
+        We can delete an ApiService by ID
         """
-        fake_create = deepcopy(self.create_collection)
-        for i in range(0, 5):
-            fake_create.name = EntityName(self.create_collection.name.root + str(i))
-            self.metadata.create_or_update(data=fake_create)
-
-        all_entities = self.metadata.list_all_entities(
-            entity=APICollection, limit=2  # paginate in batches of pairs
-        )
-        assert (
-            len(list(all_entities)) >= 5
-        )  # In case the default testing entity is not present
-
-        entity_list = self.metadata.list_entities(entity=APICollection, limit=2)
-        assert len(entity_list.entities) == 2
-        if entity_list.after:
-            after_entity_list = self.metadata.list_entities(
-                entity=APICollection, limit=2, after=entity_list.after
-            )
-            assert len(after_entity_list.entities) == 2
-
-    def test_get_entity_ref_api_service(self):
-        """
-        test get EntityReference for ApiService
-        """
-        res = self.metadata.create_or_update(data=self.service)
-        entity_ref = self.metadata.get_entity_reference(
-            entity=ApiService, fqn=res.fullyQualifiedName
+        delete_service = CreateApiServiceRequest(
+            name=generate_name(),
+            serviceType=ApiServiceType.Rest,
+            connection=ApiConnection(
+                config=RestConnection(
+                    openAPISchemaURL="https://petstore.swagger.io/v2/swagger.json",
+                    type=RestType.Rest,
+                )
+            ),
         )
 
-        assert res.id == entity_ref.id
+        created = metadata.create_or_update(data=delete_service)
 
-    def test_get_entity_ref_api_collection(self):
+        res_name = metadata.get_by_name(entity=ApiService, fqn=delete_service.name)
+        res_id = metadata.get_by_id(entity=ApiService, entity_id=res_name.id)
+
+        metadata.delete(entity=ApiService, entity_id=str(res_id.id.root))
+
+        res = metadata.list_entities(entity=ApiService)
+        assert not next(
+            iter(
+                ent
+                for ent in res.entities
+                if ent.fullyQualifiedName == created.fullyQualifiedName
+            ),
+            None,
+        )
+
+    @pytest.mark.order(7)
+    def test_get_api_collection_id(self, metadata, api_collection, collection_request):
+        """
+        We can fetch an APICollection by ID and get it back as Entity
+        """
+        metadata.create_or_update(data=collection_request)
+
+        res_name = metadata.get_by_name(
+            entity=APICollection, fqn=api_collection.fullyQualifiedName
+        )
+        res = metadata.get_by_id(entity=APICollection, entity_id=str(res_name.id.root))
+
+        assert res_name.id == res.id
+
+    @pytest.mark.order(8)
+    def test_get_api_collection_name(
+        self, metadata, api_collection, collection_request
+    ):
+        """
+        We can fetch an APICollection by name and get it back as Entity
+        """
+        metadata.create_or_update(data=collection_request)
+
+        res = metadata.get_by_name(
+            entity=APICollection, fqn=api_collection.fullyQualifiedName
+        )
+        assert res.name == api_collection.name
+
+        nullable_res = metadata.get_by_name(
+            entity=APICollection, fqn="something.made.up"
+        )
+        assert nullable_res is None
+
+    @pytest.mark.order(9)
+    def test_get_api_endpoint_id(self, metadata, api_collection):
+        """
+        We can fetch an APIEndpoint by ID and get it back as Entity
+        """
+        endpoint_request = CreateAPIEndpointRequest(
+            name="test-endpoint-get-id",
+            apiCollection=api_collection.fullyQualifiedName,
+            endpointURL="https://petstore.swagger.io/v2/pet/{petId}",
+            requestMethod=ApiRequestMethod.GET,
+        )
+
+        endpoint_res = metadata.create_or_update(data=endpoint_request)
+
+        res_name = metadata.get_by_name(
+            entity=APIEndpoint, fqn=endpoint_res.fullyQualifiedName
+        )
+        res = metadata.get_by_id(entity=APIEndpoint, entity_id=str(res_name.id.root))
+
+        assert res_name.id == res.id
+
+    @pytest.mark.order(10)
+    def test_get_api_endpoint_name(self, metadata, api_collection):
+        """
+        We can fetch an APIEndpoint by name and get it back as Entity
+        """
+        endpoint_request = CreateAPIEndpointRequest(
+            name="test-endpoint-get-name",
+            apiCollection=api_collection.fullyQualifiedName,
+            endpointURL="https://petstore.swagger.io/v2/pet/{petId}",
+            requestMethod=ApiRequestMethod.GET,
+        )
+
+        endpoint_res = metadata.create_or_update(data=endpoint_request)
+
+        res = metadata.get_by_name(
+            entity=APIEndpoint, fqn=endpoint_res.fullyQualifiedName
+        )
+        assert res.name == endpoint_res.name
+
+        nullable_res = metadata.get_by_name(entity=APIEndpoint, fqn="something.made.up")
+        assert nullable_res is None
+
+    @pytest.mark.order(11)
+    def test_get_entity_ref_api_collection(
+        self, metadata, api_collection, collection_request
+    ):
         """
         test get EntityReference for APICollection
         """
-        res = self.metadata.create_or_update(data=self.create_collection)
-        entity_ref = self.metadata.get_entity_reference(
+        res = metadata.create_or_update(data=collection_request)
+        entity_ref = metadata.get_entity_reference(
             entity=APICollection, fqn=res.fullyQualifiedName
         )
 
         assert res.id == entity_ref.id
 
-    def test_get_entity_ref_api_endpoint(self):
+    @pytest.mark.order(12)
+    def test_get_entity_ref_api_endpoint(
+        self, metadata, api_collection, endpoint_request
+    ):
         """
         test get EntityReference for APIEndpoint
         """
-        # First ensure the collection exists
-        collection_res = self.metadata.create_or_update(data=self.create_collection)
-
-        # Create the endpoint
-        endpoint_request = CreateAPIEndpointRequest(
-            name="test-endpoint",
-            apiCollection=collection_res.fullyQualifiedName,
-            endpointURL="https://petstore.swagger.io/v2/pet/{petId}",
-            requestMethod=ApiRequestMethod.GET,
-        )
-
-        res = self.metadata.create_or_update(data=endpoint_request)
-        entity_ref = self.metadata.get_entity_reference(
+        res = metadata.create_or_update(data=endpoint_request)
+        entity_ref = metadata.get_entity_reference(
             entity=APIEndpoint, fqn=res.fullyQualifiedName
         )
 
         assert res.id == entity_ref.id
+
+    @pytest.mark.order(13)
+    def test_get_entity_ref_api_service(self, metadata, api_service, service_request):
+        """
+        test get EntityReference for ApiService
+        """
+        res = metadata.create_or_update(data=service_request)
+        entity_ref = metadata.get_entity_reference(
+            entity=ApiService, fqn=res.fullyQualifiedName
+        )
+
+        assert res.id == entity_ref.id
+
+    @pytest.mark.order(14)
+    def test_list_all_and_paginate_collections(
+        self, metadata, api_service, collection_request
+    ):
+        """
+        Validate generator utility to fetch all APICollections
+        """
+        fake_create = deepcopy(collection_request)
+        for i in range(0, 5):
+            fake_create.name = EntityName(collection_request.name.root + str(i))
+            metadata.create_or_update(data=fake_create)
+
+        all_entities = metadata.list_all_entities(entity=APICollection, limit=2)
+        assert len(list(all_entities)) >= 5
+
+        entity_list = metadata.list_entities(entity=APICollection, limit=2)
+        assert len(entity_list.entities) == 2
+        if entity_list.after:
+            after_entity_list = metadata.list_entities(
+                entity=APICollection, limit=2, after=entity_list.after
+            )
+            assert len(after_entity_list.entities) == 2
+
+    @pytest.mark.order(15)
+    def test_list_api_collections(
+        self, metadata, api_service, api_collection, collection_request
+    ):
+        """
+        We can list all our APICollections
+        """
+        metadata.create_or_update(data=collection_request)
+
+        res = metadata.list_entities(
+            entity=APICollection,
+            params={"service": api_service.name.root},
+        )
+
+        data = next(
+            iter(ent for ent in res.entities if ent.name == api_collection.name),
+            None,
+        )
+        assert data
+
+    @pytest.mark.order(16)
+    def test_list_api_endpoints(self, metadata, api_collection, endpoint_request):
+        """
+        We can list all our APIEndpoints
+        """
+        metadata.create_or_update(data=endpoint_request)
+
+        res = metadata.list_entities(
+            entity=APIEndpoint,
+            params={"apiCollection": api_collection.fullyQualifiedName.root},
+        )
+
+        data = next(
+            iter(ent for ent in res.entities if ent.name == endpoint_request.name),
+            None,
+        )
+        assert data
+
+    @pytest.mark.order(17)
+    def test_list_api_services(self, metadata, api_service, service_request):
+        """
+        We can list all our ApiServices
+        """
+        metadata.create_or_update(data=service_request)
+
+        res = metadata.list_entities(entity=ApiService)
+
+        data = next(
+            iter(ent for ent in res.entities if ent.name == service_request.name),
+            None,
+        )
+        assert data
+
+    @pytest.mark.order(18)
+    def test_update_api_collection(
+        self, metadata, api_collection, collection_request, rest_user, rest_owners
+    ):
+        """
+        Updating it properly changes its properties
+        """
+        res_create = metadata.create_or_update(data=collection_request)
+
+        updated = collection_request.model_dump(exclude_unset=True)
+        updated["owners"] = rest_owners
+        updated_entity = CreateAPICollectionRequest(**updated)
+
+        res = metadata.create_or_update(data=updated_entity)
+
+        assert res.name == updated_entity.name
+        assert res_create.id == res.id
+        assert res.owners.root[0].id == rest_user.id
+
+    @pytest.mark.order(19)
+    def test_update_api_endpoint(
+        self, metadata, api_collection, endpoint_request, rest_user, rest_owners
+    ):
+        """
+        Updating it properly changes its properties
+        """
+        res_create = metadata.create_or_update(data=endpoint_request)
+
+        updated = endpoint_request.model_dump(exclude_unset=True)
+        updated["owners"] = rest_owners
+        updated_entity = CreateAPIEndpointRequest(**updated)
+
+        res = metadata.create_or_update(data=updated_entity)
+
+        assert res.name == updated_entity.name
+        assert res_create.id == res.id
+        assert res.owners.root[0].id == rest_user.id
+
+    @pytest.mark.order(20)
+    def test_update_api_service(
+        self, metadata, api_service, service_request, rest_user, rest_owners
+    ):
+        """
+        Updating it properly changes its properties
+        """
+        res_create = metadata.create_or_update(data=service_request)
+
+        updated = service_request.model_dump(exclude_unset=True)
+        updated["owners"] = rest_owners
+        updated_entity = CreateApiServiceRequest(**updated)
+
+        res = metadata.create_or_update(data=updated_entity)
+
+        assert res.name == updated_entity.name
+        assert res_create.id == res.id
+        assert res.owners.root[0].id == rest_user.id

@@ -50,7 +50,6 @@ import {
 import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
-import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getColumnSorter,
@@ -58,6 +57,7 @@ import {
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
 import { t } from '../../../../utils/i18next/LocalUtil';
+import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import {
@@ -300,7 +300,11 @@ export const DatabaseSchemaTable = ({
           ]
         : []),
     ],
-    [handleDisplayNameUpdate, allowEditDisplayNamePermission, viewUsagePermission]
+    [
+      handleDisplayNameUpdate,
+      allowEditDisplayNamePermission,
+      viewUsagePermission,
+    ]
   );
 
   const handleEditTable = () => {
