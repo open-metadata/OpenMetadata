@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -82,6 +83,34 @@ public class ChartRepository extends EntityRepository<Chart> {
     chart.withService(null).withDashboards(null);
     store(chart, update);
     chart.withService(service).withDashboards(dashboards);
+  }
+
+  @Override
+  public void storeEntities(List<Chart> charts) {
+    List<Chart> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Chart chart : charts) {
+      EntityReference service = chart.getService();
+      List<EntityReference> dashboards = chart.getDashboards();
+
+      chart.withService(null).withDashboards(null);
+
+      String jsonCopy = gson.toJson(chart);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Chart.class));
+
+      chart.withService(service).withDashboards(dashboards);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Chart> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Chart::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteToMany(ids, Entity.CHART, Relationship.HAS, Entity.DASHBOARD);
   }
 
   @Override
@@ -179,7 +208,13 @@ public class ChartRepository extends EntityRepository<Chart> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("chartType", original.getChartType(), updated.getChartType());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
       update(
           Entity.DASHBOARD,
           "dashboards",

@@ -13,12 +13,14 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseServiceType,
 )
+from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 
 class TableParameter(BaseModel):
     serviceUrl: Union[str, dict]
     path: str
+    fullyQualifiedName: Optional[str] = None
     columns: List[Column]
     database_service_type: DatabaseServiceType
     privateKey: Optional[CustomSecretStr]
@@ -43,3 +45,8 @@ class TableDiffRuntimeParameters(BaseModel):
 class TableCustomSQLQueryRuntimeParameters(BaseModel):
     conn_config: DatabaseConnection
     entity: Table
+
+
+class RuleLibrarySqlExpressionRuntimeParameters(BaseModel):
+    conn_config: DatabaseConnection
+    test_definition: TestDefinition

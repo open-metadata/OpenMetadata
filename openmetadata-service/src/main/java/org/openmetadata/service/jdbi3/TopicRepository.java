@@ -25,6 +25,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -118,6 +120,41 @@ public class TopicRepository extends EntityRepository<Topic> {
       topic.getMessageSchema().withSchemaFields(fieldsWithTags);
     }
     topic.withService(service);
+  }
+
+  @Override
+  public void storeEntities(List<Topic> topics) {
+    List<Topic> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Topic topic : topics) {
+      EntityReference service = topic.getService();
+      List<Field> fieldsWithTags = null;
+      if (topic.getMessageSchema() != null) {
+        fieldsWithTags = topic.getMessageSchema().getSchemaFields();
+        topic.getMessageSchema().setSchemaFields(cloneWithoutTags(fieldsWithTags));
+        topic.getMessageSchema().getSchemaFields().forEach(field -> field.setTags(null));
+      }
+
+      topic.withService(null);
+
+      String jsonCopy = gson.toJson(topic);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Topic.class));
+
+      if (fieldsWithTags != null) {
+        topic.getMessageSchema().withSchemaFields(fieldsWithTags);
+      }
+      topic.withService(service);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Topic> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Topic::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
   }
 
   @Override
@@ -591,7 +628,13 @@ public class TopicRepository extends EntityRepository<Topic> {
       recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig());
       updateCleanupPolicies(original, updated);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
     }
 
     private void updateCleanupPolicies(Topic original, Topic updated) {

@@ -94,7 +94,7 @@ class ColumnValueStdDevToBeBetweenValidator(
         dimension_results = []
 
         try:
-            dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            dfs = self.runner
             stddev_impl = Metrics.STDDEV(column).get_pandas_computation()
             row_count_impl = Metrics.ROW_COUNT().get_pandas_computation()
 

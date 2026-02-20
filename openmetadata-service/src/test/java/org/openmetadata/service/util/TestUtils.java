@@ -289,6 +289,16 @@ public final class TestUtils {
     MAJOR_UPDATE // PUT/PATCH made backward incompatible minor version change
   }
 
+  public static String plurializeEntityType(String entityType) {
+    if (entityType.endsWith("s")) {
+      return entityType + "es";
+    } else if (entityType.endsWith("y")) {
+      return entityType.substring(0, entityType.length() - 1) + "ies";
+    } else {
+      return entityType + "s";
+    }
+  }
+
   private TestUtils() {}
 
   public static void readResponseError(Response response) throws HttpResponseException {
@@ -644,6 +654,19 @@ public final class TestUtils {
         SecurityUtil.addHeaders(target, headers)
             .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
     return readResponse(response, clz, expectedStatus.getStatusCode());
+  }
+
+  public static <T, K> T putExpectStatus(
+      WebTarget target,
+      K request,
+      Class<T> clz,
+      Status expectedStatus,
+      Map<String, String> headers) {
+    Response response =
+        SecurityUtil.addHeaders(target, headers)
+            .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+    assertEquals(expectedStatus.getStatusCode(), response.getStatus());
+    return response.readEntity(clz);
   }
 
   public static <T> T putCsv(

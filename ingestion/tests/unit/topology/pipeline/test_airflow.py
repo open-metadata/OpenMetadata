@@ -13,6 +13,7 @@ Test Airflow processing
 """
 from unittest import TestCase
 from unittest.mock import patch
+from urllib.parse import quote
 
 import pytest
 
@@ -860,3 +861,140 @@ class TestAirflow(TestCase):
 
         # Verify fallback
         self.assertEqual(column, "execution_date")
+
+    def test_task_source_url_format(self):
+        """Test that task source URLs use correct filter parameters (Airflow 2.x)"""
+        dag_id = "test_dag"
+        host_port = "http://localhost:8080"
+
+        # Mock remote Airflow as version 2.x
+        self.airflow._is_remote_airflow_3 = False
+
+        data = SERIALIZED_DAG["dag"]
+        dag = AirflowDagDetails(
+            dag_id=dag_id,
+            fileloc="/path/to/dag.py",
+            data=AirflowDag.model_validate(SERIALIZED_DAG),
+            max_active_runs=data.get("max_active_runs", None),
+            description=data.get("_description", None),
+            start_date=data.get("start_date", None),
+            tasks=data.get("tasks", []),
+            schedule_interval=None,
+            owner=None,
+        )
+
+        tasks = self.airflow.get_tasks_from_dag(dag, host_port)
+
+        assert len(tasks) > 0
+        for task in tasks:
+            url = task.sourceUrl.root
+            assert "_flt_3_dag_id=" in url
+            assert "_flt_3_task_id=" in url
+            assert "flt1_dag_id_equals" not in url
+
+    def test_task_source_url_with_special_characters(self):
+        """Test URL encoding for DAG and task IDs with special characters (Airflow 2.x)"""
+        # Mock remote Airflow as version 2.x
+        self.airflow._is_remote_airflow_3 = False
+
+        dag_id = "timescale_loader_v7"
+        task_id_with_dots = "loader_group.load_measurement"
+        host_port = "http://localhost:8080"
+
+        serialized_dag_with_dots = {
+            "__version": 1,
+            "dag": {
+                "_dag_id": dag_id,
+                "fileloc": "/path/to/dag.py",
+                "tasks": [
+                    {
+                        "task_id": task_id_with_dots,
+                        "_task_type": "EmptyOperator",
+                        "downstream_task_ids": [],
+                    }
+                ],
+            },
+        }
+
+        data = serialized_dag_with_dots["dag"]
+        dag = AirflowDagDetails(
+            dag_id=dag_id,
+            fileloc="/path/to/dag.py",
+            data=AirflowDag.model_validate(serialized_dag_with_dots),
+            max_active_runs=data.get("max_active_runs", None),
+            description=data.get("_description", None),
+            start_date=data.get("start_date", None),
+            tasks=data.get("tasks", []),
+            schedule_interval=None,
+            owner=None,
+        )
+
+        tasks = self.airflow.get_tasks_from_dag(dag, host_port)
+
+        assert len(tasks) == 1
+        task_url = tasks[0].sourceUrl.root
+        assert f"_flt_3_dag_id={quote(dag_id)}" in task_url
+        assert f"_flt_3_task_id={quote(task_id_with_dots)}" in task_url
+        assert dag_id in task_url
+        assert task_id_with_dots in task_url
+
+    def test_task_source_url_airflow_2x_format(self):
+        """Test that Airflow 2.x uses Flask-Admin URL format"""
+        dag_id = "test_dag_v2"
+        task_id = "test_task_v2"
+        host_port = "http://localhost:8080"
+
+        # Mock remote Airflow as version 2.x
+        self.airflow._is_remote_airflow_3 = False
+
+        data = SERIALIZED_DAG["dag"]
+        dag = AirflowDagDetails(
+            dag_id=dag_id,
+            fileloc="/path/to/dag.py",
+            data=AirflowDag.model_validate(SERIALIZED_DAG),
+            max_active_runs=data.get("max_active_runs", None),
+            description=data.get("_description", None),
+            start_date=data.get("start_date", None),
+            tasks=[{"task_id": task_id, "_task_type": "EmptyOperator"}],
+            schedule_interval=None,
+            owner=None,
+        )
+
+        tasks = self.airflow.get_tasks_from_dag(dag, host_port)
+
+        assert len(tasks) > 0
+        task_url = tasks[0].sourceUrl.root
+        assert "/taskinstance/list/" in task_url
+        assert f"_flt_3_dag_id={quote(dag_id)}" in task_url
+        assert f"_flt_3_task_id={quote(task_id)}" in task_url
+        assert "/dags/" not in task_url or "/tasks/" not in task_url
+
+    def test_task_source_url_airflow_3x_format(self):
+        """Test that Airflow 3.x uses React UI URL format"""
+        dag_id = "test_dag_v3"
+        task_id = "test_task_v3"
+        host_port = "http://localhost:8080"
+
+        # Mock remote Airflow as version 3.x
+        self.airflow._is_remote_airflow_3 = True
+
+        data = SERIALIZED_DAG["dag"]
+        dag = AirflowDagDetails(
+            dag_id=dag_id,
+            fileloc="/path/to/dag.py",
+            data=AirflowDag.model_validate(SERIALIZED_DAG),
+            max_active_runs=data.get("max_active_runs", None),
+            description=data.get("_description", None),
+            start_date=data.get("start_date", None),
+            tasks=[{"task_id": task_id, "_task_type": "EmptyOperator"}],
+            schedule_interval=None,
+            owner=None,
+        )
+
+        tasks = self.airflow.get_tasks_from_dag(dag, host_port)
+
+        assert len(tasks) > 0
+        task_url = tasks[0].sourceUrl.root
+        assert f"/dags/{quote(dag_id)}/tasks/{quote(task_id)}" in task_url
+        assert "/taskinstance/list/" not in task_url
+        assert "_flt_3_dag_id=" not in task_url

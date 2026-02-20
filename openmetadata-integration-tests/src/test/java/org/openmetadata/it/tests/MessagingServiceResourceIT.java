@@ -32,6 +32,10 @@ import org.openmetadata.sdk.models.ListResponse;
 public class MessagingServiceResourceIT
     extends BaseServiceIT<MessagingService, CreateMessagingService> {
 
+  {
+    supportsListHistoryByTimestamp = true;
+  }
+
   @Override
   protected CreateMessagingService createMinimalRequest(TestNamespace ns) {
     KafkaConnection conn = new KafkaConnection().withBootstrapServers("localhost:9092");

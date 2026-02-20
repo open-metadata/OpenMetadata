@@ -17,6 +17,10 @@
     "runAppTask",
     "rollbackEntityTask",
     "dataCompletenessTask",
-    "parallelGateway"
+    "parallelGateway",
+    "sinkTask",
+    "createRecognizerFeedbackApprovalTask",
+    "applyRecognizerFeedbackTask",
+    "rejectRecognizerFeedbackTask"
   ]
 }

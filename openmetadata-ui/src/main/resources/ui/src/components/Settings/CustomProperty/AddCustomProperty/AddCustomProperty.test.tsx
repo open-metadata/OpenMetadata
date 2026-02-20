@@ -221,6 +221,15 @@ jest.mock('../../../common/ServiceDocPanel/ServiceDocPanel', () =>
   jest.fn().mockImplementation(() => <div>ServiceDocPanel.component</div>)
 );
 
+jest.mock('../../../common/MUISelect/MUISelect', () =>
+  jest.fn(({ label }) => (
+    <div data-testid="propertyType">
+      <label>{label}</label>
+      <select />
+    </div>
+  ))
+);
+
 describe('Test Add Custom Property Component', () => {
   it('Should render the child components', async () => {
     render(<AddCustomProperty />);

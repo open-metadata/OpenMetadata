@@ -15,8 +15,8 @@ import static org.openmetadata.service.util.TestUtils.assertEventually;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.readResponse;
 
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.RestClient;
+import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
 import jakarta.ws.rs.client.WebTarget;
@@ -33,7 +33,6 @@ import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
-import org.apache.http.util.EntityUtils;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -106,7 +105,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   public static final RetryRegistry APP_TRIGGER_RETRY =
       RetryRegistry.of(
           RetryConfig.custom()
-              .maxAttempts(60) // about 30 seconds
+              .maxAttempts(240) // about 120 seconds (increased for distributed indexing overhead)
               .waitDuration(Duration.ofMillis(500))
               .retryExceptions(RetryableAssertionError.class)
               .build());
@@ -320,8 +319,8 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
 
     // Assert DataAssets Workflow
     // -------------------------------------------------
-    RestClient searchClient = getSearchClient();
-    es.org.elasticsearch.client.Response response;
+    Rest5Client searchClient = getSearchClient();
+    es.co.elastic.clients.transport.rest5_client.low_level.Response response;
     String clusterAlias = Entity.getSearchRepository().getClusterAlias();
     String endpointSuffix = "di-data-assets-*";
     String endpoint =
@@ -333,11 +332,16 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
         String.format(
             "{\"query\":{\"bool\":{\"must\":{\"term\":{\"fullyQualifiedName\":\"%s\"}}}}}",
             table.getFullyQualifiedName());
-    request.setJsonEntity(payload);
+    request.setEntity(
+        new org.apache.hc.core5.http.io.entity.StringEntity(
+            payload, org.apache.hc.core5.http.ContentType.APPLICATION_JSON));
     response = searchClient.performRequest(request);
     searchClient.close();
 
-    String jsonString = EntityUtils.toString(response.getEntity());
+    String jsonString =
+        new String(
+            response.getEntity().getContent().readAllBytes(),
+            java.nio.charset.StandardCharsets.UTF_8);
     HashMap<String, Object> map =
         (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
     LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");

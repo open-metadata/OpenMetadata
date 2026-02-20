@@ -33,15 +33,15 @@ export interface AuthenticationConfiguration {
     /**
      * Authentication Authority
      */
-    authority: string;
+    authority?: string;
     /**
      * Callback URL
      */
-    callbackUrl: string;
+    callbackUrl?: string;
     /**
      * Client ID
      */
-    clientId: string;
+    clientId?: string;
     /**
      * Client Type
      */
@@ -91,7 +91,7 @@ export interface AuthenticationConfiguration {
     /**
      * List of Public Key URLs
      */
-    publicKeyUrls: string[];
+    publicKeyUrls?: string[];
     /**
      * This is used by auth provider provide response as either id_token or code.
      */
@@ -430,8 +430,13 @@ export interface SamlSSOClientConfig {
      */
     debugMode?: boolean;
     idp:        Idp;
-    security?:  Security;
-    sp:         SP;
+    /**
+     * Ordered list of SAML attribute names to check for display name. First available attribute
+     * wins. Defaults to common OIDC/SAML attribute names.
+     */
+    samlDisplayNameAttributes?: string[];
+    security?:                  Security;
+    sp:                         SP;
 }
 
 /**

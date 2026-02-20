@@ -25,14 +25,19 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.resources.dqtests.TestCaseResource;
 
 /**
  * Integration tests for TestCase entity operations.
@@ -51,6 +56,28 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     supportsDataProducts = false; // TestCase doesn't support dataProducts
     supportsNameLengthValidation = false; // TestCase FQN includes table FQN, no strict name length
     supportsImportExport = true;
+    supportsBatchImport = true;
+    supportsRecursiveImport = false; // TestCase doesn't support recursive import
+    supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return TestCaseResource.COLLECTION_PATH;
+  }
+
+  @Override
+  protected CsvImportResult performImportCsv(TestNamespace ns, String csvData, boolean dryRun) {
+    try {
+      String containerName = getImportExportContainerName(ns);
+      String result =
+          SdkClients.adminClient()
+              .testCases()
+              .importCsv(containerName, csvData, dryRun, "testSuite");
+      return JsonUtils.readValue(result, CsvImportResult.class);
+    } catch (Exception e) {
+      throw new RuntimeException("CSV import failed: " + e.getMessage(), e);
+    }
   }
 
   private TestSuite lastCreatedTestSuite;
@@ -260,6 +287,81 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
       lastCreatedTestSuite = SdkClients.adminClient().testSuites().create(request);
     }
     return lastCreatedTestSuite.getFullyQualifiedName();
+  }
+
+  // ===================================================================
+  // TEST CASE OVERRIDEN TESTS
+  // ===================================================================
+  @Override
+  @Test
+  void test_importCsvDryRun(TestNamespace ns) {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        supportsImportExport, "Entity does not support import/export");
+
+    String containerName = getImportExportContainerName(ns);
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        containerName != null, "Container name not provided");
+
+    // Create an entity first
+    CreateTestCase createRequest = createMinimalRequest(ns);
+    TestCase entity = createEntity(createRequest);
+    assertNotNull(entity, "Entity should be created");
+
+    try {
+      // Export to get valid CSV format
+      String exportedCsv = SdkClients.adminClient().testCases().exportCsv(containerName);
+      assertNotNull(exportedCsv, "Export should return CSV data");
+
+      // Import with dry run - TestCase requires targetEntityType
+      String result =
+          SdkClients.adminClient()
+              .testCases()
+              .importCsv(containerName, exportedCsv, true, "testSuite");
+      assertNotNull(result, "Import dry run should return a result");
+    } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
+      org.junit.jupiter.api.Assertions.fail("Import/export failed: " + e.getMessage());
+    }
+  }
+
+  @Override
+  @Test
+  void test_importExportRoundTrip(TestNamespace ns) {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        supportsImportExport, "Entity does not support import/export");
+
+    String containerName = getImportExportContainerName(ns);
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        containerName != null, "Container name not provided");
+
+    // Create an entity first
+    CreateTestCase createRequest = createMinimalRequest(ns);
+    TestCase entity = createEntity(createRequest);
+    assertNotNull(entity, "Entity should be created");
+
+    try {
+      // Export current state
+      String exportedCsv = SdkClients.adminClient().testCases().exportCsv(containerName);
+      assertNotNull(exportedCsv, "Export should return CSV data");
+
+      // Import the exported data - TestCase requires targetEntityType
+      String result =
+          SdkClients.adminClient()
+              .testCases()
+              .importCsv(containerName, exportedCsv, false, "testSuite");
+      assertNotNull(result, "Import should return a result");
+
+      // Export again and verify consistency
+      String reExportedCsv = SdkClients.adminClient().testCases().exportCsv(containerName);
+      assertNotNull(reExportedCsv, "Re-export should return CSV data");
+
+      // Headers should match after round-trip
+      String[] originalLines = exportedCsv.split("\n");
+      String[] reExportedLines = reExportedCsv.split("\n");
+      assertEquals(
+          originalLines[0], reExportedLines[0], "CSV headers should match after round-trip");
+    } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
+      org.junit.jupiter.api.Assertions.fail("Import/export round-trip failed: " + e.getMessage());
+    }
   }
 
   // ===================================================================
@@ -2684,5 +2786,334 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         Exception.class,
         () -> getEntityIncludeDeleted(created.getId().toString()),
         "Hard deleted entity should not be retrievable");
+  }
+
+  // ===================================================================
+  // CSV IMPORT WITH WILDCARD NAME TESTS
+  // ===================================================================
+
+  @Test
+  void test_importCsvWithWildcardName_multipleTablesSucceeds(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table1 = createTable(ns);
+    Table table2 = createTable(ns);
+
+    String testName1 = ns.prefix("csvWild1");
+    String testName2 = ns.prefix("csvWild2");
+
+    String csvData =
+        buildCsvWithHeaders()
+            + buildCsvRow(
+                testName1,
+                "",
+                "Import test 1",
+                "tableRowCountToBeBetween",
+                table1.getFullyQualifiedName(),
+                "",
+                "",
+                "false",
+                "false",
+                "",
+                "",
+                "")
+            + buildCsvRow(
+                testName2,
+                "",
+                "Import test 2",
+                "tableRowCountToBeBetween",
+                table2.getFullyQualifiedName(),
+                "",
+                "",
+                "false",
+                "false",
+                "",
+                "",
+                "");
+
+    // Dry run with name="*" should succeed
+    CsvImportResult dryRunResult = importCsvWithWildcard(client, csvData, true);
+    assertEquals(ApiStatus.SUCCESS, dryRunResult.getStatus());
+    assertEquals(3, dryRunResult.getNumberOfRowsProcessed());
+
+    // Actual import with name="*" — previously failed because
+    // processChangeEventForBulkImport would call getByName("*")
+    CsvImportResult result = importCsvWithWildcard(client, csvData, false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(3, result.getNumberOfRowsProcessed());
+
+    // Verify test cases created on different tables
+    TestCase tc1 =
+        client
+            .testCases()
+            .getByName(
+                table1.getFullyQualifiedName() + "." + testName1, "testDefinition,testSuite");
+    assertNotNull(tc1);
+    assertEquals("tableRowCountToBeBetween", tc1.getTestDefinition().getName());
+
+    TestCase tc2 =
+        client
+            .testCases()
+            .getByName(
+                table2.getFullyQualifiedName() + "." + testName2, "testDefinition,testSuite");
+    assertNotNull(tc2);
+    assertEquals("tableRowCountToBeBetween", tc2.getTestDefinition().getName());
+
+    // Test cases on different tables should belong to different test suites
+    assertNotEquals(tc1.getTestSuite().getId(), tc2.getTestSuite().getId());
+  }
+
+  @Test
+  void test_importCsvWithWildcardName_explicitTestSuiteTracked(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    // Create a test case via API so a basic test suite is auto-created for this table
+    TestCase setupTc =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("setupForCsvSuite"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Get the auto-created basic test suite FQN
+    TestCase fetched = client.testCases().getByName(setupTc.getFullyQualifiedName(), "testSuite");
+    String basicSuiteFqn = fetched.getTestSuite().getFullyQualifiedName();
+
+    String testName = ns.prefix("csvExplicitSuite");
+
+    String csvData =
+        buildCsvWithHeaders()
+            + buildCsvRow(
+                testName,
+                "",
+                "Explicit suite test",
+                "tableRowCountToBeBetween",
+                table.getFullyQualifiedName(),
+                basicSuiteFqn,
+                "",
+                "false",
+                "false",
+                "",
+                "",
+                "");
+
+    CsvImportResult result = importCsvWithWildcard(client, csvData, false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(2, result.getNumberOfRowsProcessed());
+
+    TestCase imported =
+        client.testCases().getByName(table.getFullyQualifiedName() + "." + testName, "testSuite");
+    assertNotNull(imported);
+    assertEquals(basicSuiteFqn, imported.getTestSuite().getFullyQualifiedName());
+  }
+
+  @Test
+  void test_importCsvWithWildcardName_invalidTestSuiteFails(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    String testName = ns.prefix("csvBadSuite");
+
+    String csvData =
+        buildCsvWithHeaders()
+            + buildCsvRow(
+                testName,
+                "",
+                "Bad suite test",
+                "tableRowCountToBeBetween",
+                table.getFullyQualifiedName(),
+                "nonExistentSuite",
+                "",
+                "false",
+                "false",
+                "",
+                "",
+                "");
+
+    CsvImportResult result = importCsvWithWildcard(client, csvData, false);
+    assertNotEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(1, result.getNumberOfRowsFailed());
+  }
+
+  @Test
+  void test_importCsvWithWildcardName_dryRunDoesNotCreateEntities(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    String testName = ns.prefix("csvDryOnly");
+
+    String csvData =
+        buildCsvWithHeaders()
+            + buildCsvRow(
+                testName,
+                "",
+                "Dry run test",
+                "tableRowCountToBeBetween",
+                table.getFullyQualifiedName(),
+                "",
+                "",
+                "false",
+                "false",
+                "",
+                "",
+                "");
+
+    CsvImportResult dryRunResult = importCsvWithWildcard(client, csvData, true);
+    assertEquals(ApiStatus.SUCCESS, dryRunResult.getStatus());
+    assertEquals(2, dryRunResult.getNumberOfRowsProcessed());
+
+    // Entity should NOT exist after dry run
+    String expectedFqn = table.getFullyQualifiedName() + "." + testName;
+    assertThrows(
+        Exception.class,
+        () -> client.testCases().getByName(expectedFqn),
+        "Test case should not exist after dry run");
+  }
+
+  private CsvImportResult importCsvWithWildcard(
+      OpenMetadataClient client, String csvData, boolean dryRun) {
+    RequestOptions options =
+        RequestOptions.builder()
+            .header("Content-Type", "text/plain; charset=UTF-8")
+            .queryParam("dryRun", String.valueOf(dryRun))
+            .build();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT, "/v1/dataQuality/testCases/name/*/import", csvData, options);
+    return JsonUtils.readValue(response, CsvImportResult.class);
+  }
+
+  private String buildCsvWithHeaders() {
+    return "name*,displayName,description,testDefinition*,entityFQN*,testSuite,"
+        + "parameterValues,computePassedFailedRowCount,useDynamicAssertion,"
+        + "inspectionQuery,tags,glossaryTerms\n";
+  }
+
+  private String buildCsvRow(String... fields) {
+    return String.join(",", fields) + "\n";
+  }
+
+  // ===================================================================
+  // CSV IMPORT/EXPORT SUPPORT
+  // ===================================================================
+
+  protected String generateValidCsvData(TestNamespace ns, List<TestCase> entities) {
+    if (entities == null || entities.isEmpty()) {
+      return null;
+    }
+
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "name,displayName,description,testDefinition,entityFQN,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms\n");
+
+    for (TestCase testCase : entities) {
+      csv.append(escapeCSVValue(testCase.getName())).append(",");
+      csv.append(escapeCSVValue(testCase.getDisplayName())).append(",");
+      csv.append(escapeCSVValue(testCase.getDescription())).append(",");
+      csv.append(
+              escapeCSVValue(
+                  testCase.getTestDefinition() != null
+                      ? testCase.getTestDefinition().getName()
+                      : ""))
+          .append(",");
+      csv.append(escapeCSVValue(testCase.getEntityFQN())).append(",");
+      csv.append(
+              escapeCSVValue(
+                  testCase.getTestSuite() != null
+                      ? testCase.getTestSuite().getFullyQualifiedName()
+                      : ""))
+          .append(",");
+      csv.append(escapeCSVValue(formatParameterValuesForCsv(testCase.getParameterValues())))
+          .append(",");
+      csv.append(
+              escapeCSVValue(
+                  testCase.getComputePassedFailedRowCount() != null
+                      ? testCase.getComputePassedFailedRowCount().toString()
+                      : ""))
+          .append(",");
+      csv.append(
+              escapeCSVValue(
+                  testCase.getUseDynamicAssertion() != null
+                      ? testCase.getUseDynamicAssertion().toString()
+                      : ""))
+          .append(",");
+      csv.append(escapeCSVValue(testCase.getInspectionQuery())).append(",");
+      csv.append(escapeCSVValue(formatTagsForCsv(testCase.getTags()))).append(",");
+      csv.append(escapeCSVValue("")); // glossaryTerms - not available on TestCase
+      csv.append("\n");
+    }
+
+    return csv.toString();
+  }
+
+  protected String generateInvalidCsvData(TestNamespace ns) {
+    StringBuilder csv = new StringBuilder();
+    csv.append(
+        "name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms\n");
+    // Missing required name field
+    csv.append(",Test Case,Description,,entity.fqn,,,,,,,\n");
+    // Missing required testDefinition and entityFQN
+    csv.append("invalid_test_case,,,,,,,,,,,\n");
+    return csv.toString();
+  }
+
+  protected List<String> getRequiredCsvHeaders() {
+    return List.of("name*", "testDefinition*", "entityFQN*");
+  }
+
+  protected List<String> getAllCsvHeaders() {
+    return List.of(
+        "name*",
+        "displayName",
+        "description",
+        "testDefinition*",
+        "entityFQN*",
+        "testSuite",
+        "parameterValues",
+        "computePassedFailedRowCount",
+        "useDynamicAssertion",
+        "inspectionQuery",
+        "tags",
+        "glossaryTerms");
+  }
+
+  private String formatParameterValuesForCsv(List<TestCaseParameterValue> parameterValues) {
+    if (parameterValues == null || parameterValues.isEmpty()) {
+      return "";
+    }
+
+    return parameterValues.stream()
+        .map(
+            param ->
+                "{\"name\":\""
+                    + param.getName()
+                    + "\",\"value\":"
+                    + (param.getValue() != null ? "\"" + param.getValue() + "\"" : param.getValue())
+                    + "}")
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String formatTagsForCsv(List<org.openmetadata.schema.type.TagLabel> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return "";
+    }
+    return tags.stream()
+        .map(org.openmetadata.schema.type.TagLabel::getTagFQN)
+        .reduce((a, b) -> a + ";" + b)
+        .orElse("");
+  }
+
+  private String escapeCSVValue(String value) {
+    if (value == null) {
+      return "";
+    }
+    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+      return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+    return value;
   }
 }

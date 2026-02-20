@@ -20,6 +20,7 @@ import {
   uuid,
 } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 
 const apiServiceConfig = {
   name: `pw-api-service-${uuid()}`,
@@ -32,7 +33,7 @@ const apiServiceConfig = {
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('API service', () => {
+test.describe('API service', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.beforeEach('Visit entity details page', async ({ page }) => {
     await redirectToHomePage(page);
   });

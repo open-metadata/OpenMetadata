@@ -118,7 +118,8 @@ export const validateCsvString = async (
   csvData: string,
   entityType: EntityType,
   fqn: string,
-  isBulkEdit: boolean
+  isBulkEdit: boolean,
+  targetEntityType?: string
 ) => {
   const api = getImportValidateAPIEntityType(entityType);
 
@@ -128,6 +129,7 @@ export const validateCsvString = async (
     data: csvData,
     dryRun: true,
     recursive: !isBulkEdit,
+    targetEntityType,
   });
 
   return response;

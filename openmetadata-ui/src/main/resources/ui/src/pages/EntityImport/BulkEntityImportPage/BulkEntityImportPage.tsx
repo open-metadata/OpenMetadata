@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Button, Card, Col, Progress, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -326,12 +326,18 @@ const BulkEntityImportPage = () => {
         setActiveAsyncImportJob(initialLoadJobData);
         activeAsyncImportJobRef.current = initialLoadJobData;
 
-        await validateCsvString(result, entityType, fqn, isBulkEdit);
+        await validateCsvString(
+          result,
+          entityType,
+          fqn,
+          isBulkEdit,
+          effectiveSourceEntityType
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [onCSVReadComplete, entityType, fqn]
+    [entityType, fqn, isBulkEdit, effectiveSourceEntityType]
   );
 
   const handleBack = () => {
@@ -369,6 +375,7 @@ const BulkEntityImportPage = () => {
         data: csvData,
         dryRun: activeStep === VALIDATION_STEP.EDIT_VALIDATE,
         recursive: !isBulkEdit,
+        targetEntityType: effectiveSourceEntityType,
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -555,7 +562,9 @@ const BulkEntityImportPage = () => {
             return;
           }
 
-          handleImportWebsocketResponseWithActiveStep(importResults);
+          handleImportWebsocketResponseWithActiveStep(
+            importResults as CSVImportResult
+          );
         }
 
         if (websocketResponse.status === 'FAILED') {
@@ -666,18 +675,40 @@ const BulkEntityImportPage = () => {
             </Col>
             <Col span={24}>
               {activeAsyncImportJob?.jobId && (
-                <Banner
-                  className="border-radius"
-                  isLoading={isEmpty(activeAsyncImportJob.error)}
-                  message={
-                    activeAsyncImportJob.error ??
-                    activeAsyncImportJob.message ??
-                    ''
-                  }
-                  type={
-                    isEmpty(activeAsyncImportJob.error) ? 'success' : 'error'
-                  }
-                />
+                <Space className="w-full" direction="vertical" size="small">
+                  <Banner
+                    className="border-radius"
+                    isLoading={
+                      isEmpty(activeAsyncImportJob.error) &&
+                      activeAsyncImportJob.status !== 'IN_PROGRESS'
+                    }
+                    message={
+                      activeAsyncImportJob.error ??
+                      activeAsyncImportJob.message ??
+                      ''
+                    }
+                    type={
+                      activeAsyncImportJob.error
+                        ? 'error'
+                        : activeAsyncImportJob.status === 'IN_PROGRESS'
+                        ? 'info'
+                        : 'success'
+                    }
+                  />
+                  {activeAsyncImportJob.status === 'IN_PROGRESS' &&
+                    activeAsyncImportJob.total !== undefined &&
+                    activeAsyncImportJob.total > 0 && (
+                      <Progress
+                        showInfo
+                        percent={Math.round(
+                          ((activeAsyncImportJob.progress ?? 0) /
+                            activeAsyncImportJob.total) *
+                            100
+                        )}
+                        status="active"
+                      />
+                    )}
+                </Space>
               )}
             </Col>
             <Col span={24}>

@@ -11,7 +11,6 @@
 
 import importlib
 import pathlib
-import sys
 import uuid
 
 import pytest
@@ -27,21 +26,21 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.workflow.metadata import MetadataWorkflow
 
-if sys.version_info < (3, 9):
-    pytest.skip("requires python 3.9+", allow_module_level=True)
+from ..conftest import _safe_delete
 
 
 def delete_service(metadata):
-    service_id = str(
-        metadata.get_by_name(entity=DatabaseService, fqn="local_mysql_test").id.root
+    service_entity = metadata.get_by_name(
+        entity=DatabaseService, fqn="local_mysql_test"
     )
-
-    metadata.delete(
-        entity=DatabaseService,
-        entity_id=service_id,
-        recursive=True,
-        hard_delete=True,
-    )
+    if service_entity:
+        _safe_delete(
+            metadata,
+            entity=DatabaseService,
+            entity_id=service_entity.id,
+            recursive=True,
+            hard_delete=True,
+        )
 
 
 def test_get_200():

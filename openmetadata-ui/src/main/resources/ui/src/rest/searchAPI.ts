@@ -281,3 +281,98 @@ export const getNLPEnabledStatus = async () => {
 
   return response.data;
 };
+
+export interface SearchIndexFailureRecord {
+  id: string;
+  jobId: string;
+  runId: string;
+  entityType: string;
+  entityId?: string;
+  entityFqn?: string;
+  failureStage: string;
+  errorMessage?: string;
+  stackTrace?: string;
+  timestamp: number;
+}
+
+export interface ReindexFailuresResponse {
+  data: SearchIndexFailureRecord[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+export interface GetReindexFailuresParams {
+  offset?: number;
+  limit?: number;
+  entityType?: string;
+}
+
+export const getReindexFailures = async (
+  params: GetReindexFailuresParams = {}
+): Promise<ReindexFailuresResponse> => {
+  const { offset = 0, limit = 50, entityType } = params;
+
+  const response = await APIClient.get<ReindexFailuresResponse>(
+    '/search/reindex/failures',
+    {
+      params: {
+        offset,
+        limit,
+        entityType: entityType || undefined,
+      },
+    }
+  );
+
+  return response.data;
+};
+
+export interface IndexStats {
+  name: string;
+  documents: number;
+  primaryShards: number;
+  replicaShards: number;
+  sizeInBytes: number;
+  sizeFormatted: string;
+  health: string;
+  aliases: string[];
+}
+
+export interface OrphanIndex {
+  name: string;
+  sizeInBytes: number;
+  sizeFormatted: string;
+}
+
+export interface SearchStatsResponse {
+  clusterHealth: string;
+  totalIndexes: number;
+  totalDocuments: number;
+  totalSizeInBytes: number;
+  totalSizeFormatted: string;
+  totalPrimaryShards: number;
+  totalReplicaShards: number;
+  indexes: IndexStats[];
+  orphanIndexes: OrphanIndex[];
+}
+
+export interface OrphanCleanupResponse {
+  deletedIndexes: string[];
+  deletedCount: number;
+}
+
+export const getSearchStats = async (): Promise<SearchStatsResponse> => {
+  const response: AxiosResponse<SearchStatsResponse> = await APIClient.get(
+    '/search/stats'
+  );
+
+  return response.data;
+};
+
+export const cleanOrphanIndexes = async (): Promise<OrphanCleanupResponse> => {
+  const response: AxiosResponse<OrphanCleanupResponse> = await APIClient.delete(
+    '/search/stats/orphan'
+  );
+
+  return response.data;
+};

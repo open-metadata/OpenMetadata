@@ -47,6 +47,14 @@
       "description": "File size in bytes",
       "type": "integer"
     },
+    "columns": {
+      "description": "Column definitions for structured data files (CSV, etc.)",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/table.json#/definitions/column"
+      },
+      "default": null
+    },
     "checksum": {
       "description": "File checksum/hash",
       "type": "string"

@@ -20,12 +20,19 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.resources.ai.LLMModelResource;
 
 @Execution(ExecutionMode.CONCURRENT)
 public class LLMModelResourceIT extends BaseEntityIT<LLMModel, CreateLLMModel> {
 
   {
     supportsSearchIndex = false; // LLMModel doesn't have a search index
+    supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return LLMModelResource.COLLECTION_PATH;
   }
 
   @Override

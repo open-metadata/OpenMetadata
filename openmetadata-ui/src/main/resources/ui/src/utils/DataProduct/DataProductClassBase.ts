@@ -63,7 +63,9 @@ class DataProductClassBase {
     return [
       EntityTabs.DOCUMENTATION,
       EntityTabs.ACTIVITY_FEED,
+      EntityTabs.INPUT_OUTPUT_PORTS,
       EntityTabs.ASSETS,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,

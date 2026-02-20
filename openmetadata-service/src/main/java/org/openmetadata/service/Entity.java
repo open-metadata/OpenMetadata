@@ -220,6 +220,7 @@ public final class Entity {
   public static final String DATA_INSIGHT_CUSTOM_CHART = "dataInsightCustomChart";
   public static final String DATA_INSIGHT_CHART = "dataInsightChart";
   public static final String PAGE = "page";
+  public static final String RECOGNIZER_FEEDBACK = "recognizerFeedback";
 
   //
   // Column entity types (for custom properties)
@@ -294,6 +295,7 @@ public final class Entity {
   public static final String ALL_RESOURCES = "All";
 
   public static final String DOCUMENT = "document";
+  public static final String LEARNING_RESOURCE = "learningResource";
   // ServiceType - Service Entity name map
   static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
   // entity type to service entity name map

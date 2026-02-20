@@ -29,7 +29,7 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
     try {
       const doc = await getDocumentByFQN(pageFQN);
       setCustomizedPage(
-        doc.data?.pages?.find((p: Page) => p.pageType === pageType)
+        doc.data?.pages?.find((p: Page | null) => p?.pageType === pageType)
       );
       setNavigation(doc.data?.navigation);
     } catch (error) {

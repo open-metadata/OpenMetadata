@@ -36,6 +36,8 @@ from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
+from ..conftest import _safe_delete
+
 Base = declarative_base()
 
 TEST_CASE_FQN = (
@@ -112,6 +114,19 @@ class TestGreatExpectationIntegration(TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up class by ingesting metadata"""
+        gx_base_dir = os.path.join(os.path.dirname(__file__), "gx")
+        gx_expectations_dir = os.path.join(gx_base_dir, "expectations")
+        gx_checkpoints_dir = os.path.join(gx_base_dir, "checkpoints")
+
+        for suite_name in ["users_query_suite.json", "orders_query_suite.json"]:
+            suite_file = os.path.join(gx_expectations_dir, suite_name)
+            if os.path.exists(suite_file):
+                os.remove(suite_file)
+
+        checkpoint_file = os.path.join(gx_checkpoints_dir, "multi_table_checkpoint.yml")
+        if os.path.exists(checkpoint_file):
+            os.remove(checkpoint_file)
+
         try:
             User.__table__.create(bind=cls.engine)
         except Exception as exc:
@@ -121,6 +136,10 @@ class TestGreatExpectationIntegration(TestCase):
             Order.__table__.create(bind=cls.engine)
         except Exception as exc:
             LOGGER.warning(f"Table Already exists: {exc}")
+
+        cls.session.query(Order).delete()
+        cls.session.query(User).delete()
+        cls.session.commit()
 
         users_data = [
             User(
@@ -189,16 +208,17 @@ class TestGreatExpectationIntegration(TestCase):
         Clean up
         """
 
-        service_id = str(
-            cls.metadata.get_by_name(entity=DatabaseService, fqn="test_sqlite").id.root
+        service_entity = cls.metadata.get_by_name(
+            entity=DatabaseService, fqn="test_sqlite"
         )
-
-        cls.metadata.delete(
-            entity=DatabaseService,
-            entity_id=service_id,
-            recursive=True,
-            hard_delete=True,
-        )
+        if service_entity:
+            _safe_delete(
+                cls.metadata,
+                entity=DatabaseService,
+                entity_id=service_entity.id,
+                recursive=True,
+                hard_delete=True,
+            )
 
         User.__table__.drop(bind=cls.engine)
         Order.__table__.drop(bind=cls.engine)

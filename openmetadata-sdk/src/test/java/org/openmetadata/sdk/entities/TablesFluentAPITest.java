@@ -1,11 +1,17 @@
 package org.openmetadata.sdk.entities;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Tables;
+import org.openmetadata.sdk.services.dataassets.TableService;
 
 class TablesFluentAPITest {
 
@@ -181,5 +187,62 @@ class TablesFluentAPITest {
     geometryColumn.setName("shape");
     geometryColumn.setDataType(ColumnDataType.fromValue(Tables.GEOMETRY));
     assertEquals(ColumnDataType.GEOMETRY, geometryColumn.getDataType());
+  }
+
+  @Test
+  void testFetchReturnsWrappersFluentTable() {
+    // Arrange
+    OpenMetadataClient mockClient = mock(OpenMetadataClient.class);
+    TableService mockTableService = mock(TableService.class);
+    when(mockClient.tables()).thenReturn(mockTableService);
+
+    Table table = new Table();
+    table.setId(UUID.randomUUID());
+    table.setName("test_table");
+    when(mockTableService.getByName(eq("service.db.schema.test_table"))).thenReturn(table);
+
+    Tables.setDefaultClient(mockClient);
+
+    // Act
+    Object result = Tables.findByName("service.db.schema.test_table").fetch();
+
+    // Assert — must be the wrappers.FluentTable, not the inner Tables.FluentTable
+    assertInstanceOf(org.openmetadata.sdk.fluent.wrappers.FluentTable.class, result);
+    assertFalse(
+        result instanceof Tables.FluentTable, "Must not return Tables.FluentTable (inner class)");
+
+    // Verify rich API methods exist on the returned object
+    org.openmetadata.sdk.fluent.wrappers.FluentTable fluent =
+        (org.openmetadata.sdk.fluent.wrappers.FluentTable) result;
+    assertNotNull(fluent.get());
+    assertEquals("test_table", fluent.get().getName());
+
+    // Clean up
+    Tables.setDefaultClient(null);
+  }
+
+  @Test
+  void testFindByIdFetchReturnsWrappersFluentTable() {
+    // Arrange
+    OpenMetadataClient mockClient = mock(OpenMetadataClient.class);
+    TableService mockTableService = mock(TableService.class);
+    when(mockClient.tables()).thenReturn(mockTableService);
+
+    String tableId = UUID.randomUUID().toString();
+    Table table = new Table();
+    table.setId(UUID.fromString(tableId));
+    table.setName("test_table");
+    when(mockTableService.get(eq(tableId))).thenReturn(table);
+
+    Tables.setDefaultClient(mockClient);
+
+    // Act
+    Object result = Tables.find(tableId).fetch();
+
+    // Assert — must be the wrappers.FluentTable
+    assertInstanceOf(org.openmetadata.sdk.fluent.wrappers.FluentTable.class, result);
+
+    // Clean up
+    Tables.setDefaultClient(null);
   }
 }

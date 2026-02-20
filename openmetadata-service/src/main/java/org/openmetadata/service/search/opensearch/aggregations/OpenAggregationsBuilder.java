@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.opensearch.aggregations;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.openmetadata.service.search.SearchAggregationNode;
 import os.org.opensearch.client.json.JsonpMapper;
@@ -35,7 +36,7 @@ public class OpenAggregationsBuilder {
     OpenAggregations openAggregation = getAggregation(type);
     openAggregation.createAggregation(node);
 
-    Map<String, Aggregation> subAggregations = new HashMap<>();
+    Map<String, Aggregation> subAggregations = new LinkedHashMap<>();
     for (SearchAggregationNode child : node.getChildren()) {
       buildAggregation(child, openAggregation, subAggregations);
     }
@@ -53,7 +54,7 @@ public class OpenAggregationsBuilder {
 
       if (openAggregation.getAggregationName() != null) {
         String aggName = openAggregation.getAggregationName();
-        Map<String, Aggregation> wrappedSubAggs = new HashMap<>(subAggregations);
+        Map<String, Aggregation> wrappedSubAggs = new LinkedHashMap<>(subAggregations);
         wrappedSubAggs.put(aggName + "_inner", openAggregation.getAggregation());
 
         finalAggregation =
@@ -67,6 +68,7 @@ public class OpenAggregationsBuilder {
   private OpenAggregations getAggregation(String aggregationType) {
     return switch (aggregationType) {
       case "bucket_selector" -> new OpenBucketSelectorAggregations();
+      case "bucket_sort" -> new OpenBucketSortAggregations();
       case "date_histogram" -> new OpenDateHistogramAggregations();
       case "terms" -> new OpenTermsAggregations();
       case "avg" -> new OpenAvgAggregations();
@@ -75,6 +77,7 @@ public class OpenAggregationsBuilder {
       case "filter" -> new OpenFilterAggregations(mapper);
       case "value_count" -> new OpenValueCountAggregations();
       case "cardinality" -> new OpenCardinalityAggregations();
+      case "stats_bucket" -> new OpenStatsBucketAggregations();
       case "nested" -> new OpenNestedAggregations();
       case "top_hits" -> new OpenTopHitsAggregations();
       default -> throw new IllegalArgumentException("Invalid aggregation type: " + aggregationType);

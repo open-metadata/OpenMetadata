@@ -416,22 +416,30 @@ class OpenSearchIndexManagerTest {
 
   @Test
   void testGetIndicesByAlias_SuccessfulRetrieval() throws IOException {
+    when(indicesClient.existsAlias(any(java.util.function.Function.class)))
+        .thenReturn(booleanResponse);
+    when(booleanResponse.value()).thenReturn(true);
     when(indicesClient.getAlias(any(GetAliasRequest.class))).thenReturn(getAliasResponse);
 
     Set<String> result = indexManager.getIndicesByAlias(TEST_ALIAS);
 
+    verify(indicesClient).existsAlias(any(java.util.function.Function.class));
     verify(indicesClient).getAlias(any(GetAliasRequest.class));
     assertNotNull(result);
   }
 
   @Test
   void testGetIndicesByAlias_HandlesException() throws IOException {
+    when(indicesClient.existsAlias(any(java.util.function.Function.class)))
+        .thenReturn(booleanResponse);
+    when(booleanResponse.value()).thenReturn(true);
     when(indicesClient.getAlias(any(GetAliasRequest.class)))
         .thenThrow(new IOException("Get indices by alias failed"));
 
     Set<String> result = indexManager.getIndicesByAlias(TEST_ALIAS);
 
     assertTrue(result.isEmpty());
+    verify(indicesClient).existsAlias(any(java.util.function.Function.class));
     verify(indicesClient).getAlias(any(GetAliasRequest.class));
   }
 

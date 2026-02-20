@@ -23,5 +23,6 @@
   ],
   "provider": "system",
   "enabled": true,
-  "dataQualityDimension": "Completeness"
+  "dataQualityDimension": "Completeness",
+  "validatorClass": "ColumnValuesMissingCountValidator"
 }

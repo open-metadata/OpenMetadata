@@ -59,13 +59,17 @@ export const SEMANTIC_TAG_OPERATORS = ['array_contains', 'array_not_contains'];
 export const SLA_AVAILABILITY_TIME_FORMAT = 'HH:mm';
 
 export enum DATA_CONTRACT_ACTION_DROPDOWN_KEY {
+  CREATE = 'create',
   EDIT = 'edit',
   RUN_NOW = 'run_now',
   EXPORT = 'export',
   EXPORT_ODCS = 'export_odcs',
   IMPORT_ODCS = 'import_odcs',
+  IMPORT_OPENMETADATA = 'import_openmetadata',
   DELETE = 'delete',
 }
+
+export type ContractImportFormat = 'odcs' | 'openmetadata';
 
 export enum DATA_CONTRACT_SLA {
   REFRESH_FREQUENCY = 'refresh_frequency',

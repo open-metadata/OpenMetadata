@@ -2,12 +2,14 @@ package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger.PASSES_FILTER_VARIABLE;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
@@ -15,12 +17,15 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.WorkflowTriggerFields;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
+import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.rules.RuleEngine;
 import org.slf4j.Logger;
@@ -52,7 +57,13 @@ public class FilterEntityImpl implements JavaDelegate {
         extractEntitySpecificFilter(
             filterExpr != null ? filterExpr.getValue(execution) : null, entityType);
 
-    boolean passesFilter = passesExcludedFilter(entityLinkStr, excludedFilter, filterLogic);
+    boolean passesFilter;
+    if (isTagFeedbackCreation(varHandler)) {
+      // We skip the entity filtering for this special case
+      passesFilter = true;
+    } else {
+      passesFilter = passesExcludedFilter(entityLinkStr, excludedFilter, filterLogic);
+    }
 
     if (passesFilter) {
       String triggerWorkflowDefinitionKey =
@@ -129,6 +140,41 @@ public class FilterEntityImpl implements JavaDelegate {
     }
 
     return null;
+  }
+
+  private boolean isTagFeedbackCreation(WorkflowVariableHandler varHandler) {
+    // If the triggering object is a recognizer and points to the workflow's related entity
+    // then this is a feedback creation workflow, and we should let it through
+
+    String entityLinkStr =
+        (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE);
+    // Parse entity type from entity link to determine which filter to use
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
+
+    if (!Entity.TAG.equals(entityLink.getEntityType())) return false;
+
+    Optional<String> feedbackId =
+        Optional.ofNullable(
+            (String)
+                varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_OBJECT_ID_VARIABLE));
+
+    if (feedbackId.isEmpty()) return false;
+
+    RecognizerFeedbackRepository repository =
+        new RecognizerFeedbackRepository(Entity.getCollectionDAO());
+
+    RecognizerFeedback feedback;
+    try {
+      feedback = repository.get(UUID.fromString(feedbackId.get()));
+    } catch (EntityNotFoundException ignored) {
+      log.info(
+          "Triggering object with id {} not found. Related entity link: {}",
+          feedbackId.get(),
+          entityLinkStr);
+      return false;
+    }
+
+    return feedback.getTagFQN().equals(entityLink.getEntityFQN());
   }
 
   private boolean passesExcludedFilter(

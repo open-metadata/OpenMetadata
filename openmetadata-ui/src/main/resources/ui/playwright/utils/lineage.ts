@@ -247,6 +247,9 @@ export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const name = get(node, 'entityResponseData.displayName');
   const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
 
+  await lineageNode.waitFor({ state: 'attached'});
+  await lineageNode.scrollIntoViewIfNeeded();
+
   await expect(lineageNode).toBeVisible();
 
   const entityHeaderName = lineageNode.locator(
@@ -858,4 +861,26 @@ export const clickLineageNode = async (page: Page, nodeFqn: string) => {
     .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
     .locator(`[data-testid="entity-header-display-name"]`)
     .click();
+};
+
+export const updateLineageConfigFromModal = async (
+  page: Page,
+  config: { upstreamDepth: number; downstreamDepth: number }
+) => {
+  await page.getByTestId('lineage-config').click();
+
+  await page.waitForSelector('.ant-modal-content', {
+    state: 'visible',
+  });
+
+  await page
+    .getByTestId('field-upstream')
+    .fill(config.upstreamDepth.toString());
+  await page
+    .getByTestId('field-downstream')
+    .fill(config.downstreamDepth.toString());
+
+  const saveRes = page.waitForResponse('/api/v1/lineage/getLineage?**');
+  await page.getByText('OK').click();
+  await saveRes;
 };

@@ -19,20 +19,28 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.factories.DashboardServiceTestFactory;
+import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.EntityValidation;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.api.domains.DataProductPortsView;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
@@ -46,6 +54,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -67,6 +76,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     supportsDataProducts = false;
     supportsPatchDomains = true; // Domain change is now supported with asset migration
     supportsSoftDelete = false;
+    supportsListHistoryByTimestamp = true;
   }
 
   // ===================================================================
@@ -476,8 +486,12 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
     BulkAssets nonMatchingAssetsRequest =
         new BulkAssets().withAssets(List.of(nonMatchingTable.getEntityReference()));
+    InvalidRequestException failException =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> bulkAddAssetsWithResult(dataProduct.getName(), nonMatchingAssetsRequest));
     BulkOperationResult failResult =
-        bulkAddAssetsWithResult(dataProduct.getName(), nonMatchingAssetsRequest);
+        JsonUtils.readValue(failException.getResponseBody(), BulkOperationResult.class);
 
     assertEquals(ApiStatus.FAILURE, failResult.getStatus());
     assertEquals(1, failResult.getNumberOfRowsProcessed());
@@ -701,6 +715,29 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDomains(List.of(domain.getFullyQualifiedName()));
     return SdkClients.adminClient().tables().create(createTable);
+  }
+
+  private Dashboard createTestDashboard(TestNamespace ns, String suffix, Domain domain) {
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+
+    CreateDashboard createDashboard =
+        new CreateDashboard()
+            .withName(ns.prefix(suffix))
+            .withService(service.getFullyQualifiedName())
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    return SdkClients.adminClient().dashboards().create(createDashboard);
+  }
+
+  private Topic createTestTopic(TestNamespace ns, String suffix, Domain domain) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    CreateTopic createTopic =
+        new CreateTopic()
+            .withName(ns.prefix(suffix))
+            .withService(service.getFullyQualifiedName())
+            .withPartitions(1)
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    return SdkClients.adminClient().topics().create(createTopic);
   }
 
   private org.openmetadata.schema.entity.data.DatabaseSchema getOrCreateDatabaseSchema(
@@ -1025,20 +1062,36 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
       dataProduct = patchEntity(dataProduct.getId().toString(), dataProduct);
       assertEquals(newName, dataProduct.getName());
 
-      ResultList<EntityReference> assets = getAssets(dataProduct.getId(), 10, 0);
-      assertEquals(
-          1,
-          assets.getPaging().getTotal(),
-          "Assets should be preserved immediately after rename " + (i + 1));
+      final UUID dpId = dataProduct.getId();
+      final int iteration = i + 1;
+      Awaitility.await("Wait for assets after rename " + iteration)
+          .pollDelay(Duration.ofMillis(100))
+          .pollInterval(Duration.ofMillis(500))
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () -> {
+                ResultList<EntityReference> a = getAssets(dpId, 10, 0);
+                assertEquals(
+                    1,
+                    a.getPaging().getTotal(),
+                    "Assets should be preserved immediately after rename " + iteration);
+              });
 
-      dataProduct.setDescription("Description after rename " + (i + 1));
+      dataProduct.setDescription("Description after rename " + iteration);
       dataProduct = patchEntity(dataProduct.getId().toString(), dataProduct);
 
-      assets = getAssets(dataProduct.getId(), 10, 0);
-      assertEquals(
-          1,
-          assets.getPaging().getTotal(),
-          "Assets should be preserved after rename + update iteration " + (i + 1));
+      Awaitility.await("Wait for assets after rename + update " + iteration)
+          .pollDelay(Duration.ofMillis(100))
+          .pollInterval(Duration.ofMillis(500))
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () -> {
+                ResultList<EntityReference> a = getAssets(dpId, 10, 0);
+                assertEquals(
+                    1,
+                    a.getPaging().getTotal(),
+                    "Assets should be preserved after rename + update iteration " + iteration);
+              });
     }
 
     Table tableWithDataProducts =
@@ -1683,7 +1736,8 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     SdkClients.adminClient().dataProducts().inputPorts(dataProductName).add(request);
   }
 
-  private void bulkAddOutputPorts(String dataProductName, BulkAssets request) {
+  private void bulkAddOutputPorts(String dataProductName, BulkAssets request) throws Exception {
+    bulkAddAssets(dataProductName, request);
     SdkClients.adminClient().dataProducts().outputPorts(dataProductName).add(request);
   }
 
@@ -1691,6 +1745,13 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   private ResultList<Map<String, Object>> getInputPorts(UUID id, int limit, int offset) {
     return (ResultList<Map<String, Object>>)
         SdkClients.adminClient().dataProducts().inputPorts(id).list(limit, offset);
+  }
+
+  @SuppressWarnings("unchecked")
+  private ResultList<Map<String, Object>> getInputPorts(
+      UUID id, String fields, int limit, int offset) {
+    return (ResultList<Map<String, Object>>)
+        SdkClients.adminClient().dataProducts().inputPorts(id).list(fields, limit, offset);
   }
 
   @SuppressWarnings("unchecked")
@@ -1703,6 +1764,13 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   private ResultList<Map<String, Object>> getOutputPorts(UUID id, int limit, int offset) {
     return (ResultList<Map<String, Object>>)
         SdkClients.adminClient().dataProducts().outputPorts(id).list(limit, offset);
+  }
+
+  @SuppressWarnings("unchecked")
+  private ResultList<Map<String, Object>> getOutputPorts(
+      UUID id, String fields, int limit, int offset) {
+    return (ResultList<Map<String, Object>>)
+        SdkClients.adminClient().dataProducts().outputPorts(id).list(fields, limit, offset);
   }
 
   @SuppressWarnings("unchecked")
@@ -1721,6 +1789,14 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         .dataProducts()
         .portsView(id)
         .get(inputLimit, inputOffset, outputLimit, outputOffset);
+  }
+
+  private DataProductPortsView getPortsView(
+      UUID id, String fields, int inputLimit, int inputOffset, int outputLimit, int outputOffset) {
+    return SdkClients.adminClient()
+        .dataProducts()
+        .portsView(id)
+        .get(fields, inputLimit, inputOffset, outputLimit, outputOffset);
   }
 
   private DataProductPortsView getPortsViewByName(
@@ -1935,7 +2011,10 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         .inputPorts(dataProduct.getId())
         .add(new BulkAssets().withAssets(List.of(table1.getEntityReference())));
 
-    // Add output port by ID
+    // Add table2 as data product asset first, then as output port by ID
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
     SdkClients.adminClient()
         .dataProducts()
         .outputPorts(dataProduct.getId())
@@ -2016,6 +2095,11 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     Table table1 = createTestTable(ns, "portsview_id_input", domain);
     Table table2 = createTestTable(ns, "portsview_id_output", domain);
 
+    // Add table2 as data product asset (required for output port)
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
     // Add ports using ID-based API
     SdkClients.adminClient()
         .dataProducts()
@@ -2052,5 +2136,710 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     assertEquals(
         portsViewById.getOutputPorts().getPaging().getTotal(),
         portsViewByName.getOutputPorts().getPaging().getTotal());
+  }
+
+  @Test
+  void test_portsWithFieldsParameter(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_ports_fields"))
+            .withDescription("Data product for ports fields test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "ports_fields_input", domain);
+    Table table2 = createTestTable(ns, "ports_fields_output", domain);
+
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
+    // Test without fields parameter - should not include owners/tags
+    ResultList<Map<String, Object>> inputPortsNoFields = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, inputPortsNoFields.getPaging().getTotal());
+    Map<String, Object> portNoFields = inputPortsNoFields.getData().get(0);
+    assertNotNull(portNoFields.get("id"));
+    assertNotNull(portNoFields.get("name"));
+
+    // Test with fields=owners - should include owners
+    ResultList<Map<String, Object>> inputPortsWithOwners =
+        getInputPorts(dataProduct.getId(), "owners", 10, 0);
+    assertEquals(1, inputPortsWithOwners.getPaging().getTotal());
+    Map<String, Object> portWithOwners = inputPortsWithOwners.getData().get(0);
+    assertNotNull(portWithOwners.get("id"));
+
+    // Test with fields=owners,tags - should include both
+    ResultList<Map<String, Object>> inputPortsWithMultipleFields =
+        getInputPorts(dataProduct.getId(), "owners,tags", 10, 0);
+    assertEquals(1, inputPortsWithMultipleFields.getPaging().getTotal());
+
+    // Test output ports with fields
+    ResultList<Map<String, Object>> outputPortsWithFields =
+        getOutputPorts(dataProduct.getId(), "owners,tags", 10, 0);
+    assertEquals(1, outputPortsWithFields.getPaging().getTotal());
+
+    // Test portsView with fields
+    DataProductPortsView portsViewWithFields =
+        getPortsView(dataProduct.getId(), "owners,tags", 10, 0, 10, 0);
+    assertNotNull(portsViewWithFields.getInputPorts());
+    assertEquals(1, portsViewWithFields.getInputPorts().getPaging().getTotal());
+    assertNotNull(portsViewWithFields.getOutputPorts());
+    assertEquals(1, portsViewWithFields.getOutputPorts().getPaging().getTotal());
+
+    // Test portsView without fields
+    DataProductPortsView portsViewNoFields = getPortsView(dataProduct.getId(), 10, 0, 10, 0);
+    assertNotNull(portsViewNoFields.getInputPorts());
+    assertEquals(1, portsViewNoFields.getInputPorts().getPaging().getTotal());
+  }
+
+  @Test
+  void test_portsReturnEntityType(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_entity_type_test"))
+            .withDescription("Data product to verify entityType is returned")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table inputTable = createTestTable(ns, "entity_type_input", domain);
+    Table outputTable = createTestTable(ns, "entity_type_output", domain);
+
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(inputTable.getEntityReference())));
+
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(outputTable.getEntityReference())));
+
+    // Verify entityType is returned in input ports response
+    ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, inputPorts.getPaging().getTotal());
+    Map<String, Object> inputPort = inputPorts.getData().get(0);
+    assertNotNull(
+        inputPort.get("entityType"), "entityType should be present in input port response");
+    assertEquals(
+        "table", inputPort.get("entityType"), "entityType should be 'table' for table entity");
+    assertEquals(inputTable.getId(), getEntityId(inputPort));
+
+    // Verify entityType is returned in output ports response
+    ResultList<Map<String, Object>> outputPorts = getOutputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, outputPorts.getPaging().getTotal());
+    Map<String, Object> outputPort = outputPorts.getData().get(0);
+    assertNotNull(
+        outputPort.get("entityType"), "entityType should be present in output port response");
+    assertEquals(
+        "table", outputPort.get("entityType"), "entityType should be 'table' for table entity");
+    assertEquals(outputTable.getId(), getEntityId(outputPort));
+
+    // Verify entityType is returned in portsView response
+    DataProductPortsView portsView = getPortsView(dataProduct.getId(), 10, 0, 10, 0);
+    assertNotNull(portsView.getInputPorts());
+    assertEquals(1, portsView.getInputPorts().getData().size());
+    Map<String, Object> portsViewInput =
+        portsView.getInputPorts().getData().get(0).getAdditionalProperties();
+    assertNotNull(
+        portsViewInput.get("entityType"), "entityType should be present in portsView input");
+    assertEquals("table", portsViewInput.get("entityType"));
+
+    assertNotNull(portsView.getOutputPorts());
+    assertEquals(1, portsView.getOutputPorts().getData().size());
+    Map<String, Object> portsViewOutput =
+        portsView.getOutputPorts().getData().get(0).getAdditionalProperties();
+    assertNotNull(
+        portsViewOutput.get("entityType"), "entityType should be present in portsView output");
+    assertEquals("table", portsViewOutput.get("entityType"));
+  }
+
+  @Test
+  void test_portsEntityTypeWithMultipleTables(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_multiple_tables_entity_type"))
+            .withDescription("Data product to verify entityType with multiple tables")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "multi_table_1", domain);
+    Table table2 = createTestTable(ns, "multi_table_2", domain);
+    Table table3 = createTestTable(ns, "multi_table_3", domain);
+
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(
+                List.of(
+                    table1.getEntityReference(),
+                    table2.getEntityReference(),
+                    table3.getEntityReference())));
+
+    // Verify all ports have entityType set correctly
+    ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(3, inputPorts.getPaging().getTotal());
+
+    for (Map<String, Object> port : inputPorts.getData()) {
+      assertNotNull(port.get("entityType"), "Each port should have entityType");
+      assertEquals("table", port.get("entityType"), "All ports should have entityType 'table'");
+      assertNotNull(port.get("id"), "Each port should have id");
+      assertNotNull(port.get("name"), "Each port should have name");
+    }
+  }
+
+  @Test
+  void test_portsEntityTypeAcrossDifferentEntityTypes(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_mixed_entity_types"))
+            .withDescription("Data product to verify entityType across different entity types")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    // Create different entity types
+    Table table = createTestTable(ns, "mixed_table", domain);
+    Dashboard dashboard = createTestDashboard(ns, "mixed_dashboard", domain);
+    Topic topic = createTestTopic(ns, "mixed_topic", domain);
+
+    // Add table and dashboard as input ports
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(List.of(table.getEntityReference(), dashboard.getEntityReference())));
+
+    // Add topic as output port
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(topic.getEntityReference())));
+
+    // Verify input ports have correct entityType for each entity
+    ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(2, inputPorts.getPaging().getTotal());
+
+    boolean foundTable = false;
+    boolean foundDashboard = false;
+
+    for (Map<String, Object> port : inputPorts.getData()) {
+      assertNotNull(port.get("entityType"), "Each port should have entityType");
+      String entityType = (String) port.get("entityType");
+      UUID portId = getEntityId(port);
+
+      if (portId.equals(table.getId())) {
+        assertEquals("table", entityType, "Table entity should have entityType 'table'");
+        foundTable = true;
+      } else if (portId.equals(dashboard.getId())) {
+        assertEquals(
+            "dashboard", entityType, "Dashboard entity should have entityType 'dashboard'");
+        foundDashboard = true;
+      }
+    }
+
+    assertTrue(foundTable, "Table should be found in input ports");
+    assertTrue(foundDashboard, "Dashboard should be found in input ports");
+
+    // Verify output ports have correct entityType for topic
+    ResultList<Map<String, Object>> outputPorts = getOutputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, outputPorts.getPaging().getTotal());
+
+    Map<String, Object> outputPort = outputPorts.getData().get(0);
+    assertNotNull(outputPort.get("entityType"), "Output port should have entityType");
+    assertEquals(
+        "topic", outputPort.get("entityType"), "Topic entity should have entityType 'topic'");
+    assertEquals(topic.getId(), getEntityId(outputPort));
+
+    // Verify portsView also returns correct entityTypes
+    DataProductPortsView portsView = getPortsView(dataProduct.getId(), 10, 0, 10, 0);
+
+    // Verify input ports in portsView
+    assertEquals(2, portsView.getInputPorts().getData().size());
+    for (int i = 0; i < portsView.getInputPorts().getData().size(); i++) {
+      Map<String, Object> port =
+          portsView.getInputPorts().getData().get(i).getAdditionalProperties();
+      assertNotNull(port.get("entityType"), "PortsView input should have entityType");
+      String entityType = (String) port.get("entityType");
+      assertTrue(
+          entityType.equals("table") || entityType.equals("dashboard"),
+          "EntityType should be 'table' or 'dashboard', got: " + entityType);
+    }
+
+    // Verify output ports in portsView
+    assertEquals(1, portsView.getOutputPorts().getData().size());
+    Map<String, Object> portsViewOutput =
+        portsView.getOutputPorts().getData().get(0).getAdditionalProperties();
+    assertNotNull(portsViewOutput.get("entityType"), "PortsView output should have entityType");
+    assertEquals("topic", portsViewOutput.get("entityType"));
+  }
+
+  @Test
+  void test_invalidFieldsValidation_inputPorts(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_invalid_fields_input"))
+            .withDescription("Data product for invalid fields test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table = createTestTable(ns, "invalid_fields_table", domain);
+
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> getInputPorts(dataProduct.getId(), "invalidField", 10, 0),
+            "Should throw exception for invalid field");
+    assertEquals(400, exception.getStatusCode(), "Should return 400 for invalid field");
+    assertTrue(
+        exception.getMessage().contains("Invalid field"),
+        "Error message should mention invalid field");
+  }
+
+  @Test
+  void test_invalidFieldsValidation_outputPorts(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_invalid_fields_output"))
+            .withDescription("Data product for invalid fields test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table = createTestTable(ns, "invalid_fields_output_table", domain);
+
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> getOutputPorts(dataProduct.getId(), "nonExistentField", 10, 0),
+            "Should throw exception for invalid field");
+    assertEquals(400, exception.getStatusCode(), "Should return 400 for invalid field");
+    assertTrue(
+        exception.getMessage().contains("Invalid field"),
+        "Error message should mention invalid field");
+  }
+
+  @Test
+  void test_invalidFieldsValidation_portsView(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_invalid_fields_portsview"))
+            .withDescription("Data product for invalid fields test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> getPortsView(dataProduct.getId(), "badField,anotherBadField", 10, 0, 10, 0),
+            "Should throw exception for invalid fields");
+    assertEquals(400, exception.getStatusCode(), "Should return 400 for invalid fields");
+    assertTrue(
+        exception.getMessage().contains("Invalid field"),
+        "Error message should mention invalid field");
+  }
+
+  @Test
+  void test_validFieldsAccepted(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_valid_fields"))
+            .withDescription("Data product for valid fields test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table inputTable = createTestTable(ns, "valid_fields_input", domain);
+    Table outputTable = createTestTable(ns, "valid_fields_output", domain);
+
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(inputTable.getEntityReference())));
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(outputTable.getEntityReference())));
+
+    ResultList<Map<String, Object>> inputPorts =
+        getInputPorts(dataProduct.getId(), "owners,tags,followers", 10, 0);
+    assertEquals(1, inputPorts.getPaging().getTotal());
+
+    ResultList<Map<String, Object>> outputPorts =
+        getOutputPorts(dataProduct.getId(), "domains,votes,extension", 10, 0);
+    assertEquals(1, outputPorts.getPaging().getTotal());
+
+    DataProductPortsView portsView = getPortsView(dataProduct.getId(), "owners,tags", 10, 0, 10, 0);
+    assertNotNull(portsView.getInputPorts());
+    assertNotNull(portsView.getOutputPorts());
+  }
+
+  @Test
+  void test_mixedValidInvalidFields(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_mixed_fields"))
+            .withDescription("Data product for mixed fields test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> getInputPorts(dataProduct.getId(), "owners,invalidField,tags", 10, 0),
+            "Should throw exception when mix of valid and invalid fields");
+    assertEquals(400, exception.getStatusCode(), "Should return 400 for invalid field");
+    assertTrue(
+        exception.getMessage().contains("invalidField"),
+        "Error message should mention the invalid field name");
+  }
+
+  @Test
+  void test_assetCannotBeBothInputAndOutputPort(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_port_exclusivity"))
+            .withDescription("Data product for port exclusivity test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "excl_1", domain);
+    Table table2 = createTestTable(ns, "excl_2", domain);
+    Table table3 = createTestTable(ns, "excl_3", domain);
+
+    // Add table1 and table2 as input ports
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference())));
+
+    // Add table1 and table3 as data product assets (required for output ports)
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(List.of(table1.getEntityReference(), table3.getEntityReference())));
+
+    // Try adding table1 (already input port) and table3 (new) as output ports via SDK directly
+    BulkOperationResult result =
+        SdkClients.adminClient()
+            .dataProducts()
+            .outputPorts(dataProduct.getFullyQualifiedName())
+            .add(
+                new BulkAssets()
+                    .withAssets(List.of(table1.getEntityReference(), table3.getEntityReference())));
+
+    // table1 should fail, table3 should succeed
+    assertEquals(2, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertEquals(1, result.getNumberOfRowsFailed());
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+    assertEquals(1, result.getSuccessRequest().size());
+    assertEquals(
+        table3.getId(),
+        JsonUtils.convertValue(
+                result.getSuccessRequest().get(0).getRequest(), EntityReference.class)
+            .getId());
+    assertEquals(1, result.getFailedRequest().size());
+    assertEquals(
+        table1.getId(),
+        JsonUtils.convertValue(result.getFailedRequest().get(0).getRequest(), EntityReference.class)
+            .getId());
+    assertTrue(result.getFailedRequest().get(0).getMessage().contains("input ports"));
+
+    // Verify output ports only contain table3
+    ResultList<Map<String, Object>> outputPorts = getOutputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, outputPorts.getPaging().getTotal());
+    assertEquals(table3.getId(), getEntityId(outputPorts.getData().get(0)));
+
+    // Verify input ports unchanged
+    ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(2, inputPorts.getPaging().getTotal());
+  }
+
+  @Test
+  void test_assetCannotBeAddedToInputIfAlreadyOutputPort(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_port_excl_reverse"))
+            .withDescription("Data product for reverse port exclusivity test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table = createTestTable(ns, "excl_rev_1", domain);
+
+    // Add as output port (helper adds as data product asset first)
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    // Try adding same asset as input port — should fail with 400
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .dataProducts()
+                    .inputPorts(dataProduct.getFullyQualifiedName())
+                    .add(new BulkAssets().withAssets(List.of(table.getEntityReference()))));
+    BulkOperationResult result =
+        JsonUtils.readValue(exception.getResponseBody(), BulkOperationResult.class);
+    assertEquals(ApiStatus.FAILURE, result.getStatus());
+    assertEquals(1, result.getNumberOfRowsFailed());
+    assertEquals(0, result.getNumberOfRowsPassed());
+    assertTrue(result.getFailedRequest().get(0).getMessage().contains("output ports"));
+  }
+
+  @Test
+  void test_assetCanBeMovedBetweenPortsAfterRemoval(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_port_move"))
+            .withDescription("Data product for port move test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table = createTestTable(ns, "move_1", domain);
+
+    // Add as data product asset (required for output ports later)
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    // Add as input port
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    // Remove from input ports
+    SdkClients.adminClient()
+        .dataProducts()
+        .inputPorts(dataProduct.getFullyQualifiedName())
+        .remove(new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    // Now adding as output port should succeed
+    BulkOperationResult result =
+        SdkClients.adminClient()
+            .dataProducts()
+            .outputPorts(dataProduct.getFullyQualifiedName())
+            .add(new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    ResultList<Map<String, Object>> outputPorts = getOutputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, outputPorts.getPaging().getTotal());
+    assertEquals(table.getId(), getEntityId(outputPorts.getData().get(0)));
+  }
+
+  @Test
+  void test_outputPortRequiresAssetBelongsToDataProduct(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_output_asset_check"))
+            .withDescription("Data product for output port asset validation")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table = createTestTable(ns, "not_dp_asset", domain);
+
+    // Try adding as output port without being a data product asset — should fail with 400
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .dataProducts()
+                    .outputPorts(dataProduct.getFullyQualifiedName())
+                    .add(new BulkAssets().withAssets(List.of(table.getEntityReference()))));
+    BulkOperationResult result =
+        JsonUtils.readValue(exception.getResponseBody(), BulkOperationResult.class);
+    assertEquals(ApiStatus.FAILURE, result.getStatus());
+    assertEquals(1, result.getNumberOfRowsFailed());
+    assertEquals(0, result.getNumberOfRowsPassed());
+    assertTrue(
+        result.getFailedRequest().get(0).getMessage().contains("must belong to the data product"));
+  }
+
+  @Test
+  void test_outputPortSucceedsAfterAddingAsDataProductAsset(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_output_after_asset"))
+            .withDescription("Data product for output port after asset add")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table = createTestTable(ns, "will_be_asset", domain);
+
+    // First fails — not a data product asset, returns 400
+    InvalidRequestException failException =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .dataProducts()
+                    .outputPorts(dataProduct.getFullyQualifiedName())
+                    .add(new BulkAssets().withAssets(List.of(table.getEntityReference()))));
+    BulkOperationResult failResult =
+        JsonUtils.readValue(failException.getResponseBody(), BulkOperationResult.class);
+    assertEquals(ApiStatus.FAILURE, failResult.getStatus());
+
+    // Add as data product asset
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    // Now succeeds
+    BulkOperationResult successResult =
+        SdkClients.adminClient()
+            .dataProducts()
+            .outputPorts(dataProduct.getFullyQualifiedName())
+            .add(new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    assertEquals(ApiStatus.SUCCESS, successResult.getStatus());
+    assertEquals(1, successResult.getNumberOfRowsPassed());
+  }
+
+  @Test
+  void test_inputPortDoesNotRequireDataProductAsset(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_input_no_asset_req"))
+            .withDescription("Data product for input port no asset requirement")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table = createTestTable(ns, "external_input", domain);
+
+    // Input port should succeed without being a data product asset
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, inputPorts.getPaging().getTotal());
+  }
+
+  @Test
+  void test_removingAssetFromDataProductRemovesItFromOutputPorts(TestNamespace ns)
+      throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_remove_asset_output"))
+            .withDescription("Data product for asset removal output port cleanup test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table table1 = createTestTable(ns, "output_asset_1", domain);
+    Table table2 = createTestTable(ns, "output_asset_2", domain);
+
+    // Add both tables as assets of the data product
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference())));
+
+    // Add both tables as output ports
+    SdkClients.adminClient()
+        .dataProducts()
+        .outputPorts(dataProduct.getFullyQualifiedName())
+        .add(
+            new BulkAssets()
+                .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference())));
+
+    // Verify both are output ports
+    ResultList<Map<String, Object>> outputPorts = getOutputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(2, outputPorts.getPaging().getTotal());
+
+    // Remove table1 from data product assets
+    bulkRemoveAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+
+    // table1 should also be removed from output ports
+    outputPorts = getOutputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, outputPorts.getPaging().getTotal());
+    assertEquals(table2.getId(), getEntityId(outputPorts.getData().get(0)));
+  }
+
+  @Test
+  void test_deletingAssetRemovesItFromPorts(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_delete_asset_port"))
+            .withDescription("Data product for asset deletion port cleanup test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table inputTable = createTestTable(ns, "del_input", domain);
+    Table outputTable = createTestTable(ns, "del_output", domain);
+    Table survivingTable = createTestTable(ns, "del_surviving", domain);
+
+    // Add input ports
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(
+                List.of(inputTable.getEntityReference(), survivingTable.getEntityReference())));
+
+    // Add output port
+    bulkAddOutputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(outputTable.getEntityReference())));
+
+    // Verify ports before deletion
+    assertEquals(2, getInputPorts(dataProduct.getId(), 10, 0).getPaging().getTotal());
+    assertEquals(1, getOutputPorts(dataProduct.getId(), 10, 0).getPaging().getTotal());
+
+    // Hard delete the input table asset
+    Map<String, String> hardDeleteParams = Map.of("hardDelete", "true");
+    SdkClients.adminClient().tables().delete(inputTable.getId().toString(), hardDeleteParams);
+
+    // Verify input port is cleaned up
+    ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, inputPorts.getPaging().getTotal());
+    assertEquals(survivingTable.getId(), getEntityId(inputPorts.getData().get(0)));
+
+    // Hard delete the output table asset
+    SdkClients.adminClient().tables().delete(outputTable.getId().toString(), hardDeleteParams);
+
+    // Verify output port is cleaned up
+    ResultList<Map<String, Object>> outputPorts = getOutputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(0, outputPorts.getPaging().getTotal());
   }
 }

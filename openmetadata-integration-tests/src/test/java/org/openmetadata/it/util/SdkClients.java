@@ -190,6 +190,8 @@ public class SdkClients {
             .serverUrl(BASE_URL)
             .accessToken(token)
             .header("X-Auth-Params-Email", email)
+            .readTimeout(300000)
+            .writeTimeout(300000)
             .build();
     OpenMetadataClient client = new OpenMetadataClient(cfg);
     // Set default client for fluent APIs used in factories (only for admin)

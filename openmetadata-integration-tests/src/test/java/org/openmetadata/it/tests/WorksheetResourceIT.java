@@ -28,11 +28,13 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.services.drives.SpreadsheetService;
 import org.openmetadata.sdk.services.drives.WorksheetService;
 import org.openmetadata.sdk.services.services.DriveServiceService;
+import org.openmetadata.service.resources.drives.WorksheetResource;
 
 /**
  * Integration tests for Worksheet entity operations.
@@ -52,6 +54,13 @@ public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet
     supportsDataProducts = false;
     supportsCustomExtension = false;
     supportsDomains = false;
+    supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
+  }
+
+  @Override
+  protected String getResourcePath() {
+    return WorksheetResource.COLLECTION_PATH;
   }
 
   @Override
@@ -930,5 +939,26 @@ public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet
 
       return getDriveServiceService().create(request);
     }
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateWorksheet> createRequests) {
+    return SdkClients.adminClient().worksheets().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateWorksheet> createRequests) {
+    return SdkClients.adminClient().worksheets().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateWorksheet createInvalidRequestForBulk(TestNamespace ns) {
+    CreateWorksheet request = new CreateWorksheet();
+    request.setName(ns.prefix("invalid_worksheet"));
+    return request;
   }
 }

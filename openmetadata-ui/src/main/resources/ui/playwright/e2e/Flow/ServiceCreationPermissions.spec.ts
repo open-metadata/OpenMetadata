@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   SERVICE_CREATOR_RULES,
   SERVICE_VIEWER_RULES,
@@ -30,6 +30,7 @@ import {
 import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { settingClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 
 const serviceOwnerPolicy = new PolicyClass();
 const serviceOwnerRole = new RolesClass();
@@ -59,7 +60,7 @@ const test = base.extend<{
   },
 });
 
-test.describe('Service Creation with isOwner() Permissions', () => {
+test.describe('Service Creation with isOwner() Permissions', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.slow();
 
   test.beforeAll('Setup prerequisites', async ({ browser }) => {
@@ -185,7 +186,6 @@ test.describe('Service Creation with isOwner() Permissions', () => {
 
     await adminOwnedService.visitEntityPage(page);
 
-
     await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
     // Manage button is visible but rename/delete options should not be available
@@ -291,14 +291,11 @@ test.describe('Service Creation with isOwner() Permissions', () => {
       false
     );
 
-    await expect(
-      ownerPage.getByTestId('entity-header-name')
-    ).toBeVisible();
+    await expect(ownerPage.getByTestId('entity-header-name')).toBeVisible();
     await expect(ownerPage.getByTestId('manage-button')).toBeVisible();
 
     await redirectToHomePage(otherPage);
-    userOwnedService.visitEntityPage(otherPage)
-
+    await userOwnedService.visitEntityPage(otherPage);
 
     await expect(otherPage.getByTestId('entity-header-name')).toBeVisible();
 

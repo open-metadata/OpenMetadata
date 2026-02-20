@@ -83,6 +83,25 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
         );
         const updatedTags = [...nonGlossaryTags, ...selectedTerms];
 
+        // When onGlossaryTermsUpdate is provided, use it directly as the update mechanism
+        // This avoids updateEntityField's fallback behavior for non-standard entity types
+        if (onGlossaryTermsUpdate) {
+          try {
+            const resultTags = await onGlossaryTermsUpdate(updatedTags);
+            if (resultTags) {
+              setDisplayTags(resultTags);
+            }
+            completeEditing();
+          } catch {
+            // Revert editing state so the UI doesn't show the failed selection
+            setEditingGlossaryTerms(glossaryTerms);
+            cancelEditing();
+            setIsLoading(false);
+          }
+
+          return;
+        }
+
         const result = await updateEntityField({
           entityId,
           entityType: entityType,
@@ -92,15 +111,13 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
           entityLabel: t('label.glossary-term-plural'),
           onSuccess: (newTags: TagLabel[]) => {
             setDisplayTags(newTags);
-            onGlossaryTermsUpdate?.(newTags);
-            completeEditing();
           },
           t,
         });
 
-        if (result.success && result.data === displayTags) {
+        if (result.success) {
           completeEditing();
-        } else if (!result.success) {
+        } else {
           setIsLoading(false);
         }
       } catch (error) {

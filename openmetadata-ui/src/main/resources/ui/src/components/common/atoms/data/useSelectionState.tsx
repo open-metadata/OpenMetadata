@@ -47,7 +47,7 @@ export const useSelectionState = <T extends { id: string }>(
 
   const handleSelect = useCallback((id: string, checked: boolean) => {
     if (checked) {
-      setSelectedEntities((prev) => [...prev, id]);
+      setSelectedEntities((prev) => (prev.includes(id) ? prev : [...prev, id]));
     } else {
       setSelectedEntities((prev) => prev.filter((entityId) => entityId !== id));
     }

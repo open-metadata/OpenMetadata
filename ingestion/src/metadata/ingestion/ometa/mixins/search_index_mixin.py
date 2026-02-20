@@ -16,6 +16,7 @@ To be used by OpenMetadata class
 import traceback
 from typing import Optional
 
+from metadata.generated.schema.entity.applications.app import App
 from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndex,
     SearchIndexSampleData,
@@ -73,3 +74,27 @@ class OMetaSearchIndexMixin:
                 )
 
         return None
+
+    def reindex(self) -> None:
+        try:
+            self.client.post(
+                f"{self.get_suffix(App)}/trigger/SearchIndexingApplication"
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Error trying to reindex the search index: {exc}")
+            raise exc
+
+    def is_reindex_app_running(self) -> bool:
+        resp = self.client.get(
+            f"{self.get_suffix(App)}/name/SearchIndexingApplication/status?offset=0&limit=1"
+        )
+
+        result = resp["data"]
+
+        if len(result) == 0:
+            raise RuntimeError("SearchIndex app was not reindexed")
+
+        run_info = result[0]
+
+        return run_info["status"] == "running"

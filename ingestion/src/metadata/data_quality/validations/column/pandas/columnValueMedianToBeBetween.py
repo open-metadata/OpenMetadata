@@ -92,7 +92,7 @@ class ColumnValueMedianToBeBetweenValidator(
         dimension_results = []
 
         try:
-            dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            dfs = self.runner
             median_impl = Metrics.MEDIAN(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(

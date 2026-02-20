@@ -257,12 +257,15 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         if column_diff:
             # If there are column differences, we set extra_columns to the common columns for the diff
             # Exclude incomparable columns (different data types) from the comparison
+            # Also exclude key columns since they are handled separately and should not be in extra_columns
             common_columns = list(
                 (
                     set(column_diff.schemaTable1.schema.keys())
                     & set(column_diff.schemaTable2.schema.keys())
                 )
                 - set(column_diff.changed)
+                - set(self.runtime_params.table1.key_columns or [])
+                - set(self.runtime_params.table2.key_columns or [])
             )
             self.runtime_params.extraColumns = common_columns
             self.runtime_params.table1.extra_columns = common_columns
@@ -416,11 +419,11 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             extra_columns=self.runtime_params.table2.extra_columns,
             case_sensitive=self.get_case_sensitive(),
             where=right_where,
-            key_content=self.runtime_params.table1.privateKey.get_secret_value()
-            if self.runtime_params.table1.privateKey
+            key_content=self.runtime_params.table2.privateKey.get_secret_value()
+            if self.runtime_params.table2.privateKey
             else None,
-            private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
-            if self.runtime_params.table1.passPhrase
+            private_key_passphrase=self.runtime_params.table2.passPhrase.get_secret_value()
+            if self.runtime_params.table2.passPhrase
             else None,
         )
         data_diff_kwargs = {
@@ -586,12 +589,28 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 ]
             )
 
+        has_column_diff = column_diff is not None and (
+            column_diff.removed or column_diff.added or column_diff.changed
+        )
+
+        if has_column_diff:
+            result_message = (
+                f"Schema mismatch detected: "
+                f"{len(column_diff.removed)} removed, "
+                f"{len(column_diff.added)} added, "
+                f"{len(column_diff.changed)} changed columns. "
+                f"Found {total_diffs} different rows."
+            )
+        else:
+            result_message = f"Found {total_diffs} different rows which is more than the threshold of {threshold}"
+
         return TestCaseResult(
             timestamp=self.execution_date,  # type: ignore
             testCaseStatus=self.get_test_case_status(
-                (threshold or total_diffs) == 0 or total_diffs < threshold
+                not has_column_diff
+                and ((threshold or total_diffs) == 0 or total_diffs < threshold)
             ),
-            result=f"Found {total_diffs} different rows which is more than the threshold of {threshold}",
+            result=result_message,
             failedRows=total_diffs,
             validateColumns=False,
             testResultValue=test_case_results,
@@ -632,7 +651,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 changed=changed,
                 schemaTable1=SchemaDiffResult(
                     serviceType=self.runtime_params.table1.database_service_type.name,
-                    fullyQualifiedTableName=self.runtime_params.table1.path,
+                    fullyQualifiedTableName=self.runtime_params.table1.fullyQualifiedName
+                    or self.runtime_params.table1.path,
                     schema={
                         c.name.root: {
                             "type": c.dataTypeDisplay,
@@ -643,7 +663,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 ),
                 schemaTable2=SchemaDiffResult(
                     serviceType=self.runtime_params.table2.database_service_type.name,
-                    fullyQualifiedTableName=self.runtime_params.table2.path,
+                    fullyQualifiedTableName=self.runtime_params.table2.fullyQualifiedName
+                    or self.runtime_params.table2.path,
                     schema={
                         c.name.root: {
                             "type": c.dataTypeDisplay,

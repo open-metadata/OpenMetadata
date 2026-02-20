@@ -67,7 +67,7 @@ export const mockPipelineData = {
       name: 'snowflake_task',
       fullyQualifiedName: 'sample_airflow.snowflake_etl.snowflake_task',
       sourceUrl:
-        'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
+        'http://localhost:8080/taskinstance/list/?_flt_3_dag_id=assert_table_exists',
       downstreamTasks: ['assert_table_exists'],
       taskType: 'SnowflakeOperator',
       tags: [],
@@ -78,7 +78,7 @@ export const mockPipelineData = {
       fullyQualifiedName: 'sample_airflow.snowflake_etl.assert_table_exists',
       description: 'Assert if a table exists',
       sourceUrl:
-        'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
+        'http://localhost:8080/taskinstance/list/?_flt_3_dag_id=assert_table_exists',
       downstreamTasks: [],
       taskType: 'HiveOperator',
       tags: [],

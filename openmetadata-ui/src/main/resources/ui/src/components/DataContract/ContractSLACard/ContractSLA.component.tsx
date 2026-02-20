@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Divider, Typography } from 'antd';
+import { Col, Divider, Tooltip, Typography } from 'antd';
 import { isEmpty, lowerCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { DATA_CONTRACT_SLA } from '../../../constants/DataContract.constants';
 import { DataContract } from '../../../generated/entity/data/dataContract';
@@ -148,15 +149,27 @@ const ContractSLA: React.FC<{
     return null;
   }
 
+  const inheritedIcon = contract.sla?.inherited ? (
+    <Tooltip
+      title={t('label.inherited-entity', {
+        entity: t('label.service-level-agreement'),
+      })}>
+      <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+    </Tooltip>
+  ) : null;
+
   return (
     <Col
       className="contract-card-items"
       data-testid="contract-sla-card"
       span={24}>
       <div className="contract-card-header-container">
-        <Typography.Text className="contract-card-header">
-          {t('label.service-level-agreement')}
-        </Typography.Text>
+        <div className="d-flex items-center gap-1">
+          <Typography.Text className="contract-card-header">
+            {t('label.service-level-agreement')}
+          </Typography.Text>
+          {inheritedIcon}
+        </div>
         <Divider className="contract-dash-separator" />
       </div>
 
