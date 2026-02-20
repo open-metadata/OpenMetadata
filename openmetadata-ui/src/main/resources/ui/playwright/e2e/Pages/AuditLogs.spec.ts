@@ -398,6 +398,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     );
   });
 
+  // Audit log search api has very high latency due to which the test is getting timeout
   test.fixme('should search audit logs', async ({ page }) => {
     await test.step('Enter search term and press Enter', async () => {
       const searchInput = page.getByPlaceholder('Search audit logs');
@@ -438,6 +439,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
   });
 
+  // Audit log search api has very high latency due to which the test is getting timeout
   test.fixme('should support case-insensitive search', async ({ page }) => {
     await test.step('Search with lowercase term', async () => {
       const searchInput = page.getByPlaceholder('Search audit logs');
@@ -684,6 +686,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 });
 
 // Test audit log search functionality with existing data
+// Audit log search api has very high latency due to which the test is getting timeout
 test.describe.fixme(
   'Audit Logs - Search Functionality',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
@@ -809,6 +812,7 @@ test.describe(
       });
     });
 
+    // Audit log search api has very high latency due to which the test is getting timeout
     test.fixme(
       'should include filters and search in export request',
       async ({ page }) => {
