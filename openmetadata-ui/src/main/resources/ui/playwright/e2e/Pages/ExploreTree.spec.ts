@@ -12,6 +12,7 @@
  */
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { DATA_ASSETS } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
@@ -52,7 +53,6 @@ import {
   verifyDatabaseAndSchemaInExploreTree,
 } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
-import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 // use the admin user to login
 test.use({
@@ -435,12 +435,12 @@ test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       .locator('.ant-tree-switcher')
       .click();
 
-    const supersetNode = page.getByTestId('explore-tree-title-Superset');
+    const supersetNode = page.getByTestId('explore-tree-title-superset');
     await expect(supersetNode).toBeVisible();
 
     await page
       .locator('.ant-tree-treenode', {
-        has: page.getByTestId('explore-tree-title-Superset'),
+        has: page.getByTestId('explore-tree-title-superset'),
       })
       .locator('.ant-tree-switcher')
       .click();
