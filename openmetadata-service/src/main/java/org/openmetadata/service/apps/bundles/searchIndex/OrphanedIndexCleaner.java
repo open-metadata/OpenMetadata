@@ -36,6 +36,7 @@ import org.openmetadata.service.search.SearchClient;
 public class OrphanedIndexCleaner {
 
   private static final String REBUILD_PATTERN = "_rebuild_";
+  private static final long MIN_AGE_MS = 30 * 60 * 1000L; // 30 minutes
 
   public record OrphanedIndex(String indexName, Set<String> aliases) {
     public boolean isOrphaned() {
@@ -53,8 +54,15 @@ public class OrphanedIndexCleaner {
 
       LOG.info("Found {} rebuild indices to check for orphans", allRebuildIndices.size());
 
+      long now = System.currentTimeMillis();
+
       for (String indexName : allRebuildIndices) {
         try {
+          if (!isOldEnough(indexName, now)) {
+            LOG.debug("Index {} is too recent, skipping", indexName);
+            continue;
+          }
+
           Set<String> aliases = client.getAliases(indexName);
           if (aliases == null || aliases.isEmpty()) {
             orphaned.add(new OrphanedIndex(indexName, aliases));
@@ -134,6 +142,19 @@ public class OrphanedIndexCleaner {
     }
 
     return rebuildIndices;
+  }
+
+  private boolean isOldEnough(String indexName, long now) {
+    int lastUnderscore = indexName.lastIndexOf('_');
+    if (lastUnderscore < 0) {
+      return true;
+    }
+    try {
+      long timestamp = Long.parseLong(indexName.substring(lastUnderscore + 1));
+      return (now - timestamp) > MIN_AGE_MS;
+    } catch (NumberFormatException e) {
+      return true;
+    }
   }
 
   private boolean isOrphaned(SearchClient client, String indexName) {

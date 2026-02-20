@@ -48,6 +48,8 @@ from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import WorkflowResultStatus
 
+from ..conftest import _safe_delete
+
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
 
@@ -137,7 +139,10 @@ def create_data(engine, session):
         User.__table__.create(bind=engine)
         NewUser.__table__.create(bind=engine)
     except:
-        logger.warning("Table Already exists")
+        logger.warning("Table Already exists, clearing existing data")
+        session.query(User).delete()
+        session.query(NewUser).delete()
+        session.commit()
 
     data = [
         User(
@@ -204,16 +209,15 @@ def ingest(service_name, create_data, metadata, engine, session):
 
     yield
 
-    service_id = str(
-        metadata.get_by_name(entity=DatabaseService, fqn=service_name).id.root
-    )
-
-    metadata.delete(
-        entity=DatabaseService,
-        entity_id=service_id,
-        recursive=True,
-        hard_delete=True,
-    )
+    service_entity = metadata.get_by_name(entity=DatabaseService, fqn=service_name)
+    if service_entity:
+        _safe_delete(
+            metadata,
+            entity=DatabaseService,
+            entity_id=service_entity.id,
+            recursive=True,
+            hard_delete=True,
+        )
 
     User.__table__.drop(bind=engine)
     NewUser.__table__.drop(bind=engine)

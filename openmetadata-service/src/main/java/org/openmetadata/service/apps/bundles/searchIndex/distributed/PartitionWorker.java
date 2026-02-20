@@ -31,6 +31,7 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
+import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.util.RestUtil;
@@ -130,6 +131,14 @@ public class PartitionWorker {
     AtomicLong processedCount = new AtomicLong(0);
     long currentOffset = rangeStart;
 
+    // Create stats tracker for this partition
+    StageStatsTracker statsTracker =
+        new StageStatsTracker(
+            partition.getJobId().toString(),
+            ServerIdentityResolver.getInstance().getServerId(),
+            entityType,
+            coordinator.getCollectionDAO().searchIndexServerStatsDAO());
+
     try {
       // Mark partition as started
       SearchIndexPartition processing =
@@ -144,11 +153,13 @@ public class PartitionWorker {
         int currentBatchSize = (int) Math.min(batchSize, rangeEnd - currentOffset);
 
         try {
-          BatchResult batchResult = processBatch(entityType, currentOffset, currentBatchSize);
+          BatchResult batchResult =
+              processBatch(entityType, currentOffset, currentBatchSize, statsTracker);
           successCount.addAndGet(batchResult.successCount());
           failedCount.addAndGet(batchResult.failedCount());
           warningsCount.addAndGet(batchResult.warningsCount());
-          processedCount.addAndGet(batchResult.successCount() + batchResult.failedCount());
+          processedCount.addAndGet(
+              batchResult.successCount() + batchResult.failedCount() + batchResult.warningsCount());
 
           currentOffset += currentBatchSize;
 
@@ -165,28 +176,41 @@ public class PartitionWorker {
         } catch (SearchIndexException e) {
           LOG.error("Error processing batch at offset {} for {}", currentOffset, entityType, e);
 
-          // Check if this is a reader or sink failure
           boolean isReaderFailure =
               e.getIndexingError() != null
                   && e.getIndexingError().getErrorSource()
                       == org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
 
-          if (failureRecorder != null) {
-            if (isReaderFailure) {
+          int batchFailedCount =
+              e.getIndexingError() != null && e.getIndexingError().getFailedCount() != null
+                  ? e.getIndexingError().getFailedCount()
+                  : currentBatchSize;
+
+          if (isReaderFailure) {
+            if (statsTracker != null) {
+              statsTracker.recordReaderBatch(0, batchFailedCount, 0);
+            }
+            if (failureRecorder != null) {
               failureRecorder.recordReaderFailure(
                   entityType, e.getMessage(), ExceptionUtils.getStackTrace(e));
-            } else {
-              // For sink failures, we don't have individual entity IDs here
-              failureRecorder.recordReaderFailure(
-                  entityType, "SINK: " + e.getMessage(), ExceptionUtils.getStackTrace(e));
+            }
+            readerFailedCount.addAndGet(batchFailedCount);
+          } else {
+            if (statsTracker != null) {
+              statsTracker.recordSinkBatch(0, batchFailedCount);
+            }
+            if (failureRecorder != null) {
+              failureRecorder.recordSinkFailure(
+                  entityType,
+                  "BATCH",
+                  "batch_at_offset_" + currentOffset,
+                  e.getMessage(),
+                  ExceptionUtils.getStackTrace(e));
             }
           }
 
-          failedCount.addAndGet(currentBatchSize);
-          // Only count as reader failure if it's actually from the reader
-          if (isReaderFailure) {
-            readerFailedCount.addAndGet(currentBatchSize);
-          }
+          failedCount.addAndGet(batchFailedCount);
+          processedCount.addAndGet(batchFailedCount);
           currentOffset += currentBatchSize;
 
           updateProgress(
@@ -200,6 +224,8 @@ public class PartitionWorker {
 
       if (stopped.get()) {
         LOG.info("Partition {} stopped by request", partition.getId());
+        // Wait briefly for async sink operations to complete and update tracker
+        waitForSinkOperations(statsTracker);
         return new PartitionResult(
             successCount.get(),
             failedCount.get(),
@@ -208,7 +234,12 @@ public class PartitionWorker {
             warningsCount.get());
       }
 
-      // Mark partition as completed
+      // Wait for async sink operations to complete and flush stats to DB
+      // IMPORTANT: This must happen BEFORE marking partition complete, otherwise
+      // the coordinator may aggregate stats before they're written to the database
+      waitForSinkOperations(statsTracker);
+
+      // Mark partition as completed (stats are now in the database)
       coordinator.completePartition(partition.getId(), successCount.get(), failedCount.get());
 
       LOG.info(
@@ -230,6 +261,7 @@ public class PartitionWorker {
     } catch (Exception e) {
       LOG.error("Fatal error processing partition {}", partition.getId(), e);
       coordinator.failPartition(partition.getId(), e.getMessage());
+      waitForSinkOperations(statsTracker);
       return new PartitionResult(
           successCount.get(),
           failedCount.get(),
@@ -240,14 +272,68 @@ public class PartitionWorker {
   }
 
   /**
+   * Wait for pending async sink operations to complete, then flush stats.
+   * This ensures that stats from async bulk callbacks are captured before the tracker is abandoned.
+   *
+   * <p>When vector indexing is enabled, the sink may have long-running vector embedding tasks.
+   * We wait for both:
+   * <ul>
+   *   <li>The StageStatsTracker's pending operations (for stats accuracy)</li>
+   *   <li>The BulkSink's pending vector tasks (for vector completion)</li>
+   * </ul>
+   *
+   * @param statsTracker The stats tracker to flush after waiting
+   */
+  private void waitForSinkOperations(StageStatsTracker statsTracker) {
+    // Flush the bulk processor to send any pending documents immediately
+    // Without this, documents wait for the periodic flush interval (5 seconds)
+    searchIndexSink.flushAndAwait(30);
+
+    // Check if there are pending vector tasks - if so, we need a longer timeout
+    int pendingVectorTasks = searchIndexSink.getPendingVectorTaskCount();
+    boolean hasVectorTasks = pendingVectorTasks > 0;
+
+    if (hasVectorTasks) {
+      LOG.debug(
+          "Waiting for {} pending vector tasks before completing partition for entity {}",
+          pendingVectorTasks,
+          statsTracker.getEntityType());
+
+      // Wait for vector operations to complete first (up to 120 seconds for vectors)
+      boolean vectorComplete = searchIndexSink.awaitVectorCompletion(120);
+      if (!vectorComplete) {
+        LOG.warn(
+            "Timed out waiting for vector completion, {} tasks still pending for entity {}",
+            searchIndexSink.getPendingVectorTaskCount(),
+            statsTracker.getEntityType());
+      }
+    }
+
+    // Now wait for the stats tracker to have all callbacks accounted for
+    // Use a longer timeout if we had vector tasks since callbacks may be delayed
+    long statsTimeout = hasVectorTasks ? 60000 : 30000;
+    boolean statsComplete = statsTracker.awaitSinkCompletion(statsTimeout);
+    if (!statsComplete) {
+      LOG.warn(
+          "Timed out waiting for sink stats completion, {} operations still pending for entity {}",
+          statsTracker.getPendingSinkOps(),
+          statsTracker.getEntityType());
+    }
+
+    statsTracker.flush();
+  }
+
+  /**
    * Process a single batch of entities.
    *
    * @param entityType The entity type
    * @param offset Starting offset
    * @param batchSize Number of entities to process
+   * @param statsTracker Optional stats tracker for vector stats
    * @return Batch processing result
    */
-  private BatchResult processBatch(String entityType, long offset, int batchSize)
+  private BatchResult processBatch(
+      String entityType, long offset, int batchSize, StageStatsTracker statsTracker)
       throws SearchIndexException {
 
     String cursor = RestUtil.encodeCursor(String.valueOf(offset));
@@ -257,18 +343,25 @@ public class PartitionWorker {
       return new BatchResult(0, 0, 0);
     }
 
-    Map<String, Object> contextData = createContextData(entityType);
+    int readSuccessCount = listOrEmpty(resultList.getData()).size();
+    int readErrorCount = listOrEmpty(resultList.getErrors()).size();
+    int warningsCount = resultList.getWarningsCount() != null ? resultList.getWarningsCount() : 0;
+
+    if (statsTracker != null) {
+      statsTracker.recordReaderBatch(readSuccessCount, readErrorCount, warningsCount);
+    }
+
+    Map<String, Object> contextData = createContextData(entityType, statsTracker);
 
     try {
       writeToSink(entityType, resultList, contextData);
-      int successCount = listOrEmpty(resultList.getData()).size();
-      int failedCount = listOrEmpty(resultList.getErrors()).size();
-      int warningsCount = resultList.getWarningsCount() != null ? resultList.getWarningsCount() : 0;
-      return new BatchResult(successCount, failedCount, warningsCount);
+      return new BatchResult(readSuccessCount, readErrorCount, warningsCount);
     } catch (Exception e) {
       throw new SearchIndexException(
           new org.openmetadata.schema.system.IndexingError()
               .withErrorSource(org.openmetadata.schema.system.IndexingError.ErrorSource.SINK)
+              .withSubmittedCount(readSuccessCount)
+              .withFailedCount(readSuccessCount)
               .withMessage("Failed to write batch to search index: " + e.getMessage()));
     }
   }
@@ -322,12 +415,17 @@ public class PartitionWorker {
    * Create context data for the sink operation.
    *
    * @param entityType The entity type
+   * @param statsTracker Optional stats tracker for vector stats
    * @return Context data map
    */
-  private Map<String, Object> createContextData(String entityType) {
+  private Map<String, Object> createContextData(String entityType, StageStatsTracker statsTracker) {
     Map<String, Object> contextData = new java.util.HashMap<>();
     contextData.put(ENTITY_TYPE_KEY, entityType);
     contextData.put(RECREATE_INDEX, recreateIndex);
+
+    if (statsTracker != null) {
+      contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, statsTracker);
+    }
 
     if (recreateContext != null) {
       contextData.put(RECREATE_CONTEXT, recreateContext);
@@ -370,44 +468,22 @@ public class PartitionWorker {
     LOG.info("Stop requested for partition worker");
   }
 
-  /**
-   * Check if this worker has been requested to stop.
-   *
-   * @return true if stop has been requested
-   */
   public boolean isStopped() {
     return stopped.get();
   }
 
-  /**
-   * Result of processing a single batch.
-   *
-   * @param successCount Number of successfully indexed entities
-   * @param failedCount Number of failed entities
-   */
   public record BatchResult(int successCount, int failedCount, int warningsCount) {}
 
-  /**
-   * Result of processing a partition.
-   *
-   * @param successCount Total successfully indexed entities
-   * @param failedCount Total failed entities (for backward compatibility, = readerFailed + sinkFailed)
-   * @param wasStopped Whether processing was stopped before completion
-   * @param readerFailed Number of entities that failed during reading
-   * @param readerWarnings Number of warnings from reading (e.g., stale references)
-   */
   public record PartitionResult(
       long successCount,
       long failedCount,
       boolean wasStopped,
       long readerFailed,
       long readerWarnings) {
-    /** Backward-compatible constructor for existing code */
     public PartitionResult(long successCount, long failedCount, boolean wasStopped) {
       this(successCount, failedCount, wasStopped, 0, 0);
     }
 
-    /** Constructor with readerFailed but no warnings (backward-compatible) */
     public PartitionResult(
         long successCount, long failedCount, boolean wasStopped, long readerFailed) {
       this(successCount, failedCount, wasStopped, readerFailed, 0);

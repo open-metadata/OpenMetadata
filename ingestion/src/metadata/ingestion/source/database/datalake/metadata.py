@@ -14,6 +14,7 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
 import json
 import traceback
+from hashlib import md5
 from typing import Any, Iterable, Optional, Tuple
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -297,8 +298,17 @@ class DatalakeSource(DatabaseServiceSource):
                 # If no data_frame (due to unsupported type), ignore
                 columns = None
             if columns:
+                display_name = None
+                if len(table_name) > 256:
+                    display_name = table_name
+                    table_name = md5(table_name.encode()).hexdigest()
+                    logger.debug(
+                        f"Table name exceeds 256 characters. Using MD5 hash [{table_name}] "
+                        f"as name and storing the full path in displayName: [{display_name}]"
+                    )
                 table_request = CreateTableRequest(
                     name=table_name,
+                    displayName=display_name,
                     tableType=table_type,
                     columns=columns,
                     tableConstraints=table_constraints if table_constraints else None,

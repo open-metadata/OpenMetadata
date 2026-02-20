@@ -110,6 +110,23 @@ public class WebsocketNotificationHandler {
     }
   }
 
+  public static void sendBulkAssetsOperationProgressNotification(
+      String jobId,
+      SecurityContext securityContext,
+      long progress,
+      long total,
+      String progressMessage) {
+    BulkAssetsOperationMessage message =
+        new BulkAssetsOperationMessage(
+            jobId, "IN_PROGRESS", null, null, progress, total, progressMessage);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
+    }
+  }
+
   public static void bulkAssetsOperationCompleteNotification(
       String jobId, SecurityContext securityContext, BulkOperationResult result) {
     sendBulkAssetsOperationCompleteNotification(jobId, securityContext, result);
@@ -254,6 +271,18 @@ public class WebsocketNotificationHandler {
       String jobId, SecurityContext securityContext) {
     CSVImportMessage message = new CSVImportMessage(jobId, "STARTED", null, null);
     String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.CSV_IMPORT_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendCsvImportProgressNotification(
+      String jobId, SecurityContext securityContext, int progress, int total, String message) {
+    CSVImportMessage importMessage =
+        new CSVImportMessage(jobId, "IN_PROGRESS", null, null, progress, total, message);
+    String jsonMessage = JsonUtils.pojoToJson(importMessage);
     UUID userId = getUserIdFromSecurityContext(securityContext);
     if (userId != null) {
       WebSocketManager.getInstance()

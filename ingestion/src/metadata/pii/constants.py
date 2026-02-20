@@ -32,6 +32,7 @@ SUPPORTED_LANG = "en"
 LANGUAGE_MODEL_MAPPING = defaultdict(
     lambda: SPACY_MULTILANG_MODEL,
     {
+        ClassificationLanguage.any: SPACY_EN_MODEL,
         ClassificationLanguage.ca: "ca_core_news_md",
         ClassificationLanguage.zh: "zh_core_web_md",
         ClassificationLanguage.hr: "hr_core_news_md",

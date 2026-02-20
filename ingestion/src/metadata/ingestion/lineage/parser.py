@@ -17,12 +17,12 @@ import traceback
 from collections import defaultdict
 from copy import deepcopy
 from logging.config import DictConfigurator
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import sqlparse
 from cached_property import cached_property
 from collate_sqllineage import SQLPARSE_DIALECT
-from collate_sqllineage.core.models import Column, DataFunction, Table
+from collate_sqllineage.core.models import Column, DataFunction, Location, Table
 from collate_sqllineage.core.parser.sqlfluff.analyzer import SqlFluffLineageAnalyzer
 from collate_sqllineage.core.parser.sqlglot.analyzer import SqlGlotLineageAnalyzer
 from collate_sqllineage.exceptions import SQLLineageException
@@ -164,7 +164,7 @@ class LineageParser:
         return []
 
     @cached_property
-    def source_tables(self) -> List[Union[Table, DataFunction]]:
+    def source_tables(self) -> List[Union[Table, DataFunction, Location]]:
         """
         Get a list of source tables
         """
@@ -174,7 +174,7 @@ class LineageParser:
         return []
 
     @cached_property
-    def target_tables(self) -> List[Table]:
+    def target_tables(self) -> List[Union[Table, Location]]:
         """
         Get a list of target tables
         """
@@ -485,13 +485,15 @@ class LineageParser:
 
         return join_data
 
-    def retrieve_tables(self, tables: List[Any]) -> List[Table]:
+    def retrieve_tables(
+        self, tables: List[Union[Table, DataFunction, Location]]
+    ) -> List[Union[Table, DataFunction, Location]]:
         if not self._clean_query:
             return []
         return [
             self.clean_table_name(table)
             for table in tables
-            if isinstance(table, (Table, DataFunction))
+            if isinstance(table, (Table, DataFunction, Location))
         ]
 
     @classmethod
@@ -520,9 +522,11 @@ class LineageParser:
 
         # We remove queries of the type 'COPY table FROM path' since they are data manipulation statements
         # that do not provide value for user. However, we keep Snowflake 'COPY INTO table FROM @stage'
-        # statements as they provide lineage from stages to tables.
-        if insensitive_match(clean_query, r"^COPY\s+") and not insensitive_match(
-            clean_query, r"^COPY\s+INTO\s+.*\s+FROM\s+@"
+        # and 'COPY INTO @stage FROM table' as they are used for loading/unloading data and are relevant
+        # for lineage from stages to tables or vice versa.
+        if insensitive_match(clean_query, r"^COPY\s+") and not (
+            insensitive_match(clean_query, r"^COPY\s+INTO\s+.*\s+FROM\s+@")
+            or insensitive_match(clean_query, r"^COPY\s+INTO\s+@.*\s+FROM\s+.*")
         ):
             return None
 
@@ -751,7 +755,9 @@ class LineageParser:
         return None
 
     @staticmethod
-    def clean_table_name(table: Table) -> Table:
+    def clean_table_name(
+        table: Union[Table, DataFunction, Location],
+    ) -> Union[Table, DataFunction, Location]:
         """
         Clean table name by:
         - Removing brackets from the beginning and end of the table and schema name
@@ -772,5 +778,16 @@ class LineageParser:
         ):
             clean_table.schema.raw_name = insensitive_replace(
                 clean_table.schema.raw_name, r"\[(.*)\]", r"\1"
+            )
+        # Remove leading @ from the location storage objects if present as they are
+        # not used while ingesting location storage objects in OpenMetadata
+        # ex. @STAGE_01 -> STAGE_01 (snowflake stage object)
+        if (
+            isinstance(clean_table, Location)
+            and clean_table.raw_name
+            and insensitive_match(clean_table.raw_name, r"@.*")
+        ):
+            clean_table.raw_name = insensitive_replace(
+                clean_table.raw_name, r"@(.*)", r"\1"
             )
         return clean_table

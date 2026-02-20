@@ -39,6 +39,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ReindexingUtil {
@@ -86,7 +87,7 @@ public class ReindexingUtil {
           EntityTimeSeriesRepository<?> repository;
           ListFilter listFilter = new ListFilter(null);
           if (isDataInsightIndex(entityType)) {
-            listFilter.addQueryParam("entityFQNHash", entityType);
+            listFilter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(entityType));
             repository = Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA);
           } else {
             repository = Entity.getEntityTimeSeriesRepository(entityType);

@@ -1,14 +1,13 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -17,9 +16,7 @@ import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
-import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 
 @Slf4j
 public class CheckFeedbackSubmitterIsReviewerImpl implements JavaDelegate {
@@ -36,16 +33,11 @@ public class CheckFeedbackSubmitterIsReviewerImpl implements JavaDelegate {
       Map<String, String> inputNamespaceMap =
           JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
 
-      UUID feedbackId =
-          UUID.fromString(
-              (String)
-                  varHandler.getNamespacedVariable(
-                      inputNamespaceMap.get(TRIGGERING_OBJECT_ID_VARIABLE),
-                      TRIGGERING_OBJECT_ID_VARIABLE));
-
-      RecognizerFeedbackRepository feedbackRepository =
-          new RecognizerFeedbackRepository(Entity.getCollectionDAO());
-      RecognizerFeedback feedback = feedbackRepository.get(feedbackId);
+      String feedbackJson =
+          (String)
+              varHandler.getNamespacedVariable(
+                  inputNamespaceMap.get(RECOGNIZER_FEEDBACK), RECOGNIZER_FEEDBACK);
+      RecognizerFeedback feedback = JsonUtils.readValue(feedbackJson, RecognizerFeedback.class);
 
       String assigneesVarName = assigneesVarNameExpr.getValue(execution).toString();
       String assigneesJson = (String) execution.getVariable(assigneesVarName);

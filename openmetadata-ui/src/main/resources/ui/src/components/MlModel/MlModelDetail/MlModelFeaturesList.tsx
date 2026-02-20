@@ -14,7 +14,7 @@
 import { Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
-import { Fragment, useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { MlFeature, Mlmodel } from '../../../generated/entity/data/mlmodel';
@@ -38,8 +38,14 @@ const MlModelFeaturesList = () => {
   );
   const [editDescription, setEditDescription] = useState<boolean>(false);
   const [_expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const { data, onUpdate, permissions, openColumnDetailPanel, selectedColumn } =
-    useGenericContext<Mlmodel>();
+  const {
+    data,
+    onUpdate,
+    permissions,
+    openColumnDetailPanel,
+    selectedColumn,
+    setDisplayedColumns,
+  } = useGenericContext<Mlmodel>();
 
   // Extract base FQN and column part from URL
   const { columnFqn: columnPart, fqn } = useFqn({
@@ -62,6 +68,11 @@ const MlModelFeaturesList = () => {
     openColumnDetailPanel,
     selectedColumn: selectedColumn as MlFeature | null,
   });
+
+  // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
+  useEffect(() => {
+    setDisplayedColumns(mlFeatures || []);
+  }, [mlFeatures, setDisplayedColumns]);
 
   const hasEditPermission = useMemo(
     () => permissions.EditTags || permissions.EditAll,

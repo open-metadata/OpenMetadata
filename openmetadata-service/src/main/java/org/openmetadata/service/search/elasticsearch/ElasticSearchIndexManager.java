@@ -326,6 +326,70 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
   }
 
   @Override
+  public boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot swap aliases.");
+      return false;
+    }
+    if (aliases == null || aliases.isEmpty()) {
+      LOG.debug("No aliases to swap for index {}", newIndex);
+      return true;
+    }
+    if (oldIndices == null) {
+      oldIndices = new HashSet<>();
+    }
+
+    Set<String> finalOldIndices = oldIndices;
+    try {
+      UpdateAliasesRequest request =
+          UpdateAliasesRequest.of(
+              updateBuilder -> {
+                // First, remove aliases from all old indices
+                for (String oldIndex : finalOldIndices) {
+                  for (String alias : aliases) {
+                    updateBuilder.actions(
+                        actionBuilder ->
+                            actionBuilder.remove(
+                                removeBuilder -> removeBuilder.index(oldIndex).alias(alias)));
+                  }
+                }
+                // Then, add aliases to the new index
+                for (String alias : aliases) {
+                  updateBuilder.actions(
+                      actionBuilder ->
+                          actionBuilder.add(addBuilder -> addBuilder.index(newIndex).alias(alias)));
+                }
+                return updateBuilder;
+              });
+
+      UpdateAliasesResponse response = client.indices().updateAliases(request);
+
+      if (response.acknowledged()) {
+        LOG.info(
+            "Atomically swapped aliases {} from indices {} to index {}",
+            aliases,
+            finalOldIndices,
+            newIndex);
+        return true;
+      } else {
+        LOG.warn(
+            "Alias swap from indices {} to index {} was not acknowledged",
+            finalOldIndices,
+            newIndex);
+        return false;
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to swap aliases {} from indices {} to index {}",
+          aliases,
+          finalOldIndices,
+          newIndex,
+          e);
+      return false;
+    }
+  }
+
+  @Override
   public Set<String> getAliases(String indexName) {
     Set<String> aliases = new HashSet<>();
     if (!isClientAvailable) {
@@ -337,7 +401,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       GetAliasResponse response = client.indices().getAlias(request);
 
       response
-          .result()
+          .aliases()
           .forEach(
               (index, aliasDetails) -> {
                 aliases.addAll(aliasDetails.aliases().keySet());
@@ -368,7 +432,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       GetAliasRequest request = GetAliasRequest.of(g -> g.name(aliasName));
       GetAliasResponse response = client.indices().getAlias(request);
 
-      indices.addAll(response.result().keySet());
+      indices.addAll(response.aliases().keySet());
 
       LOG.info("Retrieved indices for alias {}: {}", aliasName, indices);
     } catch (ElasticsearchException esEx) {
@@ -401,7 +465,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       GetAliasRequest request = GetAliasRequest.of(g -> g.index(pattern));
       GetAliasResponse response = client.indices().getAlias(request);
 
-      indices.addAll(response.result().keySet());
+      indices.addAll(response.aliases().keySet());
 
       LOG.info("Retrieved {} indices matching prefix '{}': {}", indices.size(), prefix, indices);
     } catch (Exception e) {

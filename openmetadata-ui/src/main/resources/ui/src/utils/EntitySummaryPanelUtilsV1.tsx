@@ -182,6 +182,7 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
     <div>
       <div
         className="nested-field-card-wrapper"
+        data-row-key={column.fullyQualifiedName ?? column.name}
         key={column.fullyQualifiedName ?? column.name}
         style={{
           paddingLeft: `${level * 24}px`,
@@ -207,6 +208,7 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
             )}
             <Button
               className="d-flex p-0 h-auto m-b-xs"
+              data-testid="expand-icon"
               size="small"
               type="link"
               onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}>
@@ -866,7 +868,7 @@ const APIEndpointSchemaV1: React.FC<{
     const keys: string[] = [];
     const traverse = (fieldList: Field[]) => {
       for (const field of fieldList) {
-        keys.push(field.name);
+        keys.push(field.fullyQualifiedName ?? field.name);
         if (field.children && field.children.length > 0) {
           traverse(field.children);
         }
@@ -901,7 +903,7 @@ const APIEndpointSchemaV1: React.FC<{
       key: 'name',
       width: 200,
       render: (name: string, record: Record<string, any>) => (
-        <div className="d-inline-flex w-max-90">
+        <div className="d-inline-flex" style={{ maxWidth: '68%' }}>
           <span className="break-word">{record.displayName || name}</span>
         </div>
       ),
@@ -997,7 +999,7 @@ const APIEndpointSchemaV1: React.FC<{
               childrenColumnName: 'children',
             }}
             pagination={false}
-            rowKey="name"
+            rowKey="fullyQualifiedName"
             scroll={{ x: 800 }}
             size="small"
           />

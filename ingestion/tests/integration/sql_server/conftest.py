@@ -1,6 +1,7 @@
 import os
 import shutil
 import tempfile
+import uuid
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -23,7 +24,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from ..conftest import ingestion_config as base_ingestion_config
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def db_name():
     return "AdventureWorksLT2022"
 
@@ -50,7 +51,7 @@ class CustomSqlServerContainer(SqlServerContainer):
         self.with_env("SQL_SA_PASSWORD", self.password)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="package")
 def mssql_container(tmp_path_factory, db_name):
     container = CustomSqlServerContainer(
         "mcr.microsoft.com/mssql/server:2022-latest", dbname="master"
@@ -128,9 +129,9 @@ def scheme(request):
 
 
 @pytest.fixture(scope="module")
-def create_service_request(mssql_container, scheme, tmp_path_factory, db_name):
+def create_service_request(mssql_container, scheme, db_name):
     return CreateDatabaseServiceRequest(
-        name="docker_test_" + tmp_path_factory.mktemp("mssql").name + "_" + scheme.name,
+        name=f"docker_test_mssql_{uuid.uuid4().hex[:8]}_{scheme.name}",
         serviceType=DatabaseServiceType.Mssql,
         connection=DatabaseConnection(
             config=MssqlConnection(

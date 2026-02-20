@@ -12,8 +12,7 @@
 """
 OpenMetadata high-level API Model test
 """
-import uuid
-from unittest import TestCase
+import pytest
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -24,10 +23,6 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.api.services.createMlModelService import (
-    CreateMlModelServiceRequest,
-)
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureSource,
     FeatureSourceDataType,
@@ -43,232 +38,147 @@ from metadata.generated.schema.entity.services.connections.database.common.basic
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
-    MlflowConnection,
-)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
-from metadata.generated.schema.entity.services.mlmodelService import (
-    MlModelConnection,
-    MlModelService,
-    MlModelServiceType,
-)
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+from .conftest import _safe_delete
 
 
-class OMetaModelTest(TestCase):
+@pytest.fixture
+def mlmodel_request(mlmodel_service):
+    """Create ML model request using the ML model service from conftest."""
+    return CreateMlModelRequest(
+        name="test-model",
+        algorithm="algo",
+        service=mlmodel_service.fullyQualifiedName,
+    )
+
+
+@pytest.fixture
+def expected_fqn(mlmodel_service):
+    """Expected fully qualified name for test ML model."""
+    return f"{mlmodel_service.name.root}.test-model"
+
+
+class TestOMetaMlModelAPI:
     """
-    Run this integration test with the local API available
-    Install the ingestion package before running the tests
+    ML Model API integration tests.
+    Tests CRUD operations, versioning, ML features, hyperparameters, and lineage.
+
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    - mlmodel_service: MlModelService (module scope)
+    - create_user: User factory (function scope)
+    - create_mlmodel: MlModel factory (function scope)
     """
 
-    server_config = OpenMetadataConnection(
-        hostPort="http://localhost:8585/api",
-        authProvider="openmetadata",
-        securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-        ),
-    )
-    metadata = OpenMetadata(server_config)
-
-    assert metadata.health_check()
-
-    user = metadata.create_or_update(
-        data=CreateUserRequest(name="random-user", email="random@user.com"),
-    )
-    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
-
-    service = CreateMlModelServiceRequest(
-        name="test-model-service",
-        serviceType=MlModelServiceType.Mlflow,
-        connection=MlModelConnection(
-            config=MlflowConnection(
-                trackingUri="http://localhost:1234",
-                registryUri="http://localhost:4321",
-            )
-        ),
-    )
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        Prepare ingredients
-        """
-
-        cls.service_entity = cls.metadata.create_or_update(data=cls.service)
-        cls.service_reference = EntityReference(
-            id=cls.service_entity.id, name="test-mlflow", type="mlmodelService"
-        )
-
-        cls.create = CreateMlModelRequest(
-            name="test-model",
-            algorithm="algo",
-            service=cls.service_entity.fullyQualifiedName,
-        )
-
-        cls.entity = MlModel(
-            id=uuid.uuid4(),
-            name="test-model",
-            algorithm="algo",
-            fullyQualifiedName="test-model-service.test-model",
-            service=cls.service_reference,
-        )
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Clean up
-        """
-
-        service_id = str(
-            cls.metadata.get_by_name(
-                entity=MlModelService, fqn="test-model-service"
-            ).id.root
-        )
-
-        cls.metadata.delete(
-            entity=MlModelService,
-            entity_id=service_id,
-            recursive=True,
-            hard_delete=True,
-        )
-
-    def test_create(self):
+    def test_create(
+        self, metadata, mlmodel_service, mlmodel_request, expected_fqn, create_mlmodel
+    ):
         """
         We can create a Model and we receive it back as Entity
         """
+        res = create_mlmodel(mlmodel_request)
 
-        res = self.metadata.create_or_update(data=self.create)
+        assert res.name.root == "test-model"
+        assert res.algorithm == "algo"
+        assert res.owners is None
 
-        self.assertEqual(res.name, self.entity.name)
-        self.assertEqual(res.algorithm, self.entity.algorithm)
-        self.assertIsNone(res.owners)
+        fetched = metadata.get_by_name(entity=MlModel, fqn=expected_fqn)
+        assert fetched is not None
+        assert fetched.id == res.id
 
-    def test_update(self):
+    def test_update(
+        self,
+        metadata,
+        mlmodel_service,
+        mlmodel_request,
+        expected_fqn,
+        create_user,
+        create_mlmodel,
+    ):
         """
         Updating it properly changes its properties
         """
+        user = create_user()
+        owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
-        res_create = self.metadata.create_or_update(data=self.create)
+        res_create = create_mlmodel(mlmodel_request)
 
-        updated = self.create.model_dump(exclude_unset=True)
-        updated["owners"] = self.owners
+        updated = mlmodel_request.model_dump(exclude_unset=True)
+        updated["owners"] = owners
         updated_entity = CreateMlModelRequest(**updated)
 
-        res = self.metadata.create_or_update(data=updated_entity)
+        res = metadata.create_or_update(data=updated_entity)
 
-        # Same ID, updated algorithm
-        self.assertEqual(res.algorithm, updated_entity.algorithm)
-        self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owners.root[0].id, self.user.id)
+        assert res.algorithm == updated_entity.algorithm
+        assert res_create.id == res.id
+        assert res.owners.root[0].id == user.id
 
-        # Getting without owner field does not return it by default
-        res_none = self.metadata.get_by_name(
-            entity=MlModel, fqn=self.entity.fullyQualifiedName
-        )
-        self.assertIsNone(res_none.owners)
+        res_none = metadata.get_by_name(entity=MlModel, fqn=expected_fqn)
+        assert res_none.owners is None
 
-        # We can request specific fields to be added
-        res_owner = self.metadata.get_by_name(
+        res_owner = metadata.get_by_name(
             entity=MlModel,
-            fqn=self.entity.fullyQualifiedName,
+            fqn=expected_fqn,
             fields=["owners", "followers"],
         )
-        self.assertEqual(res_owner.owners.root[0].id, self.user.id)
+        assert res_owner.owners.root[0].id == user.id
 
-    def test_get_name(self):
+    def test_get_name(self, metadata, mlmodel_request, expected_fqn, create_mlmodel):
         """
         We can fetch a model by name and get it back as Entity
         """
+        created = create_mlmodel(mlmodel_request)
 
-        self.metadata.create_or_update(data=self.create)
+        res = metadata.get_by_name(entity=MlModel, fqn=expected_fqn)
+        assert res.name.root == created.name.root
 
-        res = self.metadata.get_by_name(
-            entity=MlModel, fqn=self.entity.fullyQualifiedName
-        )
-        self.assertEqual(res.name, self.entity.name)
-
-    def test_get_id(self):
+    def test_get_id(self, metadata, mlmodel_request, expected_fqn, create_mlmodel):
         """
         We can fetch a model by ID and get it back as Entity
         """
+        create_mlmodel(mlmodel_request)
 
-        self.metadata.create_or_update(data=self.create)
+        res_name = metadata.get_by_name(entity=MlModel, fqn=expected_fqn)
+        res = metadata.get_by_id(entity=MlModel, entity_id=res_name.id)
 
-        # First pick up by name
-        res_name = self.metadata.get_by_name(
-            entity=MlModel, fqn=self.entity.fullyQualifiedName
-        )
-        # Then fetch by ID
-        res = self.metadata.get_by_id(entity=MlModel, entity_id=res_name.id)
+        assert res_name.id == res.id
 
-        self.assertEqual(res_name.id, res.id)
-
-    def test_list(self):
+    def test_list(self, metadata, mlmodel_request, create_mlmodel):
         """
         We can list all our models
         """
+        created = create_mlmodel(mlmodel_request)
 
-        self.metadata.create_or_update(data=self.create)
+        res = metadata.list_entities(entity=MlModel)
 
-        res = self.metadata.list_entities(entity=MlModel)
+        data = next(iter(ent for ent in res.entities if ent.name == created.name), None)
+        assert data is not None
 
-        # Fetch our test model. We have already inserted it, so we should find it
-        data = next(
-            iter(ent for ent in res.entities if ent.name == self.entity.name), None
-        )
-        assert data
-
-    def test_delete(self):
+    def test_delete(self, metadata, mlmodel_request, expected_fqn, create_mlmodel):
         """
         We can delete a model by ID
         """
+        created = create_mlmodel(mlmodel_request)
 
-        self.metadata.create_or_update(data=self.create)
+        metadata.delete(entity=MlModel, entity_id=str(created.id.root))
 
-        # Find by name
-        res_name = self.metadata.get_by_name(
-            entity=MlModel, fqn=self.entity.fullyQualifiedName
-        )
-        # Then fetch by ID
-        res_id = self.metadata.get_by_id(
-            entity=MlModel, entity_id=str(res_name.id.root)
-        )
+        deleted = metadata.get_by_name(entity=MlModel, fqn=expected_fqn)
+        assert deleted is None
 
-        # Delete
-        self.metadata.delete(entity=MlModel, entity_id=str(res_id.id.root))
-
-        # Then we should not find it
-        res = self.metadata.list_entities(entity=MlModel)
-
-        assert not next(
-            iter(
-                ent
-                for ent in res.entities
-                if ent.fullyQualifiedName == self.entity.fullyQualifiedName
-            ),
-            None,
-        )
-
-    def test_mlmodel_properties(self):
+    def test_mlmodel_properties(self, metadata, mlmodel_service):
         """
         Check that we can create models with MLFeatures and MLHyperParams
 
         We can add lineage information
         """
-
         service = CreateDatabaseServiceRequest(
             name="test-service-table-ml",
             serviceType=DatabaseServiceType.Mysql,
@@ -282,33 +192,33 @@ class OMetaModelTest(TestCase):
                 )
             ),
         )
-        service_entity = self.metadata.create_or_update(data=service)
+        service_entity = metadata.create_or_update(data=service)
 
         create_db = CreateDatabaseRequest(
             name="test-db-ml",
             service=service_entity.fullyQualifiedName,
         )
-        create_db_entity = self.metadata.create_or_update(data=create_db)
+        create_db_entity = metadata.create_or_update(data=create_db)
 
         create_schema = CreateDatabaseSchemaRequest(
             name="test-schema-ml",
             database=create_db_entity.fullyQualifiedName,
         )
-        create_schema_entity = self.metadata.create_or_update(data=create_schema)
+        create_schema_entity = metadata.create_or_update(data=create_schema)
 
         create_table1 = CreateTableRequest(
             name="test-ml",
             databaseSchema=create_schema_entity.fullyQualifiedName,
             columns=[Column(name="education", dataType=DataType.STRING)],
         )
-        table1_entity = self.metadata.create_or_update(data=create_table1)
+        table1_entity = metadata.create_or_update(data=create_table1)
 
         create_table2 = CreateTableRequest(
             name="another_test-ml",
             databaseSchema=create_schema_entity.fullyQualifiedName,
             columns=[Column(name="age", dataType=DataType.INT)],
         )
-        table2_entity = self.metadata.create_or_update(data=create_table2)
+        table2_entity = metadata.create_or_update(data=create_table2)
 
         model = CreateMlModelRequest(
             name="test-model-lineage",
@@ -321,7 +231,7 @@ class OMetaModelTest(TestCase):
                         FeatureSource(
                             name="age",
                             dataType=FeatureSourceDataType.integer,
-                            dataSource=self.metadata.get_entity_reference(
+                            dataSource=metadata.get_entity_reference(
                                 entity=Table, fqn=table2_entity.fullyQualifiedName
                             ),
                         )
@@ -334,14 +244,14 @@ class OMetaModelTest(TestCase):
                         FeatureSource(
                             name="age",
                             dataType=FeatureSourceDataType.integer,
-                            dataSource=self.metadata.get_entity_reference(
+                            dataSource=metadata.get_entity_reference(
                                 entity=Table, fqn=table2_entity.fullyQualifiedName
                             ),
                         ),
                         FeatureSource(
                             name="education",
                             dataType=FeatureSourceDataType.string,
-                            dataSource=self.metadata.get_entity_reference(
+                            dataSource=metadata.get_entity_reference(
                                 entity=Table, fqn=table1_entity.fullyQualifiedName
                             ),
                         ),
@@ -357,90 +267,80 @@ class OMetaModelTest(TestCase):
                 MlHyperParameter(name="random", value="hello"),
             ],
             target="myTarget",
-            service=self.service_entity.fullyQualifiedName,
+            service=mlmodel_service.fullyQualifiedName,
         )
 
-        res: MlModel = self.metadata.create_or_update(data=model)
+        res = metadata.create_or_update(data=model)
 
-        self.assertIsNotNone(res.mlFeatures)
-        self.assertIsNotNone(res.mlHyperParameters)
+        try:
+            assert res.mlFeatures is not None
+            assert res.mlHyperParameters is not None
 
-        # Lineage will be created just by ingesting the model.
-        # Alternatively, we could manually send lineage via `add_mlmodel_lineage`
-        # E.g., lineage = self.metadata.add_mlmodel_lineage(model=res)
-        lineage = self.metadata.get_lineage_by_id(
-            entity=MlModel, entity_id=str(res.id.root)
-        )
-
-        nodes = {node["id"] for node in lineage["nodes"]}
-        assert nodes == {str(table1_entity.id.root), str(table2_entity.id.root)}
-
-        # If we delete the lineage, the `add_mlmodel_lineage` will take care of it too
-        for edge in lineage.get("upstreamEdges") or []:
-            self.metadata.delete_lineage_edge(
-                edge=EntitiesEdge(
-                    fromEntity=EntityReference(id=edge["fromEntity"], type="table"),
-                    toEntity=EntityReference(id=edge["toEntity"], type="mlmodel"),
-                )
+            lineage = metadata.get_lineage_by_id(
+                entity=MlModel, entity_id=str(res.id.root)
             )
 
-        self.metadata.add_mlmodel_lineage(model=res)
+            nodes = {node["id"] for node in lineage["nodes"]}
+            assert nodes == {str(table1_entity.id.root), str(table2_entity.id.root)}
 
-        lineage = self.metadata.get_lineage_by_id(
-            entity=MlModel, entity_id=str(res.id.root)
-        )
+            for edge in lineage.get("upstreamEdges") or []:
+                metadata.delete_lineage_edge(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(id=edge["fromEntity"], type="table"),
+                        toEntity=EntityReference(id=edge["toEntity"], type="mlmodel"),
+                    )
+                )
 
-        nodes = {node["id"] for node in lineage["nodes"]}
-        assert nodes == {str(table1_entity.id.root), str(table2_entity.id.root)}
+            metadata.add_mlmodel_lineage(model=res)
 
-        self.metadata.delete(
-            entity=DatabaseService,
-            entity_id=service_entity.id,
-            recursive=True,
-            hard_delete=True,
-        )
+            lineage = metadata.get_lineage_by_id(
+                entity=MlModel, entity_id=str(res.id.root)
+            )
 
-    def test_list_versions(self):
+            nodes = {node["id"] for node in lineage["nodes"]}
+            assert nodes == {str(table1_entity.id.root), str(table2_entity.id.root)}
+        finally:
+            _safe_delete(metadata, entity=MlModel, entity_id=res.id, hard_delete=True)
+            _safe_delete(
+                metadata,
+                entity=DatabaseService,
+                entity_id=service_entity.id,
+                recursive=True,
+                hard_delete=True,
+            )
+
+    def test_list_versions(self, metadata, mlmodel_request, create_mlmodel):
         """
-        test list MLmodel entity versions
+        Test listing ML model entity versions
         """
-        self.metadata.create_or_update(data=self.create)
+        created = create_mlmodel(mlmodel_request)
 
-        # Find by name
-        res_name = self.metadata.get_by_name(
-            entity=MlModel, fqn=self.entity.fullyQualifiedName
+        res = metadata.get_list_entity_versions(
+            entity=MlModel, entity_id=created.id.root
         )
+        assert res is not None
+        assert len(res.versions) >= 1
 
-        res = self.metadata.get_list_entity_versions(
-            entity=MlModel, entity_id=res_name.id.root
-        )
-        assert res
-
-    def test_get_entity_version(self):
+    def test_get_entity_version(self, metadata, mlmodel_request, create_mlmodel):
         """
-        test get MLModel entity version
+        Test retrieving a specific ML model entity version
         """
-        self.metadata.create_or_update(data=self.create)
+        created = create_mlmodel(mlmodel_request)
 
-        # Find by name
-        res_name = self.metadata.get_by_name(
-            entity=MlModel, fqn=self.entity.fullyQualifiedName
-        )
-        res = self.metadata.get_entity_version(
-            entity=MlModel, entity_id=res_name.id.root, version=0.1
+        res = metadata.get_entity_version(
+            entity=MlModel, entity_id=created.id.root, version=0.1
         )
 
-        # check we get the correct version requested and the correct entity ID
         assert res.version.root == 0.1
-        assert res.id == res_name.id
+        assert res.id == created.id
 
-    def test_get_entity_ref(self):
+    def test_get_entity_ref(self, metadata, mlmodel_request, create_mlmodel):
         """
-        test get EntityReference
+        Test retrieving EntityReference for an ML model
         """
-        res = self.metadata.create_or_update(data=self.create)
-        entity_ref = self.metadata.get_entity_reference(
-            entity=MlModel, fqn=res.fullyQualifiedName
+        created = create_mlmodel(mlmodel_request)
+        entity_ref = metadata.get_entity_reference(
+            entity=MlModel, fqn=created.fullyQualifiedName
         )
 
-        assert res.id == entity_ref.id
+        assert created.id == entity_ref.id

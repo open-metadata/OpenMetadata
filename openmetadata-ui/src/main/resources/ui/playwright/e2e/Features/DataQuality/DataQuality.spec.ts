@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { DOMAIN_TAGS } from '../../../constant/config';
+import { DOMAIN_TAGS, PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../../constant/config';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
@@ -71,7 +71,7 @@ const testCaseResult = {
 
 test.describe(
   'Data Quality',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, PLAYWRIGHT_INGESTION_TAG_OBJ.tag] },
   () => {
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1247,13 +1247,13 @@ test.describe(
 
           await page.click('[data-testid="page-size-selection-dropdown"]');
 
-          const dropdownMenu = page.waitForSelector('.ant-dropdown-menu', {
+          // Wait for dropdown menu to be visible
+          await page.waitForSelector('.ant-dropdown-menu', {
             state: 'visible',
             timeout: 5000,
           });
 
           // Verify dropdown options are visible
-          await expect(dropdownMenu).toBeDefined();
           await expect(page.locator('.ant-dropdown-menu-item')).toHaveCount(3);
         });
       } finally {

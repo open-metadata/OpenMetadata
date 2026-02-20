@@ -313,6 +313,49 @@ public class TableService extends EntityServiceBase<Table> {
   }
 
   // ===================================================================
+  // PIPELINE OBSERVABILITY OPERATIONS
+  // ===================================================================
+
+  public Table addPipelineObservability(
+      UUID id, java.util.List<org.openmetadata.schema.type.PipelineObservability> observabilityList)
+      throws OpenMetadataException {
+    return addPipelineObservability(id.toString(), observabilityList);
+  }
+
+  public Table addPipelineObservability(
+      String id,
+      java.util.List<org.openmetadata.schema.type.PipelineObservability> observabilityList)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.PUT,
+        basePath + "/" + id + "/pipelineObservability",
+        observabilityList,
+        Table.class);
+  }
+
+  public java.util.List<org.openmetadata.schema.type.PipelineObservability>
+      getPipelineObservability(UUID id) throws OpenMetadataException {
+    return getPipelineObservability(id.toString());
+  }
+
+  public java.util.List<org.openmetadata.schema.type.PipelineObservability>
+      getPipelineObservability(String id) throws OpenMetadataException {
+    try {
+      String json =
+          httpClient.executeForString(
+              HttpMethod.GET, basePath + "/" + id + "/pipelineObservability", null, null);
+      return objectMapper.readValue(
+          json,
+          objectMapper
+              .getTypeFactory()
+              .constructCollectionType(
+                  java.util.List.class, org.openmetadata.schema.type.PipelineObservability.class));
+    } catch (Exception e) {
+      throw new OpenMetadataException("Failed to get pipeline observability: " + e.getMessage(), e);
+    }
+  }
+
+  // ===================================================================
   // CSV IMPORT/EXPORT OPERATIONS
   // ===================================================================
 

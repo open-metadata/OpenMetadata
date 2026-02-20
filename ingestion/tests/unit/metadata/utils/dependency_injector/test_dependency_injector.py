@@ -11,6 +11,25 @@ from metadata.utils.dependency_injector.dependency_injector import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _isolate_container():
+    """Save and restore the DependencyContainer state around each test.
+
+    The DependencyContainer is a singleton with class-level dicts.  Tests that
+    call ``container.clear()`` would permanently destroy registrations made by
+    ``metadata/__init__.py`` (SourceLoader, MetricRegistry, …), breaking any
+    test that runs later in the same pytest-xdist worker.
+    """
+    container = DependencyContainer()
+    saved_deps = dict(container._dependencies)
+    saved_overrides = dict(container._overrides)
+    yield
+    container._dependencies.clear()
+    container._dependencies.update(saved_deps)
+    container._overrides.clear()
+    container._overrides.update(saved_overrides)
+
+
 # Test classes for dependency injection
 class Database:
     def __init__(self, connection_string: str):

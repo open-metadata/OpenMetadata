@@ -12,14 +12,24 @@
  */
 import { expect, Page } from '@playwright/test';
 import { redirectToExplorePage } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
+import { waitForAllLoadersToDisappear } from './entity';
+import { EntityClass } from '../support/entity/EntityClass';
+
+export const getEntityFqn = (
+  entityInstance: EntityClass
+): string | undefined => {
+  return (
+    entityInstance as { entityResponseData?: { fullyQualifiedName?: string } }
+  ).entityResponseData?.fullyQualifiedName;
+};
 
 export const openEntitySummaryPanel = async (
   page: Page,
   entityName: string,
-  endpoint?: string
+  endpoint?: string,
+  fullyQualifiedName?: string
 ) => {
   if (
     endpoint &&
@@ -53,16 +63,19 @@ export const openEntitySummaryPanel = async (
   expect(searchResponse.status()).toBe(200);
 
   await page.getByTestId('searchBox').press('Enter');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
+
+  if (fullyQualifiedName) {
+    const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
+    await cardByFqn.waitFor({ state: 'visible' });
+    return;
+  }
 
   const entityCard = page
     .locator('[data-testid="table-data-card"]')
     .filter({ hasText: entityName })
     .first();
 
-  // Only click if the card is visible (search results may be on explore page)
   const isCardVisible = await entityCard.isVisible().catch(() => false);
   if (isCardVisible) {
     await entityCard.click();
@@ -77,9 +90,7 @@ export async function navigateToExploreAndSelectTable(
 ) {
   await redirectToExplorePage(page);
 
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
 
   const permissionsResponsePromise = page.waitForResponse((response) =>
     response.url().includes('/permissions')
@@ -90,7 +101,13 @@ export async function navigateToExploreAndSelectTable(
   const permissionsResponse = await permissionsResponsePromise;
   expect(permissionsResponse.status()).toBe(200);
 
-  await waitForAllLoadersToDisappear(page);
+  // Ensure all the component for right panel are rendered
+  const loaders = page.locator(
+    '[data-testid="entity-summary-panel-container"] [data-testid="loader"]'
+  );
+
+  // Wait for the loader elements count to become 0
+  await expect(loaders).toHaveCount(0, { timeout: 30000 });
 }
 
 export const waitForPatchResponse = async (page: Page) => {
@@ -518,6 +535,35 @@ export const removeTierFromPanel = async (page: Page) => {
   await clearButton.click();
   await patchPromise;
 };
+
+/**
+ * Maps entity types to their corresponding left panel asset type titles
+ */
+function getAssetTypeFromEntityType(entityType: string): string {
+  const entityTypeToAssetType: Record<string, string> = {
+    Table: 'Databases',
+    Database: 'Databases',
+    'Database Schema': 'Databases',
+    'Store Procedure': 'Databases',
+    Dashboard: 'Dashboards',
+    DashboardDataModel: 'Dashboards',
+    Chart: 'Dashboards',
+    Pipeline: 'Pipelines',
+    Topic: 'Topics',
+    MlModel: 'ML Models',
+    Container: 'Containers',
+    SearchIndex: 'Search Indexes',
+    ApiEndpoint: 'APIs',
+    'Api Collection': 'APIs',
+    File: 'Drives',
+    Directory: 'Drives',
+    Spreadsheet: 'Drives',
+    Worksheet: 'Drives',
+    Metric: 'Metrics',
+  };
+
+  return entityTypeToAssetType[entityType] || 'Databases';
+}
 
 export const editDisplayNameFromPanel = async (
   page: Page,

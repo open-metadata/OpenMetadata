@@ -14,6 +14,7 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 
 const DESCRIPTION_SEARCH =
   // eslint-disable-next-line max-len
@@ -22,7 +23,7 @@ const DESCRIPTION_SEARCH =
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test('searching for longer description should work', async ({ page }) => {
+test('searching for longer description should work', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, async ({ page }) => {
   await redirectToHomePage(page);
 
   await sidebarClick(page, SidebarItem.EXPLORE);

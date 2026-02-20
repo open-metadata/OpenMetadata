@@ -25,6 +25,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 import static org.openmetadata.service.Entity.TABLE;
 
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,6 +42,8 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
@@ -107,6 +110,36 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     store(schema, update);
     // Restore the relationships
     schema.withService(service);
+  }
+
+  @Override
+  public void storeEntities(List<DatabaseSchema> schemas) {
+    List<DatabaseSchema> schemasToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (DatabaseSchema schema : schemas) {
+      // Save entity-specific relationships
+      EntityReference service = schema.getService();
+
+      // Nullify for storage (same as storeEntity)
+      schema.withService(null);
+
+      // Clone for storage
+      String jsonCopy = gson.toJson(schema);
+      schemasToStore.add(gson.fromJson(jsonCopy, DatabaseSchema.class));
+
+      // Restore in original
+      schema.withService(service);
+    }
+
+    storeMany(schemasToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<DatabaseSchema> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(DatabaseSchema::getId).toList();
+    deleteToMany(ids, Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.DATABASE);
   }
 
   @Override
@@ -458,6 +491,13 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     DatabaseSchema schema = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database schema
 
     // Get tables under this schema
@@ -481,15 +521,21 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
     // Export all entities using a single CSV
     return new DatabaseSchemaCsv(schema, user, recursive)
-        .exportAllCsv(tables, storedProcedures, recursive);
+        .exportAllCsv(tables, storedProcedures, recursive, callback);
   }
 
   @Override
   public CsvImportResult importFromCsv(
-      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
     DatabaseSchema schema = null;
     try {
-      schema = getByName(null, name, getFields("database,service")); // Fetch with container context
+      schema = getByName(null, name, getFields("database,service"));
     } catch (EntityNotFoundException e) {
       if (!dryRun) {
         throw e;
@@ -507,7 +553,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     } else {
       records = schemaCsv.parse(csv);
     }
-    return schemaCsv.importCsv(records, dryRun);
+    return schemaCsv.importCsv(records, dryRun, callback);
   }
 
   public class DatabaseSchemaUpdater extends EntityUpdater {
@@ -521,7 +567,13 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
     }
   }
 
@@ -585,26 +637,54 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
      * Export tables and stored procedures under this schema
      */
     public String exportAllCsv(
-        List<Table> tables, List<StoredProcedure> storedProcedures, boolean recursive)
+        List<Table> tables,
+        List<StoredProcedure> storedProcedures,
+        boolean recursive,
+        CsvExportProgressCallback callback)
         throws IOException {
       // Create CSV file
       CsvFile csvFile = new CsvFile().withHeaders(HEADERS);
+
+      int total = tables.size() + storedProcedures.size();
+      int exported = 0;
+      int batchNumber = 0;
 
       // Add tables with entityType = table and include columns
       TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
       for (Table table : tables) {
         // Export the table entity
         addEntityToCSV(csvFile, table, TABLE);
-        if (!recursive) {
-          continue;
+        if (recursive) {
+          // Export all columns as separate rows with entityType = COLUMN
+          tableRepository.exportColumnsRecursively(table, csvFile);
         }
-        // Export all columns as separate rows with entityType = COLUMN
-        tableRepository.exportColumnsRecursively(table, csvFile);
+        exported++;
+
+        if (exported % DEFAULT_BATCH_SIZE == 0 || exported == total) {
+          batchNumber++;
+          if (callback != null) {
+            String message =
+                String.format(
+                    "Exported %d of %d entities (batch %d)", exported, total, batchNumber);
+            callback.onProgress(exported, total, message);
+          }
+        }
       }
 
       // Add stored procedures with entityType = storedProcedure
       for (StoredProcedure sp : storedProcedures) {
         addEntityToCSV(csvFile, sp, STORED_PROCEDURE);
+        exported++;
+
+        if (exported % DEFAULT_BATCH_SIZE == 0 || exported == total) {
+          batchNumber++;
+          if (callback != null) {
+            String message =
+                String.format(
+                    "Exported %d of %d entities (batch %d)", exported, total, batchNumber);
+            callback.onProgress(exported, total, message);
+          }
+        }
       }
 
       return CsvUtil.formatCsv(csvFile);
@@ -678,15 +758,30 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       String tableFqn = FullyQualifiedName.add(schema.getFullyQualifiedName(), csvRecord.get(0));
       Table table;
-      try {
-        table = Entity.getEntityByName(TABLE, tableFqn, "*", Include.NON_DELETED);
-      } catch (Exception ex) {
-        LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
-        table =
-            new Table()
-                .withService(schema.getService())
-                .withDatabase(schema.getDatabase())
-                .withDatabaseSchema(schema.getEntityReference());
+      if (importResult.getDryRun()) {
+        // Dry run mode - check if exists, create simulation if not
+        try {
+          table = Entity.getEntityByName(TABLE, tableFqn, "*", Include.NON_DELETED);
+        } catch (EntityNotFoundException ex) {
+          LOG.warn("Dry run: Table not found: {}, simulating creation.", tableFqn);
+          table =
+              new Table()
+                  .withService(schema.getService())
+                  .withDatabase(schema.getDatabase())
+                  .withDatabaseSchema(schema.getEntityReference());
+        }
+      } else {
+        // Dry Run = false, True Run - use dependency resolution (checks flush list)
+        try {
+          table = getEntityWithDependencyResolution(TABLE, tableFqn, "*", Include.NON_DELETED);
+        } catch (EntityNotFoundException ex) {
+          LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
+          table =
+              new Table()
+                  .withService(schema.getService())
+                  .withDatabase(schema.getDatabase())
+                  .withDatabaseSchema(schema.getEntityReference());
+        }
       }
 
       // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification,

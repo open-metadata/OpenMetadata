@@ -36,3 +36,28 @@ $$section
 Connection Time Limit between OpenMetadata and Dagster Graphql API in seconds.
 
 $$
+
+$$section
+### Strip Asset Key Prefix Length $(id="stripAssetKeyPrefixLength")
+
+Number of leading segments to remove from asset key paths before resolving to tables.
+
+**About Dagster Asset Keys:**
+
+Dagster asset keys are path-like identifiers represented as arrays of strings (e.g., `["project", "environment", "schema", "table"]`). When OpenMetadata ingests Dagster pipelines, it tries to match these asset keys to table entities using the standard format: `database.schema.table` or `schema.table`.
+
+**When to Use This Setting:**
+
+If your Dagster asset keys include additional prefix segments beyond the database/schema/table hierarchy, use this setting to strip those prefixes. For example:
+- Asset key: `["project", "environment", "schema", "table"]`
+- Set value to `2` to strip `project` and `environment`
+- Result: `schema.table` (matches OpenMetadata table entities)
+
+Common use cases include stripping:
+- Project/workspace identifiers
+- Environment names (dev/staging/prod)
+- Storage bucket/container prefixes
+
+Default value is `0` (no stripping).
+
+$$

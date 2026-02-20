@@ -250,7 +250,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         ),
       },
     ],
-    [hasAccess]
+    [hasAccess, t]
   );
 
   return (

@@ -1,8 +1,8 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -39,7 +39,6 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
-import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.resources.feeds.FeedMapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -62,15 +61,11 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
           JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(delegateTask), Map.class);
       List<EntityReference> assignees = getAssignees(delegateTask);
 
-      UUID feedbackId =
-          UUID.fromString(
-              (String)
-                  varHandler.getNamespacedVariable(
-                      inputNamespaceMap.get(TRIGGERING_OBJECT_ID_VARIABLE),
-                      TRIGGERING_OBJECT_ID_VARIABLE));
-      RecognizerFeedbackRepository feedbackRepository =
-          new RecognizerFeedbackRepository(Entity.getCollectionDAO());
-      RecognizerFeedback feedback = feedbackRepository.get(feedbackId);
+      String feedbackJson =
+          (String)
+              varHandler.getNamespacedVariable(
+                  inputNamespaceMap.get(RECOGNIZER_FEEDBACK), RECOGNIZER_FEEDBACK);
+      RecognizerFeedback feedback = JsonUtils.readValue(feedbackJson, RecognizerFeedback.class);
 
       String tagEntityLink =
           (String)
