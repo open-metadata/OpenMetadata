@@ -15,14 +15,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nimbusds.jose.util.Pair;
 import io.micrometer.core.instrument.Timer;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.Base64;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
@@ -33,12 +30,8 @@ import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import os.org.opensearch.client.json.JsonData;
-import os.org.opensearch.client.json.JsonpDeserializer;
-import os.org.opensearch.client.json.JsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
-import os.org.opensearch.client.opensearch._types.ErrorCause;
 import os.org.opensearch.client.opensearch._types.FieldValue;
-import os.org.opensearch.client.opensearch._types.ShardFailure;
 import os.org.opensearch.client.opensearch._types.SortOrder;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
 import os.org.opensearch.client.opensearch._types.mapping.FieldType;
@@ -47,117 +40,9 @@ import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
 import os.org.opensearch.client.opensearch.core.search.Hit;
-import os.org.opensearch.client.util.ApiTypeHelper;
-import os.org.opensearch.client.util.MissingRequiredPropertyException;
-import sun.misc.Unsafe;
 
 @Slf4j
 public class OsUtils {
-
-  private static final AtomicBoolean LENIENT_DESERIALIZERS_INSTALLED = new AtomicBoolean(false);
-
-  /**
-   * Installs lenient deserializers for OpenSearch response types that have required properties
-   * not always present in server responses. This fixes opensearch-java 3.5.0 strict validation
-   * of ShardFailure.primary which OpenSearch server does not always include.
-   *
-   * <p>The opensearch-java client deserializes responses on I/O threads (via CompletableFuture),
-   * so the per-call ThreadLocal approach (DANGEROUS_disableRequiredPropertiesCheck) does not work.
-   * Instead, we replace the ShardFailure deserializer with one that catches the validation error
-   * and returns a ShardFailure with safe defaults.
-   *
-   * @see <a href="https://github.com/opensearch-project/opensearch-java/issues/551">opensearch-java#551</a>
-   */
-  @SuppressWarnings("sunapi")
-  public static void installLenientDeserializers() {
-    if (!LENIENT_DESERIALIZERS_INSTALLED.compareAndSet(false, true)) {
-      return;
-    }
-    try {
-      JsonpDeserializer<ShardFailure> original = ShardFailure._DESERIALIZER;
-      JsonpDeserializer<ShardFailure> lenient =
-          new JsonpDeserializer<>() {
-            @Override
-            public EnumSet<jakarta.json.stream.JsonParser.Event> nativeEvents() {
-              return original.nativeEvents();
-            }
-
-            @Override
-            public EnumSet<jakarta.json.stream.JsonParser.Event> acceptedEvents() {
-              return original.acceptedEvents();
-            }
-
-            @Override
-            public ShardFailure deserialize(
-                jakarta.json.stream.JsonParser parser, JsonpMapper mapper) {
-              try {
-                return original.deserialize(parser, mapper);
-              } catch (MissingRequiredPropertyException e) {
-                LOG.debug(
-                    "Ignoring missing required property in ShardFailure: {}", e.getPropertyName());
-                return buildDefaultShardFailure(e.getPropertyName());
-              }
-            }
-
-            @Override
-            public ShardFailure deserialize(
-                jakarta.json.stream.JsonParser parser,
-                JsonpMapper mapper,
-                jakarta.json.stream.JsonParser.Event event) {
-              try {
-                return original.deserialize(parser, mapper, event);
-              } catch (MissingRequiredPropertyException e) {
-                LOG.debug(
-                    "Ignoring missing required property in ShardFailure: {}", e.getPropertyName());
-                return buildDefaultShardFailure(e.getPropertyName());
-              }
-            }
-          };
-
-      Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-      unsafeField.setAccessible(true);
-      Unsafe unsafe = (Unsafe) unsafeField.get(null);
-
-      Field deserializerField = ShardFailure.class.getDeclaredField("_DESERIALIZER");
-      long offset = unsafe.staticFieldOffset(deserializerField);
-      unsafe.putObjectVolatile(ShardFailure.class, offset, lenient);
-
-      LOG.info("Installed lenient ShardFailure deserializer for OpenSearch compatibility");
-    } catch (Exception e) {
-      LENIENT_DESERIALIZERS_INSTALLED.set(false);
-      LOG.warn(
-          "Failed to install lenient ShardFailure deserializer. "
-              + "OpenSearch responses with missing ShardFailure.primary may fail to deserialize.",
-          e);
-    }
-  }
-
-  private static ShardFailure buildDefaultShardFailure(String missingProperty) {
-    return ShardFailure.of(
-        b ->
-            b.primary(false)
-                .shard(0)
-                .reason(
-                    ErrorCause.of(
-                        r ->
-                            r.type("deserialization_fallback")
-                                .reason("Missing required property: " + missingProperty))));
-  }
-
-  public static SearchResponse<JsonData> searchWithLenientDeserialization(
-      OpenSearchClient client, SearchRequest request) throws IOException {
-    try (ApiTypeHelper.DisabledChecksHandle ignored =
-        ApiTypeHelper.DANGEROUS_disableRequiredPropertiesCheck(true)) {
-      return client.search(request, JsonData.class);
-    }
-  }
-
-  public static String toJsonStringLenient(SearchResponse<JsonData> response) {
-    try (ApiTypeHelper.DisabledChecksHandle ignored =
-        ApiTypeHelper.DANGEROUS_disableRequiredPropertiesCheck(true)) {
-      return response.toJsonString();
-    }
-  }
 
   public static Map<String, Object> jsonDataToMap(JsonData jsonData) {
     try {
@@ -254,7 +139,8 @@ public class OsUtils {
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     try {
-      return searchWithLenientDeserialization(client, searchRequestBuilder.build());
+      return client.search(
+          searchRequestBuilder.build(), os.org.opensearch.client.json.JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -316,7 +202,7 @@ public class OsUtils {
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> searchResponse;
     try {
-      searchResponse = searchWithLenientDeserialization(client, searchRequest);
+      searchResponse = client.search(searchRequest, JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -440,7 +326,7 @@ public class OsUtils {
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> searchResponse;
     try {
-      searchResponse = searchWithLenientDeserialization(client, searchRequest);
+      searchResponse = client.search(searchRequest, JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -530,7 +416,7 @@ public class OsUtils {
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     try {
-      return searchWithLenientDeserialization(client, searchRequestBuilder.build());
+      return client.search(searchRequestBuilder.build(), JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
