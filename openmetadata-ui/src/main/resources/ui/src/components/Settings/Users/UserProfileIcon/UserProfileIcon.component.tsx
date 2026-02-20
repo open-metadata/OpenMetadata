@@ -181,7 +181,7 @@ export const UserProfileIcon = () => {
         </div>
       );
     },
-    [handleSelectedPersonaChange, selectedPersona, defaultPersona]
+    [handleSelectedPersonaChange, selectedPersona, defaultPersona, t]
   );
 
   const teamLabelRenderer = useCallback(
@@ -216,7 +216,7 @@ export const UserProfileIcon = () => {
           {count} {t('label.more')}
         </Link>
       ),
-    [currentUser]
+    [currentUser, t]
   );
 
   const handleCloseDropdown = useCallback(() => {
@@ -399,6 +399,9 @@ export const UserProfileIcon = () => {
       roles,
       personas,
       showAllPersona,
+      sortedPersonas,
+      inheritedRoles,
+      t,
     ]
   );
 

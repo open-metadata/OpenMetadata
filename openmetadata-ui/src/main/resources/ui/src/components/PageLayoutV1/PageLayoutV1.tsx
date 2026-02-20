@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { styled } from '@mui/material/styles';
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import {
@@ -24,7 +25,6 @@ import {
   useState,
 } from 'react';
 import { useLocation } from 'react-router-dom';
-import { styled } from '@mui/material/styles';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import AlertBar from '../AlertBar/AlertBar';
@@ -145,12 +145,14 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         className={classNames('p-x-box', className)}
         data-testid="page-layout-v1"
         style={{ ...pageContainerStyles, ...finalPageContainerStyle }}
-        wrap={false}>
+        wrap={false}
+      >
         {leftPanel && (
           <Col
             className="page-layout-leftpanel"
             flex={leftPanelWidth + 'px'}
-            id="left-panelV1">
+            id="left-panelV1"
+          >
             {leftPanel}
           </Col>
         )}
@@ -165,7 +167,8 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
           )}
           flex={contentWidth}
           offset={center ? 3 : 0}
-          span={center ? 18 : 24}>
+          span={center ? 18 : 24}
+        >
           <Row>
             {alert && (
               <Col id="page-alert" span={24}>
@@ -179,7 +182,8 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
           <Col
             className="page-layout-rightpanel page-layout-v1-vertical-scroll"
             flex={rightPanelWidth + 'px'}
-            id="right-panelV1">
+            id="right-panelV1"
+          >
             {rightPanel}
           </Col>
         )}

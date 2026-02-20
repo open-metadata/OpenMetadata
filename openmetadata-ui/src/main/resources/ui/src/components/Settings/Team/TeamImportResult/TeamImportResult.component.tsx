@@ -47,7 +47,8 @@ export const TeamImportResult = ({
               align="start"
               data-testid="status-container"
               // Added max width because in case of full success we don't want to occupied full width
-              style={{ maxWidth: 200, minWidth: 100 }}>
+              style={{ maxWidth: 200, minWidth: 100 }}
+            >
               {status === Status.Success && (
                 <SuccessBadgeIcon
                   className="m-t-xss"
@@ -187,7 +188,7 @@ export const TeamImportResult = ({
     ];
 
     return data;
-  }, [parsedRecords]);
+  }, [parsedRecords, t]);
 
   const parseCsvFile = () => {
     if (csvImportResult.importResultsCsv) {

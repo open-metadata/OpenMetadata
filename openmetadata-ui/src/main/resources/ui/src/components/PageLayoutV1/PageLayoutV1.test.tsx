@@ -33,7 +33,8 @@ describe('PageLayoutV1', () => {
         center
         leftPanel={<div>{leftPanelText}</div>}
         pageTitle="Test Page"
-        rightPanel={<div>{rightPanelText}</div>}>
+        rightPanel={<div>{rightPanelText}</div>}
+      >
         {centerText}
       </PageLayoutV1>
     );
@@ -61,7 +62,9 @@ describe('PageLayoutV1', () => {
       <PageLayoutV1 pageTitle="Test Page">{centerText}</PageLayoutV1>
     );
 
-    expect(container.querySelector('.page-layout-v1-vertical-scroll')).toBeInTheDocument();
+    expect(
+      container.querySelector('.page-layout-v1-vertical-scroll')
+    ).toBeInTheDocument();
   });
 
   it('Should render with fullHeight wrapper when fullHeight is true', () => {
@@ -70,13 +73,16 @@ describe('PageLayoutV1', () => {
       <PageLayoutV1
         fullHeight
         mainContainerClassName="test-full-height"
-        pageTitle="Test Page">
+        pageTitle="Test Page"
+      >
         {centerText}
       </PageLayoutV1>
     );
 
     expect(container.querySelector('.test-full-height')).toBeInTheDocument();
-    expect(container.querySelector('.page-layout-v1-vertical-scroll')).toBeInTheDocument();
+    expect(
+      container.querySelector('.page-layout-v1-vertical-scroll')
+    ).toBeInTheDocument();
   });
 
   it('Should apply default height when fullHeight is true and no pageContainerStyle.height is provided', () => {
@@ -100,7 +106,8 @@ describe('PageLayoutV1', () => {
       <PageLayoutV1
         fullHeight
         pageContainerStyle={{ height: customHeight }}
-        pageTitle="Test Page">
+        pageTitle="Test Page"
+      >
         {centerText}
       </PageLayoutV1>
     );
@@ -127,7 +134,8 @@ describe('PageLayoutV1', () => {
       <PageLayoutV1
         fullHeight
         pageContainerStyle={{ backgroundColor: 'red' }}
-        pageTitle="Test Page">
+        pageTitle="Test Page"
+      >
         {centerText}
       </PageLayoutV1>
     );
@@ -137,7 +145,7 @@ describe('PageLayoutV1', () => {
     expect(pageLayout).toHaveStyle({
       height: 'calc(100vh - 64px)',
       overflow: 'hidden',
-      backgroundColor: 'red'
+      backgroundColor: 'red',
     });
   });
 });

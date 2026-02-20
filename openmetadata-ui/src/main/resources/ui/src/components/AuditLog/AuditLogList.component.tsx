@@ -188,7 +188,8 @@ const renderEntityLinks = (
         <Link
           className="change-entity-link"
           key={`${keyPrefix}-${idx}`}
-          to={link}>
+          to={link}
+        >
           {label}
         </Link>
       );
@@ -278,7 +279,8 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
                 return (
                   <span
                     className="change-value-item"
-                    key={`${keyPrefix}-wrap-${idx}`}>
+                    key={`${keyPrefix}-wrap-${idx}`}
+                  >
                     {showProfilePic && entity && (
                       <ProfilePicture
                         displayName={entity.displayName ?? entity.name}
@@ -462,12 +464,14 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
                 <Typography.Text className="event-separator">–</Typography.Text>
                 <Typography.Text
                   className="impersonated-by"
-                  data-testid="impersonated-by">
+                  data-testid="impersonated-by"
+                >
                   {t('label.impersonated-by-with-colon')}
                 </Typography.Text>{' '}
                 <Link
                   className="user-link"
-                  to={getUserPath(log.impersonatedBy)}>
+                  to={getUserPath(log.impersonatedBy)}
+                >
                   {log.impersonatedBy}
                 </Link>
               </>
@@ -500,14 +504,16 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
             {entityType && (
               <Typography.Text
                 className="meta-item entity-type-badge"
-                data-testid="entity-type-badge">
+                data-testid="entity-type-badge"
+              >
                 {startCase(entityType)}
               </Typography.Text>
             )}
             {timestamp && (
               <Typography.Text
                 className="meta-item timestamp"
-                data-testid="timestamp">
+                data-testid="timestamp"
+              >
                 {getRelativeTime(timestamp)}
               </Typography.Text>
             )}
@@ -556,16 +562,14 @@ const AuditLogList: FC<AuditLogListProps> = ({ logs, isLoading }) => {
   return (
     <div className="audit-log-list-container" data-testid="audit-log-list">
       <div className="audit-log-list">
-        {
-          logs.map((log, index) => (
-            <AuditLogListItem
-              key={log.id?.toString() ?? log.changeEventId ?? index.toString()}
-              log={log}
-            />
-          ))
-        }
+        {logs.map((log, index) => (
+          <AuditLogListItem
+            key={log.id?.toString() ?? log.changeEventId ?? index.toString()}
+            log={log}
+          />
+        ))}
       </div>
-    </div >
+    </div>
   );
 };
 
