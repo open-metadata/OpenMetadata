@@ -33,9 +33,16 @@ public class SearchAggregation {
    * Static builder method for terms aggregation.
    */
   public static SearchAggregationNode terms(String name, String field) {
+    return terms(name, field, 100);
+  }
+
+  /**
+   * Static builder method for terms aggregation with explicit size.
+   */
+  public static SearchAggregationNode terms(String name, String field, int size) {
     Map<String, String> value = new HashMap<>();
     value.put("field", field);
-    value.put("size", "100");
+    value.put("size", String.valueOf(size));
     return new SearchAggregationNode("terms", name, value);
   }
 
@@ -88,6 +95,50 @@ public class SearchAggregation {
     value.put("pathKeys", pathKeys);
     value.put("pathValues", pathValues);
     return new SearchAggregationNode("bucket_selector", name, value);
+  }
+
+  /**
+   * Static builder method for bucket_sort aggregation.
+   */
+  public static SearchAggregationNode bucketSort(String name, Integer size, Integer from) {
+    Map<String, String> value = new HashMap<>();
+    if (size != null) {
+      value.put("size", String.valueOf(size));
+    }
+    if (from != null) {
+      value.put("from", String.valueOf(from));
+    }
+    return new SearchAggregationNode("bucket_sort", name, value);
+  }
+
+  /**
+   * Static builder method for bucket_sort aggregation with sorting.
+   */
+  public static SearchAggregationNode bucketSort(
+      String name, Integer size, Integer from, String sortField, String sortOrder) {
+    Map<String, String> value = new HashMap<>();
+    if (size != null) {
+      value.put("size", String.valueOf(size));
+    }
+    if (from != null) {
+      value.put("from", String.valueOf(from));
+    }
+    if (sortField != null) {
+      value.put("sort_field", sortField);
+    }
+    if (sortOrder != null) {
+      value.put("sort_order", sortOrder);
+    }
+    return new SearchAggregationNode("bucket_sort", name, value);
+  }
+
+  /**
+   * Static builder method for stats_bucket pipeline aggregation.
+   */
+  public static SearchAggregationNode statsBucket(String name, String bucketsPath) {
+    Map<String, String> value = new HashMap<>();
+    value.put("buckets_path", bucketsPath);
+    return new SearchAggregationNode("stats_bucket", name, value);
   }
 
   /*

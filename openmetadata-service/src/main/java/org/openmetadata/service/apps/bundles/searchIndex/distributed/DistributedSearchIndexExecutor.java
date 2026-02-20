@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -100,6 +101,7 @@ public class DistributedSearchIndexExecutor {
   @Getter private SearchIndexJob currentJob;
   private DistributedJobStatsAggregator statsAggregator;
   private ExecutorService workerExecutor;
+  private final Set<UUID> activePartitions = ConcurrentHashMap.newKeySet();
   private final List<PartitionWorker> activeWorkers = new ArrayList<>();
   private Thread lockRefreshThread;
   private Thread partitionHeartbeatThread;
@@ -620,29 +622,36 @@ public class DistributedSearchIndexExecutor {
             partition.getId(),
             partition.getEntityType());
 
-        PartitionWorker.PartitionResult result = worker.processPartition(partition);
-        totalSuccess.addAndGet(result.successCount());
-        totalFailed.addAndGet(result.failedCount());
+        activePartitions.add(partition.getId());
+        try {
+          PartitionWorker.PartitionResult result = worker.processPartition(partition);
+          totalSuccess.addAndGet(result.successCount());
+          totalFailed.addAndGet(result.failedCount());
 
-        // Accumulate into coordinator stats for persistence
-        // readerSuccess = entities successfully processed through reader
-        // readerFailed = specifically reader failures (not sink failures)
-        // readerWarnings = warnings from reader (e.g., stale references)
-        coordinatorReaderSuccess.addAndGet(result.successCount());
-        coordinatorReaderFailed.addAndGet(result.readerFailed());
-        coordinatorReaderWarnings.addAndGet(result.readerWarnings());
-        coordinatorPartitionsCompleted.incrementAndGet();
+          coordinatorReaderSuccess.addAndGet(result.successCount());
+          coordinatorReaderFailed.addAndGet(result.readerFailed());
+          coordinatorReaderWarnings.addAndGet(result.readerWarnings());
+          coordinatorPartitionsCompleted.incrementAndGet();
 
-        LOG.info(
-            "Worker {} completed partition {} (success: {}, failed: {}, readerFailed: {}, readerWarnings: {})",
-            workerId,
-            partition.getId(),
-            result.successCount(),
-            result.failedCount(),
-            result.readerFailed(),
-            result.readerWarnings());
-
-        // Stats are tracked per-entityType by StageStatsTracker in PartitionWorker
+          LOG.info(
+              "Worker {} completed partition {} (success: {}, failed: {}, readerFailed: {}, readerWarnings: {})",
+              workerId,
+              partition.getId(),
+              result.successCount(),
+              result.failedCount(),
+              result.readerFailed(),
+              result.readerWarnings());
+        } catch (Exception e) {
+          LOG.error(
+              "Worker {} failed partition {} for {}: {}",
+              workerId,
+              partition.getId(),
+              partition.getEntityType(),
+              e.getMessage(),
+              e);
+        } finally {
+          activePartitions.remove(partition.getId());
+        }
       }
     } finally {
       synchronized (activeWorkers) {
@@ -668,6 +677,11 @@ public class DistributedSearchIndexExecutor {
         int reclaimed = coordinator.reclaimStalePartitions(jobId);
         if (reclaimed > 0) {
           LOG.info("Reclaimed {} stale partitions for job {}", reclaimed, jobId);
+        }
+
+        if (entityTracker != null) {
+          List<SearchIndexPartition> allPartitions = coordinator.getPartitions(jobId, null);
+          entityTracker.reconcileFromDatabase(allPartitions);
         }
 
       } catch (InterruptedException e) {
@@ -738,8 +752,8 @@ public class DistributedSearchIndexExecutor {
         int updated = 0;
         long now = System.currentTimeMillis();
         for (SearchIndexPartition partition : processing) {
-          if (serverId.equals(partition.getAssignedServer())) {
-            // Update the heartbeat for this partition
+          if (serverId.equals(partition.getAssignedServer())
+              && activePartitions.contains(partition.getId())) {
             collectionDAO
                 .searchIndexPartitionDAO()
                 .updateHeartbeat(partition.getId().toString(), now);

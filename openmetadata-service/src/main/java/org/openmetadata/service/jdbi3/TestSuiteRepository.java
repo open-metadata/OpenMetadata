@@ -815,27 +815,18 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
       PipelineStatusType state = pipeline.getPipelineStatuses().getPipelineState();
 
-      Double previousVersion = testSuite.getVersion();
-      testSuite.setVersion(EntityUtil.nextVersion(previousVersion));
-      testSuite.setUpdatedBy(pipeline.getUpdatedBy());
-      testSuite.setUpdatedAt(System.currentTimeMillis());
-      storeEntity(testSuite, true);
-      searchRepository.updateEntityIndex(testSuite);
-      updateRelatedSuitesLastResultTimestamp(testSuite);
+      Double previousVersion = persistSuiteUpdate(testSuite, pipeline.getUpdatedBy());
+      createTestSuiteCompletionChangeEvent(testSuite, previousVersion);
 
-      createTestSuiteCompletionChangeEvent(testSuite, previousVersion, state);
+      LOG.info("Pipeline {} completed with status {}", pipeline.getFullyQualifiedName(), state);
 
       if (testSuite.getDataContract() != null) {
-        LOG.info(
-            "Pipeline {} completed with status {}. Updating data contract {}.",
-            pipeline.getFullyQualifiedName(),
-            state,
-            testSuite.getDataContract().getFullyQualifiedName());
-
         DataContractRepository dataContractRepository =
             (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
         dataContractRepository.updateContractDQResults(testSuite.getDataContract(), testSuite);
       }
+
+      updateRelatedSuites(testSuite, pipeline.getUpdatedBy());
 
     } catch (Exception e) {
       LOG.error(
@@ -846,7 +837,17 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
   }
 
-  private void updateRelatedSuitesLastResultTimestamp(TestSuite completedSuite) {
+  private Double persistSuiteUpdate(TestSuite suite, String updatedBy) {
+    Double previousVersion = suite.getVersion();
+    suite.setVersion(EntityUtil.nextVersion(previousVersion));
+    suite.setUpdatedBy(updatedBy);
+    suite.setUpdatedAt(System.currentTimeMillis());
+    storeEntity(suite, true);
+    searchRepository.updateEntityIndex(suite);
+    return previousVersion;
+  }
+
+  private void updateRelatedSuites(TestSuite completedSuite, String updatedBy) {
     List<EntityReference> testCases = getTestCases(completedSuite);
     if (testCases == null || testCases.isEmpty()) return;
 
@@ -864,40 +865,28 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     if (relatedSuiteIds.isEmpty()) return;
 
     LOG.info(
-        "Updating lastResultTimestamp for {} related suites {} after completion of suite {}",
+        "Updating {} related suites after completion of suite {}",
         relatedSuiteIds.size(),
-        relatedSuiteIds,
         completedSuite.getId());
 
-    List<String> suiteIdStrings = relatedSuiteIds.stream().map(UUID::toString).toList();
-    List<CollectionDAO.TestCaseResultTimeSeriesDAO.SuiteMaxTimestamp> timestamps =
-        daoCollection.testCaseResultTimeSeriesDao().getMaxTimestampForTestSuites(suiteIdStrings);
+    List<TestSuite> relatedSuites = find(new ArrayList<>(relatedSuiteIds), Include.NON_DELETED);
+    setFieldsInBulk(getFields("*"), relatedSuites);
 
-    IndexMapping indexMapping = searchRepository.getIndexMapping(TEST_SUITE);
-    String indexName = indexMapping.getIndexName(searchRepository.getClusterAlias());
-    SearchClient searchClient = searchRepository.getSearchClient();
-
-    for (CollectionDAO.TestCaseResultTimeSeriesDAO.SuiteMaxTimestamp entry : timestamps) {
+    for (TestSuite relatedSuite : relatedSuites) {
       try {
-        Map<String, Object> doc = Map.of("lastResultTimestamp", entry.maxTimestamp());
-        searchClient.updateEntity(
-            indexName,
-            entry.testSuiteId(),
-            doc,
-            "if (ctx._source.lastResultTimestamp == null || "
-                + "params.lastResultTimestamp > ctx._source.lastResultTimestamp) {"
-                + " ctx._source.lastResultTimestamp = params.lastResultTimestamp; }");
+        Double previousVersion = persistSuiteUpdate(relatedSuite, updatedBy);
+        createTestSuiteCompletionChangeEvent(relatedSuite, previousVersion);
       } catch (Exception e) {
         LOG.warn(
-            "Failed to update lastResultTimestamp for related suite {}: {}",
-            entry.testSuiteId(),
-            e.getMessage());
+            "Failed to update and emit ChangeEvent for related suite {}: {}",
+            relatedSuite.getId(),
+            e.getMessage(),
+            e);
       }
     }
   }
 
-  private void createTestSuiteCompletionChangeEvent(
-      TestSuite testSuite, Double previousVersion, PipelineStatusType pipelineState) {
+  private void createTestSuiteCompletionChangeEvent(TestSuite testSuite, Double previousVersion) {
     List<ResultSummary> resultSummary = testSuite.getTestCaseResultSummary();
     TestSummary summary = testSuite.getSummary();
 
@@ -928,9 +917,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
 
     LOG.info(
-        "Created consolidated ChangeEvent for TestSuite {} with status: {} (passed: {}/{})",
+        "Created ChangeEvent for TestSuite {} (passed: {}/{})",
         testSuite.getFullyQualifiedName(),
-        pipelineState,
         summary != null ? summary.getSuccess() : 0,
         summary != null ? summary.getTotal() : 0);
   }
