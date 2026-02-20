@@ -107,7 +107,7 @@ def _get_columns(
     # pylint: disable=protected-access
     schema = schema or self._get_default_schema_name(connection)
     preparer = connection.dialect.identifier_preparer
-    query = f'SHOW COLUMNS FROM {preparer.quote(schema)}.{preparer.quote(table_name)}'
+    query = f"SHOW COLUMNS FROM {preparer.quote(schema)}.{preparer.quote(table_name)}"
 
     res = connection.execute(sql.text(query), schema=schema, table=table_name)
     columns = []
