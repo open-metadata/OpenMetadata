@@ -38,6 +38,7 @@ import { addMultiOwner } from '../../utils/entity';
 import {
   selectActiveGlossary,
   selectActiveGlossaryTerm,
+  verifyTaskCreated,
 } from '../../utils/glossary';
 import {
   createGlossaryTermRowDetails,
@@ -293,11 +294,20 @@ test.describe('Glossary Bulk Import Export', () => {
     await test.step('should have term in review state', async () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
-      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+      await selectActiveGlossaryTerm(
+        page,
+        additionalGlossaryTerm.displayName
+      );
+
+      await verifyTaskCreated(
+        page,
+        glossary1.responseData.fullyQualifiedName,
+        additionalGlossaryTerm.name
+      );
 
       const statusBadge = page.locator('.status-badge');
 
-      await expect(statusBadge).toHaveText('Approved');
+      await expect(statusBadge).toHaveText('In Review');
     });
 
     await test.step('delete custom properties', async () => {
