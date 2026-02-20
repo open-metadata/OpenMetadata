@@ -412,6 +412,8 @@ test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       state: 'detached',
     });
 
+    const serviceName = dashboard.serviceResponseData.name;
+
     const dashboardNode = page.getByTestId('explore-tree-title-Dashboards');
     await expect(dashboardNode).toBeVisible();
 
@@ -433,24 +435,24 @@ test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
       .locator('.ant-tree-switcher')
       .click();
 
-    const supersetNode = page.getByTestId('explore-tree-title-superset');
+    const supersetNode = page.getByTestId('explore-tree-title-Superset');
     await expect(supersetNode).toBeVisible();
 
     await page
       .locator('.ant-tree-treenode', {
-        has: page.getByTestId('explore-tree-title-superset'),
+        has: page.getByTestId('explore-tree-title-Superset'),
       })
       .locator('.ant-tree-switcher')
       .click();
 
-    const sampleSupersetNode = page.getByTestId(
-      'explore-tree-title-sample_superset'
+    const dashboardServiceNode = page.getByTestId(
+      `explore-tree-title-${serviceName}`
     );
-    await expect(sampleSupersetNode).toBeVisible();
+    await expect(dashboardServiceNode).toBeVisible();
 
     await page
       .locator('.ant-tree-treenode', {
-        has: page.getByTestId('explore-tree-title-sample_superset'),
+        has: page.getByTestId(`explore-tree-title-${serviceName}`),
       })
       .locator('.ant-tree-switcher')
       .click();
@@ -462,12 +464,12 @@ test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
     const searchInput = page.getByTestId('searchBox');
     await searchInput.click();
     await searchInput.clear();
-    await searchInput.fill(chart.entityResponseData.name);
+    await searchInput.fill(dashboard.chartsResponseData.name);
     await searchInput.press('Enter');
 
     const searchResults = page.getByTestId('search-results');
     const chartCard = searchResults.getByTestId(
-      `table-data-card_${chart.entityResponseData.fullyQualifiedName}`
+      `table-data-card_${dashboard.chartsResponseData.fullyQualifiedName}`
     );
 
     await expect(chartCard).toBeVisible();
