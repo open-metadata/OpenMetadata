@@ -16,6 +16,7 @@ package org.openmetadata.service.notifications.recipients;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import java.io.IOException;
@@ -32,7 +33,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
-import org.openmetadata.schema.SubscriptionAction;
+import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -146,10 +147,9 @@ public class RecipientResolverIntegrationTest extends OpenMetadataApplicationTes
     Table tableWithOwner = createTableWithOwner(TEST_USER1);
     ChangeEvent event = createChangeEvent(tableWithOwner, EventType.ENTITY_UPDATED);
     SubscriptionDestination destination =
-        createDestination(SubscriptionDestination.SubscriptionCategory.OWNERS);
-    SubscriptionAction action = createSubscriptionAction();
+        createDestinationWithConfig(SubscriptionDestination.SubscriptionCategory.OWNERS);
 
-    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, destination, action);
+    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, List.of(destination));
 
     // Verify exactly one recipient is resolved
     assertEquals(1, recipients.size(), "Should resolve exactly 1 owner recipient");
@@ -178,8 +178,6 @@ public class RecipientResolverIntegrationTest extends OpenMetadataApplicationTes
    */
   @Test
   void test_externalRecipientResolution_withMultipleReceivers() {
-    // Create minimal in-memory table (no persistence needed - EXTERNAL resolver doesn't use
-    // entity data)
     Table minimalTable =
         new Table()
             .withId(UUID.randomUUID())
@@ -187,18 +185,16 @@ public class RecipientResolverIntegrationTest extends OpenMetadataApplicationTes
             .withFullyQualifiedName("test.schema.minimal_table");
 
     ChangeEvent event = createChangeEvent(minimalTable, EventType.ENTITY_UPDATED);
-    SubscriptionDestination destination =
-        createDestination(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
     List<String> externalEmails =
         List.of("external1@example.com", "external2@example.com", "external3@example.com");
-    SubscriptionAction action = createSubscriptionActionWithReceivers(externalEmails);
+    SubscriptionDestination destination =
+        createDestinationWithReceivers(
+            SubscriptionDestination.SubscriptionCategory.EXTERNAL, externalEmails);
 
-    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, destination, action);
+    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, List.of(destination));
 
-    // Verify exactly three recipients are resolved
     assertEquals(3, recipients.size(), "Should resolve exactly 3 external recipients");
 
-    // Verify each email is present
     Set<String> resolvedEmails =
         recipients.stream()
             .map(r -> assertInstanceOf(EmailRecipient.class, r))
@@ -222,8 +218,6 @@ public class RecipientResolverIntegrationTest extends OpenMetadataApplicationTes
    */
   @Test
   void test_userRecipientResolution_withMultipleUsernames() {
-    // Create minimal in-memory table (no persistence needed - USER resolver doesn't use entity
-    // data)
     Table minimalTable =
         new Table()
             .withId(UUID.randomUUID())
@@ -231,13 +225,13 @@ public class RecipientResolverIntegrationTest extends OpenMetadataApplicationTes
             .withFullyQualifiedName("test.schema.minimal_table");
 
     ChangeEvent event = createChangeEvent(minimalTable, EventType.ENTITY_UPDATED);
-    SubscriptionDestination destination =
-        createDestination(SubscriptionDestination.SubscriptionCategory.USERS);
     List<String> usernames =
         List.of(TEST_USER1.getName(), TEST_USER2.getName(), TEST_USER3.getName());
-    SubscriptionAction action = createSubscriptionActionWithReceivers(usernames);
+    SubscriptionDestination destination =
+        createDestinationWithReceivers(
+            SubscriptionDestination.SubscriptionCategory.USERS, usernames);
 
-    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, destination, action);
+    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, List.of(destination));
 
     // Verify exactly three recipients are resolved
     assertEquals(3, recipients.size(), "Should resolve exactly 3 user recipients");
@@ -274,12 +268,12 @@ public class RecipientResolverIntegrationTest extends OpenMetadataApplicationTes
             .withFullyQualifiedName("test.schema.minimal_table");
 
     ChangeEvent event = createChangeEvent(minimalTable, EventType.ENTITY_UPDATED);
-    SubscriptionDestination destination =
-        createDestination(SubscriptionDestination.SubscriptionCategory.TEAMS);
     List<String> teamNames = List.of(TEST_TEAM.getName());
-    SubscriptionAction action = createSubscriptionActionWithReceivers(teamNames);
+    SubscriptionDestination destination =
+        createDestinationWithReceivers(
+            SubscriptionDestination.SubscriptionCategory.TEAMS, teamNames);
 
-    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, destination, action);
+    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, List.of(destination));
 
     // Verify exactly one recipient is resolved
     assertEquals(1, recipients.size(), "Should resolve exactly 1 team recipient");
@@ -310,10 +304,9 @@ public class RecipientResolverIntegrationTest extends OpenMetadataApplicationTes
     Table tableWithFollowers = createTableWithFollowers(TEST_USER1, TEST_USER2);
     ChangeEvent event = createChangeEvent(tableWithFollowers, EventType.ENTITY_UPDATED);
     SubscriptionDestination destination =
-        createDestination(SubscriptionDestination.SubscriptionCategory.FOLLOWERS);
-    SubscriptionAction action = createSubscriptionAction();
+        createDestinationWithConfig(SubscriptionDestination.SubscriptionCategory.FOLLOWERS);
 
-    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, destination, action);
+    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, List.of(destination));
 
     // Verify exactly two recipients are resolved
     assertEquals(2, recipients.size(), "Should resolve exactly 2 follower recipients");
@@ -349,10 +342,9 @@ public class RecipientResolverIntegrationTest extends OpenMetadataApplicationTes
 
     ChangeEvent event = createChangeEvent(minimalTable, EventType.ENTITY_UPDATED);
     SubscriptionDestination destination =
-        createDestination(SubscriptionDestination.SubscriptionCategory.ADMINS);
-    SubscriptionAction action = createSubscriptionAction();
+        createDestinationWithConfig(SubscriptionDestination.SubscriptionCategory.ADMINS);
 
-    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, destination, action);
+    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, List.of(destination));
 
     // Verify at least one admin recipient is resolved
     assertEquals(true, recipients.size() >= 1, "Should resolve at least 1 admin recipient");
@@ -389,10 +381,9 @@ public class RecipientResolverIntegrationTest extends OpenMetadataApplicationTes
     ChangeEvent event = createChangeEvent(taskThread, EventType.ENTITY_CREATED);
     event.withEntityType(Entity.THREAD);
     SubscriptionDestination destination =
-        createDestination(SubscriptionDestination.SubscriptionCategory.ASSIGNEES);
-    SubscriptionAction action = createSubscriptionAction();
+        createDestinationWithConfig(SubscriptionDestination.SubscriptionCategory.ASSIGNEES);
 
-    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, destination, action);
+    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, List.of(destination));
 
     // Verify exactly two recipients are resolved (user and team assignees)
     assertEquals(2, recipients.size(), "Should resolve exactly 2 assignee recipients");
@@ -438,10 +429,9 @@ public class RecipientResolverIntegrationTest extends OpenMetadataApplicationTes
     ChangeEvent event = createChangeEvent(mentionThread, EventType.ENTITY_CREATED);
     event.withEntityType(Entity.THREAD);
     SubscriptionDestination destination =
-        createDestination(SubscriptionDestination.SubscriptionCategory.MENTIONS);
-    SubscriptionAction action = createSubscriptionAction();
+        createDestinationWithConfig(SubscriptionDestination.SubscriptionCategory.MENTIONS);
 
-    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, destination, action);
+    Set<Recipient> recipients = recipientResolver.resolveRecipients(event, List.of(destination));
 
     // Verify exactly one recipient is resolved
     assertEquals(1, recipients.size(), "Should resolve exactly 1 mention recipient");
@@ -462,6 +452,110 @@ public class RecipientResolverIntegrationTest extends OpenMetadataApplicationTes
     Set<String> expectedEmails = Set.of(TEST_USER1.getEmail());
     assertEquals(
         expectedEmails, resolvedEmails, "Resolved mentions must be exactly TEST_USER1's email");
+  }
+
+  // ============ DEDUPLICATION TESTS ============
+
+  /**
+   * Tests that recipients are deduplicated across multiple destinations.
+   *
+   * This test verifies the fix for the duplicate notifications issue where users received
+   * multiple identical notifications when appearing in multiple destination configurations.
+   *
+   * Scenario:
+   * - Destination 1: OWNERS category → resolves to owner@example.com
+   * - Destination 2: EXTERNAL category → explicitly includes owner@example.com
+   *
+   * Before the fix: owner@example.com would receive 2 notifications
+   * After the fix: owner@example.com receives only 1 notification (deduplicated)
+   */
+  @Test
+  void test_recipientDeduplication_acrossMultipleDestinations() throws Exception {
+    // Create a table with TEST_USER1 as owner
+    Table tableWithOwner = createTableWithOwner(TEST_USER1);
+    ChangeEvent event = createChangeEvent(tableWithOwner, EventType.ENTITY_UPDATED);
+
+    // Destination 1: OWNERS - will resolve to TEST_USER1
+    SubscriptionDestination ownersDestination =
+        createDestinationWithConfig(SubscriptionDestination.SubscriptionCategory.OWNERS);
+
+    // Destination 2: EXTERNAL - explicitly includes TEST_USER1's email (overlapping recipient)
+    SubscriptionDestination externalDestination =
+        createDestinationWithReceivers(
+            SubscriptionDestination.SubscriptionCategory.EXTERNAL, List.of(TEST_USER1.getEmail()));
+
+    // Resolve recipients across BOTH destinations
+    Set<Recipient> recipients =
+        recipientResolver.resolveRecipients(event, List.of(ownersDestination, externalDestination));
+
+    // Verify deduplication: TEST_USER1 should appear only ONCE despite being in both destinations
+    Set<String> resolvedEmails =
+        recipients.stream()
+            .map(
+                r ->
+                    assertInstanceOf(
+                        EmailRecipient.class, r, "All recipients must be EmailRecipient instances"))
+            .map(EmailRecipient::getEmail)
+            .collect(Collectors.toSet());
+
+    // The key assertion: only 1 recipient, not 2
+    assertEquals(
+        1,
+        resolvedEmails.size(),
+        "Overlapping recipient should be deduplicated - expected 1, got " + resolvedEmails.size());
+    assertTrue(
+        resolvedEmails.contains(TEST_USER1.getEmail()),
+        "Deduplicated recipients should contain TEST_USER1's email");
+  }
+
+  /**
+   * Tests deduplication with multiple overlapping and non-overlapping recipients.
+   *
+   * Scenario:
+   * - Destination 1: OWNERS → TEST_USER1 (owner)
+   * - Destination 2: EXTERNAL → TEST_USER1 + another@example.com
+   *
+   * Expected: 2 unique recipients (TEST_USER1 deduplicated, another@example.com unique)
+   */
+  @Test
+  void test_recipientDeduplication_withMixedOverlappingRecipients() throws Exception {
+    String uniqueExternalEmail = "another-external@example.com";
+
+    // Create a table with TEST_USER1 as owner
+    Table tableWithOwner = createTableWithOwner(TEST_USER1);
+    ChangeEvent event = createChangeEvent(tableWithOwner, EventType.ENTITY_UPDATED);
+
+    // Destination 1: OWNERS - will resolve to TEST_USER1
+    SubscriptionDestination ownersDestination =
+        createDestinationWithConfig(SubscriptionDestination.SubscriptionCategory.OWNERS);
+
+    // Destination 2: EXTERNAL - includes TEST_USER1 (overlap) + unique external email
+    SubscriptionDestination externalDestination =
+        createDestinationWithReceivers(
+            SubscriptionDestination.SubscriptionCategory.EXTERNAL,
+            List.of(TEST_USER1.getEmail(), uniqueExternalEmail));
+
+    // Resolve recipients across BOTH destinations
+    Set<Recipient> recipients =
+        recipientResolver.resolveRecipients(event, List.of(ownersDestination, externalDestination));
+
+    Set<String> resolvedEmails =
+        recipients.stream()
+            .map(
+                r ->
+                    assertInstanceOf(
+                        EmailRecipient.class, r, "All recipients must be EmailRecipient instances"))
+            .map(EmailRecipient::getEmail)
+            .collect(Collectors.toSet());
+
+    // Should have exactly 2 unique recipients
+    assertEquals(
+        2,
+        resolvedEmails.size(),
+        "Should have 2 unique recipients (TEST_USER1 deduplicated + unique external)");
+    assertTrue(resolvedEmails.contains(TEST_USER1.getEmail()), "Should contain TEST_USER1's email");
+    assertTrue(
+        resolvedEmails.contains(uniqueExternalEmail), "Should contain unique external email");
   }
 
   // ============ HELPER METHODS ============
@@ -511,33 +605,30 @@ public class RecipientResolverIntegrationTest extends OpenMetadataApplicationTes
   }
 
   /**
-   * Creates a SubscriptionDestination with the given category.
+   * Creates a SubscriptionDestination with the given category and an empty EmailAlertConfig.
+   * Used for categories that don't require receivers in the config (OWNERS, FOLLOWERS, ADMINS,
+   * ASSIGNEES, MENTIONS).
    */
-  private SubscriptionDestination createDestination(
+  private SubscriptionDestination createDestinationWithConfig(
       SubscriptionDestination.SubscriptionCategory category) {
     return new SubscriptionDestination()
         .withId(UUID.randomUUID())
         .withCategory(category)
-        .withType(SubscriptionDestination.SubscriptionType.EMAIL);
+        .withType(SubscriptionDestination.SubscriptionType.EMAIL)
+        .withConfig(new EmailAlertConfig());
   }
 
   /**
-   * Creates a basic SubscriptionAction with no receivers or user refs.
+   * Creates a SubscriptionDestination with the given category and receivers in the config.
+   * Used for categories that require receivers in the config (EXTERNAL, USERS, TEAMS).
    */
-  private SubscriptionAction createSubscriptionAction() {
-    return new SubscriptionAction() {};
-  }
-
-  /**
-   * Creates a SubscriptionAction with external email receivers.
-   */
-  private SubscriptionAction createSubscriptionActionWithReceivers(List<String> receivers) {
-    return new SubscriptionAction() {
-      @Override
-      public Set<String> getReceivers() {
-        return new HashSet<>(receivers);
-      }
-    };
+  private SubscriptionDestination createDestinationWithReceivers(
+      SubscriptionDestination.SubscriptionCategory category, List<String> receivers) {
+    return new SubscriptionDestination()
+        .withId(UUID.randomUUID())
+        .withCategory(category)
+        .withType(SubscriptionDestination.SubscriptionType.EMAIL)
+        .withConfig(new EmailAlertConfig().withReceivers(new HashSet<>(receivers)));
   }
 
   /**

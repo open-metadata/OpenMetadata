@@ -71,6 +71,57 @@ public final class Databases {
     return getClient().databases().create(request);
   }
 
+  // ==================== Direct Access Methods ====================
+
+  public static Database get(String id) {
+    return getClient().databases().get(id);
+  }
+
+  public static Database get(String id, String fields) {
+    return getClient().databases().get(id, fields);
+  }
+
+  public static Database get(String id, String fields, String include) {
+    return getClient().databases().get(id, fields, include);
+  }
+
+  public static Database getByName(String fqn) {
+    return getClient().databases().getByName(fqn);
+  }
+
+  public static Database getByName(String fqn, String fields) {
+    return getClient().databases().getByName(fqn, fields);
+  }
+
+  public static Database update(String id, Database entity) {
+    return getClient().databases().update(id, entity);
+  }
+
+  public static void delete(String id) {
+    getClient().databases().delete(id);
+  }
+
+  public static void delete(String id, java.util.Map<String, String> params) {
+    getClient().databases().delete(id, params);
+  }
+
+  public static void restore(String id) {
+    getClient().databases().restore(id);
+  }
+
+  public static org.openmetadata.sdk.models.ListResponse<Database> list(
+      org.openmetadata.sdk.models.ListParams params) {
+    return getClient().databases().list(params);
+  }
+
+  public static org.openmetadata.schema.type.EntityHistory getVersionList(java.util.UUID id) {
+    return getClient().databases().getVersionList(id);
+  }
+
+  public static Database getVersion(String id, Double version) {
+    return getClient().databases().getVersion(id, version);
+  }
+
   // ==================== Finding/Retrieval ====================
 
   public static DatabaseFinder find(String id) {

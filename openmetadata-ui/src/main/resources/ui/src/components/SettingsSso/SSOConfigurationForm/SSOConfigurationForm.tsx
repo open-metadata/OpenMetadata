@@ -32,6 +32,8 @@ import {
   AuthorizerConfiguration,
   getSSOUISchema,
   GOOGLE_SSO_DEFAULTS,
+  NON_OIDC_SPECIFIC_FIELDS,
+  OIDC_SPECIFIC_FIELDS,
   VALIDATION_STATUS,
 } from '../../../constants/SSO.constant';
 import { User } from '../../../generated/entity/teams/user';
@@ -76,6 +78,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
+import LdapRoleMappingWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
 import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -93,6 +96,7 @@ import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayF
 
 const widgets = {
   SelectWidget: SelectWidget,
+  LdapRoleMappingWidget: LdapRoleMappingWidget,
 };
 
 const SSOConfigurationFormRJSF = ({
@@ -120,6 +124,7 @@ const SSOConfigurationFormRJSF = ({
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [modalSaveLoading, setModalSaveLoading] = useState<boolean>(false);
   const [isModalSave, setIsModalSave] = useState<boolean>(false);
+  const [errorClearTrigger, setErrorClearTrigger] = useState<number>(0);
   const fieldErrorsRef = useRef<ErrorSchema>({});
 
   // Helper function to setup configuration state - extracted to avoid redundancy
@@ -307,19 +312,14 @@ const SSOConfigurationFormRJSF = ({
 
     // Provider-specific schema modifications
     if (provider === AuthProvider.Saml) {
-      removeSchemaFields(authSchema, ['callbackUrl']);
-      removeRequiredFields(authSchema, ['callbackUrl']);
+      removeSchemaFields(authSchema, OIDC_SPECIFIC_FIELDS);
+      removeRequiredFields(authSchema, OIDC_SPECIFIC_FIELDS);
+    } else if (provider === AuthProvider.LDAP) {
+      removeSchemaFields(authSchema, OIDC_SPECIFIC_FIELDS);
+      removeRequiredFields(authSchema, OIDC_SPECIFIC_FIELDS);
     } else if (provider === AuthProvider.CustomOidc) {
-      removeSchemaFields(authSchema, [
-        'ldapConfiguration',
-        'samlConfiguration',
-        'clientType',
-      ]);
-      removeRequiredFields(authSchema, [
-        'ldapConfiguration',
-        'samlConfiguration',
-        'clientType',
-      ]);
+      removeSchemaFields(authSchema, NON_OIDC_SPECIFIC_FIELDS);
+      removeRequiredFields(authSchema, NON_OIDC_SPECIFIC_FIELDS);
     }
 
     return createSchemaWithAuth(authSchema) as RJSFSchema;
@@ -449,6 +449,17 @@ const SSOConfigurationFormRJSF = ({
         'ui:title': 'Callback URL',
         'ui:placeholder': 'e.g. https://myapp.com/auth/callback',
       } as UISchemaObject;
+      // Ensure publicKeyUrls is visible for public clients (not auto-populated)
+      authConfig.publicKeyUrls = {
+        'ui:title': 'Public Key URLs',
+        'ui:placeholder':
+          'Enter value (e.g. https://www.googleapis.com/oauth2/v3/certs) and press ENTER',
+      } as UISchemaObject;
+      // Ensure authority is visible for public clients
+      authConfig.authority = {
+        'ui:title': 'Authority',
+        'ui:placeholder': 'e.g. https://accounts.google.com',
+      } as UISchemaObject;
     } else if (currentClientType === ClientType.Confidential) {
       // The schema will be shown with OIDC prefixed labels from the constants
       authConfig['oidcConfiguration'] ??= {
@@ -464,16 +475,12 @@ const SSOConfigurationFormRJSF = ({
         'ui:hideError': true,
       };
 
-      // For Google, show authority and publicKeyUrls even in Confidential mode
+      // For Google, show authority even in Confidential mode
       const isGoogle = currentProvider === AuthProvider.Google;
       if (isGoogle) {
         authConfig.authority = {
           'ui:title': 'Authority',
           'ui:placeholder': GOOGLE_SSO_DEFAULTS.authority,
-        } as UISchemaObject;
-        authConfig.publicKeyUrls = {
-          'ui:title': 'Public Key URLs',
-          'ui:placeholder': `Enter value (default: ${GOOGLE_SSO_DEFAULTS.publicKeyUrls[0]}) and press ENTER`,
         } as UISchemaObject;
       }
     }
@@ -512,8 +519,12 @@ const SSOConfigurationFormRJSF = ({
         Object.keys(fieldErrorsRef.current).length > 0
       ) {
         const changedFields = findChangedFields(internalData, newFormData);
-        for (const fieldPath of changedFields) {
-          handleClearFieldError(fieldPath);
+        if (changedFields.length > 0) {
+          for (const fieldPath of changedFields) {
+            handleClearFieldError(fieldPath);
+          }
+          // Force form to re-render and re-validate with cleared errors
+          setErrorClearTrigger((prev) => prev + 1);
         }
       }
 
@@ -688,6 +699,7 @@ const SSOConfigurationFormRJSF = ({
   const handleSave = async () => {
     updateLoadingState(isModalSave, setIsLoading, true);
     fieldErrorsRef.current = {};
+    setErrorClearTrigger(0);
 
     try {
       // Prepare payload
@@ -740,6 +752,8 @@ const SSOConfigurationFormRJSF = ({
 
   const handleCancelConfirm = () => {
     setShowCancelModal(false);
+    fieldErrorsRef.current = {};
+    setErrorClearTrigger(0);
 
     // For existing/configured SSO, discard changes and stay on the same page
     if (hasExistingConfig && savedData) {
@@ -851,7 +865,10 @@ const SSOConfigurationFormRJSF = ({
           }}
           formData={internalData}
           idSeparator="/"
-          liveValidate={Object.keys(fieldErrorsRef.current).length > 0}
+          liveValidate={
+            Object.keys(fieldErrorsRef.current).length > 0 ||
+            errorClearTrigger > 0
+          }
           schema={schema}
           showErrorList={false}
           templates={{

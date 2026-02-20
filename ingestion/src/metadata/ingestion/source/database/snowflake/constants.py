@@ -61,6 +61,7 @@ TABLE_TYPE_URL_MAP = {
     TableType.View: "view",
     TableType.MaterializedView: "materialized-view",
     TableType.Stream: "stream",
+    TableType.Stage: "stage",
 }
 
 PROCEDURE_TYPE_URL_MAP = {

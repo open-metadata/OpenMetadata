@@ -11,14 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { act } from 'react';
 import SearchDropdown from './SearchDropdown';
 import { SearchDropdownProps } from './SearchDropdown.interface';
 
@@ -185,7 +180,7 @@ describe('Search DropDown Component', () => {
 
     await act(async () => {
       const searchInput = await screen.findByTestId('search-input');
-      await fireEvent.change(searchInput, { target: { value: 'user' } });
+      fireEvent.change(searchInput, { target: { value: 'user' } });
     });
 
     expect(await screen.findByTestId('search-input')).toHaveValue('user');
@@ -408,5 +403,163 @@ describe('Search DropDown Component', () => {
       ],
       'owner.displayName'
     );
+  });
+
+  describe('Single Select Mode', () => {
+    it('should allow only one option to be selected at a time', async () => {
+      render(<SearchDropdown {...mockProps} singleSelect />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+      // User 1 is initially selected (in single-select mode, testid suffix is 'radio')
+      let option1Radio = await screen.findByTestId('User 1-radio');
+
+      expect(option1Radio).toBeChecked();
+
+      // Select User 2
+      const option2 = await screen.findByTestId('User 2');
+
+      await act(async () => {
+        fireEvent.click(option2);
+      });
+
+      // User 1 should be unchecked, User 2 should be checked
+      option1Radio = await screen.findByTestId('User 1-radio');
+      const option2Radio = await screen.findByTestId('User 2-radio');
+
+      expect(option1Radio).not.toBeChecked();
+      expect(option2Radio).toBeChecked();
+    });
+
+    it('should deselect option when clicking the same option again in single-select mode', async () => {
+      render(<SearchDropdown {...mockProps} singleSelect />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+      // User 1 is initially selected (in single-select mode, testid suffix is 'radio')
+      let option1Radio = await screen.findByTestId('User 1-radio');
+
+      expect(option1Radio).toBeChecked();
+
+      // Click User 1 again to deselect
+      const option1 = await screen.findByTestId('User 1');
+
+      await act(async () => {
+        fireEvent.click(option1);
+      });
+
+      // User 1 should be unchecked
+      option1Radio = await screen.findByTestId('User 1-radio');
+
+      expect(option1Radio).not.toBeChecked();
+    });
+
+    it('should not show clear all button in single-select mode', async () => {
+      render(<SearchDropdown {...mockProps} singleSelect />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+      // Select another option
+      const option2 = await screen.findByTestId('User 2');
+      await act(async () => {
+        fireEvent.click(option2);
+      });
+
+      // Clear button should not be present
+      const clearButton = screen.queryByTestId('clear-button');
+
+      expect(clearButton).not.toBeInTheDocument();
+    });
+
+    it('should call onChange with single selected option', async () => {
+      render(<SearchDropdown {...mockProps} singleSelect />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      // Select User 3
+      const option3 = await screen.findByTestId('User 3');
+      await act(async () => {
+        fireEvent.click(option3);
+      });
+
+      const updateButton = await screen.findByTestId('update-btn');
+      await act(async () => {
+        fireEvent.click(updateButton);
+      });
+
+      // onChange should be called with only User 3
+      await waitFor(() => {
+        expect(mockOnChange).toHaveBeenCalledWith(
+          [{ key: 'User 3', label: 'User 3' }],
+          'owner.displayName'
+        );
+      });
+    });
+
+    it('should render radio button for null option in single-select mode', async () => {
+      render(<SearchDropdown {...mockProps} hasNullOption singleSelect />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+      // Should render radio instead of checkbox
+      const noOptionRadio = await screen.findByTestId('no-option-radio');
+
+      expect(noOptionRadio).toBeInTheDocument();
+
+      // Checkbox should not be present
+      const noOptionCheckbox = screen.queryByTestId('no-option-checkbox');
+
+      expect(noOptionCheckbox).not.toBeInTheDocument();
+    });
+
+    it('should handle null option selection in single-select mode', async () => {
+      render(<SearchDropdown {...mockProps} hasNullOption singleSelect />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      const noOptionRadio = await screen.findByTestId('no-option-radio');
+
+      await act(async () => {
+        fireEvent.click(noOptionRadio);
+      });
+
+      const updateButton = await screen.findByTestId('update-btn');
+
+      await act(async () => {
+        fireEvent.click(updateButton);
+      });
+
+      // In single-select mode, selecting null option clears regular selections
+      expect(mockOnChange).toHaveBeenCalledWith(
+        [{ key: 'OM_NULL_FIELD', label: 'label.no-entity' }],
+        'owner.displayName'
+      );
+    });
   });
 });

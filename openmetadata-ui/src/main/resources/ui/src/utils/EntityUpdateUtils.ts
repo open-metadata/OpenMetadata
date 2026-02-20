@@ -34,6 +34,28 @@ interface UpdateEntityFieldResult<T> {
   data?: T;
 }
 
+export const mergeEntityStateUpdate = <T extends object>(
+  previous: T,
+  response: Partial<T>,
+  updatedEntity: T,
+  key?: keyof T
+): T => {
+  if (key && updatedEntity[key] === undefined) {
+    const { [key]: _, ...restFromPrevious } = previous;
+    const { [key]: __, ...restFromResponse } = response;
+
+    return { ...restFromPrevious, ...restFromResponse } as T;
+  }
+
+  const merged = { ...previous, ...response } as T;
+
+  if (key) {
+    merged[key] = (response[key] ?? updatedEntity[key]) as T[keyof T];
+  }
+
+  return merged;
+};
+
 export const updateEntityField = async <T>({
   entityId,
   entityType,
@@ -49,6 +71,12 @@ export const updateEntityField = async <T>({
   }
 
   if (!entityType) {
+    // If onSuccess callback is provided, call it directly to allow custom handling
+    if (onSuccess) {
+      onSuccess(newValue);
+
+      return { success: true, data: newValue };
+    }
     showErrorToast(t('message.entity-type-required'));
 
     return { success: false };
@@ -76,6 +104,17 @@ export const updateEntityField = async <T>({
 
     return { success: true, data: newValue };
   } catch (error) {
+    // If patch API is not available but onSuccess callback is provided, use custom handling
+    if (
+      error instanceof Error &&
+      error.message.includes('No patch API available') &&
+      onSuccess
+    ) {
+      onSuccess(newValue);
+
+      return { success: true, data: newValue };
+    }
+
     showErrorToast(
       error as AxiosError,
       t('server.entity-updating-error', {

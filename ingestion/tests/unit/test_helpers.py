@@ -151,6 +151,48 @@ class TestHelpers(TestCase):
         self.assertTrue(is_safe_sql_query(cte_query))
         self.assertFalse(is_safe_sql_query(transaction_query))
 
+    def test_is_safe_sql_query_case_insensitive(self):
+        """Test is_safe_sql_query handles different case variations"""
+        self.assertFalse(is_safe_sql_query("delete from table1"))
+        self.assertFalse(is_safe_sql_query("DELETE from table1"))
+        self.assertFalse(is_safe_sql_query("Delete From table1"))
+
+        self.assertFalse(is_safe_sql_query("drop table test"))
+        self.assertFalse(is_safe_sql_query("DROP TABLE test"))
+        self.assertFalse(is_safe_sql_query("Drop Table test"))
+
+        self.assertFalse(is_safe_sql_query("insert into table1 values (1)"))
+        self.assertFalse(is_safe_sql_query("INSERT INTO table1 VALUES (1)"))
+
+        self.assertFalse(is_safe_sql_query("update table1 set col = 1"))
+        self.assertFalse(is_safe_sql_query("UPDATE table1 SET col = 1"))
+
+        self.assertFalse(is_safe_sql_query("truncate table test"))
+        self.assertFalse(is_safe_sql_query("TRUNCATE TABLE test"))
+
+    def test_is_safe_sql_query_dangerous_functions(self):
+        """Test is_safe_sql_query blocks dangerous database functions"""
+        self.assertFalse(is_safe_sql_query("SELECT pg_read_file('/etc/passwd')"))
+        self.assertFalse(is_safe_sql_query("SELECT PG_READ_FILE('/etc/passwd')"))
+        self.assertFalse(is_safe_sql_query("SELECT Pg_Read_File('/etc/passwd')"))
+
+        self.assertFalse(is_safe_sql_query("SELECT lo_import('/etc/passwd')"))
+        self.assertFalse(is_safe_sql_query("SELECT LO_IMPORT('/etc/passwd')"))
+
+        self.assertFalse(is_safe_sql_query("SELECT pg_write_file('/tmp/test', 'data')"))
+        self.assertFalse(is_safe_sql_query("SELECT PG_WRITE_FILE('/tmp/test', 'data')"))
+
+        self.assertFalse(is_safe_sql_query("EXEC xp_cmdshell 'dir'"))
+        self.assertFalse(is_safe_sql_query("exec XP_CMDSHELL 'dir'"))
+        self.assertFalse(is_safe_sql_query("EXEC Xp_Cmdshell 'dir'"))
+
+        self.assertFalse(is_safe_sql_query("EXEC sp_oacreate 'obj'"))
+        self.assertFalse(is_safe_sql_query("exec SP_OACREATE 'obj'"))
+
+    def test_is_safe_sql_query_none_input(self):
+        """Test is_safe_sql_query handles None input"""
+        self.assertTrue(is_safe_sql_query(None))
+
     def test_format_large_string_numbers(self):
         """test format_large_string_numbers"""
         assert format_large_string_numbers(1000) == "1.000K"
@@ -213,15 +255,26 @@ class TestHelpers(TestCase):
         self.assertEqual(suggestion_col, suggestions[1])
 
     def test_pretty_print_time_duration(self):
-        self.assertEqual(pretty_print_time_duration(10), "10s")
-        self.assertEqual(pretty_print_time_duration(100), "1m 40s")
-        self.assertEqual(pretty_print_time_duration(1000), "16m 40s")
-        self.assertEqual(pretty_print_time_duration(10000), "2h 46m 40s")
-        self.assertEqual(pretty_print_time_duration(100000), "1day(s) 3h 46m 40s")
-        self.assertEqual(pretty_print_time_duration(1000000), "11day(s) 13h 46m 40s")
-        self.assertEqual(pretty_print_time_duration(20), "20s")
-        self.assertEqual(pretty_print_time_duration(200), "3m 20s")
-        self.assertEqual(pretty_print_time_duration(2000), "33m 20s")
-        self.assertEqual(pretty_print_time_duration(20000), "5h 33m 20s")
-        self.assertEqual(pretty_print_time_duration(200000), "2day(s) 7h 33m 20s")
-        self.assertEqual(pretty_print_time_duration(2000000), "23day(s) 3h 33m 20s")
+        self.assertEqual(pretty_print_time_duration(10), "10s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(100), "1m 40s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(1000), "16m 40s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(10000), "2h 46m 40s 000.000ms")
+        self.assertEqual(
+            pretty_print_time_duration(100000), "1day(s) 03h 46m 40s 000.000ms"
+        )
+        self.assertEqual(
+            pretty_print_time_duration(1000000), "11day(s) 13h 46m 40s 000.000ms"
+        )
+        self.assertEqual(pretty_print_time_duration(20), "20s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(200), "3m 20s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(2000), "33m 20s 000.000ms")
+        self.assertEqual(pretty_print_time_duration(20000), "5h 33m 20s 000.000ms")
+        self.assertEqual(
+            pretty_print_time_duration(200000), "2day(s) 07h 33m 20s 000.000ms"
+        )
+        self.assertEqual(
+            pretty_print_time_duration(2000000), "23day(s) 03h 33m 20s 000.000ms"
+        )
+        self.assertEqual(pretty_print_time_duration(0.5), "500.000ms")
+        self.assertEqual(pretty_print_time_duration(1.234), "1s 234.000ms")
+        self.assertEqual(pretty_print_time_duration(65.5), "1m 05s 500.000ms")

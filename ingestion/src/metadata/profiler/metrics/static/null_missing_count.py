@@ -14,7 +14,7 @@ Null Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import case, column
 
@@ -26,6 +26,8 @@ from metadata.utils.logger import profiler_logger
 
 if TYPE_CHECKING:
     import pandas as pd
+
+    from metadata.profiler.processor.runner import PandasRunner
 
 logger = profiler_logger()
 
@@ -74,8 +76,10 @@ class NullMissingCount(StaticMetric):
             )
         )
 
-    def df_fn(self, dfs=None):
+    def df_fn(self, dfs: Optional["PandasRunner"] = None):
         """pandas function"""
+        if dfs is None:
+            return None
         computation = self.get_pandas_computation()
         accumulator = computation.create_accumulator()
         for df in dfs:

@@ -15,6 +15,7 @@ from typing import Dict, List
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.utils import quote
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -76,7 +77,7 @@ class OMetaDomainMixin:
             API response as a dictionary containing paginated assets
         """
         try:
-            path = f"/dataProducts/name/{name}/assets"
+            path = f"/dataProducts/name/{quote(name)}/assets"
             params = {"limit": limit, "offset": offset}
             return self.client.get(path, params)
         except Exception as exc:
@@ -97,7 +98,7 @@ class OMetaDomainMixin:
             API response as a dictionary containing paginated assets
         """
         try:
-            path = f"/domains/name/{name}/assets"
+            path = f"/domains/name/{quote(name)}/assets"
             params = {"limit": limit, "offset": offset}
             return self.client.get(path, params)
         except Exception as exc:
@@ -122,7 +123,7 @@ class OMetaDomainMixin:
         Returns:
             API response as a dictionary
         """
-        path = f"/dataProducts/{name}/assets/{operation}"
+        path = f"/dataProducts/{quote(name)}/assets/{operation}"
         payload = AssetsRequest(assets=assets)
 
         return self.client.put(path, payload.model_dump_json())
@@ -210,7 +211,7 @@ class OMetaDomainMixin:
         Returns:
             API response as a dictionary
         """
-        path = f"/dataProducts/{name}/{port_type}/{operation}"
+        path = f"/dataProducts/{quote(name)}/{port_type}/{operation}"
         payload = AssetsRequest(assets=ports)
 
         return self.client.put(path, payload.model_dump_json())

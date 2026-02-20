@@ -344,7 +344,11 @@ class GrafanaSource(DashboardServiceSource):
                 pass
 
             # Extract table references from the SQL
-            parser = LineageParser(sql_query, dialect)
+            parser = LineageParser(
+                sql_query,
+                dialect,
+                parser_type=self.get_query_parser_type(),
+            )
             query_hash = parser.query_hash
             database_name_hint = getattr(datasource, "database", None)
 

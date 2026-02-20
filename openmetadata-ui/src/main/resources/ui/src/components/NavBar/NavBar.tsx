@@ -518,6 +518,7 @@ const NavBar = () => {
               trigger={['click']}>
               <Button
                 className="flex-center gap-2 p-x-xs font-medium"
+                data-testid="language-selector-button"
                 type="text">
                 {language ? upperCase(language.split('-')[0]) : ''}{' '}
                 <DropDownIcon width={12} />

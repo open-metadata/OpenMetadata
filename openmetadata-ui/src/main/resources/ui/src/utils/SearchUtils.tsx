@@ -15,6 +15,7 @@ import { SearchOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import i18next from 'i18next';
 import { isEmpty } from 'lodash';
+import { Bucket } from 'Models';
 import { Link } from 'react-router-dom';
 import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
 import { ReactComponent as IconChart } from '../assets/svg/chart.svg';
@@ -40,6 +41,7 @@ import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './CommonUtils';
+import { ElasticsearchQuery } from './QueryBuilderUtils';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
@@ -327,7 +329,7 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
  * @returns An array of objects with value and title properties
  */
 export const parseBucketsData = (
-  buckets: Array<Record<string, unknown>>,
+  buckets: Array<Bucket>,
   sourceFields?: string,
   sourceFieldOptionType?: {
     label: string;
@@ -336,25 +338,51 @@ export const parseBucketsData = (
 ) => {
   if (sourceFieldOptionType) {
     return buckets.map((bucket) => {
-      const data = bucket['top_hits#top']?.hits?.hits?.[0]?._source;
+      const topHitsData = (bucket as Record<string, unknown>)[
+        'top_hits#top'
+      ] as
+        | {
+            hits?: {
+              hits?: Array<{
+                _source?: Record<string, unknown>;
+              }>;
+            };
+          }
+        | undefined;
+      const data = topHitsData?.hits?.hits?.[0]?._source;
 
       return {
-        title: data[sourceFieldOptionType.label],
-        value: data[sourceFieldOptionType.value],
+        title: data?.[sourceFieldOptionType.label] as string,
+        value: data?.[sourceFieldOptionType.value] as string,
       };
     });
   }
 
   return buckets.map((bucket) => {
-    const actualValue = sourceFields
-      ? sourceFields
-          .split('.')
-          .reduce(
-            (obj, key) =>
-              obj && obj[key] !== undefined ? obj[key] : undefined,
-            bucket['top_hits#top']?.hits?.hits?.[0]?._source
-          ) ?? bucket.key
-      : bucket.key;
+    const topHitsSource = (
+      (bucket as Record<string, unknown>)['top_hits#top'] as
+        | {
+            hits?: {
+              hits?: Array<{
+                _source?: Record<string, unknown>;
+              }>;
+            };
+          }
+        | undefined
+    )?.hits?.hits?.[0]?._source;
+
+    const actualValue =
+      sourceFields && topHitsSource
+        ? sourceFields
+            .split('.')
+            .reduce(
+              (obj: unknown, key: string): unknown =>
+                obj && typeof obj === 'object' && obj !== null && key in obj
+                  ? (obj as Record<string, unknown>)[key]
+                  : undefined,
+              topHitsSource
+            ) ?? bucket.key
+        : bucket.key;
 
     return {
       value: actualValue,
@@ -418,7 +446,7 @@ export const getTermQuery = (
       }))
     : [];
 
-  const allQueries: any[] = [
+  const allQueries: ElasticsearchQuery[] = [
     ...termQueries,
     ...wildcardQueries,
     ...matchQueries,
@@ -443,7 +471,13 @@ export const getTermQuery = (
     });
   }
 
-  const boolQuery: any = {
+  // Define type for Elasticsearch bool query structure
+  type ESBoolQuery = Record<string, ElasticsearchQuery[] | number> & {
+    must_not?: ElasticsearchQuery[];
+    minimum_should_match?: number;
+  };
+
+  const boolQuery: ESBoolQuery = {
     [queryType]: allQueries,
   };
 

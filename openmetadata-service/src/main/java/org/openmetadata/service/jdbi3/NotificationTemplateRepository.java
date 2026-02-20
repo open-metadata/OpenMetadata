@@ -56,6 +56,7 @@ import org.openmetadata.service.notifications.template.testing.MockChangeEventRe
 import org.openmetadata.service.resources.events.NotificationTemplateResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.SubscriptionUtil;
 import org.openmetadata.service.util.email.EmailUtil;
 import org.openmetadata.service.util.resourcepath.ResourcePathResolver;
@@ -93,7 +94,8 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
   }
 
   @Override
-  public void setFields(NotificationTemplate entity, Fields fields) {}
+  public void setFields(
+      NotificationTemplate entity, Fields fields, RelationIncludes relationIncludes) {}
 
   @Override
   public void clearFields(NotificationTemplate entity, Fields fields) {}

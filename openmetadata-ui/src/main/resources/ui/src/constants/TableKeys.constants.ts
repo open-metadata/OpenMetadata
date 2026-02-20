@@ -30,6 +30,7 @@ export const TABLE_COLUMNS_KEYS = {
   DATA_TYPE_DISPLAY: 'dataTypeDisplay',
   DATA_QUALITY_TEST: 'dataQualityTest',
   REQUEST_METHOD: 'requestMethod',
+  ORDINAL_POSITION: 'ordinalPosition',
 };
 
 export const COMMON_STATIC_TABLE_VISIBLE_COLUMNS = [TABLE_COLUMNS_KEYS.NAME];

@@ -31,6 +31,9 @@ from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseCo
 from metadata.generated.schema.entity.services.connections.database.cassandraConnection import (
     CassandraConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.db2Connection import (
+    Db2Connection,
+)
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
     DorisConnection,
 )
@@ -58,6 +61,9 @@ from metadata.generated.schema.entity.services.connections.database.redshiftConn
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.starrocksConnection import (
+    StarRocksConnection,
+)
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
@@ -66,7 +72,10 @@ from metadata.generated.schema.entity.services.connections.pipeline.matillionCon
 )
 from metadata.generated.schema.security.ssl import verifySSLConfig
 from metadata.generated.schema.security.ssl.verifySSLConfig import SslMode
-from metadata.ingestion.connections.builders import init_empty_connection_arguments
+from metadata.ingestion.connections.builders import (
+    init_empty_connection_arguments,
+    init_empty_connection_options,
+)
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.connections import get_connection
 from metadata.utils.logger import utils_logger
@@ -120,9 +129,12 @@ class SSLManager:
 
     @setup_ssl.register(MysqlConnection)
     @setup_ssl.register(DorisConnection)
+    @setup_ssl.register(StarRocksConnection)
     def _(self, connection):
         # Use the temporary file paths for SSL configuration
-        connection = cast(Union[MysqlConnection, DorisConnection], connection)
+        connection = cast(
+            Union[MysqlConnection, DorisConnection, StarRocksConnection], connection
+        )
         connection.connectionArguments = (
             connection.connectionArguments or init_empty_connection_arguments()
         )
@@ -301,6 +313,33 @@ class SSLManager:
 
         return connection
 
+    @setup_ssl.register(Db2Connection)
+    def _(self, connection):
+        connection = cast(Db2Connection, connection)
+
+        if not connection.connectionOptions:
+            connection.connectionOptions = init_empty_connection_options()
+
+        if connection.sslMode and connection.sslMode != SslMode.disable:
+            connection.connectionOptions.root["SECURITY"] = "SSL"
+
+            if self.ca_file_path:
+                connection.connectionOptions.root[
+                    "SSLServerCertificate"
+                ] = self.ca_file_path
+
+            if self.cert_file_path:
+                connection.connectionOptions.root[
+                    "SSLClientKeystoredb"
+                ] = self.cert_file_path
+
+            if self.key_file_path:
+                connection.connectionOptions.root[
+                    "SSLClientKeystash"
+                ] = self.key_file_path
+
+        return connection
+
 
 @singledispatch
 def check_ssl_and_init(
@@ -341,8 +380,11 @@ def _(connection) -> Union[SSLManager, None]:
 
 @check_ssl_and_init.register(MysqlConnection)
 @check_ssl_and_init.register(DorisConnection)
+@check_ssl_and_init.register(StarRocksConnection)
 def _(connection):
-    service_connection = cast(Union[MysqlConnection, DorisConnection], connection)
+    service_connection = cast(
+        Union[MysqlConnection, DorisConnection, StarRocksConnection], connection
+    )
     ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
     if ssl and (ssl.root.caCertificate or ssl.root.sslCertificate or ssl.root.sslKey):
         return SSLManager(
@@ -460,6 +502,22 @@ def _(connection):
                     cert=service_connection.sslConfig.root.sslCertificate,
                     key=service_connection.sslConfig.root.sslKey,
                 )
+    return None
+
+
+@check_ssl_and_init.register(Db2Connection)
+def _(connection):
+    service_connection = cast(Db2Connection, connection)
+    if service_connection.sslMode and service_connection.sslMode != SslMode.disable:
+        ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
+        if ssl and (
+            ssl.root.caCertificate or ssl.root.sslCertificate or ssl.root.sslKey
+        ):
+            return SSLManager(
+                ca=ssl.root.caCertificate,
+                cert=ssl.root.sslCertificate,
+                key=ssl.root.sslKey,
+            )
     return None
 
 

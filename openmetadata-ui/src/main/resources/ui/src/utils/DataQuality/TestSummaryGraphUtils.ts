@@ -12,13 +12,19 @@
  */
 import { isUndefined, omitBy, round } from 'lodash';
 import { TestCaseChartDataType } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import { GREEN_3, RED_3, YELLOW_2 } from '../../constants/Color.constants';
 import { COLORS } from '../../constants/profiler.constant';
 import { Thread } from '../../generated/entity/feed/thread';
 import {
   TestCaseParameterValue,
   TestCaseResult,
+  TestCaseStatus,
 } from '../../generated/tests/testCase';
+import { axisTickFormatter } from '../ChartUtils';
 import { getRandomHexColor } from '../DataInsightUtils';
+import { convertSecondsToHumanReadableFormat } from '../date-time/DateTimeUtils';
+
+const EXCLUDED_CHART_FIELDS = ['schemaTable1', 'schemaTable2'];
 
 export type PrepareChartDataType = {
   testCaseParameterValue: TestCaseParameterValue[];
@@ -45,6 +51,9 @@ export const prepareChartData = ({
   let showAILearningBanner = false;
   testCaseResults.forEach((result) => {
     const values = result.testResultValue?.reduce((acc, curr) => {
+      if (EXCLUDED_CHART_FIELDS.includes(curr.name ?? '')) {
+        return acc;
+      }
       const value = round(parseFloat(curr.value ?? ''), 2) || 0;
 
       return {
@@ -93,13 +102,37 @@ export const prepareChartData = ({
     (result) => result.testResultValue?.length
   );
 
+  const filteredResultValues =
+    testCaseResultParams?.testResultValue?.filter(
+      (info) => !EXCLUDED_CHART_FIELDS.includes(info.name ?? '')
+    ) ?? [];
+
   return {
-    information:
-      testCaseResultParams?.testResultValue?.map((info, i) => ({
-        label: info.name ?? '',
-        color: COLORS[i] ?? getRandomHexColor(),
-      })) ?? [],
+    information: filteredResultValues.map((info, i) => ({
+      label: info.name ?? '',
+      color: COLORS[i] ?? getRandomHexColor(),
+    })),
     data: dataPoints,
     showAILearningBanner,
   };
 };
+
+export const getStatusDotColor = (status: TestCaseStatus): string => {
+  if (status === TestCaseStatus.Success) {
+    return GREEN_3;
+  }
+
+  if (status === TestCaseStatus.Failed) {
+    return RED_3;
+  }
+
+  return YELLOW_2;
+};
+
+export const formatTestSummaryYAxis = (
+  value: number,
+  useFreshnessFormat: boolean
+): string =>
+  useFreshnessFormat
+    ? convertSecondsToHumanReadableFormat(value, 2)
+    : axisTickFormatter(value);

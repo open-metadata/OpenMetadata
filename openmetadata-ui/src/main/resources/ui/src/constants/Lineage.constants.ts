@@ -42,6 +42,10 @@ export const entityData = [
     label: 'label.dashboard-plural',
   },
   {
+    type: SearchIndex.STORED_PROCEDURE,
+    label: 'label.stored-procedure-plural',
+  },
+  {
     type: SearchIndex.TOPIC,
     label: 'label.topic-plural',
   },

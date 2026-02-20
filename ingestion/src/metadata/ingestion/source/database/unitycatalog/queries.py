@@ -53,3 +53,68 @@ UNITY_CATALOG_SQL_STATEMENT = textwrap.dedent(
 UNITY_CATALOG_SQL_STATEMENT_TEST = """
  SELECT statement_text from  system.query.history LIMIT 1
 """
+
+UNITY_CATALOG_GET_TABLE_DDL = "SHOW CREATE TABLE `{database}`.`{schema}`.`{table}`"
+
+UNITY_CATALOG_TABLE_LINEAGE = textwrap.dedent(
+    """
+    SELECT
+        source_table_full_name,
+        target_table_full_name
+    FROM system.access.table_lineage
+    WHERE event_time >= current_date() - INTERVAL {query_log_duration} DAYS
+        AND source_table_full_name IS NOT NULL
+        AND target_table_full_name IS NOT NULL
+    GROUP BY source_table_full_name, target_table_full_name
+    """
+)
+
+UNITY_CATALOG_COLUMN_LINEAGE = textwrap.dedent(
+    """
+    SELECT
+        source_table_full_name,
+        source_column_name,
+        target_table_full_name,
+        target_column_name
+    FROM system.access.column_lineage
+    WHERE event_time >= current_date() - INTERVAL {query_log_duration} DAYS
+        AND source_table_full_name IS NOT NULL
+        AND target_table_full_name IS NOT NULL
+        AND source_column_name IS NOT NULL
+        AND target_column_name IS NOT NULL
+    GROUP BY
+        source_table_full_name,
+        source_column_name,
+        target_table_full_name,
+        target_column_name
+    """
+)
+
+UNITY_CATALOG_EXTERNAL_TABLES = textwrap.dedent(
+    """
+    SELECT
+        table_catalog,
+        table_schema,
+        table_name,
+        storage_path
+    FROM system.information_schema.tables
+    WHERE table_type = 'EXTERNAL'
+        AND storage_path IS NOT NULL
+    """
+)
+
+UNITY_CATALOG_TEST_TABLE_LINEAGE = textwrap.dedent(
+    """
+    SELECT COUNT(*) as count
+    FROM system.access.table_lineage
+    WHERE 1=0
+    """
+)
+
+UNITY_CATALOG_TEST_COLUMN_LINEAGE = textwrap.dedent(
+    """
+    SELECT COUNT(*) as count
+    FROM system.access.column_lineage
+    WHERE 1=0
+    """
+)

@@ -13,11 +13,18 @@
 
 import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
 import { ThemeColors } from '@openmetadata/ui-core-components';
-import { act, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
 import { mockDashboardEntityDetails } from './mocks/DashboardSummary.mock';
+import { mockDomainEntityDetails } from './mocks/DomainSummary.mock';
 import { mockMlModelEntityDetails } from './mocks/MlModelSummary.mock';
 import { mockPipelineEntityDetails } from './mocks/PipelineSummary.mock';
 import { mockTableEntityDetails } from './mocks/TableSummary.mock';
@@ -56,11 +63,69 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider theme={theme}>{children}</ThemeProvider>
 );
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityLinkFromType: jest.fn().mockImplementation(() => 'link'),
-  getEntityName: jest.fn().mockImplementation(() => 'displayName'),
-  getEntityOverview: jest.fn().mockImplementation(() => []),
-}));
+jest.mock('../../../utils/EntityUtils', () => {
+  const LINEAGE_TABS_SET = new Set([
+    'apiEndpoint',
+    'chart',
+    'container',
+    'dashboard',
+    'dashboardDataModel',
+    'directory',
+    'mlmodel',
+    'pipeline',
+    'searchIndex',
+    'table',
+    'topic',
+  ]);
+  const SCHEMA_TABS_SET = new Set([
+    'apiCollection',
+    'apiEndpoint',
+    'container',
+    'dashboard',
+    'dashboardDataModel',
+    'database',
+    'databaseSchema',
+    'pipeline',
+    'searchIndex',
+    'table',
+    'topic',
+  ]);
+  const CUSTOM_PROPERTIES_TABS_SET = new Set([
+    'apiCollection',
+    'apiEndpoint',
+    'chart',
+    'container',
+    'dashboard',
+    'dashboardDataModel',
+    'database',
+    'databaseSchema',
+    'dataProduct',
+    'directory',
+    'domain',
+    'file',
+    'glossaryTerm',
+    'metric',
+    'mlmodel',
+    'pipeline',
+    'searchIndex',
+    'spreadsheet',
+    'storedProcedure',
+    'table',
+    'topic',
+    'worksheet',
+  ]);
+
+  return {
+    getEntityLinkFromType: jest.fn().mockImplementation(() => 'link'),
+    getEntityName: jest.fn().mockImplementation(() => 'displayName'),
+    getEntityOverview: jest.fn().mockImplementation(() => []),
+    hasLineageTab: jest.fn((entityType) => LINEAGE_TABS_SET.has(entityType)),
+    hasSchemaTab: jest.fn((entityType) => SCHEMA_TABS_SET.has(entityType)),
+    hasCustomPropertiesTab: jest.fn((entityType) =>
+      CUSTOM_PROPERTIES_TABS_SET.has(entityType)
+    ),
+  };
+});
 jest.mock('../../../utils/StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   stringToHTML: jest.fn(),
@@ -127,6 +192,40 @@ jest.mock('../../../utils/SearchClassBase', () => ({
     getEntityIcon: jest.fn().mockReturnValue(<span>Icon</span>),
     getEntitySummaryComponent: jest.fn().mockReturnValue(null),
   },
+}));
+
+const mockOnDisplayNameUpdate = jest.fn();
+
+jest.mock('../../common/EntityTitleSection/EntityTitleSection', () => ({
+  EntityTitleSection: jest.fn().mockImplementation((props) => (
+    <div data-testid="entity-title-section">
+      <span data-testid="entity-display-name">
+        {props.entityDisplayName ??
+          props.entityDetails?.displayName ??
+          props.entityDetails?.name}
+      </span>
+      {props.hasEditPermission && props.entityType && props.entityDetails?.id && (
+        <button
+          data-testid="edit-displayName-button"
+          onClick={() => {
+            if (props.onDisplayNameUpdate) {
+              props.onDisplayNameUpdate('Updated Display Name');
+              mockOnDisplayNameUpdate('Updated Display Name');
+            }
+          }}>
+          Edit
+        </button>
+      )}
+    </div>
+  )),
+}));
+
+const mockGetTableDetailsByFQN = jest.fn();
+
+jest.mock('../../../rest/tableAPI', () => ({
+  getTableDetailsByFQN: (...args: unknown[]) =>
+    mockGetTableDetailsByFQN(...args),
+  patchTableDetails: jest.fn(),
 }));
 
 describe('EntitySummaryPanel component tests', () => {
@@ -254,6 +353,27 @@ describe('EntitySummaryPanel component tests', () => {
     const chartSummary = screen.getByTestId('ChartSummary');
 
     expect(chartSummary).toBeInTheDocument();
+  });
+
+  it('should render for domain data without requesting invalid domains field', async () => {
+    const { container } = await act(async () => {
+      return render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockDomainEntityDetails,
+              entityType: EntityType.DOMAIN,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />,
+        { wrapper: Wrapper }
+      );
+    });
+
+    expect(
+      container.querySelector('.entity-summary-panel-container')
+    ).toBeInTheDocument();
   });
 
   it('should render drawer header when isSideDrawer is true', async () => {
@@ -654,6 +774,239 @@ describe('EntitySummaryPanel component tests', () => {
 
       expect(loaders.length).toBeGreaterThan(0);
       expect(mockGetEntityPermission).toHaveBeenCalled();
+    });
+  });
+
+  describe('Display Name Update in Drawer Mode', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockOnDisplayNameUpdate.mockClear();
+      mockGetTableDetailsByFQN.mockResolvedValue({
+        ...mockTableEntityDetails,
+        displayName: 'Fetched Display Name',
+        owners: [],
+        domains: [],
+        tags: [],
+      });
+    });
+
+    it('should render EntityTitleSection with edit button when isSideDrawer is true and has edit permission', async () => {
+      (
+        usePermissionProvider().getEntityPermission as jest.Mock
+      ).mockResolvedValue({
+        ViewBasic: true,
+        EditDisplayName: true,
+      });
+
+      await act(async () => {
+        render(
+          <EntitySummaryPanel
+            isSideDrawer
+            entityDetails={{
+              details: {
+                ...mockTableEntityDetails,
+                id: 'test-table-id',
+                entityType: EntityType.TABLE,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      const entityTitleSection = screen.getByTestId('entity-title-section');
+
+      expect(entityTitleSection).toBeInTheDocument();
+
+      const editButton = screen.queryByTestId('edit-displayName-button');
+
+      expect(editButton).toBeInTheDocument();
+    });
+
+    it('should not render edit button when user lacks EditDisplayName permission', async () => {
+      (
+        usePermissionProvider().getEntityPermission as jest.Mock
+      ).mockResolvedValue({
+        ViewBasic: true,
+        EditDisplayName: false,
+      });
+
+      await act(async () => {
+        render(
+          <EntitySummaryPanel
+            isSideDrawer
+            entityDetails={{
+              details: {
+                ...mockTableEntityDetails,
+                id: 'test-table-id',
+                entityType: EntityType.TABLE,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      const editButton = screen.queryByTestId('edit-displayName-button');
+
+      expect(editButton).not.toBeInTheDocument();
+    });
+
+    it('should call onDisplayNameUpdate callback when display name is updated', async () => {
+      (
+        usePermissionProvider().getEntityPermission as jest.Mock
+      ).mockResolvedValue({
+        ViewBasic: true,
+        EditDisplayName: true,
+      });
+
+      await act(async () => {
+        render(
+          <EntitySummaryPanel
+            isSideDrawer
+            entityDetails={{
+              details: {
+                ...mockTableEntityDetails,
+                id: 'test-table-id',
+                entityType: EntityType.TABLE,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      const editButton = screen.getByTestId('edit-displayName-button');
+
+      await act(async () => {
+        fireEvent.click(editButton);
+      });
+
+      expect(mockOnDisplayNameUpdate).toHaveBeenCalledWith(
+        'Updated Display Name'
+      );
+    });
+
+    it('should display updated displayName after update', async () => {
+      (
+        usePermissionProvider().getEntityPermission as jest.Mock
+      ).mockResolvedValue({
+        ViewBasic: true,
+        EditDisplayName: true,
+      });
+
+      mockGetTableDetailsByFQN.mockResolvedValue({
+        ...mockTableEntityDetails,
+        displayName: 'Initial Display Name',
+        owners: [],
+        domains: [],
+        tags: [],
+      });
+
+      await act(async () => {
+        render(
+          <EntitySummaryPanel
+            isSideDrawer
+            entityDetails={{
+              details: {
+                ...mockTableEntityDetails,
+                id: 'test-table-id',
+                displayName: 'Initial Display Name',
+                entityType: EntityType.TABLE,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      await waitFor(() => {
+        const displayNameElement = screen.getByTestId('entity-display-name');
+
+        expect(displayNameElement).toBeInTheDocument();
+      });
+
+      const editButton = screen.getByTestId('edit-displayName-button');
+
+      await act(async () => {
+        fireEvent.click(editButton);
+      });
+
+      await waitFor(() => {
+        const displayNameElement = screen.getByTestId('entity-display-name');
+
+        expect(displayNameElement).toHaveTextContent('Updated Display Name');
+      });
+    });
+
+    it('should render entity-header-title testId in drawer mode', async () => {
+      await act(async () => {
+        render(
+          <EntitySummaryPanel
+            isSideDrawer
+            entityDetails={{
+              details: {
+                ...mockTableEntityDetails,
+                id: 'test-table-id',
+                entityType: EntityType.TABLE,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      const entityTitleSection = screen.getByTestId('entity-title-section');
+
+      expect(entityTitleSection).toBeInTheDocument();
+    });
+
+    it('should pass entityDisplayName from entityData to EntityTitleSection', async () => {
+      const mockEntityData = {
+        ...mockTableEntityDetails,
+        displayName: 'EntityData Display Name',
+        owners: [],
+        domains: [],
+        tags: [],
+      };
+
+      mockGetTableDetailsByFQN.mockResolvedValue(mockEntityData);
+
+      (
+        usePermissionProvider().getEntityPermission as jest.Mock
+      ).mockResolvedValue({
+        ViewBasic: true,
+        EditDisplayName: true,
+      });
+
+      await act(async () => {
+        render(
+          <EntitySummaryPanel
+            isSideDrawer
+            entityDetails={{
+              details: {
+                ...mockTableEntityDetails,
+                id: 'test-table-id',
+                displayName: 'Original Display Name',
+                entityType: EntityType.TABLE,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      await waitFor(() => {
+        const displayNameElement = screen.getByTestId('entity-display-name');
+
+        expect(displayNameElement).toHaveTextContent('EntityData Display Name');
+      });
     });
   });
 });

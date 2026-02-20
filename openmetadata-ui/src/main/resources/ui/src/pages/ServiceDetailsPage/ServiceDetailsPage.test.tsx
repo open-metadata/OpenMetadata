@@ -21,6 +21,7 @@ import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrev
 import { TabsLabelProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { TestConnectionProps } from '../../components/common/TestConnection/TestConnection.interface';
 import { DataAssetsHeaderProps } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ServiceInsightsTabProps } from '../../components/ServiceInsights/ServiceInsightsTab.interface';
 import { ROUTES } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
@@ -52,6 +53,7 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
+import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { getCountLabel, shouldTestConnection } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -307,6 +309,11 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
       .mockImplementation(() =>
         Promise.resolve({ ViewAll: true, EditAll: true, Create: true })
       ),
+    permissions: {
+      database: { ViewAll: true, EditAll: true },
+      dashboard: { ViewAll: true, EditAll: true },
+      pipeline: { ViewAll: true, EditAll: true },
+    },
   })),
 }));
 
@@ -545,6 +552,7 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => ({
 
 jest.mock('../../utils/PermissionsUtils', () => ({
   DEFAULT_ENTITY_PERMISSION: { ViewAll: false, EditAll: false },
+  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
 }));
 
 // Additional utility mocks
@@ -585,6 +593,17 @@ describe('ServiceDetailsPage', () => {
       );
 
       expect(screen.getByTestId('loader')).toBeInTheDocument();
+    });
+
+    it('should pass service name as pageTitle to PageLayoutV1', async () => {
+      await renderComponent();
+
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: 'Test Service',
+        }),
+        expect.anything()
+      );
     });
 
     it('should render service details when loaded', async () => {
@@ -655,6 +674,11 @@ describe('ServiceDetailsPage', () => {
 
       (usePermissionProvider as jest.Mock).mockImplementation(() => ({
         getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
+        permissions: {
+          database: { ViewAll: true, EditAll: true },
+          dashboard: { ViewAll: true, EditAll: true },
+          pipeline: { ViewAll: true, EditAll: true },
+        },
       }));
 
       await renderComponent();
@@ -837,6 +861,42 @@ describe('ServiceDetailsPage', () => {
       await waitFor(() => {
         expect(getDatabases).toHaveBeenCalled();
       });
+    });
+
+    it('should include usageSummary in database fields when ViewUsage is allowed', async () => {
+      (getPrioritizedViewPermission as jest.Mock).mockReturnValue(true);
+      (getDatabases as jest.Mock).mockResolvedValue({
+        data: [{ id: 'db1', name: 'Database 1' }],
+        paging: { total: 1 },
+      });
+
+      await renderComponent();
+
+      await waitFor(() => {
+        expect(getDatabases).toHaveBeenCalled();
+      });
+
+      const fields = (getDatabases as jest.Mock).mock.calls[0][1];
+
+      expect(fields).toContain('usageSummary');
+    });
+
+    it('should exclude usageSummary from database fields when ViewUsage is denied', async () => {
+      (getPrioritizedViewPermission as jest.Mock).mockReturnValue(false);
+      (getDatabases as jest.Mock).mockResolvedValue({
+        data: [{ id: 'db1', name: 'Database 1' }],
+        paging: { total: 1 },
+      });
+
+      await renderComponent();
+
+      await waitFor(() => {
+        expect(getDatabases).toHaveBeenCalled();
+      });
+
+      const fields = (getDatabases as jest.Mock).mock.calls[0][1];
+
+      expect(fields).not.toContain('usageSummary');
     });
 
     it('should fetch topics for messaging service', async () => {
@@ -1354,6 +1414,11 @@ describe('ServiceDetailsPage', () => {
 
       (usePermissionProvider as jest.Mock).mockImplementation(() => ({
         getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
+        permissions: {
+          database: {},
+          dashboard: {},
+          pipeline: {},
+        },
       }));
 
       await renderComponent();

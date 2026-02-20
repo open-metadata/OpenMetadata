@@ -43,6 +43,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.invalid
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParentCount;
 import static org.openmetadata.service.util.EntityUtil.*;
 
+import com.google.gson.Gson;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -64,6 +65,8 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
@@ -99,6 +102,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -138,7 +142,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public void setFields(Team team, Fields fields) {
+  public void setFields(Team team, Fields fields, RelationIncludes relationIncludes) {
     team.setUsers(fields.contains("users") ? getUsers(team) : team.getUsers());
     team.setOwns(fields.contains("owns") ? getOwns(team) : team.getOwns());
     team.setDefaultRoles(
@@ -379,6 +383,7 @@ public class TeamRepository extends EntityRepository<Team> {
   public void prepare(Team team, boolean update) {
     populateParents(team); // Validate parents
     populateChildren(team); // Validate children
+    validateHierarchy(team); // Validate hierarchy for circular dependency
     validateUsers(team.getUsers());
     validateRoles(team.getDefaultRoles());
     validatePolicies(team.getPolicies());
@@ -474,13 +479,11 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void storeEntity(Team team, boolean update) {
-    // Relationships and fields such as href are derived and not stored as part of json
     List<EntityReference> users = team.getUsers();
     List<EntityReference> defaultRoles = team.getDefaultRoles();
     List<EntityReference> parents = team.getParents();
     List<EntityReference> policies = team.getPolicies();
 
-    // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
     team.withUsers(null)
         .withDefaultRoles(null)
         .withParents(null)
@@ -489,11 +492,53 @@ public class TeamRepository extends EntityRepository<Team> {
 
     store(team, update);
 
-    // Restore the relationships
     team.withUsers(users)
         .withDefaultRoles(defaultRoles)
         .withParents(parents)
         .withPolicies(policies);
+  }
+
+  @Override
+  public void storeEntities(List<Team> entities) {
+    List<Team> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Team team : entities) {
+      List<EntityReference> users = team.getUsers();
+      List<EntityReference> defaultRoles = team.getDefaultRoles();
+      List<EntityReference> parents = team.getParents();
+      List<EntityReference> policies = team.getPolicies();
+
+      team.withUsers(null)
+          .withDefaultRoles(null)
+          .withParents(null)
+          .withPolicies(null)
+          .withInheritedRoles(null);
+
+      String jsonCopy = gson.toJson(team);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Team.class));
+
+      team.withUsers(users)
+          .withDefaultRoles(defaultRoles)
+          .withParents(parents)
+          .withPolicies(policies);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  /**
+   * Used during CSV import to clear relationships before re-establishing them.
+   * Only clears relationships that ARE in the CSV and will be re-added by storeRelationships().
+   * Relationships NOT in CSV (e.g., users, policies) are preserved to avoid data loss.
+   */
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Team> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Team::getId).toList();
+    deleteFromMany(ids, Entity.TEAM, Relationship.HAS, Entity.ROLE);
+    deleteToMany(ids, Entity.TEAM, Relationship.PARENT_OF, Entity.TEAM);
+    deleteFromMany(ids, Entity.TEAM, Relationship.PARENT_OF, Entity.TEAM);
   }
 
   @Override
@@ -570,16 +615,35 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public String exportToCsv(String parentTeam, String user, boolean recursive) throws IOException {
+    return exportToCsv(parentTeam, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String parentTeam, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     Team team = getByName(null, parentTeam, Fields.EMPTY_FIELDS); // Validate team name
-    return new TeamCsv(team, user).exportCsv();
+    return new TeamCsv(team, user).exportCsv(callback);
   }
 
   @Override
   public CsvImportResult importFromCsv(
       String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    return importFromCsv(name, csv, dryRun, user, recursive, (CsvImportProgressCallback) null);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
     Team team = getByName(null, name, Fields.EMPTY_FIELDS); // Validate team name
     TeamCsv teamCsv = new TeamCsv(team, user);
-    return teamCsv.importCsv(csv, dryRun);
+    return teamCsv.importCsv(csv, dryRun, callback);
   }
 
   private List<EntityReference> getInheritedRoles(Team team) {
@@ -733,16 +797,25 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   protected List<EntityReference> getChildren(Team team) {
-    return getChildren(team.getId());
+    return getChildren(team.getId(), NON_DELETED);
+  }
+
+  @Override
+  protected List<EntityReference> getChildren(Team team, Include include) {
+    return getChildren(team.getId(), include);
   }
 
   protected List<EntityReference> getChildren(UUID teamId) {
+    return getChildren(teamId, NON_DELETED);
+  }
+
+  protected List<EntityReference> getChildren(UUID teamId, Include include) {
     if (teamId.equals(
         organization.getId())) { // For organization all the parentless teams are children
       List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId);
       return EntityUtil.populateEntityReferencesById(EntityUtil.strToIds(children), Entity.TEAM);
     }
-    return findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
+    return findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM, include);
   }
 
   private Integer getChildrenCount(Team team) {
@@ -1028,11 +1101,39 @@ public class TeamRepository extends EntityRepository<Team> {
               .withDefaultRoles(getEntityReferences(printer, csvRecord, 7, ROLE))
               .withPolicies(getEntityReferences(printer, csvRecord, 8, POLICY));
 
+      // Pre-track the entity so getParents can find it for circular dependency detection
+      if (processRecord) {
+        dryRunCreatedEntities.put(team.getName(), team);
+      }
+
       // Field 5 - parent teams
       getParents(printer, csvRecord, team);
+
       if (processRecord) {
         createEntity(printer, csvRecord, team);
       }
+    }
+
+    @Override
+    protected void createEntity(CSVPrinter resultsPrinter, CSVRecord csvRecord, Team entity)
+        throws IOException {
+
+      // Validate hierarchy now that entity is pre-tracked
+      if (processRecord) {
+        TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
+        try {
+          repository.validateForDryRun(entity, dryRunCreatedEntities);
+        } catch (Exception ex) {
+          importFailure(resultsPrinter, ex.getMessage(), csvRecord);
+          processRecord = false;
+          // Remove from dryRunCreatedEntities since validation failed
+          dryRunCreatedEntities.remove(entity.getName());
+          return; // Don't proceed with creation
+        }
+      }
+
+      // Now call the parent method for normal processing
+      super.createEntity(resultsPrinter, csvRecord, entity);
     }
 
     @Override
@@ -1106,10 +1207,14 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     public String exportCsv() throws IOException {
+      return exportCsv((CsvExportProgressCallback) null);
+    }
+
+    public String exportCsv(CsvExportProgressCallback callback) throws IOException {
       TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
       final Fields fields = repository.getFields("owners,defaultRoles,parents,policies");
       return exportCsv(
-          listTeams(repository, team.getFullyQualifiedName(), new ArrayList<>(), fields));
+          listTeams(repository, team.getFullyQualifiedName(), new ArrayList<>(), fields), callback);
     }
   }
 
@@ -1255,5 +1360,138 @@ public class TeamRepository extends EntityRepository<Team> {
           updatedPolicies,
           false);
     }
+  }
+
+  /**
+   * Validate hierarchy to avoid circular references A -> B -> A.
+   */
+  private void validateHierarchy(Team team) {
+    if (listOrEmpty(team.getParents()).isEmpty()) {
+      return;
+    }
+
+    // Check if any parent causes a circular dependency
+    for (EntityReference parent : team.getParents()) {
+      // 1. Self-reference check
+      if (parent.getId().equals(team.getId())) {
+        throw new IllegalArgumentException(
+            String.format("Invalid hierarchy: Team '%s' cannot be its own parent", team.getName()));
+      }
+
+      // 2. Initial circular reference check (check if the proposed parent is already a child)
+      // Team --PARENT_OF--> Child. We want to find Children.
+      // Relationship: from:Team, to:Child.
+      // findTo(fromId=Team) gets the Children.
+      List<EntityReference> children = findTo(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
+      for (EntityReference child : listOrEmpty(children)) {
+        if (child.getId().equals(parent.getId())) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Circular reference detected: Team '%s' is already a child of '%s'.",
+                  parent.getName(), team.getName()));
+        }
+      }
+
+      // 3. Deep circular reference check by traversing up the parent chain of the NEW parent
+      Set<UUID> visited = new HashSet<>();
+      visited.add(team.getId());
+      visited.add(parent.getId());
+
+      checkCircularReference(parent.getId(), visited, team.getName());
+    }
+  }
+
+  private void checkCircularReference(
+      UUID currentTeamId, Set<UUID> visited, String originalTeamName) {
+    // Traverse up from the current parent to see if we reach the original team
+    // Team relationship direction: Parent --(PARENT_OF)--> Child(currentTeamId).
+    // We want the Parent.
+    // findFrom(toId=currentTeamId) gets the Parents.
+    List<EntityReference> parents = findFrom(currentTeamId, TEAM, Relationship.PARENT_OF, TEAM);
+
+    for (EntityReference parent : listOrEmpty(parents)) {
+      // Check Name match to handle potential ID mismatch during import (New Object vs DB Object)
+      if (parent.getName().equals(originalTeamName) || visited.contains(parent.getId())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Circular reference detected in hierarchy for Team '%s'. The parent relationship creates a loop.",
+                originalTeamName));
+      }
+
+      visited.add(parent.getId());
+      checkCircularReference(parent.getId(), visited, originalTeamName);
+    }
+  }
+
+  /**
+   * Validate hierarchy during Dry Run. This is critical for CSV imports where entities might not
+   * exist in DB yet but are in the batch.
+   */
+  public void validateForDryRun(Team team, Map<String, Team> dryRunCreatedEntities) {
+    if (listOrEmpty(team.getParents()).isEmpty()) {
+      return;
+    }
+
+    for (EntityReference parentRef : team.getParents()) {
+      // 1. Self Check by Name (since ID might be new)
+      if (parentRef.getName().equals(team.getName())) {
+        throw new IllegalArgumentException(
+            String.format("Invalid hierarchy: Team '%s' cannot be its own parent", team.getName()));
+      }
+
+      // 2. Check in DryRun Entities (In-Memory check for the CSV batch)
+      checkCircularReferenceInDryRun(
+          team.getName(),
+          parentRef.getName(),
+          dryRunCreatedEntities,
+          new HashSet<>(Set.of(team.getName())));
+    }
+  }
+
+  private void checkCircularReferenceInDryRun(
+      String originalTeamName,
+      String currentParentName,
+      Map<String, Team> dryRunMap,
+      Set<String> visited) {
+    if (visited.contains(currentParentName)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Circular reference detected in CSV: Team '%s' participates in a loop involving '%s'.",
+              originalTeamName, currentParentName));
+    }
+    visited.add(currentParentName);
+
+    // If the parent is being created in this batch, using strict FQN or lenient name match
+    Team parentTeamInCsv = findInDryRunMap(currentParentName, dryRunMap);
+
+    if (parentTeamInCsv != null) {
+      for (EntityReference grandParent : listOrEmpty(parentTeamInCsv.getParents())) {
+        checkCircularReferenceInDryRun(
+            originalTeamName, grandParent.getName(), dryRunMap, new HashSet<>(visited));
+      }
+    } else {
+      Team dbTeam = findByNameOrNull(currentParentName, Include.NON_DELETED);
+      if (dbTeam != null) {
+        for (EntityReference parent : listOrEmpty(dbTeam.getParents())) {
+          checkCircularReferenceInDryRun(
+              originalTeamName, parent.getName(), dryRunMap, new HashSet<>(visited));
+        }
+      }
+    }
+  }
+
+  private Team findInDryRunMap(String name, Map<String, Team> dryRunMap) {
+    // 1. Try direct FQN match
+    if (dryRunMap.containsKey(name)) {
+      return dryRunMap.get(name);
+    }
+    // 2. Lenient match: check if any key ends with the name (handling "Org.Team" vs "Team")
+    // or if the entity name matches
+    for (Team t : dryRunMap.values()) {
+      if (t.getName().equals(name)) {
+        return t;
+      }
+    }
+    return null;
   }
 }

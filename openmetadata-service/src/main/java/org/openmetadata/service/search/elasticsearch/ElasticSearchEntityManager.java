@@ -5,7 +5,10 @@ import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_ENTITY_REL
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_LINEAGE;
 import static org.openmetadata.service.search.SearchClient.DELETE_COLUMN_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE_WHEN_NULL;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.UPDATE_CLASSIFICATION_TAG_FQN_BY_PREFIX_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_COLUMN_LINEAGE_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.UPDATE_DATA_PRODUCT_FQN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_FQN_PREFIX_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT;
 
@@ -23,7 +26,6 @@ import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
-import es.co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteResponse;
@@ -250,12 +252,10 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                 s ->
                                     s.script(
                                         script ->
-                                            script.inline(
-                                                inline ->
-                                                    inline
-                                                        .lang(ScriptLanguage.Painless)
-                                                        .source(scriptTxt)
-                                                        .params(convertToJsonDataMap(params))))))
+                                            script
+                                                .source(ss -> ss.scriptString(scriptTxt))
+                                                .lang(ScriptLanguage.Painless)
+                                                .params(convertToJsonDataMap(params)))))
                     .refresh(true));
 
     LOG.info(
@@ -287,12 +287,9 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                 .refresh(Refresh.True)
                 .script(
                     s ->
-                        s.inline(
-                            inline ->
-                                inline
-                                    .lang(ScriptLanguage.Painless)
-                                    .source(scriptTxt)
-                                    .params(Map.of()))),
+                        s.source(ss -> ss.scriptString(scriptTxt))
+                            .lang(ScriptLanguage.Painless)
+                            .params(Map.of())),
         Map.class);
     LOG.info(
         "Successfully soft deleted/restored entity in ElasticSearch for index: {}, docId: {}",
@@ -323,12 +320,9 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                     .query(q -> q.bool(boolQueryBuilder.build()))
                     .script(
                         s ->
-                            s.inline(
-                                inline ->
-                                    inline
-                                        .lang(ScriptLanguage.Painless)
-                                        .source(scriptTxt)
-                                        .params(Map.of())))
+                            s.source(ss -> ss.scriptString(scriptTxt))
+                                .lang(ScriptLanguage.Painless)
+                                .params(Map.of()))
                     .refresh(true));
 
     LOG.info(
@@ -364,12 +358,9 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                   .upsert(params)
                   .script(
                       s ->
-                          s.inline(
-                              inline ->
-                                  inline
-                                      .lang(ScriptLanguage.Painless)
-                                      .source(scriptTxt)
-                                      .params(params))),
+                          s.source(ss -> ss.scriptString(scriptTxt))
+                              .lang(ScriptLanguage.Painless)
+                              .params(params)),
           Map.class);
 
       LOG.info(
@@ -421,12 +412,9 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                       .operator(Operator.And)))
                   .script(
                       s ->
-                          s.inline(
-                              inline ->
-                                  inline
-                                      .lang(ScriptLanguage.Painless)
-                                      .source(updates.getKey())
-                                      .params(params)))
+                          s.source(ss -> ss.scriptString(updates.getKey()))
+                              .lang(ScriptLanguage.Painless)
+                              .params(params))
                   .refresh(true));
 
       LOG.info("Successfully updated children in ElasticSearch for index: {}", indexName);
@@ -460,12 +448,9 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                     .operator(Operator.And)))
                 .script(
                     s ->
-                        s.inline(
-                            inline ->
-                                inline
-                                    .lang(ScriptLanguage.Painless)
-                                    .source(updates.getKey())
-                                    .params(params)))
+                        s.source(ss -> ss.scriptString(updates.getKey()))
+                            .lang(ScriptLanguage.Painless)
+                            .params(params))
                 .refresh(true));
 
     LOG.info("Successfully updated children in ElasticSearch for indices: {}", indexNames);
@@ -529,12 +514,9 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                           .operator(Operator.And)))
                       .script(
                           s ->
-                              s.inline(
-                                  inline ->
-                                      inline
-                                          .lang(ScriptLanguage.Painless)
-                                          .source(ADD_UPDATE_ENTITY_RELATIONSHIP)
-                                          .params(params)))
+                              s.source(ss -> ss.scriptString(ADD_UPDATE_ENTITY_RELATIONSHIP))
+                                  .lang(ScriptLanguage.Painless)
+                                  .params(params))
                       .refresh(true));
 
       LOG.info(
@@ -600,11 +582,9 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                       .query(prefixQuery)
                       .script(
                           s ->
-                              s.inline(
-                                  i ->
-                                      i.lang(ScriptLanguage.Painless)
-                                          .source(UPDATE_FQN_PREFIX_SCRIPT)
-                                          .params(params)))
+                              s.source(ss -> ss.scriptString(UPDATE_FQN_PREFIX_SCRIPT))
+                                  .lang(ScriptLanguage.Painless)
+                                  .params(params))
                       .refresh(true));
 
       LOG.info("Successfully propagated FQN updates for parent FQN: {}", oldParentFQN);
@@ -648,12 +628,9 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                         .operator(Operator.And)))
                     .script(
                         s ->
-                            s.inline(
-                                inline ->
-                                    inline
-                                        .lang(ScriptLanguage.Painless)
-                                        .source(ADD_UPDATE_LINEAGE)
-                                        .params(params)))
+                            s.source(ss -> ss.scriptString(ADD_UPDATE_LINEAGE))
+                                .lang(ScriptLanguage.Painless)
+                                .params(params))
                     .refresh(true));
 
     LOG.info("Successfully updated lineage in ElasticSearch for index: {}", indexName);
@@ -676,19 +653,21 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    // Build the range query
+    // Build the range query using untyped range for flexible field types
     Query query =
         Query.of(
             q ->
                 q.range(
-                    r -> {
-                      RangeQuery.Builder builder = new RangeQuery.Builder().field(fieldName);
-                      if (gt != null) builder.gt(JsonData.of(gt));
-                      if (gte != null) builder.gte(JsonData.of(gte));
-                      if (lt != null) builder.lt(JsonData.of(lt));
-                      if (lte != null) builder.lte(JsonData.of(lte));
-                      return builder;
-                    }));
+                    r ->
+                        r.untyped(
+                            u -> {
+                              u.field(fieldName);
+                              if (gt != null) u.gt(JsonData.of(String.valueOf(gt)));
+                              if (gte != null) u.gte(JsonData.of(String.valueOf(gte)));
+                              if (lt != null) u.lt(JsonData.of(String.valueOf(lt)));
+                              if (lte != null) u.lte(JsonData.of(String.valueOf(lte)));
+                              return u;
+                            })));
 
     // Execute delete-by-query with refresh
     DeleteByQueryResponse response =
@@ -724,19 +703,21 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    // Build the range query
+    // Build the range query using untyped range for flexible field types
     Query rangeQuery =
         Query.of(
             q ->
                 q.range(
-                    r -> {
-                      RangeQuery.Builder builder = new RangeQuery.Builder().field(rangeFieldName);
-                      if (gt != null) builder.gt(JsonData.of(gt));
-                      if (gte != null) builder.gte(JsonData.of(gte));
-                      if (lt != null) builder.lt(JsonData.of(lt));
-                      if (lte != null) builder.lte(JsonData.of(lte));
-                      return builder;
-                    }));
+                    r ->
+                        r.untyped(
+                            u -> {
+                              u.field(rangeFieldName);
+                              if (gt != null) u.gt(JsonData.of(String.valueOf(gt)));
+                              if (gte != null) u.gte(JsonData.of(String.valueOf(gte)));
+                              if (lt != null) u.lt(JsonData.of(String.valueOf(lt)));
+                              if (lte != null) u.lte(JsonData.of(String.valueOf(lte)));
+                              return u;
+                            })));
 
     // Build the term query
     Query termQuery = Query.of(q -> q.term(t -> t.field(termKey).value(FieldValue.of(termValue))));
@@ -781,11 +762,9 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .script(
                           s ->
-                              s.inline(
-                                  i ->
-                                      i.lang(ScriptLanguage.Painless)
-                                          .source(UPDATE_COLUMN_LINEAGE_SCRIPT)
-                                          .params(params)))
+                              s.source(ss -> ss.scriptString(UPDATE_COLUMN_LINEAGE_SCRIPT))
+                                  .lang(ScriptLanguage.Painless)
+                                  .params(params))
                       .refresh(true));
 
       LOG.info(
@@ -825,11 +804,9 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .script(
                           s ->
-                              s.inline(
-                                  i ->
-                                      i.lang(ScriptLanguage.Painless)
-                                          .source(DELETE_COLUMN_LINEAGE_SCRIPT)
-                                          .params(params)))
+                              s.source(ss -> ss.scriptString(DELETE_COLUMN_LINEAGE_SCRIPT))
+                                  .lang(ScriptLanguage.Painless)
+                                  .params(params))
                       .refresh(true));
 
       LOG.info(
@@ -876,11 +853,12 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                       .query(prefixQuery)
                       .script(
                           s ->
-                              s.inline(
-                                  i ->
-                                      i.lang(ScriptLanguage.Painless)
-                                          .source(UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT)
-                                          .params(params)))
+                              s.source(
+                                      ss ->
+                                          ss.scriptString(
+                                              UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT))
+                                  .lang(ScriptLanguage.Painless)
+                                  .params(params))
                       .refresh(true));
 
       LOG.info(
@@ -899,6 +877,372 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
 
     } catch (Exception e) {
       LOG.error("Error while updating glossary term FQN: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateClassificationTagByFqnPrefix(
+      String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition) {
+    if (!isClientAvailable) {
+      LOG.error(
+          "Elasticsearch client is not available. Cannot update classification tag by FQN prefix.");
+      return;
+    }
+
+    try {
+      Query prefixQuery =
+          Query.of(q -> q.prefix(p -> p.field(prefixFieldCondition).value(oldFqnPrefix)));
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldParentFQN", JsonData.of(oldFqnPrefix),
+              "newParentFQN", JsonData.of(newFqnPrefix));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                      .query(prefixQuery)
+                      .script(
+                          s ->
+                              s.source(
+                                      ss ->
+                                          ss.scriptString(
+                                              UPDATE_CLASSIFICATION_TAG_FQN_BY_PREFIX_SCRIPT))
+                                  .lang(ScriptLanguage.Painless)
+                                  .params(params))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully updated classification tag FQN for index: {}, updated: {}",
+          indexName,
+          updateResponse.updated());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update classification tag FQN: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating classification tag FQN: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateDataProductReferences(String oldFqn, String newFqn) {
+    if (!isClientAvailable) {
+      LOG.error("Elasticsearch client is not available. Cannot update data product references.");
+      return;
+    }
+
+    try {
+      // Query for all documents that have this data product in their dataProducts array
+      // Note: dataProducts is not mapped as nested, so we use a simple term query
+      Query termQuery =
+          Query.of(q -> q.term(t -> t.field("dataProducts.fullyQualifiedName").value(oldFqn)));
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldFqn", JsonData.of(oldFqn),
+              "newFqn", JsonData.of(newFqn));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                      .query(termQuery)
+                      .script(
+                          s ->
+                              s.source(ss -> ss.scriptString(UPDATE_DATA_PRODUCT_FQN_SCRIPT))
+                                  .lang(ScriptLanguage.Painless)
+                                  .params(params))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully updated data product references from {} to {}, updated: {}",
+          oldFqn,
+          newFqn,
+          updateResponse.updated());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update data product references: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating data product references: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateAssetDomainsForDataProduct(
+      String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (!isClientAvailable) {
+      LOG.error("Elasticsearch client is not available. Cannot update asset domains.");
+      return;
+    }
+
+    try {
+      // Query for all documents that have this data product in their dataProducts array
+      Query termQuery =
+          Query.of(
+              q -> q.term(t -> t.field("dataProducts.fullyQualifiedName").value(dataProductFqn)));
+
+      // Convert new domains to a format suitable for the script
+      List<Map<String, Object>> newDomainsData = new ArrayList<>();
+      for (EntityReference domain : newDomains) {
+        Map<String, Object> domainMap = new HashMap<>();
+        domainMap.put("id", domain.getId().toString());
+        domainMap.put("type", domain.getType());
+        domainMap.put("name", domain.getName());
+        domainMap.put("fullyQualifiedName", domain.getFullyQualifiedName());
+        if (domain.getDisplayName() != null) {
+          domainMap.put("displayName", domain.getDisplayName());
+        }
+        newDomainsData.add(domainMap);
+      }
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldDomainFqns", JsonData.of(oldDomainFqns),
+              "newDomains", JsonData.of(newDomainsData));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                      .query(termQuery)
+                      .script(
+                          s ->
+                              s.source(
+                                      ss ->
+                                          ss.scriptString(SearchClient.UPDATE_ASSET_DOMAIN_SCRIPT))
+                                  .lang(ScriptLanguage.Painless)
+                                  .params(params))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully updated asset domains for data product {}: removed {}, added {}, updated {} documents",
+          dataProductFqn,
+          oldDomainFqns,
+          newDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
+          updateResponse.updated());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update asset domains: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating asset domains for data product: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateAssetDomainsByIds(
+      List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (!isClientAvailable) {
+      LOG.error("Elasticsearch client is not available. Cannot update asset domains.");
+      return;
+    }
+
+    if (assetIds == null || assetIds.isEmpty()) {
+      LOG.debug("No asset IDs provided for domain update.");
+      return;
+    }
+
+    try {
+      List<String> idValues = assetIds.stream().map(UUID::toString).toList();
+      String indexName = Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+      LOG.info(
+          "Updating asset domains by IDs: index={}, idCount={}, ids={}",
+          indexName,
+          idValues.size(),
+          idValues);
+      Query idsQuery = Query.of(q -> q.ids(i -> i.values(idValues)));
+
+      List<Map<String, Object>> newDomainsData = new ArrayList<>();
+      for (EntityReference domain : newDomains) {
+        Map<String, Object> domainMap = new HashMap<>();
+        domainMap.put("id", domain.getId().toString());
+        domainMap.put("type", domain.getType());
+        domainMap.put("name", domain.getName());
+        domainMap.put("fullyQualifiedName", domain.getFullyQualifiedName());
+        if (domain.getDisplayName() != null) {
+          domainMap.put("displayName", domain.getDisplayName());
+        }
+        newDomainsData.add(domainMap);
+      }
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldDomainFqns", JsonData.of(oldDomainFqns),
+              "newDomains", JsonData.of(newDomainsData));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(indexName)
+                      .query(idsQuery)
+                      .script(
+                          s ->
+                              s.source(
+                                      ss ->
+                                          ss.scriptString(
+                                              SearchClient.UPDATE_ASSET_DOMAIN_FQN_SCRIPT))
+                                  .lang(ScriptLanguage.Painless)
+                                  .params(params))
+                      .refresh(true));
+
+      LOG.info(
+          "Updated asset domain FQNs by IDs: requested={}, total={}, updated={}, noops={}, newFqns={}",
+          assetIds.size(),
+          updateResponse.total(),
+          updateResponse.updated(),
+          updateResponse.noops(),
+          oldDomainFqns,
+          newDomains.stream().map(EntityReference::getFullyQualifiedName).toList());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update asset domains: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating asset domains by IDs: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    if (!isClientAvailable) {
+      LOG.error("Elasticsearch client is not available. Cannot update domain FQNs.");
+      return;
+    }
+
+    try {
+      String domainIndexName = Entity.getSearchRepository().getIndexOrAliasName(Entity.DOMAIN);
+      LOG.info(
+          "Updating domain FQNs by prefix: index={}, oldFqn={}, newFqn={}",
+          domainIndexName,
+          oldFqn,
+          newFqn);
+
+      Query prefixQuery = Query.of(q -> q.prefix(p -> p.field("fullyQualifiedName").value(oldFqn)));
+      Query entityTypeQuery =
+          Query.of(q -> q.term(t -> t.field("entityType.keyword").value("domain")));
+      Query combinedQuery = Query.of(q -> q.bool(b -> b.must(prefixQuery, entityTypeQuery)));
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldFqn", JsonData.of(oldFqn),
+              "newFqn", JsonData.of(newFqn));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(domainIndexName)
+                      .query(combinedQuery)
+                      .script(
+                          s ->
+                              s.source(
+                                      ss ->
+                                          ss.scriptString(
+                                              SearchClient.UPDATE_DOMAIN_FQN_BY_PREFIX_SCRIPT))
+                                  .lang(ScriptLanguage.Painless)
+                                  .params(params))
+                      .refresh(true));
+
+      LOG.info(
+          "Updated domain FQNs: total={}, updated={}, noops={}",
+          updateResponse.total(),
+          updateResponse.updated(),
+          updateResponse.noops());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update domain FQNs: {}", errorMessage);
+      }
+    } catch (Exception e) {
+      LOG.error("Error while updating domain FQNs by prefix: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    if (!isClientAvailable) {
+      LOG.error("Elasticsearch client is not available. Cannot update asset domain FQNs.");
+      return;
+    }
+
+    try {
+      String indexName = Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS);
+      LOG.info(
+          "Updating asset domain FQNs by prefix in search index: index={}, oldFqn={}, newFqn={}",
+          indexName,
+          oldFqn,
+          newFqn);
+
+      // Use match_all query - the script will filter and update only matching documents
+      Query matchAllQuery = Query.of(q -> q.matchAll(m -> m));
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldFqn", JsonData.of(oldFqn),
+              "newFqn", JsonData.of(newFqn));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(indexName)
+                      .query(matchAllQuery)
+                      .script(
+                          s ->
+                              s.source(
+                                      ss ->
+                                          ss.scriptString(
+                                              SearchClient
+                                                  .UPDATE_ASSET_DOMAIN_FQN_BY_PREFIX_SCRIPT))
+                                  .lang(ScriptLanguage.Painless)
+                                  .params(params))
+                      .refresh(true));
+
+      LOG.info(
+          "Updated asset domain FQNs in search: total={}, updated={}, noops={}",
+          updateResponse.total(),
+          updateResponse.updated(),
+          updateResponse.noops());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update asset domain FQNs: {}", errorMessage);
+      }
+    } catch (Exception e) {
+      LOG.error("Error while updating asset domain FQNs by prefix: {}", e.getMessage(), e);
     }
   }
 

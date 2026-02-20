@@ -14,12 +14,21 @@ Test mysql using the topology
 """
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.database.mysql.metadata import MysqlSource
+from metadata.ingestion.source.database.mysql.models import MysqlRoutine
 
 mock_mysql_config = {
     "source": {
@@ -56,6 +65,29 @@ mock_mysql_config = {
     },
 }
 
+MOCK_DATABASE_SERVICE = DatabaseService(
+    id="85811038-099a-11ed-861d-0242ac120002",
+    name="mysql_source",
+    connection=DatabaseConnection(),
+    serviceType=DatabaseServiceType.Mysql,
+)
+
+MOCK_DATABASE_SCHEMA = DatabaseSchema(
+    id="2aaa012e-099a-11ed-861d-0242ac120056",
+    name="test_schema",
+    fullyQualifiedName="mysql_source.test_db.test_schema",
+    displayName="test_schema",
+    description="",
+    service=EntityReference(
+        id="85811038-099a-11ed-861d-0242ac120002",
+        type="databaseService",
+    ),
+    database=EntityReference(
+        id="85811038-099a-11ed-861d-0242ac120099",
+        type="default",
+    ),
+)
+
 
 class MysqlUnitTest(TestCase):
     @patch(
@@ -70,6 +102,14 @@ class MysqlUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
+        self.mysql_source.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.mysql_source.context.get().__dict__["database"] = "test_db"
+        self.mysql_source.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
+
     @patch("sqlalchemy.engine.base.Engine")
     @patch(
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
@@ -77,3 +117,59 @@ class MysqlUnitTest(TestCase):
     def test_close_connection(self, engine, connection):
         connection.return_value = True
         self.mysql_source.close()
+
+    @patch("sqlalchemy.engine.base.Engine")
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
+    )
+    def test_get_stored_procedures(self, mock_engine, connection):
+        """Test fetching stored procedures"""
+        connection.return_value = True
+        # Mock the database results
+        mock_results = [
+            MagicMock(
+                _mapping={
+                    "routine_name": "test_procedure",
+                    "schema_name": "test_schema",
+                    "definition": "BEGIN SELECT 1; END",
+                    "routine_type": "PROCEDURE",
+                    "description": "Test stored procedure",
+                }
+            ),
+            MagicMock(
+                _mapping={
+                    "routine_name": "test_function",
+                    "schema_name": "test_schema",
+                    "definition": "BEGIN RETURN 1; END",
+                    "routine_type": "FUNCTION",
+                    "description": "Test function",
+                }
+            ),
+            MagicMock(
+                _mapping={
+                    "routine_name": "exclude_procedure",
+                    "schema_name": "test_schema",
+                    "definition": "BEGIN RETURN 1; END",
+                    "routine_type": "PROCEDURE",
+                    "description": "Test exclude",
+                }
+            ),
+        ]
+
+        mock_engine.execute.return_value.all.return_value = mock_results
+        self.mysql_source.engine = mock_engine
+
+        # Enable stored procedures in config
+        self.mysql_source.source_config.includeStoredProcedures = True
+        self.mysql_source.source_config.storedProcedureFilterPattern = FilterPattern(
+            excludes=["exclude_procedure"]
+        )
+
+        # Get stored procedures
+        stored_procedures = list(self.mysql_source.get_stored_procedures())
+
+        # Verify results
+        self.assertEqual(len(stored_procedures), 2)
+        self.assertIsInstance(stored_procedures[0], MysqlRoutine)
+        self.assertEqual(stored_procedures[0].name, "test_procedure")
+        self.assertEqual(stored_procedures[0].routine_type, "PROCEDURE")

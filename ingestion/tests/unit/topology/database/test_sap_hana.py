@@ -452,6 +452,33 @@ def test_analytic_view_formula_column_source_mapping() -> None:
         expected_source = "CUSTOMER_ID" if col_name == "CUSTOMER_ID_1" else col_name
         assert col_mappings[0].sources == [expected_source]
 
+    # Test that formula columns use actual source column names, not attribute IDs
+    # This verifies the fix for formula columns that reference renamed attributes
+    # For example, if formula has "CUSTOMER_ID_1" (attribute ID), the source should be
+    # "CUSTOMER_ID" (actual column name from CUSTOMER_DATA table), not "CUSTOMER_ID_1"
+    formula_mappings = [
+        mapping for mapping in parsed_lineage.mappings if mapping.formula
+    ]
+    for mapping in formula_mappings:
+        # Verify that sources are actual table column names, not intermediate attribute IDs
+        for source_col in mapping.sources:
+            # Source columns should match columns in the source tables
+            if mapping.data_source == ds_orders:
+                assert source_col in orders_columns, (
+                    f"Source column '{source_col}' should be an actual column from ORDERS table, "
+                    f"not an attribute ID"
+                )
+            elif mapping.data_source == ds_customer:
+                # Map back to actual source column names
+                actual_customer_cols = [
+                    "CUSTOMER_ID" if c == "CUSTOMER_ID_1" else c
+                    for c in customer_columns
+                ]
+                assert source_col in actual_customer_cols, (
+                    f"Source column '{source_col}' should be an actual column from CUSTOMER_DATA table, "
+                    f"not an attribute ID"
+                )
+
 
 def test_formula_columns_reference_correct_layer():
     """Test that formula columns reference the correct calculation view layer"""
@@ -909,3 +936,216 @@ def test_sap_hana_lineage_filter_pattern() -> None:
 
         assert len(processed_views) == 2
         assert len(source.status.filtered) == 2
+
+
+def test_renamed_attribute_in_calculated_column() -> None:
+    """
+    Test that calculated columns correctly use source column names when referencing renamed attributes.
+
+    This is a regression test for the issue where:
+    - An attribute has id="EMAIL_1" but maps to columnName="EMAIL"
+    - A calculated attribute formula references "EMAIL_1"
+    - The lineage should use "EMAIL" (actual source column) not "EMAIL_1" (attribute ID)
+
+    Bug: Previously, when exploding formulas, we used the attribute ID from the formula
+         directly as the source column name, causing lookup failures.
+    Fix: Now we use mapping.sources from the base lineage, which contains the actual
+         source column names after traversing datasources.
+    """
+    with open(
+        RESOURCES_DIR / "custom" / "cdata_calculation_view_renamed_attribute.xml"
+    ) as file:
+        cdata = file.read()
+        parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
+        parsed_lineage: ParsedLineage = parse_fn(cdata)
+
+    # Find the calculated attribute EMAIL that references EMAIL_1 in its formula
+    email_calc_mappings = [
+        mapping
+        for mapping in parsed_lineage.mappings
+        if mapping.target == "EMAIL" and mapping.formula
+    ]
+
+    assert len(email_calc_mappings) > 0, "Should find calculated EMAIL attribute"
+
+    # Verify the formula references EMAIL_1 (the attribute ID)
+    email_mapping = email_calc_mappings[0]
+    assert (
+        "EMAIL_1" in email_mapping.formula
+    ), "Formula should reference EMAIL_1 attribute ID"
+
+    # CRITICAL: Verify that sources use actual column names from datasource, not attribute IDs
+    # The source should be "EMAIL" (from CV_SALESOVERVIEW), not "EMAIL_1"
+    # This is the core fix: _explode_formula now uses mapping.sources instead of formula references
+    assert "EMAIL" in email_mapping.sources, (
+        "Source should be 'EMAIL' (actual column from datasource), not 'EMAIL_1' (attribute ID). "
+        "This verifies the fix where formulas now use mapping.sources which contains actual "
+        "source column names after datasource traversal."
+    )
+
+    # Verify EMAIL_1 is NOT in sources (it's just the attribute ID, not a real column)
+    assert "EMAIL_1" not in email_mapping.sources, (
+        "Source should NOT contain 'EMAIL_1' - that's the attribute ID in the view, "
+        "not the actual column name from the source table"
+    )
+
+    # Verify the datasource is correct (CV_SALESOVERVIEW_1 is an alias to CV_SALESOVERVIEW in the XML)
+    ds_salesoverview_1 = DataSource(
+        name="CV_SALESOVERVIEW_1",
+        location="/my-package/calculationviews/CV_SALESOVERVIEW",
+        source_type=ViewType.CALCULATION_VIEW,
+    )
+    assert (
+        email_mapping.data_source == ds_salesoverview_1
+    ), "Calculated EMAIL should trace back to CV_SALESOVERVIEW_1"
+
+
+def test_calculation_view_end_to_end_lineage() -> None:
+    """
+    Comprehensive end-to-end test validating complete lineage for all columns in a calculation view.
+
+    This test ensures that for every column in the final output:
+    1. A lineage mapping exists
+    2. Source columns are correctly identified
+    3. Datasources are properly traced
+    4. Formula columns reference actual source columns, not intermediate attribute IDs
+    5. Constant mappings are handled correctly
+
+    Uses cdata_calculation_view.xml which has:
+    - AT_SFLIGHT (Attribute View) with columns from SFLIGHT table
+    - AN_SBOOK (Analytic View) with columns from SBOOK table
+    - Aggregation, Projection, and Union views with mappings
+    - Formula column USAGE_PCT = SEATSOCC_ALL / SEATSMAX_ALL
+    """
+    with open(RESOURCES_DIR / "cdata_calculation_view.xml") as file:
+        cdata = file.read()
+        parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
+        parsed_lineage: ParsedLineage = parse_fn(cdata)
+
+    # Expected datasources - lineage goes to the immediate source views
+    ds_at_sflight = DataSource(
+        name="AT_SFLIGHT",
+        location="/SFLIGHT.MODELING/attributeviews/AT_SFLIGHT",
+        source_type=ViewType.ATTRIBUTE_VIEW,
+    )
+    ds_an_sbook = DataSource(
+        name="AN_SBOOK",
+        location="/SFLIGHT.MODELING/analyticviews/AN_SBOOK",
+        source_type=ViewType.ANALYTIC_VIEW,
+    )
+
+    # Expected final output columns from logicalModel
+    expected_columns = {
+        "MANDT",
+        "CARRID",
+        "CARRNAME",
+        "FLDATE",
+        "CONNID",
+        "SEATSMAX_ALL",
+        "SEATSOCC_ALL",
+        "PAYMENTSUM",
+        "RETURN_INDEX",
+        "USAGE_PCT",  # Calculated measure
+    }
+
+    # Get all target columns from parsed lineage
+    actual_targets = {mapping.target for mapping in parsed_lineage.mappings}
+
+    # Verify all expected columns have lineage
+    assert expected_columns == actual_targets, (
+        f"Missing columns: {expected_columns - actual_targets}, "
+        f"Extra columns: {actual_targets - expected_columns}"
+    )
+
+    # Verify correct datasources are identified
+    assert parsed_lineage.sources == {
+        ds_at_sflight,
+        ds_an_sbook,
+    }, f"Expected sources: AT_SFLIGHT and AN_SBOOK, got: {parsed_lineage.sources}"
+
+    # Test specific column mappings end-to-end
+
+    # 1. MANDT - comes from both AT_SFLIGHT and AN_SBOOK
+    mandt_mappings = [m for m in parsed_lineage.mappings if m.target == "MANDT"]
+    mandt_sources = {m.data_source for m in mandt_mappings}
+    assert ds_at_sflight in mandt_sources, "MANDT should come from AT_SFLIGHT"
+    assert ds_an_sbook in mandt_sources, "MANDT should come from AN_SBOOK"
+    assert all(
+        m.sources == ["MANDT"] for m in mandt_mappings
+    ), "MANDT should map directly without renaming"
+
+    # 2. CARRNAME - comes only from AT_SFLIGHT
+    carrname_mappings = [m for m in parsed_lineage.mappings if m.target == "CARRNAME"]
+    assert len(carrname_mappings) == 1, "CARRNAME should have exactly one source"
+    assert carrname_mappings[0].data_source == ds_at_sflight
+    assert carrname_mappings[0].sources == ["CARRNAME"]
+
+    # 3. SEATSMAX_ALL - comes from AT_SFLIGHT
+    seatsmax_mappings = [
+        m for m in parsed_lineage.mappings if m.target == "SEATSMAX_ALL"
+    ]
+    assert len(seatsmax_mappings) == 1
+    assert seatsmax_mappings[0].data_source == ds_at_sflight
+    assert seatsmax_mappings[0].sources == ["SEATSMAX_ALL"]
+
+    # 4. USAGE_PCT - calculated formula column (CRITICAL TEST)
+    usage_pct_mappings = [m for m in parsed_lineage.mappings if m.target == "USAGE_PCT"]
+
+    # Should have mappings from AT_SFLIGHT (formula references SEATSOCC_ALL and SEATSMAX_ALL)
+    usage_pct_at_sflight = [
+        m for m in usage_pct_mappings if m.data_source == ds_at_sflight
+    ]
+    assert (
+        len(usage_pct_at_sflight) >= 1
+    ), f"USAGE_PCT should have at least one lineage from AT_SFLIGHT, got {len(usage_pct_at_sflight)}"
+
+    # CRITICAL: Verify formula mappings use actual source column names from AT_SFLIGHT
+    # The formula references SEATSOCC_ALL and SEATSMAX_ALL
+    formula_mappings = [m for m in usage_pct_at_sflight if m.formula is not None]
+    assert len(formula_mappings) >= 1, "Should have at least one mapping with formula"
+
+    # Collect all source columns from formula mappings
+    all_formula_sources = set()
+    for m in formula_mappings:
+        all_formula_sources.update(m.sources)
+
+    # The formula should reference both columns
+    assert (
+        "SEATSOCC_ALL" in all_formula_sources
+    ), f"Formula should reference SEATSOCC_ALL, got: {all_formula_sources}"
+    assert (
+        "SEATSMAX_ALL" in all_formula_sources
+    ), f"Formula should reference SEATSMAX_ALL, got: {all_formula_sources}"
+
+    # Verify formula text is preserved in at least one mapping
+    assert any(
+        '"SEATSOCC_ALL"' in m.formula and '"SEATSMAX_ALL"' in m.formula
+        for m in formula_mappings
+    ), "Formula text should be preserved with both column references"
+
+    # Verify no mappings reference intermediate calculation view names as sources
+    # All sources should be actual table column names
+    for mapping in parsed_lineage.mappings:
+        for source_col in mapping.sources:
+            # Source column names should not contain calculation view IDs
+            assert not source_col.startswith(
+                "Aggregation_"
+            ), f"Source should be table column, not calculation view: {source_col}"
+            assert not source_col.startswith(
+                "Projection_"
+            ), f"Source should be table column, not calculation view: {source_col}"
+            assert not source_col.startswith(
+                "Union_"
+            ), f"Source should be table column, not calculation view: {source_col}"
+
+    # Verify datasources are real tables or views, not logical intermediate views
+    for source in parsed_lineage.sources:
+        assert source.source_type in [
+            ViewType.DATA_BASE_TABLE,
+            ViewType.ATTRIBUTE_VIEW,
+            ViewType.ANALYTIC_VIEW,
+            ViewType.CALCULATION_VIEW,
+        ], f"Datasource should be a real entity, not LOGICAL: {source}"
+        assert (
+            source.source_type != ViewType.LOGICAL
+        ), f"Final lineage should not contain LOGICAL datasources: {source}"

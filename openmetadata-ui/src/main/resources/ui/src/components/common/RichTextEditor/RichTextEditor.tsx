@@ -36,6 +36,7 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
       className,
       style,
       placeHolder,
+      onFocus,
       onTextChange,
       extensionOptions,
       showMenu = true,
@@ -78,6 +79,7 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
           showMenu={showMenu}
           editable={!readonly}
           onChange={onChangeHandler}
+          onFocus={onFocus}
         />
       </div>
     );

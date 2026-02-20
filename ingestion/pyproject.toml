@@ -40,11 +40,18 @@ metadata = "metadata.cmd:metadata"
 provider_info = "airflow_provider_openmetadata:get_provider_config"
 
 [tool.coverage.run]
-source = [
-    "env/lib/python3.10/site-packages/metadata"
-]
+source = ["metadata"]
 relative_files = true
 branch = true
+
+# Remap installed-package paths back to the source tree so that
+# ``coverage combine`` (in a lightweight CI job without the package
+# installed) produces paths that resolve to the checkout.
+[tool.coverage.paths]
+metadata = [
+    "src/metadata",
+    "*/site-packages/metadata",
+]
 
 [tool.coverage.report]
 omit = [
@@ -54,6 +61,12 @@ omit = [
     "ingestion/src/*",
     "*/src/metadata/ingestion/source/database/sample_*"
 ]
+
+[tool.coverage.xml]
+output = "ci-coverage.xml"
+
+[tool.coverage.html]
+show_contexts = true
 
 [tool.mypy]
 mypy_path = "src"
@@ -71,7 +84,8 @@ disallow_incomplete_defs = false
 
 [tool.pytest.ini_options]
 markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "xdist_group(name): group tests to run on the same xdist worker"
 ]
 
 # Skip tests that are known to fail or are not ready to run until issue #21736 is solved

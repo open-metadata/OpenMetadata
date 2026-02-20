@@ -6,6 +6,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.USER;
 
+import com.google.gson.Gson;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -31,6 +32,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -66,7 +68,7 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
-  public void setFields(Query entity, EntityUtil.Fields fields) {
+  public void setFields(Query entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     entity.setQueryUsedIn(
         fields.contains(QUERY_USED_IN_FIELD) ? getQueryUsage(entity) : entity.getQueryUsedIn());
     entity.withUsers(fields.contains("users") ? getQueryUsers(entity) : entity.getUsers());
@@ -213,6 +215,35 @@ public class QueryRepository extends EntityRepository<Query> {
 
     // Restore relationships
     queryEntity.withQueryUsedIn(queryUsage).withUsers(queryUsers);
+  }
+
+  @Override
+  public void storeEntities(List<Query> entities) {
+    List<Query> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (Query queryEntity : entities) {
+      List<EntityReference> queryUsage = queryEntity.getQueryUsedIn();
+      List<EntityReference> queryUsers = queryEntity.getUsers();
+
+      queryEntity.withQueryUsedIn(null).withUsers(null);
+
+      String jsonCopy = gson.toJson(queryEntity);
+      entitiesToStore.add(gson.fromJson(jsonCopy, Query.class));
+
+      queryEntity.withQueryUsedIn(queryUsage).withUsers(queryUsers);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<Query> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(Query::getId).toList();
+    deleteToMany(ids, Entity.QUERY, Relationship.USES, Entity.USER);
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteFromMany(ids, Entity.QUERY, Relationship.MENTIONED_IN, null);
   }
 
   @Override

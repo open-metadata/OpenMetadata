@@ -74,9 +74,22 @@ class ElasticsearchSource(SearchServiceSource):
         """
         Get List of all search index
         """
-        index_list = self.client.indices.get_alias(expand_wildcards="open") or {}
-        for index in index_list.keys():
-            yield self.client.indices.get(index=str(index))
+        try:
+            index_list = self.client.indices.get_alias(expand_wildcards="open") or {}
+            for index in index_list.keys():
+                try:
+                    yield self.client.indices.get(index=str(index))
+                except Exception as exc:
+                    logger.warning(
+                        f"Failed to retrieve metadata for index '{index}': {exc}. "
+                        "Skipping this index. This may indicate a corrupted or inaccessible index."
+                    )
+        except Exception as exc:
+            logger.error(
+                f"Failed to retrieve index list from Elasticsearch: {exc}. "
+                "Please check your Elasticsearch connection and cluster health."
+            )
+            raise exc
 
     def get_search_index_name(self, search_index_details: dict) -> Optional[str]:
         """
@@ -117,34 +130,55 @@ class ElasticsearchSource(SearchServiceSource):
         Method to Get Sample Data of Search Index Entity
         """
         if self.source_config.includeSampleData and self.context.get().search_index:
-            sample_data = self.client.search(
-                index=self.context.get().search_index,
-                q=WILDCARD_SEARCH,
-                size=self.source_config.sampleSize,
-                request_timeout=self.service_connection.connectionTimeoutSecs,
-            )
-
-            search_index_fqn = fqn.build(
-                metadata=self.metadata,
-                entity_type=SearchIndex,
-                service_name=self.context.get().search_service,
-                search_index_name=self.context.get().search_index,
-            )
-            search_index_entity = self.metadata.get_by_name(
-                entity=SearchIndex, fqn=search_index_fqn
-            )
-
-            yield Either(
-                right=OMetaIndexSampleData(
-                    entity=search_index_entity,
-                    data=SearchIndexSampleData(
-                        messages=[
-                            str(message)
-                            for message in sample_data.get("hits", {}).get("hits", [])
-                        ]
-                    ),
+            try:
+                sample_data = self.client.search(
+                    index=self.context.get().search_index,
+                    q=WILDCARD_SEARCH,
+                    size=self.source_config.sampleSize,
+                    request_timeout=self.service_connection.connectionTimeoutSecs,
                 )
-            )
+
+                search_index_fqn = fqn.build(
+                    metadata=self.metadata,
+                    entity_type=SearchIndex,
+                    service_name=self.context.get().search_service,
+                    search_index_name=self.context.get().search_index,
+                )
+                search_index_entity = self.metadata.get_by_name(
+                    entity=SearchIndex, fqn=search_index_fqn
+                )
+
+                if not search_index_entity:
+                    logger.error(
+                        f"Could not find search index entity with FQN: {search_index_fqn}. "
+                        "This may indicate a broken or missing index. "
+                        "Please verify the index exists and is properly configured in Elasticsearch."
+                    )
+                    return
+
+                yield Either(
+                    right=OMetaIndexSampleData(
+                        entity=search_index_entity,
+                        data=SearchIndexSampleData(
+                            messages=[
+                                str(message)
+                                for message in sample_data.get("hits", {}).get(
+                                    "hits", []
+                                )
+                            ]
+                        ),
+                    )
+                )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Failed to retrieve sample data from Elasticsearch index "
+                    f"'{self.context.get().search_index}': {exc}. "
+                    "This may indicate a broken or corrupted index. "
+                    "Consider recreating the index or checking Elasticsearch cluster health. "
+                    "You can also disable sample data collection by setting 'includeSampleData: false' "
+                    "in your ingestion configuration."
+                )
 
     def get_search_index_template_list(self) -> Iterable[dict]:
         """

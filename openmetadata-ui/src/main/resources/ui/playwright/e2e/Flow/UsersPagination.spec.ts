@@ -74,7 +74,7 @@ test.describe('Soft Delete User Pagination', () => {
 
     const nextButton = page.locator('[data-testid="next"]');
     const expectedUrlPattern =
-      /\/api\/v1\/users\?isBot=false&fields=profile%2Cteams%2Croles&limit=.*&isAdmin=false&after=.*?&include=deleted/;
+      /\/api\/v1\/users\?isBot=false&fields=profile%2Cteams%2Croles&limit=.*&isAdmin=false&include=deleted(&after=.*)?/;
 
     const paginatedResponsePromise = page.waitForResponse((response) => {
       const url = response.url();

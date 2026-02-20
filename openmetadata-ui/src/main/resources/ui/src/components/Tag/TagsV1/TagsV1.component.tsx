@@ -185,7 +185,12 @@ const TagsV1 = ({
         data-testid="tag-redirect-link"
         to={redirectLink}>
         <TagChip
-          icon={<AutomatedTag width={16} />}
+          icon={
+            <AutomatedTag
+              color={theme.palette.allShades.brand[900]}
+              width={16}
+            />
+          }
           label={tagName || ''}
           labelDataTestId={`tag-${tag.tagFQN}`}
           sx={{

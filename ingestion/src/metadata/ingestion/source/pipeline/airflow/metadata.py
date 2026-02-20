@@ -16,13 +16,14 @@ from collections import Counter, defaultdict
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
+from urllib.parse import quote
 
 from airflow.models import BaseOperator, DagRun, DagTag, TaskInstance
 from airflow.models.dag import DagModel
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.serialization.serialized_objects import SerializedDAG
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import join
+from sqlalchemy import and_, column, func, inspect, join
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -113,6 +114,7 @@ class OMTaskInstance(BaseModel):
     end_date: Optional[datetime]
 
 
+# pylint: disable=too-many-locals,too-many-nested-blocks,too-many-boolean-expressions
 class AirflowSource(PipelineServiceSource):
     """
     Implements the necessary methods ot extract
@@ -127,8 +129,73 @@ class AirflowSource(PipelineServiceSource):
         super().__init__(config, metadata)
         self.today = datetime.now().strftime("%Y-%m-%d")
         self._session = None
-        # Cache for observability data: {(dag_id, run_id): {pipeline_entity, table_fqns, dag_run}}
         self.observability_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
+
+        self._execution_date_column = None
+        self._is_remote_airflow_3 = None
+
+    @property
+    def is_remote_airflow_3(self):
+        """
+        Dynamically check if the remote Airflow instance is version 3.x
+        by inspecting the database schema.
+        """
+        if self._is_remote_airflow_3 is not None:
+            return self._is_remote_airflow_3
+
+        try:
+            inspector = inspect(self.session.bind)
+            tables = inspector.get_table_names()
+
+            # Airflow 3.x removed the 'task_instance' primary key column 'map_index'
+            # and uses 'run_id' instead of 'execution_date' more consistently
+            # Check for the presence of specific Airflow 3.x schema characteristics
+            if "dag_run" in tables:
+                columns = {col["name"] for col in inspector.get_columns("dag_run")}
+                # logical_date exists in both late 2.x and 3.x, but
+                # the absence of 'execution_date' is a strong indicator of 3.x
+                if "logical_date" in columns and "execution_date" not in columns:
+                    self._is_remote_airflow_3 = True
+                else:
+                    self._is_remote_airflow_3 = False
+            else:
+                # Fallback to False (assume Airflow 2.x) if we can't determine
+                self._is_remote_airflow_3 = False
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to detect remote Airflow version - {exc}. Assuming Airflow 2.x"
+            )
+            self._is_remote_airflow_3 = False
+
+        logger.info(
+            f"Detected remote Airflow version: {'3.x' if self._is_remote_airflow_3 else '2.x'}"
+        )
+        return self._is_remote_airflow_3
+
+    @property
+    def execution_date_column(self):
+        """
+        Dynamically check which column to use for execution date.
+        """
+        if self._execution_date_column:
+            return self._execution_date_column
+
+        try:
+            inspector = inspect(self.session.bind)
+            columns = [col["name"] for col in inspector.get_columns("dag_run")]
+            if "logical_date" in columns:
+                self._execution_date_column = "logical_date"
+            else:
+                self._execution_date_column = "execution_date"
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed to inspect dag_run table columns - {exc}. Fallback to execution_date"
+            )
+            self._execution_date_column = "execution_date"
+
+        return self._execution_date_column
 
     @classmethod
     def create(
@@ -192,24 +259,22 @@ class AirflowSource(PipelineServiceSource):
         Return the DagRuns of given dag
         """
         try:
-            # In Airflow 3.x, execution_date was renamed to logical_date
-            execution_date_column = (
-                DagRun.logical_date
-                if hasattr(DagRun, "logical_date")
-                else DagRun.execution_date
-            )
+            # The Airflow SDK is always v3.x (which has logical_date on the ORM model),
+            # but we may connect to Airflow 2.x databases (which have execution_date column).
+            # Use column() to reference the actual database column name regardless of ORM.
+            db_date_column = column(self.execution_date_column)
 
             dag_run_list = (
                 self.session.query(
                     DagRun.dag_id,
                     DagRun.run_id,
                     DagRun.queued_at,
-                    execution_date_column,
+                    db_date_column.label("date_value"),
                     DagRun.start_date,
                     DagRun.state,
                 )
                 .filter(DagRun.dag_id == dag_id)
-                .order_by(execution_date_column.desc())
+                .order_by(db_date_column.desc())
                 .limit(self.config.serviceConnection.root.config.numberOfStatus)
                 .all()
             )
@@ -220,27 +285,17 @@ class AirflowSource(PipelineServiceSource):
             # different Airflow versions
             dag_runs = []
             for elem in dag_run_dict:
-                # Get the execution/logical date value
-                date_value = (
-                    elem.get("logical_date")
-                    if "logical_date" in elem
-                    else elem.get("execution_date")
-                )
+                date_value = elem.get("date_value")
 
-                # Build kwargs based on Airflow version
+                # Build kwargs - always use logical_date since SDK is Airflow 3.x
                 kwargs = {
                     "dag_id": elem.get("dag_id"),
                     "run_id": elem.get("run_id"),
                     "queued_at": elem.get("queued_at"),
                     "start_date": elem.get("start_date"),
                     "state": elem.get("state"),
+                    "logical_date": date_value,
                 }
-
-                # Use logical_date for Airflow 3.x, execution_date for Airflow 2.x
-                if hasattr(DagRun, "logical_date"):
-                    kwargs["logical_date"] = date_value
-                else:
-                    kwargs["execution_date"] = date_value
 
                 dag_runs.append(DagRun(**kwargs))
 
@@ -336,13 +391,8 @@ class AirflowSource(PipelineServiceSource):
                         if task.task_id in self.context.get().task_names
                     ]
 
-                    # In Airflow 3.x, execution_date was renamed to logical_date
-                    execution_date = (
-                        dag_run.logical_date
-                        if hasattr(dag_run, "logical_date")
-                        and dag_run.logical_date is not None
-                        else dag_run.execution_date
-                    )
+                    # DagRun objects are built with logical_date (SDK is Airflow 3.x)
+                    execution_date = dag_run.logical_date
                     timestamp = datetime_to_ts(execution_date)
                     pipeline_status = PipelineStatus(
                         executionId=dag_run.run_id,
@@ -387,24 +437,56 @@ class AirflowSource(PipelineServiceSource):
             else SerializedDagModel.data  # For 2.2.5 and 2.1.4
         )
 
+        # Get the timestamp column for ordering (use last_updated if available, otherwise created_at)
+        timestamp_column = (
+            SerializedDagModel.last_updated
+            if hasattr(SerializedDagModel, "last_updated")
+            else SerializedDagModel.created_at
+        )
+
+        # Create subquery to get the latest timestamp for each DAG
+        # This handles cases where multiple versions exist in serialized_dag table
+        latest_dag_subquery = (
+            self.session.query(
+                SerializedDagModel.dag_id,
+                func.max(timestamp_column).label("max_timestamp"),
+            )
+            .group_by(SerializedDagModel.dag_id)
+            .subquery()
+        )
+
         # In Airflow 3.x, fileloc is not available on SerializedDagModel
         # We need to get it from DagModel instead
         if hasattr(SerializedDagModel, "fileloc"):
             # Airflow 2.x: fileloc is on SerializedDagModel
+            # Use tuple IN clause to get only the latest version of each DAG
             session_query = self.session.query(
                 SerializedDagModel.dag_id,
                 json_data_column,
                 SerializedDagModel.fileloc,
+            ).join(
+                latest_dag_subquery,
+                and_(
+                    SerializedDagModel.dag_id == latest_dag_subquery.c.dag_id,
+                    timestamp_column == latest_dag_subquery.c.max_timestamp,
+                ),
             )
         else:
             # Airflow 3.x: fileloc is only on DagModel, we need to join
-            session_query = self.session.query(
-                SerializedDagModel.dag_id,
-                json_data_column,
-                DagModel.fileloc,
-            ).select_from(
-                join(
-                    SerializedDagModel,
+            session_query = (
+                self.session.query(
+                    SerializedDagModel.dag_id,
+                    json_data_column,
+                    DagModel.fileloc,
+                )
+                .join(
+                    latest_dag_subquery,
+                    and_(
+                        SerializedDagModel.dag_id == latest_dag_subquery.c.dag_id,
+                        timestamp_column == latest_dag_subquery.c.max_timestamp,
+                    ),
+                )
+                .join(
                     DagModel,
                     SerializedDagModel.dag_id == DagModel.dag_id,
                 )
@@ -561,8 +643,12 @@ class AirflowSource(PipelineServiceSource):
                 name=task.task_id,
                 description=task.doc_md,
                 sourceUrl=SourceUrl(
-                    f"{clean_uri(host_port)}/taskinstance/list/"
-                    f"?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={task.task_id}"
+                    (
+                        f"{clean_uri(host_port)}/dags/{quote(dag.dag_id)}/tasks/{quote(task.task_id)}"
+                        if self.is_remote_airflow_3
+                        else f"{clean_uri(host_port)}/taskinstance/list/"
+                        f"?_flt_3_dag_id={quote(dag.dag_id)}&_flt_3_task_id={quote(task.task_id)}"
+                    )
                 ),
                 downstreamTasks=list(task.downstream_task_ids)
                 if task.downstream_task_ids
@@ -602,8 +688,11 @@ class AirflowSource(PipelineServiceSource):
         """
 
         try:
-            # Airflow uses /dags/dag_id/grid to show pipeline / dag
-            source_url = f"{clean_uri(self.service_connection.hostPort)}/dags/{pipeline_details.dag_id}/grid"
+            # Airflow 2.x uses /dags/dag_id/grid, Airflow 3.x uses /dags/dag_id
+            if self.is_remote_airflow_3:
+                source_url = f"{clean_uri(self.service_connection.hostPort)}/dags/{pipeline_details.dag_id}"
+            else:
+                source_url = f"{clean_uri(self.service_connection.hostPort)}/dags/{pipeline_details.dag_id}/grid"
             pipeline_state = self.get_pipeline_state(pipeline_details)
 
             pipeline_request = CreatePipelineRequest(
@@ -755,13 +844,19 @@ class AirflowSource(PipelineServiceSource):
                             yield Either(right=lineage)
                         else:
                             logger.warning(
-                                f"Could not find [{to_xlet.entity.__name__}] [{to_xlet.fqn}] from "
-                                f"[{pipeline_entity.fullyQualifiedName.root}] outlets"
+                                f"Lineage skipped: Outlet entity not found in OpenMetadata. "
+                                f"Entity type: [{to_xlet.entity.__name__}], "
+                                f"FQN: [{to_xlet.fqn}], "
+                                f"Pipeline: [{pipeline_entity.fullyQualifiedName.root}]. "
+                                f"Ensure the entity exists in OpenMetadata before running lineage ingestion."
                             )
                 else:
                     logger.warning(
-                        f"Could not find [{from_xlet.entity.__name__}] [{from_xlet.fqn}] from "
-                        f"[{pipeline_entity.fullyQualifiedName.root}] inlets"
+                        f"Lineage skipped: Inlet entity not found in OpenMetadata. "
+                        f"Entity type: [{from_xlet.entity.__name__}], "
+                        f"FQN: [{from_xlet.fqn}], "
+                        f"Pipeline: [{pipeline_entity.fullyQualifiedName.root}]. "
+                        f"Ensure the entity exists in OpenMetadata before running lineage ingestion."
                     )
 
         # Cache observability data for later use
@@ -785,12 +880,8 @@ class AirflowSource(PipelineServiceSource):
         schedule_interval: Optional[str] = None,
     ) -> PipelineObservability:
         """Build PipelineObservability object from DagRun data."""
-        # In Airflow 3.x, execution_date was renamed to logical_date
-        execution_date = (
-            dag_run.logical_date
-            if hasattr(dag_run, "logical_date") and dag_run.logical_date is not None
-            else dag_run.execution_date
-        )
+        # DagRun objects are built with logical_date (SDK is Airflow 3.x)
+        execution_date = dag_run.logical_date
 
         return PipelineObservability(
             pipeline=EntityReference(
@@ -869,7 +960,7 @@ class AirflowSource(PipelineServiceSource):
 
             for cache_key, cached_data in self.observability_cache.items():
                 try:
-                    dag_id, run_id = cache_key
+                    dag_id, _ = cache_key
 
                     # Skip current dag to avoid duplicates
                     if dag_id == pipeline_details.dag_id:

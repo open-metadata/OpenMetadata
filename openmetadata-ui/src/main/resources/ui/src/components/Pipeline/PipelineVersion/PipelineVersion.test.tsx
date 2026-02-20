@@ -74,6 +74,7 @@ jest.mock('react-router-dom', () => ({
     tab: 'pipeline',
   }),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
 
 jest.mock(
@@ -117,7 +118,10 @@ describe('PipelineVersion tests', () => {
   it('Should display Loader if isVersionLoading is true', async () => {
     await act(async () => {
       render(
-        <PipelineVersion {...pipelineVersionMockProps} isVersionLoading />
+        <PipelineVersion {...pipelineVersionMockProps} isVersionLoading />,
+        {
+          wrapper: MemoryRouter,
+        }
       );
     });
 

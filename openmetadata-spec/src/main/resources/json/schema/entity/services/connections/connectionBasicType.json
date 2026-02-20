@@ -141,13 +141,13 @@
         "config": {
           "oneOf": [
             {
-              "title": "Sample Data Storage Config",
-              "$ref": "#/definitions/dataStorageConfig"
-            },
-            {
               "title": "No Sample Data Storage Config",
               "type": "object",
               "additionalProperties": false
+            },
+            {
+              "title": "Sample Data Storage Config",
+              "$ref": "#/definitions/dataStorageConfig"
             }
           ]
         }

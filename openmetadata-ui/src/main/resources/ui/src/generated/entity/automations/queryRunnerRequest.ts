@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -35,9 +35,13 @@ export interface QueryRunnerRequest {
      */
     databaseSchema?: string;
     /**
-     * Optional value of the ingestion runner name responsible for running the test
+     * RUNTIME FIELD - Automatically injected by backend from admin
+     * QueryRunnerConfig.querySettings.maxResultSize. This is NOT user-configurable in the
+     * request. The backend fetches this value from the service's QueryRunnerConfig and injects
+     * it here for enforcement by the Python workflow. If query has LIMIT exceeding this value,
+     * an error is raised. If query has no LIMIT, one is automatically injected.
      */
-    ingestionRunner?: string;
+    maxResultSize?: number;
     /**
      * Query to be executed.
      */
@@ -64,4 +68,8 @@ export interface QueryRunnerRequest {
      * UUID of the user executing the query (extracted from JWT token in backend)
      */
     userId?: string;
+    /**
+     * Optional value of the workflow name responsible for running the test
+     */
+    workflowName?: string;
 }

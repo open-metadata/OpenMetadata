@@ -70,7 +70,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           ...entityDetails,
           extension: updatedExtension,
         };
-        await onUpdate(updatedData);
+        await onUpdate(updatedData, 'extension' as keyof ExtentionEntities[T]);
       }
     },
     [entityDetails, onUpdate]

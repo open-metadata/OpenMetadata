@@ -41,6 +41,11 @@
       "default": 300,
       "title": "Parsing Timeout Limit"
     },
+    "queryParserConfig": {
+      "title": "Query Parser Configuration",
+      "description": "Configuration for SQL query parser selection for lineage extraction.",
+      "$ref": "./parserconfig/queryParserConfig.json"
+    },
     "filterCondition": {
       "description": "Configuration the condition to filter the query history.",
       "type": "string",

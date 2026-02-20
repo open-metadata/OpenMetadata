@@ -95,7 +95,7 @@ class ColumnValuesToBeUniqueValidator(
         dimension_results = []
 
         try:
-            dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            dfs = self.runner
             unique_count_impl = Metrics.UNIQUE_COUNT(column).get_pandas_computation()
 
             dimension_aggregates = defaultdict(

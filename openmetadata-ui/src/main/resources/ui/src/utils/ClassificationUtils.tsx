@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tooltip as MUITooltip } from '@mui/material';
-import { Button, Space, Switch, Tooltip, Typography } from 'antd';
+import { Switch, Tooltip as MUITooltip } from '@mui/material';
+import { Button, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';

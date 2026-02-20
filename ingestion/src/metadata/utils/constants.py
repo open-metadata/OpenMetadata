@@ -178,3 +178,6 @@ NON_SQA_DATABASE_CONNECTIONS = (
     SapErpType.SapErp.value,
     SasType.SAS.value,
 )
+
+# Size Conversion
+BYTES_PER_MB = 1024 * 1024

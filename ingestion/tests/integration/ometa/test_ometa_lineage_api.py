@@ -12,14 +12,19 @@
 """
 OpenMetadata high-level API Lineage test
 """
-from unittest import TestCase
+import time
 
-from _openmetadata_testutils.ometa import int_admin_ometa
+import pytest
+
 from metadata.generated.schema.api.data.createAPICollection import (
     CreateAPICollectionRequest,
 )
 from metadata.generated.schema.api.data.createAPIEndpoint import (
     CreateAPIEndpointRequest,
+)
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createApiService import (
@@ -58,35 +63,88 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 
+from ..conftest import _safe_delete
 from ..integration_base import generate_name, get_create_entity, get_create_service
 
 
-class OMetaLineageTest(TestCase):
+def add_lineage_with_retry(metadata, data, retries=3, delay=1, **kwargs):
+    """Retry add_lineage to handle transient ES version conflicts (409).
+
+    When running tests in parallel (--dist loadfile), concurrent writes to the
+    same ES index shard (e.g. database_service_search_index) from other test
+    files can cause _update_by_query version conflicts during the server-side
+    extended lineage creation (addServiceLineage). The server returns 500,
+    and add_lineage() returns {"error": ...} instead of raising.
     """
-    Run this integration test with the local API available
-    Install the ingestion package before running the tests
-    """
+    for attempt in range(retries):
+        res = metadata.add_lineage(data=data, **kwargs)
+        if "error" not in res:
+            return res
+        if attempt < retries - 1:
+            time.sleep(delay)
+    return res
 
-    service_entity_id = None
 
-    metadata = int_admin_ometa()
+@pytest.fixture(scope="module")
+def lineage_database_service(metadata):
+    """Module-scoped database service for lineage tests."""
+    service_name = generate_name()
+    service_request = get_create_service(entity=DatabaseService, name=service_name)
+    service = metadata.create_or_update(data=service_request)
 
-    assert metadata.health_check()
+    yield service
 
-    db_service_name = generate_name()
-    pipeline_service_name = generate_name()
-    dashboard_service_name = generate_name()
-    api_service_name = generate_name()
-
-    db_service = get_create_service(entity=DatabaseService, name=db_service_name)
-    pipeline_service = get_create_service(
-        entity=PipelineService, name=pipeline_service_name
+    _safe_delete(
+        metadata,
+        entity=DatabaseService,
+        entity_id=service.id,
+        recursive=True,
+        hard_delete=True,
     )
-    dashboard_service = get_create_service(
-        entity=DashboardService, name=dashboard_service_name
+
+
+@pytest.fixture(scope="module")
+def lineage_pipeline_service(metadata):
+    """Module-scoped pipeline service for lineage tests."""
+    service_name = generate_name()
+    service_request = get_create_service(entity=PipelineService, name=service_name)
+    service = metadata.create_or_update(data=service_request)
+
+    yield service
+
+    _safe_delete(
+        metadata,
+        entity=PipelineService,
+        entity_id=service.id,
+        recursive=True,
+        hard_delete=True,
     )
-    api_service = CreateApiServiceRequest(
-        name=api_service_name,
+
+
+@pytest.fixture(scope="module")
+def lineage_dashboard_service(metadata):
+    """Module-scoped dashboard service for lineage tests."""
+    service_name = generate_name()
+    service_request = get_create_service(entity=DashboardService, name=service_name)
+    service = metadata.create_or_update(data=service_request)
+
+    yield service
+
+    _safe_delete(
+        metadata,
+        entity=DashboardService,
+        entity_id=service.id,
+        recursive=True,
+        hard_delete=True,
+    )
+
+
+@pytest.fixture(scope="module")
+def lineage_api_service(metadata):
+    """Module-scoped API service for lineage tests."""
+    service_name = generate_name()
+    service_request = CreateApiServiceRequest(
+        name=service_name,
         serviceType=ApiServiceType.Rest,
         connection=ApiConnection(
             config=RestConnection(
@@ -95,294 +153,283 @@ class OMetaLineageTest(TestCase):
             )
         ),
     )
+    service = metadata.create_or_update(data=service_request)
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        Prepare ingredients
-        """
+    yield service
 
-        cls.db_service_entity: DatabaseService = cls.metadata.create_or_update(
-            data=cls.db_service
-        )
-        cls.pipeline_service_entity: PipelineService = cls.metadata.create_or_update(
-            data=cls.pipeline_service
-        )
-        cls.dashboard_service_entity: DashboardService = cls.metadata.create_or_update(
-            data=cls.dashboard_service
-        )
-        cls.api_service_entity: ApiService = cls.metadata.create_or_update(
-            data=cls.api_service
-        )
+    _safe_delete(
+        metadata,
+        entity=ApiService,
+        entity_id=service.id,
+        recursive=True,
+        hard_delete=True,
+    )
 
-        create_db_entity: Database = cls.metadata.create_or_update(
-            data=get_create_entity(
-                entity=Database,
-                reference=cls.db_service_entity.fullyQualifiedName,
-                name=generate_name(),
-            )
-        )
 
-        cls.create_schema_entity = cls.metadata.create_or_update(
-            data=get_create_entity(
-                entity=DatabaseSchema,
-                reference=create_db_entity.fullyQualifiedName,
-                name=generate_name(),
-            )
-        )
+@pytest.fixture(scope="module")
+def lineage_database(metadata, lineage_database_service):
+    """Module-scoped database for lineage tests."""
+    database_request = CreateDatabaseRequest(
+        name=generate_name(),
+        service=lineage_database_service.fullyQualifiedName,
+    )
+    database = metadata.create_or_update(data=database_request)
 
-        cls.table1 = get_create_entity(
-            name=generate_name(),
-            entity=Table,
-            reference=cls.create_schema_entity.fullyQualifiedName,
-        )
+    yield database
 
-        cls.table1_entity = cls.metadata.create_or_update(data=cls.table1)
-        cls.table2 = get_create_entity(
-            name=generate_name(),
-            entity=Table,
-            reference=cls.create_schema_entity.fullyQualifiedName,
-        )
+    metadata.delete(entity=Database, entity_id=database.id, hard_delete=True)
 
-        cls.table2_entity = cls.metadata.create_or_update(data=cls.table2)
 
-        cls.pipeline = get_create_entity(
-            name=generate_name(),
-            entity=Pipeline,
-            reference=cls.pipeline_service_entity.fullyQualifiedName,
-        )
+@pytest.fixture(scope="module")
+def lineage_schema(metadata, lineage_database):
+    """Module-scoped schema for lineage tests."""
+    schema_request = CreateDatabaseSchemaRequest(
+        name=generate_name(),
+        database=lineage_database.fullyQualifiedName,
+    )
+    schema = metadata.create_or_update(data=schema_request)
 
-        cls.pipeline_entity = cls.metadata.create_or_update(data=cls.pipeline)
+    yield schema
 
-        cls.dashboard = get_create_entity(
-            name=generate_name(),
-            entity=Dashboard,
-            reference=cls.dashboard_service_entity.fullyQualifiedName,
-        )
-        cls.dashboard_entity = cls.metadata.create_or_update(data=cls.dashboard)
+    metadata.delete(
+        entity=DatabaseSchema, entity_id=schema.id, recursive=True, hard_delete=True
+    )
 
-        cls.dashboard_datamodel = get_create_entity(
-            name=generate_name(),
-            entity=DashboardDataModel,
-            reference=cls.dashboard_service_entity.fullyQualifiedName,
-        )
-        cls.dashboard_datamodel_entity = cls.metadata.create_or_update(
-            data=cls.dashboard_datamodel
-        )
 
-        # Create API Collection
-        cls.api_collection = CreateAPICollectionRequest(
-            name=generate_name(),
-            service=cls.api_service_entity.fullyQualifiedName,
-            endpointURL="https://petstore.swagger.io/v2/pet",
-        )
-        cls.api_collection_entity: APICollection = cls.metadata.create_or_update(
-            data=cls.api_collection
-        )
+@pytest.fixture(scope="module")
+def lineage_table1(metadata, lineage_schema):
+    """Module-scoped first table for lineage tests."""
+    table_request = get_create_entity(
+        name=generate_name(),
+        entity=Table,
+        reference=lineage_schema.fullyQualifiedName,
+    )
+    table = metadata.create_or_update(data=table_request)
 
-        # Create API Endpoint
-        cls.api_endpoint = CreateAPIEndpointRequest(
-            name=generate_name(),
-            apiCollection=cls.api_collection_entity.fullyQualifiedName,
-            endpointURL="https://petstore.swagger.io/v2/pet/{petId}",
-            requestMethod=ApiRequestMethod.GET,
-        )
-        cls.api_endpoint_entity: APIEndpoint = cls.metadata.create_or_update(
-            data=cls.api_endpoint
-        )
+    yield table
 
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Clean up
-        """
+    metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
 
-        db_service_id = str(
-            cls.metadata.get_by_name(
-                entity=DatabaseService, fqn=cls.db_service_name
-            ).id.root
-        )
 
-        pipeline_service_id = str(
-            cls.metadata.get_by_name(
-                entity=PipelineService, fqn=cls.pipeline_service_name
-            ).id.root
-        )
+@pytest.fixture(scope="module")
+def lineage_table2(metadata, lineage_schema):
+    """Module-scoped second table for lineage tests."""
+    table_request = get_create_entity(
+        name=generate_name(),
+        entity=Table,
+        reference=lineage_schema.fullyQualifiedName,
+    )
+    table = metadata.create_or_update(data=table_request)
 
-        dashboard_service_id = str(
-            cls.metadata.get_by_name(
-                entity=DashboardService, fqn=cls.dashboard_service_name
-            ).id.root
-        )
+    yield table
 
-        api_service_id = str(
-            cls.metadata.get_by_name(
-                entity=ApiService, fqn=cls.api_service_name
-            ).id.root
-        )
+    metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
 
-        cls.metadata.delete(
-            entity=PipelineService,
-            entity_id=pipeline_service_id,
-            recursive=True,
-            hard_delete=True,
-        )
-        cls.metadata.delete(
-            entity=DatabaseService,
-            entity_id=db_service_id,
-            recursive=True,
-            hard_delete=True,
-        )
-        cls.metadata.delete(
-            entity=DashboardService,
-            entity_id=dashboard_service_id,
-            recursive=True,
-            hard_delete=True,
-        )
-        cls.metadata.delete(
-            entity=ApiService,
-            entity_id=api_service_id,
-            recursive=True,
-            hard_delete=True,
-        )
 
-    def test_create(self):
+@pytest.fixture(scope="module")
+def lineage_pipeline(metadata, lineage_pipeline_service):
+    """Module-scoped pipeline for lineage tests."""
+    pipeline_request = get_create_entity(
+        name=generate_name(),
+        entity=Pipeline,
+        reference=lineage_pipeline_service.fullyQualifiedName,
+    )
+    pipeline = metadata.create_or_update(data=pipeline_request)
+
+    yield pipeline
+
+    metadata.delete(entity=Pipeline, entity_id=pipeline.id, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def lineage_dashboard(metadata, lineage_dashboard_service):
+    """Module-scoped dashboard for lineage tests."""
+    dashboard_request = get_create_entity(
+        name=generate_name(),
+        entity=Dashboard,
+        reference=lineage_dashboard_service.fullyQualifiedName,
+    )
+    dashboard = metadata.create_or_update(data=dashboard_request)
+
+    yield dashboard
+
+    metadata.delete(entity=Dashboard, entity_id=dashboard.id, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def lineage_dashboard_datamodel(metadata, lineage_dashboard_service):
+    """Module-scoped dashboard datamodel for lineage tests."""
+    datamodel_request = get_create_entity(
+        name=generate_name(),
+        entity=DashboardDataModel,
+        reference=lineage_dashboard_service.fullyQualifiedName,
+    )
+    datamodel = metadata.create_or_update(data=datamodel_request)
+
+    yield datamodel
+
+    metadata.delete(entity=DashboardDataModel, entity_id=datamodel.id, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def lineage_api_collection(metadata, lineage_api_service):
+    """Module-scoped API collection for lineage tests."""
+    collection_request = CreateAPICollectionRequest(
+        name=generate_name(),
+        service=lineage_api_service.fullyQualifiedName,
+        endpointURL="https://petstore.swagger.io/v2/pet",
+    )
+    collection = metadata.create_or_update(data=collection_request)
+
+    yield collection
+
+    metadata.delete(entity=APICollection, entity_id=collection.id, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def lineage_api_endpoint(metadata, lineage_api_collection):
+    """Module-scoped API endpoint for lineage tests."""
+    endpoint_request = CreateAPIEndpointRequest(
+        name=generate_name(),
+        apiCollection=lineage_api_collection.fullyQualifiedName,
+        endpointURL="https://petstore.swagger.io/v2/pet/{petId}",
+        requestMethod=ApiRequestMethod.GET,
+    )
+    endpoint = metadata.create_or_update(data=endpoint_request)
+
+    yield endpoint
+
+    metadata.delete(entity=APIEndpoint, entity_id=endpoint.id, hard_delete=True)
+
+
+class TestOMetaLineageAPI:
+    """
+    Lineage API integration tests.
+    Tests lineage creation, retrieval, and deletion operations.
+
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    """
+
+    def test_create(self, metadata, lineage_table1, lineage_table2, lineage_pipeline):
         """
         We can create a Lineage and get the origin node lineage info back
         """
 
-        from_id = str(self.table1_entity.id.root)
-        to_id = str(self.table2_entity.id.root)
+        from_id = str(lineage_table1.id.root)
+        to_id = str(lineage_table2.id.root)
 
-        res = self.metadata.add_lineage(
+        res = metadata.add_lineage(
             data=AddLineageRequest(
                 edge=EntitiesEdge(
-                    fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
-                    toEntity=EntityReference(id=self.table2_entity.id, type="table"),
+                    fromEntity=EntityReference(id=lineage_table1.id, type="table"),
+                    toEntity=EntityReference(id=lineage_table2.id, type="table"),
                     lineageDetails=LineageDetails(description="test lineage"),
                 ),
             )
         )
 
-        # Check that we get the origin ID in the entity
-        self.assertEqual(from_id, res["entity"]["id"])
+        assert from_id == res["entity"]["id"]
 
-        # Check that the toEntity is a node in the origin lineage
         node_id = next(
             iter([node["id"] for node in res["nodes"] if node["id"] == to_id]), None
         )
-        self.assertIsNotNone(node_id)
+        assert node_id is not None
 
-        # Add pipeline to the lineage edge
         linage_request_1 = AddLineageRequest(
             edge=EntitiesEdge(
-                fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
-                toEntity=EntityReference(id=self.table2_entity.id, type="table"),
+                fromEntity=EntityReference(id=lineage_table1.id, type="table"),
+                toEntity=EntityReference(id=lineage_table2.id, type="table"),
                 lineageDetails=LineageDetails(
                     description="test lineage",
-                    pipeline=EntityReference(
-                        id=self.pipeline_entity.id, type="pipeline"
-                    ),
+                    pipeline=EntityReference(id=lineage_pipeline.id, type="pipeline"),
                 ),
             ),
         )
 
-        res = self.metadata.add_lineage(data=linage_request_1, check_patch=True)
+        res = metadata.add_lineage(data=linage_request_1, check_patch=True)
 
         res["entity"]["id"] = str(res["entity"]["id"])
-        self.assertEqual(len(res["downstreamEdges"]), 1)
-        self.assertEqual(
-            res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"],
-            str(self.pipeline_entity.id.root),
+        assert len(res["downstreamEdges"]) == 1
+        assert res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"] == str(
+            lineage_pipeline.id.root
         )
 
-        # Add a column to the lineage edge
         linage_request_2 = AddLineageRequest(
             edge=EntitiesEdge(
-                fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
-                toEntity=EntityReference(id=self.table2_entity.id, type="table"),
+                fromEntity=EntityReference(id=lineage_table1.id, type="table"),
+                toEntity=EntityReference(id=lineage_table2.id, type="table"),
                 lineageDetails=LineageDetails(
                     description="test lineage",
                     columnsLineage=[
                         ColumnLineage(
                             fromColumns=[
-                                f"{self.table1_entity.fullyQualifiedName.root}.id"
+                                f"{lineage_table1.fullyQualifiedName.root}.id"
                             ],
-                            toColumn=f"{self.table2_entity.fullyQualifiedName.root}.id",
+                            toColumn=f"{lineage_table2.fullyQualifiedName.root}.id",
                         )
                     ],
                 ),
             ),
         )
 
-        res = self.metadata.add_lineage(data=linage_request_2, check_patch=True)
+        res = metadata.add_lineage(data=linage_request_2, check_patch=True)
 
         res["entity"]["id"] = str(res["entity"]["id"])
-        self.assertEqual(len(res["downstreamEdges"]), 1)
-        self.assertEqual(
-            res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"],
-            str(self.pipeline_entity.id.root),
+        assert len(res["downstreamEdges"]) == 1
+        assert res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"] == str(
+            lineage_pipeline.id.root
         )
-        self.assertEqual(
-            len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]), 1
-        )
+        assert len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]) == 1
 
-        # Add a new column to the lineage edge
         linage_request_2 = AddLineageRequest(
             edge=EntitiesEdge(
-                fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
-                toEntity=EntityReference(id=self.table2_entity.id, type="table"),
+                fromEntity=EntityReference(id=lineage_table1.id, type="table"),
+                toEntity=EntityReference(id=lineage_table2.id, type="table"),
                 lineageDetails=LineageDetails(
                     description="test lineage",
                     columnsLineage=[
                         ColumnLineage(
                             fromColumns=[
-                                f"{self.table1_entity.fullyQualifiedName.root}.another"
+                                f"{lineage_table1.fullyQualifiedName.root}.another"
                             ],
-                            toColumn=f"{self.table2_entity.fullyQualifiedName.root}.another",
+                            toColumn=f"{lineage_table2.fullyQualifiedName.root}.another",
                         )
                     ],
                 ),
             ),
         )
 
-        res = self.metadata.add_lineage(data=linage_request_2, check_patch=True)
+        res = metadata.add_lineage(data=linage_request_2, check_patch=True)
 
         res["entity"]["id"] = str(res["entity"]["id"])
-        self.assertEqual(len(res["downstreamEdges"]), 1)
-        self.assertEqual(
-            res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"],
-            str(self.pipeline_entity.id.root),
+        assert len(res["downstreamEdges"]) == 1
+        assert res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"] == str(
+            lineage_pipeline.id.root
         )
-        self.assertEqual(
-            len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]), 2
-        )
+        assert len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]) == 2
 
-        # We can get lineage by ID
-        lineage_id = self.metadata.get_lineage_by_id(
-            entity=Table, entity_id=self.table2_entity.id.root
+        lineage_id = metadata.get_lineage_by_id(
+            entity=Table, entity_id=lineage_table2.id.root
         )
-        assert lineage_id["entity"]["id"] == str(self.table2_entity.id.root)
+        assert lineage_id["entity"]["id"] == str(lineage_table2.id.root)
 
-        # Same thing works if we pass directly the Uuid
-        lineage_uuid = self.metadata.get_lineage_by_id(
-            entity=Table, entity_id=self.table2_entity.id
+        lineage_uuid = metadata.get_lineage_by_id(
+            entity=Table, entity_id=lineage_table2.id
         )
-        assert lineage_uuid["entity"]["id"] == str(self.table2_entity.id.root)
+        assert lineage_uuid["entity"]["id"] == str(lineage_table2.id.root)
 
-        # We can also get lineage by name
-        lineage_str = self.metadata.get_lineage_by_name(
-            entity=Table, fqn=self.table2_entity.fullyQualifiedName.root
+        lineage_str = metadata.get_lineage_by_name(
+            entity=Table, fqn=lineage_table2.fullyQualifiedName.root
         )
-        assert lineage_str["entity"]["id"] == str(self.table2_entity.id.root)
+        assert lineage_str["entity"]["id"] == str(lineage_table2.id.root)
 
-        # Or passing the FQN
-        lineage_fqn = self.metadata.get_lineage_by_name(
-            entity=Table, fqn=self.table2_entity.fullyQualifiedName
+        lineage_fqn = metadata.get_lineage_by_name(
+            entity=Table, fqn=lineage_table2.fullyQualifiedName
         )
-        assert lineage_fqn["entity"]["id"] == str(self.table2_entity.id.root)
+        assert lineage_fqn["entity"]["id"] == str(lineage_table2.id.root)
 
-    def test_delete_by_source(self):
+    def test_delete_by_source(self, metadata, lineage_table2):
         """
         Test case for deleting lineage by source.
 
@@ -392,74 +439,75 @@ class OMetaLineageTest(TestCase):
         type, table ID, and lineage source. Finally, it asserts that the length of the upstream edges
         in the lineage has decreased by 1.
         """
-        lineage = self.metadata.get_lineage_by_id(
-            entity="table", entity_id=self.table2_entity.id.root
+        lineage = metadata.get_lineage_by_id(
+            entity="table", entity_id=lineage_table2.id.root
         )
         original_len = len(lineage.get("upstreamEdges") or [])
-        self.metadata.delete_lineage_by_source(
-            "table", self.table2_entity.id.root, LineageSource.Manual.value
+        metadata.delete_lineage_by_source(
+            "table", lineage_table2.id.root, LineageSource.Manual.value
         )
-        lineage = self.metadata.get_lineage_by_id(
-            entity="table", entity_id=self.table2_entity.id.root
+        lineage = metadata.get_lineage_by_id(
+            entity="table", entity_id=lineage_table2.id.root
         )
         updated_len = len(lineage.get("upstreamEdges") or [])
-        self.assertEqual(updated_len, original_len - 1)
+        assert updated_len == original_len - 1
 
-    def test_table_datamodel_lineage(self):
+    def test_table_datamodel_lineage(
+        self, metadata, lineage_table1, lineage_dashboard_datamodel
+    ):
         """We can create and get lineage for a table to a dashboard datamodel"""
 
-        from_id = str(self.table1_entity.id.root)
+        from_id = str(lineage_table1.id.root)
 
-        res = self.metadata.add_lineage(
+        res = add_lineage_with_retry(
+            metadata,
             data=AddLineageRequest(
                 edge=EntitiesEdge(
-                    fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
+                    fromEntity=EntityReference(id=lineage_table1.id, type="table"),
                     toEntity=EntityReference(
-                        id=self.dashboard_datamodel_entity.id, type="dashboardDataModel"
+                        id=lineage_dashboard_datamodel.id, type="dashboardDataModel"
                     ),
                     lineageDetails=LineageDetails(description="test lineage"),
                 ),
-            )
+            ),
         )
 
-        # Check that we get the origin ID in the entity
-        self.assertEqual(from_id, res["entity"]["id"])
+        assert from_id == res["entity"]["id"]
 
-        # use the SDK to get the lineage
-        datamodel_lineage = self.metadata.get_lineage_by_name(
+        datamodel_lineage = metadata.get_lineage_by_name(
             entity=DashboardDataModel,
-            fqn=self.dashboard_datamodel_entity.fullyQualifiedName.root,
+            fqn=lineage_dashboard_datamodel.fullyQualifiedName.root,
         )
         entity_lineage = EntityLineage.model_validate(datamodel_lineage)
-        self.assertEqual(from_id, str(entity_lineage.upstreamEdges[0].fromEntity.root))
+        assert from_id == str(entity_lineage.upstreamEdges[0].fromEntity.root)
 
-    def test_table_with_slash_in_name(self):
+    def test_table_with_slash_in_name(self, metadata, lineage_schema, lineage_table1):
         """E.g., `foo.bar/baz`"""
         name = EntityName("foo.bar/baz")
-        new_table: Table = self.metadata.create_or_update(
+        new_table: Table = metadata.create_or_update(
             data=get_create_entity(
                 entity=Table,
                 name=name,
-                reference=self.create_schema_entity.fullyQualifiedName,
+                reference=lineage_schema.fullyQualifiedName,
             )
         )
 
-        res: Table = self.metadata.get_by_name(
+        res: Table = metadata.get_by_name(
             entity=Table, fqn=new_table.fullyQualifiedName
         )
 
         assert res.name == name
 
-        self.metadata.add_lineage(
+        metadata.add_lineage(
             data=AddLineageRequest(
                 edge=EntitiesEdge(
-                    fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
+                    fromEntity=EntityReference(id=lineage_table1.id, type="table"),
                     toEntity=EntityReference(id=new_table.id, type="table"),
                     lineageDetails=LineageDetails(
                         columnsLineage=[
                             ColumnLineage(
                                 fromColumns=[
-                                    self.table1_entity.columns[0].fullyQualifiedName
+                                    lineage_table1.columns[0].fullyQualifiedName
                                 ],
                                 toColumn=new_table.columns[0].fullyQualifiedName,
                             )
@@ -469,113 +517,90 @@ class OMetaLineageTest(TestCase):
             )
         )
 
-        # use the SDK to get the lineage
-        lineage = self.metadata.get_lineage_by_name(
+        lineage = metadata.get_lineage_by_name(
             entity=Table,
             fqn=new_table.fullyQualifiedName.root,
         )
         entity_lineage = EntityLineage.model_validate(lineage)
-        assert (
-            entity_lineage.upstreamEdges[0].fromEntity.root
-            == self.table1_entity.id.root
-        )
+        assert entity_lineage.upstreamEdges[0].fromEntity.root == lineage_table1.id.root
 
-    def test_api_endpoint_to_table_lineage(self):
+    def test_api_endpoint_to_table_lineage(
+        self, metadata, lineage_api_endpoint, lineage_table1
+    ):
         """
         Test lineage from APIEndpoint to Table with column-level lineage using get_entity_ref
         """
-        # Use get_entity_ref to build EntityReferences - this tests our fixed get_entity_type method
-        api_endpoint_ref = self.metadata.get_entity_reference(
-            entity=APIEndpoint, fqn=self.api_endpoint_entity.fullyQualifiedName
+        api_endpoint_ref = metadata.get_entity_reference(
+            entity=APIEndpoint, fqn=lineage_api_endpoint.fullyQualifiedName
         )
-        table_ref = self.metadata.get_entity_reference(
-            entity=Table, fqn=self.table1_entity.fullyQualifiedName
+        table_ref = metadata.get_entity_reference(
+            entity=Table, fqn=lineage_table1.fullyQualifiedName
         )
 
-        # Verify that get_entity_ref returns the correct types (tests the fix for issue #20838)
-        self.assertEqual(api_endpoint_ref.type, "apiEndpoint")
-        self.assertEqual(table_ref.type, "table")
+        assert api_endpoint_ref.type == "apiEndpoint"
+        assert table_ref.type == "table"
 
-        # Create lineage from APIEndpoint to Table with column-level mapping
         lineage_request = AddLineageRequest(
             edge=EntitiesEdge(
                 fromEntity=api_endpoint_ref,
                 toEntity=table_ref,
                 lineageDetails=LineageDetails(
                     description="API response data flows to table",
-                    # Note: Column lineage for API endpoints would typically be defined
-                    # when the API response schema is known and mapped to table columns.
-                    # For demonstration purposes, we show the structure even though
-                    # API endpoints don't have predefined column schemas.
                     columnsLineage=[],
                 ),
             )
         )
 
-        # Add the lineage
-        res = self.metadata.add_lineage(data=lineage_request)
+        res = add_lineage_with_retry(metadata, data=lineage_request)
 
-        # Verify the lineage was created
-        self.assertEqual(str(self.api_endpoint_entity.id.root), res["entity"]["id"])
+        assert str(lineage_api_endpoint.id.root) == res["entity"]["id"]
 
-        # Check that the table is in the downstream nodes
         table_node = next(
             iter(
                 [
                     node
                     for node in res["nodes"]
-                    if node["id"] == str(self.table1_entity.id.root)
+                    if node["id"] == str(lineage_table1.id.root)
                 ]
             ),
             None,
         )
-        self.assertIsNotNone(table_node)
-        # The node should contain the table information
-        self.assertEqual(table_node["type"], "table")
+        assert table_node is not None
+        assert table_node["type"] == "table"
 
-        # Verify column-level lineage exists
-        self.assertEqual(len(res["downstreamEdges"]), 1)
+        assert len(res["downstreamEdges"]) == 1
         downstream_edge = res["downstreamEdges"][0]
-        # Verify that the lineage details are present
-        self.assertIsNotNone(downstream_edge["lineageDetails"])
-        self.assertEqual(
-            downstream_edge["lineageDetails"]["description"],
-            "API response data flows to table",
+        assert downstream_edge["lineageDetails"] is not None
+        assert (
+            downstream_edge["lineageDetails"]["description"]
+            == "API response data flows to table"
         )
-        # Column lineage may be empty for API endpoints as they don't have predefined schemas like tables
-        self.assertIsInstance(downstream_edge["lineageDetails"]["columnsLineage"], list)
+        assert isinstance(downstream_edge["lineageDetails"]["columnsLineage"], list)
 
-        # Test the reverse lineage - get lineage by table name
-        table_lineage = self.metadata.get_lineage_by_name(
-            entity=Table, fqn=self.table1_entity.fullyQualifiedName.root
+        table_lineage = metadata.get_lineage_by_name(
+            entity=Table, fqn=lineage_table1.fullyQualifiedName.root
         )
 
-        # Verify the upstream edge from API endpoint
         entity_lineage = EntityLineage.model_validate(table_lineage)
-        self.assertGreaterEqual(len(entity_lineage.upstreamEdges), 1)
+        assert len(entity_lineage.upstreamEdges) >= 1
 
-        # Find the edge from our API endpoint (there might be others from previous tests)
         api_upstream_edge = next(
             (
                 edge
                 for edge in entity_lineage.upstreamEdges
-                if str(edge.fromEntity.root) == str(self.api_endpoint_entity.id.root)
+                if str(edge.fromEntity.root) == str(lineage_api_endpoint.id.root)
             ),
             None,
         )
-        self.assertIsNotNone(api_upstream_edge)
+        assert api_upstream_edge is not None
 
-        # Verify that the lineage description is preserved
-        self.assertEqual(
-            api_upstream_edge.lineageDetails.description,
-            "API response data flows to table",
+        assert (
+            api_upstream_edge.lineageDetails.description
+            == "API response data flows to table"
         )
 
-        # Also test get_lineage_by_id with APIEndpoint
-        api_lineage = self.metadata.get_lineage_by_id(
-            entity=APIEndpoint, entity_id=self.api_endpoint_entity.id.root
+        api_lineage = metadata.get_lineage_by_id(
+            entity=APIEndpoint, entity_id=lineage_api_endpoint.id.root
         )
-        self.assertEqual(
-            str(api_lineage["entity"]["id"]), str(self.api_endpoint_entity.id.root)
-        )
-        self.assertEqual(len(api_lineage["downstreamEdges"]), 1)
+        assert str(api_lineage["entity"]["id"]) == str(lineage_api_endpoint.id.root)
+        assert len(api_lineage["downstreamEdges"]) == 1

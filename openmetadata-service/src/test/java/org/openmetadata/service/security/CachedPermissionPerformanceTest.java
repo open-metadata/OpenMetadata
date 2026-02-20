@@ -247,8 +247,10 @@ class CachedPermissionPerformanceTest extends OpenMetadataApplicationTest {
     double improvement = (cacheMissTime - cacheHitTime) / (double) cacheMissTime * 100;
 
     LOG.info(
-        "Performance results - Cache miss: {:.2f}ms, Cache hit: {:.2f}ms, Improvement: {:.1f}%",
-        avgMissMs, avgHitMs, improvement);
+        "Performance results - Cache miss: {}ms, Cache hit: {}ms, Improvement: {}%",
+        String.format("%.2f", avgMissMs),
+        String.format("%.2f", avgHitMs),
+        String.format("%.1f", improvement));
 
     // Cache should be at least 50% faster
     assertTrue(

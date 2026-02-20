@@ -57,7 +57,7 @@ from metadata.readers.models import ConfigSource
 from metadata.utils import fqn
 from metadata.utils.datalake.datalake_utils import (
     DataFrameColumnParser,
-    fetch_dataframe,
+    fetch_dataframe_first_chunk,
 )
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -304,7 +304,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         metadata_entry: MetadataEntry,
     ) -> List[Column]:
         """Extract Column related metadata from s3"""
-        data_structure_details, raw_data = fetch_dataframe(
+        data_structure_details, raw_data = fetch_dataframe_first_chunk(
             config_source=config_source,
             client=client,
             file_fqn=DatalakeTableSchemaWrapper(
@@ -315,14 +315,15 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             ),
             fetch_raw_data=True,
         )
-        columns = []
-        column_parser = DataFrameColumnParser.create(
-            data_structure_details,
-            SupportedTypes(metadata_entry.structureFormat),
-            raw_data=raw_data,
-        )
-        columns = column_parser.get_columns()
-        return columns
+        if data_structure_details:
+            data_structure_details = next(data_structure_details)
+            column_parser = DataFrameColumnParser.create(
+                data_structure_details,
+                SupportedTypes(metadata_entry.structureFormat),
+                raw_data=raw_data,
+            )
+            return column_parser.get_columns()
+        return []
 
     def _get_columns(
         self,

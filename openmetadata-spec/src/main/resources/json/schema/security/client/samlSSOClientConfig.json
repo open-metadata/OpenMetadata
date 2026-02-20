@@ -19,17 +19,18 @@
           "description": "SSO Login URL.",
           "type": "string"
         },
+        "authorityUrl": {
+          "description": "Authority URL (deprecated, use entityId instead).",
+          "type": "string",
+          "deprecated": true
+        },
         "idpX509Certificate": {
           "description": "X509 Certificate ",
           "type": "string",
           "format": "password"
         },
-        "authorityUrl": {
-          "description": "Authority URL to redirect the users on Sign In page",
-          "type": "string"
-        },
         "nameId": {
-          "description": "Authority URL to redirect the users on Sign In page",
+          "description": "Name ID format for SAML assertions",
           "type": "string",
           "default": "urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"
         }
@@ -149,6 +150,13 @@
       "description": "Get logs from the Library in debug mode",
       "type": "boolean",
       "default": false
+    },
+    "samlDisplayNameAttributes": {
+      "description": "Ordered list of SAML attribute names to check for display name. First available attribute wins. Defaults to common OIDC/SAML attribute names.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "additionalProperties": false,

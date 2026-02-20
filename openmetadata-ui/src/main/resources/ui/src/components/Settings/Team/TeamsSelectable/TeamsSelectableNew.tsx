@@ -38,6 +38,7 @@ const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
       selectedTeams,
       maxValueCount,
       handleDropdownChange,
+      open,
     },
     ref
   ) => {
@@ -124,6 +125,7 @@ const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
               })}
             </span>
           )}
+          open={open}
           placeholder={placeholder}
           placement="bottomLeft"
           popupClassName="teams-custom-dropdown-class"

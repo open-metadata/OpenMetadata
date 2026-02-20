@@ -182,7 +182,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
     rows = _get_column_rows(self, connection, table_name, schema, kw.get("db_name"))
     result = []
-    for col_name, col_type, _comment in rows:
+    for ordinal_position, (col_name, col_type, _comment) in enumerate(rows):
         # Handle both oss hive and Databricks' hive partition header, respectively
         if col_name in (
             "# Partition Information",
@@ -190,6 +190,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "# Clustering Information",
             "# Delta Statistics Columns",
             "# Detailed Table Information",
+            "# Delta Uniform Iceberg",
         ):
             break
         # Take out the more detailed type information
@@ -210,6 +211,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "default": None,
             "comment": _comment,
             "system_data_type": raw_col_type,
+            "ordinal_position": ordinal_position,
         }
         if col_type in {"array", "struct", "map"}:
             try:
@@ -540,6 +542,24 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     yield row[0]
         else:
             yield DEFAULT_DATABASE
+
+    def get_schema_definition(self, table_type, table_name, schema_name, inspector):
+        """
+        Adding the CREATE VIEW/ MATERIALIZED VIEW statement in views' schema definition
+        """
+        schema_definition = super().get_schema_definition(
+            table_type, table_name, schema_name, inspector
+        )
+
+        if schema_definition and table_type in (
+            TableType.View,
+            TableType.MaterializedView,
+        ):
+            view_type = table_type == TableType.View and "VIEW" or "MATERIALIZED VIEW"
+
+            return f"CREATE {view_type} `{self.context.get().database}`.`{schema_name}`.`{table_name}` AS {schema_definition}"
+
+        return schema_definition
 
     def query_table_names_and_types(
         self, schema_name: str

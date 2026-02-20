@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import static org.openmetadata.service.search.SearchUtils.buildHttpHostsForHc5;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 
@@ -12,10 +13,9 @@ import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.elasticsearch.nodes.NodesStatsResponse;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
-import es.co.elastic.clients.transport.rest_client.RestClientTransport;
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.RestClient;
-import es.org.elasticsearch.client.RestClientBuilder;
+import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5ClientBuilder;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -31,15 +31,13 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.http.Header;
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.message.BasicHeader;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.http.message.BasicHeader;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
@@ -79,7 +77,7 @@ public class ElasticSearchClient implements SearchClient {
 
   // New Java API client support for migration
   @Getter protected final ElasticsearchClient newClient;
-  private final RestClient lowLevelClient;
+  private final Rest5Client lowLevelClient;
 
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final QueryBuilderFactory queryBuilderFactory;
@@ -90,7 +88,7 @@ public class ElasticSearchClient implements SearchClient {
 
   private final String clusterAlias;
 
-  private final ESLineageGraphBuilder lineageGraphBuilder;
+  private volatile ESLineageGraphBuilder lineageGraphBuilder;
   private final ESEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
   private final ElasticSearchIndexManager indexManager;
   private final ElasticSearchEntityManager entityManager;
@@ -117,7 +115,7 @@ public class ElasticSearchClient implements SearchClient {
               Stream.of("schemaDefinition", "customMetrics", "embedding"))
           .toList();
 
-  private static final Header[] defaultHeaders =
+  private static final Header[] defaultHeadersEs7 =
       new Header[] {
         new BasicHeader(
             HttpHeaders.ACCEPT, "application/vnd.elasticsearch+json; compatible-with=7"),
@@ -141,7 +139,7 @@ public class ElasticSearchClient implements SearchClient {
     isNewClientAvailable = newClient != null;
     queryBuilderFactory = new ElasticQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
-    lineageGraphBuilder = new ESLineageGraphBuilder(newClient);
+    // Note: lineageGraphBuilder initialization deferred to Phase 2 (after settings are available)
     entityRelationshipGraphBuilder = new ESEntityRelationshipGraphBuilder(newClient);
     this.nlqService = nlqService;
     indexManager = new ElasticSearchIndexManager(newClient, clusterAlias);
@@ -153,11 +151,15 @@ public class ElasticSearchClient implements SearchClient {
         new ElasticSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias, nlqService);
   }
 
-  private ElasticsearchClient createElasticSearchNewClient(RestClient lowLevelClient) {
+  private ElasticsearchClient createElasticSearchNewClient(Rest5Client lowLevelClient) {
     try {
-      // Create transport and new client
-      RestClientTransport transport =
-          new RestClientTransport(lowLevelClient, new JacksonJsonpMapper());
+      if (lowLevelClient == null) {
+        LOG.error("Cannot create Elasticsearch client with null Rest5Client");
+        return null;
+      }
+      // Create transport - the Rest5ClientTransport handles content-type headers automatically
+      Rest5ClientTransport transport =
+          new Rest5ClientTransport(lowLevelClient, new JacksonJsonpMapper());
       ElasticsearchClient newClient = new ElasticsearchClient(transport);
 
       LOG.info("Successfully initialized new Elasticsearch Java API client");
@@ -220,6 +222,11 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void deleteIndexWithBackoff(String indexName) {
+    indexManager.deleteIndexWithBackoff(indexName);
+  }
+
+  @Override
   public Set<String> getAliases(String indexName) {
     return indexManager.getAliases(indexName);
   }
@@ -235,6 +242,11 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases) {
+    return indexManager.swapAliases(oldIndices, newIndex, aliases);
+  }
+
+  @Override
   public Set<String> getIndicesByAlias(String aliasName) {
     return indexManager.getIndicesByAlias(aliasName);
   }
@@ -242,6 +254,11 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public Set<String> listIndicesByPrefix(String prefix) {
     return indexManager.listIndicesByPrefix(prefix);
+  }
+
+  @Override
+  public List<IndexStats> getAllIndexStats() throws IOException {
+    return indexManager.getAllIndexStats();
   }
 
   @Override
@@ -316,6 +333,10 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
     return lineageGraphBuilder.searchLineage(lineageRequest);
   }
 
@@ -333,6 +354,10 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
     return lineageGraphBuilder.searchLineageWithDirection(lineageRequest);
   }
 
@@ -345,6 +370,10 @@ public class ElasticSearchClient implements SearchClient {
       boolean includeDeleted,
       String entityType)
       throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
     return lineageGraphBuilder.getLineagePaginationInfo(
         fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
   }
@@ -352,12 +381,20 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
     return lineageGraphBuilder.searchLineageByEntityCount(request);
   }
 
   @Override
   public SearchLineageResult searchPlatformLineage(
       String index, String queryFilter, boolean deleted) throws IOException {
+    if (lineageGraphBuilder == null) {
+      throw new UnsupportedOperationException(
+          "Lineage features are not available in this deployment");
+    }
     return lineageGraphBuilder.getPlatformLineage(index, queryFilter, deleted);
   }
 
@@ -635,36 +672,25 @@ public class ElasticSearchClient implements SearchClient {
     return dataInsightAggregatorManager.getQueryCostRecords(serviceName);
   }
 
-  public RestClient getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
+  public Rest5Client getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
-        RestClientBuilder restClientBuilder =
-            RestClient.builder(
-                new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
+        HttpHost[] httpHosts = buildHttpHostsForHc5(esConfig, "Elasticsearch");
+        Rest5ClientBuilder restClientBuilder = Rest5Client.builder(httpHosts);
 
-        // Configure connection pooling
         restClientBuilder.setHttpClientConfigCallback(
             httpAsyncClientBuilder -> {
-              // Set connection pool sizes
+              var connectionManagerBuilder =
+                  org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder
+                      .create();
+
               if (esConfig.getMaxConnTotal() != null && esConfig.getMaxConnTotal() > 0) {
-                httpAsyncClientBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
+                connectionManagerBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
               }
               if (esConfig.getMaxConnPerRoute() != null && esConfig.getMaxConnPerRoute() > 0) {
-                httpAsyncClientBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
+                connectionManagerBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
               }
 
-              // Configure authentication if provided
-              if (StringUtils.isNotEmpty(esConfig.getUsername())
-                  && StringUtils.isNotEmpty(esConfig.getPassword())) {
-                CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-                credentialsProvider.setCredentials(
-                    AuthScope.ANY,
-                    new UsernamePasswordCredentials(
-                        esConfig.getUsername(), esConfig.getPassword()));
-                httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-              }
-
-              // Configure SSL if needed
               SSLContext sslContext = null;
               try {
                 sslContext = createElasticSearchSSLContext(esConfig);
@@ -672,38 +698,53 @@ public class ElasticSearchClient implements SearchClient {
                 throw new RuntimeException(e);
               }
               if (sslContext != null) {
-                httpAsyncClientBuilder.setSSLContext(sslContext);
+                connectionManagerBuilder.setTlsStrategy(
+                    org.apache.hc.client5.http.ssl.ClientTlsStrategyBuilder.create()
+                        .setSslContext(sslContext)
+                        .build());
               }
 
-              // Enable TCP keep alive strategy
+              httpAsyncClientBuilder.setConnectionManager(connectionManagerBuilder.build());
+
+              if (StringUtils.isNotEmpty(esConfig.getUsername())
+                  && StringUtils.isNotEmpty(esConfig.getPassword())) {
+                BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+                credentialsProvider.setCredentials(
+                    new AuthScope(null, -1),
+                    new UsernamePasswordCredentials(
+                        esConfig.getUsername(), esConfig.getPassword().toCharArray()));
+                httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+              }
+
               if (esConfig.getKeepAliveTimeoutSecs() != null
                   && esConfig.getKeepAliveTimeoutSecs() > 0) {
                 httpAsyncClientBuilder.setKeepAliveStrategy(
-                    (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
+                    (response, context) ->
+                        org.apache.hc.core5.util.TimeValue.ofSeconds(
+                            esConfig.getKeepAliveTimeoutSecs()));
               }
-
-              return httpAsyncClientBuilder;
             });
 
-        // Configure request timeouts
         restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder ->
                 requestConfigBuilder
-                    .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
-                    .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
+                    .setConnectTimeout(
+                        org.apache.hc.core5.util.Timeout.ofSeconds(
+                            esConfig.getConnectionTimeoutSecs()))
+                    .setResponseTimeout(
+                        org.apache.hc.core5.util.Timeout.ofSeconds(
+                            esConfig.getSocketTimeoutSecs())));
 
-        // Enable compression for better network efficiency
         restClientBuilder.setCompressionEnabled(true);
 
-        // Build client without default headers first to check version
-        RestClient tempClient = restClientBuilder.build();
+        Rest5Client tempClient = restClientBuilder.build();
         boolean isElasticsearch7 = isElasticsearch7Version(tempClient);
         tempClient.close();
 
-        // Only set default headers for ES 7.x server
         if (isElasticsearch7) {
-          restClientBuilder.setDefaultHeaders(defaultHeaders);
+          restClientBuilder.setDefaultHeaders(defaultHeadersEs7);
         }
+        // For ES 9.x, don't set custom headers - the client handles content-type automatically
 
         return restClientBuilder.build();
       } catch (Exception e) {
@@ -785,6 +826,40 @@ public class ElasticSearchClient implements SearchClient {
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
     entityManager.updateGlossaryTermByFqnPrefix(
         indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
+  }
+
+  @Override
+  public void updateClassificationTagByFqnPrefix(
+      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
+    entityManager.updateClassificationTagByFqnPrefix(
+        indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
+  }
+
+  @Override
+  public void updateDataProductReferences(String oldFqn, String newFqn) {
+    entityManager.updateDataProductReferences(oldFqn, newFqn);
+  }
+
+  @Override
+  public void updateAssetDomainsForDataProduct(
+      String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    entityManager.updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains);
+  }
+
+  @Override
+  public void updateAssetDomainsByIds(
+      List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    entityManager.updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains);
+  }
+
+  @Override
+  public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    entityManager.updateDomainFqnByPrefix(oldFqn, newFqn);
+  }
+
+  @Override
+  public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    entityManager.updateAssetDomainFqnByPrefix(oldFqn, newFqn);
   }
 
   @Override
@@ -885,11 +960,16 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
-  private boolean isElasticsearch7Version(RestClient restClient) {
+  private boolean isElasticsearch7Version(Rest5Client restClient) {
     try {
-      Request request = new Request("GET", "/");
-      es.org.elasticsearch.client.Response response = restClient.performRequest(request);
-      String responseBody = EntityUtils.toString(response.getEntity());
+      es.co.elastic.clients.transport.rest5_client.low_level.Request request =
+          new es.co.elastic.clients.transport.rest5_client.low_level.Request("GET", "/");
+      es.co.elastic.clients.transport.rest5_client.low_level.Response response =
+          restClient.performRequest(request);
+      String responseBody;
+      try (var is = response.getEntity().getContent()) {
+        responseBody = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+      }
       JsonNode jsonNode = JsonUtils.readTree(responseBody);
       JsonNode versionNode = jsonNode.get("version");
       if (versionNode != null && versionNode.get("number") != null) {
@@ -916,5 +996,20 @@ public class ElasticSearchClient implements SearchClient {
       throws IOException {
     return entityManager.getSchemaEntityRelationship(
         schemaFqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
+  }
+
+  @Override
+  public void initializeLineageBuilders() {
+    if (lineageGraphBuilder == null && newClient != null) {
+      synchronized (this) {
+        if (lineageGraphBuilder == null) {
+          LOG.info("Initializing ESLineageGraphBuilder with settings now available");
+          lineageGraphBuilder = new ESLineageGraphBuilder(newClient);
+          LOG.info("ESLineageGraphBuilder initialization completed");
+        }
+      }
+    } else {
+      LOG.debug("ESLineageGraphBuilder already initialized or newClient is null");
+    }
   }
 }

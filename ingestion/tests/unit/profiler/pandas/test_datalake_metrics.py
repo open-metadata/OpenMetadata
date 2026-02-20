@@ -34,6 +34,7 @@ from metadata.profiler.interface.pandas.profiler_interface import (
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
+from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
 Base = declarative_base()
@@ -106,11 +107,7 @@ class DatalakeMetricsTest(TestCase):
         "metadata.sampler.sampler_interface.get_ssl_connection",
         return_value=FakeConnection(),
     )
-    @mock.patch(
-        "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
-        return_value=[df1, pd.concat([df2, pd.DataFrame(index=df1.index)])],
-    )
-    def setUpClass(cls, mock_get_connection, mock_sample_get_connection, mocked_dfs):
+    def setUpClass(cls, mock_get_connection, mock_sample_get_connection):
         """
         Setup the test class. We won't mock S3 with moto as we want to test that metrics are computed
         correctly on a list of dataframes.
@@ -171,11 +168,17 @@ class DatalakeMetricsTest(TestCase):
         with (
             patch.object(
                 DatalakeSampler,
-                "raw_dataset",
-                new_callable=lambda: [
-                    cls.df1,
-                    pd.concat([cls.df2, pd.DataFrame(index=cls.df1.index)]),
-                ],
+                "get_dataframes",
+                return_value=DatalakeColumnWrapper(
+                    dataframes=lambda: iter(
+                        [
+                            cls.df1,
+                            pd.concat([cls.df2, pd.DataFrame(index=cls.df1.index)]),
+                        ]
+                    ),
+                    columns=None,
+                    raw_data=None,
+                ),
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):

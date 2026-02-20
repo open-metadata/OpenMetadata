@@ -19,4 +19,5 @@ export interface GlossaryTermSelectableListProps {
   onUpdate: (terms: TagLabel[]) => Promise<void>;
   children?: React.ReactNode;
   popoverProps?: Partial<PopoverProps>;
+  multiSelect?: boolean;
 }

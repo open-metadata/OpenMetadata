@@ -12,6 +12,7 @@
  */
 
 import { Button, ButtonGroup, useTheme } from '@mui/material';
+import { defaultColors } from '@openmetadata/ui-core-components';
 import { Grid01, Menu01 } from '@untitledui/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { ReactComponent as WorkflowIcon } from '../../../../assets/svg/data-flow.svg';
@@ -128,11 +129,12 @@ export const useViewToggle = ({
 
           return (
             <Button
+              data-testid={`${mode}-view-toggle`}
               key={mode}
               sx={{
                 backgroundColor: isActive
-                  ? theme.palette.allShades?.brand?.[50]
-                  : 'inherit',
+                  ? `${defaultColors.blue[50]} !important`
+                  : 'transparent',
                 color: isActive
                   ? theme.palette.allShades?.brand?.[600]
                   : 'inherit',

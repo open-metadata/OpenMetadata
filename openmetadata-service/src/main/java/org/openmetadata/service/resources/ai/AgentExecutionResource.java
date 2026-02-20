@@ -46,7 +46,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 @Collection(name = "agentExecutions")
 public class AgentExecutionResource
     extends EntityTimeSeriesResource<AgentExecution, AgentExecutionRepository> {
-  public static final String COLLECTION_PATH = "v1/agentExecutions/";
+  public static final String COLLECTION_PATH = "/v1/agentExecutions/";
 
   public AgentExecutionResource(Authorizer authorizer) {
     super(Entity.AGENT_EXECUTION, authorizer);

@@ -21,23 +21,29 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.notifications.recipients.RecipientResolver;
+import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
@@ -61,6 +67,13 @@ public abstract class AbstractEventConsumer
   private long startingOffset = -1;
 
   private AlertMetrics alertMetrics;
+
+  // Collect successful events during HTTP phase, batch write in commit phase.
+  // This reduces connection pool contention from N connections to 1.
+  // Thread-safety note: ArrayList is not thread-safe, but this is safe because
+  // @DisallowConcurrentExecution ensures Quartz won't run the same job concurrently,
+  // so this instance is only accessed by a single thread at a time.
+  private final List<ChangeEvent> successfulEvents = new ArrayList<>();
 
   @Getter @Setter private JobDetail jobDetail;
   protected EventSubscription eventSubscription;
@@ -94,19 +107,20 @@ public abstract class AbstractEventConsumer
         return;
       }
 
-      if (this.eventSubscription.getDestinations() == null
-          || this.eventSubscription.getDestinations().isEmpty()) {
-        LOG.error(
-            "EventSubscription {} has no destinations configured",
-            this.eventSubscription.getName());
-        return;
-      }
-
       EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
       this.offset = eventSubscriptionOffset.getCurrentOffset();
       this.startingOffset = eventSubscriptionOffset.getStartingOffset();
       this.alertMetrics = loadInitialMetrics();
       this.destinationMap = loadDestinationsMap(context);
+
+      // We do not log warning for custom alert type. eg: Reverse Metadata
+      if (this.destinationMap.isEmpty()
+          && this.eventSubscription.getAlertType() != CreateEventSubscription.AlertType.CUSTOM) {
+        LOG.warn(
+            "EventSubscription {} has no destinations configured",
+            this.eventSubscription.getName());
+      }
+
       this.doInit(context);
     } catch (Exception e) {
       LOG.error("Failed to initialize EventConsumer from JobDataMap", e);
@@ -192,6 +206,9 @@ public abstract class AbstractEventConsumer
 
   private Map<UUID, Destination<ChangeEvent>> loadDestinationsMap(JobExecutionContext context) {
     Map<UUID, Destination<ChangeEvent>> dMap = new HashMap<>();
+    if (eventSubscription.getDestinations() == null) {
+      return dMap;
+    }
     for (SubscriptionDestination subscriptionDest : eventSubscription.getDestinations()) {
       dMap.put(
           subscriptionDest.getId(), AlertFactory.getAlert(eventSubscription, subscriptionDest));
@@ -216,13 +233,47 @@ public abstract class AbstractEventConsumer
       return;
     }
 
+    // Filter events based on subscription configuration (entity type, conditions, etc.)
     Map<ChangeEvent, Set<UUID>> filteredEvents = getFilteredEvents(eventSubscription, events);
+    RecipientResolver resolver = new RecipientResolver();
 
     for (var eventWithReceivers : filteredEvents.entrySet()) {
-      for (UUID receiverId : eventWithReceivers.getValue()) {
-        boolean status = sendAlert(receiverId, eventWithReceivers.getKey());
+      ChangeEvent event = eventWithReceivers.getKey();
+      Set<UUID> destinationIds = eventWithReceivers.getValue();
+
+      // Group destinations by type to enable cross-destination recipient deduplication
+      Map<SubscriptionType, List<Destination<ChangeEvent>>> destinationsByType =
+          groupDestinationsByType(destinationIds);
+
+      for (var entry : destinationsByType.entrySet()) {
+        List<Destination<ChangeEvent>> destinations = entry.getValue();
+        Destination<ChangeEvent> publisher = destinations.getFirst();
+
+        // Resolve recipients from all destinations of this type for deduplication
+        Set<Recipient> recipients = Set.of();
+        if (publisher.requiresRecipients()) {
+          List<SubscriptionDestination> subDestinations =
+              destinations.stream().map(Destination::getSubscriptionDestination).toList();
+          recipients = resolver.resolveRecipients(event, subDestinations);
+        }
+
+        // Send via primary destination only, with deduplicated recipients (one send per type)
+        boolean status = true;
+        if (!publisher.requiresRecipients() || !recipients.isEmpty()) {
+          try {
+            publisher.sendMessage(event, recipients);
+          } catch (EventPublisherException e) {
+            LOG.error("Failed to send alert: {}", e.getMessage());
+            handleFailedEvent(e, true);
+            status = false;
+          }
+        }
+
         if (status) {
-          recordSuccessfulChangeEvent(eventSubscription.getId(), eventWithReceivers.getKey());
+          // Collect successful events instead of writing immediately
+          // Batch write happens in commit() to reduce connection pool contention
+          // Note: Empty recipients is treated as successful (no-op send)
+          successfulEvents.add(eventWithReceivers.getKey());
           alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + 1);
         } else {
           alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + 1);
@@ -231,9 +282,39 @@ public abstract class AbstractEventConsumer
     }
   }
 
+  private Map<SubscriptionType, List<Destination<ChangeEvent>>> groupDestinationsByType(
+      Set<UUID> destinationIds) {
+    return destinationIds.stream()
+        .map(destinationMap::get)
+        .filter(Objects::nonNull)
+        .filter(Destination::getEnabled)
+        .collect(Collectors.groupingBy(dest -> dest.getSubscriptionDestination().getType()));
+  }
+
   @Override
   public void commit(JobExecutionContext jobExecutionContext) {
     long currentTime = System.currentTimeMillis();
+
+    // Batch write all successful events in ONE DB call instead of N calls.
+    // This reduces connection pool contention significantly.
+    // Important: We catch exceptions here to ensure offset is always updated.
+    // If batch record fails but events were already sent to destinations,
+    // we must still advance the offset to prevent duplicate HTTP calls on retry.
+    if (!successfulEvents.isEmpty()) {
+      try {
+        batchRecordSuccessfulEvents(eventSubscription.getId(), currentTime);
+      } catch (Exception e) {
+        LOG.error(
+            "Batch recording failed for {} events in subscription {}. "
+                + "Events were delivered but success records lost. Continuing with offset update.",
+            successfulEvents.size(),
+            eventSubscription.getId(),
+            e);
+      } finally {
+        successfulEvents.clear();
+      }
+    }
+
     EventSubscriptionOffset eventSubscriptionOffset =
         new EventSubscriptionOffset()
             .withCurrentOffset(offset)
@@ -269,6 +350,24 @@ public abstract class AbstractEventConsumer
             METRICS_EXTENSION,
             "alertMetrics",
             JsonUtils.pojoToJson(metrics));
+  }
+
+  private void batchRecordSuccessfulEvents(UUID subscriptionId, long timestamp) {
+    List<String> changeEventIds = new ArrayList<>();
+    List<String> subscriptionIds = new ArrayList<>();
+    List<String> jsonList = new ArrayList<>();
+    List<Long> timestamps = new ArrayList<>();
+
+    for (ChangeEvent event : successfulEvents) {
+      changeEventIds.add(event.getId().toString());
+      subscriptionIds.add(subscriptionId.toString());
+      jsonList.add(JsonUtils.pojoToJson(event));
+      timestamps.add(timestamp);
+    }
+
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .batchUpsertSuccessfulChangeEvents(changeEventIds, subscriptionIds, jsonList, timestamps);
   }
 
   @Override

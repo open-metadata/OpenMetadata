@@ -10,11 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+// Mock i18n for tests
+jest.mock('./i18next/LocalUtil', () => ({
+  __esModule: true,
+  default: {
+    t: jest.fn((key: string) => {
+      const translations: Record<string, string> = {
+        'label.ordinal-suffix-st': 'st',
+        'label.ordinal-suffix-nd': 'nd',
+        'label.ordinal-suffix-rd': 'rd',
+        'label.ordinal-suffix-th': 'th',
+      };
+
+      return translations[key] || key;
+    }),
+  },
+}));
+
 import {
   formatJsonString,
   getDecodedFqn,
   getEncodedFqn,
   jsonToCSV,
+  ordinalize,
+  removeAttachmentsWithoutUrl,
   replaceCallback,
 } from './StringsUtils';
 
@@ -120,5 +140,117 @@ describe('StringsUtils', () => {
     expect(jsonToCSV(jsonData, headers)).toEqual(expectedCSV);
     expect(jsonToCSV(jsonData, [])).toEqual('');
     expect(jsonToCSV([], headers)).toEqual('');
+  });
+
+  describe('ordinalize', () => {
+    it('should return "1st" for 1', () => {
+      expect(ordinalize(1)).toBe('1st');
+    });
+
+    it('should return "2nd" for 2', () => {
+      expect(ordinalize(2)).toBe('2nd');
+    });
+
+    it('should return "3rd" for 3', () => {
+      expect(ordinalize(3)).toBe('3rd');
+    });
+
+    it('should return "4th" for 4', () => {
+      expect(ordinalize(4)).toBe('4th');
+    });
+
+    it('should return "11th" for 11', () => {
+      expect(ordinalize(11)).toBe('11th');
+    });
+
+    it('should return "12th" for 12', () => {
+      expect(ordinalize(12)).toBe('12th');
+    });
+
+    it('should return "13th" for 13', () => {
+      expect(ordinalize(13)).toBe('13th');
+    });
+
+    it('should return "21st" for 21', () => {
+      expect(ordinalize(21)).toBe('21st');
+    });
+
+    it('should return "22nd" for 22', () => {
+      expect(ordinalize(22)).toBe('22nd');
+    });
+
+    it('should return "23rd" for 23', () => {
+      expect(ordinalize(23)).toBe('23rd');
+    });
+
+    it('should return "100th" for 100', () => {
+      expect(ordinalize(100)).toBe('100th');
+    });
+
+    it('should return "101st" for 101', () => {
+      expect(ordinalize(101)).toBe('101st');
+    });
+  });
+
+  describe('removeAttachmentsWithoutUrl', () => {
+    it('should remove attachment divs without data-url attribute', () => {
+      const htmlString =
+        '<p>Hello</p><div data-type="file-attachment">No URL</div><p>World</p>';
+      const result = removeAttachmentsWithoutUrl(htmlString);
+
+      expect(result).toBe('<p>Hello</p><p>World</p>');
+    });
+
+    it('should keep attachment divs with data-url attribute', () => {
+      const htmlString =
+        '<p>Hello</p><div data-type="file-attachment" data-url="https://example.com/file.pdf">With URL</div><p>World</p>';
+      const result = removeAttachmentsWithoutUrl(htmlString);
+
+      expect(result).toBe(
+        '<p>Hello</p><div data-type="file-attachment" data-url="https://example.com/file.pdf">With URL</div><p>World</p>'
+      );
+    });
+
+    it('should remove only attachments without url when mixed', () => {
+      const htmlString =
+        '<div data-type="file-attachment" data-url="https://example.com/file1.pdf">Keep</div>' +
+        '<div data-type="file-attachment">Remove</div>' +
+        '<div data-type="file-attachment" data-url="https://example.com/file2.pdf">Keep</div>';
+      const result = removeAttachmentsWithoutUrl(htmlString);
+
+      expect(result).toBe(
+        '<div data-type="file-attachment" data-url="https://example.com/file1.pdf">Keep</div>' +
+          '<div data-type="file-attachment" data-url="https://example.com/file2.pdf">Keep</div>'
+      );
+    });
+
+    it('should return the same html when no attachments are present', () => {
+      const htmlString = '<p>Hello World</p><span>No attachments here</span>';
+      const result = removeAttachmentsWithoutUrl(htmlString);
+
+      expect(result).toBe('<p>Hello World</p><span>No attachments here</span>');
+    });
+
+    it('should handle empty string', () => {
+      const result = removeAttachmentsWithoutUrl('');
+
+      expect(result).toBe('');
+    });
+
+    it('should remove attachment with empty data-url attribute', () => {
+      const htmlString =
+        '<div data-type="file-attachment" data-url="">Empty URL</div>';
+      const result = removeAttachmentsWithoutUrl(htmlString);
+
+      expect(result).toBe('');
+    });
+
+    it('should not affect other divs without file-attachment type', () => {
+      const htmlString =
+        '<div class="regular">Keep this</div><div data-type="file-attachment">Remove</div>';
+      const result = removeAttachmentsWithoutUrl(htmlString);
+
+      expect(result).toBe('<div class="regular">Keep this</div>');
+    });
   });
 });

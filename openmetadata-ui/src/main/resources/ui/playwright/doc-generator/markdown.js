@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-const REPO_BASE_URL = 'https://github.com/open-metadata/OpenMetadata';
-
 /**
  * Generate the Main Index Page (README.md)
  */
@@ -134,7 +132,9 @@ function generateIndexMarkdown(components, stats) {
 /**
  * Generate a Consolidated Domain Page
  */
-function generateDomainMarkdown(domainName, components) {
+function generateDomainMarkdown(domainName, components, options = {}) {
+  const { repoBaseUrl } = options;
+
   // Stats for the Domain
   const totalTests = components.reduce((s, c) => s + c.totalTests, 0);
   const totalFiles = components.reduce((s, c) => s + c.files.length, 0);
@@ -175,7 +175,7 @@ function generateDomainMarkdown(domainName, components) {
     const sortedFiles = [...component.files].sort((a, b) => b.totalScenarios - a.totalScenarios);
 
     sortedFiles.forEach(file => {
-      md += renderFileWithCollapse(file);
+      md += renderFileWithCollapse(file, repoBaseUrl);
     });
     
     md += `\n---\n\n`;
@@ -184,9 +184,30 @@ function generateDomainMarkdown(domainName, components) {
   return md;
 }
 
-function renderFileWithCollapse(file) {
-  const relativePath = file.path.split('openmetadata-ui/')[1] || file.path; 
-  const fileUrl = `${REPO_BASE_URL}/blob/main/openmetadata-ui/${relativePath}`;
+function renderFileWithCollapse(file, repoBaseUrl) {
+  // Try to find relative path from 'src/main/resources/ui' or similar common roots if possible, 
+  // or fall back to just filename if path parsing is complex.
+  // Assuming standard Maven structure: .../src/main/resources/ui/...
+  
+  // Robust path logic for both OpenMetadata (monorepo) and Collate (separate repo)
+  // Goal: relativePath should be 'src/main/resources/ui/...' to match standard docs
+  
+  let relativePath = file.path;
+  const standardPrefix = 'src/main/resources/ui/';
+
+  if (file.path.includes('openmetadata-ui/')) {
+    // Standard OM case: path contains 'openmetadata-ui/src/main/resources/ui/...'
+    relativePath = file.path.split('openmetadata-ui/')[1];
+  } else if (file.path.includes(standardPrefix)) {
+    // Collate/Fallback case: path contains 'src/main/resources/ui/...' but maybe not 'openmetadata-ui/'
+    // We normalize it to start with src/main/resources/ui/
+    relativePath = standardPrefix + file.path.split(standardPrefix)[1];
+    // Ensure no double slashes from split
+    relativePath = relativePath.replace('//', '/');
+  }
+
+  // URL Construction assuming 'openmetadata-ui' is the root module folder in both repos
+  const fileUrl = `${repoBaseUrl}/blob/main/openmetadata-ui/${relativePath.startsWith('/') ? relativePath.substring(1) : relativePath}`;
   
   // Calculate File Scenarios
   let fileScenarios = 0;

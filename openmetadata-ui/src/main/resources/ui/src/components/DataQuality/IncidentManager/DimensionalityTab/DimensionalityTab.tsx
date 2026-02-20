@@ -30,7 +30,11 @@ import { DateRangeObject } from 'Models';
 import { useEffect, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { DEFAULT_RANGE_DATA } from '../../../../constants/profiler.constant';
+import {
+  DEFAULT_RANGE_DATA,
+  DEFAULT_SELECTED_RANGE,
+  TEST_CASE_STATUS_LABELS,
+} from '../../../../constants/profiler.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
@@ -118,7 +122,7 @@ const DimensionalityTab = () => {
       );
 
       setDimensionData(response.data);
-    } catch (error) {
+    } catch {
       setDimensionData([]);
     } finally {
       setIsLoading(false);
@@ -190,7 +194,7 @@ const DimensionalityTab = () => {
         return result?.testCaseStatus ? (
           <StatusBadge
             dataTestId="status-badge"
-            label={result.testCaseStatus}
+            label={TEST_CASE_STATUS_LABELS[result.testCaseStatus]}
             status={toLower(result.testCaseStatus) as StatusType}
           />
         ) : (
@@ -367,6 +371,7 @@ const DimensionalityTab = () => {
           </Typography>
           <MuiDatePickerMenu
             showSelectedCustomRange
+            defaultDateRange={DEFAULT_SELECTED_RANGE}
             handleDateRangeChange={handleDateRangeChange}
             size="small"
           />

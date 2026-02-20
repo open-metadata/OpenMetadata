@@ -113,9 +113,11 @@ class TokenService {
 
         return null;
       }
-    } catch {
+    } catch (error) {
       // Clear refresh flag on error to prevent deadlock
       this.clearRefreshInProgress();
+
+      throw error;
     }
   }
 

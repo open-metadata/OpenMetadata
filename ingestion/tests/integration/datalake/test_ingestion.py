@@ -31,11 +31,11 @@ class TestDatalake:
         self.metadata = metadata
 
     @pytest.mark.order(10000)
-    def test_ingestion(self, run_ingestion):
+    def test_ingestion(self, run_ingestion, ingestion_config):
         """test ingestion of datalake data"""
-        # Ingest our S3 data
+        service_name = ingestion_config["source"]["serviceName"]
         resp: EntityList[Table] = self.metadata.list_entities(
-            entity=Table, params={"database": "datalake_for_integration_tests.default"}
+            entity=Table, params={"database": f"{service_name}.default"}
         )  # type: ignore
 
         entities = resp.entities
@@ -55,27 +55,28 @@ class TestDatalake:
                 if column.dataType == DataType.JSON:
                     assert column.children
 
-    def test_auto_classification(self, run_auto_classification):
+    def test_auto_classification(self, run_auto_classification, ingestion_config):
         """Also excluding the test for parquet files until the above is fixed"""
+        service_name = ingestion_config["source"]["serviceName"]
         csv_ = self.metadata.get_by_name(
             entity=Table,
-            fqn=f'datalake_for_integration_tests.default.{BUCKET_NAME}."users/users.csv"',
+            fqn=f'{service_name}.default.{BUCKET_NAME}."users/users.csv"',
             fields=["tableProfilerConfig"],
         )
         # parquet_ = self.metadata.get_by_name(
         #     entity=Table,
-        #     fqn='datalake_for_integration_tests.default.MyBucket."new_users.parquet"',
+        #     fqn=f'{service_name}.default.MyBucket."new_users.parquet"',
         #     fields=["tableProfilerConfig"],
         # )
         json_ = self.metadata.get_by_name(
             entity=Table,
-            fqn=f'datalake_for_integration_tests.default.{BUCKET_NAME}."names.json"',
+            fqn=f'{service_name}.default.{BUCKET_NAME}."names.json"',
             fields=["tableProfilerConfig"],
         )
 
         jsonl_ = self.metadata.get_by_name(
             entity=Table,
-            fqn=f'datalake_for_integration_tests.default.{BUCKET_NAME}."names.jsonl"',
+            fqn=f'{service_name}.default.{BUCKET_NAME}."names.jsonl"',
             fields=["tableProfilerConfig"],
         )
 

@@ -25,6 +25,7 @@ import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -54,6 +55,7 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -96,7 +98,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public void setFields(MlModel mlModel, Fields fields) {
+  public void setFields(MlModel mlModel, Fields fields, RelationIncludes relationIncludes) {
     mlModel.setService(getContainer(mlModel.getId()));
     mlModel.setDashboard(
         fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());
@@ -280,6 +282,34 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
+  public void storeEntities(List<MlModel> entities) {
+    List<MlModel> entitiesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+
+    for (MlModel mlModel : entities) {
+      EntityReference dashboard = mlModel.getDashboard();
+      EntityReference service = mlModel.getService();
+
+      mlModel.withService(null).withDashboard(null);
+
+      String jsonCopy = gson.toJson(mlModel);
+      entitiesToStore.add(gson.fromJson(jsonCopy, MlModel.class));
+
+      mlModel.withService(service).withDashboard(dashboard);
+    }
+
+    storeMany(entitiesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<MlModel> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(MlModel::getId).toList();
+    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteFromMany(ids, Entity.MLMODEL, Relationship.USES, Entity.DASHBOARD);
+  }
+
+  @Override
   public void storeRelationships(MlModel mlModel) {
     addServiceRelationship(mlModel, mlModel.getService());
 
@@ -437,7 +467,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       updateServer(original, updated);
       updateTarget(original, updated);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
-      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange(
+          "sourceHash",
+          original.getSourceHash(),
+          updated.getSourceHash(),
+          false,
+          EntityUtil.objectMatch,
+          false);
     }
 
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) {

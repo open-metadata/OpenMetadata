@@ -12,14 +12,19 @@
  */
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { CustomIconComponentProps } from '@ant-design/icons/lib/components/Icon';
 import {
+  Field,
+  FieldOrGroup,
   ListValues,
   OldJsonTree,
   RenderSettings,
   Utils as QbUtils,
+  ValueSource,
 } from '@react-awesome-query-builder/antd';
-import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
+import { Button, Checkbox, MenuProps, Radio, Space, Typography } from 'antd';
 import { isArray, isEmpty, toLower } from 'lodash';
+import { Bucket } from 'Models';
 import React from 'react';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
@@ -32,6 +37,7 @@ import {
   DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
   GLOSSARY_ASSETS_DROPDOWN_ITEMS,
   LINEAGE_DROPDOWN_ITEMS,
+  TAG_ASSETS_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
 import {
@@ -41,7 +47,6 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
-  Bucket,
   ContainerSearchSource,
   DashboardSearchSource,
   ExploreSearchSource,
@@ -51,6 +56,7 @@ import {
   TableSearchSource,
   TopicSearchSource,
 } from '../interface/search.interface';
+import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/CommonUtils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
@@ -67,16 +73,22 @@ export const getAssetsPageQuickFilters = (type?: AssetsOfEntity) => {
   switch (type) {
     case AssetsOfEntity.DOMAIN:
     case AssetsOfEntity.DATA_PRODUCT:
+    case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
+    case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
       return [...DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS];
 
     case AssetsOfEntity.GLOSSARY:
       return [...GLOSSARY_ASSETS_DROPDOWN_ITEMS];
+
+    case AssetsOfEntity.TAG:
+      return [...TAG_ASSETS_DROPDOWN_ITEMS];
+
     case AssetsOfEntity.LINEAGE:
       return [...LINEAGE_DROPDOWN_ITEMS];
+
     default:
       return [...COMMON_DROPDOWN_ITEMS];
   }
-  // TODO: Add more quick filters
 };
 
 export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
@@ -88,7 +100,9 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
     return (
       <Icon
         className="action action--DELETE"
-        component={CloseCircleOutlined as React.ForwardRefExoticComponent<any>}
+        component={
+          CloseCircleOutlined as React.ForwardRefExoticComponent<CustomIconComponentProps>
+        }
         data-testid="advanced-search-delete-rule"
         onClick={props?.onClick}
       />
@@ -150,16 +164,19 @@ export const generateSearchDropdownLabel = (
   checked: boolean,
   searchKey: string,
   showProfilePicture: boolean,
-  hideCounts = false
+  hideCounts = false,
+  singleSelect = false
 ) => {
+  const InputComponent = singleSelect ? Radio : Checkbox;
+
   return (
     <div className="d-flex justify-between">
-      <Space
-        align="center"
-        className="m-x-sm"
-        data-testid={option.key}
-        size={8}>
-        <Checkbox checked={checked} data-testid={`${option.key}-checkbox`} />
+      <Space align="start" className="m-x-sm" data-testid={option.key} size={8}>
+        <InputComponent
+          checked={checked}
+          data-testid={`${option.key}-${singleSelect ? 'radio' : 'checkbox'}`}
+          style={option.description ? { marginTop: 4 } : undefined}
+        />
         {showProfilePicture && (
           <ProfilePicture
             displayName={option.label}
@@ -167,16 +184,26 @@ export const generateSearchDropdownLabel = (
             width="18"
           />
         )}
-        <Typography.Text
-          ellipsis
-          className="dropdown-option-label"
-          title={option.label}>
-          <span
-            dangerouslySetInnerHTML={{
-              __html: getSearchLabel(option.label, searchKey),
-            }}
-          />
-        </Typography.Text>
+        <div>
+          <Typography.Text
+            ellipsis
+            className="dropdown-option-label"
+            title={option.label}>
+            <span
+              dangerouslySetInnerHTML={{
+                __html: getSearchLabel(option.label, searchKey),
+              }}
+            />
+          </Typography.Text>
+          {option.description && (
+            <Typography.Text
+              className="text-xs d-block"
+              data-testid={`${option.key}-description`}
+              type="secondary">
+              {option.description}
+            </Typography.Text>
+          )}
+        </div>
       </Space>
       {!hideCounts && getCountBadge(option.count, 'm-r-sm', false)}
     </div>
@@ -188,7 +215,8 @@ export const getSearchDropdownLabels = (
   checked: boolean,
   searchKey = '',
   showProfilePicture = false,
-  hideCounts = false
+  hideCounts = false,
+  singleSelect = false
 ): MenuProps['items'] => {
   if (isArray(optionsArray)) {
     const sortedOptions = optionsArray.sort(
@@ -202,7 +230,8 @@ export const getSearchDropdownLabels = (
         checked,
         searchKey,
         showProfilePicture,
-        hideCounts
+        hideCounts,
+        singleSelect
       ),
     }));
   } else {
@@ -369,7 +398,7 @@ export const getTierOptions = async (): Promise<ListValues> => {
     }));
 
     return tierFields as ListValues;
-  } catch (error) {
+  } catch {
     return [];
   }
 };
@@ -491,4 +520,96 @@ export const getEmptyJsonTreeForQueryBuilder = (
       },
     },
   };
+};
+
+/**
+ * Process a custom property field and add it to the subfields
+ * @param field - The custom property field to process
+ * @param resEntityType - The entity type containing the field
+ * @param subfields - The subfields record to update
+ * @param entityType - Optional specific entity type to filter for
+ */
+export const processCustomPropertyField = (
+  field: CustomPropertySummary,
+  resEntityType: string,
+  subfields: Record<string, FieldOrGroup>,
+  entityType?: string,
+  searchOutputType?: SearchOutputType
+) => {
+  if (!field.name || !field.type) {
+    return;
+  }
+
+  const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+    field,
+    searchOutputType
+  );
+  const subfieldsArray = Array.isArray(result) ? result : [result];
+
+  subfieldsArray.forEach(({ subfieldsKey, dataObject }) => {
+    // If entityType is specified, return subfields directly without entityType wrapper
+    if (entityType) {
+      subfields[subfieldsKey] = {
+        ...dataObject,
+        valueSources: dataObject.valueSources as ValueSource[],
+      };
+    } else {
+      // Create nested subfields for each entity type (e.g., table, database, etc.)
+      const existingGroup = subfields[resEntityType];
+      const entitySubfields: Record<string, Field> =
+        existingGroup && 'subfields' in existingGroup
+          ? existingGroup.subfields ?? {}
+          : {};
+
+      entitySubfields[subfieldsKey] = {
+        ...dataObject,
+        valueSources: dataObject.valueSources as ValueSource[],
+      };
+
+      // Only create the entity type field if it has custom properties
+      if (!isEmpty(entitySubfields)) {
+        subfields[resEntityType] = {
+          label: resEntityType.charAt(0).toUpperCase() + resEntityType.slice(1),
+          type: '!group',
+          subfields: entitySubfields,
+        };
+      }
+    }
+  });
+};
+
+/**
+ * Process all custom property fields for a specific entity type
+ * @param resEntityType - The entity type to process
+ * @param fields - Array of custom property fields
+ * @param subfields - The subfields record to update
+ * @param entityType - Optional specific entity type to filter for
+ */
+export const processEntityTypeFields = (
+  resEntityType: string,
+  fields: CustomPropertySummary[],
+  subfields: Record<string, FieldOrGroup>,
+  entityType?: string,
+  searchOutputType?: SearchOutputType
+) => {
+  // If entityType is specified, only include custom properties for that entity type
+  if (
+    entityType &&
+    entityType !== EntityType.ALL &&
+    resEntityType !== entityType
+  ) {
+    return;
+  }
+
+  if (Array.isArray(fields) && fields.length > 0) {
+    fields.forEach((field) => {
+      processCustomPropertyField(
+        field,
+        resEntityType,
+        subfields,
+        entityType,
+        searchOutputType
+      );
+    });
+  }
 };

@@ -117,6 +117,45 @@ public class DashboardDataModelResourceTest
   }
 
   @Test
+  void post_dataModelWithServiceNameContainingDots_200_ok(TestInfo test) throws IOException {
+    // Create a dashboard service with dots in its name
+    DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
+    String serviceNameWithDots = "service.with.dots." + test.getDisplayName();
+    CreateDashboardService createService = serviceTest.createRequest(serviceNameWithDots);
+    DashboardService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    // Create a data model under the service with dots in its name
+    CreateDashboardDataModel createDataModel =
+        createRequest(test.getDisplayName() + "_datamodel")
+            .withService(service.getFullyQualifiedName());
+    DashboardDataModel dataModel = createAndCheckEntity(createDataModel, ADMIN_AUTH_HEADERS);
+
+    // Verify we can list data models by filtering on service name containing dots
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("service", service.getFullyQualifiedName());
+    ResultList<DashboardDataModel> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+
+    // Should find at least one data model
+    assertFalse(list.getData().isEmpty(), "Should find data models for service with dots in name");
+
+    // Find our created data model in the list
+    boolean found = list.getData().stream().anyMatch(dm -> dm.getId().equals(dataModel.getId()));
+    assertTrue(
+        found, "Should find the created data model when filtering by service name with dots");
+
+    // Verify all returned data models belong to the correct service
+    for (DashboardDataModel dm : list.getData()) {
+      assertEquals(
+          service.getFullyQualifiedName(),
+          dm.getService().getFullyQualifiedName(),
+          "All data models should belong to the service with dots in name");
+    }
+
+    // Cleanup
+    serviceTest.deleteEntity(service.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
   void test_mutuallyExclusiveTags(TestInfo testInfo) {
     CreateDashboardDataModel create =
         createRequest(testInfo).withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
@@ -248,6 +287,32 @@ public class DashboardDataModelResourceTest
   @Override
   public EntityReference getContainer(DashboardDataModel entity) {
     return entity.getService();
+  }
+
+  @Override
+  protected EntityReference createContainerWithDotsInName(String name) throws IOException {
+    DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
+    CreateDashboardService createService = serviceTest.createRequest(name);
+    DashboardService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+    return service.getEntityReference();
+  }
+
+  @Override
+  protected CreateDashboardDataModel createRequestUnderContainer(
+      String name, EntityReference container) {
+    return new CreateDashboardDataModel()
+        .withName(name)
+        .withService(container.getFullyQualifiedName())
+        .withServiceType(CreateDashboardDataModel.DashboardServiceType.Metabase)
+        .withSql("SELECT * FROM tab1;")
+        .withDataModelType(DataModelType.MetabaseDataModel)
+        .withColumns(COLUMNS);
+  }
+
+  @Override
+  protected void deleteContainerWithDotsInName(EntityReference container) throws IOException {
+    DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
+    serviceTest.deleteEntity(container.getId(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Override

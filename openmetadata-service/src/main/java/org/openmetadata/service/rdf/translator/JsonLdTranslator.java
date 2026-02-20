@@ -247,7 +247,7 @@ public class JsonLdTranslator {
     RdfPropertyMapper propertyMapper = new RdfPropertyMapper(baseUri, objectMapper, contextCache);
     propertyMapper.mapEntityToRdf(entity, entityResource, model);
 
-    LOG.info(
+    LOG.debug(
         "RDF model size for entity {}: {} triples", entity.getFullyQualifiedName(), model.size());
 
     return model;

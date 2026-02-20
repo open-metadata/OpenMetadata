@@ -182,6 +182,7 @@
               </resources>
               <nonFilteredFileExtensions>
                 <nonFilteredFileExtension>gz</nonFilteredFileExtension>
+                <nonFilteredFileExtension>br</nonFilteredFileExtension>
                 <nonFilteredFileExtension>woff</nonFilteredFileExtension>
                 <nonFilteredFileExtension>woff2</nonFilteredFileExtension>
                 <nonFilteredFileExtension>ttf</nonFilteredFileExtension>

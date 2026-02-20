@@ -69,7 +69,12 @@ export const getPipelineByFqn = async (fqn: string, params?: ListParams) => {
   const response = await APIClient.get<Pipeline>(
     `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
     {
-      params: { ...params, include: params?.include ?? Include.All },
+      params: {
+        ...params,
+        include: params?.include ?? Include.All,
+        includeRelations:
+          params?.includeRelations ?? 'owners:non-deleted,experts:non-deleted',
+      },
     }
   );
 

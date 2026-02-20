@@ -12,12 +12,20 @@
 Redshift models
 """
 import re
+from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
 from pydantic import BaseModel
 
 TableName = str
 SchemaName = str
+
+
+class RedshiftInstanceType(Enum):
+    """Redshift Instance Types"""
+
+    PROVISIONED = "PROVISIONED"
+    SERVERLESS = "SERVERLESS"
 
 
 class RedshiftStoredProcedure(BaseModel):

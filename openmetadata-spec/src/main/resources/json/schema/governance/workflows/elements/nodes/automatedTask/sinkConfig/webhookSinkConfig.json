@@ -1,0 +1,130 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/sinkConfig/webhookSinkConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WebhookSinkConfig",
+  "description": "Configuration for webhook-based sinks.",
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.WebhookSinkConfig",
+  "type": "object",
+  "definitions": {
+    "httpMethod": {
+      "title": "HTTP Method",
+      "description": "HTTP method to use for the webhook request.",
+      "type": "string",
+      "enum": ["POST", "PUT", "PATCH"],
+      "default": "POST"
+    },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Type of authentication for webhook requests.",
+      "type": "string",
+      "enum": ["none", "bearer", "basic", "apiKey"]
+    }
+  },
+  "properties": {
+    "endpoint": {
+      "title": "Webhook Endpoint",
+      "description": "HTTP endpoint URL for the webhook.",
+      "type": "string",
+      "format": "uri"
+    },
+    "httpMethod": {
+      "$ref": "#/definitions/httpMethod"
+    },
+    "headers": {
+      "title": "Custom Headers",
+      "description": "Additional HTTP headers to include in requests.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "authentication": {
+      "title": "Authentication",
+      "description": "Authentication configuration for webhook requests.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/authType"
+        },
+        "token": {
+          "title": "Bearer Token",
+          "description": "Bearer token for authentication.",
+          "type": "string",
+          "format": "password"
+        },
+        "username": {
+          "title": "Username",
+          "description": "Username for basic authentication.",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "description": "Password for basic authentication.",
+          "type": "string",
+          "format": "password"
+        },
+        "headerName": {
+          "title": "API Key Header Name",
+          "description": "Header name for API key authentication.",
+          "type": "string",
+          "default": "X-API-Key"
+        },
+        "apiKey": {
+          "title": "API Key",
+          "description": "API key value.",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "additionalProperties": false
+    },
+    "batchConfig": {
+      "title": "Batch Configuration",
+      "description": "Configuration for batching multiple entities in a single request.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Enable Batching",
+          "description": "Send multiple entities in a single request.",
+          "type": "boolean",
+          "default": false
+        },
+        "batchSize": {
+          "title": "Batch Size",
+          "description": "Maximum number of entities per request.",
+          "type": "integer",
+          "default": 100,
+          "minimum": 1,
+          "maximum": 1000
+        }
+      },
+      "additionalProperties": false
+    },
+    "retryConfig": {
+      "title": "Retry Configuration",
+      "type": "object",
+      "properties": {
+        "maxRetries": {
+          "type": "integer",
+          "default": 3,
+          "minimum": 0,
+          "maximum": 10
+        },
+        "retryDelaySeconds": {
+          "type": "integer",
+          "default": 5,
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "timeout": {
+      "title": "Timeout",
+      "description": "Timeout in seconds for HTTP requests.",
+      "type": "integer",
+      "default": 30
+    }
+  },
+  "required": ["endpoint"],
+  "additionalProperties": false
+}

@@ -22,6 +22,7 @@ import athena from '../assets/img/service-icon-athena.png';
 import atlas from '../assets/img/service-icon-atlas.svg';
 import azuresql from '../assets/img/service-icon-azuresql.png';
 import bigtable from '../assets/img/service-icon-bigtable.png';
+import burstiq from '../assets/img/service-icon-burstiq.png';
 import cassandra from '../assets/img/service-icon-cassandra.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
 import cockroach from '../assets/img/service-icon-cockroach.png';
@@ -82,6 +83,7 @@ import spark from '../assets/img/service-icon-spark.png';
 import spline from '../assets/img/service-icon-spline.png';
 import mysql from '../assets/img/service-icon-sql.png';
 import sqlite from '../assets/img/service-icon-sqlite.png';
+import starrocks from '../assets/img/service-icon-starrocks.png';
 import superset from '../assets/img/service-icon-superset.png';
 import synapse from '../assets/img/service-icon-synapse.png';
 import tableau from '../assets/img/service-icon-tableau.png';
@@ -106,6 +108,7 @@ import securitySafe from '../assets/svg/security-safe.svg';
 import googleDrive from '../assets/svg/service-icon-google-drive.svg';
 import hex from '../assets/svg/service-icon-hex.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
+import sftp from '../assets/svg/service-icon-sftp.svg';
 import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
 import { EntityType } from '../enums/entity.enum';
@@ -162,6 +165,7 @@ export const DATABRICK = databrick;
 export const UNITYCATALOG = unitycatalog;
 export const IBMDB2 = ibmdb2;
 export const DORIS = doris;
+export const STARROCKS = starrocks;
 export const DRUID = druid;
 export const DYNAMODB = dynamodb;
 export const SIGMA = sigma;
@@ -223,7 +227,9 @@ export const COCKROACH = cockroach;
 export const SECURITY_DEFAULT = securitySafe;
 export const GRAFANA = grafana;
 export const GOOGLE_DRIVE = googleDrive;
+export const SFTP = sftp;
 export const TIMESCALE = timescale;
+export const BURSTIQ = burstiq;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -449,8 +455,14 @@ export const BETA_SERVICES = [
   DashboardServiceType.Hex,
   DatabaseServiceType.ServiceNow,
   DatabaseServiceType.Timescale,
+  DatabaseServiceType.Dremio,
   MetadataServiceType.Collibra,
   PipelineServiceType.Mulesoft,
+  DatabaseServiceType.MicrosoftFabric,
+  PipelineServiceType.MicrosoftFabricPipeline,
+  DatabaseServiceType.BurstIQ,
+  DatabaseServiceType.StarRocks,
+  DriveServiceType.SFTP,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
@@ -487,6 +499,12 @@ export const ADVANCED_PROPERTIES = [
   'schemaRegistrySSL',
   'consumerConfigSSL',
   'verify',
+  'useNonce',
+  'disablePkce',
+  'maxClockSkew',
+  'tokenValidity',
+  'maxAge',
+  'sessionExpiry',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
@@ -541,4 +559,6 @@ export const SERVICE_TYPE_WITH_DISPLAY_NAME = new Map<string, string>([
   [PipelineServiceType.OpenLineage, 'Open Lineage'],
   [MetadataServiceType.AlationSink, 'Alation Sink'],
   [SearchServiceType.ElasticSearch, 'Elasticsearch'],
+  [DatabaseServiceType.MicrosoftFabric, 'Microsoft Fabric'],
+  [PipelineServiceType.MicrosoftFabricPipeline, 'Microsoft Fabric Pipeline'],
 ]);

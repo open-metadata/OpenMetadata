@@ -19,6 +19,7 @@
       "enum": [
         "GoogleDrive",
         "SharePoint",
+        "Sftp",
         "CustomDrive"
       ],
       "javaEnums": [
@@ -27,6 +28,9 @@
         },
         {
           "name": "SharePoint"
+        },
+        {
+          "name": "Sftp"
         },
         {
           "name": "CustomDrive"
@@ -49,6 +53,9 @@
             },
             {
               "$ref": "connections/drive/sharePointConnection.json"
+            },
+            {
+              "$ref": "connections/drive/sftpConnection.json"
             },
             {
               "$ref": "connections/drive/customDriveConnection.json"

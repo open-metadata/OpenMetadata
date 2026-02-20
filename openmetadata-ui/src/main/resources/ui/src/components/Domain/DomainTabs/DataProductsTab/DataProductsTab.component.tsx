@@ -32,7 +32,7 @@ import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { useFqn } from '../../../../hooks/useFqn';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
-import { getTermQuery } from '../../../../utils/SearchUtils';
+import { getQueryFilterForDataProducts } from '../../../../utils/DomainUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
@@ -63,9 +63,9 @@ const DataProductsTab = forwardRef(
           query: '',
           pageNumber: 1,
           pageSize: PAGE_SIZE_LARGE,
-          queryFilter: getTermQuery({
-            'domains.fullyQualifiedName': urlDomainFqn || domainFqn || '',
-          }),
+          queryFilter: getQueryFilterForDataProducts(
+            urlDomainFqn || domainFqn || ''
+          ),
           searchIndex: SearchIndex.DATA_PRODUCT,
         });
 

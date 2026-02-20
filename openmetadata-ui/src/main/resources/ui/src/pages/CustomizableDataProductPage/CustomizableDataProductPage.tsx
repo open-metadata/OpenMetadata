@@ -70,7 +70,8 @@ const CustomizableDataProductPage = ({
       ({
         pageType: currentPageType,
       } as Page);
-    const editedPage = currentPage ??
+    const editedPage =
+      currentPage ??
       ({
         pageType: currentPageType,
       } as Page);

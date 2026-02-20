@@ -357,6 +357,13 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
         };
       }
 
+      if (param?.dataType === TestDataType.Boolean) {
+        return {
+          ...acc,
+          [curr.name || '']: curr.value === 'true',
+        };
+      }
+
       return {
         ...acc,
         [curr.name || '']: curr.value,
@@ -470,7 +477,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
           {errorMessage && (
             <div className="floating-error-alert">
               <AlertBar
-                defafultExpand
+                defaultExpand
                 className="h-full custom-alert-description"
                 message={errorMessage}
                 type="error"

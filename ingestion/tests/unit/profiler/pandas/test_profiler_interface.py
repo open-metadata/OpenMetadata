@@ -53,6 +53,7 @@ from metadata.profiler.metrics.core import (
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.processor.default import get_default_metrics
+from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
 if sys.version_info < (3, 9):
@@ -170,11 +171,17 @@ class PandasInterfaceTest(TestCase):
         with (
             patch.object(
                 DatalakeSampler,
-                "raw_dataset",
-                new_callable=lambda: [
-                    cls.df1,
-                    pd.concat([cls.df2, pd.DataFrame(index=cls.df1.index)]),
-                ],
+                "get_dataframes",
+                return_value=DatalakeColumnWrapper(
+                    dataframes=lambda: iter(
+                        [
+                            cls.df1,
+                            pd.concat([cls.df2, pd.DataFrame(index=cls.df1.index)]),
+                        ]
+                    ),
+                    columns=None,
+                    raw_data=None,
+                ),
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
