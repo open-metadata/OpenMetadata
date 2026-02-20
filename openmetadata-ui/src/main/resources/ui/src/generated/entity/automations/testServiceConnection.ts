@@ -174,6 +174,8 @@ export interface TestServiceConnectionConnection {
  *
  * Microsoft Fabric Warehouse and Lakehouse Connection Config
  *
+ * BurstIQ LifeGraph Database Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -588,6 +590,8 @@ export interface ConfigObject {
      * Regex to include/exclude FHIR resource types
      *
      * Regex to only include/exclude tables that match the pattern.
+     *
+     * Regex to only include/exclude dictionaries (tables) that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -744,6 +748,8 @@ export interface ConfigObject {
      *
      * Password to connect to ServiceNow.
      *
+     * Password to connect to BurstIQ.
+     *
      * Password to connect to Metabase. Required for basic authentication.
      *
      * Password to connect to PowerBI report server.
@@ -855,6 +861,9 @@ export interface ConfigObject {
      *
      * Username to connect to ServiceNow. This user should have read access to sys_db_object and
      * sys_dictionary tables.
+     *
+     * Username to connect to BurstIQ. This user should have privileges to read all the metadata
+     * in BurstIQ LifeGraph.
      *
      * Username to connect to Metabase. Required for basic authentication.
      *
@@ -1096,9 +1105,10 @@ export interface ConfigObject {
      */
     securityToken?: string;
     /**
-     * Salesforce Object Name.
+     * List of Salesforce Object Names to ingest. If specified, only these objects will be
+     * fetched. Leave empty to fetch all objects (subject to tableFilterPattern).
      */
-    sobjectName?: string;
+    sobjectNames?: string[];
     /**
      * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
      * account is xyz1234.us-east-1.gcp
@@ -1372,6 +1382,18 @@ export interface ConfigObject {
      * admin tables will be fetched.
      */
     includeSystemTables?: boolean;
+    /**
+     * BurstIQ customer name for API requests.
+     */
+    biqCustomerName?: string;
+    /**
+     * BurstIQ Secure Data Zone (SDZ) name for API requests.
+     */
+    biqSdzName?: string;
+    /**
+     * BurstIQ Keycloak realm name (e.g., 'ems' from https://auth.burstiq.com/realms/ems).
+     */
+    realmName?: string;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -1663,6 +1685,12 @@ export interface ConfigObject {
      * SFTP server hostname or IP address
      */
     host?: string;
+    /**
+     * Number of leading segments to remove from asset key paths before resolving to tables. For
+     * example, if your asset keys follow the pattern 'project/environment/schema/table' but you
+     * only need 'schema/table', set this to 2.
+     */
+    stripAssetKeyPrefixLength?: number;
     /**
      * Connection Time Limit Between OM and Dagster Graphql API in second
      */
@@ -2107,6 +2135,8 @@ export interface UsernamePasswordAuthentication {
  * are mapped as schemas.
  *
  * Regex to only include/exclude tables that match the pattern.
+ *
+ * Regex to only include/exclude dictionaries (tables) that matches the pattern.
  *
  * Regex exclude or include charts that matches the pattern.
  *
@@ -4514,6 +4544,7 @@ export enum ConfigType {
     AzureSQL = "AzureSQL",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
+    BurstIQ = "BurstIQ",
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Cockroach = "Cockroach",

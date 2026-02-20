@@ -7,6 +7,7 @@ import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
@@ -49,6 +50,8 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.jetbrains.annotations.NotNull;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -707,6 +710,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           .withTestCaseResult(testCaseResult);
     }
     storeMany(testCasesToStore);
+  }
+
+  @Override
+  protected void clearEntitySpecificRelationshipsForMany(List<TestCase> entities) {
+    if (entities.isEmpty()) return;
+    List<UUID> ids = entities.stream().map(TestCase::getId).toList();
+    deleteToMany(ids, Entity.TEST_CASE, Relationship.CONTAINS, Entity.TEST_SUITE);
+    deleteToMany(ids, Entity.TEST_CASE, Relationship.CONTAINS, Entity.TEST_DEFINITION);
   }
 
   @Override
@@ -1434,8 +1445,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
     List<TestCase> testCases = getTestCasesForExport(name, recursive);
-    return new TestCaseCsv(user, null).exportCsv(testCases);
+    return new TestCaseCsv(user, null).exportCsv(testCases, callback);
   }
 
   @Override
@@ -1453,7 +1471,37 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       boolean dryRun,
       String user,
       boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
+    // if we end up here it means we are importing test cases from the obs page
+    return new TestCaseCsv(user, null).importCsv(csv, dryRun);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
       String targetEntityType)
+      throws IOException {
+    TestSuite targetBundleSuite =
+        TEST_SUITE.equals(targetEntityType)
+            ? Entity.getEntityByName(TEST_SUITE, name, "", Include.ALL)
+            : null;
+    return new TestCaseCsv(user, targetBundleSuite).importCsv(csv, dryRun);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      String targetEntityType,
+      CsvImportProgressCallback callback)
       throws IOException {
     TestSuite targetBundleSuite =
         TEST_SUITE.equals(targetEntityType)
@@ -1514,6 +1562,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     private final TestSuite targetBundleSuite;
     private final List<UUID> importedTestCaseIds = new ArrayList<>();
+    private final Map<String, UUID> importedTestSuiteIds = new HashMap<>();
+    private final EntityRepository<EntityInterface> versioningRepo =
+        (EntityRepository<EntityInterface>) Entity.getEntityRepository(TEST_SUITE);
 
     TestCaseCsv(String user, TestSuite targetBundleSuite) {
       super(TEST_CASE, HEADERS, user);
@@ -1593,6 +1644,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               TestSuite testSuite =
                   Entity.getEntityByName(TEST_SUITE, testSuiteFqn, "", Include.NON_DELETED);
               testCase.withTestSuite(testSuite.getEntityReference());
+              importedTestSuiteIds.putIfAbsent(
+                  testSuite.getFullyQualifiedName(), testSuite.getId());
             } catch (EntityNotFoundException e) {
               importFailure(
                   printer, String.format("Test suite '%s' not found", testSuiteFqn), csvRecord);
@@ -1603,6 +1656,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             // No test suite provided - get or create the default basic test suite
             EntityReference testSuite = repository.getOrCreateTestSuite(testCase);
             testCase.withTestSuite(testSuite);
+            importedTestSuiteIds.putIfAbsent(testSuite.getFullyQualifiedName(), testSuite.getId());
           }
 
           // Compute and set FQN manually (same logic as setFullyQualifiedName)
@@ -1671,6 +1725,30 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                       + "The test cases exist and can be manually added to the Bundle Suite.",
                   importedTestCaseIds.size(), targetBundleSuite.getName(), e.getMessage()),
               e);
+        }
+      }
+
+      if (!importResult.getDryRun()
+          && importResult.getStatus() != ApiStatus.ABORTED
+          && importResult.getNumberOfRowsProcessed() > 1) {
+        List<UUID> affectedTestSuiteIds = new ArrayList<>(importedTestSuiteIds.values());
+        for (UUID affectedTestSuiteId : affectedTestSuiteIds) {
+          try {
+            versioningRepo.createChangeEventForBulkOperation(
+                versioningRepo.get(
+                    null,
+                    affectedTestSuiteId,
+                    new Fields(versioningRepo.getAllowedFields(), ""),
+                    NON_DELETED,
+                    false),
+                importResult,
+                importedBy);
+          } catch (Exception e) {
+            LOG.error(
+                "Failed to update version for Test Suite with id '{}': {}",
+                affectedTestSuiteId,
+                e.getMessage());
+          }
         }
       }
     }

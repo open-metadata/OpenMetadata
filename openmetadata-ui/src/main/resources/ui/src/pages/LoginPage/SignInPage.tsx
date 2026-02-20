@@ -209,7 +209,7 @@ const SignInPage = () => {
           {alert && (
             <div className="login-alert">
               <AlertBar
-                defafultExpand
+                defaultExpand
                 message={alert?.message}
                 type={alert?.type}
               />

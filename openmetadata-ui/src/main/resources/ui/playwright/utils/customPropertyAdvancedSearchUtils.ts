@@ -31,7 +31,11 @@ export interface CustomPropertyDetails {
     id: string;
   };
   customPropertyConfig?: {
-    config: string | string[] | { values: string[]; multiSelect: boolean };
+    config:
+      | string
+      | string[]
+      | { values: string[]; multiSelect: boolean }
+      | { columns: string[] };
   };
 }
 
@@ -113,6 +117,15 @@ export const getCustomPropertyCreationData = (types: CPASTestData['types']) => {
           values: ['Option 1', 'Option 2', 'Option 3'],
           multiSelect: false,
         },
+      },
+    },
+    'hyperlink-cp': {
+      name: `${namePrefix}hyperlink-cp`,
+      description: `Description for ${namePrefix}hyperlink-cp`,
+      propertyType: {
+        name: 'hyperlink-cp',
+        type: 'type',
+        id: typeIdMapping['hyperlink-cp'],
       },
     },
     integer: {
@@ -243,6 +256,7 @@ export const getCustomPropertyValues = (
     [cpTypeToNameMapping['entityReference']]: topic1Ref,
     [cpTypeToNameMapping['entityReferenceList']]: [topic1Ref, topic2Ref],
     [cpTypeToNameMapping['enum']]: CP_BASE_VALUES.enum,
+    [cpTypeToNameMapping['hyperlink-cp']]: CP_BASE_VALUES.hyperlinkCp,
     [cpTypeToNameMapping['integer']]: CP_BASE_VALUES.integer,
     [cpTypeToNameMapping['markdown']]: CP_BASE_VALUES.markdown,
     [cpTypeToNameMapping['number']]: CP_BASE_VALUES.number,
@@ -264,10 +278,12 @@ export const setupCustomPropertyAdvancedSearchTest = async (
 ) => {
   const { apiContext, afterAction } = await getApiContext(page);
 
+  // Get the metadata types info required to create custom properties
   const typesInfo = await apiContext.get(
     '/api/v1/metadata/types?category=field&limit=20'
   );
 
+  // Get the dashboard metadata types info to add custom properties to it
   const cpMetadataType = await apiContext.get(
     '/api/v1/metadata/types/name/dashboard?fields=customProperties'
   );
@@ -275,8 +291,9 @@ export const setupCustomPropertyAdvancedSearchTest = async (
   testData.types = (await typesInfo.json()).data;
   testData.cpMetadataType = await cpMetadataType.json();
 
+  // Map and prepare the data required for creating custom properties of different types
   const cpCreationData = getCustomPropertyCreationData(testData.types);
-  let metadataTypesData;
+  testData.createdCPData = Object.values(cpCreationData);
 
   // The API calls need to be sequential as the server replaces some types with others
   // due to simultaneous requests causing conflicts.
@@ -284,7 +301,7 @@ export const setupCustomPropertyAdvancedSearchTest = async (
     const typeData = cpCreationData[type.name as keyof typeof cpCreationData];
 
     if (!isUndefined(typeData)) {
-      metadataTypesData = await apiContext.put(
+      await apiContext.put(
         `/api/v1/metadata/types/${testData.cpMetadataType.id}`,
         {
           data: typeData,
@@ -292,15 +309,15 @@ export const setupCustomPropertyAdvancedSearchTest = async (
       );
     }
   }
-  const metadataTypesJson = await metadataTypesData?.json();
-  testData.createdCPData = metadataTypesJson?.customProperties || [];
 
+  // Get the custom property to values mapping to add to the dashboard entity
   const cpValuesData = getCustomPropertyValues(
     testData.createdCPData,
     topic1,
     topic2
   );
 
+  // Update the dashboard entity with the created custom property values
   await apiContext.patch(
     `/api/v1/dashboards/${dashboard.entityResponseData.id}`,
     {

@@ -78,12 +78,12 @@ describe('StorylaneTour', () => {
     expect(screen.getByTitle('storylane-name')).toBeInTheDocument();
   });
 
-  it('should have allowFullScreen attribute', () => {
+  it('should not have allowFullScreen to use modal expand with visible minimize', () => {
     const resource = createMockResource('https://app.storylane.io/demo/abc123');
     render(<StorylaneTour resource={resource} />);
 
     const iframe = screen.getByTitle('Test Storylane Tour');
 
-    expect(iframe).toHaveAttribute('allowfullscreen');
+    expect(iframe).not.toHaveAttribute('allowfullscreen');
   });
 });

@@ -113,8 +113,13 @@ export interface SsoClientConfig {
      */
     debugMode?: boolean;
     idp?:       Idp;
-    security?:  Security;
-    sp?:        SP;
+    /**
+     * Ordered list of SAML attribute names to check for display name. First available attribute
+     * wins. Defaults to common OIDC/SAML attribute names.
+     */
+    samlDisplayNameAttributes?: string[];
+    security?:                  Security;
+    sp?:                        SP;
 }
 
 /**

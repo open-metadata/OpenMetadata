@@ -17,9 +17,8 @@ from metadata.generated.schema.type.classificationLanguages import (
 )
 from metadata.generated.schema.type.contextRecognizer import ContextRecognizer
 from metadata.generated.schema.type.customRecognizer import CustomRecognizer
-from metadata.generated.schema.type.denyListRecognizer import DenyListRecognizer
+from metadata.generated.schema.type.exactTermsRecognizer import ExactTermsRecognizer
 from metadata.generated.schema.type.patternRecognizer import PatternRecognizer
-from metadata.generated.schema.type.piiEntity import PIIEntity
 from metadata.generated.schema.type.predefinedRecognizer import Name as PredefinedName
 from metadata.generated.schema.type.predefinedRecognizer import PredefinedRecognizer
 from metadata.generated.schema.type.recognizer import (
@@ -54,28 +53,25 @@ class PatternRecognizerFactory(factory.Factory):
     patterns = factory.List([factory.SubFactory(PatternFactory)])
     regexFlags = factory.SubFactory(RegexFlagsFactory)
     context = factory.LazyFunction(lambda: ["email", "contact"])
-    supportedEntity = PIIEntity.EMAIL_ADDRESS
     supportedLanguage = ClassificationLanguage.en
 
     class Meta:
         model = PatternRecognizer
 
 
-class DenyListRecognizerFactory(factory.Factory):
-    type = "deny_list"
-    denyList = factory.LazyFunction(lambda: ["sensitive", "confidential"])
-    supportedEntity = PIIEntity.EMAIL_ADDRESS
+class ExactTermsRecognizerFactory(factory.Factory):
+    type = "exact_terms"
+    exactTerms = factory.LazyFunction(lambda: ["sensitive", "confidential"])
     supportedLanguage = ClassificationLanguage.en
     regexFlags = factory.SubFactory(RegexFlagsFactory)
 
     class Meta:
-        model = DenyListRecognizer
+        model = ExactTermsRecognizer
 
 
 class ContextRecognizerFactory(factory.Factory):
     type = "context"
     contextWords = factory.LazyFunction(lambda: ["ssn", "social security"])
-    supportedEntity = PIIEntity.US_SSN
     supportedLanguage = ClassificationLanguage.en
     minScore = 0.4
     maxScore = 0.8
@@ -99,7 +95,6 @@ class PredefinedRecognizerFactory(factory.Factory):
 class CustomRecognizerFactory(factory.Factory):
     type = "custom"
     validatorFunction = factory.fuzzy.FuzzyText()
-    supportedEntity = PIIEntity.PERSON
     supportedLanguage = ClassificationLanguage.en
 
     class Meta:
@@ -110,7 +105,7 @@ class RecognizerConfigFactory(RootModelFactory):
     root = PolymorphicSubFactory(
         subfactories={
             "pattern": factory.SubFactory(PatternRecognizerFactory),
-            "deny_list": factory.SubFactory(DenyListRecognizerFactory),
+            "exact_terms": factory.SubFactory(ExactTermsRecognizerFactory),
             "context": factory.SubFactory(ContextRecognizerFactory),
             "predefined": factory.SubFactory(PredefinedRecognizerFactory),
             "custom": factory.SubFactory(CustomRecognizerFactory),
@@ -140,7 +135,7 @@ class RecognizerFactory(factory.Factory):
     class Params:
         predefined = factory.Trait(recognizerConfig__type="predefined")
 
-        deny_list = factory.Trait(recognizerConfig__type="deny_list")
+        exact_terms = factory.Trait(recognizerConfig__type="exact_terms")
 
         context_based = factory.Trait(recognizerConfig__type="context")
 

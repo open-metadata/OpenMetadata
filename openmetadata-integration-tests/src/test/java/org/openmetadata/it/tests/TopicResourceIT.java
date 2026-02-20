@@ -23,6 +23,7 @@ import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SchemaType;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -43,6 +44,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
+    supportsBulkAPI = true;
   }
 
   // ===================================================================
@@ -1128,5 +1130,26 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     Topic topic = createEntity(request);
     assertNotNull(topic);
     assertEquals(100, topic.getReplicationFactor());
+  }
+
+  // ===================================================================
+  // BULK API SUPPORT
+  // ===================================================================
+
+  @Override
+  protected BulkOperationResult executeBulkCreate(List<CreateTopic> createRequests) {
+    return SdkClients.adminClient().topics().bulkCreateOrUpdate(createRequests);
+  }
+
+  @Override
+  protected BulkOperationResult executeBulkCreateAsync(List<CreateTopic> createRequests) {
+    return SdkClients.adminClient().topics().bulkCreateOrUpdateAsync(createRequests);
+  }
+
+  @Override
+  protected CreateTopic createInvalidRequestForBulk(TestNamespace ns) {
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("invalid_topic"));
+    return request;
   }
 }

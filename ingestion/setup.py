@@ -169,7 +169,7 @@ base_requirements = {
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
-    "setuptools~=78.1.1",
+    "setuptools>=78.1.1,<81",  # <81 required: pkg_resources removed in setuptools 81+
     "shapely",
     "collate-data-diff>=0.11.9",
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
@@ -400,6 +400,7 @@ dev = {
     "pre-commit",
     "pycln",
     "pylint~=3.2.0",  # 3.3.0+ breaks our current linting
+    "basedpyright~=1.14",
     # For publishing
     "twine",
     "build",
@@ -428,9 +429,9 @@ test = {
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
-    "basedpyright~=1.14",
     "pytest==7.0.1",
     "pytest-cov",
+    "pytest-xdist~=3.5",
     "pytest-order",
     "dirty-equals",
     # install dbt dependency
@@ -474,14 +475,11 @@ test = {
     *plugins["datalake-gcs"],
     *plugins["pgspider"],
     *plugins["clickhouse"],
-    *plugins["mssql"],
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],
     VERSIONS["validators"],
     VERSIONS["pyathena"],
-    VERSIONS["pyiceberg"],
-    VERSIONS["pydoris"],
     "python-liquid",
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],

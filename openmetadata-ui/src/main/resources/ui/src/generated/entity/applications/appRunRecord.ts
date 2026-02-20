@@ -226,6 +226,10 @@ export interface Stats {
      */
     jobStats?: StepStats;
     /**
+     * Stats for the process step (building search index documents)
+     */
+    processStats?: StepStats;
+    /**
      * Stats for the reader step (reading from database)
      */
     readerStats?: StepStats;
@@ -233,6 +237,10 @@ export interface Stats {
      * Stats for the sink step (writing to search index)
      */
     sinkStats?: StepStats;
+    /**
+     * Stats for the vector step (generating and indexing vector embeddings)
+     */
+    vectorStats?: StepStats;
 }
 
 /**
@@ -240,9 +248,13 @@ export interface Stats {
  *
  * Stats for the job
  *
+ * Stats for the process step (building search index documents)
+ *
  * Stats for the reader step (reading from database)
  *
  * Stats for the sink step (writing to search index)
+ *
+ * Stats for the vector step (generating and indexing vector embeddings)
  */
 export interface StepStats {
     /**
