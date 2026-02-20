@@ -649,11 +649,6 @@ public class DistributedSearchIndexExecutor {
               partition.getEntityType(),
               e.getMessage(),
               e);
-          try {
-            coordinator.failPartition(partition.getId(), e.getMessage());
-          } catch (Exception fe) {
-            LOG.error("Failed to mark partition {} as failed", partition.getId(), fe);
-          }
         } finally {
           activePartitions.remove(partition.getId());
         }
