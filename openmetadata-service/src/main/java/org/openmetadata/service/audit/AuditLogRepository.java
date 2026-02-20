@@ -124,8 +124,7 @@ public class AuditLogRepository {
    */
   public void writeAuthEvent(EventType eventType, String userName, UUID userId) {
     AsyncService.getInstance()
-        .getExecutorService()
-        .submit(
+        .execute(
             () -> {
               ChangeEvent changeEvent =
                   new ChangeEvent()

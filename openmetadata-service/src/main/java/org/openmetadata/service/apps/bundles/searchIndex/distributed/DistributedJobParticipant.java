@@ -212,13 +212,12 @@ public class DistributedJobParticipant implements Managed {
                   try {
                     processJobPartitions(job);
                   } finally {
-                    participantThread = null;
-                    participating.set(false);
                     currentJobId = null;
-
                     if (notifier instanceof PollingJobNotifier pollingNotifier) {
                       pollingNotifier.setParticipating(false);
                     }
+                    participating.set(false);
+                    participantThread = null;
                   }
                 });
   }
