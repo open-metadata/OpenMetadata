@@ -887,9 +887,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
       SuccessContext successContext =
           new SuccessContext().withAdditionalProperty("stats", jobData.getStats());
 
+      SearchIndexJob distributedJob =
+          distributedExecutor != null ? distributedExecutor.getJobWithFreshStats() : null;
+
       try {
-        SearchIndexJob distributedJob =
-            distributedExecutor != null ? distributedExecutor.getJobWithFreshStats() : null;
         String jobIdStr =
             distributedJob != null
                 ? distributedJob.getId().toString()
@@ -902,15 +903,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
         LOG.debug("Could not get failure count", e);
       }
 
-      if (distributedExecutor != null) {
-        SearchIndexJob distributedJob = distributedExecutor.getJobWithFreshStats();
-        if (distributedJob != null && distributedJob.getServerStats() != null) {
-          successContext.withAdditionalProperty("serverStats", distributedJob.getServerStats());
-          successContext.withAdditionalProperty(
-              "serverCount", distributedJob.getServerStats().size());
-          successContext.withAdditionalProperty(
-              "distributedJobId", distributedJob.getId().toString());
-        }
+      if (distributedJob != null && distributedJob.getServerStats() != null) {
+        successContext.withAdditionalProperty("serverStats", distributedJob.getServerStats());
+        successContext.withAdditionalProperty(
+            "serverCount", distributedJob.getServerStats().size());
+        successContext.withAdditionalProperty(
+            "distributedJobId", distributedJob.getId().toString());
       }
 
       appRecord.setSuccessContext(successContext);
