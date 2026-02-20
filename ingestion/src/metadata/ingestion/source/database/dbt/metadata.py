@@ -656,6 +656,45 @@ class DbtSource(DbtServiceSource):
                     )
                 )
 
+    @staticmethod
+    def _get_latest_result(dbt_objects: DbtObjects, key: str):
+        """
+        When multiple run_results files are present (e.g. split by domain),
+        the same unique_id may appear in more than one file.  Return the
+        result with the most recent ``execute`` completed_at timestamp so
+        that OpenMetadata always reflects the latest test state.
+        """
+        matches = [
+            item
+            for run_result in dbt_objects.dbt_run_results
+            for item in run_result.results
+            if item.unique_id == key
+        ]
+        if not matches:
+            return None
+        if len(matches) == 1:
+            return matches[0]
+
+        def _execute_completed_at(result):
+            for timing in result.timing or []:
+                if timing.name == "execute" and timing.completed_at:
+                    completed = timing.completed_at
+                    if isinstance(completed, str):
+                        try:
+                            return datetime.strptime(
+                                completed, DBT_RUN_RESULT_DATE_FORMAT
+                            )
+                        except ValueError:
+                            return None
+                    return completed
+            return None
+
+        timestamped = [(r, _execute_completed_at(r)) for r in matches]
+        with_ts = [(r, ts) for r, ts in timestamped if ts is not None]
+        if with_ts:
+            return max(with_ts, key=lambda pair: pair[1])[0]
+        return matches[0]
+
     def add_dbt_tests(
         self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
     ) -> None:
@@ -668,15 +707,9 @@ class DbtSource(DbtServiceSource):
         self.context.get().dbt_tests[key][
             DbtCommonEnum.UPSTREAM.value
         ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
-        self.context.get().dbt_tests[key][DbtCommonEnum.RESULTS.value] = next(
-            (
-                item
-                for run_result in dbt_objects.dbt_run_results
-                for item in run_result.results
-                if item.unique_id == key
-            ),
-            None,
-        )
+        self.context.get().dbt_tests[key][
+            DbtCommonEnum.RESULTS.value
+        ] = self._get_latest_result(dbt_objects, key)
 
     def add_dbt_exposure(self, key: str, manifest_node, manifest_entities):
         exposure_entity = self.parse_exposure_node(manifest_node)
