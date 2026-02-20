@@ -18,8 +18,11 @@ public class AsyncService {
   private static final long DEFAULT_INITIAL_RETRY_DELAY_MS = 1000; // 1 second
   private static final long DEFAULT_OPERATION_TIMEOUT_SECONDS = 60; // 60 seconds
 
+  private static final int POOL_SIZE = 20;
+  private static final long SHUTDOWN_TIMEOUT_SECONDS = 30;
+
   private AsyncService() {
-    executorService = Executors.newVirtualThreadPerTaskExecutor();
+    executorService = Executors.newFixedThreadPool(POOL_SIZE, Thread.ofVirtual().factory());
   }
 
   public static synchronized AsyncService getInstance() {
@@ -33,9 +36,20 @@ public class AsyncService {
     return executorService;
   }
 
-  // Optionally, provide a method to shut down the executor service
   public void shutdown() {
+    LOG.info("Shutting down AsyncService executor (pool size: {})", POOL_SIZE);
     executorService.shutdown();
+    try {
+      if (!executorService.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+        LOG.warn(
+            "AsyncService executor did not terminate within {}s, forcing shutdown",
+            SHUTDOWN_TIMEOUT_SECONDS);
+        executorService.shutdownNow();
+      }
+    } catch (InterruptedException e) {
+      executorService.shutdownNow();
+      Thread.currentThread().interrupt();
+    }
   }
 
   /**
