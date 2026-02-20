@@ -10,38 +10,11 @@
 #  limitations under the License.
 
 name: Maven Postgres Tests CI
+# Disabled: Integration tests (openmetadata-integration-tests) now cover the same ground
+# with full Testcontainers-based PostgreSQL testing.
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "openmetadata-service/**"
-      - "openmetadata-ui/**"
-      - "!openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
-      - "!openmetadata-ui/src/main/resources/ui/playwright/docs/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "openmetadata-dist/**"
-      - "openmetadata-clients/**"
-      - "openmetadata-sdk/**"
-      - "common/**"
-      - "pom.xml"
-      - "yarn.lock"
-      - "Makefile"
-      - "bootstrap/**"
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
-    paths:
-      - "openmetadata-service/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "openmetadata-dist/**"
-      - "openmetadata-clients/**"
-      - "openmetadata-sdk/**"
-      - "common/**"
-      - "pom.xml"
-      - "yarn.lock"
-      - "Makefile"
-      - "bootstrap/**"
+  workflow_dispatch:
 
 permissions:
   contents: read

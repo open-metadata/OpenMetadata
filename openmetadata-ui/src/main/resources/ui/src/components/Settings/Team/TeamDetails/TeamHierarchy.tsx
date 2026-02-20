@@ -18,13 +18,15 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TABLE_CONSTANTS } from '../../../../constants/Teams.constants';
 import { TabSpecificField } from '../../../../enums/entity.enum';
+import { SearchIndex } from '../../../../enums/search.enum';
 import { Team } from '../../../../generated/entity/teams/team';
 import { Include } from '../../../../generated/type/include';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { getTeamByName, patchTeamDetail } from '../../../../rest/teamsAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import {
@@ -32,15 +34,18 @@ import {
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
 import { getTeamsWithFqnPath } from '../../../../utils/RouterUtils';
+import { getTermQuery } from '../../../../utils/SearchUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import { getTableExpandableConfig } from '../../../../utils/TableUtils';
-import { isDropRestricted } from '../../../../utils/TeamUtils';
+import { flattenTeamTree, isDropRestricted } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../../common/Draggable/DraggableBodyRowProps.interface';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../common/Table/Table';
 import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
+import { TeamAssetCount } from './TeamAssetCount.component';
+import { collectAllTeamIds } from './TeamDetailsV1.utils';
 import './teams.less';
 
 const TeamHierarchy: FC<TeamHierarchyProps> = ({
@@ -63,6 +68,80 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   const [isTableLoading, setIsTableLoading] = useState<boolean>(false);
   const [movedTeam, setMovedTeam] = useState<MovedTeamProps>();
   const [isTableHovered, setIsTableHovered] = useState(false);
+  const [assetCounts, setAssetCounts] = useState<Record<string, number>>({});
+  const [loadingCountIds, setLoadingCountIds] = useState<Set<string>>(new Set());
+  const fetchedTeamIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetchedTeamIdsRef.current = new Set();
+    setAssetCounts({});
+    setLoadingCountIds(new Set());
+  }, [currentTeam?.id]);
+
+  useEffect(() => {
+    if (isFetchingAllTeamAdvancedDetails) {
+      return;
+    }
+
+    const allVisibleTeams = flattenTeamTree(data);
+    const newTeams = allVisibleTeams.filter(
+      (team) => !fetchedTeamIdsRef.current.has(team.id)
+    );
+
+    if (!newTeams.length) {
+      return;
+    }
+
+    let cancelled = false;
+
+    newTeams.forEach((team) => fetchedTeamIdsRef.current.add(team.id));
+    setLoadingCountIds((prev) => new Set([...prev, ...newTeams.map((t) => t.id)]));
+
+    Promise.all(
+      newTeams.map(async (team) => {
+        try {
+          const teamIds =
+            team.childrenCount && team.childrenCount > 0
+              ? await collectAllTeamIds(team)
+              : [team.id];
+          const queryFilter = getTermQuery({ 'owners.id': teamIds }, 'should', 1);
+          const res = await searchQuery({
+            query: '',
+            pageNumber: 0,
+            pageSize: 0,
+            queryFilter,
+            searchIndex: SearchIndex.ALL,
+          });
+
+          return [team.id, res.hits.total.value] as [string, number];
+        } catch {
+          return [team.id, team.owns?.length ?? 0] as [string, number];
+        }
+      })
+    ).then((entries) => {
+      if (cancelled) {
+        return;
+      }
+      setAssetCounts((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
+      setLoadingCountIds((prev) => {
+        const next = new Set(prev);
+        newTeams.forEach((t) => next.delete(t.id));
+
+        return next;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      newTeams.forEach((team) => fetchedTeamIdsRef.current.delete(team.id));
+      setLoadingCountIds((prev) => {
+        const next = new Set(prev);
+        newTeams.forEach((t) => next.delete(t.id));
+
+        return next;
+      });
+    };
+  }, [data, isFetchingAllTeamAdvancedDetails]);
 
   const searchProps = useMemo(
     () => ({
@@ -136,19 +215,22 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         dataIndex: 'owns',
         width: 120,
         key: 'owns',
-        render: (owns: Team['owns']) =>
+        render: (_, record) =>
           isFetchingAllTeamAdvancedDetails ? (
             <Skeleton
               active={isFetchingAllTeamAdvancedDetails}
               paragraph={{ rows: 0 }}
             />
           ) : (
-            owns?.length ?? 0
+            <TeamAssetCount
+              count={assetCounts[record.id] ?? null}
+              isLoading={loadingCountIds.has(record.id)}
+            />
           ),
       },
       ...descriptionTableObject<Team>({ width: 300 }),
     ];
-  }, [data, isFetchingAllTeamAdvancedDetails, onTeamExpand]);
+  }, [data, isFetchingAllTeamAdvancedDetails, onTeamExpand, assetCounts, loadingCountIds]);
 
   const handleTableHover = useCallback(
     (value: boolean) => setIsTableHovered(value),
@@ -218,18 +300,18 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   };
 
   const onTableRow = (record: Team, index?: number) =>
-    ({
-      index,
-      handleMoveRow,
-      handleTableHover,
-      record,
-    } as DraggableBodyRowProps<Team>);
+  ({
+    index,
+    handleMoveRow,
+    handleTableHover,
+    record,
+  } as DraggableBodyRowProps<Team>);
 
   const onTableHeader: TableProps<Team>['onHeaderRow'] = () =>
-    ({
-      handleMoveRow,
-      handleTableHover,
-    } as DraggableBodyRowProps<Team>);
+  ({
+    handleMoveRow,
+    handleTableHover,
+  } as DraggableBodyRowProps<Team>);
 
   const onDragConfirmationModalClose = useCallback(() => {
     setIsModalOpen(false);

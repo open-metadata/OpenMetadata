@@ -23,6 +23,7 @@ import SectionWithEdit from '../../../components/common/SectionWithEdit/SectionW
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { LINEAGE_SOURCE } from '../../../constants/Lineage.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { Source } from '../../../generated/type/entityLineage';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
@@ -371,6 +372,8 @@ const EdgeInfoDrawer = ({
                 <div className="summary-panel-card">
                   <DescriptionSection
                     description={edgeEntity?.description ?? ''}
+                    entityFqn={edgeEntity.fromEntity.fullyQualifiedName}
+                    entityType={EntityType.LINEAGE_EDGE}
                     hasPermission={hasEditAccess}
                     showEditButton={hasEditAccess}
                     onDescriptionUpdate={onDescriptionUpdate}

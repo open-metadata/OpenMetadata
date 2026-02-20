@@ -14,6 +14,7 @@ import { expect, Page, test } from '@playwright/test';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 const user = new UserClass();
 
@@ -62,7 +63,13 @@ const validateTourSteps = async (page: Page) => {
   await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('3');
 
   await page.getByTestId('searchBox').fill('dim_a');
-  await page.getByTestId('searchBox').press('Enter', { delay: 500 });
+
+  const [searchResponse] = await Promise.all([
+    page.waitForResponse((res) => res.url().includes('/search/query')),
+    page.getByTestId('searchBox').press('Enter'),
+  ]);
+
+  expect(searchResponse.status()).toBe(200);
 
   await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('4', {
     timeout: 1000,
@@ -141,7 +148,7 @@ const validateTourSteps = async (page: Page) => {
   await page.getByTestId('saveButton').click();
 };
 
-test.describe('Tour should work properly', () => {
+test.describe('Tour should work properly', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);

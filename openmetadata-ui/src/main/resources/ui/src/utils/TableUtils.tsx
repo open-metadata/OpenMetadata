@@ -932,18 +932,18 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.TABLE_QUERIES,
-      children: !viewQueriesPermission ? (
+      children: viewQueriesPermission ? (
+        <TableQueries
+          isTableDeleted={deleted}
+          tableId={tableDetails?.id ?? ''}
+        />
+      ) : (
         <ErrorPlaceHolder
           className="border-none"
           permissionValue={t('label.view-entity', {
             entity: t('label.query-plural'),
           })}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
-      ) : (
-        <TableQueries
-          isTableDeleted={deleted}
-          tableId={tableDetails?.id ?? ''}
         />
       ),
     },
@@ -1169,7 +1169,7 @@ export const createTableConstraintObject = (
   constraints: string[],
   type: ConstraintType
 ) =>
-  !isEmpty(constraints) ? [{ columns: constraints, constraintType: type }] : [];
+  isEmpty(constraints) ? [] : [{ columns: constraints, constraintType: type }];
 
 export const tableConstraintRendererBasedOnType = (
   constraintType: ConstraintType,
@@ -1384,12 +1384,15 @@ export const findColumnByEntityLink = (
 export const updateColumnInNestedStructure = (
   columns: Column[],
   targetFqn: string,
-  update: Partial<Column>
+  update: Partial<Column>,
+  field?: string
 ): Column[] => {
   return columns.map((column: Column) => {
     if (column.fullyQualifiedName === targetFqn) {
+      const newCol = omit(column, field ?? '');
+
       return {
-        ...column,
+        ...(newCol as Column),
         ...update,
       };
     }
@@ -1400,7 +1403,8 @@ export const updateColumnInNestedStructure = (
         children: updateColumnInNestedStructure(
           column.children,
           targetFqn,
-          update
+          update,
+          field
         ),
       };
     } else {
@@ -1488,7 +1492,7 @@ export const shouldCollapseSchema = <T extends { children?: T[] }>(
 };
 
 export const getExpandAllKeysToDepth = <
-  T extends { children?: T[]; name?: string }
+  T extends { children?: T[]; fullyQualifiedName?: string }
 >(
   fields: T[],
   maxDepth = 3
@@ -1502,8 +1506,8 @@ export const getExpandAllKeysToDepth = <
 
     items.forEach((item) => {
       if (item.children && item.children.length > 0) {
-        if (item.name) {
-          keys.push(item.name);
+        if (item.fullyQualifiedName) {
+          keys.push(item.fullyQualifiedName);
         }
         // Continue collecting keys from children up to maxDepth
         collectKeys(item.children, currentDepth + 1);
@@ -1517,7 +1521,7 @@ export const getExpandAllKeysToDepth = <
 };
 
 export const getSafeExpandAllKeys = <
-  T extends { children?: T[]; name?: string }
+  T extends { children?: T[]; fullyQualifiedName?: string }
 >(
   fields: T[],
   isLargeSchema: boolean,
@@ -1869,4 +1873,18 @@ export const getHighlightedRowClassName = <
   }
 
   return '';
+};
+
+export const getNestedSectionTitle = (
+  entityType: EntityType | undefined
+): string => {
+  switch (entityType) {
+    case EntityType.TOPIC:
+    case EntityType.API_ENDPOINT:
+      return 'label.schema-field-plural';
+    case EntityType.SEARCH_INDEX:
+      return 'label.field-plural';
+    default:
+      return 'label.nested-column-plural';
+  }
 };

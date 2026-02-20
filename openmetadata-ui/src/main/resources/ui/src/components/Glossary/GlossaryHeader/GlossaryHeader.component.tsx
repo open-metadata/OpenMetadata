@@ -538,13 +538,9 @@ const GlossaryHeader = ({
             icon={icon}
             serviceName=""
             suffix={
-              <LearningIcon
-                pageId={
-                  isGlossary
-                    ? LEARNING_PAGE_IDS.GLOSSARY
-                    : LEARNING_PAGE_IDS.GLOSSARY_TERM
-                }
-              />
+              !isGlossary && (
+                <LearningIcon pageId={LEARNING_PAGE_IDS.GLOSSARY_TERM} />
+              )
             }
             titleColor={isGlossary ? undefined : selectedData.style?.color}
           />

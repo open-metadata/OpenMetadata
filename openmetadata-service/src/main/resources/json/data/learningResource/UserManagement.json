@@ -1,0 +1,14 @@
+{
+  "name": "User Management",
+  "description": "Learn how to create and manage users in Collate.",
+  "resourceType": "Storylane",
+  "categories": ["Administration"],
+  "source": {
+    "url": "https://collate.storylane.io/share/4ygbajckrl5x"
+  },
+  "contexts": [
+    {"pageId": "users"},
+    {"pageId": "settings"}
+  ],
+  "status": "Active"
+}

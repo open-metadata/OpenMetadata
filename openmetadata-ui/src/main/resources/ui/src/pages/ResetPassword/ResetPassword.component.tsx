@@ -92,7 +92,7 @@ const ResetPassword = () => {
           {alert && (
             <Col className="m-b-lg" span={24}>
               <AlertBar
-                defafultExpand
+                defaultExpand
                 message={alert?.message}
                 type={alert?.type}
               />

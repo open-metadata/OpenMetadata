@@ -63,7 +63,7 @@ export const redirectToHomePage = async (
   await page.goto('/');
   await page.waitForURL('**/my-data');
   if (waitForNetworkIdle) {
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('networkidle');
   }
 };
 
@@ -695,7 +695,8 @@ export const testPaginationNavigation = async (
   page: Page,
   apiEndpointPattern: string,
   waitForLoadSelector?: string,
-  validateUrl = true
+  validateUrl = true,
+  validateRowCount = true
 ) => {
   const responseMatcher = (response: { url: () => string }) => {
     const url = response.url();
@@ -799,11 +800,19 @@ export const testPaginationNavigation = async (
   if (await pageSizeDropdown.isVisible()) {
     await expect(pageSizeDropdown).toHaveText('15 / Page');
 
-    const initialRowCount = await page.locator('tbody tr:visible').count();
-    expect(initialRowCount).toBeLessThanOrEqual(16);
+    // Explicitly using selector, as in some cases table cell contains markdown
+    // and markdown can further have tables
+    const initialRowCount = await page
+      .locator('tbody > tr[data-row-key]:visible')
+      .count();
+    if (validateRowCount) {
+      expect(initialRowCount).toBeLessThanOrEqual(15);
+    }
     const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
     await pageSizeDropdown.hover();
-    const isMenuVisibleAfterHover = await menuItem.isVisible().catch(() => false);
+    const isMenuVisibleAfterHover = await menuItem
+      .isVisible()
+      .catch(() => false);
     if (!isMenuVisibleAfterHover) {
       await pageSizeDropdown.click();
     }
@@ -818,9 +827,13 @@ export const testPaginationNavigation = async (
 
     await expect(pageSizeDropdown).toHaveText('25 / Page');
 
-    const newRowCount = await page.locator('tbody tr:visible').count();
-    expect(newRowCount).toBeLessThanOrEqual(26);
-    expect(newRowCount).not.toBe(initialRowCount);
+    const newRowCount = await page
+      .locator('tbody > tr[data-row-key]:visible')
+      .count();
+    if (validateRowCount) {
+      expect(newRowCount).toBeLessThanOrEqual(25);
+      expect(newRowCount).not.toBe(initialRowCount);
+    }
   }
 };
 

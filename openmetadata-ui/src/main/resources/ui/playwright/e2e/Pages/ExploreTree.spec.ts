@@ -12,6 +12,7 @@
  */
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ } from '../../constant/config';
 import { DATA_ASSETS } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
@@ -66,7 +67,7 @@ test.beforeEach(async ({ page }) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
 });
 
-test.describe('Explore Tree scenarios', () => {
+test.describe('Explore Tree scenarios', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   test('Explore Tree', async ({ page }) => {
     await test.step('Check the explore tree', async () => {
       await page.waitForLoadState('networkidle');
@@ -286,7 +287,7 @@ test.describe('Explore Tree scenarios', () => {
   });
 });
 
-test.describe('Explore page', () => {
+test.describe('Explore page', PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ, () => {
   const table = new TableClass();
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
@@ -411,6 +412,8 @@ test.describe('Explore page', () => {
       state: 'detached',
     });
 
+    const serviceName = dashboard.serviceResponseData.name;
+
     const dashboardNode = page.getByTestId('explore-tree-title-Dashboards');
     await expect(dashboardNode).toBeVisible();
 
@@ -442,14 +445,14 @@ test.describe('Explore page', () => {
       .locator('.ant-tree-switcher')
       .click();
 
-    const sampleSupersetNode = page.getByTestId(
-      'explore-tree-title-sample_superset'
+    const dashboardServiceNode = page.getByTestId(
+      `explore-tree-title-${serviceName}`
     );
-    await expect(sampleSupersetNode).toBeVisible();
+    await expect(dashboardServiceNode).toBeVisible();
 
     await page
       .locator('.ant-tree-treenode', {
-        has: page.getByTestId('explore-tree-title-sample_superset'),
+        has: page.getByTestId(`explore-tree-title-${serviceName}`),
       })
       .locator('.ant-tree-switcher')
       .click();
@@ -461,12 +464,12 @@ test.describe('Explore page', () => {
     const searchInput = page.getByTestId('searchBox');
     await searchInput.click();
     await searchInput.clear();
-    await searchInput.fill(chart.entityResponseData.name);
+    await searchInput.fill(dashboard.chartsResponseData.name);
     await searchInput.press('Enter');
 
     const searchResults = page.getByTestId('search-results');
     const chartCard = searchResults.getByTestId(
-      `table-data-card_${chart.entityResponseData.fullyQualifiedName}`
+      `table-data-card_${dashboard.chartsResponseData.fullyQualifiedName}`
     );
 
     await expect(chartCard).toBeVisible();

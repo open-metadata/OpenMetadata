@@ -12,251 +12,166 @@
 """
 OpenMetadata high-level API Container test
 """
-import uuid
-from unittest import TestCase
+import pytest
 
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
-from metadata.generated.schema.api.services.createStorageService import (
-    CreateStorageServiceRequest,
-)
-from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.container import Container
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.connections.storage.s3Connection import (
-    S3Connection,
-)
-from metadata.generated.schema.entity.services.storageService import (
-    StorageConnection,
-    StorageService,
-    StorageServiceType,
-)
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
-from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
-class OMetaObjectStoreTest(TestCase):
+@pytest.fixture
+def container_request(storage_service):
+    """Create container request using the storage service from conftest."""
+    return CreateContainerRequest(
+        name="test",
+        service=storage_service.fullyQualifiedName,
+    )
+
+
+@pytest.fixture
+def expected_fqn(storage_service):
+    """Expected fully qualified name for test container."""
+    return f"{storage_service.name.root}.test"
+
+
+class TestOMetaStorageAPI:
     """
-    Run this integration test with the local API available
-    Install the ingestion package before running the tests
+    Storage API integration tests.
+    Tests CRUD operations and versioning for containers.
+
+    Uses fixtures from conftest:
+    - metadata: OpenMetadata client (session scope)
+    - storage_service: StorageService (module scope)
+    - create_user: User factory (function scope)
+    - create_container: Container factory (function scope)
     """
 
-    service_entity_id = None
-
-    server_config = OpenMetadataConnection(
-        hostPort="http://localhost:8585/api",
-        authProvider="openmetadata",
-        securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-        ),
-    )
-    metadata = OpenMetadata(server_config)
-
-    assert metadata.health_check()
-
-    user = metadata.create_or_update(
-        data=CreateUserRequest(name="random-user", email="random@user.com"),
-    )
-    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
-
-    service = CreateStorageServiceRequest(
-        name="test-service-object",
-        serviceType=StorageServiceType.S3,
-        connection=StorageConnection(
-            config=S3Connection(awsConfig=AWSCredentials(awsRegion="us-east-2"))
-        ),
-    )
-    service_type = "objectstoreService"
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        Prepare ingredients
-        """
-        cls.service_entity = cls.metadata.create_or_update(data=cls.service)
-
-        cls.entity = Container(
-            id=uuid.uuid4(),
-            name="test",
-            service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
-            fullyQualifiedName="test-service-object.test",
-        )
-
-        cls.create = CreateContainerRequest(
-            name="test",
-            service=cls.service_entity.fullyQualifiedName,
-        )
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Clean up
-        """
-
-        service_id = str(
-            cls.metadata.get_by_name(
-                entity=StorageService, fqn="test-service-object"
-            ).id.root
-        )
-
-        cls.metadata.delete(
-            entity=StorageService,
-            entity_id=service_id,
-            recursive=True,
-            hard_delete=True,
-        )
-
-    def test_create(self):
+    def test_create(
+        self,
+        metadata,
+        storage_service,
+        container_request,
+        expected_fqn,
+        create_container,
+    ):
         """
         We can create a Container and we receive it back as Entity
         """
+        res = create_container(container_request)
 
-        res = self.metadata.create_or_update(data=self.create)
+        assert res.name.root == "test"
+        assert res.service.id == storage_service.id
+        assert res.owners is None
 
-        self.assertEqual(res.name, self.entity.name)
-        self.assertEqual(res.service.id, self.entity.service.id)
-        self.assertIsNone(res.owners)
+        fetched = metadata.get_by_name(entity=Container, fqn=expected_fqn)
+        assert fetched is not None
+        assert fetched.id == res.id
 
-    def test_update(self):
+    def test_update(
+        self,
+        metadata,
+        storage_service,
+        container_request,
+        create_user,
+        create_container,
+    ):
         """
         Updating it properly changes its properties
         """
+        user = create_user()
+        owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
-        res_create = self.metadata.create_or_update(data=self.create)
+        res_create = create_container(container_request)
 
-        updated = self.create.model_dump(exclude_unset=True)
-        updated["owners"] = self.owners
+        updated = container_request.model_dump(exclude_unset=True)
+        updated["owners"] = owners
         updated_entity = CreateContainerRequest(**updated)
 
-        res = self.metadata.create_or_update(data=updated_entity)
+        res = metadata.create_or_update(data=updated_entity)
 
-        # Same ID, updated algorithm
-        self.assertEqual(res.service.fullyQualifiedName, updated_entity.service.root)
-        self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owners.root[0].id, self.user.id)
+        assert res.service.fullyQualifiedName == storage_service.fullyQualifiedName.root
+        assert res_create.id == res.id
+        assert res.owners.root[0].id == user.id
 
-    def test_get_name(self):
+    def test_get_name(
+        self, metadata, container_request, expected_fqn, create_container
+    ):
         """
         We can fetch a Container by name and get it back as Entity
         """
+        created = create_container(container_request)
 
-        self.metadata.create_or_update(data=self.create)
+        res = metadata.get_by_name(entity=Container, fqn=expected_fqn)
+        assert res.name.root == created.name.root
 
-        res = self.metadata.get_by_name(
-            entity=Container, fqn=self.entity.fullyQualifiedName
-        )
-        self.assertEqual(res.name, self.entity.name)
-
-    def test_get_id(self):
+    def test_get_id(self, metadata, container_request, expected_fqn, create_container):
         """
         We can fetch a Container by ID and get it back as Entity
         """
+        create_container(container_request)
 
-        self.metadata.create_or_update(data=self.create)
+        res_name = metadata.get_by_name(entity=Container, fqn=expected_fqn)
+        res = metadata.get_by_id(entity=Container, entity_id=res_name.id)
 
-        # First pick up by name
-        res_name = self.metadata.get_by_name(
-            entity=Container, fqn=self.entity.fullyQualifiedName
-        )
-        # Then fetch by ID
-        res = self.metadata.get_by_id(entity=Container, entity_id=res_name.id)
+        assert res_name.id == res.id
 
-        self.assertEqual(res_name.id, res.id)
-
-    def test_list(self):
+    def test_list(self, metadata, container_request, create_container):
         """
         We can list all our Containers
         """
+        created = create_container(container_request)
 
-        self.metadata.create_or_update(data=self.create)
+        res = metadata.list_entities(entity=Container, limit=100)
 
-        res = self.metadata.list_entities(entity=Container, limit=100)
+        data = next(iter(ent for ent in res.entities if ent.name == created.name), None)
+        assert data is not None
 
-        # Fetch our test Database. We have already inserted it, so we should find it
-        data = next(
-            iter(ent for ent in res.entities if ent.name == self.entity.name), None
-        )
-        assert data
-
-    def test_delete(self):
+    def test_delete(self, metadata, container_request, expected_fqn, create_container):
         """
         We can delete a Container by ID
         """
+        created = create_container(container_request)
 
-        self.metadata.create_or_update(data=self.create)
-
-        # Find by name
-        res_name = self.metadata.get_by_name(
-            entity=Container, fqn=self.entity.fullyQualifiedName
-        )
-        # Then fetch by ID
-        res_id = self.metadata.get_by_id(
-            entity=Container, entity_id=str(res_name.id.root)
+        metadata.delete(
+            entity=Container, entity_id=str(created.id.root), recursive=True
         )
 
-        # Delete
-        self.metadata.delete(
-            entity=Container, entity_id=str(res_id.id.root), recursive=True
-        )
+        deleted = metadata.get_by_name(entity=Container, fqn=expected_fqn)
+        assert deleted is None
 
-        # Then we should not find it
-        res = self.metadata.list_entities(entity=Container)
-        assert not next(
-            iter(
-                ent
-                for ent in res.entities
-                if ent.fullyQualifiedName == self.entity.fullyQualifiedName
-            ),
-            None,
-        )
-
-    def test_list_versions(self):
+    def test_list_versions(self, metadata, container_request, create_container):
         """
-        test list Container entity versions
+        Test listing container entity versions
         """
-        self.metadata.create_or_update(data=self.create)
+        created = create_container(container_request)
 
-        # Find by name
-        res_name = self.metadata.get_by_name(
-            entity=Container, fqn=self.entity.fullyQualifiedName
+        res = metadata.get_list_entity_versions(
+            entity=Container, entity_id=created.id.root
         )
+        assert res is not None
+        assert len(res.versions) >= 1
 
-        res = self.metadata.get_list_entity_versions(
-            entity=Container, entity_id=res_name.id.root
-        )
-        assert res
-
-    def test_get_entity_version(self):
+    def test_get_entity_version(self, metadata, container_request, create_container):
         """
-        test get Container entity version
+        Test retrieving a specific container entity version
         """
-        self.metadata.create_or_update(data=self.create)
+        created = create_container(container_request)
 
-        # Find by name
-        res_name = self.metadata.get_by_name(
-            entity=Container, fqn=self.entity.fullyQualifiedName
-        )
-        res = self.metadata.get_entity_version(
-            entity=Container, entity_id=res_name.id.root, version=0.1
+        res = metadata.get_entity_version(
+            entity=Container, entity_id=created.id.root, version=0.1
         )
 
-        # check we get the correct version requested and the correct entity ID
         assert res.version.root == 0.1
-        assert res.id == res_name.id
+        assert res.id == created.id
 
-    def test_get_entity_ref(self):
+    def test_get_entity_ref(self, metadata, container_request, create_container):
         """
-        test get EntityReference
+        Test retrieving EntityReference for a container
         """
-        res = self.metadata.create_or_update(data=self.create)
-        entity_ref = self.metadata.get_entity_reference(
-            entity=Container, fqn=res.fullyQualifiedName
+        created = create_container(container_request)
+        entity_ref = metadata.get_entity_reference(
+            entity=Container, fqn=created.fullyQualifiedName
         )
 
-        assert res.id == entity_ref.id
+        assert created.id == entity_ref.id

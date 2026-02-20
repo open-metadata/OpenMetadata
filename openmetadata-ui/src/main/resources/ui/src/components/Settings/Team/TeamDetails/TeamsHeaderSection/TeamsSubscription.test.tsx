@@ -21,6 +21,10 @@ describe('TeamsSubscription', () => {
     updateTeamSubscription: mockUpdateTeamSubscription,
   };
 
+  afterEach(() => {
+    teamProps.hasEditPermission = true;
+  });
+
   it('renders Teams Subscription', async () => {
     await act(async () => {
       render(<TeamsSubscription {...teamProps} />);
@@ -76,5 +80,19 @@ describe('TeamsSubscription', () => {
     const noData = queryByTestId('subscription-no-data');
 
     expect(noData).not.toBeInTheDocument();
+  });
+
+  it('should render generic webhook subscription', () => {
+    const { getByTestId } = render(
+      <TeamsSubscription
+        {...teamProps}
+        subscription={{
+          generic: { endpoint: 'https://example.com/webhook' },
+        }}
+      />
+    );
+    const genericIcon = getByTestId('generic-icon');
+
+    expect(genericIcon).toBeInTheDocument();
   });
 });

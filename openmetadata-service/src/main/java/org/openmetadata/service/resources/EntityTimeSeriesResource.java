@@ -88,11 +88,16 @@ public abstract class EntityTimeSeriesResource<
       SearchListFilter searchListFilter,
       String groupBy,
       String q,
+      Integer limit,
+      Integer offset,
+      String sortField,
+      String sortType,
       OperationContext operationContext,
       ResourceContextInterface resourceContext)
       throws IOException {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listLatestFromSearch(fields, searchListFilter, groupBy, q);
+    return repository.listLatestFromSearch(
+        fields, searchListFilter, groupBy, q, limit, offset, sortField, sortType);
   }
 
   public ResultList<T> listLatestFromSearch(
@@ -101,11 +106,16 @@ public abstract class EntityTimeSeriesResource<
       SearchListFilter searchListFilter,
       String groupBy,
       String q,
+      Integer limit,
+      Integer offset,
+      String sortField,
+      String sortType,
       List<AuthRequest> authRequests,
       AuthorizationLogic authorizationLogic)
       throws IOException {
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
-    return repository.listLatestFromSearch(fields, searchListFilter, groupBy, q);
+    return repository.listLatestFromSearch(
+        fields, searchListFilter, groupBy, q, limit, offset, sortField, sortType);
   }
 
   protected T latestInternalFromSearch(

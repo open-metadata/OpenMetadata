@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
@@ -48,6 +49,7 @@ class AwsCredentialsUtilTest {
   void testBuildCredentialsProviderWithNoCredentials() {
     AWSBaseConfig config = new AWSBaseConfig();
     config.setRegion("us-east-1");
+    config.setEnabled(true);
 
     AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(config);
 
@@ -60,6 +62,7 @@ class AwsCredentialsUtilTest {
     AWSBaseConfig config = new AWSBaseConfig();
     config.setRegion("us-east-1");
     config.setAccessKeyId("AKIAIOSFODNN7EXAMPLE");
+    config.setEnabled(true);
 
     AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(config);
 
@@ -73,6 +76,7 @@ class AwsCredentialsUtilTest {
     config.setRegion("us-east-1");
     config.setAccessKeyId("");
     config.setSecretAccessKey("");
+    config.setEnabled(true);
 
     AwsCredentialsProvider provider = AwsCredentialsUtil.buildCredentialsProvider(config);
 
@@ -179,5 +183,18 @@ class AwsCredentialsUtilTest {
 
     assertEquals(URI.create("http://localhost:4566"), config.getEndpointUrl());
     assertTrue(AwsCredentialsUtil.isAwsConfigured(config));
+  }
+
+  @Test
+  void testBuildCredentialsProviderThrowsWhenNotConfigured() {
+    AWSBaseConfig config = new AWSBaseConfig();
+    config.setRegion("us-east-1");
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> AwsCredentialsUtil.buildCredentialsProvider(config));
+
+    assertTrue(exception.getMessage().contains("AWS credentials not configured"));
   }
 }
